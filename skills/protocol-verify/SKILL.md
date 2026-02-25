@@ -64,13 +64,15 @@ Note: For master-perspective modules, `i_`/`o_` directions are reversed.
    - Verifies signals use `i_`/`o_` prefix convention
    - Flags any non-conformant signal names (e.g., `AWVALID` instead of `i_awvalid`)
 2. protocol-checker writes tb/sva/{bus}_assertions.sv using `i_`/`o_` signal names:
+   - See `examples/axi4-lite-assertions.sv` for complete AXI4-Lite assertion set
+   - See `examples/apb-assertions.sv` for APB3 protocol assertion patterns
    - Handshake rules: `i_awvalid`/`o_awready` stability, `i_wvalid`/`o_wready` timing
    - Ordering rules (AXI write data before response, etc.)
    - Signal stability rules (stable during wait states)
    - Clock: `@(posedge sys_clk) disable iff (!sys_rst_n)` (or appropriate domain clock)
 3. eda-runner binds assertions and runs cocotb regression via Bash CLI
 4. Capture assertion violations with cycle number and waveform region
-5. Write protocol/protocol_report.md: violations, assertion coverage, PASS/FAIL
+5. Write protocol/protocol_report.md (use `templates/protocol-report.md` as format template): violations, assertion coverage, PASS/FAIL
 </Steps>
 
 <Tool_Usage>

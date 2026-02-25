@@ -1,0 +1,17 @@
+// Verilator Waiver File Template
+// Generate initial waiver: verilator --lint-only -Wall --waiver-output verilator.vlt rtl/src/*.sv
+// Each waiver MUST include a justification comment.
+
+`verilator_config
+
+// Example: Intentionally unused debug port
+// Justification: Debug-only signal, not connected in production
+// lint_off -rule UNUSED -file "rtl/src/debug_port.sv" -lines 10-15
+
+// Example: Width mismatch in datapath truncation (verified safe)
+// Justification: Upper bits guaranteed zero by upstream logic (see uarch/datapath.md)
+// lint_off -rule WIDTH -file "rtl/src/datapath.sv" -match "Operator ASSIGNW*"
+
+// Example: Undriven signal in reserved register block
+// Justification: Reserved for future use, tied to zero in top-level
+// lint_off -rule UNDRIVEN -file "rtl/src/reg_block.sv" -match "Signal is not driven*"

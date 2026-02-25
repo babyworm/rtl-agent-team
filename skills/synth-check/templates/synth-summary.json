@@ -1,0 +1,23 @@
+{
+  "module": "{{MODULE_NAME}}",
+  "library": "generic | sky130_fd_sc_hd | NangateOpenCellLibrary",
+  "cells": {
+    "$_DFF_P_": 0,
+    "$_DFF_N_": 0,
+    "$_DLATCH_P_": "MUST BE ZERO",
+    "$_MUX_": 0,
+    "$_AND_": 0,
+    "$_OR_": 0,
+    "$_NOT_": 0,
+    "$add": 0,
+    "$mul": 0,
+    "$mem": 0
+  },
+  "total_cells": 0,
+  "area_um2_est": null,
+  "max_logic_depth": null,
+  "latches_found": 0,
+  "concerns": [],
+  "verdict": "PASS | FAIL: reason",
+  "source_file": "synth/reports/{{MODULE}}_synth.txt"
+}

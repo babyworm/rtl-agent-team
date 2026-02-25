@@ -68,13 +68,12 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
    slang --lint-only {files}
    ```
 5. Run supplementary convention checks via Bash CLI:
-   - Grep for `reg ` or `wire ` declarations (should be `logic`)
-   - Grep for port suffixes `_i,`, `_i)`, `_o,`, `_o)` (should use `i_`/`o_` prefix)
-   - Grep for `clk_i`, `clk)`, `rst_ni` (should use `{domain}_clk`, `{domain}_rst_n`)
-   - Grep for instances without `u_` prefix, generates without `gen_` prefix
+   - Use `scripts/check_conventions.sh {files}` for automated convention checking
+   - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes
 6. Merge all results; report violations grouped by file then by severity
 7. Return PASS (zero violations) or FAIL (violation count + list)
-   - If waiver file `.verilator.vlt` exists, apply waivers before final verdict
+   - Use `templates/lint-report.md` as the report format template
+   - If waiver file `.verilator.vlt` exists, apply waivers before final verdict (see `templates/verilator-waiver.vlt` for waiver format)
 </Steps>
 
 <Tool_Usage>
@@ -115,7 +114,8 @@ Not checking naming conventions — allows `clk_i`, `data_o` to pass lint despit
 <Advanced>
 Project lint config: .verible_lint.cfg in repo root. Override rules only with user approval.
 slang --lint-only treats warnings as errors in CI mode.
-Convention check script can be added at scripts/check_conventions.sh for CI integration.
+Convention check script: `scripts/check_conventions.sh` — ready for CI integration.
+See `examples/lint-output-example.txt` for sample merged lint output across all tools.
 
 Verilator waiver file (`.verilator.vlt`) for intentional suppressions:
 ```

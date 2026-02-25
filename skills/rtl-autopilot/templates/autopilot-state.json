@@ -1,0 +1,64 @@
+{
+  "phase": 1,
+  "phase_name": "research",
+  "status": "in_progress",
+  "started_at": "{{TIMESTAMP}}",
+  "phases": {
+    "1_research": {
+      "status": "in_progress",
+      "artifacts": {
+        "requirements_json": false,
+        "io_definition_json": false,
+        "domain_analysis_md": false
+      },
+      "artifact_gate": null,
+      "quality_gate": null,
+      "quality_gate_retries": 0
+    },
+    "2_architecture": {
+      "status": "pending",
+      "artifacts": {
+        "architecture_md": false,
+        "block_diagram": false,
+        "ref_model_src": false
+      },
+      "artifact_gate": null,
+      "quality_gate": null,
+      "quality_gate_retries": 0
+    },
+    "3_uarch": {
+      "status": "pending",
+      "artifacts": {
+        "uarch_md": false,
+        "bfm_dir": false
+      },
+      "artifact_gate": null,
+      "quality_gate": null,
+      "quality_gate_retries": 0
+    },
+    "4_rtl": {
+      "status": "pending",
+      "artifacts": {
+        "rtl_src_sv": false,
+        "lint_clean": false
+      },
+      "artifact_gate": null,
+      "quality_gate": null,
+      "quality_gate_retries": 0
+    },
+    "5_verify": {
+      "status": "pending",
+      "artifacts": {
+        "unit_tests": false,
+        "func_tests": false,
+        "sva_formal": false,
+        "traceability_matrix": false
+      },
+      "artifact_gate": null,
+      "quality_gate": null,
+      "quality_gate_retries": 0
+    }
+  },
+  "upper_spec_violations": [],
+  "review_artifacts": []
+}

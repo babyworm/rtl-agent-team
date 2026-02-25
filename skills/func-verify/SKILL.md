@@ -55,6 +55,7 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 <Steps>
 1. `mkdir -p reviews/phase-5-verify`
 2. testbench-dev writes tb/cocotb/test_{module}.py for each module
+   - Use `templates/cocotb-test-template.py` as the test file scaffold
    - Signal access uses `i_`/`o_` prefixes matching RTL ports
    - Clock driven as `dut.sys_clk`, reset as `dut.sys_rst_n`
 3. eda-runner compiles RTL and runs cocotb regression via Bash CLI:
@@ -70,7 +71,7 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 5. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
 6. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
 7. Generate coverage/coverage.xml via cocotb coverage plugin
-8. **Requirement Traceability Matrix — verify all REQ items have test coverage:**
+8. **Requirement Traceability Matrix** (use `templates/requirement-traceability.md` as format template) **— verify all REQ items have test coverage:**
    - Read requirements.json and all test results
    - Map each REQ-NNN to the test(s) that exercise it
    - Output a Requirement Traceability Matrix:
@@ -173,6 +174,8 @@ Using `dut.clk` or `dut.data_i` in cocotb — signal name mismatch causes Attrib
 Run with multiple seeds: `make SEED=42 SIM=icarus` for broader randomization coverage.
 Coverage target: 90% line, 80% toggle, 70% FSM state.
 Use `COCOTB_RESOLVE_X=RANDOM` to handle X propagation in simulation.
+
+See `examples/cocotb-axi-lite-test.py` for a complete AXI-Lite register test using cocotbext-axi.
 
 **cocotb ecosystem quick reference:**
 - AXI-Lite register access: `AxiLiteMaster(AxiLiteBus.from_prefix(dut, "s_axi"), dut.sys_clk, dut.sys_rst_n, reset_active_level=False)`

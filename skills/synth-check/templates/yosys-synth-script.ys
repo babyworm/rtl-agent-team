@@ -1,0 +1,39 @@
+# Yosys Synthesis Script Template
+# Usage: yosys -s synth_{{MODULE}}.ys | tee synth/reports/{{MODULE}}_synth.txt
+
+# ============================================================
+# Read RTL
+# ============================================================
+read_verilog -sv rtl/src/*.sv
+
+# ============================================================
+# Generic Synthesis (no technology mapping)
+# ============================================================
+# synth -top {{MODULE}} -flatten
+# stat
+
+# ============================================================
+# Technology-Mapped Synthesis (choose one)
+# ============================================================
+
+# --- Sky130 (open-source PDK) ---
+# synth -top {{MODULE}}
+# dfflibmap -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+# abc -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+# stat -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# --- NanGate45 (academic PDK) ---
+# synth -top {{MODULE}}
+# dfflibmap -liberty NangateOpenCellLibrary_typical.lib
+# abc -liberty NangateOpenCellLibrary_typical.lib
+# stat -liberty NangateOpenCellLibrary_typical.lib
+
+# ============================================================
+# Post-Synthesis Checks
+# ============================================================
+
+# Check for combinational loops
+# scc -max_depth 10
+
+# Export netlist (optional)
+# write_verilog synth/netlist/{{MODULE}}_netlist.v

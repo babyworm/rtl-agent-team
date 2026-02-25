@@ -1,0 +1,34 @@
+# SymbiYosys Configuration Template
+# Usage: sby -f formal/props/{{MODULE}}.sby
+# Generates: formal/props/{{MODULE}}/{{ENGINE}}/
+
+[tasks]
+bmc       # Bounded Model Checking
+prove     # Induction proof
+cover     # Reachability check
+
+[options]
+bmc: mode bmc
+bmc: depth 30
+prove: mode prove
+prove: depth 30
+cover: mode cover
+cover: depth 30
+
+[engines]
+bmc: smtbmc boolector
+prove: smtbmc boolector
+cover: smtbmc boolector
+# Alternatives:
+#   smtbmc yices    — often fastest for bitvector-heavy designs
+#   smtbmc z3       — best for arithmetic-heavy designs
+#   abc pdr         — unbounded proof (prove mode only)
+
+[script]
+read -formal -sv {{RTL_FILES}}
+read -formal -sv formal/props/{{MODULE}}_props.sv
+prep -top {{MODULE}}
+
+[files]
+{{RTL_SRC_DIR}}/*.sv
+formal/props/{{MODULE}}_props.sv

@@ -60,8 +60,9 @@ in addition to any CDC violations.
    - Fanout from synchronized signal
    - Reset domain crossings (e.g., `sys_rst_n` used in `axi_clk` domain)
 3. constraint-writer writes constraints/cdc_constraints.sdc defining clock groups
+   - Use `templates/cdc-constraints.sdc` as the SDC template
    - Uses `{domain}_clk` names consistent with RTL
-4. cdc-checker writes cdc/cdc_report.md:
+4. cdc-checker writes cdc/cdc_report.md (use `templates/cdc-report.md` as format template):
    - VIOLATION: unsynced crossing (file:line, source clock, dest clock)
    - CAUTION: complex multi-bit crossing needing review
    - CONVENTION: non-conformant clock/reset naming (file:line, found name, expected format)

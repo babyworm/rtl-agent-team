@@ -52,6 +52,9 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 1. eda-runner checks simulator availability via Bash CLI: `which vcs || which vsim || which xrun`
 2. If not found: halt with error message listing required simulator
 3. testbench-dev writes uvm/{module}_env.sv (agent, sequences, scoreboard)
+   - Use `templates/uvm-agent-template.sv` for agent/driver/monitor scaffold
+   - Use `templates/uvm-test-template.sv` for test/env/top-level scaffold
+   - See `examples/uvm-scoreboard-example.sv` for scoreboard with reference model comparison
    - Driver uses `i_`/`o_` port prefixes, `sys_clk`/`sys_rst_n`
    - DUT wrapped with `u_dut` instance name
    - Interface signals match RTL port names exactly

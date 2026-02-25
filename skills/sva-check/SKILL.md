@@ -51,6 +51,8 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
    - Guard `$past()` with a `past_valid` register to avoid undefined first-cycle behavior
    - See `references/sva-patterns.md` for handshake, FIFO, FSM, pipeline, and reset patterns
 2. sva-extractor generates SymbiYosys .sby configuration file per module
+   - Use `templates/sby-config.sby` as the configuration template
+   - Use `templates/sva-property-template.sv` as the SVA property file scaffold
    - Engine selection: `smtbmc boolector` (default), `smtbmc yices` (bitvector-heavy), `abc pdr` (unbounded proof)
    - Generate both BMC (`mode bmc`) and prove (`mode prove`) configurations
    - Optionally generate cover (`mode cover`) to validate reachability
@@ -105,6 +107,9 @@ Use assume statements to constrain inputs to legal protocol ranges before provin
 **Principle: assume inputs, assert outputs.** Inputs are constrained with `assume`; outputs are verified with `assert`.
 Target properties: no deadlock, no overflow, interface protocol compliance, data integrity.
 Assertion clock: `@(posedge sys_clk) disable iff (!sys_rst_n)` for synchronous properties.
+
+See `examples/handshake-assertions.sv` for valid/ready handshake SVA patterns.
+See `examples/fifo-assertions.sv` for FIFO overflow/underflow assertion patterns.
 
 SymbiYosys engine guide:
 | Engine | Mode | Best For |

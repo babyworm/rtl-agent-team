@@ -494,4 +494,6 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 <Advanced>
 Resume: read existing state file, skip completed phases, continue from current phase.
 Parallel phases (2 and 3) use separate state sub-keys to track each sub-task independently.
+Templates: `templates/autopilot-state.json` (state file), `templates/review-report.md` (gate reports).
+See `references/gate-failure-handling.md` for gate retry flow and upper-spec violation handling.
 </Advanced>
