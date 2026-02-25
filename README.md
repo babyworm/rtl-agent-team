@@ -95,6 +95,8 @@ rtl-agent-team/
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션
 │   ├── uvm/                    # UVM 코딩 컨벤션
 │   └── systemc/                # SystemC/TLM 코딩 컨벤션
+├── docker/                     # EDA 도구 Docker 이미지
+│   └── Dockerfile              # 오픈소스 EDA 전체 번들
 ├── src/hooks/                  # 4개 Hook (TypeScript)
 ├── bridge/                     # Hook CJS 번들 (빌드 산출물)
 └── domain-packages/            # 도메인 지식 패키지
@@ -144,6 +146,28 @@ rtl-agent-team/
 | sby (SymbiYosys) | Formal 검증 | 선택 |
 
 `/rtl-agent-team:rtl-setup`으로 도구 설치 상태를 확인할 수 있습니다.
+
+### Docker EDA 이미지 (권장)
+
+EDA 도구 설치가 번거롭다면, 모든 도구가 포함된 Docker 이미지를 빌드할 수 있습니다:
+
+```bash
+# 이미지 빌드 (최초 1회)
+docker build -t rtl-eda-tools docker/
+
+# 프로젝트 마운트하여 실행
+docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+
+# 버전 지정 빌드
+docker build -t rtl-eda-tools \
+  --build-arg VERILATOR_VERSION=5.024 \
+  --build-arg SLANG_VERSION=v6.0 \
+  docker/
+```
+
+포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
+
+Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rtl-setup` 실행 후 Docker 옵션 선택.
 
 ## 개발
 

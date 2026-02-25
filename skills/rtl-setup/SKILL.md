@@ -13,6 +13,7 @@ and verify that required EDA tools are installed and accessible.
 - First time using this plugin in a workspace
 - Verifying EDA toolchain is properly installed
 - User says "setup", "initialize", "init project", "프로젝트 초기화"
+- User says "docker image", "도커 이미지", "make docker", "EDA 환경 컨테이너"
 </Use_When>
 
 <Do_Not_Use_When>
@@ -121,6 +122,46 @@ This skill ensures everything is in place before design work begins.
      - Reset: {domain}_rst_n (e.g., sys_rst_n)
    - Ready to start: Yes/No
    ```
+
+8. **Docker EDA 이미지 빌드** (사용자 요청 시):
+
+   사용자가 "docker image 만들자", "EDA 도커 환경" 등을 요청하면 Docker 이미지를 빌드한다.
+   이 이미지에는 모든 필수/선택 EDA 도구가 포함되어 팀 전체가 동일 환경을 공유할 수 있다.
+
+   ```bash
+   # 이미지 빌드
+   docker build -t rtl-eda-tools docker/
+
+   # 빌드 인자로 버전 지정 가능
+   docker build -t rtl-eda-tools \
+     --build-arg VERILATOR_VERSION=5.024 \
+     --build-arg SLANG_VERSION=v6.0 \
+     docker/
+   ```
+
+   빌드 완료 후 프로젝트를 마운트하여 실행:
+   ```bash
+   # 기본 실행
+   docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+
+   # GUI (gtkwave) 지원
+   docker run -it --rm \
+     -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+     -v $(pwd):/workspace -w /workspace rtl-eda-tools
+   ```
+
+   **포함된 도구:**
+   | 도구 | 버전 | 용도 |
+   |------|------|------|
+   | verilator | 5.024 (configurable) | 시뮬레이션 + Lint |
+   | verible | latest release | 스타일 Lint + 포매팅 |
+   | yosys | apt latest | 합성 |
+   | iverilog | apt latest | 대안 시뮬레이터 |
+   | slang | v6.0 (configurable) | IEEE 1800 시맨틱 Lint |
+   | sby (SymbiYosys) | latest + boolector, z3 | Formal 검증 |
+   | gtkwave | apt latest | 파형 뷰어 |
+   | cocotb + extensions | pip latest | 기능 검증 |
+   | gcc/g++ | apt latest | 레퍼런스 모델 빌드 |
 </Steps>
 
 <Tool_Usage>

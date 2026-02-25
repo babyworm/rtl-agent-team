@@ -9,7 +9,7 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 |-----------|------------|
 | **--- 전체 파이프라인 ---** | |
 | "RTL 설계", "verilog", "FPGA", "ASIC", "칩 설계", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
-| "setup", "초기화", "프로젝트 시작", "init" | `/rtl-agent-team:rtl-setup` |
+| "setup", "초기화", "프로젝트 시작", "init", "docker image", "EDA 도커" | `/rtl-agent-team:rtl-setup` |
 | **--- Phase 1: Research ---** | |
 | "스펙 분석", "요구사항", "논문 조사", "research" | `/rtl-agent-team:research-analyze` |
 | "코덱 자문", "H.264", "H.265", "도메인 전문가" | `/rtl-agent-team:domain-consult` |
