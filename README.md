@@ -136,11 +136,12 @@ rtl-agent-team/
 | 도구 | 용도 | 필수 여부 |
 |------|------|----------|
 | verilator | 시뮬레이션 + Lint | 필수 |
+| verible | 스타일 Lint + 포매팅 | 필수 |
 | yosys | 합성 | 필수 |
 | cocotb (Python) | 기능 검증 | 필수 |
 | iverilog | 대안 시뮬레이터 | 선택 |
+| slang | IEEE 1800 시맨틱 Lint | 선택 |
 | sby (SymbiYosys) | Formal 검증 | 선택 |
-| slang | 고급 Lint | 선택 |
 
 `/rtl-agent-team:rtl-setup`으로 도구 설치 상태를 확인할 수 있습니다.
 
