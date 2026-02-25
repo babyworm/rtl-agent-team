@@ -35,15 +35,17 @@ Dedicated domain experts catch codec-specific pitfalls early.
 
 <Steps>
 1. Read requirements.json and io_definition.json
-2. Parallel: codec-standards-expert (interface standard compliance), video-processing-expert (pipeline and memory constraints)
-3. arch-designer produces architecture.md draft and block_diagram
+2. `mkdir -p reviews/phase-2-architecture`
+3. Parallel: codec-standards-expert (interface standard compliance), video-processing-expert (pipeline and memory constraints)
+4. arch-designer produces architecture.md draft and block_diagram
    - All interface signal names MUST follow naming conventions:
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
      - Clocks: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
      - Resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
      - Instances: `u_` prefix (e.g., `u_input_buffer`), generates: `gen_` prefix
    - Block names: `snake_case` (these become RTL module names)
-4. **Spec Compliance Check — requirements.json coverage verification:**
+   - architecture.md MUST include a Mermaid block diagram section showing top-level block decomposition
+5. **Spec Compliance Check — requirements.json coverage verification:**
    - rtl-architect reads requirements.json and architecture.md
    - Verify every `REQ-NNN` item is mapped to at least one architecture block or interface
    - Output a Feature Coverage Checklist:
@@ -52,20 +54,35 @@ Dedicated domain experts catch codec-specific pitfalls early.
      REQ-002: mapped to block_Y interface (OK)
      REQ-005: NOT MAPPED — no architecture block covers this requirement
      ```
+   - **Save Feature Coverage Checklist to `reviews/phase-2-architecture/feature-coverage.md`**
    - Verdict: `VERDICT: PASS` or `VERDICT: FAIL — [N] unmapped requirements found`
    - On FAIL: arch-designer receives the unmapped list and revises architecture.md
-5. rtl-architect reviews for RTL implementability, timing feasibility, interface consistency, and naming convention compliance
-6. Iterate on review comments (max 2 rounds)
-7. Finalize architecture.md and block_diagram
+6. rtl-architect reviews for RTL implementability, timing feasibility, interface consistency, and naming convention compliance
+   - **Save full architecture review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
+7. **Save Mermaid block diagram to `reviews/phase-2-architecture/architecture-diagram.md`:**
+   - Extract or generate a `graph TD` Mermaid diagram from architecture.md block decomposition
+   - Example format:
+     ```mermaid
+     graph TD
+         A[Top Module] --> B[Datapath]
+         A --> C[Controller FSM]
+         B --> D[ALU]
+         B --> E[Register File]
+         C --> F[AXI Slave Interface]
+     ```
+8. Iterate on review comments (max 2 rounds)
+9. Finalize architecture.md and block_diagram
 </Steps>
 
 <Tool_Usage>
 ```
+Bash("mkdir -p reviews/phase-2-architecture")
+
 Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md and block_diagram. All interface signals must use i_/o_/io_ prefix (NOT _i/_o suffix), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n. Instance names use u_ prefix.")
+     prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md and block_diagram. All interface signals must use i_/o_/io_ prefix (NOT _i/_o suffix), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n. Instance names use u_ prefix. Include a Mermaid block diagram (graph TD) in architecture.md showing top-level block decomposition and connectivity.")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Read requirements.json and architecture.md. First, verify every REQ-NNN item in requirements.json is mapped to at least one architecture block or interface. Output a Feature Coverage Checklist with per-REQ status. Then review architecture.md for RTL implementability, timing, interface consistency, and naming convention compliance (i_/o_ prefix, {domain}_clk/{domain}_rst_n). Output verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
+     prompt="Read requirements.json and architecture.md. First, verify every REQ-NNN item in requirements.json is mapped to at least one architecture block or interface. Output a Feature Coverage Checklist with per-REQ status. Save the Feature Coverage Checklist to reviews/phase-2-architecture/feature-coverage.md in standard review Markdown format with Date, Reviewer (rtl-architect), Upper Spec (requirements.json), Verdict, checklist table, Findings, and Verdict sections. Then review architecture.md for RTL implementability, timing, interface consistency, and naming convention compliance (i_/o_ prefix, {domain}_clk/{domain}_rst_n). Save the full architecture review to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format. Also save a Mermaid block diagram to reviews/phase-2-architecture/architecture-diagram.md showing the top-level block decomposition (graph TD with block names and connections). Output verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
 
 # On FAIL: feed findings back to arch-designer for revision
 Task(subagent_type="rtl-agent-team:arch-designer",
@@ -100,6 +117,9 @@ timing-critical issues that are expensive to fix at RTL stage.
 - [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`
 - [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`
 - [ ] Instance names use `u_` prefix, generate blocks use `gen_` prefix
+- [ ] **reviews/phase-2-architecture/feature-coverage.md saved with Feature Coverage Checklist**
+- [ ] **reviews/phase-2-architecture/architecture-review.md saved with full review**
+- [ ] **reviews/phase-2-architecture/architecture-diagram.md saved with Mermaid block diagram**
 </Final_Checklist>
 
 <Advanced>

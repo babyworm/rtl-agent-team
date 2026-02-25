@@ -41,6 +41,24 @@ Separating this from arch-design prevents spec ambiguity from corrupting structu
    - Count features/constraints extracted from original spec documents
    - Compare against number of items in requirements.json
    - Generate a **suspected omission list** for any spec features not mapped to a REQ item
+   - **Save self-verification result to `reviews/phase-1-research/research-review.md`** in standard review Markdown format:
+     ```markdown
+     # Phase 1 Review: Research Completeness
+     - Date: YYYY-MM-DD
+     - Reviewer: spec-analyst
+     - Upper Spec: specs/
+     - Verdict: PASS | FAIL
+
+     ## Feature Coverage Checklist
+     | Spec Section | Requirement ID | Status |
+     |-------------|----------------|--------|
+
+     ## Findings
+     ### [severity] Finding-N: ...
+
+     ## Verdict
+     PASS | FAIL: [reason]
+     ```
    - Output verdict:
      ```
      VERDICT: PASS — N requirements extracted, 0 suspected omissions
@@ -66,6 +84,8 @@ Separating this from arch-design prevents spec ambiguity from corrupting structu
 
 <Tool_Usage>
 ```
+Bash("mkdir -p reviews/phase-1-research")
+
 Task(subagent_type="rtl-agent-team:codec-standards-expert",
      prompt="Extract compliance requirements from spec at specs/. Output structured list.")
 
@@ -73,7 +93,9 @@ Task(subagent_type="rtl-agent-team:video-processing-expert",
      prompt="Extract signal processing and datapath requirements from specs/.")
 
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Parse specs/ and produce requirements.json and io_definition.json. Each requirement in requirements.json MUST have a unique 'id' field: 'REQ-001', 'REQ-002', etc. Port names in io_definition.json MUST use: i_/o_/io_ prefix (NOT suffix _i/_o), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n (e.g. sys_rst_n). After generation, count features in original spec vs REQ items and list any suspected omissions.")
+     prompt="Parse specs/ and produce requirements.json and io_definition.json. Each requirement in requirements.json MUST have a unique 'id' field: 'REQ-001', 'REQ-002', etc. Port names in io_definition.json MUST use: i_/o_/io_ prefix (NOT suffix _i/_o), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n (e.g. sys_rst_n). After generation, count features in original spec vs REQ items and list any suspected omissions. Save the self-verification review to reviews/phase-1-research/research-review.md in standard review Markdown format with Date, Reviewer, Upper Spec, Verdict, Feature Coverage Checklist, Findings, and final Verdict sections.")
+
+# Write: reviews/phase-1-research/research-review.md
 ```
 </Tool_Usage>
 
@@ -104,6 +126,7 @@ Skipping spec-analyst and writing requirements.json manually — misses formal t
 - [ ] No unresolved requirement conflicts
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED with suspected omissions)
 - [ ] Spec feature count vs requirements.json item count comparison documented
+- [ ] **reviews/phase-1-research/research-review.md saved with self-verification result**
 </Final_Checklist>
 
 <Advanced>

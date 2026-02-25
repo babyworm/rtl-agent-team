@@ -62,6 +62,7 @@ This skill automates sequencing, gate checking, and recovery.
 
 2. **Phase 1 — Research**: invoke research-analyze skill
    - io_definition.json must use project naming conventions: `i_`/`o_`/`io_` port prefixes, `{domain}_clk`, `{domain}_rst_n`
+   - **Review artifacts setup**: `mkdir -p reviews/phase-1-research`
 
    **Phase 1→2 Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
 
@@ -69,6 +70,7 @@ This skill automates sequencing, gate checking, and recovery.
    - `spec-analyst` self-reviews requirements.json for completeness and internal consistency
      - Are all functional requirements traceable to spec sections?
      - Are there contradictions or ambiguities?
+     - **Save review result to `reviews/phase-1-research/research-review.md`** in standard review Markdown format
    - `arch-designer` evaluates requirements for implementation feasibility
      - Can every requirement be realized in RTL within reasonable area/timing?
      - Are there missing constraints (clock frequency, interface protocols)?
@@ -78,15 +80,20 @@ This skill automates sequencing, gate checking, and recovery.
 
 3. **Phase 2 — Architecture + Reference Model (parallel)**: invoke arch-design and ref-model skills concurrently
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n` naming
+   - **Review artifacts setup**: `mkdir -p reviews/phase-2-architecture`
 
    **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + ref_model/src/*.cpp exist
 
    **Phase 2→3 Quality Gate (Architecture Review)**:
    - `rtl-architect` reviews architecture.md against requirements.json:
      - **Feature Coverage Checklist**: enumerate every functional requirement from requirements.json and confirm it is addressed in architecture.md. Flag any missing feature as FAIL
+       - **Save checklist to `reviews/phase-2-architecture/feature-coverage.md`** in standard review Markdown format
      - Block decomposition: are blocks well-bounded with clear responsibilities?
      - Interface adequacy: do inter-block interfaces carry all required signals?
      - Port naming compliance: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`
+     - **Save full review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
+   - **Architecture Diagram**: Save Mermaid block diagram to `reviews/phase-2-architecture/architecture-diagram.md`
+     - Include a `graph TD` Mermaid diagram showing top-level block decomposition and connectivity
    - `rtl-critic` performs synthesizability pre-assessment:
      - Are there architectural patterns known to cause synthesis issues?
      - Clock domain crossing strategy defined where needed?
@@ -96,6 +103,7 @@ This skill automates sequencing, gate checking, and recovery.
 
 4. **Phase 3 — μArch + BFM (parallel)**: invoke uarch-design and bfm-develop skills concurrently
    - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
+   - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch`
 
    **Phase 3→4 Artifact Gate**: uarch/*.md + bfm/ directory exist
 
@@ -103,40 +111,52 @@ This skill automates sequencing, gate checking, and recovery.
    - `rtl-architect` reviews uarch/*.md against architecture.md:
      - **Block boundary alignment**: does each uarch document correspond 1:1 to an architecture block? Flag any split/merge that deviates from architecture.md
      - **Feature preservation**: for each feature assigned to a block in architecture.md, verify the corresponding uarch/*.md describes its implementation. Flag any feature dropped or altered
+       - **Save feature preservation checklist to `reviews/phase-3-uarch/feature-preservation.md`** in standard review Markdown format
      - Pipeline depth and staging: is the proposed pipeline feasible for target frequency?
      - Timing path analysis: are there combinational paths that clearly violate timing?
      - Signal/register naming compliance with conventions
+     - **Save full review to `reviews/phase-3-uarch/uarch-review.md`** in standard review Markdown format
+   - **Pipeline Diagram**: Save Mermaid pipeline diagram to `reviews/phase-3-uarch/pipeline-diagram.md`
+     - Include a `graph LR` Mermaid diagram showing pipeline stages and data flow
    - **Verdict**: PASS if architecture is fully and faithfully decomposed into μArch with no feature loss AND timing paths are reasonable; FAIL + findings otherwise
 
 ---
 
 5. **Phase 4 — RTL Implementation**: invoke rtl-code skill (parallel per module)
    - Enforce: `logic` only (no `reg`/`wire`), `always_ff`/`always_comb`, ANSI port style
+   - **Review artifacts setup**: `mkdir -p reviews/phase-4-rtl`
 
    **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean
 
    **Phase 4→5 Quality Gate (RTL Design Review)**:
    - `rtl-critic` reviews RTL code against μArch specs AND requirements.json:
      - **Functional Coverage Check**: for each requirement in requirements.json, trace it through uarch to RTL implementation. Produce a coverage matrix: requirement → uarch section → RTL module/line. Flag any requirement with no RTL implementation as FAIL
+       - **Save functional completeness report to `reviews/phase-4-rtl/functional-completeness.md`** in standard review Markdown format
      - Code quality: proper FSM coding, no latches, clean reset logic
      - Synthesizability: no non-synthesizable constructs, appropriate clock gating
      - Coding convention compliance: `i_`/`o_` ports, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates, `logic` only
+     - **Save full design review to `reviews/phase-4-rtl/design-review.md`** in standard review Markdown format
    - `lint-checker` runs full lint pass:
      - Zero errors required; warnings reviewed for false positives
+     - **Save lint report to `reviews/phase-4-rtl/lint-report.md`** in standard review Markdown format
    - **Verdict**: PASS if functional coverage is 100% AND lint-clean AND design quality passes; FAIL + findings otherwise
 
 ---
 
 6. **Phase 5 — Verification**: invoke sv-unit-test, sva-check, func-verify, perf-verify, conformance-test sequentially
    - Gate for each sub-phase: tests pass before proceeding to next verification stage
+   - **Review artifacts setup**: `mkdir -p reviews/phase-5-verify`
 
    **Phase 5 Completion Artifact Gate**: all verification suites pass
 
    **Phase 5 Completion Quality Gate (Final Spec Compliance Review)**:
+   - `func-verifier` produces Requirement Traceability Matrix:
+     - **Save to `reviews/phase-5-verify/requirement-traceability.md`** in standard review Markdown format
    - `rtl-architect` performs end-to-end review of the entire design against the original requirements.json:
      - **Final Feature Completeness Audit**: re-read every requirement from requirements.json and confirm: (a) it is implemented in RTL, (b) it has at least one verification test covering it, (c) that test passed. Produce a final compliance matrix
      - Interface completeness: are all ports in io_definition.json present and connected in the top-level RTL?
      - Untested paths: identify any functionality that lacks verification coverage
+     - **Save final compliance review to `reviews/phase-5-verify/final-compliance.md`** in standard review Markdown format
    - **Verdict**: PASS if every original requirement is implemented, verified, and passing; FAIL + findings otherwise
 
 ---
@@ -164,6 +184,8 @@ This skill automates sequencing, gate checking, and recovery.
 # ============================================================
 # Phase 1: Research
 # ============================================================
+Bash("mkdir -p reviews/phase-1-research")
+
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Port names in io_definition.json must use i_/o_/io_ prefix convention, clocks as {domain}_clk, resets as {domain}_rst_n.")
 
@@ -175,6 +197,18 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 3. All interface constraints (protocols, timing) are explicitly stated.
 4. io_definition.json port naming follows i_/o_/io_ prefix, {domain}_clk/{domain}_rst_n.
 Produce a Feature Coverage Checklist mapping each spec section to its requirement(s).
+Save your review result to reviews/phase-1-research/research-review.md in this format:
+  # Phase 1 Review: Research Completeness
+  - Date: (today)
+  - Reviewer: spec-analyst
+  - Upper Spec: specs/
+  - Verdict: PASS | FAIL
+  ## Feature Coverage Checklist
+  (per spec section to REQ mapping)
+  ## Findings
+  ### [severity] Finding-N: ...
+  ## Verdict
+  PASS | FAIL: [reason]
 verdict: PASS or FAIL + findings[]")
 
 Task(subagent_type="rtl-agent-team:arch-designer",
@@ -189,6 +223,8 @@ verdict: PASS or FAIL + findings[]")
 # ============================================================
 # Phase 2: Architecture + Reference Model (parallel)
 # ============================================================
+Bash("mkdir -p reviews/phase-2-architecture")
+
 Task(subagent_type="rtl-agent-team:arch-designer",
      prompt="Design architecture from requirements.json and io_definition.json. All interface signals must use i_/o_ prefix, {domain}_clk/{domain}_rst_n naming. Produce architecture.md and block_diagram.")
 Task(subagent_type="rtl-agent-team:ref-model-dev",
@@ -201,11 +237,25 @@ Perform the following checks:
 1. **Feature Coverage Checklist**: List EVERY functional requirement from requirements.json.
    For each, state whether architecture.md addresses it and where (section/block).
    Mark COVERED or MISSING. Any MISSING item → FAIL.
+   Save the checklist to reviews/phase-2-architecture/feature-coverage.md in this format:
+     # Phase 2 Review: Feature Coverage
+     - Date: (today)
+     - Reviewer: rtl-architect
+     - Upper Spec: requirements.json
+     - Verdict: PASS | FAIL
+     ## Feature Coverage Checklist
+     | REQ ID | Description | Architecture Block | Status |
+     |--------|-------------|-------------------|--------|
+     ## Findings
+     ## Verdict
 2. **Block decomposition**: Are blocks well-bounded with single responsibilities?
 3. **Interface adequacy**: Do inter-block interfaces carry all signals needed for the requirements?
 4. **Port naming**: Verify all interface tables use i_/o_ prefix, {domain}_clk/{domain}_rst_n.
 5. **Hierarchical compliance**: Does architecture introduce any feature not in requirements.json?
    Unauthorized additions → FAIL.
+Save the full architecture review to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format.
+Also save a Mermaid block diagram to reviews/phase-2-architecture/architecture-diagram.md showing
+the top-level block decomposition (use graph TD with block names and connections).
 Output the Feature Coverage Checklist table, then:
 verdict: PASS or FAIL + findings[]")
 
@@ -221,6 +271,8 @@ verdict: PASS or FAIL + findings[]")
 # ============================================================
 # Phase 3: μArch + BFM (parallel)
 # ============================================================
+Bash("mkdir -p reviews/phase-3-uarch")
+
 Task(subagent_type="rtl-agent-team:uarch-designer",
      prompt="Produce uarch/*.md from architecture.md. All signal names must use i_/o_ prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates.")
 Task(subagent_type="rtl-agent-team:bfm-dev",
@@ -235,17 +287,33 @@ Perform the following checks:
 2. **Feature preservation**: For each feature assigned to a block in architecture.md,
    verify the corresponding uarch/*.md describes its detailed implementation.
    List each feature and mark PRESERVED or DROPPED. Any DROPPED item → FAIL.
+   Save the feature preservation checklist to reviews/phase-3-uarch/feature-preservation.md in this format:
+     # Phase 3 Review: Feature Preservation
+     - Date: (today)
+     - Reviewer: rtl-architect
+     - Upper Spec: architecture.md
+     - Verdict: PASS | FAIL
+     ## Feature Coverage Checklist
+     | Feature | Architecture Block | μArch Doc | Status |
+     |---------|-------------------|-----------|--------|
+     ## Findings
+     ## Verdict
 3. **Pipeline/timing feasibility**: Is the proposed pipeline depth achievable at target frequency?
    Are there obvious critical paths that span too many logic levels?
 4. **Signal naming compliance**: i_/o_ ports, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates.
 5. **Hierarchical compliance**: Does any μArch document alter a decision made in architecture.md
    (e.g., change interface width, remove a port, alter FSM states)? Any such change → FAIL.
+Save the full μArch review to reviews/phase-3-uarch/uarch-review.md in standard review Markdown format.
+Also save a Mermaid pipeline diagram to reviews/phase-3-uarch/pipeline-diagram.md showing
+the pipeline stages and data flow (use graph LR with stage names and connections).
 Output the Feature Preservation Checklist table, then:
 verdict: PASS or FAIL + findings[]")
 
 # ============================================================
 # Phase 4: RTL Implementation (parallel per module)
 # ============================================================
+Bash("mkdir -p reviews/phase-4-rtl")
+
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Implement rtl/src/{module}.sv from uarch/{module}.md. Use logic only (no reg/wire), i_/o_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates. Run lint after writing.")
 
@@ -256,6 +324,17 @@ Perform the following checks:
 1. **Functional Coverage Matrix**: For EVERY requirement in requirements.json, trace:
    requirement → uarch section → RTL module and approximate line range.
    Mark each requirement as IMPLEMENTED or MISSING. Any MISSING → FAIL.
+   Save the functional completeness report to reviews/phase-4-rtl/functional-completeness.md in this format:
+     # Phase 4 Review: Functional Completeness
+     - Date: (today)
+     - Reviewer: rtl-critic
+     - Upper Spec: requirements.json, uarch/*.md
+     - Verdict: PASS | FAIL
+     ## Feature Coverage Checklist
+     | REQ ID | uarch Section | RTL Module | Lines | Status |
+     |--------|--------------|------------|-------|--------|
+     ## Findings
+     ## Verdict
 2. **Code quality**: Proper FSM coding (enum states), no inferred latches, clean synchronous reset.
 3. **Synthesizability**: No non-synthesizable constructs (#delay, initial in synth code),
    appropriate clock gating, no combinational loops.
@@ -264,20 +343,46 @@ Perform the following checks:
    always_ff/always_comb (no always @*), ANSI port style.
 5. **Hierarchical compliance**: Does RTL add, remove, or alter any functionality
    compared to uarch/*.md? Unauthorized deviation → FAIL.
+Save the full design review to reviews/phase-4-rtl/design-review.md in standard review Markdown format.
 Output the Functional Coverage Matrix table, then:
 verdict: PASS or FAIL + findings[]")
 
 Task(subagent_type="rtl-agent-team:lint-checker",
      prompt="Run full lint on rtl/src/*.sv. Zero errors required. Review warnings for false positives. Report lint summary.
+Save the lint report to reviews/phase-4-rtl/lint-report.md in this format:
+  # Phase 4 Review: Lint Report
+  - Date: (today)
+  - Reviewer: lint-checker
+  - Upper Spec: rtl/src/*.sv
+  - Verdict: PASS | FAIL
+  ## Findings
+  ### [severity] Finding-N: ...
+  ## Verdict
+  PASS (0 errors, warnings reviewed) | FAIL: [error summary]
 verdict: PASS (0 errors, warnings reviewed) or FAIL + error list[]")
 
 # ============================================================
 # Phase 5: Verification (sequential)
 # ============================================================
+Bash("mkdir -p reviews/phase-5-verify")
+
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write SV unit tests for rtl/src/{module}.sv at tb/unit/.")
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb functional tests on rtl/src/*.sv against ref_model.")
+     prompt="Run cocotb functional tests on rtl/src/*.sv against ref_model.
+After regression completes, produce a Requirement Traceability Matrix and save it to
+reviews/phase-5-verify/requirement-traceability.md in this format:
+  # Phase 5 Review: Requirement Traceability
+  - Date: (today)
+  - Reviewer: func-verifier
+  - Upper Spec: requirements.json
+  - Verdict: PASS | FAIL
+  ## Feature Coverage Checklist
+  | REQ ID | Test Name | Result | Status |
+  |--------|-----------|--------|--------|
+  ## Findings
+  ## Verdict
+  PASS | FAIL: [reason]")
 
 # --- Phase 5 Completion Quality Gate ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
@@ -294,6 +399,18 @@ Perform the FINAL end-to-end audit:
    correctly connected in the top-level RTL module?
 3. **Untested paths**: Identify any functionality that exists in RTL but has no verification coverage.
 4. **Spec fidelity**: Has the final implementation drifted from the original spec in any way?
+Save the final compliance review to reviews/phase-5-verify/final-compliance.md in this format:
+  # Phase 5 Review: Final Spec Compliance
+  - Date: (today)
+  - Reviewer: rtl-architect
+  - Upper Spec: requirements.json, io_definition.json
+  - Verdict: PASS | FAIL
+  ## Feature Coverage Checklist
+  | REQ ID | RTL Module | Test Name | Test Result | Status |
+  |--------|-----------|-----------|-------------|--------|
+  ## Findings
+  ## Verdict
+  PASS | FAIL: [reason]
 Output the Final Compliance Matrix table, then:
 verdict: PASS or FAIL + findings[]")
 
@@ -379,6 +496,19 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 - [ ] All 5 phases completed
 - [ ] State file removed on clean completion
 - [ ] Summary report generated with Final Compliance Matrix
+- [ ] **Review artifacts saved to reviews/ directory:**
+  - reviews/phase-1-research/research-review.md
+  - reviews/phase-2-architecture/feature-coverage.md
+  - reviews/phase-2-architecture/architecture-review.md
+  - reviews/phase-2-architecture/architecture-diagram.md (Mermaid block diagram)
+  - reviews/phase-3-uarch/feature-preservation.md
+  - reviews/phase-3-uarch/uarch-review.md
+  - reviews/phase-3-uarch/pipeline-diagram.md (Mermaid pipeline diagram)
+  - reviews/phase-4-rtl/functional-completeness.md
+  - reviews/phase-4-rtl/design-review.md
+  - reviews/phase-4-rtl/lint-report.md
+  - reviews/phase-5-verify/requirement-traceability.md
+  - reviews/phase-5-verify/final-compliance.md
 </Final_Checklist>
 
 <Advanced>

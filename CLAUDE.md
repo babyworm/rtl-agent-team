@@ -156,6 +156,58 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 도구 미설치 시 `eda-runner`가 설치 안내를 제공한다.
 `/rtl-agent-team:rtl-setup` 스킬로 환경 점검 및 프로젝트 초기화가 가능하다.
 
+## 리뷰 산출물
+
+각 Phase Gate 리뷰어가 생성한 리포트는 `reviews/` 디렉토리에 Markdown으로 저장한다.
+블록 다이어그램, 데이터 흐름 등은 Mermaid chart로 표현한다.
+
+```
+reviews/
+├── phase-1-research/
+│   └── research-review.md          # 스펙 완전성 자기검증 + 실현가능성 평가
+├── phase-2-architecture/
+│   ├── feature-coverage.md         # Feature Coverage Checklist (REQ → Arch block 매핑)
+│   ├── architecture-review.md      # rtl-architect 구조 리뷰
+│   └── architecture-diagram.md     # Mermaid 블록 다이어그램
+├── phase-3-uarch/
+│   ├── feature-preservation.md     # Feature Preservation Checklist (Arch → μArch 매핑)
+│   ├── uarch-review.md             # rtl-architect μArch 리뷰
+│   └── pipeline-diagram.md         # Mermaid 파이프라인/데이터플로우 다이어그램
+├── phase-4-rtl/
+│   ├── functional-completeness.md  # Functional Completeness Check (REQ → RTL 매핑)
+│   ├── design-review.md            # rtl-critic 설계 리뷰
+│   └── lint-report.md              # lint-checker 리포트
+└── phase-5-verify/
+    ├── requirement-traceability.md # Requirement Traceability Matrix (REQ → Test 매핑)
+    └── final-compliance.md         # 최종 스펙 준수 확인 리포트
+```
+
+### 리뷰 Markdown 형식
+
+모든 리뷰 리포트는 다음 구조를 따른다:
+```markdown
+# [Phase] Review: [제목]
+- Date: YYYY-MM-DD
+- Reviewer: [에이전트 이름]
+- Upper Spec: [참조한 상위 문서]
+- Verdict: PASS | FAIL
+
+## Feature Coverage Checklist
+| REQ ID | 요구사항 | 상태 | 구현 위치 |
+|--------|---------|------|----------|
+| REQ-001 | ... | COVERED | module.sv:42 |
+| REQ-002 | ... | MISSING | — |
+
+## Block Diagram (Mermaid)
+(해당하는 경우)
+
+## Findings
+### [severity] Finding-1: ...
+
+## Verdict
+PASS | FAIL: [사유]
+```
+
 ## 상태 파일
 
 설계 흐름 상태는 `.rtl-agent-team/state/` 하위에 저장한다:

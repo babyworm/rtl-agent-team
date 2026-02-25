@@ -35,7 +35,8 @@ timing-advisor ensures designs are achievable at the target frequency.
 
 <Steps>
 1. Read architecture.md and block_diagram
-2. uarch-designer produces per-block uarch/*.md: FSM, pipeline diagram, register map, memory map
+2. `mkdir -p reviews/phase-3-uarch`
+3. uarch-designer produces per-block uarch/*.md: FSM, pipeline diagram, register map, memory map
    - **Signal naming conventions (MANDATORY — these flow directly to RTL):**
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
      - Clocks: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
@@ -45,11 +46,29 @@ timing-advisor ensures designs are achievable at the target frequency.
      - Types: `snake_case_t` suffix (e.g., `state_t`, `bus_req_t`)
      - Parameters: `UPPER_SNAKE_CASE` (e.g., `DATA_WIDTH`)
    - Use `logic` only in all signal declarations (no `reg`/`wire`)
-3. **Hierarchical Spec Compliance Check — architecture.md preservation verification:**
+4. **Hierarchical Spec Compliance Check — architecture.md preservation verification:**
    - rtl-architect reads architecture.md and all uarch/*.md files
    - Verify that every block defined in architecture.md has a corresponding uarch/*.md
    - Verify that block boundaries from architecture.md are preserved (no unauthorized merges or splits)
    - Verify that all functional responsibilities assigned in architecture.md are present in the uarch specs
+   - **Save Feature Preservation Checklist to `reviews/phase-3-uarch/feature-preservation.md`** in standard review Markdown format:
+     ```markdown
+     # Phase 3 Review: Feature Preservation
+     - Date: YYYY-MM-DD
+     - Reviewer: rtl-architect
+     - Upper Spec: architecture.md
+     - Verdict: PASS | FAIL
+
+     ## Feature Coverage Checklist
+     | Feature | Architecture Block | μArch Doc | Status |
+     |---------|-------------------|-----------|--------|
+
+     ## Findings
+     ### [severity] Finding-N: ...
+
+     ## Verdict
+     PASS | FAIL: [reason]
+     ```
    - Output verdict:
      ```
      VERDICT: PASS — all architecture blocks and functions preserved in μArch
@@ -63,19 +82,29 @@ timing-advisor ensures designs are achievable at the target frequency.
      ```
    - On FAIL with missing function: uarch-designer revises to include the missing functionality
    - On FAIL with boundary change: **escalate — may require Phase 2 (arch-design) revision**
-4. codec-architecture-expert reviews algorithm alignment (no spec violations)
-5. timing-advisor reviews critical paths and pipeline balance
-6. Verify all signal names in uarch/*.md comply with naming conventions
-7. Resolve review comments, finalize uarch/*.md
+   - **Save full μArch review to `reviews/phase-3-uarch/uarch-review.md`** in standard review Markdown format
+5. **Save Mermaid pipeline diagram to `reviews/phase-3-uarch/pipeline-diagram.md`:**
+   - Generate a `graph LR` Mermaid diagram showing pipeline stages and data flow
+   - Example format:
+     ```mermaid
+     graph LR
+         IF[Fetch] --> ID[Decode] --> EX[Execute] --> WB[Writeback]
+     ```
+6. codec-architecture-expert reviews algorithm alignment (no spec violations)
+7. timing-advisor reviews critical paths and pipeline balance
+8. Verify all signal names in uarch/*.md comply with naming conventions
+9. Resolve review comments, finalize uarch/*.md
 </Steps>
 
 <Tool_Usage>
 ```
+Bash("mkdir -p reviews/phase-3-uarch")
+
 Task(subagent_type="rtl-agent-team:uarch-designer",
      prompt="Produce microarchitecture docs at uarch/ from architecture.md. Include FSM, pipeline, register map per block. All signal names MUST use: i_/o_/io_ prefix (NOT _i/_o suffix), {domain}_clk (e.g. sys_clk), {domain}_rst_n (e.g. sys_rst_n), u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params, typedef enum for FSM states.")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Read architecture.md and all uarch/*.md files. Verify: (1) every block in architecture.md has a corresponding uarch/*.md, (2) block boundaries are preserved — no unauthorized merges or splits, (3) all functional responsibilities from architecture.md are present in uarch specs. Output VERDICT: PASS or VERDICT: FAIL with specific violations. If boundary changes are found, flag as 'requires Phase 2 revision'.")
+     prompt="Read architecture.md and all uarch/*.md files. Verify: (1) every block in architecture.md has a corresponding uarch/*.md, (2) block boundaries are preserved — no unauthorized merges or splits, (3) all functional responsibilities from architecture.md are present in uarch specs. Save the Feature Preservation Checklist to reviews/phase-3-uarch/feature-preservation.md in standard review Markdown format with Date, Reviewer (rtl-architect), Upper Spec (architecture.md), Verdict, checklist table, Findings, and Verdict sections. Save the full μArch review to reviews/phase-3-uarch/uarch-review.md in standard review Markdown format. Also save a Mermaid pipeline diagram to reviews/phase-3-uarch/pipeline-diagram.md showing pipeline stages and data flow (graph LR with stage names and connections). Output VERDICT: PASS or VERDICT: FAIL with specific violations. If boundary changes are found, flag as 'requires Phase 2 revision'.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
      prompt="Review uarch/*.md for critical path issues at target frequency 500MHz. Flag pipeline imbalance. Also verify signal naming conventions: i_/o_ prefix, {domain}_clk/{domain}_rst_n.")
@@ -112,6 +141,9 @@ Skipping timing-advisor review — RTL coder implements the design, synthesis fa
 - [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`
 - [ ] Instance names use `u_` prefix, generate blocks use `gen_` prefix
 - [ ] FSM states defined as `typedef enum logic [N:0]` with `UPPER_SNAKE_CASE` values
+- [ ] **reviews/phase-3-uarch/feature-preservation.md saved with Feature Preservation Checklist**
+- [ ] **reviews/phase-3-uarch/uarch-review.md saved with full μArch review**
+- [ ] **reviews/phase-3-uarch/pipeline-diagram.md saved with Mermaid pipeline diagram**
 </Final_Checklist>
 
 <Advanced>

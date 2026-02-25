@@ -44,16 +44,17 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 </Execution_Policy>
 
 <Steps>
-1. testbench-dev writes tb/cocotb/test_{module}.py for each module
+1. `mkdir -p reviews/phase-5-verify`
+2. testbench-dev writes tb/cocotb/test_{module}.py for each module
    - Signal access uses `i_`/`o_` prefixes matching RTL ports
    - Clock driven as `dut.sys_clk`, reset as `dut.sys_rst_n`
-2. eda-runner compiles RTL and runs cocotb regression via Bash CLI:
+3. eda-runner compiles RTL and runs cocotb regression via Bash CLI:
    `make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}`
-3. For each test: compare RTL output with ref_model output byte-by-byte
-4. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
-5. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
-6. Generate coverage/coverage.xml via cocotb coverage plugin
-7. **Requirement Traceability Matrix — verify all REQ items have test coverage:**
+4. For each test: compare RTL output with ref_model output byte-by-byte
+5. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
+6. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
+7. Generate coverage/coverage.xml via cocotb coverage plugin
+8. **Requirement Traceability Matrix — verify all REQ items have test coverage:**
    - Read requirements.json and all test results
    - Map each REQ-NNN to the test(s) that exercise it
    - Output a Requirement Traceability Matrix:
@@ -67,6 +68,24 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
      ```
      Traceability: [X]/[N] requirements have test coverage
      All-pass: [Y]/[X] covered requirements pass their tests
+     ```
+   - **Save the Requirement Traceability Matrix to `reviews/phase-5-verify/requirement-traceability.md`** in standard review Markdown format:
+     ```markdown
+     # Phase 5 Review: Requirement Traceability
+     - Date: YYYY-MM-DD
+     - Reviewer: func-verifier
+     - Upper Spec: requirements.json
+     - Verdict: PASS | FAIL
+
+     ## Feature Coverage Checklist
+     | REQ ID | Test Name | Result | Status |
+     |--------|-----------|--------|--------|
+
+     ## Findings
+     ### [severity] Finding-N: ...
+
+     ## Verdict
+     PASS | FAIL: [reason]
      ```
    - If any REQ has NO TEST COVERAGE: testbench-dev must generate additional tests targeting the uncovered requirements
    - Re-run regression for newly added tests
@@ -92,8 +111,10 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze sim/waveforms/cabac_encoder_fail.vcd. Find first divergence between RTL o_data and expected output.")
 
 # Requirement Traceability Matrix (after regression completes)
+Bash("mkdir -p reviews/phase-5-verify")
+
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read requirements.json and all sim/regression/*_result.json. Map each REQ-NNN to the test(s) that verify it. Output a Requirement Traceability Matrix showing per-REQ coverage status (PASS/FAIL/NO TEST COVERAGE). For any REQ with NO TEST COVERAGE, write additional cocotb tests targeting those requirements. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.")
+     prompt="Read requirements.json and all sim/regression/*_result.json. Map each REQ-NNN to the test(s) that verify it. Output a Requirement Traceability Matrix showing per-REQ coverage status (PASS/FAIL/NO TEST COVERAGE). Save the Requirement Traceability Matrix to reviews/phase-5-verify/requirement-traceability.md in standard review Markdown format with Date, Reviewer (func-verifier), Upper Spec (requirements.json), Verdict, coverage table (REQ ID, Test Name, Result, Status), Findings, and Verdict sections. For any REQ with NO TEST COVERAGE, write additional cocotb tests targeting those requirements. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.")
 ```
 </Tool_Usage>
 
@@ -129,6 +150,7 @@ Using `dut.clk` or `dut.data_i` in cocotb — signal name mismatch causes Attrib
 - [ ] **Every REQ-NNN in requirements.json covered by at least one test**
 - [ ] **All covered requirements pass their tests (or failures are escalated)**
 - [ ] **Traceability verdict is PASS**
+- [ ] **reviews/phase-5-verify/requirement-traceability.md saved with Requirement Traceability Matrix**
 </Final_Checklist>
 
 <Advanced>

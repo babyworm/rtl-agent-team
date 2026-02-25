@@ -55,6 +55,12 @@ This skill ensures everything is in place before design work begins.
    formal/             # SymbiYosys .sby configurations
    synth/              # Synthesis scripts and reports
    docs/               # Design documentation
+   reviews/            # Phase gate 리뷰 리포트 (Markdown)
+     phase-1-research/
+     phase-2-architecture/
+     phase-3-uarch/
+     phase-4-rtl/
+     phase-5-verify/
    .rtl-agent-team/
      state/            # Plugin state files (auto-managed)
    ```
@@ -119,7 +125,7 @@ This skill ensures everything is in place before design work begins.
 <Tool_Usage>
 ```
 # Directory creation (Bash CLI)
-Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb ref_model/src ref_model/build uarch bfm formal synth docs .rtl-agent-team/state
+Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb ref_model/src ref_model/build uarch bfm formal synth docs reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify} .rtl-agent-team/state
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"

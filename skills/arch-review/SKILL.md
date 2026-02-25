@@ -38,11 +38,12 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
 
 <Steps>
 1. Read requirements.json, docs/uarch_spec.md, and rtl/src/*.sv to pass context
-2. Run three agents in parallel (all READ-ONLY):
+2. `mkdir -p reviews/phase-2-architecture`
+3. Run three agents in parallel (all READ-ONLY):
    a. rtl-architect: spec vs RTL structure review **+ requirements.json full coverage check**
    b. timing-advisor: pipeline and timing feasibility review
    c. rtl-critic: code quality and synthesis review
-3. **rtl-architect produces a Feature Coverage Checklist (MANDATORY output):**
+4. **rtl-architect produces a Feature Coverage Checklist (MANDATORY output):**
    - Read requirements.json and check every REQ-NNN item against RTL implementation
    - Per-requirement status:
      ```
@@ -61,16 +62,38 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
        MISSING: REQ-005, REQ-012
        PARTIAL: REQ-008
      ```
-4. Aggregate findings into arch/arch_review_report.md
-5. Categorize issues: BLOCKER / WARN / SUGGESTION
+5. Aggregate findings into arch/arch_review_report.md
+6. **Save review result to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format:
+   - If the file already exists (from Phase 2 Quality Gate), update it with the latest review results
+   - Format:
+     ```markdown
+     # Phase 2 Review: Architecture Review
+     - Date: YYYY-MM-DD
+     - Reviewer: rtl-architect, timing-advisor, rtl-critic
+     - Upper Spec: requirements.json, docs/uarch_spec.md
+     - Verdict: PASS | FAIL
+
+     ## Feature Coverage Checklist
+     | REQ ID | RTL Module | Status |
+     |--------|-----------|--------|
+
+     ## Findings
+     ### [severity] Finding-N: ...
+
+     ## Verdict
+     PASS | FAIL: [reason]
+     ```
+7. Categorize issues: BLOCKER / WARN / SUGGESTION
    - Any MISSING requirement is automatically a BLOCKER
    - Any PARTIAL requirement is at minimum a WARN
 </Steps>
 
 <Tool_Usage>
 ```
+Bash("mkdir -p reviews/phase-2-architecture")
+
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/src/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/uarch_spec.md against rtl/src/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
+     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/src/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/uarch_spec.md against rtl/src/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Save the review result to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format with Date, Reviewer (rtl-architect, timing-advisor, rtl-critic), Upper Spec (requirements.json, docs/uarch_spec.md), Verdict, Feature Coverage Checklist table, Findings, and Verdict sections. If the file already exists, update it with the latest review results. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
      prompt="READ-ONLY review. Analyze rtl/src/ pipeline depth, clock domains ({domain}_clk naming, e.g. sys_clk), and reset strategy ({domain}_rst_n naming, e.g. sys_rst_n). Flag timing feasibility concerns and any clock/reset naming violations.")
@@ -116,4 +139,5 @@ the READ-ONLY audit purpose.
 - [ ] Any MISSING requirement categorized as BLOCKER
 - [ ] Issues categorized as BLOCKER / WARN / SUGGESTION
 - [ ] BLOCKERs highlighted prominently in report
+- [ ] **reviews/phase-2-architecture/architecture-review.md saved (or updated) with review result**
 </Final_Checklist>

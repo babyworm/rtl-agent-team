@@ -37,7 +37,8 @@ Parallelizing per-module coding maximizes throughput.
 <Steps>
 1. Read uarch/*.md to enumerate all modules
 2. Read io_definition.json and CLAUDE.md to confirm naming conventions
-3. Launch parallel rtl-coder tasks: one per module
+3. `mkdir -p reviews/phase-4-rtl`
+4. Launch parallel rtl-coder tasks: one per module
    - **Mandatory coding conventions per module:**
      - Port prefix: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
      - Clock: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
@@ -62,6 +63,9 @@ Parallelizing per-module coding maximizes throughput.
      REQ-007: NOT FOUND in any RTL module — missing implementation
      uarch/transform.md FSM state FLUSH: NOT FOUND in transform.sv — missing state
      ```
+   - **Save Functional Completeness Report to `reviews/phase-4-rtl/functional-completeness.md`** in standard review Markdown format
+   - **Save full design review to `reviews/phase-4-rtl/design-review.md`** in standard review Markdown format
+   - **Save lint report to `reviews/phase-4-rtl/lint-report.md`** in standard review Markdown format
    - Verdict: `VERDICT: PASS` or `VERDICT: FAIL — [N] functional gaps found`
    - On FAIL: rtl-coder receives the gap list and implements missing functionality
    - Re-run lint after any functional additions
@@ -84,7 +88,11 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 
 # Functional coverage review (after all modules lint-clean)
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/src/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Verdict: VERDICT: PASS or VERDICT: FAIL — [N] functional gaps found.")
+     prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/src/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Save the Functional Completeness Report to reviews/phase-4-rtl/functional-completeness.md in standard review Markdown format with Date, Reviewer (rtl-critic), Upper Spec (requirements.json, uarch/*.md), Verdict, coverage table, Findings, and Verdict sections. Save the full design review to reviews/phase-4-rtl/design-review.md in standard review Markdown format. Verdict: VERDICT: PASS or VERDICT: FAIL — [N] functional gaps found.")
+
+# Lint report saving
+Task(subagent_type="rtl-agent-team:lint-checker",
+     prompt="Run lint on all rtl/src/*.sv. Save the lint report to reviews/phase-4-rtl/lint-report.md in standard review Markdown format with Date, Reviewer (lint-checker), Upper Spec (rtl/src/*.sv), Verdict, per-file lint results, Findings, and Verdict sections. verdict: PASS or FAIL + error list[]")
 
 # On FAIL: fix missing functionality
 Task(subagent_type="rtl-agent-team:rtl-coder",
@@ -121,6 +129,9 @@ that should be caught before coding modules B-F.
 - [ ] All instances: `u_` prefix, generates: `gen_` prefix
 - [ ] `logic` only — no `reg`/`wire` keywords
 - [ ] `always_ff` for sequential, `always_comb` for combinational — no bare `always`
+- [ ] **reviews/phase-4-rtl/functional-completeness.md saved with Functional Completeness Report**
+- [ ] **reviews/phase-4-rtl/design-review.md saved with full design review**
+- [ ] **reviews/phase-4-rtl/lint-report.md saved with lint report**
 </Final_Checklist>
 
 <Advanced>
