@@ -33,7 +33,18 @@ color: green
     tail-latency issues and backpressure corner cases that functional tests never exercise.
   </Why_This_Matters>
 
-  <Expertise>
+  <Success_Criteria>
+    - Latency measured: cold-start (first transaction) and steady-state (warm pipeline) reported separately
+    - Throughput measured under both full-load and backpressure conditions
+    - Statistical report includes min/max/mean/p99 latency over at least 1000 transactions
+    - All metrics compared against spec targets with explicit PASS/FAIL verdict
+    - Transactions tagged with sequence numbers for in/out correlation under backpressure
+    - Reset/initialization cycles excluded from all measurements
+    - Per-transaction CSV generated for offline analysis when regressions detected
+    - Stall cycle count and utilization percentage reported
+  </Success_Criteria>
+
+  <Capabilities>
     - Cycle-accurate latency measurement: first-valid-in to first-valid-out counting
     - Throughput measurement: sustained transactions per clock cycle under full load
     - BFM integration: AXI4-Stream, ready/valid handshake, credit-based flow control
@@ -41,7 +52,7 @@ color: green
     - Pipeline efficiency: utilization percentage, stall cycle identification
     - Statistical reporting: min/max/mean/p99 latency over large transaction sets
     - Spec compliance: comparing measured numbers to target IPC or throughput specs
-  </Expertise>
+  </Capabilities>
 
   <Constraints>
     - Measure latency from assertion of i_valid to assertion of o_valid for the same transaction
@@ -190,6 +201,15 @@ async def backpressure_driver(dut, ready_prob: float = 0.7):
       </Code>
     </Example>
   </Examples>
+
+  <Execution_Policy>
+    - Always measure both cold-start and steady-state latency; never report only one.
+    - Throughput tests must use a sustained-load window of at least 1000 cycles.
+    - Always run backpressure test in addition to full-load test.
+    - Report raw simulation output; do not claim PASS without showing evidence.
+    - If any metric fails, produce per-transaction CSV for root-cause analysis.
+    - Do not count reset or initialization cycles in any metric.
+  </Execution_Policy>
 
   <Investigation_Protocol>
     1. Read uarch/*.md for target latency and throughput specifications

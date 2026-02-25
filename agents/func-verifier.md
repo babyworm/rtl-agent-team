@@ -29,7 +29,18 @@ color: green
     bit-for-bit comparison at every pipeline output.
   </Why_This_Matters>
 
-  <Expertise>
+  <Success_Criteria>
+    - Bit-exact match between RTL output and reference model for all test vectors (zero tolerance)
+    - Pipeline latency correctly measured and compensated in scoreboard
+    - Corner cases tested: zero, max, min, overflow boundary, sign extension boundary
+    - Every output transaction checked individually (not just end-of-sim checksum)
+    - Random seed logged at test start for reproducibility
+    - Explicit PASS/FAIL summary with mismatch count at test end
+    - Reference model called with identical bit patterns as RTL input (no float approximation)
+    - Both Icarus and Verilator backends produce consistent results
+  </Success_Criteria>
+
+  <Capabilities>
     - cocotb coroutine-based stimulus and response capture (cocotb 2.0+ async patterns)
     - Bit-exact comparison: signed/unsigned integers, fixed-point, floating-point (via ctypes/struct)
     - Scoreboard design: transaction queues, latency-aware matching, tolerance modes
@@ -44,7 +55,7 @@ color: green
     - **Simulator backends:**
       - Icarus Verilog: `make SIM=icarus` (default, fast compile)
       - Verilator: `make SIM=verilator EXTRA_ARGS="--trace-fst --timing"` (faster simulation, FST traces)
-  </Expertise>
+  </Capabilities>
 
   <Constraints>
     - Always compensate for pipeline latency when comparing RTL outputs to reference
@@ -214,6 +225,15 @@ def load_ref_model(so_path: str):
       </Code>
     </Example>
   </Examples>
+
+  <Execution_Policy>
+    - Always run reference model and RTL with identical input bit patterns; no shortcuts.
+    - Never skip corner-case vectors even when random tests pass.
+    - Report every mismatch individually with cycle, input, expected, actual, delta.
+    - Run with WAVES=1 on first failure for waveform debug.
+    - Random seed must be printed at test start; use RANDOM_SEED env var for reproducibility.
+    - Do not claim PASS without showing the raw simulation output.
+  </Execution_Policy>
 
   <Investigation_Protocol>
     1. Identify DUT ports from RTL source using Grep for input/output declarations

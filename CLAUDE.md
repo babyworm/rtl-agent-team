@@ -7,16 +7,45 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 
 | 패턴 감지 | 호출할 스킬 |
 |-----------|------------|
+| **--- 전체 파이프라인 ---** | |
 | "RTL 설계", "verilog", "FPGA", "ASIC", "칩 설계", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
-| "lint", "린트" (RTL 컨텍스트) | `/rtl-agent-team:lint-check` |
-| "시뮬레이션", "검증", "testbench", "cocotb" | `/rtl-agent-team:func-verify` |
-| "합성", "synthesis", "yosys" | `/rtl-agent-team:synth-check` |
-| "formal", "SVA", "assertion" | `/rtl-agent-team:sva-check` |
+| "setup", "초기화", "프로젝트 시작", "init" | `/rtl-agent-team:rtl-setup` |
+| **--- Phase 1: Research ---** | |
+| "스펙 분석", "요구사항", "논문 조사", "research" | `/rtl-agent-team:research-analyze` |
+| "코덱 자문", "H.264", "H.265", "도메인 전문가" | `/rtl-agent-team:domain-consult` |
+| **--- Phase 2: Architecture ---** | |
 | "아키텍처 설계" (RTL 컨텍스트) | `/rtl-agent-team:arch-design` |
+| "아키텍처 리뷰", "설계 리뷰" | `/rtl-agent-team:arch-review` |
+| "reference model", "레퍼런스 모델", "C 모델" | `/rtl-agent-team:ref-model` |
+| "BFM", "bus functional model", "SystemC 모델" | `/rtl-agent-team:bfm-develop` |
+| **--- Phase 3: μArch ---** | |
+| "마이크로아키텍처", "μArch", "uarch", "파이프라인 설계" | `/rtl-agent-team:uarch-design` |
+| **--- 코딩 컨벤션 (확장자/Phase 자동 적용) ---** | |
+| `.sv`, `.svh`, `.v`, `.vh` RTL 코드 생성 | `/rtl-agent-team:systemverilog` |
+| `.sva`, SVA bind 파일, formal assertion | `/rtl-agent-team:systemverilog-assertion` |
+| UVM testbench, agent, sequence 생성 | `/rtl-agent-team:uvm` |
+| `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
+| **--- Phase 4: RTL ---** | |
+| "RTL 코딩", "모듈 구현", "SV 작성" | `/rtl-agent-team:rtl-code` |
+| "리팩토링", "RTL 리팩토링", "코드 정리" (RTL 컨텍스트) | `/rtl-agent-team:rtl-refactor` |
+| "문서화", "RTL 문서" | `/rtl-agent-team:rtl-document` |
+| "IP 인스턴스", "IP 통합", "서브모듈 연결" | `/rtl-agent-team:ip-instantiate` |
+| "IP-XACT", "ipxact", "레지스터 맵 생성" | `/rtl-agent-team:ipxact-gen` |
+| "lint", "린트" (RTL 컨텍스트) | `/rtl-agent-team:lint-check` |
+| "합성", "synthesis", "yosys", "SDC" | `/rtl-agent-team:synth-check` |
+| **--- Phase 5: Verify ---** | |
+| "시뮬레이션", "기능 검증", "testbench", "cocotb" | `/rtl-agent-team:func-verify` |
+| "SV 유닛 테스트", "단위 테스트" (RTL 컨텍스트) | `/rtl-agent-team:sv-unit-test` |
+| "UVM", "UVM 검증", "시퀀스", "에이전트" (UVM 컨텍스트) | `/rtl-agent-team:uvm-verify` |
+| "성능 검증", "throughput", "latency 측정" | `/rtl-agent-team:perf-verify` |
+| "formal", "SVA", "assertion" | `/rtl-agent-team:sva-check` |
 | "CDC", "clock domain" | `/rtl-agent-team:cdc-verify` |
 | "AXI", "APB", "AHB", "프로토콜" (RTL 컨텍스트) | `/rtl-agent-team:protocol-verify` |
 | "커버리지", "coverage" | `/rtl-agent-team:coverage-analyze` |
-| "setup", "초기화", "프로젝트 시작", "init" | `/rtl-agent-team:rtl-setup` |
+| "regression", "리그레션", "다중 시드" | `/rtl-agent-team:regression-run` |
+| "conformance", "적합성 테스트", "골든 비교" | `/rtl-agent-team:conformance-test` |
+| "버그 재현", "bug repro", "파형 디버그" | `/rtl-agent-team:bug-repro` |
+| "모델 일관성", "RTL-모델 비교", "model consistency" | `/rtl-agent-team:model-consistency` |
 
 ## 절대 규칙
 
@@ -115,50 +144,25 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 
 ## 코딩 컨벤션 (필수)
 
-**기본: lowRISC SystemVerilog Coding Style Guide를 따른다.**
-(참고: https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md)
-
-> **IMPORTANT — 아래 항목은 lowRISC 가이드를 override한다. 반드시 이 규칙을 우선 적용할 것.**
+> **IMPORTANT — 핵심 오버라이드 3가지 (항상 적용)**
 >
-> 1. **포트 방향 prefix**: 입력 `i_`, 출력 `o_`, 양방향 `io_`
->    - lowRISC는 suffix (`_i`, `_o`)를 사용하지만, 이 프로젝트는 **prefix**를 사용한다.
->    - 예: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
->
-> 2. **클럭 명명**: `{domain}_clk` 형식
->    - lowRISC는 `clk_i`를 사용하지만, 이 프로젝트는 `{domain}_clk` 형식이다.
->    - 예: `sys_clk`, `pixel_clk`, `axi_clk` (NOT `clk_i`, `clk`)
->    - 단일 클럭 도메인이면 `sys_clk` 사용
->
-> 3. **리셋 명명**: `{domain}_rst_n` 형식 (active-low 기본)
->    - 예: `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
+> 1. **포트 prefix**: `i_`, `o_`, `io_` (NOT suffix `_i`, `_o`)
+> 2. **클럭**: `{domain}_clk` (예: `sys_clk`) — NOT `clk_i`
+> 3. **리셋**: `{domain}_rst_n` (예: `sys_rst_n`) — NOT `rst_ni`
 
-### 파일명 규칙
-- 모듈 파일: `module_name.sv`
-- 패키지 파일: `module_name_pkg.sv`
-- 인터페이스 파일: `module_name_if.sv`
-- Testbench 파일: `tb_module_name.sv`
+**확장자/Phase별 코딩 컨벤션 스킬 자동 적용:**
 
-### 명명 규칙
-- 모듈: `snake_case` (예: `axi_lite_slave`)
-- 파라미터: `UPPER_SNAKE_CASE` (예: `DATA_WIDTH`)
-- 로컬 파라미터: `UPPER_SNAKE_CASE` (예: `ADDR_BITS`)
-- 타입: `snake_case_t` suffix (예: `state_t`, `bus_req_t`)
-- enum 값: `UPPER_SNAKE_CASE` (예: `IDLE`, `WAIT_RESP`)
-- 인스턴스: `u_` prefix (예: `u_fifo`, `u_arbiter`)
-- generate 블록: `gen_` prefix (예: `gen_pipeline_stage`)
+| 파일 확장자 / 컨텍스트 | 설계 Phase | 적용 스킬 |
+|----------------------|-----------|----------|
+| `.sv`, `.svh`, `.v`, `.vh` (RTL) | Phase 4 (RTL) | `/rtl-agent-team:systemverilog` |
+| `.sv` (SVA, assertion, bind) | Phase 5 (Formal) | `/rtl-agent-team:systemverilog-assertion` |
+| `.sv` (UVM testbench) | Phase 5 (UVM) | `/rtl-agent-team:uvm` |
+| `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `/rtl-agent-team:systemc` |
 
-### SystemVerilog 코딩 규칙 (lowRISC 기반)
-- `logic` 사용 (`reg`/`wire` 사용 금지)
-- `always_ff` for sequential logic (non-blocking `<=`)
-- `always_comb` for combinational logic (blocking `=`)
-- `always_latch` 명시적 래치가 필요한 경우만 (일반적으로 사용 금지)
-- No latches — every `case` must have `default`
-- No `initial` blocks in synthesizable code
-- One module per file, filename matches module name
-- `typedef enum` / `typedef struct packed` 적극 사용
-- 패키지(`_pkg.sv`)로 공유 타입 정의
-- 포트 선언은 `input logic` / `output logic` 형식 (ANSI style)
-- 매직 넘버 금지 — `parameter` 또는 `localparam`으로 정의
+- `systemverilog`: lowRISC + 오버라이드, Power 최적화, FPGA, Pipelining
+- `systemverilog-assertion`: SVA 패턴, bind 파일, SymbiYosys 통합, assume/assert/cover
+- `uvm`: UVM 클래스 계층, factory, TLM 포트, coverage, phase callback
+- `systemc`: TLM-2.0 패턴, BFM 규칙, Ref Model 규칙, cocotb 연동
 
 ## EDA 도구 사용
 

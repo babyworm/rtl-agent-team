@@ -143,23 +143,27 @@
     "path": "domain-packages/video-codec/knowledge/",
     "contents": [
       {
-        "file": "knowledge/h264-algorithm-summary.md",
+        "file": "h264-spec-summary.md",
         "description": "H.264 algorithm block summaries with key clause references"
       },
       {
-        "file": "knowledge/h265-algorithm-summary.md",
+        "file": "h265-spec-summary.md",
         "description": "H.265 algorithm block summaries with key clause references"
       },
       {
-        "file": "knowledge/throughput-tables.md",
+        "file": "jm-function-map.md",
+        "description": "JM reference software function-to-spec-clause mapping for H.264"
+      },
+      {
+        "file": "throughput-tables.md",
         "description": "Pre-computed throughput tables: MB/s and CTU/s for all standard resolution/framerate combinations"
       },
       {
-        "file": "knowledge/fixed-point-conventions.md",
+        "file": "fixed-point-conventions.md",
         "description": "Fixed-point arithmetic conventions for H.264/H.265 transform and quantization"
       },
       {
-        "file": "knowledge/hw-architecture-survey.md",
+        "file": "hw-architecture-survey.md",
         "description": "Survey of published VLSI implementations with area, power, and frequency data"
       }
     ]
@@ -226,7 +230,7 @@
   "throughput_reference": {
     "description": "Pre-computed throughput reference values for common targets",
     "h264_macroblocks_per_second": {
-      "720p_30fps":   "3600",
+      "720p_30fps":   "108000",
       "1080p_30fps":  "244800",
       "1080p_60fps":  "489600",
       "4K_30fps":     "972000",
