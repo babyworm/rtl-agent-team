@@ -6,6 +6,9 @@ description: "This skill should be used when running UVM-based verification requ
 <Purpose>
 Run a UVM-based verification environment on the target RTL using a commercial simulator
 (VCS, Questa, or Xcelium). Outputs: uvm/results/run_summary.log + coverage/uvm_coverage.xml.
+
+See `references/uvm-architecture.md` for UVM component hierarchy, phase order,
+simulator compile commands, and agent template with project naming conventions.
 </Purpose>
 
 <Use_When>
@@ -105,3 +108,28 @@ Using `clk_i`, `data_o` in UVM driver — violates project conventions and cause
 - [ ] coverage/uvm_coverage.xml generated
 - [ ] Pass/fail reported per test
 </Final_Checklist>
+
+<Advanced>
+UVM component naming conventions (aligned with project style):
+- Agent instances: `u_axi_agent`, `u_apb_agent` (u_ prefix)
+- Driver/monitor inside agent: `u_driver`, `u_monitor` (u_ prefix)
+- DUT wrapper instance: `u_dut`
+- All SV code uses `logic` (never `reg`/`wire`)
+
+Simulator-specific flags:
+```bash
+# VCS with coverage
+vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/src/*.sv uvm/*.sv -o simv
+./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} -cm line+cond+fsm+tgl
+
+# Questa with coverage
+vlog -sv +incdir+uvm rtl/src/*.sv uvm/*.sv
+vsim -c -coverage opt_tb +UVM_TESTNAME={test} -do "coverage save -onexit cov.ucdb; run -all"
+
+# Xcelium with coverage
+xrun -sv -uvm -coverage all rtl/src/*.sv uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
+```
+
+See `references/uvm-architecture.md` for complete UVM class hierarchy, phase order,
+and common UVM mistakes to avoid.
+</Advanced>

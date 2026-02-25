@@ -6,6 +6,8 @@ description: "This skill should be used when analyzing clock domain crossings fo
 <Purpose>
 Perform static CDC analysis on RTL to identify missing synchronizers, metastability risks,
 and CDC constraint gaps. Outputs: cdc/cdc_report.md + constraints/cdc_constraints.sdc.
+
+See `references/cdc-patterns.md` for synchronizer types, common violations, and SDC constraint templates.
 </Purpose>
 
 <Use_When>
@@ -107,3 +109,20 @@ Not flagging `clk_i` or `rst_ni` in RTL — allows convention violations to pers
 - [ ] RTL not modified
 - [ ] Violation count reported to user
 </Final_Checklist>
+
+<Advanced>
+Synchronizer type selection guide:
+| Crossing Type | Recommended Synchronizer |
+|---------------|-------------------------|
+| Single-bit control | 2-FF synchronizer (3-FF for high-freq) |
+| Multi-bit counter | Gray code FIFO |
+| Multi-bit data bus | Handshake (REQ/ACK) or MUX synchronizer |
+| Single-cycle pulse | Pulse synchronizer (toggle-based) |
+| Reset signal | Async assert, sync deassert reset synchronizer |
+
+For comprehensive CDC analysis, commercial tools (SpyGlass CDC, Conformal CDC, Questa CDC)
+provide formal proof of synchronizer correctness beyond structural analysis.
+
+See `references/cdc-patterns.md` for SDC constraint templates, violation checklist,
+and detailed synchronizer implementation guidance.
+</Advanced>

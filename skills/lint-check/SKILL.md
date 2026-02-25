@@ -31,7 +31,7 @@ Three complementary lint tools catch different issue classes:
 Running all three gives comprehensive coverage: synthesizability + style + semantics.
 </Why_This_Exists>
 
-<Coding_Convention_Enforcement>
+<Coding_Convention_Requirements>
 Lint checks MUST enforce the project coding conventions (CLAUDE.md):
 - Port prefix: `i_` (input), `o_` (output), `io_` (bidirectional) — NOT suffix `_i`, `_o`
 - Clock: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`, `clk`
@@ -41,7 +41,7 @@ Lint checks MUST enforce the project coding conventions (CLAUDE.md):
 - Generate prefix: `gen_` — missing prefix flagged
 Note: Verible and slang may not catch all convention violations natively.
 lint-checker MUST perform a supplementary grep-based check for naming conventions.
-</Coding_Convention_Enforcement>
+</Coding_Convention_Requirements>
 
 <Execution_Policy>
 - lint-checker runs both tools in parallel on the target file(s) via Bash CLI

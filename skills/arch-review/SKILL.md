@@ -103,7 +103,7 @@ Task(subagent_type="rtl-agent-team:rtl-critic",
 ```
 </Tool_Usage>
 
-<Coding_Convention_Checks>
+<Coding_Convention_Requirements>
 Reviewers must verify these project-specific conventions (overrides lowRISC defaults):
 - Port prefixes: `i_` (input), `o_` (output), `io_` (bidirectional) — NOT suffix `_i`/`_o`
 - Clock naming: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`
@@ -111,7 +111,7 @@ Reviewers must verify these project-specific conventions (overrides lowRISC defa
 - Data types: `logic` only — `reg`/`wire` forbidden
 - Instance prefix: `u_` (e.g., `u_fifo`) — generate prefix: `gen_`
 - Any deviation from these conventions is at minimum a WARN finding
-</Coding_Convention_Checks>
+</Coding_Convention_Requirements>
 
 <Examples>
 <Good>

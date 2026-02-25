@@ -81,3 +81,24 @@ time on a task that is embarrassingly parallel.
 - [ ] Failing tests identified with seed numbers
 - [ ] Pass rate and coverage % reported to user
 </Final_Checklist>
+
+<Advanced>
+Coverage collection with Verilator:
+```bash
+# Compile with coverage
+make -C tb/cocotb SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut MODULE=test_dut
+
+# Merge multi-seed coverage data
+verilator_coverage --write-info merged.info seed_*/coverage.dat
+
+# Generate HTML report
+genhtml merged.info -o coverage_html/ --title "Regression Coverage"
+```
+
+Multi-seed strategy: use at least 5 deterministic seeds (1, 42, 1337, 65536, 999999) plus
+5 random seeds per run. Stop early if failure rate exceeds 5%.
+
+Coverage targets: ≥90% line, ≥80% toggle, ≥85% branch, ≥70% FSM state.
+See `references/coverage-tools.md` for lcov integration, Verilator coverage flags,
+multi-seed regression script, and Coverview dashboard setup.
+</Advanced>

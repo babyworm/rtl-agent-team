@@ -38,12 +38,6 @@ disallowedTools: Write, Edit
     (pursue 100% coverage on unreachable bins forever).
   </Why_This_Matters>
 
-  <Why_This_Matters>
-    Risk-prioritized coverage closure prevents two failure modes: stopping too early and
-    leaving dangerous gaps uncovered, or spending weeks chasing unreachable bins.
-    The analyst's job is to tell engineers which uncovered bins matter and which can be
-    formally excluded, enabling efficient convergence to a meaningful coverage target.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - All uncovered functional coverage bins listed with bin name, covergroup, and value range

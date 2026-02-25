@@ -414,27 +414,7 @@ Save the final compliance review to reviews/phase-5-verify/final-compliance.md i
 Output the Final Compliance Matrix table, then:
 verdict: PASS or FAIL + findings[]")
 
-# ============================================================
-# Gate Failure Handling Examples
-# ============================================================
-
-# Example: Quality Gate FAIL → fix and retry
-# If Phase 2→3 Quality Gate fails with findings:
-Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Quality Gate review found the following issues in architecture.md:
-{paste findings from rtl-architect verdict}
-Read requirements.json and architecture.md. Fix each finding while ensuring:
-- No requirement from requirements.json is dropped or weakened
-- All interface conventions (i_/o_ prefix, {domain}_clk/{domain}_rst_n) are maintained
-Update architecture.md and block_diagram accordingly.")
-# Then re-run the Phase 2→3 Quality Gate
-
-# Example: Upper-Spec Violation → return to upper phase
-# If Phase 3→4 Quality Gate finds μArch dropped a feature from architecture.md:
-# 1. STOP — do not proceed to Phase 4
-# 2. Report to user: "μArch for block X dropped Feature Y required by architecture.md"
-# 3. Return to Phase 2 if architecture itself needs revision, or Phase 3 to fix μArch
-# 4. DO NOT proceed without user approval
+# Gate Failure Handling: see references/gate-failure-handling.md for examples
 ```
 </Tool_Usage>
 

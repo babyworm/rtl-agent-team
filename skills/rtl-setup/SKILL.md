@@ -177,6 +177,14 @@ pip3 install cocotb
 ```
 </Install_Instructions>
 
+<Escalation_And_Stop_Conditions>
+- Required tool not found (verilator, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
+- Directory creation permission denied → report error, suggest user fix permissions
+- Existing project detected (rtl/src/ has .sv files) → warn user, ask whether to skip template generation
+- Python version < 3.8 → cocotb 2.0 requires Python 3.8+; report incompatibility
+- No write access to project directory → halt, cannot create structure
+</Escalation_And_Stop_Conditions>
+
 <Final_Checklist>
 - [ ] All required directories exist
 - [ ] Tool availability checked via Bash CLI and reported

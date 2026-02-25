@@ -122,4 +122,14 @@ Using `AWVALID`, `WDATA`, `ACLK` in SVA — violates project conventions and cau
 For AXI4 full (not Lite), also check: burst length/size consistency, wrap alignment, exclusive access.
 For multi-clock designs, use `axi_clk`/`axi_rst_n` in assertion clock instead of `sys_clk`.
 Protocol assertions can also be run with SymbiYosys formal (via sva-check skill) for exhaustive coverage.
+
+Key AXI protocol rules to verify:
+1. **VALID must not depend on READY** — xVALID must assert independently
+2. **VALID must hold until handshake** — cannot drop VALID before READY
+3. **Data/control stable while waiting** — no changes while VALID && !READY
+4. **Write response after last data** — BVALID only after WLAST accepted
+5. **Read data ordering** — RDATA returned in address request order (per ID)
+
+See `references/axi-protocol-rules.md` for complete SVA assertion templates per channel,
+ordering rules, AXI4 vs AXI4-Lite differences, and common violations found in practice.
 </Advanced>

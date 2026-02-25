@@ -81,3 +81,26 @@ reach unreachable code that should be removed instead.
 - [ ] Coverage improvement measured and reported
 - [ ] Unreachable code gaps flagged separately
 </Final_Checklist>
+
+<Advanced>
+Coverage data processing with Verilator:
+```bash
+# Annotate source files with coverage data
+verilator_coverage --annotate coverage_annotated/ coverage.dat
+
+# Convert to lcov for HTML reports
+verilator_coverage --write-info coverage.info coverage.dat
+genhtml coverage.info -o coverage_html/
+```
+
+Gap prioritization heuristics:
+- **Critical**: uncovered error/safety paths (overflow, underflow, reset, ECC)
+- **High**: uncovered protocol corner cases (backpressure, burst boundary, empty/full)
+- **Medium**: uncovered performance paths (stall, pipeline bubble)
+- **Low**: uncovered debug/diagnostic paths (no functional impact)
+- **Waive**: structurally unreachable code (dead FSM states, impossible combinational conditions)
+
+Convergence estimation: if N random seeds cover M% of bins, estimate additional seeds needed
+using the formula: seeds_needed ≈ N × ln(100/(100-target)) / ln(100/(100-M)).
+This is approximate — directed tests are always more efficient for specific uncovered bins.
+</Advanced>
