@@ -2,33 +2,36 @@
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-27개 전문 AI 에이전트 + 28개 스킬을 통해 5-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify)을 자동화합니다.
+27개 전문 AI 에이전트 + 32개 스킬을 통해 5-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify)을 자동화합니다.
 
 ## 설치
 
-### 방법 1: 로컬 심볼릭 링크 (개발용)
+### Claude Code에서 설치 (권장)
 
-```bash
-# 빌드
-cd /path/to/rtl-agent-team
-npm install
-npm run build
+Claude Code 대화창에서 다음 명령을 순서대로 실행합니다:
 
-# Claude Code 플러그인으로 등록
-ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
+```
+/plugin marketplace add babyworm/rtl-agent-team
 ```
 
-### 방법 2: GitHub에서 설치
+```
+/plugin install rtl-agent-team@rtl-agent-marketplace
+```
+
+설치 확인:
+
+```
+/plugin
+```
+
+### 대안: CLI에서 설치
 
 ```bash
-# 마켓플레이스 등록
 claude plugin marketplace add https://github.com/babyworm/rtl-agent-team.git
-
-# 플러그인 설치
-claude plugin install rtl-agent-team
+claude plugin install rtl-agent-team@rtl-agent-marketplace
 ```
 
-### 방법 3: 프로젝트 로컬
+### 대안: 프로젝트 로컬 설치
 
 특정 프로젝트에서만 사용하려면:
 
@@ -37,10 +40,12 @@ mkdir -p my-chip-project/.claude/plugins/
 ln -s /path/to/rtl-agent-team my-chip-project/.claude/plugins/rtl-agent-team
 ```
 
-### 설치 확인
+### 대안: 개발용 로컬 심볼릭 링크
 
 ```bash
-claude plugin list
+cd /path/to/rtl-agent-team
+npm install && npm run build
+ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
 ```
 
 ## 사용법
@@ -72,21 +77,28 @@ claude plugin list
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 28개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 32개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 구조
 
 ```
 rtl-agent-team/
-├── .claude-plugin/plugin.json   # 플러그인 매니페스트
-├── CLAUDE.md                    # 5-Phase 파이프라인 규칙
-├── hooks/hooks.json             # Hook 이벤트 와이어링
-├── agents/                      # 24 core + 3 domain = 27 에이전트
-│   └── domain/video-codec/      # 도메인 전문가 (H.264/H.265)
-├── skills/                      # 28개 스킬 (SKILL.md)
-├── src/hooks/                   # 4개 Hook (TypeScript)
-├── bridge/                      # Hook CJS 번들 (빌드 산출물)
-└── domain-packages/             # 도메인 지식 패키지
+├── .claude-plugin/
+│   ├── plugin.json             # 플러그인 매니페스트
+│   └── marketplace.json        # 마켓플레이스 정의
+├── CLAUDE.md                   # 5-Phase 파이프라인 규칙
+├── hooks/hooks.json            # Hook 이벤트 와이어링
+├── agents/                     # 24 core + 3 domain = 27 에이전트
+│   └── domain/video-codec/     # 도메인 전문가 (H.264/H.265)
+├── skills/                     # 32개 스킬 (SKILL.md)
+│   ├── systemverilog/          # RTL 코딩 컨벤션
+│   ├── systemverilog-assertion/ # SVA 코딩 컨벤션
+│   ├── uvm/                    # UVM 코딩 컨벤션
+│   └── systemc/                # SystemC/TLM 코딩 컨벤션
+├── src/hooks/                  # 4개 Hook (TypeScript)
+├── bridge/                     # Hook CJS 번들 (빌드 산출물)
+└── domain-packages/            # 도메인 지식 패키지
+    └── video-codec/            # H.264/H.265 지식, 적합성 데이터
 ```
 
 ## 에이전트 팀
@@ -95,8 +107,8 @@ rtl-agent-team/
 
 | 모델 | 에이전트 수 | 역할 |
 |------|-----------|------|
-| opus | 14 + 3 domain | 심층 추론, 분석, 리뷰 |
-| sonnet | 10 | 구현, 실행, 리포팅 |
+| Opus | 18 + 3 domain | 코딩, 분석, 리뷰, 도메인 전문 |
+| Sonnet | 6 | 탐색, 실행, 리포팅 |
 
 ### 5-Phase 파이프라인
 
@@ -107,6 +119,15 @@ rtl-agent-team/
 | 3 | μArch + BFM | uarch-designer, bfm-dev |
 | 4 | RTL Coding | rtl-coder, lint-checker |
 | 5 | Verification | func-verifier, sva-extractor, synthesis-reporter |
+
+### 코딩 컨벤션 스킬
+
+| 스킬 | 적용 대상 | 주요 내용 |
+|------|----------|----------|
+| `systemverilog` | `.sv`, `.svh`, `.v`, `.vh` | lowRISC + 프로젝트 오버라이드, Power, FPGA, Pipelining |
+| `systemverilog-assertion` | SVA, bind 파일 | assume/assert/cover, SymbiYosys, bind 패턴 |
+| `uvm` | UVM testbench | factory, TLM 포트, coverage, phase callback |
+| `systemc` | `.cpp`, `.h` (SystemC) | TLM-2.0, BFM, Ref Model, cocotb 연동 |
 
 ## EDA 도구
 

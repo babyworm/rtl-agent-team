@@ -1,0 +1,39 @@
+{
+  "name": "rtl-agent-marketplace",
+  "owner": {
+    "name": "babyworm",
+    "email": "babyworm@users.noreply.github.com"
+  },
+  "metadata": {
+    "description": "RTL design and verification automation plugins for Claude Code",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "rtl-agent-team",
+      "source": ".",
+      "description": "27-agent RTL design pipeline with 32 skills for 5-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify)",
+      "version": "0.1.0",
+      "author": {
+        "name": "babyworm"
+      },
+      "homepage": "https://github.com/babyworm/rtl-agent-team",
+      "repository": "https://github.com/babyworm/rtl-agent-team",
+      "license": "MIT",
+      "category": "development",
+      "tags": [
+        "rtl",
+        "hdl",
+        "verilog",
+        "systemverilog",
+        "fpga",
+        "asic",
+        "eda",
+        "verification",
+        "formal",
+        "uvm",
+        "cocotb"
+      ]
+    }
+  ]
+}
