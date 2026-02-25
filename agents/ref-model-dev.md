@@ -1,7 +1,7 @@
 ---
 name: ref-model-dev
-description: C/C++/Rust reference model developer that creates bit-accurate golden reference models (Sonnet)
-model: sonnet
+description: C/C++/Rust reference model developer that creates bit-accurate golden reference models
+model: opus
 color: green
 ---
 

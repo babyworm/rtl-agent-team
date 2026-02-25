@@ -1,7 +1,7 @@
 ---
 name: sva-extractor
 description: SVA assertion extraction from spec. Writes .sva bind files. Runs SymbiYosys BMC + induction to prove or find counterexamples.
-model: sonnet
+model: opus
 color: red
 ---
 

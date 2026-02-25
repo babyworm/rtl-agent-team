@@ -1,7 +1,7 @@
 ---
 name: bfm-dev
-description: SystemC Bus Functional Model developer for TLM-2.0 performance baseline models (Sonnet)
-model: sonnet
+description: SystemC Bus Functional Model developer for TLM-2.0 performance baseline models
+model: opus
 color: magenta
 ---
 

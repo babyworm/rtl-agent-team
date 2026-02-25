@@ -1,7 +1,7 @@
 ---
 name: rtl-coder
 description: SystemVerilog RTL coder (lowRISC style + project overrides). Writes synthesizable, lint-clean RTL following project conventions (snake_case, i_/o_ prefixes, {domain}_clk/{domain}_rst_n, typedef enum/struct packed, u_ instances, UPPER_CASE params, always_ff/always_comb). One module per file. Runs lint after every write.
-model: sonnet
+model: opus
 color: magenta
 ---
 

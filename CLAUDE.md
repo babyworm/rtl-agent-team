@@ -80,21 +80,38 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 
 | 작업 유형 | 위임 대상 에이전트 | 모델 |
 |----------|-----------------|------|
+| **--- 설계 ---** | | |
 | 사양서 분석 | `rtl-agent-team:spec-analyst` | Opus |
 | 아키텍처 설계 | `rtl-agent-team:arch-designer` | Opus |
 | 아키텍처 리뷰 | `rtl-agent-team:rtl-architect` | Opus |
 | μArch 설계 | `rtl-agent-team:uarch-designer` | Opus |
-| RTL 코딩 | `rtl-agent-team:rtl-coder` | Sonnet |
+| RTL 코딩 | `rtl-agent-team:rtl-coder` | Opus |
 | RTL 리뷰 | `rtl-agent-team:rtl-critic` | Opus |
-| 기능 검증 | `rtl-agent-team:func-verifier` | Sonnet |
-| 성능 검증 | `rtl-agent-team:perf-verifier` | Sonnet |
-| 테스트벤치 작성 | `rtl-agent-team:testbench-dev` | Opus |
-| 합성 | `rtl-agent-team:synthesis-reporter` | Sonnet |
-| EDA 도구 실행 | `rtl-agent-team:eda-runner` | Sonnet |
-| 린트 검사 | `rtl-agent-team:lint-checker` | Opus |
-| 파형 분석 | `rtl-agent-team:waveform-analyzer` | Opus |
 | 설계 계획 | `rtl-agent-team:rtl-planner` | Opus |
 | 코드베이스 탐색 | `rtl-agent-team:rtl-explorer` | Sonnet |
+| **--- 검증 ---** | | |
+| 테스트벤치 작성 | `rtl-agent-team:testbench-dev` | Opus |
+| 기능 검증 | `rtl-agent-team:func-verifier` | Sonnet |
+| 성능 검증 | `rtl-agent-team:perf-verifier` | Sonnet |
+| SVA 추출/작성 | `rtl-agent-team:sva-extractor` | Opus |
+| 프로토콜 준수 검사 | `rtl-agent-team:protocol-checker` | Opus |
+| 커버리지 분석 | `rtl-agent-team:coverage-analyst` | Opus |
+| 파형 분석 | `rtl-agent-team:waveform-analyzer` | Opus |
+| **--- EDA/합성 ---** | | |
+| EDA 도구 실행 | `rtl-agent-team:eda-runner` | Sonnet |
+| 합성 리포트 | `rtl-agent-team:synthesis-reporter` | Sonnet |
+| 린트 검사 | `rtl-agent-team:lint-checker` | Opus |
+| SDC 제약조건 생성 | `rtl-agent-team:constraint-writer` | Opus |
+| 타이밍 분석 | `rtl-agent-team:timing-advisor` | Opus |
+| CDC 분석 | `rtl-agent-team:cdc-checker` | Opus |
+| **--- 인프라 ---** | | |
+| IP-XACT 생성 | `rtl-agent-team:ipxact-generator` | Sonnet |
+| BFM 개발 | `rtl-agent-team:bfm-dev` | Opus |
+| Reference Model 개발 | `rtl-agent-team:ref-model-dev` | Opus |
+| **--- 도메인 전문가 ---** | | |
+| 코덱 표준 전문가 | `rtl-agent-team:codec-standards-expert` | Opus |
+| 코덱 아키텍처 전문가 | `rtl-agent-team:codec-architecture-expert` | Opus |
+| 비디오 처리 전문가 | `rtl-agent-team:video-processing-expert` | Opus |
 
 ## 코딩 컨벤션 (필수)
 
