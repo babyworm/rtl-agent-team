@@ -51,7 +51,21 @@ Parallelizing per-module coding maximizes throughput.
 4. Each rtl-coder produces rtl/src/{module}.sv
 5. lint-checker runs on each produced file via Bash CLI: `verilator --lint-only -Wall rtl/src/{module}.sv`
 6. rtl-coder fixes reported lint violations (up to 3 rounds)
-7. Collect lint status per module; gate passes when all are clean
+7. **Hierarchical Spec Compliance Check — functional coverage review:**
+   - rtl-critic reads requirements.json, uarch/*.md, and all rtl/src/*.sv files
+   - Verify every functional requirement (REQ-NNN) from requirements.json is implemented in RTL
+   - Verify every uarch/*.md behavioral specification is reflected in the corresponding module
+   - Output a Functional Completeness Report:
+     ```
+     REQ-001: implemented in cabac_encoder.sv (OK)
+     REQ-003: implemented in input_buffer.sv (OK)
+     REQ-007: NOT FOUND in any RTL module — missing implementation
+     uarch/transform.md FSM state FLUSH: NOT FOUND in transform.sv — missing state
+     ```
+   - Verdict: `VERDICT: PASS` or `VERDICT: FAIL — [N] functional gaps found`
+   - On FAIL: rtl-coder receives the gap list and implements missing functionality
+   - Re-run lint after any functional additions
+8. Collect lint status per module; gate passes when all are lint-clean AND functional coverage is PASS
 </Steps>
 
 <Tool_Usage>
@@ -67,6 +81,14 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 # Fix round
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Fix lint violations in rtl/src/cabac_encoder.sv per lint report: [paste report]. Maintain all naming conventions (i_/o_ prefix, sys_clk/sys_rst_n).")
+
+# Functional coverage review (after all modules lint-clean)
+Task(subagent_type="rtl-agent-team:rtl-critic",
+     prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/src/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Verdict: VERDICT: PASS or VERDICT: FAIL — [N] functional gaps found.")
+
+# On FAIL: fix missing functionality
+Task(subagent_type="rtl-agent-team:rtl-coder",
+     prompt="Implement the following missing functionality in rtl/src/ per rtl-critic report: [paste gaps]. Then re-run lint.")
 ```
 </Tool_Usage>
 
@@ -90,6 +112,9 @@ that should be caught before coding modules B-F.
 - [ ] All files pass Verible lint with zero errors (via Bash CLI)
 - [ ] All files pass slang lint with zero errors (via Bash CLI)
 - [ ] No module blocked after 3 fix rounds
+- [ ] **rtl-critic functional coverage verdict is PASS**
+- [ ] **Every REQ-NNN from requirements.json implemented in at least one RTL module**
+- [ ] **Every uarch/*.md behavioral spec reflected in corresponding RTL module**
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
 - [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`, `clk_i`, `clk_sys`
 - [ ] All resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`, `rst_ni`

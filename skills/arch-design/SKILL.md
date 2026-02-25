@@ -43,9 +43,20 @@ Dedicated domain experts catch codec-specific pitfalls early.
      - Resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
      - Instances: `u_` prefix (e.g., `u_input_buffer`), generates: `gen_` prefix
    - Block names: `snake_case` (these become RTL module names)
-4. rtl-architect reviews for RTL implementability, timing feasibility, interface consistency, and naming convention compliance
-5. Iterate on review comments (max 2 rounds)
-6. Finalize architecture.md and block_diagram
+4. **Spec Compliance Check — requirements.json coverage verification:**
+   - rtl-architect reads requirements.json and architecture.md
+   - Verify every `REQ-NNN` item is mapped to at least one architecture block or interface
+   - Output a Feature Coverage Checklist:
+     ```
+     REQ-001: mapped to block_X (OK)
+     REQ-002: mapped to block_Y interface (OK)
+     REQ-005: NOT MAPPED — no architecture block covers this requirement
+     ```
+   - Verdict: `VERDICT: PASS` or `VERDICT: FAIL — [N] unmapped requirements found`
+   - On FAIL: arch-designer receives the unmapped list and revises architecture.md
+5. rtl-architect reviews for RTL implementability, timing feasibility, interface consistency, and naming convention compliance
+6. Iterate on review comments (max 2 rounds)
+7. Finalize architecture.md and block_diagram
 </Steps>
 
 <Tool_Usage>
@@ -54,7 +65,11 @@ Task(subagent_type="rtl-agent-team:arch-designer",
      prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md and block_diagram. All interface signals must use i_/o_/io_ prefix (NOT _i/_o suffix), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n. Instance names use u_ prefix.")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review architecture.md for RTL implementability, timing, interface consistency, and naming convention compliance (i_/o_ prefix, {domain}_clk/{domain}_rst_n). List issues.")
+     prompt="Read requirements.json and architecture.md. First, verify every REQ-NNN item in requirements.json is mapped to at least one architecture block or interface. Output a Feature Coverage Checklist with per-REQ status. Then review architecture.md for RTL implementability, timing, interface consistency, and naming convention compliance (i_/o_ prefix, {domain}_clk/{domain}_rst_n). Output verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
+
+# On FAIL: feed findings back to arch-designer for revision
+Task(subagent_type="rtl-agent-team:arch-designer",
+     prompt="Revise architecture.md to address the following spec compliance failures from rtl-architect review: [paste findings]. Ensure all unmapped REQ-NNN items are now covered by architecture blocks.")
 ```
 </Tool_Usage>
 
@@ -77,6 +92,8 @@ timing-critical issues that are expensive to fix at RTL stage.
 <Final_Checklist>
 - [ ] architecture.md exists with all blocks described
 - [ ] block_diagram exists
+- [ ] **Every REQ-NNN in requirements.json is mapped to at least one architecture block**
+- [ ] rtl-architect spec compliance verdict is PASS
 - [ ] rtl-architect review completed with no blockers
 - [ ] All interfaces consistent with io_definition.json
 - [ ] All signal names use `i_`/`o_`/`io_` prefix (NOT `_i`/`_o` suffix)

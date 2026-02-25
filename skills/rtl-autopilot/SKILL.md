@@ -4,8 +4,22 @@ description: Master orchestrator for full RTL design pipeline from specification
 ---
 
 <Purpose>
-Drive the complete RTL design pipeline through five sequential phases with enforced phase gates.
-Each phase must produce required artifacts before the next phase begins.
+Drive the complete RTL design pipeline through five sequential phases with enforced dual-layer phase gates.
+Each phase must pass both an Artifact Gate (산출물 존재 확인) and a Quality Gate (품질 + 상위 스펙 준수 검증) before the next phase begins.
+
+**Hierarchical Spec Compliance Principle:**
+Lower phases MUST NOT violate upper phase specifications:
+  Spec → Architecture → μArch → RTL → Verification
+Each phase strictly adheres to decisions made in all preceding phases.
+Deletion, reduction, or modification of features for convenience is FORBIDDEN.
+If a change is needed, control returns to the upper phase for approval.
+
+**Design Priority Order:**
+1. Functional Correctness (highest) — Every required feature in Spec works exactly
+2. Interface Compliance — Ports, protocols, timing interfaces match Architecture
+3. Timing/Performance — Throughput, latency targets met
+4. Area/Power (lowest)
+
 State is persisted at .rtl-agent-team/state/rtl-autopilot-state.json for resumability.
 </Purpose>
 
@@ -30,23 +44,111 @@ This skill automates sequencing, gate checking, and recovery.
 <Execution_Policy>
 - State file (.rtl-agent-team/state/rtl-autopilot-state.json) tracks progress for resumability
 - Independent sub-tasks within a phase run in parallel via concurrent Task() calls
-- Phase gates are hard stops: missing artifacts block progression
-- On failure: retry the failed phase once, then escalate to user
+- **Dual-Layer Phase Gates** are hard stops between every phase:
+  1. **Artifact Gate**: Required files/directories exist (fast check)
+  2. **Quality Gate**: Reviewer agent(s) verify quality AND hierarchical spec compliance
+- Quality Gate verdicts are structured: `PASS` or `FAIL + findings[]`
+- On Artifact Gate failure: retry the failed phase once, then escalate to user
+- On Quality Gate failure: pass findings back to the phase's worker agent for correction, then re-run Quality Gate
+- **On upper-spec violation**: return to the violated upper phase (e.g., Architecture violates Spec → return to Phase 1). Report violation to user and DO NOT proceed without approval
+- Maximum 2 Quality Gate retry cycles per phase before escalating to user
 - On interruption: state file is preserved; re-invoking this skill resumes from last phase
 </Execution_Policy>
 
 <Steps>
-1. Initialize state: write .rtl-agent-team/state/rtl-autopilot-state.json with phase=1
-2. Phase 1 - Research: invoke research-analyze skill; gate: requirements.json + io_definition.json + domain-analysis.md
+1. **Initialize state**: write .rtl-agent-team/state/rtl-autopilot-state.json with phase=1
+
+---
+
+2. **Phase 1 — Research**: invoke research-analyze skill
    - io_definition.json must use project naming conventions: `i_`/`o_`/`io_` port prefixes, `{domain}_clk`, `{domain}_rst_n`
-3. Phase 2 - Arch+Ref (parallel): invoke arch-design and ref-model skills concurrently; gate: architecture.md + block_diagram + ref_model/src/*.cpp
+
+   **Phase 1→2 Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
+
+   **Phase 1→2 Quality Gate (Research Completeness Review)**:
+   - `spec-analyst` self-reviews requirements.json for completeness and internal consistency
+     - Are all functional requirements traceable to spec sections?
+     - Are there contradictions or ambiguities?
+   - `arch-designer` evaluates requirements for implementation feasibility
+     - Can every requirement be realized in RTL within reasonable area/timing?
+     - Are there missing constraints (clock frequency, interface protocols)?
+   - **Verdict**: PASS if all requirements are clear, consistent, and implementable; FAIL + findings otherwise
+
+---
+
+3. **Phase 2 — Architecture + Reference Model (parallel)**: invoke arch-design and ref-model skills concurrently
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n` naming
-4. Phase 3 - uArch+BFM (parallel): invoke uarch-design and bfm-develop skills concurrently; gate: uarch/*.md + bfm/ directory
+
+   **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + ref_model/src/*.cpp exist
+
+   **Phase 2→3 Quality Gate (Architecture Review)**:
+   - `rtl-architect` reviews architecture.md against requirements.json:
+     - **Feature Coverage Checklist**: enumerate every functional requirement from requirements.json and confirm it is addressed in architecture.md. Flag any missing feature as FAIL
+     - Block decomposition: are blocks well-bounded with clear responsibilities?
+     - Interface adequacy: do inter-block interfaces carry all required signals?
+     - Port naming compliance: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`
+   - `rtl-critic` performs synthesizability pre-assessment:
+     - Are there architectural patterns known to cause synthesis issues?
+     - Clock domain crossing strategy defined where needed?
+   - **Verdict**: PASS if Spec feature coverage is 100% AND no structural defects; FAIL + findings otherwise
+
+---
+
+4. **Phase 3 — μArch + BFM (parallel)**: invoke uarch-design and bfm-develop skills concurrently
    - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
-5. Phase 4 - RTL: invoke rtl-code skill; gate: rtl/src/*.sv all lint-clean
+
+   **Phase 3→4 Artifact Gate**: uarch/*.md + bfm/ directory exist
+
+   **Phase 3→4 Quality Gate (μArch Review)**:
+   - `rtl-architect` reviews uarch/*.md against architecture.md:
+     - **Block boundary alignment**: does each uarch document correspond 1:1 to an architecture block? Flag any split/merge that deviates from architecture.md
+     - **Feature preservation**: for each feature assigned to a block in architecture.md, verify the corresponding uarch/*.md describes its implementation. Flag any feature dropped or altered
+     - Pipeline depth and staging: is the proposed pipeline feasible for target frequency?
+     - Timing path analysis: are there combinational paths that clearly violate timing?
+     - Signal/register naming compliance with conventions
+   - **Verdict**: PASS if architecture is fully and faithfully decomposed into μArch with no feature loss AND timing paths are reasonable; FAIL + findings otherwise
+
+---
+
+5. **Phase 4 — RTL Implementation**: invoke rtl-code skill (parallel per module)
    - Enforce: `logic` only (no `reg`/`wire`), `always_ff`/`always_comb`, ANSI port style
-6. Phase 5 - Verify: invoke sv-unit-test, sva-check, func-verify, perf-verify, conformance-test sequentially; gate: all pass
-7. On completion: remove state file, report summary
+
+   **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean
+
+   **Phase 4→5 Quality Gate (RTL Design Review)**:
+   - `rtl-critic` reviews RTL code against μArch specs AND requirements.json:
+     - **Functional Coverage Check**: for each requirement in requirements.json, trace it through uarch to RTL implementation. Produce a coverage matrix: requirement → uarch section → RTL module/line. Flag any requirement with no RTL implementation as FAIL
+     - Code quality: proper FSM coding, no latches, clean reset logic
+     - Synthesizability: no non-synthesizable constructs, appropriate clock gating
+     - Coding convention compliance: `i_`/`o_` ports, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates, `logic` only
+   - `lint-checker` runs full lint pass:
+     - Zero errors required; warnings reviewed for false positives
+   - **Verdict**: PASS if functional coverage is 100% AND lint-clean AND design quality passes; FAIL + findings otherwise
+
+---
+
+6. **Phase 5 — Verification**: invoke sv-unit-test, sva-check, func-verify, perf-verify, conformance-test sequentially
+   - Gate for each sub-phase: tests pass before proceeding to next verification stage
+
+   **Phase 5 Completion Artifact Gate**: all verification suites pass
+
+   **Phase 5 Completion Quality Gate (Final Spec Compliance Review)**:
+   - `rtl-architect` performs end-to-end review of the entire design against the original requirements.json:
+     - **Final Feature Completeness Audit**: re-read every requirement from requirements.json and confirm: (a) it is implemented in RTL, (b) it has at least one verification test covering it, (c) that test passed. Produce a final compliance matrix
+     - Interface completeness: are all ports in io_definition.json present and connected in the top-level RTL?
+     - Untested paths: identify any functionality that lacks verification coverage
+   - **Verdict**: PASS if every original requirement is implemented, verified, and passing; FAIL + findings otherwise
+
+---
+
+7. **On completion**: remove state file, report summary with final compliance matrix
+
+---
+
+**Gate Failure Handling:**
+- **Quality Gate FAIL (same-level fix)**: pass findings to the phase's worker agent for correction. Re-run Quality Gate after fix. Max 2 retry cycles per gate
+- **Upper-Spec Violation detected**: STOP immediately. Identify which upper phase is violated (e.g., "μArch dropped Feature X that Architecture requires"). Return to the violated upper phase. Report violation details to user — DO NOT proceed without user approval
+- **Artifact Gate FAIL**: retry the phase once, then escalate to user
 
 **Coding Convention Enforcement (all phases):**
 - Port naming: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
@@ -59,54 +161,216 @@ This skill automates sequencing, gate checking, and recovery.
 
 <Tool_Usage>
 ```
+# ============================================================
 # Phase 1: Research
+# ============================================================
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Port names in io_definition.json must use i_/o_/io_ prefix convention, clocks as {domain}_clk, resets as {domain}_rst_n.")
 
-# Phase 2: Arch + Ref Model (parallel)
+# --- Phase 1→2 Quality Gate ---
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     prompt="READ-ONLY self-review. Read requirements.json you produced. Verify:
+1. Every functional requirement is traceable to a specific section in specs/.
+2. No contradictions or ambiguities exist between requirements.
+3. All interface constraints (protocols, timing) are explicitly stated.
+4. io_definition.json port naming follows i_/o_/io_ prefix, {domain}_clk/{domain}_rst_n.
+Produce a Feature Coverage Checklist mapping each spec section to its requirement(s).
+verdict: PASS or FAIL + findings[]")
+
+Task(subagent_type="rtl-agent-team:arch-designer",
+     prompt="READ-ONLY feasibility review. Read requirements.json and io_definition.json.
+Evaluate each requirement for RTL implementation feasibility:
+1. Can every functional requirement be realized in synthesizable RTL?
+2. Are clock frequency, area, and power constraints realistic?
+3. Are there missing constraints that would block architecture design?
+4. Flag any requirement that is ambiguous or under-specified for implementation.
+verdict: PASS or FAIL + findings[]")
+
+# ============================================================
+# Phase 2: Architecture + Reference Model (parallel)
+# ============================================================
 Task(subagent_type="rtl-agent-team:arch-designer",
      prompt="Design architecture from requirements.json and io_definition.json. All interface signals must use i_/o_ prefix, {domain}_clk/{domain}_rst_n naming. Produce architecture.md and block_diagram.")
 Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Implement C++ ref model at ref_model/src/ from requirements.json. Must be bitexact vs JM/HM.")
 
-# Phase 3: uArch + BFM (parallel)
+# --- Phase 2→3 Quality Gate ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="READ-ONLY architecture review. Read requirements.json, then read architecture.md.
+Perform the following checks:
+1. **Feature Coverage Checklist**: List EVERY functional requirement from requirements.json.
+   For each, state whether architecture.md addresses it and where (section/block).
+   Mark COVERED or MISSING. Any MISSING item → FAIL.
+2. **Block decomposition**: Are blocks well-bounded with single responsibilities?
+3. **Interface adequacy**: Do inter-block interfaces carry all signals needed for the requirements?
+4. **Port naming**: Verify all interface tables use i_/o_ prefix, {domain}_clk/{domain}_rst_n.
+5. **Hierarchical compliance**: Does architecture introduce any feature not in requirements.json?
+   Unauthorized additions → FAIL.
+Output the Feature Coverage Checklist table, then:
+verdict: PASS or FAIL + findings[]")
+
+Task(subagent_type="rtl-agent-team:rtl-critic",
+     prompt="READ-ONLY synthesizability pre-assessment. Read architecture.md.
+Evaluate:
+1. Are there architectural patterns known to cause synthesis difficulties?
+2. Is the clock domain crossing strategy defined for all multi-domain interfaces?
+3. Are memory structures (FIFOs, RAMs) sized and typed appropriately?
+4. Any combinational loop risks in the proposed block connectivity?
+verdict: PASS or FAIL + findings[]")
+
+# ============================================================
+# Phase 3: μArch + BFM (parallel)
+# ============================================================
 Task(subagent_type="rtl-agent-team:uarch-designer",
      prompt="Produce uarch/*.md from architecture.md. All signal names must use i_/o_ prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates.")
 Task(subagent_type="rtl-agent-team:bfm-dev",
      prompt="Implement SystemC TLM BFMs at bfm/src/ from architecture.md. Interface names must match io_definition.json.")
 
-# Phase 4: RTL (parallel per module)
+# --- Phase 3→4 Quality Gate ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="READ-ONLY μArch review. Read architecture.md, then read all uarch/*.md files.
+Perform the following checks:
+1. **Block boundary alignment**: Does each uarch document correspond 1:1 to an architecture block?
+   Flag any block that was split, merged, or renamed without architecture.md approval.
+2. **Feature preservation**: For each feature assigned to a block in architecture.md,
+   verify the corresponding uarch/*.md describes its detailed implementation.
+   List each feature and mark PRESERVED or DROPPED. Any DROPPED item → FAIL.
+3. **Pipeline/timing feasibility**: Is the proposed pipeline depth achievable at target frequency?
+   Are there obvious critical paths that span too many logic levels?
+4. **Signal naming compliance**: i_/o_ ports, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates.
+5. **Hierarchical compliance**: Does any μArch document alter a decision made in architecture.md
+   (e.g., change interface width, remove a port, alter FSM states)? Any such change → FAIL.
+Output the Feature Preservation Checklist table, then:
+verdict: PASS or FAIL + findings[]")
+
+# ============================================================
+# Phase 4: RTL Implementation (parallel per module)
+# ============================================================
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Implement rtl/src/{module}.sv from uarch/{module}.md. Use logic only (no reg/wire), i_/o_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates. Run lint after writing.")
 
-# Phase 5: Verify (sequential)
+# --- Phase 4→5 Quality Gate ---
+Task(subagent_type="rtl-agent-team:rtl-critic",
+     prompt="READ-ONLY RTL design review. Read requirements.json, then read uarch/*.md, then read rtl/src/*.sv.
+Perform the following checks:
+1. **Functional Coverage Matrix**: For EVERY requirement in requirements.json, trace:
+   requirement → uarch section → RTL module and approximate line range.
+   Mark each requirement as IMPLEMENTED or MISSING. Any MISSING → FAIL.
+2. **Code quality**: Proper FSM coding (enum states), no inferred latches, clean synchronous reset.
+3. **Synthesizability**: No non-synthesizable constructs (#delay, initial in synth code),
+   appropriate clock gating, no combinational loops.
+4. **Coding convention compliance**: i_/o_ port prefix, {domain}_clk/{domain}_rst_n,
+   u_ instance prefix, gen_ generate prefix, logic only (no reg/wire),
+   always_ff/always_comb (no always @*), ANSI port style.
+5. **Hierarchical compliance**: Does RTL add, remove, or alter any functionality
+   compared to uarch/*.md? Unauthorized deviation → FAIL.
+Output the Functional Coverage Matrix table, then:
+verdict: PASS or FAIL + findings[]")
+
+Task(subagent_type="rtl-agent-team:lint-checker",
+     prompt="Run full lint on rtl/src/*.sv. Zero errors required. Review warnings for false positives. Report lint summary.
+verdict: PASS (0 errors, warnings reviewed) or FAIL + error list[]")
+
+# ============================================================
+# Phase 5: Verification (sequential)
+# ============================================================
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write SV unit tests for rtl/src/{module}.sv at tb/unit/.")
 Task(subagent_type="rtl-agent-team:func-verifier",
      prompt="Run cocotb functional tests on rtl/src/*.sv against ref_model.")
+
+# --- Phase 5 Completion Quality Gate ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="READ-ONLY final spec compliance review. Read the original requirements.json,
+then read io_definition.json, architecture.md, rtl/src/*.sv, and verification results.
+Perform the FINAL end-to-end audit:
+1. **Final Compliance Matrix**: For EVERY requirement in requirements.json, confirm:
+   - (a) It is implemented in RTL (cite module and mechanism)
+   - (b) At least one verification test covers it (cite test name)
+   - (c) That test PASSED in the latest run
+   Mark each requirement: VERIFIED / IMPLEMENTED-BUT-UNTESTED / MISSING.
+   Any MISSING or IMPLEMENTED-BUT-UNTESTED → FAIL.
+2. **Interface completeness**: Are all ports defined in io_definition.json present and
+   correctly connected in the top-level RTL module?
+3. **Untested paths**: Identify any functionality that exists in RTL but has no verification coverage.
+4. **Spec fidelity**: Has the final implementation drifted from the original spec in any way?
+Output the Final Compliance Matrix table, then:
+verdict: PASS or FAIL + findings[]")
+
+# ============================================================
+# Gate Failure Handling Examples
+# ============================================================
+
+# Example: Quality Gate FAIL → fix and retry
+# If Phase 2→3 Quality Gate fails with findings:
+Task(subagent_type="rtl-agent-team:arch-designer",
+     prompt="Quality Gate review found the following issues in architecture.md:
+{paste findings from rtl-architect verdict}
+Read requirements.json and architecture.md. Fix each finding while ensuring:
+- No requirement from requirements.json is dropped or weakened
+- All interface conventions (i_/o_ prefix, {domain}_clk/{domain}_rst_n) are maintained
+Update architecture.md and block_diagram accordingly.")
+# Then re-run the Phase 2→3 Quality Gate
+
+# Example: Upper-Spec Violation → return to upper phase
+# If Phase 3→4 Quality Gate finds μArch dropped a feature from architecture.md:
+# 1. STOP — do not proceed to Phase 4
+# 2. Report to user: "μArch for block X dropped Feature Y required by architecture.md"
+# 3. Return to Phase 2 if architecture itself needs revision, or Phase 3 to fix μArch
+# 4. DO NOT proceed without user approval
 ```
 </Tool_Usage>
 
 <Examples>
 <Good>
 User: "autopilot: implement H.264 CABAC encoder from spec"
-→ Writes state file, runs all 5 phases sequentially with gates, resumes on interruption.
+→ Writes state file, runs Phase 1 (research). Artifact Gate: requirements.json exists. Quality Gate:
+  spec-analyst self-reviews completeness (PASS), arch-designer checks feasibility (PASS).
+  Proceeds to Phase 2. Architecture produced. Quality Gate: rtl-architect runs Feature Coverage
+  Checklist — finds "arithmetic coding bypass mode" missing from architecture (FAIL).
+  Passes findings to arch-designer for fix. Arch-designer adds bypass mode. Re-run Quality Gate (PASS).
+  Continues through all phases. Phase 5 final Quality Gate produces Final Compliance Matrix: all
+  requirements VERIFIED. Removes state file, reports summary.
+</Good>
+<Good>
+Quality Gate detects upper-spec violation:
+→ Phase 3→4 Quality Gate: rtl-architect finds uarch/entropy_coder.md changed the context table
+  size from 460 (architecture.md) to 256 for "area savings". This is an upper-spec violation.
+  IMMEDIATE STOP. Reports: "μArch altered Architecture decision: context table size 460→256.
+  This violates Hierarchical Spec Compliance." Waits for user approval before proceeding.
 </Good>
 <Bad>
 User: "quickly sketch a block diagram"
 → Do NOT invoke rtl-autopilot. Use arch-design or domain-consult directly.
 </Bad>
+<Bad>
+Quality Gate returns FAIL but pipeline proceeds anyway:
+→ NEVER skip a Quality Gate verdict. FAIL means the phase must be fixed before proceeding.
+</Bad>
 </Examples>
 
 <Escalation_And_Stop_Conditions>
-- Gate check fails twice → pause and report missing artifacts to user
-- Verification phase fails after 2 retries → invoke bug-repro skill, report findings
-- User says "cancelomc" → invoke cancel skill, preserve state file for resume
+- **Artifact Gate fails twice** → pause and report missing artifacts to user
+- **Quality Gate fails after 2 fix-and-retry cycles** → pause, present all accumulated findings to user, request guidance
+- **Upper-Spec Violation detected at any Quality Gate** → IMMEDIATE STOP:
+  1. Identify the violated upper phase and the specific violation
+  2. Report to user with full context (which requirement/feature, how it was violated)
+  3. DO NOT proceed — wait for user to approve rollback or waiver
+  4. If approved, return to the appropriate upper phase and re-run from there
+- **Verification phase fails after 2 retries** → invoke bug-repro skill, report findings
+- **User says "cancelomc"** → invoke cancel skill, preserve state file for resume
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 - [ ] State file written before starting
-- [ ] Each phase gate validated before proceeding
+- [ ] Each phase passed BOTH Artifact Gate AND Quality Gate before proceeding
+- [ ] **Hierarchical Spec Compliance** verified at every Quality Gate:
+  - Phase 1→2: requirements are complete, consistent, and implementable
+  - Phase 2→3: architecture covers 100% of requirements (Feature Coverage Checklist PASS)
+  - Phase 3→4: μArch preserves 100% of architecture features (Feature Preservation Checklist PASS)
+  - Phase 4→5: RTL implements 100% of requirements (Functional Coverage Matrix PASS) + lint-clean
+  - Phase 5 final: every requirement is implemented, verified, and passing (Final Compliance Matrix PASS)
+- [ ] No upper-spec violations were left unresolved
 - [ ] Naming conventions enforced at every phase gate:
   - io_definition.json: `i_`/`o_`/`io_` prefix, `{domain}_clk`/`{domain}_rst_n`
   - architecture.md: interface signal names, clock/reset naming
@@ -114,7 +378,7 @@ User: "quickly sketch a block diagram"
   - rtl/src/*.sv: lint-clean, naming compliant
 - [ ] All 5 phases completed
 - [ ] State file removed on clean completion
-- [ ] Summary report generated
+- [ ] Summary report generated with Final Compliance Matrix
 </Final_Checklist>
 
 <Advanced>

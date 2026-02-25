@@ -37,19 +37,40 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
 </Execution_Policy>
 
 <Steps>
-1. Read docs/uarch_spec.md and rtl/src/*.sv to pass context
+1. Read requirements.json, docs/uarch_spec.md, and rtl/src/*.sv to pass context
 2. Run three agents in parallel (all READ-ONLY):
-   a. rtl-architect: spec vs RTL structure review
+   a. rtl-architect: spec vs RTL structure review **+ requirements.json full coverage check**
    b. timing-advisor: pipeline and timing feasibility review
    c. rtl-critic: code quality and synthesis review
-3. Aggregate findings into arch/arch_review_report.md
-4. Categorize issues: BLOCKER / WARN / SUGGESTION
+3. **rtl-architect produces a Feature Coverage Checklist (MANDATORY output):**
+   - Read requirements.json and check every REQ-NNN item against RTL implementation
+   - Per-requirement status:
+     ```
+     REQ-001: implemented in cabac_encoder.sv — COVERED
+     REQ-002: implemented in input_buffer.sv — COVERED
+     REQ-005: NOT FOUND in any RTL module — MISSING
+     REQ-008: partially implemented in transform.sv (missing edge case) — PARTIAL
+     ```
+   - Summary verdict:
+     ```
+     VERDICT: PASS — all [N] requirements covered in RTL
+     ```
+     or:
+     ```
+     VERDICT: FAIL — [M] of [N] requirements have spec violations
+       MISSING: REQ-005, REQ-012
+       PARTIAL: REQ-008
+     ```
+4. Aggregate findings into arch/arch_review_report.md
+5. Categorize issues: BLOCKER / WARN / SUGGESTION
+   - Any MISSING requirement is automatically a BLOCKER
+   - Any PARTIAL requirement is at minimum a WARN
 </Steps>
 
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY review. Compare docs/uarch_spec.md against rtl/src/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional.")
+     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/src/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/uarch_spec.md against rtl/src/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
      prompt="READ-ONLY review. Analyze rtl/src/ pipeline depth, clock domains ({domain}_clk naming, e.g. sys_clk), and reset strategy ({domain}_rst_n naming, e.g. sys_rst_n). Flag timing feasibility concerns and any clock/reset naming violations.")
@@ -90,6 +111,9 @@ the READ-ONLY audit purpose.
 <Final_Checklist>
 - [ ] All three agents ran READ-ONLY with no file modifications
 - [ ] arch/arch_review_report.md written with findings per reviewer
+- [ ] **Feature Coverage Checklist included with per-REQ-NNN status**
+- [ ] **rtl-architect verdict output: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found**
+- [ ] Any MISSING requirement categorized as BLOCKER
 - [ ] Issues categorized as BLOCKER / WARN / SUGGESTION
 - [ ] BLOCKERs highlighted prominently in report
 </Final_Checklist>

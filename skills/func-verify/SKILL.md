@@ -53,6 +53,31 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 4. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
 5. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
 6. Generate coverage/coverage.xml via cocotb coverage plugin
+7. **Requirement Traceability Matrix — verify all REQ items have test coverage:**
+   - Read requirements.json and all test results
+   - Map each REQ-NNN to the test(s) that exercise it
+   - Output a Requirement Traceability Matrix:
+     ```
+     REQ-001: verified by test_cabac_encoder (PASS)
+     REQ-002: verified by test_input_buffer (PASS)
+     REQ-005: NO TEST COVERAGE — must add test
+     REQ-008: verified by test_transform (FAIL — regression failure)
+     ```
+   - Summary:
+     ```
+     Traceability: [X]/[N] requirements have test coverage
+     All-pass: [Y]/[X] covered requirements pass their tests
+     ```
+   - If any REQ has NO TEST COVERAGE: testbench-dev must generate additional tests targeting the uncovered requirements
+   - Re-run regression for newly added tests
+   - Final verdict:
+     ```
+     VERDICT: PASS — all [N] requirements verified with passing tests
+     ```
+     or:
+     ```
+     VERDICT: FAIL — [M] requirements without test coverage, [K] requirements with failing tests
+     ```
 </Steps>
 
 <Tool_Usage>
@@ -65,6 +90,10 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze sim/waveforms/cabac_encoder_fail.vcd. Find first divergence between RTL o_data and expected output.")
+
+# Requirement Traceability Matrix (after regression completes)
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Read requirements.json and all sim/regression/*_result.json. Map each REQ-NNN to the test(s) that verify it. Output a Requirement Traceability Matrix showing per-REQ coverage status (PASS/FAIL/NO TEST COVERAGE). For any REQ with NO TEST COVERAGE, write additional cocotb tests targeting those requirements. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.")
 ```
 </Tool_Usage>
 
@@ -85,6 +114,8 @@ Using `dut.clk` or `dut.data_i` in cocotb — signal name mismatch causes Attrib
 - Failure persists after 2 RTL fix rounds → escalate to rtl-architect with waveform analysis
 - Coverage below 80% after full regression → invoke coverage-analyze skill
 - cocotb signal name mismatch error → testbench-dev must fix to use `i_`/`o_` convention
+- **Requirements with NO TEST COVERAGE after additional test generation** → escalate to user with list of untestable requirements
+- **Requirement traceability verdict FAIL with persistent test failures** → escalate to rtl-code for RTL fix before re-verification
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
@@ -94,6 +125,10 @@ Using `dut.clk` or `dut.data_i` in cocotb — signal name mismatch causes Attrib
 - [ ] Waveform analysis done for all failures
 - [ ] coverage/coverage.xml generated
 - [ ] sim/regression/*_result.json written per test
+- [ ] **Requirement Traceability Matrix produced with per-REQ-NNN mapping**
+- [ ] **Every REQ-NNN in requirements.json covered by at least one test**
+- [ ] **All covered requirements pass their tests (or failures are escalated)**
+- [ ] **Traceability verdict is PASS**
 </Final_Checklist>
 
 <Advanced>

@@ -34,7 +34,24 @@ Separating this from arch-design prevents spec ambiguity from corrupting structu
 <Steps>
 1. Parallel: delegate to codec-standards-expert (standard compliance requirements), video-processing-expert (signal processing requirements), spec-analyst (formal requirement extraction)
 2. Merge results into requirements.json (all functional + non-functional requirements)
-3. Produce io_definition.json (all input/output ports with widths, rates, protocols)
+   - **Each requirement MUST have a unique ID field `"id": "REQ-NNN"`** (e.g., `"id": "REQ-001"`)
+   - IDs are sequential starting from REQ-001
+   - Both functional and non-functional requirements receive IDs
+3. Self-verification of requirements completeness:
+   - Count features/constraints extracted from original spec documents
+   - Compare against number of items in requirements.json
+   - Generate a **suspected omission list** for any spec features not mapped to a REQ item
+   - Output verdict:
+     ```
+     VERDICT: PASS — N requirements extracted, 0 suspected omissions
+     ```
+     or:
+     ```
+     VERDICT: REVIEW_NEEDED — N requirements extracted, M suspected omissions
+     Suspected omissions:
+       - [spec section X.Y.Z] feature description not mapped to any REQ
+     ```
+4. Produce io_definition.json (all input/output ports with widths, rates, protocols)
    - **Port naming convention (MANDATORY):**
      - Inputs: `i_` prefix (e.g., `i_data`, `i_valid`) — NOT suffix `_i`
      - Outputs: `o_` prefix (e.g., `o_result`, `o_ready`) — NOT suffix `_o`
@@ -42,9 +59,9 @@ Separating this from arch-design prevents spec ambiguity from corrupting structu
      - Clocks: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
      - Resets: `{domain}_rst_n` (e.g., `sys_rst_n`, `pixel_rst_n`) — NOT `rst_ni`, `rst_n`
    - Single clock domain defaults to `sys_clk` / `sys_rst_n`
-4. Produce domain-analysis.md (algorithm overview, known implementation challenges, references)
-5. Validate all three files exist and JSON is well-formed
-6. Validate io_definition.json port names comply with naming conventions above
+5. Produce domain-analysis.md (algorithm overview, known implementation challenges, references)
+6. Validate all three files exist and JSON is well-formed
+7. Validate io_definition.json port names comply with naming conventions above
 </Steps>
 
 <Tool_Usage>
@@ -56,7 +73,7 @@ Task(subagent_type="rtl-agent-team:video-processing-expert",
      prompt="Extract signal processing and datapath requirements from specs/.")
 
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Parse specs/ and produce requirements.json and io_definition.json. Port names in io_definition.json MUST use: i_/o_/io_ prefix (NOT suffix _i/_o), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n (e.g. sys_rst_n).")
+     prompt="Parse specs/ and produce requirements.json and io_definition.json. Each requirement in requirements.json MUST have a unique 'id' field: 'REQ-001', 'REQ-002', etc. Port names in io_definition.json MUST use: i_/o_/io_ prefix (NOT suffix _i/_o), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n (e.g. sys_rst_n). After generation, count features in original spec vs REQ items and list any suspected omissions.")
 ```
 </Tool_Usage>
 
@@ -78,12 +95,15 @@ Skipping spec-analyst and writing requirements.json manually — misses formal t
 
 <Final_Checklist>
 - [ ] requirements.json exists and is valid JSON
+- [ ] Every requirement in requirements.json has a unique `"id": "REQ-NNN"` field
 - [ ] io_definition.json exists and is valid JSON
 - [ ] io_definition.json port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
 - [ ] io_definition.json clocks use `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`
 - [ ] io_definition.json resets use `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`
 - [ ] domain-analysis.md exists
 - [ ] No unresolved requirement conflicts
+- [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED with suspected omissions)
+- [ ] Spec feature count vs requirements.json item count comparison documented
 </Final_Checklist>
 
 <Advanced>

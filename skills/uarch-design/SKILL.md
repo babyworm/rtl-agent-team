@@ -45,16 +45,37 @@ timing-advisor ensures designs are achievable at the target frequency.
      - Types: `snake_case_t` suffix (e.g., `state_t`, `bus_req_t`)
      - Parameters: `UPPER_SNAKE_CASE` (e.g., `DATA_WIDTH`)
    - Use `logic` only in all signal declarations (no `reg`/`wire`)
-3. codec-architecture-expert reviews algorithm alignment (no spec violations)
-4. timing-advisor reviews critical paths and pipeline balance
-5. Verify all signal names in uarch/*.md comply with naming conventions
-6. Resolve review comments, finalize uarch/*.md
+3. **Hierarchical Spec Compliance Check — architecture.md preservation verification:**
+   - rtl-architect reads architecture.md and all uarch/*.md files
+   - Verify that every block defined in architecture.md has a corresponding uarch/*.md
+   - Verify that block boundaries from architecture.md are preserved (no unauthorized merges or splits)
+   - Verify that all functional responsibilities assigned in architecture.md are present in the uarch specs
+   - Output verdict:
+     ```
+     VERDICT: PASS — all architecture blocks and functions preserved in μArch
+     ```
+     or:
+     ```
+     VERDICT: FAIL — [N] violations found
+       - block_X: missing uarch spec
+       - block_Y: function "Z" from architecture.md not found in uarch
+       - block_A merged into block_B: unauthorized boundary change
+     ```
+   - On FAIL with missing function: uarch-designer revises to include the missing functionality
+   - On FAIL with boundary change: **escalate — may require Phase 2 (arch-design) revision**
+4. codec-architecture-expert reviews algorithm alignment (no spec violations)
+5. timing-advisor reviews critical paths and pipeline balance
+6. Verify all signal names in uarch/*.md comply with naming conventions
+7. Resolve review comments, finalize uarch/*.md
 </Steps>
 
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:uarch-designer",
      prompt="Produce microarchitecture docs at uarch/ from architecture.md. Include FSM, pipeline, register map per block. All signal names MUST use: i_/o_/io_ prefix (NOT _i/_o suffix), {domain}_clk (e.g. sys_clk), {domain}_rst_n (e.g. sys_rst_n), u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params, typedef enum for FSM states.")
+
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Read architecture.md and all uarch/*.md files. Verify: (1) every block in architecture.md has a corresponding uarch/*.md, (2) block boundaries are preserved — no unauthorized merges or splits, (3) all functional responsibilities from architecture.md are present in uarch specs. Output VERDICT: PASS or VERDICT: FAIL with specific violations. If boundary changes are found, flag as 'requires Phase 2 revision'.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
      prompt="Review uarch/*.md for critical path issues at target frequency 500MHz. Flag pipeline imbalance. Also verify signal naming conventions: i_/o_ prefix, {domain}_clk/{domain}_rst_n.")
@@ -74,10 +95,15 @@ Skipping timing-advisor review — RTL coder implements the design, synthesis fa
 <Escalation_And_Stop_Conditions>
 - Timing infeasibility at target frequency (expert says unachievable) → report to user, propose alternative frequency or architecture change
 - FSM cannot represent required algorithm state → escalate to arch-design for block decomposition change
+- **Block boundary violation detected** (merge/split not in architecture.md) → escalate to Phase 2 (arch-design) for architecture revision before continuing
+- **Functional responsibility missing** from uarch that exists in architecture.md → uarch-designer must add it, or escalate if architecture change is needed
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 - [ ] uarch/*.md exists for each block in architecture.md
+- [ ] **All block boundaries from architecture.md preserved (no unauthorized merges/splits)**
+- [ ] **All functional responsibilities from architecture.md present in uarch specs**
+- [ ] rtl-architect hierarchical spec compliance verdict is PASS
 - [ ] Each doc has FSM, pipeline diagram, register map
 - [ ] timing-advisor review complete with no blockers
 - [ ] codec-architecture-expert approved algorithm correctness
