@@ -70,6 +70,7 @@ This skill ensures everything is in place before design work begins.
    | Tool | Check Command | Purpose | Required |
    |------|--------------|---------|----------|
    | verilator | `verilator --version` | Simulation + Lint | Yes |
+   | verible | `verible-verilog-lint --version` | Style Lint + Formatting | Yes |
    | iverilog | `iverilog -V` | Alternative simulator | Optional |
    | yosys | `yosys --version` | Synthesis | Yes |
    | sby | `sby --help` | Formal verification | Optional |
@@ -129,6 +130,7 @@ Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb ref_model/src ref_mod
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"
+Bash: verible-verilog-lint --version 2>&1 || echo "NOT_FOUND"
 Bash: yosys --version 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import cocotb; print(cocotb.__version__)" 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
@@ -165,9 +167,14 @@ When tools are missing, provide these installation commands:
 sudo apt install verilator yosys iverilog gtkwave build-essential python3-pip
 pip3 install cocotb
 
+# Verible (GitHub Releases)
+# See: https://github.com/chipsalliance/verible/releases
+# Download prebuilt binary for your platform and add to PATH
+
 # macOS (Homebrew)
 brew install verilator yosys icarus-verilog gtkwave
 pip3 install cocotb
+# brew install verible  # or download from GitHub releases
 
 # SymbiYosys (from source)
 # See: https://symbiyosys.readthedocs.io/en/latest/install.html
@@ -178,7 +185,7 @@ pip3 install cocotb
 </Install_Instructions>
 
 <Escalation_And_Stop_Conditions>
-- Required tool not found (verilator, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
+- Required tool not found (verilator, verible, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
 - Directory creation permission denied → report error, suggest user fix permissions
 - Existing project detected (rtl/src/ has .sv files) → warn user, ask whether to skip template generation
 - Python version < 3.8 → cocotb 2.0 requires Python 3.8+; report incompatibility

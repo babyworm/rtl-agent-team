@@ -170,7 +170,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 - 시뮬레이션: `verilator`, `iverilog` (Icarus Verilog)
 - 합성: `yosys`
 - Formal 검증: `sby` (SymbiYosys)
-- Lint: `verilator --lint-only`, `slang`
+- Lint: `verilator --lint-only`, `verible-verilog-lint`, `slang`
 - cocotb 테스트: `make SIM=icarus TOPLEVEL=<mod> MODULE=<test>`
 - SystemC: `g++ -lsystemc` (로컬 빌드)
 
