@@ -162,10 +162,11 @@ docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
 docker build -t rtl-eda-tools \
   --build-arg VERILATOR_VERSION=5.024 \
   --build-arg SLANG_VERSION=v6.0 \
+  --build-arg SYSTEMC_VERSION=3.0.2 \
   docker/
 ```
 
-포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
+포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
 
 Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rtl-setup` 실행 후 Docker 옵션 선택.
 

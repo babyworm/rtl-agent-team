@@ -20,6 +20,7 @@ FROM ubuntu:24.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 ARG VERILATOR_VERSION=5.024
 ARG SLANG_VERSION=v6.0
+ARG SYSTEMC_VERSION=3.0.2
 
 LABEL maintainer="rtl-agent-team"
 LABEL description="Open-source EDA toolchain for RTL design and verification"
@@ -28,10 +29,14 @@ LABEL description="Open-source EDA toolchain for RTL design and verification"
 # System packages
 # -----------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    autoconf \
+    automake \
+    bison \
     build-essential \
     ca-certificates \
     cmake \
     curl \
+    flex \
     git \
     gnupg \
     help2man \
@@ -111,6 +116,23 @@ RUN cd /tmp && \
     rm -rf /tmp/slang
 
 # -----------------------------------------------------------------------------
+# SystemC / TLM-2.0 (reference model + BFM) — build from Accellera source
+# -----------------------------------------------------------------------------
+RUN cd /tmp && \
+    git clone --depth 1 --branch ${SYSTEMC_VERSION} https://github.com/accellera-official/systemc.git && \
+    cd systemc && \
+    cmake -B build \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_CXX_STANDARD=17 \
+      -G Ninja && \
+    cmake --build build -j$(nproc) && \
+    cmake --install build && \
+    rm -rf /tmp/systemc
+
+ENV SYSTEMC_HOME=/usr/local
+
+# -----------------------------------------------------------------------------
 # SymbiYosys (formal verification) + solvers
 # -----------------------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -121,7 +143,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN cd /tmp && \
     git clone --depth 1 https://github.com/YosysHQ/sby.git && \
     cd sby && \
-    python3 setup.py install && \
+    make install PREFIX=/usr/local && \
     rm -rf /tmp/sby
 
 # -----------------------------------------------------------------------------
@@ -154,6 +176,8 @@ RUN echo "=== RTL EDA Toolchain ===" && \
     slang --version 2>&1 | head -1 && \
     sby --help 2>&1 | head -1 || echo "sby: installed" && \
     python3 -c "import cocotb; print(f'cocotb {cocotb.__version__}')" && \
+    python3 -c "import SystemC; print('SystemC: available')" 2>/dev/null || \
+      (test -f /usr/local/include/systemc.h && echo "SystemC ${SYSTEMC_VERSION} (SYSTEMC_HOME=$SYSTEMC_HOME)" || echo "SystemC: NOT FOUND") && \
     g++ --version | head -1 && \
     echo "=== All tools ready ==="
 

@@ -136,6 +136,7 @@ This skill ensures everything is in place before design work begins.
    docker build -t rtl-eda-tools \
      --build-arg VERILATOR_VERSION=5.024 \
      --build-arg SLANG_VERSION=v6.0 \
+     --build-arg SYSTEMC_VERSION=3.0.2 \
      docker/
    ```
 
@@ -160,6 +161,7 @@ This skill ensures everything is in place before design work begins.
    | slang | v6.0 (configurable) | IEEE 1800 시맨틱 Lint |
    | sby (SymbiYosys) | latest + boolector, z3 | Formal 검증 |
    | gtkwave | apt latest | 파형 뷰어 |
+   | SystemC/TLM-2.0 | 3.0.2 (configurable) | 레퍼런스 모델 + BFM |
    | cocotb + extensions | pip latest | 기능 검증 |
    | gcc/g++ | apt latest | 레퍼런스 모델 빌드 |
 </Steps>
