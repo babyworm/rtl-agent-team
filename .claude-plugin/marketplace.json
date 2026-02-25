@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "RTL design and verification automation plugins for Claude Code",
-    "version": "1.0.0"
+    "version": "0.1.0"
   },
   "plugins": [
     {

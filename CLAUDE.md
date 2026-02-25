@@ -173,6 +173,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 - Lint: `verilator --lint-only`, `verible-verilog-lint`, `slang`
 - cocotb 테스트: `make SIM=icarus TOPLEVEL=<mod> MODULE=<test>`
 - SystemC: `g++ -lsystemc` (로컬 빌드)
+- 파형 뷰어: `gtkwave` (VCD/FST 파형 분석)
 
 도구 미설치 시 `eda-runner`가 설치 안내를 제공한다.
 `/rtl-agent-team:rtl-setup` 스킬로 환경 점검 및 프로젝트 초기화가 가능하다.

@@ -144,6 +144,7 @@ rtl-agent-team/
 | iverilog | 대안 시뮬레이터 | 선택 |
 | slang | IEEE 1800 시맨틱 Lint | 선택 |
 | sby (SymbiYosys) | Formal 검증 | 선택 |
+| gtkwave | 파형 뷰어 | 선택 |
 
 `/rtl-agent-team:rtl-setup`으로 도구 설치 상태를 확인할 수 있습니다.
 
