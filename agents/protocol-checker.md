@@ -2,6 +2,7 @@
 name: protocol-checker
 description: AXI/AHB/APB protocol verification specialist. Writes protocol-specific SVA assertions and validates handshake timing compliance.
 model: opus
+color: yellow
 ---
 
 <Agent_Prompt>

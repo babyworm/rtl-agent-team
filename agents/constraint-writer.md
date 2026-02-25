@@ -2,6 +2,7 @@
 name: constraint-writer
 description: SDC/XDC constraint auto-generation from RTL analysis. Defines clocks, false paths, multicycle paths, and I/O timing constraints.
 model: opus
+color: cyan
 ---
 
 <Agent_Prompt>

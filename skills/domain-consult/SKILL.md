@@ -1,6 +1,6 @@
 ---
 name: domain-consult
-description: Domain expert consultation dispatcher. Routes query to the appropriate domain expert based on content.
+description: "This skill should be used when consulting domain experts for codec standards, video processing, or fixed-point math questions."
 ---
 
 <Purpose>

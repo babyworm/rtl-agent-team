@@ -2,6 +2,7 @@
 name: codec-architecture-expert
 description: Codec HW architecture expert. Proven video codec architectures from IEEE literature. SRAM organization, fixed-point arithmetic, HW-friendly algorithm modifications. Participates in Research ★☆☆, Architecture ★★★, μArch ★★★, RTL ★★☆, Verify ★☆☆.
 model: opus
+color: blue
 disallowedTools: Write, Edit
 ---
 

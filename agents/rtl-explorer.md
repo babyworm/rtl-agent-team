@@ -2,6 +2,7 @@
 name: rtl-explorer
 description: RTL codebase explorer. Maps module hierarchy, traces signals across boundaries, and builds dependency maps using Glob, Grep, and LSP tools.
 model: sonnet
+color: blue
 disallowedTools: Write, Edit
 ---
 

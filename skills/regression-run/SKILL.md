@@ -1,6 +1,6 @@
 ---
 name: regression-run
-description: Multi-seed regression execution with coverage collection. Delegates to eda-runner and coverage-analyst.
+description: "This skill should be used when running multi-seed regression suites with coverage collection and failure tracking."
 ---
 
 <Purpose>

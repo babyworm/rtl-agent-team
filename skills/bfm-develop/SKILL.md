@@ -1,6 +1,6 @@
 ---
 name: bfm-develop
-description: Phase 3b skill. Builds SystemC TLM Bus Functional Models for performance verification.
+description: "This skill should be used when developing SystemC TLM Bus Functional Models from architecture block specifications."
 ---
 
 <Purpose>

@@ -2,6 +2,7 @@
 name: perf-verifier
 description: Performance verification specialist measuring RTL latency and throughput against BFM cycle-accurate targets
 model: sonnet
+color: green
 ---
 
 <Agent_Prompt>

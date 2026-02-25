@@ -1,6 +1,6 @@
 ---
 name: ipxact-gen
-description: Generate IEEE 1685 IP-XACT XML descriptor from RTL source.
+description: "This skill should be used when generating IEEE 1685 IP-XACT XML descriptors from RTL port and parameter definitions."
 ---
 
 <Purpose>

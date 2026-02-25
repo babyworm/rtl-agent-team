@@ -1,6 +1,6 @@
 ---
 name: rtl-autopilot
-description: Master orchestrator for full RTL design pipeline from specification to verified silicon-ready implementation.
+description: "This skill should be used when starting a full RTL design pipeline from spec to verification. Orchestrates 5-phase flow with dual-layer phase gates and hierarchical spec compliance."
 ---
 
 <Purpose>

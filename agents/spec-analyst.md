@@ -2,6 +2,7 @@
 name: spec-analyst
 description: RTL specification analysis expert that transforms raw spec docs into structured requirements. Saves self-validation reports to reviews/*.md with Mermaid diagrams. (Opus)
 model: opus
+color: blue
 ---
 
 <Agent_Prompt>

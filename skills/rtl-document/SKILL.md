@@ -1,6 +1,6 @@
 ---
 name: rtl-document
-description: Generate RTL documentation from source files and synthesis reports.
+description: "This skill should be used when generating RTL documentation from source and synthesis reports. Produces port tables and design summaries."
 ---
 
 <Purpose>

@@ -2,6 +2,7 @@
 name: timing-advisor
 description: Timing analysis advisor for RTL designs. CDC detection, clock domain crossing analysis, pipeline depth advice, critical path identification. Never writes code. (Opus, READ-ONLY)
 model: opus
+color: blue
 disallowedTools: Write, Edit
 ---
 

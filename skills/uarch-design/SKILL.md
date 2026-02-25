@@ -1,6 +1,6 @@
 ---
 name: uarch-design
-description: Phase 3a skill. Produces microarchitecture documents including FSM, pipeline, and register maps.
+description: "This skill should be used when creating microarchitecture specs (FSM, pipeline, register maps) in Phase 3. Produces uarch/*.md with pipeline diagrams."
 ---
 
 <Purpose>

@@ -2,6 +2,7 @@
 name: rtl-critic
 description: Design review critic for RTL code quality, synthesizability, and coding style. Integrates synthesis and STA knowledge. Saves review reports to reviews/*.md. (Opus)
 model: opus
+color: cyan
 ---
 
 <Agent_Prompt>

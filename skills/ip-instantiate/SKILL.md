@@ -1,6 +1,6 @@
 ---
 name: ip-instantiate
-description: Auto-generate IP instantiation wrapper and connection logic from IP-XACT or datasheet.
+description: "This skill should be used when generating IP instantiation wrappers from IP-XACT descriptors or datasheets with convention-compliant port mapping."
 ---
 
 <Purpose>

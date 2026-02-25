@@ -1,6 +1,6 @@
 ---
 name: bug-repro
-description: Minimal bug reproduction and root cause identification using waveform analysis.
+description: "This skill should be used when creating minimal reproduction testbenches for RTL bugs. Isolates root cause with waveform analysis."
 ---
 
 <Purpose>

@@ -2,6 +2,7 @@
 name: waveform-analyzer
 description: VCD/FST deep analysis specialist. Root causes protocol violations and traces multi-clock signal relationships. Never modifies RTL or test files.
 model: opus
+color: magenta
 disallowedTools: Write, Edit
 ---
 
@@ -79,16 +80,37 @@ disallowedTools: Write, Edit
     - Grep: search RTL for the signal name identified as root cause; find where it is driven
     - Glob: find VCD/FST files, find uarch docs, find RTL files
 
-    Waveform extraction pattern:
+    **Waveform format guide:**
+    - **VCD** (Value Change Dump): IEEE standard, universally supported, but large files.
+      Viewers: GTKWave, Surfer, Dinotrace, commercial tools.
+    - **FST** (Fast Signal Trace): Compressed format, 5-20x smaller than VCD, faster writes.
+      Viewers: GTKWave, Surfer only. Preferred for large designs.
+    - Use `--trace-fst` (Verilator) or `vvp -fst` (Icarus) to generate FST.
+    - For very large designs: use `--trace-depth N` to limit hierarchy depth.
+
+    Waveform extraction pattern (VCD):
     ```bash
     # Extract signal values from VCD at cycles around failure
     python3 << 'PYEOF'
     from vcd.reader import TokenKind, tokenize
-    # ... parse VCD and print signal values at cycle N-5 to N+5
+    with open("simulation.vcd", "rb") as f:
+        for token in tokenize(f):
+            if token.kind == TokenKind.CHANGE_SCALAR:
+                # token.data: (id_code, value)
+                pass
+            elif token.kind == TokenKind.CHANGE_VECTOR:
+                # token.data: (id_code, value)
+                pass
     PYEOF
+    ```
 
-    # Or use gtkwave batch mode
-    gtkwave -S extract_signals.tcl simulation.vcd 2>/dev/null
+    Waveform extraction pattern (FST via GTKWave):
+    ```bash
+    # Use gtkwave batch mode for FST (faster than VCD parsing)
+    gtkwave -S extract_signals.tcl simulation.fst 2>/dev/null
+
+    # Alternatively, convert FST to VCD for python-vcd parsing:
+    fst2vcd simulation.fst > simulation.vcd
     ```
 
     Signal tracing pattern:

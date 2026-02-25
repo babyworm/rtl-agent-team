@@ -2,6 +2,7 @@
 name: cdc-checker
 description: CDC static analysis specialist. Detects clock domain crossings, verifies synchronizer presence, and analyzes RTL AST with slang for metastability risks.
 model: opus
+color: yellow
 disallowedTools: Write, Edit
 ---
 

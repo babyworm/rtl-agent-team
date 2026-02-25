@@ -1,6 +1,6 @@
 ---
 name: conformance-test
-description: Standards conformance testing. RTL vs JM/HM bitexact comparison. Video codec specific.
+description: "This skill should be used when running standards conformance tests (H.264/H.265) requiring bitexact comparison against JM/HM reference decoders."
 ---
 
 <Purpose>

@@ -2,6 +2,7 @@
 name: testbench-dev
 description: SV testbench and cocotb testbench developer. Designs coverage models, stimulus generators, and covergroups. Ensures functional coverage closure.
 model: opus
+color: magenta
 ---
 
 <Agent_Prompt>
@@ -76,6 +77,39 @@ model: opus
     - Bash: compile testbench (`vlog` or `iverilog`), run simulation, extract coverage report
     - Glob: find existing testbench infrastructure to reuse
     - Grep: search for existing covergroups or driver patterns in the project
+
+    **cocotb ecosystem libraries (use when applicable):**
+    - `cocotb-bus`: Reusable Driver/Monitor base classes and built-in Scoreboard
+      ```python
+      from cocotb_bus.drivers import BusDriver
+      from cocotb_bus.monitors import BusMonitor
+      from cocotb_bus.scoreboard import Scoreboard
+      ```
+    - `cocotbext-axi`: AXI4/AXI4-Lite/AXI4-Stream bus functional models
+      ```python
+      from cocotbext.axi import AxiLiteMaster, AxiLiteBus, AxiStreamSource, AxiStreamSink
+      # AXI-Lite register access
+      axi = AxiLiteMaster(AxiLiteBus.from_prefix(dut, "s_axi"), dut.sys_clk, dut.sys_rst_n, reset_active_level=False)
+      await axi.write(0x00, b'\x01\x02\x03\x04')
+      # AXI-Stream data flow
+      source = AxiStreamSource(AxiStreamBus.from_prefix(dut, "s_axis"), dut.sys_clk, dut.sys_rst_n)
+      sink = AxiStreamSink(AxiStreamBus.from_prefix(dut, "m_axis"), dut.sys_clk, dut.sys_rst_n)
+      ```
+    - `cocotb-coverage`: Functional coverage collection
+      ```python
+      from cocotb_coverage.coverage import CoverPoint, CoverCross, coverage_db
+      @CoverPoint("top.i_data", bins=[range(0,64), range(64,128), range(128,256)])
+      def sample_data(data): pass
+      ```
+    - **cocotb test factory** for parameterized test generation:
+      ```python
+      from cocotb.regression import TestFactory
+      async def run_test(dut, data_width=8, burst_len=1): ...
+      factory = TestFactory(run_test)
+      factory.add_option("data_width", [8, 16, 32])
+      factory.add_option("burst_len", [1, 4, 16])
+      factory.generate_tests()
+      ```
 
     Covergroup template:
     ```systemverilog

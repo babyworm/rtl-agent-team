@@ -1,6 +1,6 @@
 ---
 name: protocol-verify
-description: Bus protocol (AXI/AHB/APB) verification using protocol checker and SVA assertions.
+description: "This skill should be used when verifying bus protocol compliance (AXI/AHB/APB) using SVA handshake and ordering rules."
 ---
 
 <Purpose>

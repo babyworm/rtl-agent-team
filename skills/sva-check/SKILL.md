@@ -1,11 +1,14 @@
 ---
 name: sva-check
-description: SVA formal verification using SymbiYosys BMC and induction.
+description: "This skill should be used when proving or disproving formal properties on RTL using SymbiYosys BMC and induction. Triggers on 'formal verification', 'prove property', 'SVA'."
 ---
 
 <Purpose>
 Extract SystemVerilog Assertions from RTL and run formal verification.
 Outputs: formal/props/*.sv assertion files + formal_verify.json with prove/fail status per property.
+
+See `references/sva-patterns.md` for SVA temporal operator reference, common assertion patterns,
+and SymbiYosys engine selection guide.
 </Purpose>
 
 <Use_When>
@@ -44,10 +47,16 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 <Steps>
 1. sva-extractor reads rtl/src/*.sv and uarch/*.md, writes formal/props/*.sv with SVA properties
    - All signal names must match RTL port conventions (`i_`/`o_` prefixes, `sys_clk`, `sys_rst_n`)
+   - Use temporal operators appropriately: `|->` (overlapping), `|=>` (non-overlapping), `##[M:N]` (delay range)
+   - Guard `$past()` with a `past_valid` register to avoid undefined first-cycle behavior
+   - See `references/sva-patterns.md` for handshake, FIFO, FSM, pipeline, and reset patterns
 2. sva-extractor generates SymbiYosys .sby configuration file per module
+   - Engine selection: `smtbmc boolector` (default), `smtbmc yices` (bitvector-heavy), `abc pdr` (unbounded proof)
+   - Generate both BMC (`mode bmc`) and prove (`mode prove`) configurations
+   - Optionally generate cover (`mode cover`) to validate reachability
 3. eda-runner runs BMC via Bash CLI: `sby -f formal/props/{module}.sby`
-4. eda-runner runs induction on BMC-passing properties
-5. Parse results into formal_verify.json: {property, status: proved|failed|timeout, depth}
+4. eda-runner runs induction on BMC-passing properties (prove mode)
+5. Parse results into formal_verify.json: {property, status: proved|failed|timeout, depth, engine}
 6. For failed: waveform-analyzer extracts counterexample, attaches to formal_verify.json entry
 </Steps>
 
@@ -93,6 +102,17 @@ Using `clk` or `data_i` in SVA instead of `sys_clk` or `i_data` — signal name 
 
 <Advanced>
 Use assume statements to constrain inputs to legal protocol ranges before proving.
+**Principle: assume inputs, assert outputs.** Inputs are constrained with `assume`; outputs are verified with `assert`.
 Target properties: no deadlock, no overflow, interface protocol compliance, data integrity.
 Assertion clock: `@(posedge sys_clk) disable iff (!sys_rst_n)` for synchronous properties.
+
+SymbiYosys engine guide:
+| Engine | Mode | Best For |
+|--------|------|----------|
+| `smtbmc boolector` | BMC, prove | General purpose (default) |
+| `smtbmc yices` | BMC, prove | Bitvector-heavy, often fastest |
+| `smtbmc z3` | BMC, prove | Arithmetic-heavy designs |
+| `abc pdr` | prove only | Unbounded proof via PDR |
+
+See `references/sva-patterns.md` for complete temporal operator reference and pattern library.
 </Advanced>

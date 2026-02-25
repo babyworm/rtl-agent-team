@@ -1,6 +1,6 @@
 ---
 name: perf-verify
-description: Performance regression. RTL vs BFM throughput and latency comparison.
+description: "This skill should be used when measuring RTL throughput and latency against BFM baselines. Flags deviations exceeding 10%."
 ---
 
 <Purpose>

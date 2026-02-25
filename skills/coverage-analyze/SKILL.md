@@ -1,6 +1,6 @@
 ---
 name: coverage-analyze
-description: Coverage analysis and gap identification. Delegates to coverage-analyst and testbench-dev.
+description: "This skill should be used when analyzing functional coverage reports to identify gaps and prioritize additional test generation."
 ---
 
 <Purpose>

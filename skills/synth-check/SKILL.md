@@ -1,11 +1,15 @@
 ---
 name: synth-check
-description: Synthesis flow using Yosys. Produces area, timing, and resource reports.
+description: "This skill should be used when running Yosys synthesis for area/timing estimation or synthesizability checking. Detects inferred latches and unmapped cells."
 ---
 
 <Purpose>
 Run Yosys synthesis on RTL and generate area, cell count, and critical path reports.
 Outputs: synth/reports/{module}_synth.txt and synth/summary.json.
+
+Supports both generic synthesis (no technology) and technology-mapped synthesis
+(sky130, nangate45) for more accurate area/timing estimates.
+See `references/yosys-commands.md` for command reference and latch detection guide.
 </Purpose>
 
 <Use_When>
@@ -33,16 +37,28 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 
 <Steps>
 1. Verify RTL uses `logic` (no `reg`/`wire`) before synthesis — flag violations early
-2. eda-runner runs Yosys via Bash CLI:
+2. eda-runner runs Yosys via Bash CLI — choose synthesis mode:
+   **Generic synthesis** (no technology mapping, quick check):
    ```bash
    yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top} -flatten; stat" \
      | tee synth/reports/{module}_synth.txt
    ```
+   **Technology-mapped synthesis** (accurate area/timing with liberty file):
+   ```bash
+   yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top}; \
+     dfflibmap -liberty {lib}.lib; abc -liberty {lib}.lib; \
+     stat -liberty {lib}.lib" | tee synth/reports/{module}_synth.txt
+   ```
+   Supported libraries: sky130_fd_sc_hd (open-source), NangateOpenCellLibrary (academic)
 3. Capture synth/reports/{module}_synth.txt (raw Yosys output)
 4. synthesis-reporter parses: cell count, estimated area, critical path depth
-5. Check for latches (inferred latches = synthesis error)
-6. Write synth/summary.json: {module, cells, area_um2_est, max_logic_depth, latches_found}
-7. Flag any inferred latches as hard errors
+5. **Latch detection** — check `stat` output for `$_DLATCH_` cells:
+   - Any `$_DLATCH_*` count > 0 is a **HARD FAIL**
+   - Common causes: missing `default:` in case, unassigned signal in if-else branches
+   - See `references/yosys-commands.md` for latch detection details
+6. Check for other concerning cells: `$mem` (unintended RAM), `$mul` (area-heavy multipliers)
+7. Write synth/summary.json: {module, cells, area_um2_est, max_logic_depth, latches_found, library}
+8. Flag any inferred latches as hard errors
 </Steps>
 
 <Tool_Usage>
@@ -78,6 +94,29 @@ Ignoring Yosys latch warnings — inferred latches cause hold-time violations in
 </Final_Checklist>
 
 <Advanced>
-Use Yosys with technology mapping (synth -liberty {lib.lib}) for more accurate area estimates.
-Synthesis target library: sky130 or nangate45 for open-source estimation.
+Technology mapping with liberty files for accurate area estimates:
+```bash
+# Sky130 (open-source PDK)
+dfflibmap -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+stat -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# NanGate45 (academic PDK)
+dfflibmap -liberty NangateOpenCellLibrary_typical.lib
+abc -liberty NangateOpenCellLibrary_typical.lib
+stat -liberty NangateOpenCellLibrary_typical.lib
+```
+
+Key `stat` output fields to monitor:
+| Cell | Concern |
+|------|---------|
+| `$_DFF_*` | Normal flip-flops (count should match intent) |
+| `$_DLATCH_*` | **CRITICAL — must be zero** |
+| `$_MUX_` | High count may indicate priority encoding |
+| `$add`, `$mul` | Check if area-efficient implementation needed |
+| `$mem` | Check if SRAM inference was intended |
+
+Additional useful commands: `scc -max_depth 10` (combinational loop check),
+`write_verilog synth/netlist.v` (export netlist), `show -format dot` (schematic).
+See `references/yosys-commands.md` for complete command reference.
 </Advanced>

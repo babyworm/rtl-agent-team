@@ -1,6 +1,6 @@
 ---
 name: research-analyze
-description: Phase 1 skill. Extracts requirements, I/O definitions, and domain analysis from specification documents.
+description: "This skill should be used when extracting structured requirements from raw specifications in Phase 1. Produces requirements.json with REQ-NNN IDs and complexity tags."
 ---
 
 <Purpose>

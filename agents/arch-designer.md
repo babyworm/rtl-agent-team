@@ -2,6 +2,7 @@
 name: arch-designer
 description: Block-level architecture designer for RTL projects — block diagrams, interfaces, data flow (Opus)
 model: opus
+color: magenta
 disallowedTools: Write, Edit
 ---
 

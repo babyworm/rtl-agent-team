@@ -1,6 +1,6 @@
 ---
 name: arch-review
-description: Architecture consistency review. READ-ONLY analysis by rtl-architect, timing-advisor, and rtl-critic.
+description: "This skill should be used when conducting architecture review with area/performance/power tradeoff analysis. Saves review reports to reviews/ directory."
 ---
 
 <Purpose>

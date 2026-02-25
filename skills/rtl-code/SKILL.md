@@ -1,6 +1,6 @@
 ---
 name: rtl-code
-description: Phase 4 skill. Implements all RTL modules in SystemVerilog with lint-clean gate.
+description: "This skill should be used when implementing SystemVerilog RTL modules from uarch specs in Phase 4. Produces lint-clean rtl/src/*.sv with write-lint-fix cycles."
 ---
 
 <Purpose>

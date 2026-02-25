@@ -1,12 +1,15 @@
 ---
 name: func-verify
-description: Phase 5 cocotb regression. RTL vs reference C model comparison.
+description: "This skill should be used when running cocotb regression tests comparing RTL against reference models in Phase 5. Produces Requirement Traceability Matrix."
 ---
 
 <Purpose>
 Run cocotb-based regression tests comparing RTL simulation output against the C reference model.
 Outputs: sim/regression/{test}_result.json per test + coverage/coverage.xml.
 On failure: invoke waveform-analyzer for debug.
+
+Leverages the cocotb ecosystem: cocotb-bus (Driver/Monitor), cocotbext-axi (AXI BFMs),
+cocotb-coverage (functional coverage). See `references/cocotb-ecosystem.md` for detailed API reference.
 </Purpose>
 
 <Use_When>
@@ -25,6 +28,12 @@ On failure: invoke waveform-analyzer for debug.
 cocotb allows Python-driven test control with access to the full test infrastructure.
 RTL vs C comparison catches numerical and behavioral divergences that unit tests miss.
 Automated regression with coverage reporting drives verification closure.
+
+The cocotb ecosystem provides reusable bus functional models:
+- **cocotb-bus**: Base classes for Driver, Monitor, and Scoreboard
+- **cocotbext-axi**: Ready-to-use AXI4/AXI4-Lite/AXI4-Stream masters and slaves
+- **cocotb-coverage**: Functional coverage with `@CoverPoint` and `@CoverCross` decorators
+- **TestFactory**: Parameterized test generation for combinatorial test sweeps
 </Why_This_Exists>
 
 <Coding_Convention_Requirements>
@@ -49,7 +58,14 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
    - Signal access uses `i_`/`o_` prefixes matching RTL ports
    - Clock driven as `dut.sys_clk`, reset as `dut.sys_rst_n`
 3. eda-runner compiles RTL and runs cocotb regression via Bash CLI:
-   `make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}`
+   ```bash
+   # Icarus Verilog (default — good SV support, fast compile)
+   make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}
+   # Verilator (fastest simulation, FST traces)
+   make -C tb/cocotb SIM=verilator TOPLEVEL={module} MODULE=test_{module} \
+     EXTRA_ARGS="--trace-fst --timing"
+   ```
+   Use `COCOTB_RESOLVE_X=RANDOM` for X-state handling and `RANDOM_SEED=42` for reproducibility.
 4. For each test: compare RTL output with ref_model output byte-by-byte
 5. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
 6. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
@@ -157,4 +173,12 @@ Using `dut.clk` or `dut.data_i` in cocotb — signal name mismatch causes Attrib
 Run with multiple seeds: `make SEED=42 SIM=icarus` for broader randomization coverage.
 Coverage target: 90% line, 80% toggle, 70% FSM state.
 Use `COCOTB_RESOLVE_X=RANDOM` to handle X propagation in simulation.
+
+**cocotb ecosystem quick reference:**
+- AXI-Lite register access: `AxiLiteMaster(AxiLiteBus.from_prefix(dut, "s_axi"), dut.sys_clk, dut.sys_rst_n, reset_active_level=False)`
+- AXI-Stream data flow: `AxiStreamSource(AxiStreamBus.from_prefix(dut, "s_axis"), dut.sys_clk, dut.sys_rst_n)`
+- Functional coverage: `@CoverPoint("top.data", bins=[range(0,64), range(64,256)])`
+- Parameterized tests: `TestFactory(run_test).add_option("width", [8,16,32]).generate_tests()`
+
+See `references/cocotb-ecosystem.md` for complete API reference with code examples.
 </Advanced>

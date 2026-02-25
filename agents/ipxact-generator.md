@@ -2,6 +2,7 @@
 name: ipxact-generator
 description: IP-XACT IEEE 1685 XML generator. Produces component descriptions from RTL port lists and register maps for EDA tool integration.
 model: sonnet
+color: magenta
 ---
 
 <Agent_Prompt>

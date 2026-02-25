@@ -1,6 +1,6 @@
 ---
 name: rtl-refactor
-description: Utility skill. Structural RTL refactoring without behavioral change.
+description: "This skill should be used when restructuring RTL code without behavioral change. Applies naming conventions and verifies equivalence."
 ---
 
 <Purpose>

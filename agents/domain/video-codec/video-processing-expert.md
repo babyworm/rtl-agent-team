@@ -2,6 +2,7 @@
 name: video-processing-expert
 description: Video processing performance analysis expert - Opus
 model: opus
+color: green
 ---
 
 <Agent_Prompt>

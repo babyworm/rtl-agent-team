@@ -1,6 +1,6 @@
 ---
 name: ref-model
-description: Phase 2b skill. Implements C++ reference model with JM/HM bitexact verification.
+description: "This skill should be used when building C++ reference models with bitexact verification against standard reference implementations."
 ---
 
 <Purpose>

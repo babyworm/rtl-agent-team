@@ -2,6 +2,7 @@
 name: sva-extractor
 description: SVA assertion extraction from spec. Writes .sva bind files. Runs SymbiYosys BMC + induction to prove or find counterexamples.
 model: sonnet
+color: red
 ---
 
 <Agent_Prompt>
@@ -58,12 +59,36 @@ model: sonnet
     3. Read io_definition.json: identify all ports for interface protocol assertions.
     4. For each requirement, classify: safety (G p), liveness (G F p), reachability (F p).
     5. Write concurrent SVA assertions using `property`/`assert property` syntax.
+       **SVA temporal operator reference:**
+       - Implication: `|->` (overlapping), `|=>` (non-overlapping, 1 cycle delay)
+       - Delay: `##N` (exact), `##[M:N]` (range), `##[0:$]` (eventually)
+       - Repetition: `[*N]` (exact), `[*M:N]` (range), `[->N]` (goto), `[=N]` (non-consecutive)
+       - Past: `$past(sig, N)`, `$rose(sig)`, `$fell(sig)`, `$stable(sig)`, `$changed(sig)`
+       - Sequence: `throughout`, `within`, `intersect`
+       - **Safe $past usage:** guard with `past_valid` flag set after first clock edge:
+         ```systemverilog
+         logic past_valid;
+         always_ff @(posedge sys_clk or negedge sys_rst_n)
+           if (!sys_rst_n) past_valid <= 1'b0;
+           else            past_valid <= 1'b1;
+         // Use: assert property (past_valid |-> $past(sig) == expected)
+         ```
     6. Write assume properties for input constraints (valid protocol behavior).
+       - Rule: "assume the inputs, assert the internals and the outputs"
+       - When a small module is embedded in a larger one, input assumptions become assertions
     7. Write cover properties to confirm key states are reachable under assumptions.
     8. Write SymbiYosys .sby config: [options], [engines], [script], [files] sections.
+       **Engine selection guide:**
+       - `smtbmc boolector`: default for BMC, good general performance
+       - `smtbmc z3`: alternative solver, sometimes faster for arithmetic-heavy designs
+       - `smtbmc yices`: fastest for bitvector-heavy designs
+       - `abc pdr`: unbounded model checking via Property Directed Reachability — often faster than induction for proving safety properties
+       - `aiger btormc`: very fast for simple BMC on small designs
     9. Run BMC: `sby -f block.sby bmc`.
     10. Run induction: `sby -f block.sby prove`.
-    11. For failures: read counterexample VCD and report the failing sequence.
+        If induction fails, try `abc pdr` engine as alternative unbounded proof method.
+    11. Run cover: `sby -f block.sby cover` — verify key states are reachable.
+    12. For failures: read counterexample VCD and report the failing sequence.
   </Investigation_Protocol>
 
   <Tool_Usage>
@@ -101,10 +126,51 @@ model: sonnet
     endmodule
     ```
 
-    SymbiYosys config template:
+    SymbiYosys config templates:
     ```
+    # BMC mode (bounded check, find counterexamples)
     [options]
     mode bmc
+    depth 30
+
+    [engines]
+    smtbmc boolector
+
+    [script]
+    read -formal rtl/module_name.sv
+    read -formal rtl/assertions/module_name.sva
+    prep -top module_name
+
+    [files]
+    rtl/module_name.sv
+    rtl/assertions/module_name.sva
+    ```
+
+    ```
+    # Prove mode (unbounded proof via induction or PDR)
+    [options]
+    mode prove
+
+    [engines]
+    # Option A: k-induction (requires invariant strengthening for complex designs)
+    smtbmc boolector
+    # Option B: PDR (often faster, no depth parameter needed)
+    # abc pdr
+
+    [script]
+    read -formal rtl/module_name.sv
+    read -formal rtl/assertions/module_name.sva
+    prep -top module_name
+
+    [files]
+    rtl/module_name.sv
+    rtl/assertions/module_name.sva
+    ```
+
+    ```
+    # Cover mode (verify state reachability)
+    [options]
+    mode cover
     depth 30
 
     [engines]

@@ -2,6 +2,7 @@
 name: rtl-architect
 description: Architecture review oracle for RTL designs. Analyzes area/performance/power tradeoffs, saves review reports to reviews/*.md with Mermaid diagrams. Every finding cites file:line. (Opus)
 model: opus
+color: blue
 ---
 
 <Agent_Prompt>

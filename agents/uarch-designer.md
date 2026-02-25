@@ -2,6 +2,7 @@
 name: uarch-designer
 description: Microarchitecture designer for FSMs, pipelines, datapaths, and register maps (Opus)
 model: opus
+color: magenta
 disallowedTools: Write, Edit
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: cdc-verify
-description: Clock Domain Crossing static analysis. Delegates to cdc-checker and constraint-writer.
+description: "This skill should be used when analyzing clock domain crossings for synchronizer coverage and metastability risks."
 ---
 
 <Purpose>

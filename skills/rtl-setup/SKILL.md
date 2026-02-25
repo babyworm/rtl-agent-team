@@ -1,6 +1,6 @@
 ---
 name: rtl-setup
-description: Initialize RTL project directory structure and verify EDA toolchain installation.
+description: "This skill should be used when initializing a new RTL project, setting up directory structure, or verifying EDA toolchain installation. Triggers on 'setup', 'initialize', 'init project'."
 ---
 
 <Purpose>

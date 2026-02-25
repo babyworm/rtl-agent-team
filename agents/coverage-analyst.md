@@ -2,6 +2,7 @@
 name: coverage-analyst
 description: Code and functional coverage analysis specialist. Identifies test gaps, ranks uncovered bins by risk, and drives coverage convergence strategy.
 model: opus
+color: blue
 disallowedTools: Write, Edit
 ---
 

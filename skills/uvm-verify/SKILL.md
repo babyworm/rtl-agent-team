@@ -1,6 +1,6 @@
 ---
 name: uvm-verify
-description: UVM verification flow (optional, requires commercial simulator). Delegates to testbench-dev and eda-runner.
+description: "This skill should be used when running UVM-based verification requiring commercial simulators (VCS/Questa/Xcelium)."
 ---
 
 <Purpose>

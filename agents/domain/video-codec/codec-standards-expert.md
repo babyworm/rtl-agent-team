@@ -2,6 +2,7 @@
 name: codec-standards-expert
 description: Video codec standards interpretation expert (H.264/H.265) - Opus
 model: opus
+color: blue
 ---
 
 <Agent_Prompt>

@@ -1,6 +1,6 @@
 ---
 name: arch-design
-description: Phase 2a skill. Produces system architecture and block diagram from requirements.
+description: "This skill should be used when designing system architecture from requirements in Phase 2. Produces architecture.md with block diagrams and Feature Coverage Checklist."
 ---
 
 <Purpose>

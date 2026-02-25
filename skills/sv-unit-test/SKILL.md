@@ -1,6 +1,6 @@
 ---
 name: sv-unit-test
-description: Phase 5 first-pass verification. SV testbench-based unit tests per RTL module.
+description: "This skill should be used when writing and running SystemVerilog unit tests per module. First-pass verification before cocotb regression."
 ---
 
 <Purpose>
