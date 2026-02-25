@@ -1,0 +1,27 @@
+{
+  "name": "rtl-agent-team",
+  "version": "0.1.0",
+  "description": "RTL design and verification automation agents for Claude Code",
+  "author": {
+    "name": "RTL Agent Team contributors"
+  },
+  "repository": "https://github.com/babyworm/rtl-agent-team",
+  "homepage": "https://github.com/babyworm/rtl-agent-team",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "rtl",
+    "hdl",
+    "verilog",
+    "systemverilog",
+    "eda",
+    "fpga",
+    "asic",
+    "verification",
+    "formal"
+  ],
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/"
+}

@@ -1,0 +1,39 @@
+{
+  "name": "rtl-agent-team",
+  "version": "0.1.0",
+  "description": "RTL design and verification automation plugin for Claude Code",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "agents",
+    "bridge/",
+    "skills",
+    "hooks",
+    "domain-packages",
+    ".claude-plugin",
+    "CLAUDE.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/build-hooks.mjs",
+    "build:hooks": "node scripts/build-hooks.mjs",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.27.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

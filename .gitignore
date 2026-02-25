@@ -1,0 +1,11 @@
+node_modules/
+dist/
+bridge/*.cjs
+bridge/*.cjs.map
+.rtl-agent-team/
+.omc/
+*.log
+.DS_Store
+coverage/
+.env
+.env.local

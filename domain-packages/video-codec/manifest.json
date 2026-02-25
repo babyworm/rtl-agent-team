@@ -1,0 +1,288 @@
+{
+  "domain": "video-codec",
+  "version": "1.0.0",
+  "description": "Video codec hardware design domain package for H.264/H.265 encoder and decoder RTL development",
+  "maintainer": "rtl-agent-team",
+
+  "standards": [
+    {
+      "id": "H.264",
+      "full_name": "ITU-T H.264 | ISO/IEC 14496-10 (AVC)",
+      "profiles": ["Baseline", "Main", "High", "High 10", "High 4:2:2", "High 4:4:4 Predictive"],
+      "levels": ["1.0", "1.1", "1.2", "1.3", "2.0", "2.1", "2.2", "3.0", "3.1", "3.2", "4.0", "4.1", "4.2", "5.0", "5.1", "5.2"],
+      "published": "2003-05 (original), 2021-06 (latest amendment)",
+      "issuing_body": "ITU-T Study Group 16 / ISO/IEC JTC 1/SC 29/WG 11",
+      "url": "https://www.itu.int/rec/T-REC-H.264/en"
+    },
+    {
+      "id": "H.265",
+      "full_name": "ITU-T H.265 | ISO/IEC 23008-2 (HEVC)",
+      "profiles": ["Main", "Main 10", "Main Still Picture", "Main 4:2:2 10", "Main 4:4:4", "Main 4:4:4 10"],
+      "levels": ["1.0", "2.0", "2.1", "3.0", "3.1", "4.0", "4.1", "5.0", "5.1", "5.2", "6.0", "6.1", "6.2"],
+      "published": "2013-04 (original), 2022-08 (latest amendment)",
+      "issuing_body": "ITU-T Study Group 16 / ISO/IEC JTC 1/SC 29/WG 11",
+      "url": "https://www.itu.int/rec/T-REC-H.265/en"
+    }
+  ],
+
+  "reference_software": [
+    {
+      "id": "JM",
+      "name": "Joint Model Reference Software (H.264)",
+      "version": "19.0",
+      "language": "C",
+      "url": "https://iphome.hhi.de/suehring/tml/",
+      "repository": "https://vcgit.hhi.fraunhofer.de/jvet/JM",
+      "notes": "Authoritative H.264 reference implementation. Used for conformance verification and golden output generation."
+    },
+    {
+      "id": "HM",
+      "name": "HEVC Test Model Reference Software (H.265)",
+      "version": "16.20",
+      "language": "C++",
+      "url": "https://hevc.hhi.fraunhofer.de/HM-doc/",
+      "repository": "https://vcgit.hhi.fraunhofer.de/jvet/HM",
+      "notes": "Authoritative H.265 reference implementation. Used for conformance verification and golden output generation."
+    },
+    {
+      "id": "VTM",
+      "name": "Versatile Video Coding Test Model (VVC, H.266)",
+      "version": "14.2",
+      "language": "C++",
+      "repository": "https://vcgit.hhi.fraunhofer.de/jvet/VVCSoftware_VTM",
+      "notes": "Next-generation codec reference. Included for future roadmap awareness."
+    }
+  ],
+
+  "agents": [
+    {
+      "id": "codec-standards-expert",
+      "file": "agents/domain/video-codec/codec-standards-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Standards interpretation — H.264/H.265 clause analysis, algorithm extraction, conformance definition",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": ["DOMAIN_UNCERTAINTY"],
+      "triggers": [
+        "standard clause interpretation",
+        "algorithm definition",
+        "conformance test vector",
+        "H.264 specification",
+        "H.265 HEVC specification",
+        "intra prediction modes",
+        "CABAC binarization",
+        "deblocking filter parameters",
+        "SAO filter"
+      ]
+    },
+    {
+      "id": "video-processing-expert",
+      "file": "agents/domain/video-codec/video-processing-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Performance analysis — throughput, memory bandwidth, cycles-per-block, parallelism requirements",
+      "phase_intensity": {
+        "research": "support",
+        "architecture": "primary",
+        "microarchitecture": "primary",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": [],
+      "triggers": [
+        "throughput requirement",
+        "memory bandwidth",
+        "cycles per block",
+        "macroblock rate",
+        "CTU rate",
+        "DPB sizing",
+        "line buffer sizing",
+        "pipeline depth",
+        "parallelism degree",
+        "performance budget",
+        "frames per second",
+        "resolution target"
+      ]
+    },
+    {
+      "id": "codec-architecture-expert",
+      "file": "agents/domain/video-codec/codec-architecture-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "HW architecture advisory — proven HW patterns, SRAM organization, fixed-point arithmetic, datapath specification",
+      "phase_intensity": {
+        "research": "support",
+        "architecture": "primary",
+        "microarchitecture": "primary",
+        "rtl": "support",
+        "verification": "review"
+      },
+      "output_tags": ["ARCH_DEVIATION", "QUALITY_TRADE-OFF"],
+      "triggers": [
+        "hardware architecture",
+        "SRAM organization",
+        "datapath width",
+        "fixed-point arithmetic",
+        "systolic array",
+        "motion estimation hardware",
+        "DCT hardware",
+        "CABAC hardware",
+        "deblocking hardware",
+        "SAO hardware",
+        "reference frame buffer",
+        "pipeline architecture",
+        "codec VLSI"
+      ]
+    }
+  ],
+
+  "knowledge_base": {
+    "path": "domain-packages/video-codec/knowledge/",
+    "contents": [
+      {
+        "file": "knowledge/h264-algorithm-summary.md",
+        "description": "H.264 algorithm block summaries with key clause references"
+      },
+      {
+        "file": "knowledge/h265-algorithm-summary.md",
+        "description": "H.265 algorithm block summaries with key clause references"
+      },
+      {
+        "file": "knowledge/throughput-tables.md",
+        "description": "Pre-computed throughput tables: MB/s and CTU/s for all standard resolution/framerate combinations"
+      },
+      {
+        "file": "knowledge/fixed-point-conventions.md",
+        "description": "Fixed-point arithmetic conventions for H.264/H.265 transform and quantization"
+      },
+      {
+        "file": "knowledge/hw-architecture-survey.md",
+        "description": "Survey of published VLSI implementations with area, power, and frequency data"
+      }
+    ]
+  },
+
+  "conformance": {
+    "path": "domain-packages/video-codec/conformance/",
+    "test_vector_sources": [
+      {
+        "id": "JVT-conformance",
+        "name": "JVT H.264 Conformance Bitstreams",
+        "url": "https://www.itu.int/net/ITU-T/sigdb/gengravsigdb/gengravsigdb.aspx?val=10002502",
+        "description": "Official ITU-T H.264 conformance test bitstreams"
+      },
+      {
+        "id": "JVET-conformance-HEVC",
+        "name": "JVET H.265 Conformance Bitstreams",
+        "url": "https://www.itu.int/net/ITU-T/sigdb/gengravsigdb/gengravsigdb.aspx?val=10002504",
+        "description": "Official ITU-T H.265 conformance test bitstreams"
+      }
+    ],
+    "golden_outputs": "domain-packages/video-codec/conformance/golden-outputs/",
+    "test_vectors": "domain-packages/video-codec/conformance/test-vectors/"
+  },
+
+  "templates": {
+    "path": "domain-packages/video-codec/templates/",
+    "description": "RTL and verification template files for common codec HW blocks"
+  },
+
+  "target_applications": [
+    {
+      "id": "surveillance",
+      "description": "IP camera and DVR/NVR systems",
+      "typical_targets": ["1080p@30fps H.264 encoder", "4K@30fps H.265 encoder"],
+      "constraints": ["low power (<500mW)", "small die area", "fanout-of-one ASIC or cost-optimized FPGA"]
+    },
+    {
+      "id": "streaming",
+      "description": "Video streaming and transcoding servers",
+      "typical_targets": ["4K@60fps H.265 decoder", "1080p@60fps H.264/H.265 encoder"],
+      "constraints": ["high throughput", "multi-channel parallel processing", "low latency (<100ms end-to-end)"]
+    },
+    {
+      "id": "broadcast",
+      "description": "Broadcast encoding and contribution links",
+      "typical_targets": ["1080p@60fps H.264 High Profile encoder", "4K@60fps H.265 Main 10 encoder"],
+      "constraints": ["high quality (high PSNR)", "broadcast-grade bit-exact compliance", "redundancy support"]
+    },
+    {
+      "id": "mobile",
+      "description": "Smartphone and tablet SoC codec",
+      "typical_targets": ["4K@60fps H.265 encoder+decoder", "8K@30fps H.265 decoder"],
+      "constraints": ["ultra-low power (<200mW peak)", "small die area", "DVFS support", "10-bit HDR support"]
+    },
+    {
+      "id": "automotive",
+      "description": "ADAS and in-vehicle infotainment",
+      "typical_targets": ["1080p@30fps H.264 encoder (dashcam)", "4K@60fps H.265 decoder (display)"],
+      "constraints": ["functional safety (ISO 26262)", "wide temperature range (-40C to +125C)", "long design lifetime (15+ years)"]
+    }
+  ],
+
+  "throughput_reference": {
+    "description": "Pre-computed throughput reference values for common targets",
+    "h264_macroblocks_per_second": {
+      "720p_30fps":   "3600",
+      "1080p_30fps":  "244800",
+      "1080p_60fps":  "489600",
+      "4K_30fps":     "972000",
+      "4K_60fps":     "1944000",
+      "8K_30fps":     "3888000",
+      "8K_60fps":     "7776000",
+      "note": "Macroblock size = 16x16 luma. Values use ceiling division for partial blocks."
+    },
+    "h265_ctus_per_second": {
+      "1080p_30fps":  "15300",
+      "1080p_60fps":  "30600",
+      "4K_30fps":     "61200",
+      "4K_60fps":     "122400",
+      "8K_30fps":     "244800",
+      "8K_60fps":     "489600",
+      "note": "CTU size = 64x64 luma (maximum, Main Profile). Values use ceiling division."
+    },
+    "derivation_example": {
+      "target": "H.264 4K@60fps",
+      "calculation": "ceil(3840/16) x ceil(2160/16) x 60 = 240 x 135 x 60 = 1,944,000 MB/s",
+      "at_500mhz": "500,000,000 / 1,944,000 = 257.2 cycles/MB",
+      "at_85_percent_utilization": "257.2 x 0.85 = 218.6 cycles/MB effective budget"
+    }
+  },
+
+  "agent_coordination": {
+    "description": "How domain expert agents coordinate with RTL design pipeline agents",
+    "phase_1_research": {
+      "primary_domain_agents": ["codec-standards-expert"],
+      "support_domain_agents": ["video-processing-expert"],
+      "rtl_agents": ["spec-analyst"],
+      "workflow": "codec-standards-expert provides algorithm definitions -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
+    },
+    "phase_2_architecture": {
+      "primary_domain_agents": ["codec-architecture-expert", "video-processing-expert"],
+      "support_domain_agents": ["codec-standards-expert"],
+      "rtl_agents": ["arch-designer"],
+      "workflow": "video-processing-expert validates throughput -> codec-architecture-expert recommends HW patterns -> arch-designer produces block-level architecture"
+    },
+    "phase_3_microarchitecture": {
+      "primary_domain_agents": ["codec-architecture-expert", "video-processing-expert"],
+      "support_domain_agents": [],
+      "rtl_agents": ["uarch-designer"],
+      "workflow": "codec-architecture-expert specifies SRAM/datapath -> video-processing-expert validates pipeline budget -> uarch-designer produces microarchitecture spec"
+    },
+    "phase_4_rtl": {
+      "primary_domain_agents": [],
+      "support_domain_agents": ["codec-standards-expert", "codec-architecture-expert"],
+      "rtl_agents": ["rtl-coder", "lint-checker"],
+      "workflow": "rtl-coder implements from microarch spec -> codec-standards-expert spot-checks compliance -> lint-checker runs static analysis"
+    },
+    "phase_5_verification": {
+      "primary_domain_agents": [],
+      "support_domain_agents": ["codec-standards-expert", "video-processing-expert"],
+      "rtl_agents": ["func-verifier", "perf-verifier"],
+      "workflow": "codec-standards-expert defines conformance vectors -> func-verifier runs bit-exact comparison -> video-processing-expert defines performance scenarios -> perf-verifier validates throughput"
+    }
+  }
+}

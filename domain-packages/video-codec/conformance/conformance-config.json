@@ -1,0 +1,84 @@
+{
+  "domain": "video-codec",
+  "version": "1.0.0",
+  "standards": {
+    "h264": {
+      "reference_software": "JM",
+      "version": "19.0",
+      "comparison_mode": "bitexact",
+      "tolerance": {
+        "pixel_value": 0,
+        "description": "Bit-exact match required for all pixel values"
+      }
+    },
+    "h265": {
+      "reference_software": "HM",
+      "version": "16.25",
+      "comparison_mode": "bitexact",
+      "tolerance": {
+        "pixel_value": 0,
+        "description": "Bit-exact match required for all pixel values"
+      }
+    }
+  },
+  "test_configurations": [
+    {
+      "name": "intra_4x4_basic",
+      "standard": "h264",
+      "description": "Basic intra 4x4 prediction, all 9 modes",
+      "resolution": "352x288",
+      "frames": 1,
+      "qp": [22, 27, 32, 37],
+      "profile": "baseline"
+    },
+    {
+      "name": "intra_16x16_basic",
+      "standard": "h264",
+      "description": "Intra 16x16 prediction, all 4 modes",
+      "resolution": "352x288",
+      "frames": 1,
+      "qp": [22, 27, 32, 37],
+      "profile": "baseline"
+    },
+    {
+      "name": "transform_quant_sweep",
+      "standard": "h264",
+      "description": "Transform and quantization across QP range",
+      "resolution": "176x144",
+      "frames": 1,
+      "qp_range": [0, 51],
+      "profile": "main"
+    },
+    {
+      "name": "cabac_basic",
+      "standard": "h264",
+      "description": "CABAC entropy coding verification",
+      "resolution": "352x288",
+      "frames": 5,
+      "qp": [27],
+      "profile": "main"
+    },
+    {
+      "name": "deblock_boundary",
+      "standard": "h264",
+      "description": "Deblocking filter edge cases",
+      "resolution": "352x288",
+      "frames": 2,
+      "qp": [22, 37],
+      "profile": "main"
+    }
+  ],
+  "verification_flow": {
+    "steps": [
+      "1. Encode test sequence with JM/HM reference software",
+      "2. Extract intermediate data (prediction, transform, recon) from JM/HM",
+      "3. Feed same input to RTL reference model",
+      "4. Compare outputs bit-by-bit",
+      "5. Report any mismatches with block coordinates and values"
+    ],
+    "pass_criteria": {
+      "pixel_mismatch_count": 0,
+      "syntax_element_mismatch_count": 0
+    }
+  }
+}
