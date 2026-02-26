@@ -43,11 +43,12 @@ lowRISC 기반이지만 포트 네이밍, 클럭/리셋 규칙 등 프로젝트 
 
 > **IMPORTANT — 아래 3가지는 lowRISC 가이드와 다르며, 반드시 이 규칙을 적용한다.**
 
-### 1.1 포트 방향 prefix (필수)
-- 입력: `i_`, 출력: `o_`, 양방향: `io_` — **항상 사용**
+### 1.1 포트 방향 prefix (필수, 클럭/리셋 예외)
+- 입력: `i_`, 출력: `o_`, 양방향: `io_` — **필수 사용**
 - 예: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
+- **예외**: 클럭과 리셋 포트는 `i_` prefix 불필요 (`clk`, `sys_clk`, `rst_n`, `sys_rst_n`)
 - suffix(`_i`, `_o`, `_io`) 사용은 **금지**
-- lowRISC는 suffix를 사용하지만, 이 프로젝트는 **prefix 필수**
+- lowRISC는 suffix를 사용하지만, 이 프로젝트는 **prefix 필수 (clk/rst 예외)**
 
 ### 1.2 클럭 명명
 - 단일 클럭: `clk` (기본) 또는 `{domain}_clk` (다중 클럭)

@@ -16,12 +16,16 @@ Base: https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md
 
 ## Detailed Rationale
 
-### Override 1: Port Direction Prefix (필수)
+### Override 1: Port Direction Prefix (필수, clk/rst 예외)
 
 **lowRISC**: `data_i`, `valid_o`, `sda_io` (suffix)
-**Project**: `i_data`, `o_valid`, `io_sda` (prefix, 항상 사용)
+**Project**: `i_data`, `o_valid`, `io_sda` (prefix, 필수)
 
-**Why prefix is mandatory:**
+**Clock/Reset 예외**: `clk`, `sys_clk`, `rst_n`, `sys_rst_n`은 `i_` prefix 없이 사용.
+클럭과 리셋은 항상 입력이므로 방향 prefix가 불필요하며, RTL 전체에서 가장 빈번하게
+참조되는 신호이므로 간결성을 우선한다.
+
+**Why prefix is mandatory (for other signals):**
 - When reading `i_data` in logic, direction is immediately visible
 - With suffix (`data_i`), the signal name body (`data`) comes first — direction is an afterthought
 - Prefix groups signals by direction when sorted alphabetically

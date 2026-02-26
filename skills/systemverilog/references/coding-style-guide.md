@@ -57,18 +57,19 @@ localparam int unsigned L_DATA_BYTES = DATA_WIDTH / 8;
 
 ## Port Naming Convention
 
-**MANDATORY**: Use direction PREFIXES on all port names.
+**MANDATORY**: Use direction PREFIXES on all port names (clock/reset excepted).
 
 | Prefix | Meaning |
 |--------|---------|
 | `i_` | Input signal |
 | `o_` | Output signal |
 | `io_` | Bidirectional signal |
+| *(none)* | Clock and reset ports only |
 
 ```systemverilog
 module my_module (
-  input  logic        i_clk,
-  input  logic        i_rst_n,  // Active-low async reset
+  input  logic        clk,       // Clock: no i_ prefix
+  input  logic        rst_n,     // Reset: no i_ prefix
   input  logic [7:0]  i_data,
   output logic        o_valid,
   inout  wire  [3:0]  io_bus
@@ -76,19 +77,19 @@ module my_module (
 ```
 
 **NEVER use suffixes** (`_i`, `_o`, `_io`).
-**NEVER omit direction prefix** — all ports must have `i_`/`o_`/`io_`.
+**Exception**: Clock (`clk`, `sys_clk`) and reset (`rst_n`, `sys_rst_n`) ports do NOT need `i_` prefix.
 
 ---
 
 ## Reset Convention (ALWAYS)
 
 **Active-low asynchronous reset**:
-- Signal name: `i_rst_n` (port) or `rst_n` (internal)
-- Triggered on negative edge: `negedge i_rst_n`
+- Signal name: `rst_n` (single domain) or `sys_rst_n` (multi-domain)
+- Triggered on negative edge: `negedge rst_n`
 
 ```systemverilog
-always_ff @(posedge i_clk or negedge i_rst_n) begin
-  if (!i_rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
+  if (!rst_n) begin
     state_q <= ST_IDLE;
     count_q <= '0;
   end else begin
@@ -123,8 +124,8 @@ module module_name #(
   parameter int unsigned DATA_WIDTH = 8,
   parameter int unsigned DEPTH      = 16
 ) (
-  input  logic                      i_clk,
-  input  logic                      i_rst_n,
+  input  logic                      clk,
+  input  logic                      rst_n,
 
   // Interface group 1
   input  logic [DATA_WIDTH-1:0]     i_data,
@@ -152,8 +153,8 @@ module module_name #(
 
   // Submodule instantiations
   submodule u_submodule (
-    .i_clk,
-    .i_rst_n,
+    .clk,
+    .rst_n,
     .i_data   (data_q),
     .o_result (result_internal)
   );
@@ -166,8 +167,8 @@ module module_name #(
     unique case (state_q)
       ST_IDLE: begin
         if (i_valid) begin
-          state_d = ST_PROCESS;
-          data_d  = i_data;
+          state_d  = ST_PROCESS;
+          data_d   = i_data;
         end
       end
       ST_PROCESS: begin
@@ -181,8 +182,8 @@ module module_name #(
   end
 
   // Sequential logic (active-low async reset)
-  always_ff @(posedge i_clk or negedge i_rst_n) begin
-    if (!i_rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
       state_q <= ST_IDLE;
       data_q  <= '0;
     end else begin
