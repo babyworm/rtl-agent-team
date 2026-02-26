@@ -134,7 +134,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 | RTL 코딩 | `rtl-agent-team:rtl-coder` | Opus |
 | RTL 리뷰 | `rtl-agent-team:rtl-critic` | Opus |
 | 설계 계획 | `rtl-agent-team:rtl-planner` | Opus |
-| 코드베이스 탐색 | `rtl-agent-team:rtl-explorer` | Sonnet |
+| 코드베이스 탐색 | `rtl-agent-team:rtl-explorer` | Opus |
 | **--- 검증 ---** | | |
 | 테스트벤치 작성 | `rtl-agent-team:testbench-dev` | Opus |
 | 기능 검증 | `rtl-agent-team:func-verifier` | Opus |
@@ -196,7 +196,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 - `systemverilog`: lowRISC + 오버라이드, Power 최적화, FPGA, Pipelining
 - `systemverilog-assertion`: SVA 패턴, bind 파일, SymbiYosys 통합, assume/assert/cover
 - `uvm`: UVM 클래스 계층, factory, TLM 포트, coverage, phase callback
-- `systemc`: TLM-2.0 패턴, BFM 규칙, Ref Model 규칙, cocotb 연동
+- `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb 연동
 
 ## EDA 도구 사용
 

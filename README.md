@@ -2,7 +2,7 @@
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-27개 전문 AI 에이전트 + 32개 스킬을 통해 5-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify)을 자동화합니다.
+42개 전문 AI 에이전트 + 32개 스킬 + 11개 레퍼런스 문서를 통해 5-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify)을 자동화합니다.
 
 ## 설치
 
@@ -84,20 +84,25 @@ ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
 ```
 rtl-agent-team/
 ├── .claude-plugin/
-│   ├── plugin.json             # 플러그인 매니페스트
+│   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 5-Phase 파이프라인 규칙
 ├── hooks/hooks.json            # Hook 이벤트 와이어링
-├── agents/                     # 24 core + 3 domain = 27 에이전트
-│   └── domain/video-codec/     # 도메인 전문가 (H.264/H.265)
-├── skills/                     # 32개 스킬 (SKILL.md)
-│   ├── systemverilog/          # RTL 코딩 컨벤션
-│   ├── systemverilog-assertion/ # SVA 코딩 컨벤션
-│   ├── uvm/                    # UVM 코딩 컨벤션
-│   └── systemc/                # SystemC/TLM 코딩 컨벤션
+├── agents/                     # 42개 에이전트 (설계/검증/리뷰/EDA/도메인)
+├── skills/                     # 32개 스킬 (SKILL.md + templates/ + examples/)
+│   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
+│   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
+│   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
+│   └── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
+├── references/                 # 11개 상세 레퍼런스 문서
+│   ├── coding-style-guide.md   # SV 명명 규칙 상세
+│   ├── axi-protocol-rules.md   # AXI4 채널별 SVA 템플릿
+│   ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리
+│   ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage
+│   └── ...                     # + 7개 (CDC, UVM, Yosys, SDC 등)
 ├── docker/                     # EDA 도구 Docker 이미지
 │   └── Dockerfile              # 오픈소스 EDA 전체 번들
-├── src/hooks/                  # 4개 Hook (TypeScript)
+├── src/hooks/                  # Hook (TypeScript)
 ├── bridge/                     # Hook CJS 번들 (빌드 산출물)
 └── domain-packages/            # 도메인 지식 패키지
     └── video-codec/            # H.264/H.265 지식, 적합성 데이터
@@ -105,22 +110,26 @@ rtl-agent-team/
 
 ## 에이전트 팀
 
-### 모델 라우팅
+### 에이전트 구성 (42개, 전체 Opus)
 
-| 모델 | 에이전트 수 | 역할 |
-|------|-----------|------|
-| Opus | 18 + 3 domain | 코딩, 분석, 리뷰, 도메인 전문 |
-| Sonnet | 6 | 탐색, 실행, 리포팅 |
+| 카테고리 | 에이전트 수 | 주요 에이전트 |
+|---------|-----------|-------------|
+| 설계 | 8 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer |
+| 검증 | 7 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer |
+| 전문 리뷰 | 15 | cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, dft-designer, clock-architect, security-reviewer |
+| EDA/합성 | 6 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker |
+| 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
+| 도메인 전문가 | 3 | codec-standards-expert, codec-architecture-expert, video-processing-expert |
 
 ### 5-Phase 파이프라인
 
-| Phase | 이름 | 주요 에이전트 |
-|-------|------|-------------|
-| 1 | Research | spec-analyst |
-| 2 | Architecture + Ref Model | arch-designer, ref-model-dev |
-| 3 | μArch + BFM | uarch-designer, bfm-dev |
-| 4 | RTL Coding | rtl-coder, lint-checker |
-| 5 | Verification | func-verifier, sva-extractor, synthesis-reporter |
+| Phase | 이름 | 주요 에이전트 | 리뷰 에이전트 |
+|-------|------|-------------|-------------|
+| 1 | Research | spec-analyst | — |
+| 2 | Architecture + Ref Model | arch-designer, ref-model-dev | rtl-architect |
+| 3 | μArch + BFM | uarch-designer, bfm-dev | rtl-architect |
+| 4 | RTL Coding | rtl-coder, lint-checker | rtl-critic, cdc-reviewer, protocol-reviewer, power-analyzer, synthesis-reviewer |
+| 5 | Verification | func-verifier, sva-extractor, synthesis-reporter | formal-reviewer, uvm-reviewer, cocotb-reviewer, requirement-tracer |
 
 ### 코딩 컨벤션 스킬
 
@@ -129,7 +138,15 @@ rtl-agent-team/
 | `systemverilog` | `.sv`, `.svh`, `.v`, `.vh` | lowRISC + 프로젝트 오버라이드, Power, FPGA, Pipelining |
 | `systemverilog-assertion` | SVA, bind 파일 | assume/assert/cover, SymbiYosys, bind 패턴 |
 | `uvm` | UVM testbench | factory, TLM 포트, coverage, phase callback |
-| `systemc` | `.cpp`, `.h` (SystemC) | TLM-2.0, BFM, Ref Model, cocotb 연동 |
+| `systemc` | `.cpp`, `.h` (SystemC) | TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ |
+
+### 문서 3계층 구조 (점진적 공개)
+
+| 계층 | 위치 | 역할 |
+|------|------|------|
+| 핵심 규칙 | `skills/*/SKILL.md` → `<Steps>` | 에이전트가 항상 읽는 필수 규칙 |
+| 상황별 가이드 | `skills/*/SKILL.md` → `<Advanced>` | 특정 최적화/상황에서만 참조 |
+| 상세 레퍼런스 | `references/*.md` | 명령 레퍼런스, 패턴 라이브러리, 프로토콜 상세 |
 
 ## EDA 도구
 
