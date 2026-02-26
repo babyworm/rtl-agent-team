@@ -125,47 +125,56 @@ This skill ensures everything is in place before design work begins.
    ```
 
 8. **Docker EDA 이미지 빌드** (사용자 요청 시):
-
-   사용자가 "docker image 만들자", "EDA 도커 환경" 등을 요청하면 Docker 이미지를 빌드한다.
-   이 이미지에는 모든 필수/선택 EDA 도구가 포함되어 팀 전체가 동일 환경을 공유할 수 있다.
+   사용자가 "docker image", "EDA 도커 환경" 등을 요청하면 Docker 이미지를 빌드한다.
+   상세 빌드/실행 명령과 포함된 도구 목록은 `<Advanced>` 섹션 참조.
 
    ```bash
-   # 이미지 빌드
    docker build -t rtl-eda-tools docker/
-
-   # 빌드 인자로 버전 지정 가능
-   docker build -t rtl-eda-tools \
-     --build-arg VERILATOR_VERSION=5.024 \
-     --build-arg SLANG_VERSION=v6.0 \
-     --build-arg SYSTEMC_VERSION=3.0.2 \
-     docker/
-   ```
-
-   빌드 완료 후 프로젝트를 마운트하여 실행:
-   ```bash
-   # 기본 실행
    docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
-
-   # GUI (gtkwave) 지원
-   docker run -it --rm \
-     -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
-     -v $(pwd):/workspace -w /workspace rtl-eda-tools
    ```
-
-   **포함된 도구:**
-   | 도구 | 버전 | 용도 |
-   |------|------|------|
-   | verilator | 5.024 (configurable) | 시뮬레이션 + Lint |
-   | verible | latest release | 스타일 Lint + 포매팅 |
-   | yosys | apt latest | 합성 |
-   | iverilog | apt latest | 대안 시뮬레이터 |
-   | slang | v6.0 (configurable) | IEEE 1800 시맨틱 Lint |
-   | sby (SymbiYosys) | latest + boolector, z3 | Formal 검증 |
-   | gtkwave | apt latest | 파형 뷰어 |
-   | SystemC/TLM-2.0 | 3.0.2 (configurable) | 레퍼런스 모델 + BFM |
-   | cocotb + extensions | pip latest | 기능 검증 |
-   | gcc/g++ | apt latest | 레퍼런스 모델 빌드 |
 </Steps>
+
+<Advanced>
+
+## Docker EDA 이미지 상세
+
+이미지에는 모든 필수/선택 EDA 도구가 포함되어 팀 전체가 동일 환경을 공유할 수 있다.
+
+### 빌드 (버전 지정 가능)
+```bash
+docker build -t rtl-eda-tools \
+  --build-arg VERILATOR_VERSION=5.024 \
+  --build-arg SLANG_VERSION=v6.0 \
+  --build-arg SYSTEMC_VERSION=3.0.2 \
+  docker/
+```
+
+### 실행
+```bash
+# 기본 실행
+docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+
+# GUI (gtkwave) 지원
+docker run -it --rm \
+  -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v $(pwd):/workspace -w /workspace rtl-eda-tools
+```
+
+### 포함된 도구
+| 도구 | 버전 | 용도 |
+|------|------|------|
+| verilator | 5.024 (configurable) | 시뮬레이션 + Lint |
+| verible | latest release | 스타일 Lint + 포매팅 |
+| yosys | apt latest | 합성 |
+| iverilog | apt latest | 대안 시뮬레이터 |
+| slang | v6.0 (configurable) | IEEE 1800 시맨틱 Lint |
+| sby (SymbiYosys) | latest + boolector, z3 | Formal 검증 |
+| gtkwave | apt latest | 파형 뷰어 |
+| SystemC/TLM-2.0 | 3.0.2 (configurable) | 레퍼런스 모델 + BFM |
+| cocotb + extensions | pip latest | 기능 검증 |
+| gcc/g++ | apt latest | 레퍼런스 모델 빌드 |
+
+</Advanced>
 
 <Tool_Usage>
 ```
