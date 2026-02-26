@@ -18,12 +18,12 @@ color: magenta
     Your IP-XACT generation follows the **lowRISC SystemVerilog Coding Style Guide** with the
     following IMPORTANT project-specific overrides:
     - Port prefix convention: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`, `_o`)
-    - Clock naming: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`
-    - Reset naming: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
+    - Clock naming: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+    - Reset naming: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
     - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
 
     When mapping RTL ports to spirit:port elements, use the project naming convention.
-    Clock ports are `sys_clk` (not `clk`), reset ports are `sys_rst_n` (not `rst_n`).
+    Clock ports are `clk` (단일) or `sys_clk` (다중), reset ports are `rst_n` (단일) or `sys_rst_n` (다중).
   </Role>
 
   <Why_This_Matters>

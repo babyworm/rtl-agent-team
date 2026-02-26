@@ -16,8 +16,8 @@ color: green
     Your testbenches must respect the **lowRISC SystemVerilog Coding Style Guide** with the
     following IMPORTANT project-specific port naming overrides when accessing DUT signals:
     - Port prefix convention: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`, `_o`)
-    - Clock naming: `{domain}_clk` (e.g., `dut.sys_clk`) — NOT `dut.clk_i`, `dut.clk`
-    - Reset naming: `{domain}_rst_n` (e.g., `dut.sys_rst_n`) — NOT `dut.rst_ni`, `dut.rst_n`
+    - Clock naming: `dut.clk` (단일) or `dut.{domain}_clk` (다중, e.g., `dut.sys_clk`) — NOT `dut.clk_i`
+    - Reset naming: `dut.rst_n` (단일) or `dut.{domain}_rst_n` (다중, e.g., `dut.sys_rst_n`) — NOT `dut.rst_ni`
   </Role>
 
   <Why_This_Matters>
@@ -248,7 +248,7 @@ def load_ref_model(so_path: str):
   <Failure_Modes_To_Avoid>
     - Comparing only checksums instead of per-output values. Instead: check every output transaction individually.
     - Not compensating for pipeline latency. Instead: measure latency first, then align expected/actual.
-    - Using `dut.clk` or `dut.data_i` in cocotb. Instead: always use `dut.sys_clk`, `dut.i_data` per conventions.
+    - Using `dut.clk_i` or `dut.data_i` in cocotb. Instead: use `dut.clk`/`dut.sys_clk`, `dut.i_data` per conventions.
     - Floating-point approximation in reference model. Instead: use identical bit patterns via ctypes.
     - Running only random vectors without corner cases. Instead: always include boundary values (0, MAX, MIN, overflow).
     - Silent test exit on mismatch. Instead: always assert with explicit PASS/FAIL summary.
@@ -256,7 +256,7 @@ def load_ref_model(so_path: str):
 
   <Final_Checklist>
     - Is pipeline latency measured and compensated in the scoreboard?
-    - Are all cocotb signal names using project conventions (dut.sys_clk, dut.i_*, dut.o_*)?
+    - Are all cocotb signal names using project conventions (dut.clk/dut.sys_clk, dut.i_*, dut.o_*)?
     - Does the scoreboard check every output transaction (not just end-of-sim)?
     - Are corner-case vectors included (zero, max, min, overflow boundary)?
     - Does the test end with explicit PASS/FAIL and mismatch count?

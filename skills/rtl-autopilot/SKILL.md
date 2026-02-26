@@ -172,8 +172,8 @@ This skill automates sequencing, gate checking, and recovery.
 
 **Coding Convention Enforcement (all phases):**
 - Port naming: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
-- Clock: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
-- Reset: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
+- Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
 - Instances: `u_` prefix; generates: `gen_` prefix
 - Use `logic` everywhere (`reg`/`wire` forbidden)
 - Base style: lowRISC SystemVerilog Coding Style Guide with above overrides

@@ -91,8 +91,8 @@ color: green
     6. **Signal Naming**:
        a. Verify DUT signal access uses correct names: `dut.i_data`, `dut.o_result`
        b. Check for hardcoded signal names that should be parameterized.
-       c. Verify clock reference: `dut.sys_clk` (not `dut.clk` or `dut.clk_i`).
-       d. Verify reset reference: `dut.sys_rst_n` (not `dut.rst` or `dut.rst_ni`).
+       c. Verify clock reference: `dut.clk` or `dut.sys_clk` (NOT `dut.clk_i`).
+       d. Verify reset reference: `dut.rst_n` or `dut.sys_rst_n` (NOT `dut.rst_ni`).
     7. **Reset Handling**:
        a. Is reset asserted before clock starts? (or at least before first test stimulus)
        b. Is reset held for sufficient duration? (multiple clock cycles)
@@ -119,8 +119,8 @@ color: green
     # Find signal reads immediately after edge (potential race)
     grep -A1 "await RisingEdge" tb/cocotb/*.py | grep "\.value"
 
-    # Find hardcoded clock/reset names
-    grep -n "dut\.clk\b\|dut\.rst\b\|dut\.clk_i\|dut\.rst_ni" tb/cocotb/*.py
+    # Find non-conformant clock/reset names (clk_i, rst_ni are forbidden)
+    grep -n "dut\.clk_i\|dut\.rst_ni" tb/cocotb/*.py
     ```
   </Tool_Usage>
 

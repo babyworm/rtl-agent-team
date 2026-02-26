@@ -39,8 +39,8 @@ The cocotb ecosystem provides reusable bus functional models:
 <Coding_Convention_Requirements>
 cocotb test files MUST use correct signal names matching RTL port conventions (CLAUDE.md):
 - Signal access: `dut.i_data` (NOT `dut.data_i`), `dut.o_valid` (NOT `dut.valid_o`)
-- Clock: `dut.sys_clk` (NOT `dut.clk`, `dut.clk_i`)
-- Reset: `dut.sys_rst_n` (NOT `dut.rst_ni`, `dut.rst_n`)
+- Clock: `dut.clk` (단일) or `dut.sys_clk` (다중) — NOT `dut.clk_i`
+- Reset: `dut.rst_n` (단일) or `dut.sys_rst_n` (다중) — NOT `dut.rst_ni`
 - cocotb clock utility: `cocotb.clock.Clock(dut.sys_clk, 10, units="ns")`
 - Reset sequence: drive `dut.sys_rst_n.value = 0`, wait, then `dut.sys_rst_n.value = 1`
 </Coding_Convention_Requirements>
@@ -143,7 +143,7 @@ at cycle 47; RTL fix applied; rerun shows all 200 pass.
 </Good>
 <Bad>
 Comparing only checksums instead of per-output comparison — misses byte-level misalignment bugs.
-Using `dut.clk` or `dut.data_i` in cocotb — signal name mismatch causes AttributeError at runtime.
+Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes AttributeError at runtime.
 </Bad>
 </Examples>
 

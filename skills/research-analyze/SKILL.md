@@ -74,8 +74,8 @@ Separating this from arch-design prevents spec ambiguity from corrupting structu
      - Inputs: `i_` prefix (e.g., `i_data`, `i_valid`) — NOT suffix `_i`
      - Outputs: `o_` prefix (e.g., `o_result`, `o_ready`) — NOT suffix `_o`
      - Bidirectional: `io_` prefix (e.g., `io_sda`)
-     - Clocks: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
-     - Resets: `{domain}_rst_n` (e.g., `sys_rst_n`, `pixel_rst_n`) — NOT `rst_ni`, `rst_n`
+     - Clocks: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+     - Resets: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
    - Single clock domain defaults to `sys_clk` / `sys_rst_n`
 5. Produce domain-analysis.md (algorithm overview, known implementation challenges, references)
 6. Validate all three files exist and JSON is well-formed
@@ -120,8 +120,8 @@ Skipping spec-analyst and writing requirements.json manually — misses formal t
 - [ ] Every requirement in requirements.json has a unique `"id": "REQ-NNN"` field
 - [ ] io_definition.json exists and is valid JSON
 - [ ] io_definition.json port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
-- [ ] io_definition.json clocks use `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`
-- [ ] io_definition.json resets use `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`
+- [ ] io_definition.json clocks use `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for 단일, `{domain}_clk` for 다중. NOT `clk_i`
+- [ ] io_definition.json resets use `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for 단일, `{domain}_rst_n` for 다중. NOT `rst_ni`
 - [ ] domain-analysis.md exists
 - [ ] No unresolved requirement conflicts
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED with suspected omissions)

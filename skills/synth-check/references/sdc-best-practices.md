@@ -19,7 +19,7 @@ Write constraints in this order — later sections may depend on earlier definit
 
 | Constraint | When to Use | Project Convention |
 |-----------|-------------|-------------------|
-| `create_clock` | Primary clock input port | `[get_ports sys_clk]` — NOT `clk`, `clk_i` |
+| `create_clock` | Primary clock input port | `[get_ports clk]` or `[get_ports sys_clk]` — NOT `clk_i` |
 | `create_generated_clock` | PLL/divider output | Must reference master clock with `-source` |
 
 ```tcl

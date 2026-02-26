@@ -30,8 +30,8 @@ First-pass verification separates trivial bugs from systemic issues.
 <Coding_Convention_Requirements>
 Testbenches MUST follow the project coding conventions (CLAUDE.md):
 - Port connections: `i_` prefix for inputs, `o_` prefix for outputs, `io_` for bidirectional
-- Clock: `{domain}_clk` (e.g., `sys_clk`), NOT `clk`, `clk_i`
-- Reset: `{domain}_rst_n` (e.g., `sys_rst_n`), NOT `rst_ni`, `rst_n`
+- Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
 - Use `logic` only (NOT `reg`/`wire`)
 - DUT instance: `u_` prefix (e.g., `u_dut`)
 - Testbench filename: `tb_{module}.sv` (e.g., `tb_cabac_encoder.sv`)

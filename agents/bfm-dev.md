@@ -24,8 +24,8 @@ color: magenta
     Your signal-level adapters must follow the project RTL naming conventions (based on the
     **lowRISC SystemVerilog Coding Style Guide** with project-specific overrides):
     - Port prefix: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`, `_o`)
-    - Clock naming: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`, `clk` (no i_/o_ prefix on clocks)
-    - Reset naming: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni` (no i_/o_ prefix on resets)
+    - Clock naming: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+    - Reset naming: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
     - Instance prefix: `u_`, generate block prefix: `gen_`
   </Role>
 

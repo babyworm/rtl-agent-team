@@ -40,8 +40,8 @@ Dedicated domain experts catch codec-specific pitfalls early.
 4. arch-designer produces architecture.md draft and block_diagram
    - All interface signal names MUST follow naming conventions:
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
-     - Clocks: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
-     - Resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
+     - Clocks: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+     - Resets: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
      - Instances: `u_` prefix (e.g., `u_input_buffer`), generates: `gen_` prefix
    - Block names: `snake_case` (these become RTL module names)
    - architecture.md MUST include a Mermaid block diagram section showing top-level block decomposition
@@ -114,8 +114,8 @@ timing-critical issues that are expensive to fix at RTL stage.
 - [ ] rtl-architect review completed with no blockers
 - [ ] All interfaces consistent with io_definition.json
 - [ ] All signal names use `i_`/`o_`/`io_` prefix (NOT `_i`/`_o` suffix)
-- [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`
-- [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`
+- [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for 단일, `{domain}_clk` for 다중. NOT `clk_i`
+- [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for 단일, `{domain}_rst_n` for 다중. NOT `rst_ni`
 - [ ] Instance names use `u_` prefix, generate blocks use `gen_` prefix
 - [ ] **reviews/phase-2-architecture/feature-coverage.md saved with Feature Coverage Checklist**
 - [ ] **reviews/phase-2-architecture/architecture-review.md saved with full review**
@@ -127,8 +127,8 @@ architecture.md should include: block list, per-block responsibility, inter-bloc
 
 Naming convention enforcement in architecture.md:
 - Interface table signal names: `i_blockname_signal`, `o_blockname_signal` (prefix, not suffix)
-- Clock columns: `sys_clk`, `pixel_clk`, etc. (NOT `clk`, `clk_i`, `clk_sys`)
-- Reset columns: `sys_rst_n`, `pixel_rst_n` (NOT `rst_n`, `rst_ni`)
+- Clock columns: `clk`, `sys_clk`, `pixel_clk`, etc. (NOT `clk_i`, `clk_sys`)
+- Reset columns: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
 - Block instance names when referenced: `u_block_name` prefix
 - These names flow directly to uarch-design and rtl-code — errors here cascade downstream
 </Advanced>

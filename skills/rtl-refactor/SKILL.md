@@ -35,8 +35,8 @@ a signal connection. Combining rtl-architect analysis with lint-checker verifica
 1. rtl-architect reads target file(s), produces refactoring plan (what changes, what must stay identical)
    - Plan must include naming convention audit:
      - Ports: `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`) — flag violations for correction
-     - Clocks: `{domain}_clk` (e.g., `sys_clk`) — flag bare `clk`, `clk_i`, `clk_sys`
-     - Resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — flag `rst_n`, `rst_ni`
+     - Clocks: `clk` (단일) or `{domain}_clk` (다중) — flag `clk_i`, `clk_sys`
+     - Resets: `rst_n` (단일) or `{domain}_rst_n` (다중) — flag `rst_ni`
      - Instances: `u_` prefix — flag missing prefix
      - Generates: `gen_` prefix — flag missing prefix
      - `logic` only — flag any `reg`/`wire` usage
@@ -51,7 +51,7 @@ a signal connection. Combining rtl-architect analysis with lint-checker verifica
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Analyze rtl/src/entropy_coder.sv and produce a refactoring plan. Include: (1) naming convention fixes (i_/o_ prefix NOT _i/_o suffix, {domain}_clk NOT clk/clk_i, {domain}_rst_n NOT rst_n/rst_ni, u_ instance prefix, gen_ generate prefix), (2) module size reduction, (3) reg/wire to logic conversion. READ-ONLY analysis.")
+     prompt="Analyze rtl/src/entropy_coder.sv and produce a refactoring plan. Include: (1) naming convention fixes (i_/o_ prefix NOT _i/_o suffix, clk or {domain}_clk NOT clk_i, rst_n or {domain}_rst_n NOT rst_ni, u_ instance prefix, gen_ generate prefix), (2) module size reduction, (3) reg/wire to logic conversion. READ-ONLY analysis.")
 
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Apply refactoring plan to rtl/src/entropy_coder.sv: [paste plan]. Ensure all names use i_/o_ prefix, sys_clk/sys_rst_n convention. Do not change behavior.")
@@ -81,8 +81,8 @@ Refactoring signal names without checking all instantiation sites — breaks hie
 - [ ] No instantiation sites broken
 - [ ] Refactoring plan followed exactly
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
-- [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`
-- [ ] All resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`
+- [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for 단일, `{domain}_clk` for 다중. NOT `clk_i`
+- [ ] All resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for 단일, `{domain}_rst_n` for 다중. NOT `rst_ni`
 - [ ] All instances: `u_` prefix, generates: `gen_` prefix
 - [ ] No `reg`/`wire` keywords — `logic` only
 </Final_Checklist>
@@ -92,8 +92,8 @@ For large module splits, update all instantiation sites in the same task to main
 
 **Common refactoring patterns for naming convention compliance:**
 - `data_i` -> `i_data`, `valid_o` -> `o_valid` (suffix to prefix)
-- `clk` / `clk_i` -> `sys_clk` (bare/suffix clock to domain clock)
-- `rst_n` / `rst_ni` -> `sys_rst_n` (bare/suffix reset to domain reset)
+- `clk_i` -> `clk` or `sys_clk` (suffix clock to conformant name)
+- `rst_ni` -> `rst_n` or `sys_rst_n` (suffix reset to conformant name)
 - `fifo_inst` -> `u_fifo` (missing instance prefix)
 - `reg [7:0] data` -> `logic [7:0] data` (reg to logic)
 

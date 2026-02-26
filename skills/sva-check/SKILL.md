@@ -31,8 +31,8 @@ SymbiYosys is open-source and integrates cleanly with Yosys-based flows.
 <Coding_Convention_Requirements>
 SVA property files MUST follow the project coding conventions (CLAUDE.md):
 - Signal references: `i_` prefix for inputs, `o_` prefix for outputs (e.g., `i_valid`, `o_ready`)
-- Clock references: `{domain}_clk` (e.g., `sys_clk`), NOT `clk`, `clk_i`
-- Reset references: `{domain}_rst_n` (e.g., `sys_rst_n`), NOT `rst_ni`
+- Clock references: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+- Reset references: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
 - Use `logic` in helper code (NOT `reg`/`wire`)
 - Assertion labels: descriptive snake_case (e.g., `no_fifo_overflow`, `valid_handshake`)
 </Coding_Convention_Requirements>

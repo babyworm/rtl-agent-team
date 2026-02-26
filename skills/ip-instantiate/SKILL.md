@@ -32,8 +32,8 @@ eliminates transcription errors and documents all connections explicitly.
 - rtl-coder writes the wrapper RTL
 - Wrapper MUST follow project coding conventions:
   - Port prefixes: `i_` (input), `o_` (output), `io_` (bidirectional)
-  - Clock: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk`, `clk_i`
-  - Reset: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`
+  - Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+  - Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
   - `logic` only — no `reg`/`wire`
   - Instance: `u_` prefix (e.g., `u_sram`)
   - Generate: `gen_` prefix
@@ -43,8 +43,8 @@ eliminates transcription errors and documents all connections explicitly.
 1. rtl-explorer reads project structure: existing wrappers in rtl/src/ip_wrappers/, interface conventions, coding style
 2. rtl-architect reads IP descriptor (IP-XACT or datasheet): lists all ports, parameters, tie-off requirements
 3. rtl-architect designs wrapper interface — adapts IP vendor port names to project conventions:
-   - Vendor `clk` / `clk_i` → project `sys_clk` (or appropriate `{domain}_clk`)
-   - Vendor `rst_n` / `rst_ni` → project `sys_rst_n` (or appropriate `{domain}_rst_n`)
+   - Vendor `clk_i` → project `clk` or `{domain}_clk` (e.g., `sys_clk`)
+   - Vendor `rst_ni` → project `rst_n` or `{domain}_rst_n` (e.g., `sys_rst_n`)
    - Vendor ports → project `i_`/`o_`/`io_` prefix convention
 4. rtl-coder writes rtl/src/ip_wrappers/{ip_name}_wrapper.sv:
    - Module declaration with `i_`/`o_`/`io_` prefixed ports, `logic` types only
@@ -91,8 +91,8 @@ that breaks downstream integration.
 - [ ] IP port list fully read from descriptor
 - [ ] All IP ports connected or explicitly tied off with `// TIED: reason` comments
 - [ ] Wrapper ports use `i_`/`o_`/`io_` prefixes (NOT `_i`/`_o` suffix)
-- [ ] Clocks use `{domain}_clk` naming (NOT `clk`, `clk_i`)
-- [ ] Resets use `{domain}_rst_n` naming (NOT `rst_ni`, `rst_n`)
+- [ ] Clocks use `clk` or `{domain}_clk` naming (NOT `clk_i`)
+- [ ] Resets use `rst_n` or `{domain}_rst_n` naming (NOT `rst_ni`)
 - [ ] IP instance uses `u_` prefix (e.g., `u_{ip_name}`)
 - [ ] `logic` types only — no `reg`/`wire`
 - [ ] lint-check passes on generated wrapper (Verible + slang)

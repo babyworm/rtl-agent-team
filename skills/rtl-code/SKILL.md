@@ -41,8 +41,8 @@ Parallelizing per-module coding maximizes throughput.
 4. Launch parallel rtl-coder tasks: one per module
    - **Mandatory coding conventions per module:**
      - Port prefix: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
-     - Clock: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`, `clk_sys`
-     - Reset: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
+     - Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+     - Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
      - Use `logic` only — `reg` and `wire` keywords forbidden
      - `always_ff` for sequential, `always_comb` for combinational
      - `typedef enum logic [N:0]` for FSM states, `typedef struct packed` for grouped signals
@@ -124,8 +124,8 @@ that should be caught before coding modules B-F.
 - [ ] **Every REQ-NNN from requirements.json implemented in at least one RTL module**
 - [ ] **Every uarch/*.md behavioral spec reflected in corresponding RTL module**
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
-- [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — no bare `clk`, `clk_i`, `clk_sys`
-- [ ] All resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — no bare `rst_n`, `rst_ni`
+- [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`, `clk_sys` (bare `clk` is allowed for single-domain)
+- [ ] All resets: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni` (bare `rst_n` is allowed for single-domain)
 - [ ] All instances: `u_` prefix, generates: `gen_` prefix
 - [ ] `logic` only — no `reg`/`wire` keywords
 - [ ] `always_ff` for sequential, `always_comb` for combinational — no bare `always`
@@ -138,11 +138,11 @@ that should be caught before coding modules B-F.
 rtl-coder should use parameters for all configurable constants (widths, depths).
 
 **Clock and reset naming (project-specific override of lowRISC guide):**
-- Clock: `{domain}_clk` — e.g., `sys_clk`, `pixel_clk`, `axi_clk`
-  - WRONG: `clk`, `clk_i`, `clk_sys`, `clock`
-- Reset: `{domain}_rst_n` — e.g., `sys_rst_n`, `pixel_rst_n`
-  - WRONG: `rst_n`, `rst_ni`, `reset_n`, `rstn`
-- Single clock domain defaults to `sys_clk` / `sys_rst_n`
+- Clock: `clk` (단일) or `{domain}_clk` (다중) — e.g., `sys_clk`, `pixel_clk`
+  - WRONG: `clk_i`, `clk_sys`, `clock`
+- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중) — e.g., `sys_rst_n`, `pixel_rst_n`
+  - WRONG: `rst_ni`, `reset_n`, `rstn`
+- Clock/reset ports do NOT need `i_` prefix
 
 **Port naming:**
 - Inputs: `i_data`, `i_valid`, `i_addr` (NOT `data_i`, `valid_i`)

@@ -17,13 +17,14 @@ color: green
     Your harnesses follow the **lowRISC SystemVerilog Coding Style Guide** with the
     following IMPORTANT project-specific overrides:
     - Port prefix convention: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`, `_o`)
-    - Clock naming: `{domain}_clk` (e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`, `clk`
-    - Reset naming: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`, `rst_n`
+    - Clock naming: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+    - Reset naming: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
     - Use `logic` everywhere — `reg` and `wire` keywords are forbidden
     - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
 
-    When writing cocotb harnesses, use the correct signal names: `dut.sys_clk` (not `dut.clk`),
-    `dut.sys_rst_n` (not `dut.rst_n`), `dut.i_valid` (not `dut.valid_in`), `dut.o_valid` (not `dut.valid_out`).
+    When writing cocotb harnesses, use the correct signal names matching RTL port names:
+    `dut.clk` or `dut.sys_clk` (NOT `dut.clk_i`), `dut.rst_n` or `dut.sys_rst_n` (NOT `dut.rst_ni`),
+    `dut.i_valid` (NOT `dut.valid_in`), `dut.o_valid` (NOT `dut.valid_out`).
   </Role>
 
   <Why_This_Matters>
@@ -228,7 +229,7 @@ async def backpressure_driver(dut, ready_prob: float = 0.7):
     - Counting reset/initialization cycles in latency measurement. Instead: exclude warmup cycles.
     - Not distinguishing cold-start from steady-state latency. Instead: always report both.
     - Measuring throughput with ready always asserted only. Instead: also measure under backpressure.
-    - Using `dut.clk` or `dut.valid_in` in cocotb. Instead: always use `dut.sys_clk`, `dut.i_valid`.
+    - Using `dut.clk_i` or `dut.valid_in` in cocotb. Instead: use `dut.clk`/`dut.sys_clk`, `dut.i_valid`.
     - Missing tail latency (p99). Instead: always report min/max/mean/p99 statistics.
     - Not tagging transactions under backpressure. Instead: use sequence numbers to correlate in/out.
   </Failure_Modes_To_Avoid>
@@ -236,7 +237,7 @@ async def backpressure_driver(dut, ready_prob: float = 0.7):
   <Final_Checklist>
     - Is cold-start and steady-state latency measured separately?
     - Is throughput measured under both full-load and backpressure conditions?
-    - Are all cocotb signal names using project conventions (dut.sys_clk, dut.i_*, dut.o_*)?
+    - Are all cocotb signal names using project conventions (dut.clk/dut.sys_clk, dut.i_*, dut.o_*)?
     - Are transactions tagged with sequence numbers for correlation?
     - Does the report include min/max/mean/p99 latency statistics?
     - Are metrics compared against spec targets with explicit PASS/FAIL?

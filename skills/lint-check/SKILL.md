@@ -34,8 +34,8 @@ Running all three gives comprehensive coverage: synthesizability + style + seman
 <Coding_Convention_Requirements>
 Lint checks MUST enforce the project coding conventions (CLAUDE.md):
 - Port prefix: `i_` (input), `o_` (output), `io_` (bidirectional) — NOT suffix `_i`, `_o`
-- Clock: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`, `clk`
-- Reset: `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`
+- Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
+- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
 - `logic` only — `reg`/`wire` usage flagged as violation
 - Instance prefix: `u_` — missing prefix flagged
 - Generate prefix: `gen_` — missing prefix flagged
