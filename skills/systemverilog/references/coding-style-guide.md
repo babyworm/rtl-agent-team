@@ -57,19 +57,7 @@ localparam int unsigned L_DATA_BYTES = DATA_WIDTH / 8;
 
 ## Port Naming Convention
 
-**DEFAULT**: No direction prefix/suffix on port names. Use descriptive names only.
-
-```systemverilog
-module my_module (
-  input  logic        clk,
-  input  logic        rst_n,    // Active-low async reset
-  input  logic [7:0]  data,
-  output logic        valid,
-  inout  wire  [3:0]  bus
-);
-```
-
-**WHEN EXPLICITLY REQUESTED**: Use direction PREFIXES (not suffixes):
+**MANDATORY**: Use direction PREFIXES on all port names.
 
 | Prefix | Meaning |
 |--------|---------|
@@ -80,7 +68,7 @@ module my_module (
 ```systemverilog
 module my_module (
   input  logic        i_clk,
-  input  logic        i_rst_n,
+  input  logic        i_rst_n,  // Active-low async reset
   input  logic [7:0]  i_data,
   output logic        o_valid,
   inout  wire  [3:0]  io_bus
@@ -88,18 +76,19 @@ module my_module (
 ```
 
 **NEVER use suffixes** (`_i`, `_o`, `_io`).
+**NEVER omit direction prefix** — all ports must have `i_`/`o_`/`io_`.
 
 ---
 
 ## Reset Convention (ALWAYS)
 
 **Active-low asynchronous reset**:
-- Signal name: `rst_n` (default) or `i_rst_n` (prefix style when requested)
-- Triggered on negative edge: `negedge rst_n`
+- Signal name: `i_rst_n` (port) or `rst_n` (internal)
+- Triggered on negative edge: `negedge i_rst_n`
 
 ```systemverilog
-always_ff @(posedge clk or negedge rst_n) begin
-  if (!rst_n) begin
+always_ff @(posedge i_clk or negedge i_rst_n) begin
+  if (!i_rst_n) begin
     state_q <= ST_IDLE;
     count_q <= '0;
   end else begin
@@ -134,17 +123,17 @@ module module_name #(
   parameter int unsigned DATA_WIDTH = 8,
   parameter int unsigned DEPTH      = 16
 ) (
-  input  logic                      clk,
-  input  logic                      rst_n,
+  input  logic                      i_clk,
+  input  logic                      i_rst_n,
 
   // Interface group 1
-  input  logic [DATA_WIDTH-1:0]     data,
-  input  logic                      valid,
-  output logic                      ready,
+  input  logic [DATA_WIDTH-1:0]     i_data,
+  input  logic                      i_valid,
+  output logic                      o_ready,
 
   // Interface group 2
-  output logic [DATA_WIDTH-1:0]     result,
-  output logic                      done
+  output logic [DATA_WIDTH-1:0]     o_result,
+  output logic                      o_done
 );
 
   // Local parameters
@@ -163,10 +152,10 @@ module module_name #(
 
   // Submodule instantiations
   submodule u_submodule (
-    .clk,
-    .rst_n,
-    .data   (data_q),
-    .result (result_internal)
+    .i_clk,
+    .i_rst_n,
+    .i_data   (data_q),
+    .o_result (result_internal)
   );
 
   // Combinational logic
@@ -176,9 +165,9 @@ module module_name #(
 
     unique case (state_q)
       ST_IDLE: begin
-        if (valid) begin
+        if (i_valid) begin
           state_d = ST_PROCESS;
-          data_d  = data;
+          data_d  = i_data;
         end
       end
       ST_PROCESS: begin
@@ -192,8 +181,8 @@ module module_name #(
   end
 
   // Sequential logic (active-low async reset)
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
+  always_ff @(posedge i_clk or negedge i_rst_n) begin
+    if (!i_rst_n) begin
       state_q <= ST_IDLE;
       data_q  <= '0;
     end else begin
@@ -203,9 +192,9 @@ module module_name #(
   end
 
   // Output assignments
-  assign ready  = (state_q == ST_IDLE);
-  assign done   = (state_q == ST_DONE);
-  assign result = data_q;
+  assign o_ready  = (state_q == ST_IDLE);
+  assign o_done   = (state_q == ST_DONE);
+  assign o_result = data_q;
 
 endmodule
 ```

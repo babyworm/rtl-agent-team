@@ -179,7 +179,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 
 > **IMPORTANT — 핵심 오버라이드 (항상 적용)**
 >
-> 1. **포트 naming**: 기본은 prefix/suffix 없이 서술적 이름 사용 (`data`, `valid`). 명시적 요청 시에만 `i_`, `o_`, `io_` prefix. suffix(`_i`, `_o`) 사용 금지
+> 1. **포트 prefix**: `i_`, `o_`, `io_` 필수 (NOT suffix `_i`, `_o`)
 > 2. **클럭**: `clk` (단일 도메인) 또는 `{domain}_clk` (다중 도메인, 예: `sys_clk`) — NOT `clk_i`
 > 3. **리셋**: `rst_n` (단일) 또는 `{domain}_rst_n` (다중, 예: `sys_rst_n`) — NOT `rst_ni`. Active-low 비동기 리셋 필수
 > 4. **CamelCase 전면 금지**: Parameter → `ALL_CAPS` (`DATA_WIDTH`). 내부 localparam → `L_` prefix (`L_ADDR_BITS`). Enum 값 → `ALL_CAPS` (`ST_IDLE`). 모든 식별자는 `snake_case` 또는 `ALL_CAPS`만 허용

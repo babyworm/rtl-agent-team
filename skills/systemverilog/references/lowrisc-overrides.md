@@ -7,7 +7,7 @@ Base: https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md
 
 | # | lowRISC Default | Project Override | Reason |
 |---|----------------|-----------------|--------|
-| 1 | Port suffix: `_i`, `_o`, `_io` | Default: no prefix/suffix. When requested: prefix `i_`, `o_`, `io_` | 기본은 간결한 이름, 필요 시 prefix로 방향 명시 |
+| 1 | Port suffix: `_i`, `_o`, `_io` | Port prefix: `i_`, `o_`, `io_` (필수) | Prefix makes direction visible at signal usage site |
 | 2 | Clock: `clk_i` | Clock: `clk` (단일) or `{domain}_clk` (다중) | Multi-clock designs need domain identification |
 | 3 | Reset: `rst_ni` (active-low) | Reset: `rst_n` (단일) or `{domain}_rst_n` (다중) | Consistent with clock domain naming |
 | 4 | Parameter: `UpperCamelCase` | Parameter: `ALL_CAPS` | CamelCase 전면 금지 |
@@ -16,18 +16,14 @@ Base: https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md
 
 ## Detailed Rationale
 
-### Override 1: Port Direction Naming
+### Override 1: Port Direction Prefix (필수)
 
 **lowRISC**: `data_i`, `valid_o`, `sda_io` (suffix)
-**Project**: Default: `data`, `valid`, `bus` (no prefix/suffix). When requested: `i_data`, `o_valid`, `io_bus` (prefix)
+**Project**: `i_data`, `o_valid`, `io_sda` (prefix, 항상 사용)
 
-**Why default no-prefix:**
-- 간결한 이름이 가독성 향상
-- 포트 선언의 `input`/`output` 키워드가 방향을 이미 명시
-- Prefix가 필요한 경우(다수 인터페이스 모듈 등)에만 명시적으로 요청
-
-**Why prefix over suffix (when requested):**
+**Why prefix is mandatory:**
 - When reading `i_data` in logic, direction is immediately visible
+- With suffix (`data_i`), the signal name body (`data`) comes first — direction is an afterthought
 - Prefix groups signals by direction when sorted alphabetically
 - Common in industry ASIC flows (ARM, Synopsys reference designs)
 

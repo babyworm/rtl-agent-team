@@ -43,11 +43,11 @@ lowRISC 기반이지만 포트 네이밍, 클럭/리셋 규칙 등 프로젝트 
 
 > **IMPORTANT — 아래 3가지는 lowRISC 가이드와 다르며, 반드시 이 규칙을 적용한다.**
 
-### 1.1 포트 방향 naming
-- **기본**: prefix/suffix 없이 서술적 이름만 사용 (`data`, `valid`, `bus`)
-- **명시적 요청 시에만**: `i_`, `o_`, `io_` prefix 사용 (`i_data`, `o_valid`, `io_bus`)
+### 1.1 포트 방향 prefix (필수)
+- 입력: `i_`, 출력: `o_`, 양방향: `io_` — **항상 사용**
+- 예: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
 - suffix(`_i`, `_o`, `_io`) 사용은 **금지**
-- lowRISC는 suffix(`_i`, `_o`)를 사용하지만, 이 프로젝트는 **기본 no-prefix / 요청 시 prefix**
+- lowRISC는 suffix를 사용하지만, 이 프로젝트는 **prefix 필수**
 
 ### 1.2 클럭 명명
 - 단일 클럭: `clk` (기본) 또는 `{domain}_clk` (다중 클럭)
@@ -281,7 +281,7 @@ module cabac_encoder #(
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] 포트 naming: 기본 no-prefix, 명시적 요청 시에만 `i_`/`o_`/`io_` prefix
+- [ ] 포트 naming: `i_`/`o_`/`io_` prefix 필수
 - [ ] 클럭: `clk` (단일) 또는 `{domain}_clk` (다중), 리셋: `rst_n` 또는 `{domain}_rst_n`
 - [ ] CamelCase 없음: Parameter `ALL_CAPS`, localparam `L_` prefix, enum 값 `ALL_CAPS`
 - [ ] `logic` 만 사용 (no `reg`/`wire`)
