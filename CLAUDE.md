@@ -42,6 +42,23 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 | "CDC", "clock domain" | `/rtl-agent-team:cdc-verify` |
 | "AXI", "APB", "AHB", "프로토콜" (RTL 컨텍스트) | `/rtl-agent-team:protocol-verify` |
 | "커버리지", "coverage" | `/rtl-agent-team:coverage-analyze` |
+| **--- 전문 리뷰 ---** | |
+| "CDC 리뷰", "CDC 설계 리뷰", "동기화 전략 리뷰" | `cdc-reviewer` 에이전트 직접 위임 |
+| "프로토콜 리뷰", "AXI 설계 리뷰", "인터페이스 리뷰" | `protocol-reviewer` 에이전트 직접 위임 |
+| "formal 리뷰", "SVA 리뷰", "assertion 품질" | `formal-reviewer` 에이전트 직접 위임 |
+| "전력 분석", "power analysis", "clock gating 리뷰" | `power-analyzer` 에이전트 직접 위임 |
+| "합성 리뷰", "synthesis review", "면적/타이밍 리뷰" | `synthesis-reviewer` 에이전트 직접 위임 |
+| "UVM 리뷰", "testbench 리뷰", "TB 품질" | `uvm-reviewer` 에이전트 직접 위임 |
+| "요구사항 추적", "traceability", "feature coverage", "스펙 검증 상태" | `requirement-tracer` 에이전트 직접 위임 |
+| "cocotb 리뷰", "cocotb 품질", "Python TB 리뷰" | `cocotb-reviewer` 에이전트 직접 위임 |
+| "레퍼런스 모델 리뷰", "ref model 검증", "golden model 리뷰" | `ref-model-reviewer` 에이전트 직접 위임 |
+| "리그레션 분석", "flaky test", "시드 분석", "커버리지 수렴" | `regression-analyzer` 에이전트 직접 위임 |
+| "등가 검증", "equivalence", "RTL vs netlist" | `equivalence-checker` 에이전트 직접 위임 |
+| "통합 검증", "integration", "모듈 연결 확인", "top-level" | `integration-verifier` 에이전트 직접 위임 |
+| "DFT", "scan chain", "BIST", "JTAG", "testability" | `dft-designer` 에이전트 직접 위임 |
+| "클럭 아키텍처", "clock tree", "PLL", "clock gating 리뷰" | `clock-architect` 에이전트 직접 위임 |
+| "보안 리뷰", "security", "side-channel", "fault injection" | `security-reviewer` 에이전트 직접 위임 |
+| **--- 기타 검증 ---** | |
 | "regression", "리그레션", "다중 시드" | `/rtl-agent-team:regression-run` |
 | "conformance", "적합성 테스트", "골든 비교" | `/rtl-agent-team:conformance-test` |
 | "버그 재현", "bug repro", "파형 디버그" | `/rtl-agent-team:bug-repro` |
@@ -120,21 +137,37 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 | 코드베이스 탐색 | `rtl-agent-team:rtl-explorer` | Sonnet |
 | **--- 검증 ---** | | |
 | 테스트벤치 작성 | `rtl-agent-team:testbench-dev` | Opus |
-| 기능 검증 | `rtl-agent-team:func-verifier` | Sonnet |
-| 성능 검증 | `rtl-agent-team:perf-verifier` | Sonnet |
+| 기능 검증 | `rtl-agent-team:func-verifier` | Opus |
+| 성능 검증 | `rtl-agent-team:perf-verifier` | Opus |
 | SVA 추출/작성 | `rtl-agent-team:sva-extractor` | Opus |
 | 프로토콜 준수 검사 | `rtl-agent-team:protocol-checker` | Opus |
 | 커버리지 분석 | `rtl-agent-team:coverage-analyst` | Opus |
 | 파형 분석 | `rtl-agent-team:waveform-analyzer` | Opus |
+| **--- 전문 리뷰 ---** | | |
+| CDC 설계 리뷰 | `rtl-agent-team:cdc-reviewer` | Opus |
+| 프로토콜 설계 리뷰 | `rtl-agent-team:protocol-reviewer` | Opus |
+| Formal 품질 리뷰 | `rtl-agent-team:formal-reviewer` | Opus |
+| 전력 분석 | `rtl-agent-team:power-analyzer` | Opus |
+| 합성 결과 리뷰 | `rtl-agent-team:synthesis-reviewer` | Opus |
+| UVM TB 품질 리뷰 | `rtl-agent-team:uvm-reviewer` | Opus |
+| 요구사항 추적성 | `rtl-agent-team:requirement-tracer` | Opus |
+| cocotb TB 품질 리뷰 | `rtl-agent-team:cocotb-reviewer` | Opus |
+| 레퍼런스 모델 리뷰 | `rtl-agent-team:ref-model-reviewer` | Opus |
+| 리그레션 분석 | `rtl-agent-team:regression-analyzer` | Opus |
+| 등가 검증 | `rtl-agent-team:equivalence-checker` | Opus |
+| 통합 검증 | `rtl-agent-team:integration-verifier` | Opus |
+| 하드웨어 보안 리뷰 | `rtl-agent-team:security-reviewer` | Opus |
 | **--- EDA/합성 ---** | | |
-| EDA 도구 실행 | `rtl-agent-team:eda-runner` | Sonnet |
-| 합성 리포트 | `rtl-agent-team:synthesis-reporter` | Sonnet |
+| EDA 도구 실행 | `rtl-agent-team:eda-runner` | Opus |
+| 합성 메트릭 추출 | `rtl-agent-team:synthesis-reporter` | Opus |
 | 린트 검사 | `rtl-agent-team:lint-checker` | Opus |
 | SDC 제약조건 생성 | `rtl-agent-team:constraint-writer` | Opus |
-| 타이밍 분석 | `rtl-agent-team:timing-advisor` | Opus |
-| CDC 분석 | `rtl-agent-team:cdc-checker` | Opus |
+| 타이밍 분석 (STA) | `rtl-agent-team:timing-advisor` | Opus |
+| CDC 정적 분석 | `rtl-agent-team:cdc-checker` | Opus |
+| 클럭 아키텍처 리뷰 | `rtl-agent-team:clock-architect` | Opus |
+| DFT 설계 | `rtl-agent-team:dft-designer` | Opus |
 | **--- 인프라 ---** | | |
-| IP-XACT 생성 | `rtl-agent-team:ipxact-generator` | Sonnet |
+| IP-XACT 생성 | `rtl-agent-team:ipxact-generator` | Opus |
 | BFM 개발 | `rtl-agent-team:bfm-dev` | Opus |
 | Reference Model 개발 | `rtl-agent-team:ref-model-dev` | Opus |
 | **--- 도메인 전문가 ---** | | |
@@ -198,9 +231,15 @@ reviews/
 ├── phase-4-rtl/
 │   ├── functional-completeness.md  # Functional Completeness Check (REQ → RTL 매핑)
 │   ├── design-review.md            # rtl-critic 설계 리뷰
-│   └── lint-report.md              # lint-checker 리포트
+│   ├── lint-report.md              # lint-checker 리포트
+│   ├── cdc-design-review.md        # cdc-reviewer CDC 설계 전략 리뷰
+│   ├── protocol-design-review.md   # protocol-reviewer 프로토콜 설계 리뷰
+│   ├── power-analysis.md           # power-analyzer 전력 분석 리뷰
+│   └── synthesis-review.md         # synthesis-reviewer 합성 결과 리뷰
 └── phase-5-verify/
-    ├── requirement-traceability.md # Requirement Traceability Matrix (REQ → Test 매핑)
+    ├── requirement-traceability.md # requirement-tracer 요구사항 추적 매트릭스 (REQ → Test)
+    ├── formal-review.md            # formal-reviewer SVA/Formal 품질 리뷰
+    ├── uvm-review.md               # uvm-reviewer UVM TB 품질 리뷰
     └── final-compliance.md         # 최종 스펙 준수 확인 리포트
 ```
 
