@@ -43,32 +43,55 @@ lowRISC 기반이지만 포트 네이밍, 클럭/리셋 규칙 등 프로젝트 
 
 > **IMPORTANT — 아래 3가지는 lowRISC 가이드와 다르며, 반드시 이 규칙을 적용한다.**
 
-### 1.1 포트 방향 prefix
-- 입력: `i_`, 출력: `o_`, 양방향: `io_`
-- lowRISC는 suffix(`_i`, `_o`)를 사용하지만, 이 프로젝트는 **prefix**를 사용
-- 예: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
+### 1.1 포트 방향 naming
+- **기본**: prefix/suffix 없이 서술적 이름만 사용 (`data`, `valid`, `bus`)
+- **명시적 요청 시에만**: `i_`, `o_`, `io_` prefix 사용 (`i_data`, `o_valid`, `io_bus`)
+- suffix(`_i`, `_o`, `_io`) 사용은 **금지**
+- lowRISC는 suffix(`_i`, `_o`)를 사용하지만, 이 프로젝트는 **기본 no-prefix / 요청 시 prefix**
 
 ### 1.2 클럭 명명
-- `{domain}_clk` 형식 (NOT `clk_i`, `clk`)
-- 단일 클럭 도메인이면 `sys_clk`
-- 예: `sys_clk`, `pixel_clk`, `axi_clk`
+- 단일 클럭: `clk` (기본) 또는 `{domain}_clk` (다중 클럭)
+- 다중 클럭 도메인: `sys_clk`, `pixel_clk`, `axi_clk`
+- NOT `clk_i`, NOT suffix
 
 ### 1.3 리셋 명명
-- `{domain}_rst_n` 형식, active-low 기본
-- 예: `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`, `rst_n`)
+- 단일 리셋: `rst_n` (기본) 또는 `{domain}_rst_n` (다중 도메인)
+- active-low 비동기 리셋 필수
+- 예: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
+
+### 1.4 CamelCase 금지 (추가 오버라이드)
+- lowRISC는 Parameter에 `UpperCamelCase`, Enum 값에 `UpperCamelCase` 사용
+- **이 프로젝트는 CamelCase 전면 금지**
+- Parameter: `ALL_CAPS` (`DATA_WIDTH`, NOT `DataWidth`)
+- Localparam (내부): `L_` prefix + `ALL_CAPS` (`L_ADDR_BITS`, NOT `AddrBits`)
+- Enum 값: `ALL_CAPS` (`ST_IDLE`, NOT `StIdle`)
 
 ## 2. 명명 규칙
+
+> **IMPORTANT — CamelCase 전면 금지. 모든 식별자는 `snake_case` 또는 `ALL_CAPS` 만 사용한다.**
+> 상세 규칙: `references/coding-style-guide.md` 참조.
 
 | 대상 | 규칙 | 예시 |
 |------|------|------|
 | 모듈 | `snake_case` | `axi_lite_slave` |
-| 파라미터 | `UPPER_SNAKE_CASE` | `DATA_WIDTH` |
-| 로컬 파라미터 | `UPPER_SNAKE_CASE` | `ADDR_BITS` |
-| 타입 | `snake_case_t` suffix | `state_t`, `bus_req_t` |
-| enum 값 | `UPPER_SNAKE_CASE` | `IDLE`, `WAIT_RESP` |
+| 파라미터 (외부 설정 가능) | `ALL_CAPS` | `DATA_WIDTH`, `DEPTH` |
+| 로컬 파라미터 (내부 전용) | `L_` prefix + `ALL_CAPS` | `L_ADDR_BITS`, `L_CNT_MAX` |
+| 타입 (typedef) | `snake_case_t` suffix | `state_t`, `bus_req_t` |
+| 열거형 타입 (typedef enum) | `snake_case_e` suffix | `state_e`, `cmd_type_e` |
+| 열거형 값 | `ALL_CAPS` | `ST_IDLE`, `WAIT_RESP` |
+| `define 매크로 | `ALL_CAPS` | `MAX_DEPTH`, `ASSERT_ON` |
 | 인스턴스 | `u_` prefix | `u_fifo`, `u_arbiter` |
 | generate 블록 | `gen_` prefix | `gen_pipeline_stage` |
 | 신호(내부) | `snake_case` | `write_enable`, `addr_valid` |
+
+### CamelCase 금지 예시
+
+| 금지 (CamelCase) | 올바른 표현 |
+|-----------------|-----------|
+| `parameter int Width = 8` | `parameter int unsigned WIDTH = 8` |
+| `localparam AddrBits = $clog2(Depth)` | `localparam L_ADDR_BITS = $clog2(DEPTH)` |
+| `StIdle`, `StProcess` | `ST_IDLE`, `ST_PROCESS` |
+| `UpperCamelCase` 어떤 것이든 | `ALL_CAPS` 또는 `snake_case` |
 
 ## 3. 파일명 규칙
 
@@ -213,27 +236,40 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 
 <Examples>
 <Good>
-lowRISC + 프로젝트 오버라이드를 정확히 따름. See `examples/good-vs-bad.sv` for patterns.
+프로젝트 규칙 준수: ALL_CAPS parameter, L_ prefix localparam, snake_case, no CamelCase.
 ```systemverilog
 module cabac_encoder #(
   parameter int unsigned CTX_ADDR_W = 9
 ) (
-  input  logic                   sys_clk,
-  input  logic                   sys_rst_n,
-  input  logic [CTX_ADDR_W-1:0]  i_ctx_addr,
-  output logic                   o_bin_valid
+  input  logic                   clk,
+  input  logic                   rst_n,
+  input  logic [CTX_ADDR_W-1:0]  ctx_addr,
+  output logic                   bin_valid
 );
+  localparam int unsigned L_CTX_DEPTH = 2 ** CTX_ADDR_W;
+
+  typedef enum logic [1:0] {
+    ST_IDLE,
+    ST_ENCODE,
+    ST_DONE
+  } state_e;
 ```
 </Good>
 <Bad>
-lowRISC suffix 사용, reg/wire 사용, 매직 넘버:
+CamelCase, suffix, reg/wire, 매직 넘버:
 ```systemverilog
-module cabac_encoder (
+module cabac_encoder #(
+  parameter int CtxAddrWidth = 9   // WRONG: CamelCase
+) (
   input  wire        clk_i,        // WRONG: suffix, wire
   input  reg         rst_ni,       // WRONG: reg, suffix
-  input  [8:0]       ctx_addr_i,   // WRONG: no prefix, magic width
+  input  [8:0]       ctx_addr_i,   // WRONG: suffix, magic width
   output             bin_valid_o   // WRONG: no type, suffix
 );
+  localparam AddrBits = 4;         // WRONG: CamelCase, no L_ prefix
+  typedef enum logic [1:0] {
+    StIdle, StEncode, StDone       // WRONG: CamelCase enum values
+  } state_e;
 ```
 </Bad>
 </Examples>
@@ -245,8 +281,9 @@ module cabac_encoder (
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] 포트 naming: `i_`/`o_`/`io_` prefix 사용
-- [ ] 클럭: `{domain}_clk`, 리셋: `{domain}_rst_n`
+- [ ] 포트 naming: 기본 no-prefix, 명시적 요청 시에만 `i_`/`o_`/`io_` prefix
+- [ ] 클럭: `clk` (단일) 또는 `{domain}_clk` (다중), 리셋: `rst_n` 또는 `{domain}_rst_n`
+- [ ] CamelCase 없음: Parameter `ALL_CAPS`, localparam `L_` prefix, enum 값 `ALL_CAPS`
 - [ ] `logic` 만 사용 (no `reg`/`wire`)
 - [ ] `always_ff` (sequential), `always_comb` (combinational)
 - [ ] 모든 `case`에 `default` 존재
