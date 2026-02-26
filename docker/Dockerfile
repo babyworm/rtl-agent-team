@@ -116,6 +116,19 @@ RUN cd /tmp && \
     rm -rf /tmp/slang
 
 # -----------------------------------------------------------------------------
+# slang-server (SystemVerilog LSP) — build from source
+# https://github.com/hudson-trading/slang-server
+# -----------------------------------------------------------------------------
+RUN cd /tmp && \
+    git clone --depth 1 https://github.com/hudson-trading/slang-server.git && \
+    cd slang-server && \
+    git submodule update --init --recursive && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja && \
+    cmake --build build -j$(nproc) --target slang_server && \
+    cp build/bin/slang-server /usr/local/bin/ && \
+    rm -rf /tmp/slang-server
+
+# -----------------------------------------------------------------------------
 # SystemC / TLM-2.0 (reference model + BFM) — build from Accellera source
 # -----------------------------------------------------------------------------
 RUN cd /tmp && \
@@ -174,6 +187,7 @@ RUN echo "=== RTL EDA Toolchain ===" && \
     iverilog -V 2>&1 | head -1 && \
     yosys --version && \
     slang --version 2>&1 | head -1 && \
+    slang-server --version 2>&1 | head -1 && \
     sby --help 2>&1 | head -1 || echo "sby: installed" && \
     python3 -c "import cocotb; print(f'cocotb {cocotb.__version__}')" && \
     python3 -c "import SystemC; print('SystemC: available')" 2>/dev/null || \

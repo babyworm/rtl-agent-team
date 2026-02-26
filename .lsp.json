@@ -1,0 +1,13 @@
+{
+  "systemverilog": {
+    "name": "Slang Server (SystemVerilog/Verilog LSP)",
+    "command": "slang-server",
+    "args": [],
+    "extensionToLanguage": {
+      ".sv": "systemverilog",
+      ".svh": "systemverilog",
+      ".v": "verilog",
+      ".vh": "verilog"
+    }
+  }
+}

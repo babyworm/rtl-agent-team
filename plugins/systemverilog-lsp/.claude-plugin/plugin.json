@@ -1,0 +1,20 @@
+{
+  "name": "systemverilog-lsp",
+  "version": "1.1.0",
+  "description": "SystemVerilog/Verilog language server for Claude Code (powered by slang-server)",
+  "author": {
+    "name": "RTL Agent Team contributors"
+  },
+  "repository": "https://github.com/babyworm/rtl-agent-team",
+  "homepage": "https://github.com/hudson-trading/slang-server",
+  "license": "MIT",
+  "keywords": [
+    "systemverilog",
+    "verilog",
+    "lsp",
+    "hdl",
+    "rtl",
+    "slang"
+  ],
+  "lspServers": "./.lsp.json"
+}

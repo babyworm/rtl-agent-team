@@ -23,5 +23,6 @@
   ],
   "agents": "./agents/",
   "hooks": "./hooks/hooks.json",
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "lspServers": "./.lsp.json"
 }

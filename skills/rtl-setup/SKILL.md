@@ -77,6 +77,7 @@ This skill ensures everything is in place before design work begins.
    | sby | `sby --help` | Formal verification | Optional |
    | cocotb | `python3 -c "import cocotb; print(cocotb.__version__)"` | Functional verification | Yes |
    | slang | `slang --version` | Advanced lint | Optional |
+   | slang-server | `slang-server --version` | SV Language Server (LSP) | Optional |
    | gtkwave | `gtkwave --version` | Waveform viewer | Optional |
    | python3 | `python3 --version` | cocotb runtime | Yes |
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
@@ -177,6 +178,7 @@ Bash: verible-verilog-lint --version 2>&1 || echo "NOT_FOUND"
 Bash: yosys --version 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import cocotb; print(cocotb.__version__)" 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
+Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 Bash: g++ --version 2>&1 || echo "NOT_FOUND"
 
 # Template generation
@@ -224,6 +226,11 @@ pip3 install cocotb
 
 # slang (from source or package)
 # See: https://sv-lang.com
+
+# slang-server (SystemVerilog LSP for Claude Code)
+# Automated install (builds from source + registers Claude Code plugin):
+bash scripts/install-slang-server.sh install
+# Or manually: https://github.com/hudson-trading/slang-server
 ```
 </Install_Instructions>
 
