@@ -1,6 +1,11 @@
 // =============================================================================
-// Example: AXI-Lite Slave BFM with Cycle-Accurate Latency
+// Example: AXI-Lite Slave BFM with Cycle-Accurate Latency (LT Style)
 // Demonstrates TLM-2.0 target socket, register map, and cocotb integration
+//
+// NOTE: This example uses LT (Loosely Timed) b_transport, which is acceptable
+// for simple register-access peripherals (APB/AXI-Lite style). For performance-
+// critical BFMs that need pipeline/OoO modeling, use AT (Approximately Timed)
+// nb_transport_fw/bw — see bfm-at-pattern.cpp for the AT example.
 // =============================================================================
 
 #pragma once
