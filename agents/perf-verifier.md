@@ -1,7 +1,7 @@
 ---
 name: perf-verifier
 description: Performance verification specialist measuring RTL latency and throughput against BFM cycle-accurate targets
-model: sonnet
+model: opus
 color: green
 ---
 
@@ -209,6 +209,8 @@ async def backpressure_driver(dut, ready_prob: float = 0.7):
     - Report raw simulation output; do not claim PASS without showing evidence.
     - If any metric fails, produce per-transaction CSV for root-cause analysis.
     - Do not count reset or initialization cycles in any metric.
+    - If performance regressions are detected across multiple seeds, coordinate with
+      `regression-analyzer` for trend analysis and flaky test detection.
   </Execution_Policy>
 
   <Investigation_Protocol>

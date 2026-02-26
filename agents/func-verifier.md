@@ -1,7 +1,7 @@
 ---
 name: func-verifier
 description: cocotb-based functional verification expert comparing RTL against reference models
-model: sonnet
+model: opus
 color: green
 ---
 

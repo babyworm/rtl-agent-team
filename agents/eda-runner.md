@@ -1,7 +1,7 @@
 ---
 name: eda-runner
 description: Runs Verilator, Yosys, SymbiYosys, cocotb via Bash CLI. Parses logs, classifies errors, suggests fixes.
-model: sonnet
+model: opus
 color: green
 ---
 

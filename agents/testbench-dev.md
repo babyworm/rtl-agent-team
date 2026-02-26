@@ -43,6 +43,10 @@ color: magenta
     - Testbench is modular: driver and monitor can be reused for integration-level testing
     - Self-checking: testbench terminates with explicit PASS or FAIL, never silently exits
     - Simulation compiles and runs without errors on first invocation
+
+    **Note**: Testbenches produced by testbench-dev will be reviewed by specialist agents:
+    - UVM/SV testbenches → `uvm-reviewer` (factory usage, TLM ports, coverage model quality)
+    - cocotb testbenches → `cocotb-reviewer` (async/await correctness, signal naming, race conditions)
   </Success_Criteria>
 
   <Constraints>

@@ -86,9 +86,13 @@ color: red
        - `aiger btormc`: very fast for simple BMC on small designs
     9. Run BMC: `sby -f block.sby bmc`.
     10. Run induction: `sby -f block.sby prove`.
-        If induction fails, try `abc pdr` engine as alternative unbounded proof method.
     11. Run cover: `sby -f block.sby cover` — verify key states are reachable.
     12. For failures: read counterexample VCD and report the failing sequence.
+
+    **Scope boundary**: Report raw sby results (PASS/FAIL/counterexample). Formal proof
+    quality assessment (vacuity analysis, assume/assert balance, proof strategy optimization,
+    engine selection tuning) is handled by `formal-reviewer`. If induction fails, report
+    the failure; do not attempt engine selection optimization.
   </Investigation_Protocol>
 
   <Tool_Usage>

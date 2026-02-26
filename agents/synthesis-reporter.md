@@ -1,7 +1,7 @@
 ---
 name: synthesis-reporter
 description: Yosys synthesis report parser. Extracts area, timing, and power metrics. Produces summary tables and identifies unmapped cells.
-model: sonnet
+model: opus
 color: green
 ---
 

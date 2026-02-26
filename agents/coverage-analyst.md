@@ -63,6 +63,8 @@ disallowedTools: Write, Edit
     1. Read the functional coverage report (HTML, UCIS XML, or text format from simulation).
     2. Read the code coverage report (line, branch, toggle percentages per file).
     3. Read requirements.json to map each uncovered item to its originating requirement.
+       **Note**: For comprehensive bidirectional Spec↔Test traceability matrix, defer to
+       `requirement-tracer`. Coverage-analyst focuses on gap analysis and convergence strategy.
     4. Read the test plan to identify which test cases were supposed to cover each bin.
     5. For each uncovered functional bin: is the scenario reachable? Check uarch spec.
     6. For each uncovered code line: is it dead code? Check if an FSM state drives this path.
