@@ -7,7 +7,7 @@ description: "This skill should be used when developing SystemC TLM Bus Function
 Implement SystemC TLM 2.0 BFMs that model the RTL design at transaction level using AT (Approximately
 Timed) non-blocking transport with ARM AMBA protocol extensions (AXI/AHB/APB/ACE).
 Outputs: bfm/ directory with SystemC models, build scripts, and initial smoke test results.
-Runs in parallel with uarch-design during Phase 3.
+Runs in parallel with rtl-uarch-design during Phase 3.
 </Purpose>
 
 <Use_When>
@@ -20,14 +20,14 @@ Runs in parallel with uarch-design during Phase 3.
 
 <Do_Not_Use_When>
 - Architecture is not yet stable (BFM will need full rewrite)
-- Only simple unit tests needed (use sv-unit-test directly)
+- Only simple unit tests needed (use rtl-sv-unit-test directly)
 - Pure software development without hardware interaction
 </Do_Not_Use_When>
 
 <Why_This_Exists>
 TLM models run orders of magnitude faster than RTL simulation.
 Early BFM catches protocol bugs and performance bottlenecks before RTL exists.
-BFM also serves as the performance reference in perf-verify phase.
+BFM also serves as the performance reference in rtl-perf-verify phase.
 AT non-blocking transport accurately models pipelined and out-of-order behavior
 that LT blocking transport cannot capture.
 </Why_This_Exists>
@@ -109,6 +109,6 @@ No Memory Manager — payload leaks accumulate during simulation.
 <Advanced>
 Use TLM 2.0 AT non-blocking coding style for timing-accurate performance modeling.
 Use LT loosely-timed coding style only for fast SW development simulation.
-BFM interfaces must match io_definition.json port list exactly for perf-verify compatibility.
+BFM interfaces must match io_definition.json port list exactly for rtl-perf-verify compatibility.
 AMBA protocol extensions must match architecture spec for protocol-level verification.
 </Advanced>

@@ -25,7 +25,7 @@ Modified .sv files are automatically tracked, and session termination is blocked
 <Do_Not_Use_When>
 - Coding convention changes only (e.g., port renaming with no functional change) → use rtl-refactor
 - Writing a new module from scratch → use rtl-code
-- Simple lint error fixes (e.g., removing unused signals) → use lint-check
+- Simple lint error fixes (e.g., removing unused signals) → use rtl-lint-check
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -248,7 +248,7 @@ Parallel UNIT_FIX:
 <Escalation_And_Stop_Conditions>
 - lint fails 3 times → escalate to rtl-architect for design review
 - Cannot write TB (no ref model) → write a minimal self-checking TB, then report ref model requirement to user
-- Simulation fails after 2 fix iterations → escalate to waveform-analyzer + bug-repro skill
+- Simulation fails after 2 fix iterations → escalate to waveform-analyzer + rtl-bug-repro skill
 - Simulator not installed → eda-runner provides installation instructions (`pip install cocotb`, `apt install iverilog`)
 </Escalation_And_Stop_Conditions>
 
@@ -275,7 +275,7 @@ Parallel UNIT_FIX:
 
 **When an existing regression suite is available:**
 - Recommended to re-run the full regression after bug fix
-- Use the regression-run skill: `/rtl-agent-team:regression-run`
+- Use the rtl-regression-run skill: `/rtl-agent-team:rtl-regression-run`
 
 **For compound mode bugs like MODE_RECON:**
 - Test individual modes first (MODE_FWD_TQ, MODE_INV_TQ)

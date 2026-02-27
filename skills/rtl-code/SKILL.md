@@ -16,9 +16,9 @@ Output: rtl/src/*.sv, all lint-clean under Verible and slang.
 </Use_When>
 
 <Do_Not_Use_When>
-- uarch/*.md does not exist for the target module (run uarch-design first)
+- uarch/*.md does not exist for the target module (run rtl-uarch-design first)
 - Only structural refactoring needed (use rtl-refactor instead)
-- Only lint check needed (use lint-check instead)
+- Only lint check needed (use rtl-lint-check instead)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -121,9 +121,9 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 # Wave 2: Lint All (parallel, after ALL Wave 1 tasks complete)
 # ============================================================
 # Launch lint on ALL modules simultaneously — do NOT fix yet
-Task(subagent_type="rtl-agent-team:lint-checker",
+Task(subagent_type="rtl-agent-team:rtl-lint-checker",
      prompt="Run lint on rtl/src/cabac_encoder.sv via Bash CLI: 'verilator --lint-only -Wall rtl/src/cabac_encoder.sv' and 'slang --lint-only rtl/src/cabac_encoder.sv'. Report all violations with line numbers. Classify result as PASS or FAIL. Also check naming conventions: i_/o_ prefix, {domain}_clk/{domain}_rst_n.")
-Task(subagent_type="rtl-agent-team:lint-checker",
+Task(subagent_type="rtl-agent-team:rtl-lint-checker",
      prompt="Run lint on rtl/src/transform.sv via Bash CLI. [same pattern]")
 # ... one lint Task per module, all launched in parallel
 # Collect all results: PASS modules → proceed to Wave 4, FAIL modules → Wave 3
@@ -135,7 +135,7 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Fix lint violations in rtl/src/cabac_encoder.sv per lint report: [paste report]. Maintain all naming conventions (i_/o_ prefix, sys_clk/sys_rst_n). After fix, re-run lint on THIS file only.")
 # Re-lint ONLY the fixed modules (not all)
-Task(subagent_type="rtl-agent-team:lint-checker",
+Task(subagent_type="rtl-agent-team:rtl-lint-checker",
      prompt="Re-lint ONLY rtl/src/cabac_encoder.sv (fixed in Wave 3). Report PASS/FAIL.")
 # Max 3 fix rounds per module
 
@@ -164,7 +164,7 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/src/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Save the Functional Completeness Report to reviews/phase-4-rtl/functional-completeness.md in standard review Markdown format. Save the full design review to reviews/phase-4-rtl/design-review.md. verdict: PASS or FAIL — [N] functional gaps found.")
 
-Task(subagent_type="rtl-agent-team:lint-checker",
+Task(subagent_type="rtl-agent-team:rtl-lint-checker",
      prompt="Run lint on all rtl/src/*.sv. Save the lint report to reviews/phase-4-rtl/lint-report.md in standard review Markdown format. verdict: PASS or FAIL + error list[]")
 
 # On FAIL: fix missing functionality

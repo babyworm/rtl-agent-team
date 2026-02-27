@@ -17,8 +17,8 @@ Outputs: docs/rtl/{module_name}.md per module.
 
 <Do_Not_Use_When>
 - Architecture specification writing needed (use arch-design skill instead)
-- IP-XACT generation needed (use ipxact-gen instead)
-- Only synthesis reporting needed (use synth-check instead)
+- IP-XACT generation needed (use rtl-ipxact-gen instead)
+- Only synthesis reporting needed (use rtl-synth-check instead)
 </Do_Not_Use_When>
 
 <Why_This_Exists>

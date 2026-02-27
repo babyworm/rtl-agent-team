@@ -1,8 +1,8 @@
 # SDC (Synopsys Design Constraints) Best Practices
 
-> This document is the detailed reference for the `synth-check` skill.
-> For core rules, see `<Steps>` in `skills/synth-check/SKILL.md`.
-> SDC template: `skills/synth-check/templates/design-constraints.sdc`
+> This document is the detailed reference for the `rtl-synth-check` skill.
+> For core rules, see `<Steps>` in `skills/rtl-synth-check/SKILL.md`.
+> SDC template: `skills/rtl-synth-check/templates/design-constraints.sdc`
 
 ## 1. SDC Basic Rules
 

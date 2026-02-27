@@ -19,7 +19,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
 | "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
 | **--- Phase 3: μArch ---** | |
-| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:uarch-design` |
+| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-uarch-design` |
 | **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
 | `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
 | `.sva`, SVA bind files, formal assertion | `/rtl-agent-team:systemverilog-assertion` |
@@ -30,19 +30,19 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-code` |
 | "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-refactor` |
 | "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
-| "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:ip-instantiate` |
-| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:ipxact-gen` |
-| "lint", "lint check" (RTL context) | `/rtl-agent-team:lint-check` |
-| "synthesis", "synthesis", "yosys", "SDC" | `/rtl-agent-team:synth-check` |
+| "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
+| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
+| "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` |
+| "synthesis", "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
 | **--- Phase 5: Verify ---** | |
-| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:func-verify` |
-| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:sv-unit-test` |
-| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:uvm-verify` |
-| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:perf-verify` |
-| "formal", "SVA", "assertion" | `/rtl-agent-team:sva-check` |
-| "CDC", "clock domain" | `/rtl-agent-team:cdc-verify` |
-| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:protocol-verify` |
-| "coverage", "coverage" | `/rtl-agent-team:coverage-analyze` |
+| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-func-verify` |
+| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-sv-unit-test` |
+| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-uvm-verify` |
+| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-perf-verify` |
+| "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-sva-check` |
+| "CDC", "clock domain" | `/rtl-agent-team:rtl-cdc-verify` |
+| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-protocol-verify` |
+| "coverage", "coverage" | `/rtl-agent-team:rtl-coverage-analyze` |
 | **--- Expert Reviews ---** | |
 | "CDC review", "CDC design review", "synchronization strategy review" | Delegate directly to `cdc-reviewer` agent |
 | "protocol review", "AXI design review", "interface review" | Delegate directly to `protocol-reviewer` agent |
@@ -61,14 +61,14 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "DFT", "scan chain", "BIST", "JTAG", "testability" | Delegate directly to `dft-designer` agent |
 | "clock architecture", "clock tree", "PLL", "clock gating review" | Delegate directly to `clock-architect` agent |
 | **--- Phase 6: Design Note ---** | |
-| "design review", "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:design-review-phase` |
+| "design review", "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-design-review-phase` |
 | **--- Phase 7: Exploration (optional) ---** | |
-| "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:design-review-phase` (exploration mode) |
+| "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-design-review-phase` (exploration mode) |
 | **--- Other Verification ---** | |
-| "regression", "regression", "multi-seed" | `/rtl-agent-team:regression-run` |
-| "conformance", "conformance test", "golden comparison" | `/rtl-agent-team:conformance-test` |
-| "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:bug-repro` |
-| "model consistency", "RTL-model comparison", "model consistency" | `/rtl-agent-team:model-consistency` |
+| "regression", "regression", "multi-seed" | `/rtl-agent-team:rtl-regression-run` |
+| "conformance", "conformance test", "golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
+| "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` |
+| "model consistency", "RTL-model comparison", "model consistency" | `/rtl-agent-team:rtl-model-consistency` |
 
 ## IMPORTANT — Phase 1 Proactive Requirement Clarification
 
@@ -240,7 +240,7 @@ Upper spec compliance verification results (verdict) are stored in `reviews/phas
 
 ```
 Phase 1: Research    → docs/phase-1-research/      (natural language spec, domain knowledge)
-Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + ref_model/ (C++ golden)
+Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + ref_model/ (C golden)
                        + 3-round iterative review (memory, performance, ref model consistency)
 Phase 3: μArch/TLM   → docs/phase-3-uarch/         (microarchitecture) + BFM
                        + 3-round iterative review (performance, interface, memory optimization)
@@ -266,7 +266,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | Specification analysis | `rtl-agent-team:spec-analyst` | Opus |
 | Architecture design | `rtl-agent-team:arch-designer` | Opus |
 | Architecture review | `rtl-agent-team:rtl-architect` | Opus |
-| μArch design | `rtl-agent-team:uarch-designer` | Opus |
+| μArch design | `rtl-agent-team:rtl-uarch-designer` | Opus |
 | RTL coding | `rtl-agent-team:rtl-coder` | Opus |
 | RTL review | `rtl-agent-team:rtl-critic` | Opus |
 | Design planning | `rtl-agent-team:rtl-planner` | Opus |
@@ -301,14 +301,14 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | **--- EDA/Synthesis ---** | | |
 | EDA tool execution | `rtl-agent-team:eda-runner` | Opus |
 | Synthesis metric extraction | `rtl-agent-team:synthesis-reporter` | Opus |
-| Lint checking | `rtl-agent-team:lint-checker` | Opus |
+| Lint checking | `rtl-agent-team:rtl-lint-checker` | Opus |
 | SDC constraint generation | `rtl-agent-team:constraint-writer` | Opus |
 | Timing analysis (STA) | `rtl-agent-team:timing-advisor` | Opus |
 | CDC static analysis | `rtl-agent-team:cdc-checker` | Opus |
 | Clock architecture review | `rtl-agent-team:clock-architect` | Opus |
 | DFT design | `rtl-agent-team:dft-designer` | Opus |
 | **--- Infrastructure ---** | | |
-| IP-XACT generation | `rtl-agent-team:ipxact-generator` | Opus |
+| IP-XACT generation | `rtl-agent-team:rtl-ipxact-generator` | Opus |
 | BFM development | `rtl-agent-team:bfm-dev` | Opus |
 | Reference Model development | `rtl-agent-team:ref-model-dev` | Opus |
 | **--- Domain Experts ---** | | |
@@ -328,7 +328,8 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 > |------|------|------|
 > | **SystemVerilog (RTL)** | **IEEE 1800-2009** | Baseline for synthesizable RTL code. Features added after 2012 are for verification only |
 > | **SystemVerilog (Verification)** | **IEEE 1800-2012** | 2012 features allowed in SVA, UVM TB (checker, interface class, etc.) |
-> | **C++ (Ref Model, BFM)** | **C++17** (`-std=c++17`) | Applies to all C++ code including SystemC 3.0, cocotb DPI, etc. |
+> | **C (Ref Model)** | **C11** (`-std=c11`) | DPI-C 연동 우선. Functional model (no clock/reset). 외부 메모리 접근 함수 추상화 필수 |
+> | **C++ (BFM, SystemC)** | **C++17** (`-std=c++17`) | SystemC 3.0 TLM-2.0 BFM 전용. Ref Model에는 사용하지 않음 |
 >
 > - iverilog flag uses `-g2012` (basic SV syntax support)
 > - **iverilog unsupported**: `interface`, unpacked `struct`/`union` — agents must not generate these
@@ -404,7 +405,7 @@ docs/
 ├── phase-5-verify/                      # → Input for Phase 6
 │   ├── unit-test-report.md              # Unit test results summary
 │   ├── integration-report.md            # Integration test results
-│   ├── ref-model-consistency.md         # RTL vs C++ golden model consistency comparison
+│   ├── ref-rtl-model-consistency.md         # RTL vs C golden model consistency comparison
 │   ├── lint-report.md                   # Verilator lint results summary
 │   ├── synthesis-estimate.md            # Yosys synthesis estimates (area, timing)
 │   └── phase-5-summary.md              # Phase 5 compressed summary (auto-generated)
@@ -465,7 +466,7 @@ rtl/src/                                 # RTL source code (Phase 4)
 tb/                                      # Testbenches (Phase 4-5)
 ├── unit/                                # Unit tests
 └── formal/                              # SVA formal verification
-ref_model/                               # C++ golden reference (Phase 2)
+ref_model/                               # C golden reference (Phase 2)
 ```
 
 > **Principle**: Store data/metrics/design content in `docs/`, and only verdict (PASS/FAIL) in `reviews/`.

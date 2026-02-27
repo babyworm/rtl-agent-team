@@ -193,7 +193,7 @@ This skill automates sequencing, gate checking, and recovery.
 ---
 
 4. **Phase 3 — μArch + BFM (parallel + 3-round iterative review)**:
-   invoke uarch-design and bfm-develop skills concurrently
+   invoke rtl-uarch-design and bfm-develop skills concurrently
    - uarch-designer + bfm-dev produce initial artifacts concurrently
    - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
    - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch`
@@ -361,7 +361,7 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-7. **Phase 6 — Design Review & Documentation**: invoke design-review-phase skill
+7. **Phase 6 — Design Review & Documentation**: invoke rtl-design-review-phase skill
 
    **Phase 5→6 Artifact Gate**: `reviews/phase-5-verify/final-compliance.md` exists AND verdict=PASS
 
@@ -489,10 +489,10 @@ verdict: PASS or FAIL + findings[]")
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
 # Parallel: μArch design + BFM development
-Skill(skill="rtl-agent-team:uarch-design")   # Handles 3-round iterative review internally
+Skill(skill="rtl-agent-team:rtl-uarch-design")   # Handles 3-round iterative review internally
 Skill(skill="rtl-agent-team:bfm-develop")    # SystemC TLM BFMs
 
-# Phase 3→4 Quality Gate: verify uarch-design produced PASS verdict
+# Phase 3→4 Quality Gate: verify rtl-uarch-design produced PASS verdict
 # Check: reviews/phase-3-uarch/uarch-review.md verdict=PASS
 # Check: reviews/phase-3-uarch/feature-preservation.md 100% preserved
 # Clean up scratch: rm -rf .rtl-agent-team/scratch/phase-3/
@@ -548,7 +548,7 @@ Save the full design review to reviews/phase-4-rtl/design-review.md in standard 
 Output the Functional Coverage Matrix table, then:
 verdict: PASS or FAIL + findings[]")
 
-Task(subagent_type="rtl-agent-team:lint-checker",
+Task(subagent_type="rtl-agent-team:rtl-lint-checker",
      prompt="Run full lint on rtl/src/*.sv. Zero errors required. Review warnings for false positives. Report lint summary.
 Save the lint report to reviews/phase-4-rtl/lint-report.md in this format:
   # Phase 4 Review: Lint Report
@@ -758,7 +758,7 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   4. If approved, return to the appropriate upper phase and re-run from there
 - **Phase 5→4 Feedback Loop exhausted** (2 cycles per sub-phase) → escalate to user with accumulated FAIL findings
 - **Phase 5 DESIGN_FIX detected** → IMMEDIATE STOP, report upper-spec violation, wait for user approval
-- **Verification phase fails after 2 retries** → invoke bug-repro skill, report findings
+- **Verification phase fails after 2 retries** → invoke rtl-bug-repro skill, report findings
 - **User says "cancel" or "stop"** → delete .rtl-agent-team/state/rtl-autopilot-state.json, report progress summary
 </Escalation_And_Stop_Conditions>
 

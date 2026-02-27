@@ -28,7 +28,7 @@ test-vectors/
 │   └── ...
 ```
 
-## Usage with conformance-test Skill
+## Usage with rtl-conformance-test Skill
 
-The `conformance-test` skill expects test vectors in this directory.
-Run: `/rtl-agent-team:conformance-test` to decode and compare against golden outputs.
+The `rtl-conformance-test` skill expects test vectors in this directory.
+Run: `/rtl-agent-team:rtl-conformance-test` to decode and compare against golden outputs.

@@ -1,7 +1,7 @@
 # UVM Architecture Reference
 
-> This document is the detailed reference for the `uvm-verify` skill.
-> For core rules, see `<Steps>` in `skills/uvm-verify/SKILL.md`.
+> This document is the detailed reference for the `rtl-uvm-verify` skill.
+> For core rules, see `<Steps>` in `skills/rtl-uvm-verify/SKILL.md`.
 > For coding conventions, see `skills/uvm/SKILL.md`.
 
 ## 1. UVM Component Hierarchy

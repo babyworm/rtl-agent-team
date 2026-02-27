@@ -90,10 +90,10 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ### 개별 스킬
 
 ```
-/rtl-agent-team:lint-check        # RTL lint 검사
-/rtl-agent-team:func-verify       # cocotb 기능 검증
-/rtl-agent-team:synth-check       # Yosys 합성
-/rtl-agent-team:sva-check         # SVA formal 검증
+/rtl-agent-team:rtl-lint-check        # RTL lint 검사
+/rtl-agent-team:rtl-func-verify       # cocotb 기능 검증
+/rtl-agent-team:rtl-synth-check       # Yosys 합성
+/rtl-agent-team:rtl-sva-check         # SVA formal 검증
 /rtl-agent-team:arch-design       # 아키텍처 설계
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```

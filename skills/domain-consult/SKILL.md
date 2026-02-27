@@ -16,7 +16,7 @@ Returns the expert's answer without modification.
 
 <Do_Not_Use_When>
 - Question is about RTL coding style (ask rtl-coder directly)
-- Question is about synthesis or timing (use synth-check or timing-advisor directly)
+- Question is about synthesis or timing (use rtl-synth-check or timing-advisor directly)
 - Implementation work is needed, not consultation
 </Do_Not_Use_When>
 

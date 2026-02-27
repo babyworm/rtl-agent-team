@@ -11,13 +11,13 @@ Based on the IEEE 1800.2-2020 UVM Standard.
 
 <Use_When>
 - When writing UVM testbenches, agents, sequences, or scoreboards
-- When building UVM environments for the uvm-verify skill
+- When building UVM environments for the rtl-uvm-verify skill
 - During Phase 5 (Verification) — UVM-based verification work
 - Agents: testbench-dev
 </Use_When>
 
 <Do_Not_Use_When>
-- When doing cocotb Python-based verification → use `func-verify` skill
+- When doing cocotb Python-based verification → use `rtl-func-verify` skill
 - When writing only SVA assertions → use `systemverilog-assertion` skill
 - When writing RTL synthesizable code → use `systemverilog` skill
 </Do_Not_Use_When>

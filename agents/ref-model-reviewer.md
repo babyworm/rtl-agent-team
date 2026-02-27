@@ -29,7 +29,7 @@ color: cyan
   <Why_This_Matters>
     The reference model is the verification team's "source of truth." If it's wrong:
     - func-verifier compares RTL output against a wrong golden value → real bugs pass
-    - conformance-test declares mismatch when RTL is actually correct → wasted debug
+    - rtl-conformance-test declares mismatch when RTL is actually correct → wasted debug
     - coverage-analyst reports gaps that don't exist (model doesn't exercise paths RTL does)
 
     Common reference model bugs:

@@ -17,8 +17,8 @@ Outputs: arch/arch_review_report.md with findings per reviewer.
 </Use_When>
 
 <Do_Not_Use_When>
-- RTL is not yet lint-clean (fix lint first with lint-check)
-- Only functional bugs need diagnosis (use bug-repro instead)
+- RTL is not yet lint-clean (fix lint first with rtl-lint-check)
+- Only functional bugs need diagnosis (use rtl-bug-repro instead)
 - Architecture changes are also requested (arch-review is READ-ONLY)
 </Do_Not_Use_When>
 

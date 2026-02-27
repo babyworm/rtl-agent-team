@@ -1,7 +1,7 @@
 # Coverage Tools Reference
 
-> This document is the detailed reference for the `regression-run` skill.
-> For core rules, see `<Steps>` in `skills/regression-run/SKILL.md`.
+> This document is the detailed reference for the `rtl-regression-run` skill.
+> For core rules, see `<Steps>` in `skills/rtl-regression-run/SKILL.md`.
 
 ## 1. Verilator Coverage
 
@@ -192,7 +192,7 @@ async def test_random(dut):
 
 ## 6. Coverage Report Format
 
-See `skills/regression-run/templates/regression-report.md`.
+See `skills/rtl-regression-run/templates/regression-report.md`.
 
 ### Key Metrics
 

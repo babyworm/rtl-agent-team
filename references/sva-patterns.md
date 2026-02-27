@@ -1,7 +1,7 @@
 # SVA Temporal Operator Reference and Pattern Library
 
-> This document is the detailed reference for the `sva-check` skill.
-> For core rules, see `<Steps>` in `skills/sva-check/SKILL.md`.
+> This document is the detailed reference for the `rtl-sva-check` skill.
+> For core rules, see `<Steps>` in `skills/rtl-sva-check/SKILL.md`.
 
 ## 1. Temporal Operators
 

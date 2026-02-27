@@ -13,7 +13,7 @@ Target standard: **IEEE 1800-2012** for SVA and verification code.
 
 <Use_When>
 - When writing .sva files or SVA bind files
-- When preparing assertions for the sva-check skill
+- When preparing assertions for the rtl-sva-check skill
 - During Phase 5 (Verification) — formal verification work
 - When writing protocol assertions (AXI, APB, AHB, etc.)
 - Agents: sva-extractor, testbench-dev, protocol-checker
@@ -21,7 +21,7 @@ Target standard: **IEEE 1800-2012** for SVA and verification code.
 
 <Do_Not_Use_When>
 - When writing RTL synthesizable code → use `systemverilog` skill
-- When doing cocotb Python-based verification → refer to `func-verify` skill
+- When doing cocotb Python-based verification → refer to `rtl-func-verify` skill
 - When building UVM-based verification environments → use `uvm` skill
 </Do_Not_Use_When>
 

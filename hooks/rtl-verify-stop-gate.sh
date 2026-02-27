@@ -33,4 +33,4 @@ fi
 COUNT=$(wc -l < "$TRACK_FILE" | tr -d ' ')
 FILES=$(while IFS= read -r f; do basename "$f"; done < "$TRACK_FILE" | tr '\n' ', ' | sed 's/,$//')
 
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate BLOCKED] %s개 RTL 파일이 수정되었지만 기능 검증이 수행되지 않았습니다: %s. 다음 중 하나를 수행하세요: (1) /rtl-agent-team:func-verify 실행하여 기능 검증 수행, (2) 검증 불필요 시 touch .rtl-agent-team/state/rtl-verify-waiver, (3) 수정 추적 초기화: rm .rtl-agent-team/state/rtl-modified-files.txt"}}' "$COUNT" "$FILES"
+printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate BLOCKED] %s개 RTL 파일이 수정되었지만 기능 검증이 수행되지 않았습니다: %s. 다음 중 하나를 수행하세요: (1) /rtl-agent-team:rtl-func-verify 실행하여 기능 검증 수행, (2) 검증 불필요 시 touch .rtl-agent-team/state/rtl-verify-waiver, (3) 수정 추적 초기화: rm .rtl-agent-team/state/rtl-modified-files.txt"}}' "$COUNT" "$FILES"

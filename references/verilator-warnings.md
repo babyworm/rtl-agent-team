@@ -1,7 +1,7 @@
 # Verilator Warning Categories and Waiver Format
 
-> This document is the detailed reference for the `lint-check` skill.
-> For core rules, see `<Steps>` in `skills/lint-check/SKILL.md`.
+> This document is the detailed reference for the `rtl-lint-check` skill.
+> For core rules, see `<Steps>` in `skills/rtl-lint-check/SKILL.md`.
 
 ## 1. Severity Classification
 

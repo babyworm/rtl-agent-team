@@ -1,7 +1,7 @@
 # cocotb Ecosystem Reference
 
-> This document is the detailed reference for the `func-verify` skill.
-> For core rules, see `<Steps>` in `skills/func-verify/SKILL.md`.
+> This document is the detailed reference for the `rtl-func-verify` skill.
+> For core rules, see `<Steps>` in `skills/rtl-func-verify/SKILL.md`.
 
 ## 1. cocotb Core API
 

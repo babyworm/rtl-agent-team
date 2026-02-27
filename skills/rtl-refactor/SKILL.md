@@ -16,7 +16,7 @@ without changing functional behavior. Verifies equivalence after refactoring.
 
 <Do_Not_Use_When>
 - Behavioral change is needed (use rtl-code for new implementation)
-- Only lint checking needed without fixing (use lint-check instead)
+- Only lint checking needed without fixing (use rtl-lint-check instead)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -56,7 +56,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Apply refactoring plan to rtl/src/entropy_coder.sv: [paste plan]. Ensure all names use i_/o_ prefix, sys_clk/sys_rst_n convention. Do not change behavior.")
 
-Task(subagent_type="rtl-agent-team:lint-checker",
+Task(subagent_type="rtl-agent-team:rtl-lint-checker",
      prompt="Run lint via Bash CLI: 'verilator --lint-only -Wall rtl/src/entropy_coder.sv' and 'slang --lint-only rtl/src/entropy_coder.sv'. Report any violations. Verify naming conventions (i_/o_ prefix, {domain}_clk/{domain}_rst_n).")
 ```
 </Tool_Usage>

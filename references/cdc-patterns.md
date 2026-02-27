@@ -1,7 +1,7 @@
 # CDC (Clock Domain Crossing) Patterns and Constraints
 
-> This document is the detailed reference for the `cdc-verify` skill.
-> For core rules, see `<Steps>` in `skills/cdc-verify/SKILL.md`.
+> This document is the detailed reference for the `rtl-cdc-verify` skill.
+> For core rules, see `<Steps>` in `skills/rtl-cdc-verify/SKILL.md`.
 
 ## 1. Synchronizer Types
 

@@ -5,8 +5,21 @@ description: "This skill should be used when designing system architecture from 
 
 <Purpose>
 Translate requirements.json and io_definition.json into a concrete system architecture.
+Focus on **block decomposition** — how to partition required functionality into hardware blocks.
+
+Key concerns at this stage:
+1. **Functionality-to-block mapping**: Which requirement maps to which hardware block?
+2. **Memory access architecture**: Local memory (SRAM/register) vs external memory access patterns
+3. **Datapath width exploration**: How many data elements to process in parallel?
+4. **External memory bandwidth estimation**: Through the C reference model's ext_mem access functions
+
+This is a **big-picture** stage. Clock/reset details, pipeline registers, and FSM states
+belong to Phase 3 (μArch). Here we decide WHAT blocks exist and HOW data flows between them.
+
 Outputs architecture.md (block descriptions, interfaces, data flow) and block_diagram (ASCII or Mermaid).
 Runs in parallel with ref-model during Phase 2.
+The C reference model (ref_model/) validates functional correctness and provides
+bandwidth analysis — architecture decisions should be informed by bandwidth_report.json.
 </Purpose>
 
 <Use_When>
@@ -29,7 +42,10 @@ Dedicated domain experts catch codec-specific pitfalls early.
 <Execution_Policy>
 - Parallel: codec sub-domain experts (vcodec-syntax-entropy, vcodec-prediction, vcodec-transform-quant, vcodec-filter-recon) + video-processing-expert provide domain constraints, coordinated by vcodec-chief-standard-expert
 - arch-designer produces the architecture document
-- ref-model-dev produces the C++ reference model concurrently with arch-designer
+- ref-model-dev produces the C functional reference model concurrently with arch-designer
+  - C model (not C++): DPI-C compatible, no clock/reset, I/O as function arguments
+  - Internal memory modeled as arrays/variables, external memory via ext_mem_read/write
+  - bandwidth_report.json informs architecture memory access decisions
 - **Cascading Quality: 3-round mandatory iterative review (user-adjustable)**
   - rtl-architect coordinates review rounds as aggregator
   - 3 parallel reviewers each round: rtl-architect (spec compliance + structure), vcodec-architecture-expert (memory access + performance), ref-model-dev (architecture ↔ C model consistency)
@@ -44,6 +60,12 @@ Dedicated domain experts catch codec-specific pitfalls early.
 2. `mkdir -p reviews/phase-2-architecture`
 3. Parallel: vcodec-chief-standard-expert (cross-block interface compliance and domain constraints from sub-domain experts), video-processing-expert (pipeline and memory constraints)
 4. arch-designer produces architecture.md draft and block_diagram
+   - **Block decomposition focus**: Map each requirement to concrete hardware blocks
+   - **Memory architecture per block**: Classify each block's storage as:
+     - Local: SRAM or register file (internal to block, modeled as arrays in C ref model)
+     - External: Off-chip or shared memory (accessed via ext_mem functions, bandwidth-critical)
+   - **Datapath width decision**: Specify PARALLEL_LANES per block (how many data elements per cycle)
+   - **Bandwidth budget**: Reference bandwidth_report.json from C ref model to validate feasibility
    - All interface signal names MUST follow naming conventions:
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
      - Clocks: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
@@ -110,7 +132,7 @@ Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
      prompt="Review Round 1: Read architecture.md. Analyze memory access patterns for all large blocks: SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns, line buffer organization, shared memory arbitration. Identify performance bottlenecks (pipeline depth, throughput, latency vs spec targets).")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Read architecture.md and ref_model/src/. Check architecture-to-model consistency: block ↔ ref_model module mapping, data flow order, interface widths/formats. Identify any misalignment between architecture blocks and C++ model structure.")
+     prompt="Review Round 1: Read architecture.md and ref_model/src/. Check architecture-to-model consistency: block ↔ ref_model module mapping, data flow order, interface widths/formats. Identify any misalignment between architecture blocks and C model structure.")
 
 # --- Step 6: Coordinator aggregates Round 1 findings ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
@@ -161,7 +183,7 @@ arch-designer proposes 4-stage pipeline; rtl-architect flags critical path in st
 arch-designer revises to 5-stage with register between stages 3-4.
 </Good>
 <Bad>
-Skipping rtl-architect review and passing architecture directly to uarch-design — misses
+Skipping rtl-architect review and passing architecture directly to rtl-uarch-design — misses
 timing-critical issues that are expensive to fix at RTL stage.
 </Bad>
 <Bad>
@@ -209,5 +231,5 @@ Naming convention enforcement in architecture.md:
 - Clock columns: `clk`, `sys_clk`, `pixel_clk`, etc. (NOT `clk_i`, `clk_sys`)
 - Reset columns: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
 - Block instance names when referenced: `u_block_name` prefix
-- These names flow directly to uarch-design and rtl-code — errors here cascade downstream
+- These names flow directly to rtl-uarch-design and rtl-code — errors here cascade downstream
 </Advanced>

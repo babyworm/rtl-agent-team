@@ -1,7 +1,7 @@
 # AXI Protocol Rules and SVA Assertion Templates
 
-> This document is the detailed reference for the `protocol-verify` skill.
-> For core rules, see `<Steps>` in `skills/protocol-verify/SKILL.md`.
+> This document is the detailed reference for the `rtl-protocol-verify` skill.
+> For core rules, see `<Steps>` in `skills/rtl-protocol-verify/SKILL.md`.
 
 ## 1. AXI4 Channel Overview
 

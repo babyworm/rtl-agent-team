@@ -1,7 +1,7 @@
 # Yosys Command Reference and Latch Detection Guide
 
-> This document is the detailed reference for the `synth-check` skill.
-> For core rules, see `<Steps>` in `skills/synth-check/SKILL.md`.
+> This document is the detailed reference for the `rtl-synth-check` skill.
+> For core rules, see `<Steps>` in `skills/rtl-synth-check/SKILL.md`.
 
 ## 1. Yosys Basic Synthesis Flow
 
@@ -169,4 +169,4 @@ write_json synth/ecp5_netlist.json
 
 ## 6. Synthesis Script Template
 
-See `skills/synth-check/templates/yosys-synth-script.ys`.
+See `skills/rtl-synth-check/templates/yosys-synth-script.ys`.
