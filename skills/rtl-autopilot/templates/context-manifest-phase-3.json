@@ -11,7 +11,7 @@
     "docs/phase-1-research/requirements.json",
     "docs/phase-1-research/io_definition.json",
     "docs/phase-1-research/domain-analysis.md",
-    "ref_model/src/*.cpp",
+    "ref_model/src/*.c",
     "docs/decisions/ADR-*.md"
   ],
   "outputs": [

@@ -175,32 +175,30 @@ private:
 
 
 // =============================================================================
-// Example: Reference Model (standalone, no SystemC dependency)
-// Compile: g++ -std=c++17 -shared -fPIC -o ref_compute.so ref_compute.cpp
+// Example: Reference Model (standalone C, no SystemC dependency)
+// Compile: gcc -std=c11 -Wall -Wextra -Werror -shared -fPIC -o ref_compute.so ref_compute.c
 // =============================================================================
 
 // --- ref_compute.h ---
-// #pragma once
-// #include <cstdint>
+// #ifndef REF_COMPUTE_H
+// #define REF_COMPUTE_H
+// #include <stdint.h>
 //
-// extern "C" {
-//   uint32_t ref_compute(uint32_t input);
-//   void     ref_reset(void);
-// }
+// uint32_t ref_compute(uint32_t input);
+// void     ref_reset(void);
+//
+// #endif
 
-// --- ref_compute.cpp ---
+// --- ref_compute.c ---
 // #include "ref_compute.h"
 //
-// extern "C" {
-//   uint32_t ref_compute(uint32_t input) {
-//     uint16_t lo = static_cast<uint16_t>(input & 0xFFFF);
-//     uint16_t hi = static_cast<uint16_t>((input >> 16) & 0xFFFF);
-//     int32_t product = static_cast<int32_t>(static_cast<int16_t>(lo))
-//                     * static_cast<int32_t>(static_cast<int16_t>(hi));
-//     return static_cast<uint32_t>(product);
-//   }
-//   void ref_reset(void) { /* nothing for stateless model */ }
+// uint32_t ref_compute(uint32_t input) {
+//     uint16_t lo = (uint16_t)(input & 0xFFFF);
+//     uint16_t hi = (uint16_t)((input >> 16) & 0xFFFF);
+//     int32_t product = (int32_t)(int16_t)lo * (int32_t)(int16_t)hi;
+//     return (uint32_t)product;
 // }
+// void ref_reset(void) { /* nothing for stateless model */ }
 //
 // --- cocotb usage ---
 // import ctypes

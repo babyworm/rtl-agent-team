@@ -13,7 +13,7 @@
     "docs/phase-2-architecture/architecture.md",
     "docs/phase-1-research/requirements.json",
     "docs/decisions/ADR-*.md",
-    "ref_model/src/*.cpp"
+    "ref_model/src/*.c"
   ],
   "outputs": [
     "rtl/src/*.sv",

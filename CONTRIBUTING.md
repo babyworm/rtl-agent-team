@@ -315,7 +315,8 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 mark
 |------|------|------|
 | **SystemVerilog (RTL)** | IEEE 1800-2009 | 합성 가능 RTL. 2012+ 기능은 RTL에서 사용 금지 |
 | **SystemVerilog (검증)** | IEEE 1800-2012 | SVA, UVM TB. checker, interface class 등 허용 |
-| **C++** | C++17 (`-std=c++17`) | Ref Model, BFM, DPI. C++20 사용 금지 |
+| **C** | C11 (`-std=c11`) | Ref Model (DPI-C 호환). `gcc -Wall -Wextra -Werror` |
+| **C++** | C++17 (`-std=c++17`) | BFM (SystemC/TLM), DPI. C++20 사용 금지 |
 
 - iverilog 플래그: `-g2012` (2009 하위 호환 파싱)
 - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)

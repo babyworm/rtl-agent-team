@@ -165,7 +165,7 @@ This skill automates sequencing, gate checking, and recovery.
      - User may request additional rounds beyond 3 ("set iterations to N")
    - `rtl-critic` performs synthesizability pre-assessment (parallel with Round 1)
 
-   **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + ref_model/src/*.cpp exist
+   **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + ref_model/src/*.c exist
 
    **Phase 2→3 Quality Gate (Architecture Review)**:
    - 3-round iterative review converged (or gaps escalated and user-approved)
@@ -777,7 +777,7 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 - [ ] No upper-spec violations were left unresolved
 - [ ] Naming conventions enforced at every phase gate:
   - io_definition.json: `i_`/`o_`/`io_` prefix, `{domain}_clk`/`{domain}_rst_n`
-  - architecture.md: interface signal names, clock/reset naming
+  - architecture.md: data path names, clock/reset domain naming
   - uarch/*.md: all signal names, FSM states, instance prefixes
   - rtl/src/*.sv: lint-clean, naming compliant
 - [ ] All 6 phases completed

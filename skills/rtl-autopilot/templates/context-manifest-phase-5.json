@@ -17,7 +17,7 @@
     "docs/phase-4-rtl/stream-b-sva-skeletons.md",
     "docs/phase-4-rtl/stream-b-cdc-preliminary.md",
     "docs/phase-4-rtl/stream-b-tb-skeletons.md",
-    "ref_model/src/*.cpp",
+    "ref_model/src/*.c",
     "docs/decisions/ADR-*.md",
     "docs/lessons-learned.md"
   ],

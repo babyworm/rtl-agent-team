@@ -95,15 +95,15 @@ color: cyan
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: ref_model/src/*.cpp, ref_model/src/*.h, ref_model/src/*.py, specs/
+    - Read: ref_model/src/*.c, ref_model/include/*.h, ref_model/src/*.py, specs/
     - Grep: find type declarations, arithmetic operations, boundary checks
-    - Bash: compile model with warnings (`g++ -Wall -Wextra -Werror`), run tests
+    - Bash: compile model with warnings (`gcc -std=c11 -Wall -Wextra -Werror`), run tests
     - Write: save review report to reviews/ path
 
     Compile with strict warnings:
     ```bash
-    cd ref_model && g++ -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
-      -o model_test src/*.cpp 2>&1 | head -50
+    cd ref_model && gcc -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
+      -o model_test src/*.c 2>&1 | head -50
     ```
   </Tool_Usage>
 

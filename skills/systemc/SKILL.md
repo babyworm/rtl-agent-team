@@ -51,7 +51,7 @@ Following consistent coding standards and TLM-2.0 patterns ensures:
 ### 1.1 Filenames
 | Type | Pattern | Example |
 |------|---------|---------|
-| Reference Model | `ref_{module}.cpp / .h` | `ref_cabac.cpp` |
+| Reference Model | `ref_{module}.c / .h` | `ref_cabac.c` |
 | BFM | `bfm_{module}.cpp / .h` | `bfm_axi_master.cpp` |
 | TLM Adapter | `tlm_{module}_adapter.cpp` | `tlm_cabac_adapter.cpp` |
 | Memory Manager | `memory_manager.h` | `memory_manager.h` |
@@ -205,16 +205,16 @@ trans.set_extension(ext);
 ## 6. Build Rules
 
 ```bash
-# Reference Model (standalone, no SystemC)
-g++ -std=c++17 -O2 -Wall -Wextra -shared -fPIC -o ref_cabac.so ref_cabac.cpp
+# Reference Model (standalone C, no SystemC)
+gcc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC -o ref_cabac.so ref_cabac.c
 
 # BFM (SystemC required)
 g++ -std=c++17 -O2 -Wall -Wextra \
   -I${SYSTEMC_HOME}/include -L${SYSTEMC_HOME}/lib-linux64 -lsystemc \
   -o tb_cabac tb_cabac_top.cpp bfm_cabac.cpp
 
-# cocotb integration (shared library)
-g++ -std=c++17 -shared -fPIC -o ref_cabac.so ref_cabac.cpp
+# cocotb integration (shared library, C ref model)
+gcc -std=c11 -shared -fPIC -o ref_cabac.so ref_cabac.c
 ```
 
 cocotb integration:
