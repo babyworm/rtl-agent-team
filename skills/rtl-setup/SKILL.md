@@ -79,6 +79,7 @@ This skill ensures everything is in place before design work begins.
    | slang | `slang --version` | Advanced lint | Optional |
    | slang-server | `slang-server --version` | SV Language Server (LSP) | Optional |
    | gtkwave | `gtkwave --version` | Waveform viewer | Optional |
+   | systemc | `pkg-config --modversion systemc` or check `$SYSTEMC_HOME` | SystemC/TLM-2.0 library (ref model, BFM) | Optional |
    | python3 | `python3 --version` | cocotb runtime | Yes |
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
    | make | `make --version` | Build system | Yes |
@@ -188,6 +189,7 @@ Bash: yosys --version 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import cocotb; print(cocotb.__version__)" 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
+Bash: pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && test -f "$SYSTEMC_HOME/lib-linux64/libsystemc.a" && echo "$SYSTEMC_HOME (found via SYSTEMC_HOME)") || echo "NOT_FOUND"
 Bash: g++ --version 2>&1 || echo "NOT_FOUND"
 
 # Template generation
@@ -240,6 +242,20 @@ pip3 install cocotb
 # Automated install (builds from source + registers Claude Code plugin):
 bash scripts/install-slang-server.sh install
 # Or manually: https://github.com/hudson-trading/slang-server
+
+# SystemC/TLM-2.0 (for reference models and BFMs)
+# Option 1: apt (Ubuntu 22.04+)
+sudo apt install libsystemc-dev
+
+# Option 2: from source (recommended for specific version)
+wget https://github.com/accellera-official/systemc/archive/refs/tags/3.0.2.tar.gz
+tar xzf 3.0.2.tar.gz && cd systemc-3.0.2
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+make -j$(nproc) && sudo make install
+
+# Option 3: Docker EDA image (includes SystemC 3.0.2)
+docker build -t rtl-eda-tools docker/
 ```
 </Install_Instructions>
 
