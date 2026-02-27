@@ -111,7 +111,7 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 |------|---------|---------|
 | Module | `module_name.sv` | `axi_lite_slave.sv` |
 | Package | `module_name_pkg.sv` | `cabac_pkg.sv` |
-| Interface | `module_name_if.sv` | `axi_if.sv` |
+| Interface | `module_name_if.sv` | `axi_if.sv` *(iverilog 미지원 — 에이전트 생성 금지, §4.3)* |
 | Testbench | `tb_module_name.sv` | `tb_axi_lite_slave.sv` |
 | SVA bind | `sva_module_name.sv` | `sva_axi_lite_slave.sv` |
 
