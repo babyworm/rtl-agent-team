@@ -212,6 +212,22 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > Iteration count may be increased beyond 3 if convergence is not achieved.
 > The principle: **refine thoroughly at the top, execute efficiently at the bottom.**
 
+## IMPORTANT — Document-as-Memory Principle
+
+> **Design artifacts serve as persistent memory across phases and agents.**
+>
+> Each phase reads upstream documents as input context and writes downstream documents as output.
+> No agent needs to "remember" another agent's output — it reads the document.
+>
+> ```
+> requirements.json → arch-designer → architecture.md → uarch-designer → uarch/*.md → rtl-coder
+> reviews/phase-N/ → Quality Gate → next phase proceeds or fails
+> ```
+>
+> This enables resumability: any phase can restart by re-reading its input documents.
+> Intra-phase communication (iterative reviews) uses scratchpad files at
+> `.rtl-agent-team/scratch/phase-{N}/` which are cleaned on phase completion.
+
 ## 6-Phase Design Pipeline (+Phase 7 Optional Exploration)
 
 Design artifacts for each Phase are stored in `docs/phase-N-*/` and serve as input (guides) for the next Phase.
@@ -457,5 +473,6 @@ PASS | FAIL: [Reason]
 Design flow state is stored under `.rtl-agent-team/state/`:
 - `.rtl-agent-team/state/rtl-autopilot-state.json` — Pipeline progress state (for resumption)
 - `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase completion gate
+- `.rtl-agent-team/scratch/phase-{N}/` — Temporary working files for iterative review rounds (cleaned on phase completion)
 
 <!-- RTL-AGENT-TEAM:END -->

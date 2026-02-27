@@ -38,6 +38,18 @@ Graduated iteration by abstraction level:
 Iteration count can be increased beyond 3 if convergence is not achieved.
 The principle: **refine thoroughly at the top, execute efficiently at the bottom.**
 
+**Document-as-Memory Principle:**
+Design artifacts (docs/, reviews/) serve as persistent memory across phases and agents.
+Each phase reads upstream documents as input context and writes downstream documents as output.
+This eliminates direct agent-to-agent state coupling and enables resumability — any phase can
+restart by re-reading its input documents.
+
+Document flow:
+  requirements.json → arch-designer reads → architecture.md → uarch-designer reads → uarch/*.md → rtl-coder reads
+  reviews/phase-N/ → Quality Gate reads → next phase proceeds or fails
+
+No agent needs to "remember" another agent's output — it reads the document.
+
 State is persisted at .rtl-agent-team/state/rtl-autopilot-state.json for resumability.
 </Purpose>
 
@@ -72,6 +84,10 @@ This skill automates sequencing, gate checking, and recovery.
 - Maximum 2 Quality Gate retry cycles per phase before escalating to user
 - **Phase 5→4 Feedback Loop**: On Phase 5 sub-phase FAIL, classify as UNIT_FIX/INTEGRATION_FIX/DESIGN_FIX and handle accordingly (max 2 feedback loops per sub-phase)
 - On interruption: state file is preserved; re-invoking this skill resumes from last phase
+- **Scratchpad for intra-phase communication**: During iterative reviews, agents write findings
+  to `.rtl-agent-team/scratch/phase-{N}/` as temporary working files. The coordinator reads
+  these to aggregate feedback. On phase completion, findings are consolidated into reviews/
+  and scratch files are cleaned up.
 </Execution_Policy>
 
 <Steps>
@@ -297,13 +313,25 @@ This skill automates sequencing, gate checking, and recovery.
 - **Upper-Spec Violation detected**: STOP immediately. Identify which upper phase is violated (e.g., "μArch dropped Feature X that Architecture requires"). Return to the violated upper phase. Report violation details to user — DO NOT proceed without user approval
 - **Artifact Gate FAIL**: retry the phase once, then escalate to user
 
+**Scratchpad Convention (intra-phase agent communication):**
+During iterative review rounds, reviewers write findings to scratch files:
+  .rtl-agent-team/scratch/phase-{N}/round-{R}-{agent}.md
+
+The coordinator (rtl-architect) reads all round files to aggregate and produce:
+  .rtl-agent-team/scratch/phase-{N}/round-{R}-feedback.md  (targeted feedback for revision agents)
+
+On phase gate PASS:
+  - Consolidated review saved to reviews/phase-{N}-*/
+  - Scratch directory cleaned: rm -rf .rtl-agent-team/scratch/phase-{N}/
+
+On phase gate FAIL + retry:
+  - Scratch files preserved for the next round
+
+This pattern follows Document-as-Memory: agents communicate through files, not direct coupling.
+
 **Coding Convention Enforcement (all phases):**
-- Port naming: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
-- Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
-- Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
-- Instances: `u_` prefix; generates: `gen_` prefix
-- Use `logic` everywhere (`reg`/`wire` forbidden)
-- Base style: lowRISC SystemVerilog Coding Style Guide with above overrides
+See CLAUDE.md "Core Overrides" section for complete naming rules.
+Summary: i_/o_/io_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates, logic only.
 </Steps>
 
 <Tool_Usage>
@@ -350,115 +378,36 @@ verdict: PASS or FAIL + findings[]")
 # ============================================================
 # Phase 2: Architecture + Reference Model (parallel + 3-round iterative review)
 # ============================================================
-Bash("mkdir -p reviews/phase-2-architecture")
+Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
-Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Design architecture from requirements.json and io_definition.json. All interface signals must use i_/o_ prefix, {domain}_clk/{domain}_rst_n naming. Produce architecture.md and block_diagram.")
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Implement C++ ref model at ref_model/src/ from requirements.json. Must be bitexact vs JM/HM.")
+# Parallel: architecture design + reference model development
+Skill(skill="rtl-agent-team:arch-design")    # Handles 3-round iterative review internally
+Skill(skill="rtl-agent-team:ref-model")      # C++ golden model
 
-# --- Phase 2 Synthesizability Pre-Assessment (parallel with Round 1) ---
+# Synthesizability pre-assessment (parallel with arch-design Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="READ-ONLY synthesizability pre-assessment. Read architecture.md.
-Evaluate:
-1. Are there architectural patterns known to cause synthesis difficulties?
-2. Is the clock domain crossing strategy defined for all multi-domain interfaces?
-3. Are memory structures (FIFOs, RAMs) sized and typed appropriately?
-4. Any combinational loop risks in the proposed block connectivity?
+Evaluate: synthesis-difficult patterns, CDC strategy, memory sizing, combinational loop risks.
 verdict: PASS or FAIL + findings[]")
 
-# --- Phase 2 Iterative Review: Round 1 (3 reviewers in parallel) ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review Round 1: Read requirements.json and architecture.md.
-1. **Feature Coverage Checklist**: List EVERY functional requirement. Mark COVERED or MISSING.
-2. **Block decomposition**: Well-bounded with single responsibilities?
-3. **Interface adequacy**: All signals needed for requirements?
-4. **Port naming**: i_/o_ prefix, {domain}_clk/{domain}_rst_n compliance.
-5. **Hierarchical compliance**: No unauthorized features added.
-Output Feature Coverage Checklist and findings.")
-
-Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
-     prompt="Review Round 1: Read architecture.md. Analyze memory access patterns for all large blocks:
-SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns,
-line buffer organization, shared memory arbitration. Identify performance bottlenecks
-(pipeline depth, throughput, latency vs spec targets). Output findings.")
-
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Read architecture.md and ref_model/src/. Check architecture-to-model
-consistency: block ↔ ref_model module mapping, data flow order, interface widths/formats.
-Identify any misalignment. Output findings.")
-
-# --- Round 1 Coordinator aggregation ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Aggregate Round 1 findings from rtl-architect, vcodec-architecture-expert, ref-model-dev.
-Save consolidated review to reviews/phase-2-architecture/architecture-review-r1.md.
-Output targeted feedback for each expert that needs to revise.")
-
-# --- Targeted revision Round 1→2 (only experts with findings) ---
-# --- Review Round 2 (same 3 reviewers) → architecture-review-r2.md ---
-# --- Targeted revision Round 2→3 (skip if converged) ---
-# --- Review Round 3 (mandatory final pass) → architecture-review-r3.md ---
-
-# --- Finalize ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Finalize Phase 2 review. Consolidate r1, r2, r3 into:
-- reviews/phase-2-architecture/architecture-review.md (consolidated final review)
-- reviews/phase-2-architecture/feature-coverage.md (Feature Coverage Checklist)
-- reviews/phase-2-architecture/architecture-diagram.md (Mermaid graph TD)
-Output: VERDICT: PASS or VERDICT: FAIL + findings[]")
+# Phase 2→3 Quality Gate: verify arch-design produced PASS verdict
+# Check: reviews/phase-2-architecture/architecture-review.md verdict=PASS
+# Check: reviews/phase-2-architecture/feature-coverage.md 100% coverage
+# Clean up scratch: rm -rf .rtl-agent-team/scratch/phase-2/
 
 # ============================================================
 # Phase 3: μArch + BFM (parallel + 3-round iterative review)
 # ============================================================
-Bash("mkdir -p reviews/phase-3-uarch")
+Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
-Task(subagent_type="rtl-agent-team:uarch-designer",
-     prompt="Produce uarch/*.md from architecture.md. All signal names must use i_/o_ prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates.")
-Task(subagent_type="rtl-agent-team:bfm-dev",
-     prompt="Implement SystemC TLM BFMs at bfm/src/ from architecture.md. Interface names must match io_definition.json.")
+# Parallel: μArch design + BFM development
+Skill(skill="rtl-agent-team:uarch-design")   # Handles 3-round iterative review internally
+Skill(skill="rtl-agent-team:bfm-develop")    # SystemC TLM BFMs
 
-# --- Phase 3 Iterative Review: Round 1 (4 reviewers in parallel) ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review Round 1: Read architecture.md and all uarch/*.md.
-1. **Block boundary alignment**: 1:1 correspondence with architecture blocks?
-2. **Feature preservation**: All features PRESERVED or DROPPED? Any DROPPED → FAIL.
-3. **Signal naming**: i_/o_ ports, {domain}_clk/{domain}_rst_n, u_ instances.
-4. **Hierarchical compliance**: Any unauthorized architecture alterations? → FAIL.
-Output Feature Preservation Checklist and findings.")
-
-Task(subagent_type="rtl-agent-team:timing-advisor",
-     prompt="Review Round 1: Review uarch/*.md for critical path issues at target frequency.
-Flag pipeline imbalance, register placement feasibility, combinational paths that violate timing.
-Output findings.")
-
-Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
-     prompt="Review Round 1: Read uarch/*.md. Verify algorithm ↔ μArch consistency.
-Analyze memory access optimization: SRAM banking, port conflicts, access scheduling.
-Review interface optimization: handshake protocols, backpressure mechanisms.
-Output findings.")
-
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Read uarch/*.md and ref_model/src/. Check model consistency:
-behavioral match, data widths, fixed-point formats, rounding modes.
-Output findings.")
-
-# --- Round 1 Coordinator aggregation ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Aggregate Round 1 findings from all 4 reviewers.
-Save to reviews/phase-3-uarch/uarch-review-r1.md. Output targeted feedback.")
-
-# --- Targeted revision Round 1→2 (only modules/experts with feedback) ---
-# --- Review Round 2 (same 4 reviewers) → uarch-review-r2.md ---
-# --- Targeted revision Round 2→3 (skip if converged) ---
-# --- Review Round 3 (mandatory final pass) → uarch-review-r3.md ---
-
-# --- Finalize ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Finalize Phase 3 review. Consolidate r1, r2, r3 into:
-- reviews/phase-3-uarch/uarch-review.md (consolidated final review)
-- reviews/phase-3-uarch/feature-preservation.md (Feature Preservation Checklist)
-- reviews/phase-3-uarch/pipeline-diagram.md (Mermaid graph LR)
-Output: VERDICT: PASS or VERDICT: FAIL + findings[]")
+# Phase 3→4 Quality Gate: verify uarch-design produced PASS verdict
+# Check: reviews/phase-3-uarch/uarch-review.md verdict=PASS
+# Check: reviews/phase-3-uarch/feature-preservation.md 100% preserved
+# Clean up scratch: rm -rf .rtl-agent-team/scratch/phase-3/
 
 # ============================================================
 # Phase 4: RTL Implementation (parallel per module)
