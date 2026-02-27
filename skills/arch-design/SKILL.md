@@ -58,31 +58,35 @@ Dedicated domain experts catch codec-specific pitfalls early.
 <Steps>
 1. Read requirements.json and io_definition.json
 2. `mkdir -p reviews/phase-2-architecture`
-3. Parallel: vcodec-chief-standard-expert (cross-block interface compliance and domain constraints from sub-domain experts), video-processing-expert (pipeline and memory constraints)
-4. arch-designer produces architecture.md draft and block_diagram
-   - **Block decomposition focus**: Map each requirement to concrete hardware blocks
-   - **Memory architecture per block**: Classify each block's storage as:
-     - Local: SRAM or register file (internal to block, modeled as arrays in C ref model)
-     - External: Off-chip or shared memory (accessed via ext_mem functions, bandwidth-critical)
-   - **Datapath width decision**: Specify PARALLEL_LANES per block (how many data elements per cycle)
-   - **Bandwidth budget**: Reference bandwidth_report.json from C ref model to validate feasibility
-   - All interface signal names MUST follow naming conventions:
-     - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
-     - Clocks: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
-     - Resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
-     - Instances: `u_` prefix (e.g., `u_input_buffer`), generates: `gen_` prefix
-   - Block names: `snake_case` (these become RTL module names)
-   - architecture.md MUST include a Mermaid block diagram section showing top-level block decomposition
-5. **Parallel initial review** (3 reviewers in parallel, after arch-designer draft + ref-model ready):
-   - a. `rtl-architect`: Spec compliance (Feature Coverage Checklist — every REQ-NNN mapped?) + structural review (block decomposition, interface adequacy)
-   - b. `vcodec-architecture-expert`: Memory access pattern analysis for large blocks (SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns, line buffer organization, shared memory arbitration)
-   - c. `ref-model-dev`: Architecture-to-model consistency check (block ↔ ref_model module mapping, data flow order, interface widths/formats)
-6. **Review Round 1** — rtl-architect as coordinator aggregates findings from all 3 reviewers:
-   - Functional completeness (all REQ-NNN covered?)
-   - Memory access (SRAM sizes adequate? bandwidth bottlenecks?)
-   - Performance (pipeline depth, throughput, latency vs spec targets)
-   - Ref model consistency (architecture ↔ C model alignment)
-   - Interface correctness (port names, widths, protocols)
+3. **Parallel launch** (3 concurrent streams):
+   - a. **Domain experts**: vcodec-chief-standard-expert (cross-block interface compliance and domain constraints from sub-domain experts), video-processing-expert (pipeline and memory constraints)
+   - b. **arch-designer**: produces architecture.md draft and block_diagram
+     - **Block decomposition focus**: Map each requirement to concrete hardware blocks
+     - **Memory architecture per block**: Classify each block's storage as:
+       - Local: SRAM or register file (internal to block, modeled as arrays in C ref model)
+       - External: Off-chip or shared memory (accessed via ext_mem functions, bandwidth-critical)
+     - **Datapath width decision**: Specify PARALLEL_LANES per block (how many data elements per cycle)
+     - Block names: `snake_case` (these become RTL module names later)
+     - architecture.md MUST include a Mermaid block diagram section showing top-level block decomposition
+     - Note: RTL naming conventions (i_/o_ prefix, clock/reset naming, instance naming) are NOT required at this stage — those are Phase 4 concerns
+   - c. **ref-model-dev**: produces C functional reference model and bandwidth_report.json
+     - C model (no clock/reset), I/O as function arguments, ext_mem_read/write for external memory
+     - bandwidth_report.json: external memory access count/pattern per block
+4. **Synchronization**: Wait for arch-designer draft AND ref-model + bandwidth_report.json to complete
+5. **Bandwidth feasibility check**: arch-designer revises draft using bandwidth_report.json
+   - Validate external memory bandwidth per block against technology limits
+   - Adjust block partitioning or PARALLEL_LANES if bandwidth budget is exceeded
+6. **Review Round 1** (3 reviewers in parallel + coordinator aggregation):
+   - 3 parallel reviewers:
+     - a. `rtl-architect`: Spec compliance (Feature Coverage Checklist — every REQ-NNN mapped?) + structural review (block decomposition, interface adequacy)
+     - b. `vcodec-architecture-expert`: Memory access pattern analysis for large blocks (SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns, line buffer organization, shared memory arbitration)
+     - c. `ref-model-dev`: Architecture-to-model consistency check (block ↔ ref_model module mapping, data flow order, interface widths/formats)
+   - rtl-architect as coordinator aggregates findings:
+     - Functional completeness (all REQ-NNN covered?)
+     - Memory access (SRAM sizes adequate? bandwidth bottlenecks?)
+     - Performance (pipeline depth, throughput, latency vs spec targets)
+     - Ref model consistency (architecture ↔ C model alignment)
+     - Interface correctness (widths, protocols, data flow)
    - **Save to `reviews/phase-2-architecture/architecture-review-r1.md`** in standard review Markdown format
 7. **Targeted revision Round 1→2** — re-delegate ONLY to experts whose review found issues:
    - arch-designer revises architecture.md for spec/structure issues
@@ -121,12 +125,16 @@ Bash("mkdir -p reviews/phase-2-architecture")
 
 # --- Step 3-4: Domain experts + arch-designer draft + ref-model (parallel) ---
 Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md and block_diagram. All interface signals must use i_/o_/io_ prefix (NOT _i/_o suffix), clocks as {domain}_clk (e.g. sys_clk), resets as {domain}_rst_n. Instance names use u_ prefix. Include a Mermaid block diagram (graph TD) in architecture.md showing top-level block decomposition and connectivity.")
+     prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md and block_diagram. Focus on block decomposition: map each requirement to hardware blocks, classify memory per block (local SRAM/reg vs external), specify PARALLEL_LANES per block. Block names in snake_case. Include a Mermaid block diagram (graph TD) showing top-level decomposition and connectivity. RTL naming conventions are NOT required at this stage.")
+
+# ref-model (parallel with arch-designer)
+Task(subagent_type="rtl-agent-team:ref-model-dev",
+     prompt="Implement C functional reference model at ref_model/src/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays/variables. External memory via ext_mem_read/write. Generate bandwidth_report.json with external memory access statistics per block.")
 
 # --- Step 5: Parallel initial review (3 reviewers) ---
 # After arch-designer draft + ref-model are ready, launch 3 reviewers in parallel:
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review Round 1: Read requirements.json and architecture.md. Verify every REQ-NNN is mapped to at least one architecture block. Review for RTL implementability, timing feasibility, interface consistency, and naming convention compliance (i_/o_ prefix, {domain}_clk/{domain}_rst_n). Output Feature Coverage Checklist with per-REQ status.")
+     prompt="Review Round 1: Read requirements.json and architecture.md. Verify every REQ-NNN is mapped to at least one architecture block. Review for RTL implementability, timing feasibility, interface consistency (data widths, protocols, directions), and memory architecture adequacy. Output Feature Coverage Checklist with per-REQ status.")
 
 Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
      prompt="Review Round 1: Read architecture.md. Analyze memory access patterns for all large blocks: SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns, line buffer organization, shared memory arbitration. Identify performance bottlenecks (pipeline depth, throughput, latency vs spec targets).")
@@ -209,11 +217,9 @@ Phase 4 RTL coding, requiring full architecture rework. Cascading Quality Princi
 - [ ] **Ref model code reviewed** for quality and bitexact correctness
 - [ ] rtl-architect spec compliance verdict is PASS
 - [ ] rtl-architect review completed with no blockers
-- [ ] All interfaces consistent with io_definition.json
-- [ ] All signal names use `i_`/`o_`/`io_` prefix (NOT `_i`/`_o` suffix)
-- [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for single domain, `{domain}_clk` for multiple domains. NOT `clk_i`
-- [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for single domain, `{domain}_rst_n` for multiple domains. NOT `rst_ni`
-- [ ] Instance names use `u_` prefix, generate blocks use `gen_` prefix
+- [ ] All interfaces consistent with io_definition.json (data widths, protocols, directions)
+- [ ] **bandwidth_report.json reviewed** and external memory bandwidth validated per block
+- [ ] **ref-model C functional model** complete with ext_mem abstraction and self-tests passing
 - [ ] **Per-round review artifacts saved:**
   - [ ] reviews/phase-2-architecture/architecture-review-r1.md
   - [ ] reviews/phase-2-architecture/architecture-review-r2.md
@@ -224,12 +230,15 @@ Phase 4 RTL coding, requiring full architecture rework. Cascading Quality Princi
 </Final_Checklist>
 
 <Advanced>
-architecture.md should include: block list, per-block responsibility, inter-block interfaces (protocol, width, handshake), clock domains, reset strategy.
+architecture.md should include: block list, per-block responsibility, inter-block interfaces (protocol, width, handshake), clock domains, reset strategy, memory architecture (local vs external per block), datapath width (PARALLEL_LANES).
 
-Naming convention enforcement in architecture.md:
-- Interface table signal names: `i_blockname_signal`, `o_blockname_signal` (prefix, not suffix)
-- Clock columns: `clk`, `sys_clk`, `pixel_clk`, etc. (NOT `clk_i`, `clk_sys`)
-- Reset columns: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
-- Block instance names when referenced: `u_block_name` prefix
-- These names flow directly to rtl-uarch-design and rtl-code — errors here cascade downstream
+Architecture-level naming:
+- Block names: `snake_case` (these become RTL module names in Phase 4)
+- Interface descriptions: focus on data width, protocol type, direction — NOT RTL port naming
+- RTL naming conventions (i_/o_ prefix, clock/reset naming, instance prefix) are applied in Phase 4 by rtl-coder, not here
+
+Bandwidth analysis workflow:
+- ref-model produces bandwidth_report.json during Step 3c
+- arch-designer consumes bandwidth_report.json during Step 5 (after synchronization)
+- If bandwidth exceeds limits → adjust block partitioning or PARALLEL_LANES before review rounds
 </Advanced>
