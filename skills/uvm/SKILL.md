@@ -73,6 +73,10 @@ Following consistent naming conventions, class structure, and factory usage patt
 | Coverage | `{module}_coverage` | `cabac_coverage` |
 
 ### 1.3 Instance Naming (create)
+
+> **`m_` prefix 규칙**: UVM 클래스 내부 멤버 핸들은 `m_` prefix를 사용한다 (업계 관행).
+> 이는 RTL의 `u_` prefix 규칙과 별개이며, UVM TB에서만 적용된다.
+
 ```systemverilog
 // Instance name matches the variable name
 m_driver  = axi_driver::type_id::create("m_driver", this);

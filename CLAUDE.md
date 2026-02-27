@@ -278,7 +278,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 > - iverilog 플래그는 `-g2012` 사용 (SV 기본 문법 지원)
 > - **iverilog 미지원**: `interface`, unpacked `struct`/`union` — 에이전트 생성 금지
 > - `typedef struct packed` / `typedef union packed`는 지원됨 (사용 가능)
-> - 기존 코드에 존재하거나 사용자가 직접 추가한 경우 수정하지 않음
+> - 사용자가 직접 추가하거나 기존 코드에 존재하는 경우 수정하지 않는다
 > - verilator/slang은 기본 설정으로 2009 기능을 완전 지원
 > - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
 
