@@ -470,7 +470,7 @@ Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
 # Parallel: architecture design + reference model development
 Skill(skill="rtl-agent-team:arch-design")    # Handles 3-round iterative review internally
-Skill(skill="rtl-agent-team:ref-model")      # C++ golden model
+Skill(skill="rtl-agent-team:ref-model")      # C golden model (functional, no clock/reset)
 
 # Synthesizability pre-assessment (parallel with arch-design Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",

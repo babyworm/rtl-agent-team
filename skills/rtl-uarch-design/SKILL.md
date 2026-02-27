@@ -128,7 +128,7 @@ Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
      prompt="Review Round 1: Read uarch/*.md. Verify algorithm ↔ μArch consistency. Analyze memory access optimization: SRAM banking, port conflicts, access scheduling. Review interface optimization: handshake protocols, backpressure mechanisms.")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Read uarch/*.md and ref_model/src/. Check model consistency: behavioral match between uarch specs and C++ ref model, data widths, fixed-point formats, rounding modes.")
+     prompt="Review Round 1: Read uarch/*.md and ref_model/src/. Check model consistency: behavioral match between uarch specs and C ref model, data widths, fixed-point formats, rounding modes.")
 
 # --- Step 5: Coordinator aggregates Round 1 findings ---
 Task(subagent_type="rtl-agent-team:rtl-architect",

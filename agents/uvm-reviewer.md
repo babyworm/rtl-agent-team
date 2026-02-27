@@ -196,7 +196,7 @@ color: green
     ## Scoreboard Review
     | Aspect | Status | Finding |
     |--------|--------|---------|
-    | Reference model | OK | C++ golden model via DPI |
+    | Reference model | OK | C golden model via DPI-C |
     | Latency handling | WARN | MJ-2: fixed latency, no dynamic adjust |
     | Output checking | OK | All 4 outputs checked |
     | Error reporting | OK | UVM_ERROR with transaction context |

@@ -49,7 +49,7 @@ This skill ensures everything is in place before design work begins.
      unit/             # SV unit tests
      cocotb/           # cocotb Python testbenches
    ref_model/
-     src/              # C/C++ reference model source
+     src/              # C reference model source (DPI-C compatible)
      build/            # Reference model build output
    uarch/              # Micro-architecture documents
    bfm/                # Bus Functional Models

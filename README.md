@@ -117,7 +117,7 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 | `reviews/phase-N-*/` | Spec compliance verdict (PASS/FAIL) | Verdict only, no data |
 | `rtl/src/` | RTL SystemVerilog source code | Phase 4 code artifact |
 | `tb/unit/`, `tb/formal/` | Testbenches | Phase 4-5 code artifacts |
-| `ref_model/` | C++ golden reference model | Phase 2 code artifact |
+| `ref_model/` | C golden reference model (DPI-C compatible) | Phase 2 code artifact |
 | `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 decision rationale |
 | `docs/lessons-learned.md` | Lessons learned from feedback loops | Accumulated across phases |
 

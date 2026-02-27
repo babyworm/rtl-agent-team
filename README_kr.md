@@ -117,7 +117,7 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 | `reviews/phase-N-*/` | 상위 스펙 준수 verdict (PASS/FAIL) | 데이터 없이 판정만 |
 | `rtl/src/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
 | `tb/unit/`, `tb/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
-| `ref_model/` | C++ 골든 레퍼런스 모델 | Phase 2 코드 산출물 |
+| `ref_model/` | C 골든 레퍼런스 모델 (DPI-C 호환) | Phase 2 코드 산출물 |
 | `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 설계 결정 근거 |
 | `docs/lessons-learned.md` | 피드백 루프에서 축적된 교훈 | Phase 전체에 걸쳐 누적 |
 
