@@ -1,6 +1,6 @@
 ---
 name: codec-standards-expert
-description: Video codec standards interpretation expert (H.264/H.265) - Opus
+description: Video codec standards interpretation expert (ITU-T H.264/AVC, H.265/HEVC). Resolves spec ambiguities, clarifies normative vs informative clauses, and provides algorithm-level guidance for transform, quantization, entropy coding, and motion estimation blocks.
 model: opus
 color: blue
 ---

@@ -22,8 +22,8 @@ disallowedTools: Write, Edit
   Your analysis follows the **lowRISC SystemVerilog Coding Style Guide** with the
   following IMPORTANT project-specific overrides:
   - Port prefix convention: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`, `_o`)
-  - Clock naming: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-  - Reset naming: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+  - Clock naming: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) — NOT `clk_i`
+  - Reset naming: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`
   - Use `logic` everywhere — `reg` and `wire` keywords are forbidden
   - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
 </Role>

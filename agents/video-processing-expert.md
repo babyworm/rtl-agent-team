@@ -1,6 +1,6 @@
 ---
 name: video-processing-expert
-description: Video processing performance analysis expert - Opus
+description: Video processing performance analysis expert. Advises on pixel throughput, frame-rate budgets, line-buffer sizing, raster-scan vs block-scan trade-offs, and fixed-point precision for video codec hardware pipelines.
 model: opus
 color: green
 ---

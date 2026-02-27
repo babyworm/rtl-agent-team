@@ -4,47 +4,47 @@ description: "UVM (Universal Verification Methodology) coding convention and met
 ---
 
 <Purpose>
-UVM 코딩 표준 및 방법론 가이드라인.
-UVM 기반 검증 환경을 구축하거나 수정하는 에이전트는 이 스킬의 규칙을 따라야 한다.
-IEEE 1800.2-2020 UVM Standard를 기본으로 한다.
+UVM coding standards and methodology guidelines.
+All agents building or modifying UVM-based verification environments must follow the rules in this skill.
+Based on the IEEE 1800.2-2020 UVM Standard.
 </Purpose>
 
 <Use_When>
-- UVM testbench, agent, sequence, scoreboard 작성 시
-- uvm-verify 스킬 실행을 위한 UVM 환경 구축 시
-- Phase 5 (Verification) — UVM 기반 검증 작업 시
-- 에이전트: testbench-dev
+- When writing UVM testbenches, agents, sequences, or scoreboards
+- When building UVM environments for the uvm-verify skill
+- During Phase 5 (Verification) — UVM-based verification work
+- Agents: testbench-dev
 </Use_When>
 
 <Do_Not_Use_When>
-- cocotb Python 기반 검증 시 → `func-verify` 스킬 사용
-- SVA assertion만 작성 시 → `systemverilog-assertion` 스킬 사용
-- RTL 합성 코드 작성 시 → `systemverilog` 스킬 사용
+- When doing cocotb Python-based verification → use `func-verify` skill
+- When writing only SVA assertions → use `systemverilog-assertion` skill
+- When writing RTL synthesizable code → use `systemverilog` skill
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-UVM은 산업 표준 검증 방법론이나, 자유도가 높아 일관되지 않은 코드가 만들어지기 쉽다.
-일관된 명명 규칙, 클래스 구조, factory 사용 패턴을 따르면:
-- 환경 재사용성 극대화 (agent를 여러 프로젝트에서 재사용)
-- 디버깅 용이성 (예측 가능한 구조)
-- Coverage 통합이 자연스러움
+UVM is an industry-standard verification methodology, but its high degree of freedom easily leads to inconsistent code.
+Following consistent naming conventions, class structure, and factory usage patterns ensures:
+- Maximum environment reusability (agents reusable across multiple projects)
+- Ease of debugging (predictable structure)
+- Natural coverage integration
 </Why_This_Exists>
 
 <Execution_Policy>
-- UVM 환경을 생성하는 모든 에이전트에 적용
-- `templates/uvm-env-template.sv`를 새 환경의 시작점으로 사용
-- `examples/uvm-smoke-test-example.sv`로 기본 smoke test 구조 확인
-- 모든 UVM 컴포넌트는 factory에 등록 (`uvm_component_utils` / `uvm_object_utils`)
-- Phase callback 순서를 정확히 따를 것
+- Applies to all agents generating UVM environments
+- Use `templates/uvm-env-template.sv` as the starting point for new environments
+- Review `examples/uvm-smoke-test-example.sv` for basic smoke test structure
+- All UVM components must be registered with the factory (`uvm_component_utils` / `uvm_object_utils`)
+- Follow the phase callback order precisely
 </Execution_Policy>
 
 <Steps>
 
-## 1. 명명 규칙
+## 1. Naming Conventions
 
-### 1.1 파일명
-| 유형 | 패턴 | 예시 |
-|------|------|------|
+### 1.1 Filenames
+| Type | Pattern | Example |
+|------|---------|---------|
 | Agent | `{proto}_agent.sv` | `axi_agent.sv` |
 | Driver | `{proto}_driver.sv` | `axi_driver.sv` |
 | Monitor | `{proto}_monitor.sv` | `axi_monitor.sv` |
@@ -57,9 +57,9 @@ UVM은 산업 표준 검증 방법론이나, 자유도가 높아 일관되지 �
 | Package | `{module}_tb_pkg.sv` | `cabac_tb_pkg.sv` |
 | Top | `tb_{module}_top.sv` | `tb_cabac_top.sv` |
 
-### 1.2 클래스 명명
-| 대상 | 패턴 | 예시 |
-|------|------|------|
+### 1.2 Class Naming
+| Target | Pattern | Example |
+|--------|---------|---------|
 | Agent | `{proto}_agent` | `axi_agent` |
 | Driver | `{proto}_driver` | `axi_driver` |
 | Monitor | `{proto}_monitor` | `axi_monitor` |
@@ -72,15 +72,15 @@ UVM은 산업 표준 검증 방법론이나, 자유도가 높아 일관되지 �
 | Test (base) | `{module}_base_test` | `cabac_base_test` |
 | Coverage | `{module}_coverage` | `cabac_coverage` |
 
-### 1.3 인스턴스 명명 (create)
+### 1.3 Instance Naming (create)
 ```systemverilog
-// 인스턴스명은 변수명과 동일하게
+// Instance name matches the variable name
 m_driver  = axi_driver::type_id::create("m_driver", this);
 m_monitor = axi_monitor::type_id::create("m_monitor", this);
 m_seqr    = axi_sequencer::type_id::create("m_seqr", this);
 ```
 
-## 2. UVM 클래스 계층
+## 2. UVM Class Hierarchy
 
 ```
 uvm_test
@@ -98,9 +98,9 @@ uvm_env
       └── cabac_coverage (m_coverage)
 ```
 
-## 3. Factory 등록 (필수)
+## 3. Factory Registration (Mandatory)
 
-모든 UVM 컴포넌트/오브젝트는 반드시 factory에 등록:
+All UVM components/objects must be registered with the factory:
 ```systemverilog
 class axi_driver extends uvm_driver #(axi_seq_item);
   `uvm_component_utils(axi_driver)
@@ -121,19 +121,19 @@ class axi_seq_item extends uvm_sequence_item;
 endclass
 ```
 
-## 4. Phase Callback 순서
+## 4. Phase Callback Order
 
-| Phase | 용도 | 주의사항 |
-|-------|------|---------|
-| `build_phase` | 컴포넌트 create, config_db get | create는 여기서만 |
-| `connect_phase` | TLM 포트 연결 | build 완료 후 |
-| `end_of_elaboration_phase` | 최종 구조 확인 | 선택적 |
-| `run_phase` | 시뮬레이션 실행 | raise/drop objection 필수 |
-| `extract_phase` | 결과 수집 | 선택적 |
-| `check_phase` | pass/fail 판정 | 선택적 |
-| `report_phase` | 결과 리포트 | scoreboard 요약 |
+| Phase | Purpose | Notes |
+|-------|---------|-------|
+| `build_phase` | Component create, config_db get | Only create here |
+| `connect_phase` | TLM port connections | After build completes |
+| `end_of_elaboration_phase` | Final structure check | Optional |
+| `run_phase` | Simulation execution | raise/drop objection required |
+| `extract_phase` | Collect results | Optional |
+| `check_phase` | pass/fail determination | Optional |
+| `report_phase` | Report results | Scoreboard summary |
 
-### Objection 규칙
+### Objection Rules
 ```systemverilog
 task cabac_base_test::run_phase(uvm_phase phase);
   phase.raise_objection(this, "Test started");
@@ -141,19 +141,19 @@ task cabac_base_test::run_phase(uvm_phase phase);
   phase.drop_objection(this, "Test completed");
 endtask
 ```
-- **Only test raises/drops objection** — sequence나 driver에서 금지
-- objection 없으면 시뮬레이션 즉시 종료
+- **Only test raises/drops objection** — forbidden in sequences or drivers
+- Without objection, simulation terminates immediately
 
-## 5. TLM 포트 사용
+## 5. TLM Port Usage
 
-| 포트 유형 | 방향 | 용도 |
-|----------|------|------|
-| `uvm_analysis_port` | Monitor → Scoreboard/Coverage | 브로드캐스트 (1:N) |
-| `uvm_seq_item_pull_port` | Driver ↔ Sequencer | 자동 연결 |
-| `uvm_analysis_imp` | Scoreboard 수신부 | write() 구현 필수 |
+| Port Type | Direction | Purpose |
+|-----------|-----------|---------|
+| `uvm_analysis_port` | Monitor → Scoreboard/Coverage | Broadcast (1:N) |
+| `uvm_seq_item_pull_port` | Driver ↔ Sequencer | Auto-connected |
+| `uvm_analysis_imp` | Scoreboard receiver | Must implement write() |
 
 ```systemverilog
-// Monitor: analysis port 선언 및 사용
+// Monitor: analysis port declaration and usage
 class axi_monitor extends uvm_monitor;
   uvm_analysis_port #(axi_seq_item) m_ap;
 
@@ -168,7 +168,7 @@ class axi_monitor extends uvm_monitor;
   endtask
 endclass
 
-// Scoreboard: analysis imp 선언
+// Scoreboard: analysis imp declaration
 class cabac_scoreboard extends uvm_scoreboard;
   `uvm_analysis_imp_decl(_input)
   `uvm_analysis_imp_decl(_output)
@@ -186,20 +186,20 @@ class cabac_scoreboard extends uvm_scoreboard;
 endclass
 ```
 
-## 6. config_db 사용
+## 6. config_db Usage
 
 ```systemverilog
-// Test → Agent: virtual interface 전달 (build_phase)
+// Test → Agent: pass virtual interface (build_phase)
 uvm_config_db #(virtual axi_if)::set(this, "m_env.m_axi_agt*", "vif", m_vif);
 
-// Agent: virtual interface 가져오기 (build_phase)
+// Agent: retrieve virtual interface (build_phase)
 if (!uvm_config_db #(virtual axi_if)::get(this, "", "vif", m_vif))
   `uvm_fatal("NO_VIF", "Virtual interface not set for agent")
 ```
-- set/get 경로는 hierarchy 기반 (wildcard `*` 사용 가능)
-- 가져오기 실패 시 `uvm_fatal` 필수
+- set/get paths are hierarchy-based (wildcard `*` supported)
+- On get failure, `uvm_fatal` is mandatory
 
-## 7. Coverage 통합
+## 7. Coverage Integration
 
 ```systemverilog
 class cabac_coverage extends uvm_subscriber #(axi_seq_item);
@@ -225,19 +225,19 @@ endclass
 
 ## 8. Anti-Patterns
 
-| Anti-Pattern | 문제 | 수정 |
-|-------------|------|------|
-| Factory 미등록 | override/재사용 불가 | 모든 클래스에 `uvm_*_utils` |
-| Driver에서 objection | phase 제어 혼란 | test에서만 raise/drop |
-| config_db get 실패 무시 | null pointer crash | `uvm_fatal` 처리 |
-| Sequence에서 DUT 직접 접근 | 재사용성 파괴 | sequencer→driver 경로만 사용 |
-| Hard-coded hierarchy path | 이식성 파괴 | config_db wildcard 사용 |
-| run_phase에서 `#delay` | 이식성 파괴 | `@(posedge vif.sys_clk)` 사용 |
+| Anti-Pattern | Problem | Fix |
+|-------------|---------|-----|
+| Not registered with factory | Cannot override/reuse | Add `uvm_*_utils` to all classes |
+| Objection in driver | Phase control confusion | Only raise/drop in test |
+| Ignoring config_db get failure | Null pointer crash | Handle with `uvm_fatal` |
+| Direct DUT access from sequence | Destroys reusability | Use sequencer→driver path only |
+| Hard-coded hierarchy path | Destroys portability | Use config_db wildcard |
+| `#delay` in run_phase | Destroys portability | Use `@(posedge vif.sys_clk)` |
 
 </Steps>
 
 <Tool_Usage>
-이 스킬은 직접 실행하지 않는다. UVM 환경을 생성하는 에이전트가 참조한다:
+This skill is not executed directly. It is referenced by agents that generate UVM environments:
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="... Follow uvm skill conventions. Use factory registration for all components.")
@@ -246,7 +246,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
 
 <Examples>
 <Good>
-Factory 등록, 올바른 명명, config_db 사용, analysis port:
+Factory registration, correct naming, config_db usage, analysis port:
 ```systemverilog
 class axi_agent extends uvm_agent;
   `uvm_component_utils(axi_agent)
@@ -264,7 +264,7 @@ endclass
 ```
 </Good>
 <Bad>
-Factory 미사용, 하드코딩, 직접 new:
+No factory usage, hard-coded, direct new:
 ```systemverilog
 class my_agent extends uvm_agent;
   // WRONG: no uvm_component_utils
@@ -278,18 +278,18 @@ endclass
 </Examples>
 
 <Escalation_And_Stop_Conditions>
-- UVM 환경 컴파일 에러 → testbench-dev에게 수정 요청
-- Coverage 목표 미달 → 추가 sequence 작성 또는 coverage-analyst에게 분석 요청
-- Scoreboard mismatch → func-verifier에게 RTL vs Ref Model 비교 요청
+- UVM environment compilation error → request fix from testbench-dev
+- Coverage target not met → write additional sequences or request analysis from coverage-analyst
+- Scoreboard mismatch → request RTL vs Ref Model comparison from func-verifier
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] 모든 UVM 클래스에 factory 등록 (`uvm_component_utils` / `uvm_object_utils`)
-- [ ] Objection은 test에서만 raise/drop
-- [ ] config_db get 실패 시 `uvm_fatal` 처리
-- [ ] TLM analysis port로 monitor→scoreboard 연결
-- [ ] Virtual interface를 config_db로 전달
-- [ ] 명명 규칙: `{proto}_agent`, `{proto}_driver`, `m_` prefix 인스턴스
-- [ ] Coverage collector가 analysis port에 subscribe
-- [ ] 포트명이 RTL과 일치 (sys_clk, sys_rst_n, i_/o_)
+- [ ] All UVM classes registered with factory (`uvm_component_utils` / `uvm_object_utils`)
+- [ ] Objection raised/dropped only in test
+- [ ] `uvm_fatal` on config_db get failure
+- [ ] TLM analysis port connects monitor→scoreboard
+- [ ] Virtual interface passed via config_db
+- [ ] Naming convention: `{proto}_agent`, `{proto}_driver`, `m_` prefix instances
+- [ ] Coverage collector subscribes to analysis port
+- [ ] Port names match RTL (sys_clk, sys_rst_n, i_/o_)
 </Final_Checklist>

@@ -44,8 +44,8 @@ Parallelizing per-module coding maximizes throughput.
 4. Launch parallel rtl-coder tasks: one per module
    - **Mandatory coding conventions per module:**
      - Port prefix: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
-     - Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-     - Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+     - Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
+     - Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
      - Use `logic` only — `reg` and `wire` keywords forbidden
      - `always_ff` for sequential, `always_comb` for combinational
      - `typedef enum logic [N:0]` for FSM states, `typedef struct packed` for grouped signals
@@ -55,24 +55,24 @@ Parallelizing per-module coding maximizes throughput.
 4. Each rtl-coder produces rtl/src/{module}.sv
 5. lint-checker runs on each produced file via Bash CLI: `verilator --lint-only -Wall rtl/src/{module}.sv`
 6. rtl-coder fixes reported lint violations (up to 3 rounds)
-7. **Per-Module Unit Test Generation (병렬)**
-   - 각 모듈에 대해 testbench-dev가 `tb/unit/tb_{module}.sv` 생성
-   - Smoke test 수준: reset sequence, basic I/O, FSM state coverage
-   - Signal naming: `sys_clk`, `sys_rst_n`, `i_*/o_*` 규칙 준수
-   - 이미 TB가 존재하면 업데이트 (새 테스트 케이스 추가)
-8. **Per-Module Unit Simulation (병렬)**
-   - eda-runner가 각 unit test 실행:
+7. **Per-Module Unit Test Generation (parallel)**
+   - testbench-dev generates `tb/unit/tb_{module}.sv` for each module
+   - Smoke test level: reset sequence, basic I/O, FSM state coverage
+   - Signal naming: follows `sys_clk`, `sys_rst_n`, `i_*/o_*` conventions
+   - If TB already exists, update it (add new test cases)
+8. **Per-Module Unit Simulation (parallel)**
+   - eda-runner runs each unit test:
      ```bash
      iverilog -g2012 -o sim/unit/{module} rtl/src/{module}.sv tb/unit/tb_{module}.sv
      vvp sim/unit/{module}
      ```
-   - 실패 시: waveform-analyzer 디버그 → rtl-coder 수정 → 재실행 (max 3회)
-   - 결과 저장: `sim/unit/{module}_results.txt`
+   - On failure: waveform-analyzer debug → rtl-coder fix → re-run (max 3 rounds)
+   - Save results: `sim/unit/{module}_results.txt`
 9. **Basic Integration Check**
-   - top-level 모듈에 대한 smoke test 실행
-   - 모듈 간 연결 기본 검증 (reset propagation, clock connectivity)
-   - testbench-dev가 `tb/unit/tb_{top_module}_smoke.sv` 생성
-   - eda-runner가 실행: 전 모듈 포함 컴파일 + top-level sim
+   - Run smoke test on the top-level module
+   - Basic verification of inter-module connections (reset propagation, clock connectivity)
+   - testbench-dev generates `tb/unit/tb_{top_module}_smoke.sv`
+   - eda-runner executes: compile all modules + top-level sim
 10. **Hierarchical Spec Compliance Check — functional coverage review:**
    - rtl-critic reads requirements.json, uarch/*.md, and all rtl/src/*.sv files
    - Verify every functional requirement (REQ-NNN) from requirements.json is implemented in RTL
@@ -166,7 +166,7 @@ that should be caught before coding modules B-F.
 - [ ] **Every uarch/*.md behavioral spec reflected in corresponding RTL module**
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
 - [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`, `clk_sys` (bare `clk` is allowed for single-domain)
-- [ ] All resets: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni` (bare `rst_n` is allowed for single-domain)
+- [ ] All resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni` (bare `rst_n` is allowed for single-domain)
 - [ ] All instances: `u_` prefix, generates: `gen_` prefix
 - [ ] `logic` only — no `reg`/`wire` keywords
 - [ ] `always_ff` for sequential, `always_comb` for combinational — no bare `always`
@@ -179,9 +179,9 @@ that should be caught before coding modules B-F.
 rtl-coder should use parameters for all configurable constants (widths, depths).
 
 **Clock and reset naming (project-specific override of lowRISC guide):**
-- Clock: `clk` (단일) or `{domain}_clk` (다중) — e.g., `sys_clk`, `pixel_clk`
+- Clock: `clk` (single domain) or `{domain}_clk` (multiple domains) — e.g., `sys_clk`, `pixel_clk`
   - WRONG: `clk_i`, `clk_sys`, `clock`
-- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중) — e.g., `sys_rst_n`, `pixel_rst_n`
+- Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains) — e.g., `sys_rst_n`, `pixel_rst_n`
   - WRONG: `rst_ni`, `reset_n`, `rstn`
 - Clock/reset ports do NOT need `i_` prefix
 

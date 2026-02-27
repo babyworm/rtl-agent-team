@@ -35,8 +35,8 @@ a signal connection. Combining rtl-architect analysis with lint-checker verifica
 1. rtl-architect reads target file(s), produces refactoring plan (what changes, what must stay identical)
    - Plan must include naming convention audit:
      - Ports: `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`) — flag violations for correction
-     - Clocks: `clk` (단일) or `{domain}_clk` (다중) — flag `clk_i`, `clk_sys`
-     - Resets: `rst_n` (단일) or `{domain}_rst_n` (다중) — flag `rst_ni`
+     - Clocks: `clk` (single domain) or `{domain}_clk` (multiple domains) — flag `clk_i`, `clk_sys`
+     - Resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains) — flag `rst_ni`
      - Instances: `u_` prefix — flag missing prefix
      - Generates: `gen_` prefix — flag missing prefix
      - `logic` only — flag any `reg`/`wire` usage
@@ -81,8 +81,8 @@ Refactoring signal names without checking all instantiation sites — breaks hie
 - [ ] No instantiation sites broken
 - [ ] Refactoring plan followed exactly
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
-- [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for 단일, `{domain}_clk` for 다중. NOT `clk_i`
-- [ ] All resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for 단일, `{domain}_rst_n` for 다중. NOT `rst_ni`
+- [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for single domain, `{domain}_clk` for multiple domains. NOT `clk_i`
+- [ ] All resets: `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for single domain, `{domain}_rst_n` for multiple domains. NOT `rst_ni`
 - [ ] All instances: `u_` prefix, generates: `gen_` prefix
 - [ ] No `reg`/`wire` keywords — `logic` only
 </Final_Checklist>

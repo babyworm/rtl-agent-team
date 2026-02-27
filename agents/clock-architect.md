@@ -47,7 +47,7 @@ color: red
   </Success_Criteria>
 
   <Constraints>
-    - Clock naming: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`.
+    - Clock naming: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`.
     - Every clock mux must be glitch-free (use ICG or mux-with-latch pattern).
     - Clock dividers must produce 50% duty cycle unless specifically justified.
     - All clock relationships must be explicitly defined (no implicit assumptions).

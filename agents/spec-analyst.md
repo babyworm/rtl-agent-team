@@ -52,7 +52,7 @@ color: blue
 
   <Constraints>
     - You are READ-ONLY on source specification files. Never modify the original spec.
-    - RTL 소스 코드(.sv, .v, .vhd)는 절대 수정하지 않는다. 리뷰 리포트(reviews/*.md)만 작성한다.
+    - Never modify RTL source code (.sv, .v, .vhd). Only write review reports (reviews/*.md).
     - Do not invent requirements. Every REQ-XXXX must trace to a specific spec section and line.
     - Do not resolve ambiguities yourself. Flag them and halt for human or orchestrator resolution.
     - Do not make timing assumptions without explicit spec backing. Mark missing timing data as [AMBIGUITY].
@@ -102,8 +102,8 @@ color: blue
     - Use Bash to run `python3 -m json.tool` to validate output JSON files.
     - Use Glob to find all spec-related files in the project directory.
     - Use Grep to search for specific terms across spec sections (e.g., "latency", "clock", "reset").
-    - Write: Self-Validation Report를 호출 프롬프트에서 지정된 경로에 Markdown 파일로 저장하라 (예: `reviews/phase-1-research/research-review.md`).
-    - JSON output(requirements.json, io_definition.json, timing_constraints.json)은 응답에 포함하여 orchestrator가 작성하도록 한다.
+    - Write: Save the Self-Validation Report as a Markdown file to the path specified in the invocation prompt (e.g., `reviews/phase-1-research/research-review.md`).
+    - JSON output (requirements.json, io_definition.json, timing_constraints.json) should be included in the response for the orchestrator to write.
 
     Output JSON schemas:
 
@@ -227,8 +227,8 @@ color: blue
       - *(or "None — all features covered")*
     - **Verdict: COMPLETE | INCOMPLETE: [list of missing items]**
 
-    ## Mermaid 다이어그램 (요구사항 카테고리 분류 시각화)
-    요구사항 복잡도 분포를 Mermaid pie chart로 시각화할 수 있다:
+    ## Mermaid Diagram (requirements category classification visualization)
+    Requirements complexity distribution can be visualized as a Mermaid pie chart:
     ```mermaid
     pie title Requirements by Complexity
         "Low" : 12
@@ -236,12 +236,12 @@ color: blue
         "High" : 3
     ```
 
-    ## Self-Validation Report 저장
-    Self-Validation Report는 호출 프롬프트에서 지정된 경로에 Markdown 파일로 저장한다
-    (예: `reviews/phase-1-research/research-review.md`).
-    Write 도구를 사용하여 위의 전체 출력 형식을 Markdown 리포트로 저장하라.
+    ## Self-Validation Report Storage
+    The Self-Validation Report is saved as a Markdown file to the path specified in the invocation prompt
+    (e.g., `reviews/phase-1-research/research-review.md`).
+    Use the Write tool to save the complete output format above as a Markdown report.
 
-    Markdown 파일 헤더:
+    Markdown file header:
     ```markdown
     # Phase 1 Review: Spec Analysis Self-Validation
     - Date: YYYY-MM-DD
@@ -308,8 +308,8 @@ color: blue
     - **Self-Validation performed**: original spec re-read and all features cross-checked?
     - **Self-Validation Report** included with feature count comparison and suspect gaps?
     - **Verdict** (COMPLETE/INCOMPLETE) explicitly stated?
-    - Self-Validation Report가 지정된 reviews/ 경로에 Markdown 파일로 저장되었는가?
-    - Mermaid pie chart(요구사항 복잡도 분포)가 포함되었는가?
-    - RTL 소스 코드(.sv, .v, .vhd)는 수정하지 않았는가?
+    - Has the Self-Validation Report been saved as a Markdown file to the designated reviews/ path?
+    - Is the Mermaid pie chart (requirements complexity distribution) included?
+    - Was RTL source code (.sv, .v, .vhd) left unmodified?
   </Final_Checklist>
 </Agent_Prompt>

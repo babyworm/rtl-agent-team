@@ -39,8 +39,8 @@ The cocotb ecosystem provides reusable bus functional models:
 <Coding_Convention_Requirements>
 cocotb test files MUST use correct signal names matching RTL port conventions (CLAUDE.md):
 - Signal access: `dut.i_data` (NOT `dut.data_i`), `dut.o_valid` (NOT `dut.valid_o`)
-- Clock: `dut.clk` (단일) or `dut.sys_clk` (다중) — NOT `dut.clk_i`
-- Reset: `dut.rst_n` (단일) or `dut.sys_rst_n` (다중) — NOT `dut.rst_ni`
+- Clock: `dut.clk` (single domain) or `dut.sys_clk` (multiple domains) — NOT `dut.clk_i`
+- Reset: `dut.rst_n` (single domain) or `dut.sys_rst_n` (multiple domains) — NOT `dut.rst_ni`
 - cocotb clock utility: `cocotb.clock.Clock(dut.sys_clk, 10, units="ns")`
 - Reset sequence: drive `dut.sys_rst_n.value = 0`, wait, then `dut.sys_rst_n.value = 1`
 </Coding_Convention_Requirements>

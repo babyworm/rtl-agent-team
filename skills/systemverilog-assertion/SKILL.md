@@ -4,84 +4,84 @@ description: "SVA (SystemVerilog Assertion) coding convention and formal verific
 ---
 
 <Purpose>
-SystemVerilog Assertion (SVA) 코딩 표준 및 formal verification 가이드라인.
-SVA를 작성하거나 수정하는 에이전트는 이 스킬의 규칙을 따라야 한다.
-IEEE 1800-2017 Assertion 문법을 기본으로 한다.
+SystemVerilog Assertion (SVA) coding standards and formal verification guidelines.
+All agents writing or modifying SVA must follow the rules in this skill.
+Based on the IEEE 1800-2017 Assertion syntax.
 </Purpose>
 
 <Use_When>
-- .sva 파일 또는 SVA bind 파일 작성 시
-- sva-check 스킬 실행을 위한 assertion 준비 시
-- Phase 5 (Verification) — formal verification 작업 시
-- Protocol assertion 작성 시 (AXI, APB, AHB 등)
-- 에이전트: sva-extractor, testbench-dev, protocol-checker
+- When writing .sva files or SVA bind files
+- When preparing assertions for the sva-check skill
+- During Phase 5 (Verification) — formal verification work
+- When writing protocol assertions (AXI, APB, AHB, etc.)
+- Agents: sva-extractor, testbench-dev, protocol-checker
 </Use_When>
 
 <Do_Not_Use_When>
-- RTL 합성 코드 작성 시 → `systemverilog` 스킬 사용
-- cocotb Python 기반 검증 시 → `func-verify` 스킬 참조
-- UVM 기반 검증 환경 구축 시 → `uvm` 스킬 사용
+- When writing RTL synthesizable code → use `systemverilog` skill
+- When doing cocotb Python-based verification → refer to `func-verify` skill
+- When building UVM-based verification environments → use `uvm` skill
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-SVA는 RTL 설계의 의도(intent)를 수학적으로 표현하는 유일한 방법이다.
-잘 작성된 assertion은:
-- Formal tool (SymbiYosys)로 수학적 증명 가능
-- 시뮬레이션에서 버그를 즉시 감지
-- 설계 문서 역할 (executable specification)
-일관된 SVA 패턴을 따르면 가독성, 재사용성, 도구 호환성이 향상된다.
+SVA is the only way to mathematically express the design intent of RTL.
+Well-written assertions can:
+- Be mathematically proven with formal tools (SymbiYosys)
+- Immediately detect bugs during simulation
+- Serve as design documentation (executable specification)
+Following consistent SVA patterns improves readability, reusability, and tool compatibility.
 </Why_This_Exists>
 
 <Execution_Policy>
-- SVA를 작성하는 모든 에이전트에 적용
-- RTL 모듈 내부 assertion보다 bind 파일 방식 우선 권장
-- 모든 assertion에는 failure message 필수
-- `templates/sva-bind-template.sv`를 새 SVA 파일의 시작점으로 사용
-- `examples/fifo-sva-example.sv`로 FIFO safety assertion 패턴 확인
+- Applies to all agents writing SVA
+- Prefer bind file approach over embedding assertions directly inside RTL modules
+- All assertions must include a failure message
+- Use `templates/sva-bind-template.sv` as the starting point for new SVA files
+- Review `examples/fifo-sva-example.sv` for FIFO safety assertion patterns
 </Execution_Policy>
 
 <Steps>
 
-## 1. Assertion 스타일 분류
+## 1. Assertion Style Classification
 
-| 스타일 | 용도 | 키워드 |
-|--------|------|--------|
-| Immediate | combinational 조건 체크 | `assert (expr)` |
-| Concurrent | 시간 기반 property 검증 | `assert property (...)` |
-| Deferred | delta-cycle 이후 체크 | `assert #0 (expr)` |
-| Assume | formal tool에 입력 제약 전달 | `assume property (...)` |
-| Cover | 도달 가능성 확인 | `cover property (...)` |
-| Restrict | formal에만 적용되는 제약 | `restrict property (...)` |
+| Style | Purpose | Keyword |
+|-------|---------|---------|
+| Immediate | Combinational condition check | `assert (expr)` |
+| Concurrent | Time-based property verification | `assert property (...)` |
+| Deferred | Check after delta-cycle | `assert #0 (expr)` |
+| Assume | Pass input constraints to formal tool | `assume property (...)` |
+| Cover | Verify reachability | `cover property (...)` |
+| Restrict | Constraint applied to formal only | `restrict property (...)` |
 
-### 사용 가이드
-- **시뮬레이션 + formal 공용**: `assert property` 사용
-- **Formal 전용 입력 제약**: `assume property` 사용
-- **커버리지 목표**: `cover property` 사용
-- Immediate assert는 combinational 체크에만 사용 (always_comb 내부)
+### Usage Guide
+- **Shared between simulation + formal**: use `assert property`
+- **Formal-only input constraints**: use `assume property`
+- **Coverage targets**: use `cover property`
+- Immediate assert is for combinational checks only (inside always_comb)
 
-## 2. 명명 규칙
+## 2. Naming Conventions
 
-| 대상 | 패턴 | 예시 |
-|------|------|------|
-| Assert 라벨 | `a_{signal}_{condition}` | `a_valid_hold`, `a_data_stable` |
-| Assume 라벨 | `m_{signal}_{constraint}` | `m_valid_no_x`, `m_addr_aligned` |
-| Cover 라벨 | `c_{scenario}` | `c_back_to_back`, `c_max_burst` |
+| Target | Pattern | Example |
+|--------|---------|---------|
+| Assert label | `a_{signal}_{condition}` | `a_valid_hold`, `a_data_stable` |
+| Assume label | `m_{signal}_{constraint}` | `m_valid_no_x`, `m_addr_aligned` |
+| Cover label | `c_{scenario}` | `c_back_to_back`, `c_max_burst` |
 | Sequence | `seq_{name}` | `seq_handshake`, `seq_burst_complete` |
 | Property | `prop_{name}` | `prop_valid_hold`, `prop_fifo_no_overflow` |
-| SVA 파일 | `sva_{module}.sv` | `sva_axi_slave.sv` |
-| SVA bind 모듈 | `sva_{module}_checker` | `sva_axi_slave_checker` |
+| SVA file | `sva_{module}.sv` | `sva_axi_slave.sv` |
+| SVA bind module | `sva_{module}_checker` | `sva_axi_slave_checker` |
 
-## 3. 클럭/리셋 패턴
+## 3. Clock/Reset Patterns
 
-### 3.1 기본 구조
+### 3.1 Basic Structure
 ```systemverilog
-// 모든 concurrent assertion은 default clocking + disable iff 사용
+// All concurrent assertions use default clocking + disable iff
 default clocking cb @(posedge sys_clk); endclocking
 default disable iff (!sys_rst_n);
 ```
 
 ### 3.2 Past-Valid Guard
-리셋 직후 첫 사이클은 $past() 값이 무효하므로 guard 사용:
+The $past() value is invalid on the first cycle after reset, so use a guard:
 ```systemverilog
 logic past_valid;
 always_ff @(posedge sys_clk or negedge sys_rst_n) begin
@@ -89,27 +89,27 @@ always_ff @(posedge sys_clk or negedge sys_rst_n) begin
   else            past_valid <= 1'b1;
 end
 
-// $past 사용 시 반드시 past_valid 체크
+// Always check past_valid when using $past
 a_data_stable: assert property (
   past_valid && $rose(i_valid) |-> ##1 $stable(i_data)
 ) else $error("Data must be stable after valid rises");
 ```
 
-## 4. 핵심 Assertion 패턴
+## 4. Core Assertion Patterns
 
 ### 4.1 Valid/Ready Handshake
 ```systemverilog
-// Valid는 ready 올 때까지 유지
+// Valid must hold until ready
 a_valid_hold: assert property (
   i_valid && !o_ready |=> i_valid
 ) else $error("valid must hold until ready");
 
-// Valid 중 data 안정
+// Data must be stable while valid
 a_data_stable: assert property (
   i_valid && !o_ready |=> $stable(i_data)
 ) else $error("data must be stable while valid && !ready");
 
-// Unknown 금지
+// No unknowns allowed
 a_valid_no_x: assert property (
   !$isunknown(i_valid)
 ) else $error("valid must not be X/Z");
@@ -139,15 +139,15 @@ a_mutex_access: assert property (
 
 ### 4.4 Liveness (Eventually)
 ```systemverilog
-// Request는 반드시 N 사이클 내에 응답
+// Request must be acknowledged within N cycles
 a_req_ack: assert property (
   i_req |-> ##[1:MAX_LATENCY] o_ack
 ) else $error("No ack within MAX_LATENCY cycles");
 ```
 
-## 5. Bind 파일 패턴
+## 5. Bind File Patterns
 
-RTL 모듈을 수정하지 않고 외부에서 assertion을 attach:
+Attach assertions externally without modifying the RTL module:
 ```systemverilog
 // sva_my_module.sv
 module sva_my_module_checker (
@@ -166,44 +166,44 @@ module sva_my_module_checker (
   ) else $error("valid must hold until ready");
 endmodule
 
-// Bind statement (별도 파일 또는 같은 파일 하단)
+// Bind statement (separate file or bottom of same file)
 bind my_module sva_my_module_checker u_sva_checker (.*);
 ```
 See `templates/sva-bind-template.sv` for complete scaffold.
 
-## 6. SymbiYosys 통합
+## 6. SymbiYosys Integration
 
-### 6.1 Formal 검증 모드
-| 모드 | 용도 | SBY 설정 |
-|------|------|---------|
-| BMC (Bounded Model Check) | 유한 깊이 반례 탐색 | `mode bmc`, `depth 20-50` |
-| Induction (prove) | 무한 깊이 수학적 증명 | `mode prove` |
-| Cover | 커버 포인트 도달성 확인 | `mode cover` |
+### 6.1 Formal Verification Modes
+| Mode | Purpose | SBY Config |
+|------|---------|------------|
+| BMC (Bounded Model Check) | Search for counterexamples within finite depth | `mode bmc`, `depth 20-50` |
+| Induction (prove) | Mathematical proof at unbounded depth | `mode prove` |
+| Cover | Verify reachability of cover points | `mode cover` |
 
 ### 6.2 assume vs assert
-- `assume`: formal tool의 입력 제약 (시뮬에서는 assert처럼 동작)
-- `assert`: 검증 대상 property
-- formal에서는 assume 위반 시 해당 trace 무시 (over-constraint 주의!)
+- `assume`: input constraint for formal tool (behaves like assert in simulation)
+- `assert`: property under verification
+- In formal, traces violating assume are discarded (beware of over-constraining!)
 
-### 6.3 Liveness 주의
-- BMC는 liveness property(eventually) 증명 불가 — prove 모드 사용
-- Prove에서도 무한 대기 시 induction 실패 가능 → bound 추가
+### 6.3 Liveness Caution
+- BMC cannot prove liveness properties (eventually) — use prove mode
+- Even in prove mode, infinite waits may cause induction failure → add bounds
 
 ## 7. Anti-Patterns
 
-| Anti-Pattern | 문제 | 수정 |
-|-------------|------|------|
-| `assert(signal)` in always_ff | 시뮬 only, formal 미지원 | `assert property` 사용 |
-| missing `disable iff` | 리셋 중 false failure | `default disable iff (!rst_n)` |
-| `$past` without past_valid | 리셋 직후 X값 비교 | past_valid guard 추가 |
-| Over-constraining with assume | valid trace 없음 | assume 최소화, cover로 확인 |
-| No failure message | 디버그 불가 | 모든 assert에 `else $error(...)` |
-| `assert property` in `always_comb` | 문법 오류 | concurrent assert는 모듈 스코프에 배치 |
+| Anti-Pattern | Problem | Fix |
+|-------------|---------|-----|
+| `assert(signal)` in always_ff | Simulation only, not supported by formal | Use `assert property` |
+| missing `disable iff` | False failure during reset | `default disable iff (!rst_n)` |
+| `$past` without past_valid | Comparing X values right after reset | Add past_valid guard |
+| Over-constraining with assume | No valid traces | Minimize assumes, verify with cover |
+| No failure message | Cannot debug | Add `else $error(...)` to all asserts |
+| `assert property` in `always_comb` | Syntax error | Place concurrent asserts at module scope |
 
 </Steps>
 
 <Tool_Usage>
-이 스킬은 직접 실행하지 않는다. SVA를 생성하는 에이전트가 참조한다:
+This skill is not executed directly. It is referenced by agents that generate SVA:
 ```
 Task(subagent_type="rtl-agent-team:sva-extractor",
      prompt="... Follow systemverilog-assertion skill conventions. Use bind file pattern.")
@@ -215,7 +215,7 @@ Task(subagent_type="rtl-agent-team:protocol-checker",
 
 <Examples>
 <Good>
-Bind 파일 사용, default clocking/disable, past_valid guard, failure message:
+Uses bind file, default clocking/disable, past_valid guard, failure message:
 ```systemverilog
 default clocking cb @(posedge sys_clk); endclocking
 default disable iff (!sys_rst_n);
@@ -226,7 +226,7 @@ a_valid_hold: assert property (
 ```
 </Good>
 <Bad>
-RTL 내부 직접 삽입, immediate assert, 메시지 없음:
+Direct insertion inside RTL, immediate assert, no message:
 ```systemverilog
 always_ff @(posedge clk) begin
   assert(valid);  // WRONG: immediate, no message, wrong clock name
@@ -236,18 +236,18 @@ end
 </Examples>
 
 <Escalation_And_Stop_Conditions>
-- SymbiYosys BMC/prove FAIL → sva-extractor에게 반례 분석, rtl-coder에게 RTL 수정 요청
-- Over-constrained (cover FAIL) → assume 조건 검토
-- 프로토콜 스펙 불명확 → spec-analyst에게 확인 요청
+- SymbiYosys BMC/prove FAIL → have sva-extractor analyze counterexample, request RTL fix from rtl-coder
+- Over-constrained (cover FAIL) → review assume conditions
+- Protocol spec unclear → request clarification from spec-analyst
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] Bind 파일 방식 사용 (RTL 내부 직접 삽입 최소화)
-- [ ] `default clocking` / `default disable iff` 설정
-- [ ] $past 사용 시 past_valid guard 존재
-- [ ] 모든 assert에 `else $error(...)` failure message
-- [ ] 라벨 명명: `a_` (assert), `m_` (assume), `c_` (cover)
-- [ ] Unknown 체크: `$isunknown` 사용
-- [ ] Cover property로 assertion 도달성 확인
-- [ ] 포트명이 RTL과 일치 (i_/o_, sys_clk, sys_rst_n)
+- [ ] Use bind file approach (minimize direct insertion inside RTL)
+- [ ] `default clocking` / `default disable iff` configured
+- [ ] past_valid guard present when using $past
+- [ ] `else $error(...)` failure message on all asserts
+- [ ] Label naming: `a_` (assert), `m_` (assume), `c_` (cover)
+- [ ] Unknown check: use `$isunknown`
+- [ ] Verify assertion reachability with cover properties
+- [ ] Port names match RTL (i_/o_, sys_clk, sys_rst_n)
 </Final_Checklist>

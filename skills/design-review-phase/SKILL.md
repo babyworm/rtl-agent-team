@@ -21,7 +21,7 @@ well-documented, and ready for maintenance/handover?"
 - Intensive code/design quality review is needed beyond Phase 4/5 gate reviews
 - Design documentation (design note) needs to be produced for handover
 - Improvement recommendations are needed for the next design iteration
-- User requests "design review", "Phase 6", "design note", or "코드 리뷰 문서화"
+- User requests "design review", "Phase 6", "design note", or "code review documentation"
 </Use_When>
 
 <Do_Not_Use_When>

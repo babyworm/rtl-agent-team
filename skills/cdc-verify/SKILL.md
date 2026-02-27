@@ -31,11 +31,11 @@ before they become intermittent silicon failures.
 
 <Coding_Convention_Requirements>
 CDC analysis MUST recognize the project clock/reset naming conventions (CLAUDE.md):
-- Clocks: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`, `axi_clk`, `pixel_clk`)
+- Clocks: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`, `axi_clk`, `pixel_clk`)
   - NOT `clk_i`, `clk_sys` — these are non-conformant
-- Resets: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`, `axi_rst_n`)
+- Resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`, `axi_rst_n`)
   - NOT `rst_ni` — this is non-conformant
-- Clock/reset ports: `i_` prefix 불필요 (예외). 다른 포트는 `i_`/`o_`/`io_` 필수
+- Clock/reset ports: `i_` prefix not required (exception). All other ports require `i_`/`o_`/`io_`
 - Synchronizer instances: `u_` prefix (e.g., `u_sync_axi_to_sys`)
 - Gray code modules: `u_` prefix (e.g., `u_gray_encoder`)
 

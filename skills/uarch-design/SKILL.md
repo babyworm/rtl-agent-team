@@ -39,8 +39,8 @@ timing-advisor ensures designs are achievable at the target frequency.
 3. uarch-designer produces per-block uarch/*.md: FSM, pipeline diagram, register map, memory map
    - **Signal naming conventions (MANDATORY — these flow directly to RTL):**
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
-     - Clocks: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-     - Resets: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+     - Clocks: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
+     - Resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
      - Instances: `u_` prefix (e.g., `u_fifo`), generates: `gen_` prefix (e.g., `gen_stage`)
      - FSM states: `typedef enum logic [N:0]` with `UPPER_SNAKE_CASE` values
      - Types: `snake_case_t` suffix (e.g., `state_t`, `bus_req_t`)
@@ -137,8 +137,8 @@ Skipping timing-advisor review — RTL coder implements the design, synthesis fa
 - [ ] timing-advisor review complete with no blockers
 - [ ] codec-architecture-expert approved algorithm correctness
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT `_i`/`_o` suffix)
-- [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for 단일, `{domain}_clk` for 다중. NOT `clk_i`
-- [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for 단일, `{domain}_rst_n` for 다중. NOT `rst_ni`
+- [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for single domain, `{domain}_clk` for multiple domains. NOT `clk_i`
+- [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for single domain, `{domain}_rst_n` for multiple domains. NOT `rst_ni`
 - [ ] Instance names use `u_` prefix, generate blocks use `gen_` prefix
 - [ ] FSM states defined as `typedef enum logic [N:0]` with `UPPER_SNAKE_CASE` values
 - [ ] **reviews/phase-3-uarch/feature-preservation.md saved with Feature Preservation Checklist**

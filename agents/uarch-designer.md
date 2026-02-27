@@ -22,8 +22,8 @@ disallowedTools: Write, Edit
     Your specifications must follow the **lowRISC SystemVerilog Coding Style Guide** with the
     following IMPORTANT project-specific overrides for all signal/port names in your specs:
     - Port prefix convention: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`, `_o`)
-    - Clock naming: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-    - Reset naming: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+    - Clock naming: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) — NOT `clk_i`
+    - Reset naming: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`
     - Use `typedef enum` for FSM state types, `typedef struct packed` for grouped signals
     - Shared types defined in packages (`_pkg.sv`)
     - Instance prefix: `u_`, generate block prefix: `gen_`

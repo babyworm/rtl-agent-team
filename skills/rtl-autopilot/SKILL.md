@@ -1,11 +1,11 @@
 ---
 name: rtl-autopilot
-description: "This skill should be used when starting a full RTL design pipeline from spec to verification. Orchestrates 5-phase flow with dual-layer phase gates and hierarchical spec compliance."
+description: "This skill should be used when starting a full RTL design pipeline from spec to verification. Orchestrates 6-phase flow (Research → Architecture → μArch → RTL → Verify → Design Note) with dual-layer phase gates and hierarchical spec compliance."
 ---
 
 <Purpose>
 Drive the complete RTL design pipeline through five sequential phases with enforced dual-layer phase gates.
-Each phase must pass both an Artifact Gate (산출물 존재 확인) and a Quality Gate (품질 + 상위 스펙 준수 검증) before the next phase begins.
+Each phase must pass both an Artifact Gate (verify deliverables exist) and a Quality Gate (verify quality + hierarchical spec compliance) before the next phase begins.
 
 **Hierarchical Spec Compliance Principle:**
 Lower phases MUST NOT violate upper phase specifications:
@@ -146,51 +146,51 @@ This skill automates sequencing, gate checking, and recovery.
 
 6. **Phase 5 — Extensive Verification (Sub-Phases)**
    - **Review artifacts setup**: `mkdir -p reviews/phase-5-verify`
-   - Phase 5 is structured into 5 sub-phases (일부 병렬 실행 가능)
-   - State tracking: `rtl-autopilot-state.json`에 `sub_phase`, `feedback_loops`, `max_feedback_loops` 필드 사용
+   - Phase 5 is structured into 5 sub-phases (some can run in parallel)
+   - State tracking: uses `sub_phase`, `feedback_loops`, `max_feedback_loops` fields in `rtl-autopilot-state.json`
 
-   **Phase 5a: SVA Generation + Formal Verification (5b/5c와 병렬)**
-   - `sva-extractor`: uarch/*.md 기반 SVA property 생성
-   - `eda-runner`: SymbiYosys로 formal 검증 실행
-   - 결과: `reviews/phase-5-verify/formal-review.md`
+   **Phase 5a: SVA Generation + Formal Verification (parallel with 5b/5c)**
+   - `sva-extractor`: generate SVA properties based on uarch/*.md
+   - `eda-runner`: run formal verification with SymbiYosys
+   - Output: `reviews/phase-5-verify/formal-review.md`
 
-   **Phase 5b: CDC Analysis (5a/5c와 병렬)**
-   - `cdc-checker`: 다중 clock domain 분석
-   - 결과: `reviews/phase-5-verify/cdc-report.md`
+   **Phase 5b: CDC Analysis (parallel with 5a/5c)**
+   - `cdc-checker`: analyze multiple clock domains
+   - Output: `reviews/phase-5-verify/cdc-report.md`
 
-   **Phase 5c: Integration TB + Ref Model Comparison (5a/5b와 병렬)**
-   - `testbench-dev`: cocotb integration TB 생성
-   - `func-verifier`: RTL vs ref_model extensive 비교
-   - `eda-runner`: cocotb regression 실행 (다중 시드)
-   - 결과: `reviews/phase-5-verify/requirement-traceability.md`
+   **Phase 5c: Integration TB + Ref Model Comparison (parallel with 5a/5b)**
+   - `testbench-dev`: create cocotb integration TB
+   - `func-verifier`: extensive RTL vs ref_model comparison
+   - `eda-runner`: run cocotb regression (multiple seeds)
+   - Output: `reviews/phase-5-verify/requirement-traceability.md`
 
-   **Phase 5d: Coverage Analysis (5a-5c 완료 후)**
-   - `coverage-analyst`: line/toggle/FSM coverage 분석
-   - 미달 시: `testbench-dev`가 추가 테스트 생성
-   - 결과: `reviews/phase-5-verify/coverage-report.md`
+   **Phase 5d: Coverage Analysis (after 5a-5c complete)**
+   - `coverage-analyst`: analyze line/toggle/FSM coverage
+   - If below target: `testbench-dev` generates additional tests
+   - Output: `reviews/phase-5-verify/coverage-report.md`
 
-   **Phase 5e: Extensive Design Review (5a-5d 완료 후)**
+   **Phase 5e: Extensive Design Review (after 5a-5d complete)**
    - `rtl-architect`: Final Compliance Matrix (end-to-end audit)
      - **Final Feature Completeness Audit**: re-read every requirement from requirements.json and confirm: (a) it is implemented in RTL, (b) it has at least one verification test covering it, (c) that test passed
      - Interface completeness: are all ports in io_definition.json present and connected in the top-level RTL?
      - Untested paths: identify any functionality that lacks verification coverage
-   - `rtl-critic`: 종합 설계 리뷰
-   - 결과: `reviews/phase-5-verify/final-compliance.md`
+   - `rtl-critic`: comprehensive design review
+   - Output: `reviews/phase-5-verify/final-compliance.md`
 
    **Phase 5→4 Feedback Loop:**
-   - Phase 5 sub-phase에서 FAIL 감지 시 FAIL 유형을 분류:
-     - **UNIT_FIX**: 단일 모듈 수정으로 해결 가능 (e.g., SVA counterexample, assertion 실패)
-     - **INTEGRATION_FIX**: 모듈 간 인터페이스 수정 필요
-     - **DESIGN_FIX**: μArch 수준 설계 변경 필요 (→ user 승인 필수)
-   - UNIT_FIX / INTEGRATION_FIX 처리:
-     1. `rtl-bugfix` 스킬 자동 호출 (feedback_origin 지정)
-     2. 수정 → lint → unit TB 업데이트 → unit sim → PASS 확인
-     3. Phase 5 해당 sub-phase로 복귀하여 재검증
-     4. Maximum 2회 feedback loop per sub-phase (초과 시 user 에스컬레이션)
-   - DESIGN_FIX 처리:
-     1. IMMEDIATE STOP — 상위 스펙 위반으로 판정
-     2. user에게 보고: 위반 내용 + 영향 범위 + 권장 조치
-     3. user 승인 후 Phase 3(μArch) 또는 Phase 2(Architecture)로 회귀
+   - When a FAIL is detected in a Phase 5 sub-phase, classify the FAIL type:
+     - **UNIT_FIX**: resolvable by fixing a single module (e.g., SVA counterexample, assertion failure)
+     - **INTEGRATION_FIX**: requires inter-module interface modification
+     - **DESIGN_FIX**: requires architecture-level design change (→ user approval mandatory)
+   - UNIT_FIX / INTEGRATION_FIX handling:
+     1. Automatically invoke `rtl-bugfix` skill (with feedback_origin specified)
+     2. Fix → lint → update unit TB → unit sim → confirm PASS
+     3. Return to the corresponding Phase 5 sub-phase for re-verification
+     4. Maximum 2 feedback loops per sub-phase (escalate to user if exceeded)
+   - DESIGN_FIX handling:
+     1. IMMEDIATE STOP — classified as upper-spec violation
+     2. Report to user: violation details + impact scope + recommended action
+     3. After user approval, return to Phase 3 (μArch) or Phase 2 (Architecture)
 
    **Phase 5 Completion Artifact Gate**: all verification sub-phases (5a-5e) pass
 
@@ -230,8 +230,8 @@ This skill automates sequencing, gate checking, and recovery.
 
 **Coding Convention Enforcement (all phases):**
 - Port naming: inputs `i_`, outputs `o_`, bidirectional `io_` (NOT suffix `_i`/`_o`)
-- Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+- Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
+- Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
 - Instances: `u_` prefix; generates: `gen_` prefix
 - Use `logic` everywhere (`reg`/`wire` forbidden)
 - Base style: lowRISC SystemVerilog Coding Style Guide with above overrides
@@ -424,18 +424,18 @@ verdict: PASS (0 errors, warnings reviewed) or FAIL + error list[]")
 # ============================================================
 Bash("mkdir -p reviews/phase-5-verify")
 
-# --- Phase 5a: SVA + Formal (병렬 시작) ---
+# --- Phase 5a: SVA + Formal (parallel start) ---
 Task(subagent_type="rtl-agent-team:sva-extractor",
      prompt="Generate SVA properties from uarch/*.md specifications. Write bind files for each module at tb/formal/. Follow systemverilog-assertion conventions.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run SymbiYosys formal verification on all SVA bind files in tb/formal/. Report counterexamples if any. Save results to reviews/phase-5-verify/formal-review.md in standard review Markdown format. verdict: PASS or FAIL + counterexamples[]")
 
-# --- Phase 5b: CDC Analysis (5a와 병렬) ---
+# --- Phase 5b: CDC Analysis (parallel with 5a) ---
 Task(subagent_type="rtl-agent-team:cdc-checker",
      prompt="Analyze all clock domain crossings in rtl/src/*.sv. Check synchronizer presence, FIFO usage, and handshake protocols. Save CDC report to reviews/phase-5-verify/cdc-report.md in standard review Markdown format. verdict: PASS or FAIL + findings[]")
 
-# --- Phase 5c: Integration TB + Ref Model (5a/5b와 병렬) ---
+# --- Phase 5c: Integration TB + Ref Model (parallel with 5a/5b) ---
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Create cocotb integration testbench at tb/cocotb/. Test end-to-end data flow through all modules. Include ref_model comparison for bitexact verification.")
 
@@ -456,11 +456,11 @@ reviews/phase-5-verify/requirement-traceability.md in this format:
   PASS | FAIL: [reason]
 verdict: PASS or FAIL + findings[]")
 
-# --- Phase 5d: Coverage Analysis (5a-5c 후) ---
+# --- Phase 5d: Coverage Analysis (after 5a-5c) ---
 Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Analyze line/toggle/FSM coverage from simulation results. Identify coverage gaps below target. Save to reviews/phase-5-verify/coverage-report.md in standard review Markdown format. If coverage < target, list specific uncovered areas for testbench-dev to address. verdict: PASS or FAIL + gap list[]")
 
-# --- Phase 5e: Final Compliance Review (5a-5d 후) ---
+# --- Phase 5e: Final Compliance Review (after 5a-5d) ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="READ-ONLY final spec compliance review. Read requirements.json, io_definition.json, architecture.md, rtl/src/*.sv, and ALL Phase 5 review results (formal-review.md, cdc-report.md, requirement-traceability.md, coverage-report.md).
 Perform the FINAL end-to-end audit:

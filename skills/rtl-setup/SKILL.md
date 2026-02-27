@@ -12,8 +12,8 @@ and verify that required EDA tools are installed and accessible.
 - Starting a new RTL/FPGA/ASIC design project
 - First time using this plugin in a workspace
 - Verifying EDA toolchain is properly installed
-- User says "setup", "initialize", "init project", "프로젝트 초기화"
-- User says "docker image", "도커 이미지", "make docker", "EDA 환경 컨테이너"
+- User says "setup", "initialize", "init project", "project init"
+- User says "docker image", "make docker", "EDA environment container"
 </Use_When>
 
 <Do_Not_Use_When>
@@ -56,7 +56,7 @@ This skill ensures everything is in place before design work begins.
    formal/             # SymbiYosys .sby configurations
    synth/              # Synthesis scripts and reports
    docs/               # Design documentation
-   reviews/            # Phase gate 리뷰 리포트 (Markdown)
+   reviews/            # Phase gate review reports (Markdown)
      phase-1-research/
      phase-2-architecture/
      phase-3-uarch/
@@ -124,9 +124,9 @@ This skill ensures everything is in place before design work begins.
    - Ready to start: Yes/No
    ```
 
-8. **Docker EDA 이미지 빌드** (사용자 요청 시):
-   사용자가 "docker image", "EDA 도커 환경" 등을 요청하면 Docker 이미지를 빌드한다.
-   상세 빌드/실행 명령과 포함된 도구 목록은 `<Advanced>` 섹션 참조.
+8. **Docker EDA image build** (on user request):
+   When the user requests "docker image", "EDA docker environment", etc., build the Docker image.
+   See the `<Advanced>` section for detailed build/run commands and included tool list.
 
    ```bash
    docker build -t rtl-eda-tools docker/
@@ -136,11 +136,11 @@ This skill ensures everything is in place before design work begins.
 
 <Advanced>
 
-## Docker EDA 이미지 상세
+## Docker EDA Image Details
 
-이미지에는 모든 필수/선택 EDA 도구가 포함되어 팀 전체가 동일 환경을 공유할 수 있다.
+The image includes all required and optional EDA tools so the entire team can share an identical environment.
 
-### 빌드 (버전 지정 가능)
+### Build (versions are configurable)
 ```bash
 docker build -t rtl-eda-tools \
   --build-arg VERILATOR_VERSION=5.024 \
@@ -149,30 +149,30 @@ docker build -t rtl-eda-tools \
   docker/
 ```
 
-### 실행
+### Run
 ```bash
-# 기본 실행
+# Basic run
 docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
 
-# GUI (gtkwave) 지원
+# GUI (gtkwave) support
 docker run -it --rm \
   -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v $(pwd):/workspace -w /workspace rtl-eda-tools
 ```
 
-### 포함된 도구
-| 도구 | 버전 | 용도 |
-|------|------|------|
-| verilator | 5.024 (configurable) | 시뮬레이션 + Lint |
-| verible | latest release | 스타일 Lint + 포매팅 |
-| yosys | apt latest | 합성 |
-| iverilog | apt latest | 대안 시뮬레이터 |
-| slang | v6.0 (configurable) | IEEE 1800 시맨틱 Lint |
-| sby (SymbiYosys) | latest + boolector, z3 | Formal 검증 |
-| gtkwave | apt latest | 파형 뷰어 |
-| SystemC/TLM-2.0 | 3.0.2 (configurable) | 레퍼런스 모델 + BFM |
-| cocotb + extensions | pip latest | 기능 검증 |
-| gcc/g++ | apt latest | 레퍼런스 모델 빌드 |
+### Included Tools
+| Tool | Version | Purpose |
+|------|---------|---------|
+| verilator | 5.024 (configurable) | Simulation + Lint |
+| verible | latest release | Style Lint + Formatting |
+| yosys | apt latest | Synthesis |
+| iverilog | apt latest | Alternative simulator |
+| slang | v6.0 (configurable) | IEEE 1800 Semantic Lint |
+| sby (SymbiYosys) | latest + boolector, z3 | Formal verification |
+| gtkwave | apt latest | Waveform viewer |
+| SystemC/TLM-2.0 | 3.0.2 (configurable) | Reference model + BFM |
+| cocotb + extensions | pip latest | Functional verification |
+| gcc/g++ | apt latest | Reference model build |
 
 </Advanced>
 
@@ -201,14 +201,14 @@ Write: rtl/src/template_module.sv — convention reference template (i_/o_ prefi
 
 <Examples>
 <Good>
-User: "새 FPGA 프로젝트를 시작하려고 해"
+User: "I want to start a new FPGA project"
 → Run rtl-setup. Create directories, check tools, report what's missing.
 
 User: "setup" or "rtl-setup"
 → Same as above.
 </Good>
 <Bad>
-User: "AXI slave 모듈을 만들어줘"
+User: "Create an AXI slave module"
 → Do NOT run rtl-setup. Use rtl-code skill directly.
 </Bad>
 </Examples>

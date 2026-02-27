@@ -33,8 +33,8 @@ closure that directed testing cannot match for large state spaces.
 <Coding_Convention_Requirements>
 UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 - DUT port connections in driver/monitor: `i_` prefix for inputs, `o_` prefix for outputs
-- Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-- Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+- Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
+- Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
 - DUT instance in top-level wrapper: `u_dut` with `u_` prefix
 - UVM agent instances: `u_` prefix (e.g., `u_axi_agent`, `u_scoreboard`)
 - Use `logic` in all SV declarations (NOT `reg`/`wire`)

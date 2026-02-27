@@ -17,7 +17,7 @@ Based on lowRISC SystemVerilog Coding Style with project-specific modifications.
 
 ## Naming Conventions
 
-> **CamelCase는 전면 금지. 모든 식별자는 `snake_case` 또는 `ALL_CAPS` 중 하나를 사용한다.**
+> **CamelCase is completely prohibited. All identifiers must use either `snake_case` or `ALL_CAPS`.**
 
 | Construct | Style | Example |
 |-----------|-------|---------|
@@ -32,22 +32,22 @@ Based on lowRISC SystemVerilog Coding Style with project-specific modifications.
 | `define macros | `ALL_CAPS` | `MAX_DEPTH`, `ASSERT_ON` |
 | Generate blocks | `gen_` prefix + `snake_case` | `gen_pipeline_stage` |
 
-### CamelCase 금지 세부 규칙
+### CamelCase Prohibition Details
 
-| lowRISC 원본 | 프로젝트 규칙 | 변경 사유 |
-|-------------|-------------|----------|
-| `parameter int unsigned Width = 8` | `parameter int unsigned WIDTH = 8` | CamelCase 금지, ALL_CAPS 통일 |
-| `localparam int AddrBits = $clog2(Depth)` | `localparam int L_ADDR_BITS = $clog2(DEPTH)` | L_ prefix로 외부/내부 구분 |
-| `StIdle`, `StProcess`, `StDone` | `ST_IDLE`, `ST_PROCESS`, `ST_DONE` | enum 값도 ALL_CAPS |
+| lowRISC Original | Project Rule | Reason for Change |
+|-----------------|--------------|-------------------|
+| `parameter int unsigned Width = 8` | `parameter int unsigned WIDTH = 8` | CamelCase prohibited, unified to ALL_CAPS |
+| `localparam int AddrBits = $clog2(Depth)` | `localparam int L_ADDR_BITS = $clog2(DEPTH)` | L_ prefix to distinguish external/internal |
+| `StIdle`, `StProcess`, `StDone` | `ST_IDLE`, `ST_PROCESS`, `ST_DONE` | Enum values also ALL_CAPS |
 
-### L_ prefix 규칙
+### L_ Prefix Rules
 
 ```systemverilog
-// 외부에서 설정 가능한 parameter → ALL_CAPS, L_ 없음
+// Externally configurable parameter → ALL_CAPS, no L_
 parameter int unsigned DATA_WIDTH = 32;
 parameter int unsigned DEPTH      = 16;
 
-// 내부적으로만 사용하는 localparam → L_ prefix
+// Internal-only localparam → L_ prefix
 localparam int unsigned L_ADDR_W    = $clog2(DEPTH);
 localparam int unsigned L_CNT_MAX   = DEPTH - 1;
 localparam int unsigned L_DATA_BYTES = DATA_WIDTH / 8;

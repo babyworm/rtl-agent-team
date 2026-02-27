@@ -4,149 +4,149 @@ description: "SystemVerilog coding convention and design guideline skill. Enforc
 ---
 
 <Purpose>
-SystemVerilog 코딩 표준 및 설계 가이드라인.
-모든 .sv, .v 파일을 생성하거나 수정하는 에이전트는 이 스킬의 규칙을 따라야 한다.
-기본: lowRISC SystemVerilog Coding Style Guide (https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md)
-프로젝트 오버라이드가 lowRISC 기본 규칙보다 우선한다.
+SystemVerilog coding standards and design guidelines.
+All agents generating or modifying .sv, .v files must follow the rules in this skill.
+Baseline: lowRISC SystemVerilog Coding Style Guide (https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md)
+Project overrides take precedence over default lowRISC rules.
 </Purpose>
 
 <Use_When>
-- .sv, .svh, .v, .vh 파일을 작성하거나 수정할 때
-- Phase 4 (RTL 구현) 작업 시
-- Phase 5 (Verification) 에서 SVA, SV 테스트벤치 작성 시
-- lint-check, synth-check 스킬 실행 전 코드 준비 시
-- 에이전트: rtl-coder, sva-extractor, testbench-dev, lint-checker
+- When writing or modifying .sv, .svh, .v, .vh files
+- During Phase 4 (RTL implementation) work
+- During Phase 5 (Verification) when writing SVA or SV testbenches
+- When preparing code before running lint-check or synth-check skills
+- Agents: rtl-coder, sva-extractor, testbench-dev, lint-checker
 </Use_When>
 
 <Do_Not_Use_When>
-- SystemC/C++ 코드 작성 시 → `systemc` 스킬 사용
-- Python cocotb 테스트 작성 시 → `func-verify` 스킬의 cocotb 규칙 참조
-- 문서 작성만 할 때
+- When writing SystemC/C++ code → use `systemc` skill
+- When writing Python cocotb tests → refer to cocotb rules in `func-verify` skill
+- When only writing documentation
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-일관된 코딩 표준은 린트 통과율, 합성 품질, 팀 가독성을 동시에 보장한다.
-lowRISC 기반이지만 포트 네이밍, 클럭/리셋 규칙 등 프로젝트 고유 오버라이드가 있으므로
-별도 스킬로 관리하여 모든 SV 생성 에이전트가 동일한 규칙을 참조한다.
+Consistent coding standards ensure lint pass rate, synthesis quality, and team readability all at once.
+Although based on lowRISC, this project has its own overrides for port naming, clock/reset rules, etc.,
+so they are managed as a separate skill to ensure all SV-generating agents reference the same rules.
 </Why_This_Exists>
 
 <Execution_Policy>
-- 이 스킬의 규칙은 SV 코드를 생성하는 모든 에이전트에 적용된다
-- 위반 시 lint-check 스킬이 FAIL 판정을 내린다
-- `templates/module-template.sv`를 새 모듈의 시작점으로 사용할 것
-- `examples/good-vs-bad.sv`로 올바른/잘못된 패턴을 확인할 것
-- `references/lowrisc-overrides.md`로 lowRISC 원본 규칙 대비 프로젝트 오버라이드 상세 확인
+- The rules in this skill apply to all agents that generate SV code
+- Violations will result in a FAIL verdict from the lint-check skill
+- Use `templates/module-template.sv` as the starting point for new modules
+- Review `examples/good-vs-bad.sv` for correct/incorrect pattern examples
+- See `references/lowrisc-overrides.md` for detailed project overrides vs. original lowRISC rules
 </Execution_Policy>
 
 <Steps>
 
-## 1. 프로젝트 오버라이드 (lowRISC보다 우선)
+## 1. Project Overrides (Take Precedence Over lowRISC)
 
-> **IMPORTANT — 아래 3가지는 lowRISC 가이드와 다르며, 반드시 이 규칙을 적용한다.**
+> **IMPORTANT — The following 3 rules differ from the lowRISC guide and must always be applied.**
 
-### 1.1 포트 방향 prefix (필수, 클럭/리셋 예외)
-- 입력: `i_`, 출력: `o_`, 양방향: `io_` — **필수 사용**
-- 예: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
-- **예외**: 클럭과 리셋 포트는 `i_` prefix 불필요 (`clk`, `sys_clk`, `rst_n`, `sys_rst_n`)
-- suffix(`_i`, `_o`, `_io`) 사용은 **금지**
-- lowRISC는 suffix를 사용하지만, 이 프로젝트는 **prefix 필수 (clk/rst 예외)**
+### 1.1 Port Direction Prefix (Mandatory, Clock/Reset Excepted)
+- Input: `i_`, Output: `o_`, Bidirectional: `io_` — **mandatory**
+- Example: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
+- **Exception**: Clock and reset ports do not need the `i_` prefix (`clk`, `sys_clk`, `rst_n`, `sys_rst_n`)
+- Using suffixes (`_i`, `_o`, `_io`) is **forbidden**
+- lowRISC uses suffixes, but this project **requires prefixes (clock/reset excepted)**
 
-### 1.2 클럭 명명
-- 단일 클럭: `clk` (기본) 또는 `{domain}_clk` (다중 클럭)
-- 다중 클럭 도메인: `sys_clk`, `pixel_clk`, `axi_clk`
+### 1.2 Clock Naming
+- Single clock: `clk` (default) or `{domain}_clk` (multi-clock)
+- Multi-clock domains: `sys_clk`, `pixel_clk`, `axi_clk`
 - NOT `clk_i`, NOT suffix
 
-### 1.3 리셋 명명
-- 단일 리셋: `rst_n` (기본) 또는 `{domain}_rst_n` (다중 도메인)
-- active-low 비동기 리셋 필수
-- 예: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
+### 1.3 Reset Naming
+- Single reset: `rst_n` (default) or `{domain}_rst_n` (multi-domain)
+- Active-low asynchronous reset is mandatory
+- Example: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
 
-### 1.4 CamelCase 금지 (추가 오버라이드)
-- lowRISC는 Parameter에 `UpperCamelCase`, Enum 값에 `UpperCamelCase` 사용
-- **이 프로젝트는 CamelCase 전면 금지**
+### 1.4 CamelCase Prohibition (Additional Override)
+- lowRISC uses `UpperCamelCase` for Parameters and Enum values
+- **This project prohibits CamelCase entirely**
 - Parameter: `ALL_CAPS` (`DATA_WIDTH`, NOT `DataWidth`)
-- Localparam (내부): `L_` prefix + `ALL_CAPS` (`L_ADDR_BITS`, NOT `AddrBits`)
-- Enum 값: `ALL_CAPS` (`ST_IDLE`, NOT `StIdle`)
+- Localparam (internal): `L_` prefix + `ALL_CAPS` (`L_ADDR_BITS`, NOT `AddrBits`)
+- Enum values: `ALL_CAPS` (`ST_IDLE`, NOT `StIdle`)
 
-## 2. 명명 규칙
+## 2. Naming Conventions
 
-> **IMPORTANT — CamelCase 전면 금지. 모든 식별자는 `snake_case` 또는 `ALL_CAPS` 만 사용한다.**
-> 상세 규칙: `references/coding-style-guide.md` 참조.
+> **IMPORTANT — CamelCase is completely prohibited. All identifiers must use only `snake_case` or `ALL_CAPS`.**
+> Detailed rules: see `references/coding-style-guide.md`.
 
-| 대상 | 규칙 | 예시 |
-|------|------|------|
-| 모듈 | `snake_case` | `axi_lite_slave` |
-| 파라미터 (외부 설정 가능) | `ALL_CAPS` | `DATA_WIDTH`, `DEPTH` |
-| 로컬 파라미터 (내부 전용) | `L_` prefix + `ALL_CAPS` | `L_ADDR_BITS`, `L_CNT_MAX` |
-| 타입 (typedef) | `snake_case_t` suffix | `state_t`, `bus_req_t` |
-| 열거형 타입 (typedef enum) | `snake_case_e` suffix | `state_e`, `cmd_type_e` |
-| 열거형 값 | `ALL_CAPS` | `ST_IDLE`, `WAIT_RESP` |
-| `define 매크로 | `ALL_CAPS` | `MAX_DEPTH`, `ASSERT_ON` |
-| 인스턴스 | `u_` prefix | `u_fifo`, `u_arbiter` |
-| generate 블록 | `gen_` prefix | `gen_pipeline_stage` |
-| 신호(내부) | `snake_case` | `write_enable`, `addr_valid` |
+| Target | Rule | Example |
+|--------|------|---------|
+| Module | `snake_case` | `axi_lite_slave` |
+| Parameter (externally configurable) | `ALL_CAPS` | `DATA_WIDTH`, `DEPTH` |
+| Local parameter (internal only) | `L_` prefix + `ALL_CAPS` | `L_ADDR_BITS`, `L_CNT_MAX` |
+| Type (typedef) | `snake_case_t` suffix | `state_t`, `bus_req_t` |
+| Enum type (typedef enum) | `snake_case_e` suffix | `state_e`, `cmd_type_e` |
+| Enum values | `ALL_CAPS` | `ST_IDLE`, `WAIT_RESP` |
+| `define macros | `ALL_CAPS` | `MAX_DEPTH`, `ASSERT_ON` |
+| Instances | `u_` prefix | `u_fifo`, `u_arbiter` |
+| Generate blocks | `gen_` prefix | `gen_pipeline_stage` |
+| Signals (internal) | `snake_case` | `write_enable`, `addr_valid` |
 
-### CamelCase 금지 예시
+### CamelCase Prohibition Examples
 
-| 금지 (CamelCase) | 올바른 표현 |
-|-----------------|-----------|
+| Forbidden (CamelCase) | Correct Form |
+|-----------------------|-------------|
 | `parameter int Width = 8` | `parameter int unsigned WIDTH = 8` |
 | `localparam AddrBits = $clog2(Depth)` | `localparam L_ADDR_BITS = $clog2(DEPTH)` |
 | `StIdle`, `StProcess` | `ST_IDLE`, `ST_PROCESS` |
-| `UpperCamelCase` 어떤 것이든 | `ALL_CAPS` 또는 `snake_case` |
+| Any `UpperCamelCase` | `ALL_CAPS` or `snake_case` |
 
-## 3. 파일명 규칙
+## 3. Filename Conventions
 
-| 유형 | 패턴 | 예시 |
-|------|------|------|
-| 모듈 | `module_name.sv` | `axi_lite_slave.sv` |
-| 패키지 | `module_name_pkg.sv` | `cabac_pkg.sv` |
-| 인터페이스 | `module_name_if.sv` | `axi_if.sv` |
-| 테스트벤치 | `tb_module_name.sv` | `tb_axi_lite_slave.sv` |
+| Type | Pattern | Example |
+|------|---------|---------|
+| Module | `module_name.sv` | `axi_lite_slave.sv` |
+| Package | `module_name_pkg.sv` | `cabac_pkg.sv` |
+| Interface | `module_name_if.sv` | `axi_if.sv` |
+| Testbench | `tb_module_name.sv` | `tb_axi_lite_slave.sv` |
 | SVA bind | `sva_module_name.sv` | `sva_axi_lite_slave.sv` |
 
 **One module per file, filename matches module name.**
 
-## 4. SystemVerilog 코딩 규칙
+## 4. SystemVerilog Coding Rules
 
-### 4.1 필수 사용
-- `logic` 사용 (`reg`/`wire` 사용 금지)
+### 4.1 Mandatory Usage
+- Use `logic` (using `reg`/`wire` is forbidden)
 - `always_ff` for sequential (non-blocking `<=`)
 - `always_comb` for combinational (blocking `=`)
-- `typedef enum` / `typedef struct packed` 적극 사용
-- 패키지(`_pkg.sv`)로 공유 타입 정의
-- 포트: `input logic` / `output logic` (ANSI style)
-- 매직 넘버 금지 — `parameter` 또는 `localparam` 사용
+- Actively use `typedef enum` / `typedef struct packed`
+- Define shared types via packages (`_pkg.sv`)
+- Ports: `input logic` / `output logic` (ANSI style)
+- No magic numbers — use `parameter` or `localparam`
 
-### 4.2 금지 사항
-- `reg`, `wire` 키워드 사용 금지
-- `always_latch` 사용 금지 (명시적 래치 제외, 일반적으로 금지)
-- synthesizable 코드에서 `initial` 블록 금지
-- 래치 유발: 모든 `case`에 `default` 필수
-- combinational loop 금지
-- `#delay` in synthesizable code 금지
+### 4.2 Prohibited Practices
+- Using `reg`, `wire` keywords is forbidden
+- Using `always_latch` is forbidden (except for explicit latches; generally prohibited)
+- `initial` blocks in synthesizable code are forbidden
+- Latch prevention: `default` is mandatory in all `case` statements
+- Combinational loops are forbidden
+- `#delay` in synthesizable code is forbidden
 
-### 4.3 모듈 구조
+### 4.3 Module Structure
 ```
-module_name_pkg.sv    ← 공유 타입/상수 정의
-module_name.sv        ← 모듈 구현
-  - parameter 선언
-  - 포트 선언 (ANSI style)
-  - 내부 신호 선언
-  - 서브모듈 인스턴스 (u_ prefix)
+module_name_pkg.sv    <- Shared type/constant definitions
+module_name.sv        <- Module implementation
+  - parameter declarations
+  - port declarations (ANSI style)
+  - internal signal declarations
+  - submodule instances (u_ prefix)
   - combinational logic (always_comb)
   - sequential logic (always_ff)
   - assertions (SVA)
 ```
 See `templates/module-template.sv` for complete scaffold.
 
-## 5. 상황별 최적화 (요약)
+## 5. Context-Specific Optimizations (Summary)
 
-> 아래 항목은 특정 최적화가 필요할 때만 적용된다. 상세 패턴과 코드 예시는 `<Advanced>` 섹션 참조.
+> The items below apply only when specific optimizations are needed. See the `<Advanced>` section for detailed patterns and code examples.
 
-- **Power Optimization**: 클럭 게이팅(ICG), operand isolation, power domain → `<Advanced>` 섹션 A.1
-- **FPGA 고려사항**: BRAM/DSP 추론, XDC 제약, ILA 디버깅, IP Core → `<Advanced>` 섹션 A.2
-- **Pipelining for Timing Closure**: 파이프라인 삽입 기준, retiming, valid/ready 파이프라인 → `<Advanced>` 섹션 A.3
+- **Power Optimization**: Clock gating (ICG), operand isolation, power domains → `<Advanced>` section A.1
+- **FPGA Considerations**: BRAM/DSP inference, XDC constraints, ILA debugging, IP Core → `<Advanced>` section A.2
+- **Pipelining for Timing Closure**: Pipeline insertion criteria, retiming, valid/ready pipelining → `<Advanced>` section A.3
 
 </Steps>
 
@@ -154,9 +154,9 @@ See `templates/module-template.sv` for complete scaffold.
 
 ## A.1 Power Optimization
 
-### 클럭 게이팅
-- 활동이 없는 블록의 클럭을 게이팅하여 dynamic power 절감
-- ICG(Integrated Clock Gating) 셀 사용 권장
+### Clock Gating
+- Gate the clock for inactive blocks to reduce dynamic power
+- Use of ICG (Integrated Clock Gating) cells is recommended
 ```systemverilog
 // Clock gating pattern
 logic clk_enable;
@@ -167,10 +167,10 @@ assign gated_clk = sys_clk & clk_enable;  // For simulation only
 // Synthesis: replace with ICG instantiation or let tool infer
 ```
 
-### Power-Aware 코딩 패턴
-- 불필요한 toggling 최소화: mux 출력 전에 enable 체크
-- Memory read enable: 필요할 때만 SRAM 읽기
-- Operand isolation: 연산기 입력을 0으로 마스킹
+### Power-Aware Coding Patterns
+- Minimize unnecessary toggling: check enable before mux output
+- Memory read enable: only read SRAM when needed
+- Operand isolation: mask operator inputs to zero
 ```systemverilog
 // Operand isolation — prevent unnecessary switching in multiplier
 logic [15:0] mul_a_gated, mul_b_gated;
@@ -179,41 +179,41 @@ assign mul_b_gated = i_mul_valid ? i_mul_b : '0;
 assign mul_result  = mul_a_gated * mul_b_gated;
 ```
 
-### Power Domain 고려사항
-- 멀티 전압 도메인 시 level shifter 위치 명시
-- Retention register 필요 시 주석으로 표시
+### Power Domain Considerations
+- Explicitly specify level shifter placement for multi-voltage domains
+- Mark retention registers with comments when needed
 
-## A.2 FPGA 고려사항
+## A.2 FPGA Considerations
 
-### 리소스 추론 가이드
-| 리소스 | 추론 패턴 | 주의사항 |
-|--------|----------|---------|
-| BRAM | `logic [W-1:0] mem [0:D-1]` + sync read | 비동기 읽기는 distributed RAM |
-| DSP | `a * b + c` 패턴 | pipeline register 추가 시 더 잘 추론 |
-| SRL | shift register (`always_ff` chain) | 자동 추론, 명시적 제어 불필요 |
+### Resource Inference Guide
+| Resource | Inference Pattern | Notes |
+|----------|-------------------|-------|
+| BRAM | `logic [W-1:0] mem [0:D-1]` + sync read | Async read infers distributed RAM |
+| DSP | `a * b + c` pattern | Better inference with pipeline registers |
+| SRL | shift register (`always_ff` chain) | Auto-inferred, no explicit control needed |
 
-### XDC 제약조건 (Xilinx)
-- SDC와 유사하나 Xilinx 고유 명령 포함
-- `create_clock`, `set_input_delay`, `set_output_delay` 동일
-- FPGA 고유: `set_property IOSTANDARD`, `set_property LOC`
+### XDC Constraints (Xilinx)
+- Similar to SDC but includes Xilinx-specific commands
+- `create_clock`, `set_input_delay`, `set_output_delay` are identical
+- FPGA-specific: `set_property IOSTANDARD`, `set_property LOC`
 
-### ILA 디버깅
-- 디버그 대상 신호에 `(* mark_debug = "true" *)` 어트리뷰트
-- 합성 후 ILA core 삽입하여 실시간 파형 확인
+### ILA Debugging
+- Apply `(* mark_debug = "true" *)` attribute to signals targeted for debug
+- Insert ILA core after synthesis for real-time waveform inspection
 
-### IP Core 활용
+### IP Core Usage
 - Xilinx: AXI Interconnect, MIG (DDR controller), AXI DMA
 - Intel: Platform Designer (Qsys) IP
-- IP 인스턴스도 `u_` prefix 규칙 적용
+- IP instances also follow the `u_` prefix convention
 
 ## A.3 Pipelining for Timing Closure
 
-### 파이프라인 삽입 기준
-- 타이밍 리포트에서 critical path 위반 시
-- Combinational depth > target frequency의 허용 범위 초과 시
-- `synth-check` 스킬에서 logic depth 경고 발생 시
+### Pipeline Insertion Criteria
+- When timing reports show critical path violations
+- When combinational depth exceeds the allowable range for target frequency
+- When logic depth warnings are generated by the `synth-check` skill
 
-### 파이프라인 패턴
+### Pipeline Patterns
 ```systemverilog
 // Before: long combinational path
 assign o_result = func_a(func_b(func_c(i_data)));
@@ -228,17 +228,17 @@ assign o_result = func_a(func_b(stage1_q));
 ```
 
 ### Register Retiming
-- 합성 도구의 retiming 옵션 활용 (DC: `compile_ultra -retime`, Genus: `syn_opt -retiming`)
-- Retiming 대상 레지스터에 `dont_touch` 금지
+- Leverage the synthesis tool's retiming option (DC: `compile_ultra -retime`, Genus: `syn_opt -retiming`)
+- Do not apply `dont_touch` to registers targeted for retiming
 
-### Valid/Ready 파이프라인
-- 파이프라인 삽입 시 handshake 신호도 함께 파이프라인
-- Backpressure 전파: `o_ready`는 다음 스테이지의 `i_ready`에서 역방향으로 전파
+### Valid/Ready Pipeline
+- When inserting pipeline stages, pipeline the handshake signals as well
+- Backpressure propagation: `o_ready` propagates backward from the next stage's `i_ready`
 
 </Advanced>
 
 <Tool_Usage>
-이 스킬은 직접 실행하지 않는다. SV 코드를 생성하는 에이전트가 참조한다:
+This skill is not executed directly. It is referenced by agents that generate SV code:
 ```
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="... Follow systemverilog skill conventions. Use templates/module-template.sv as scaffold.")
@@ -250,7 +250,7 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 
 <Examples>
 <Good>
-프로젝트 규칙 준수: ALL_CAPS parameter, L_ prefix localparam, snake_case, no CamelCase.
+Follows project rules: ALL_CAPS parameter, L_ prefix localparam, snake_case, no CamelCase.
 ```systemverilog
 module cabac_encoder #(
   parameter int unsigned CTX_ADDR_W = 9
@@ -270,7 +270,7 @@ module cabac_encoder #(
 ```
 </Good>
 <Bad>
-CamelCase, suffix, reg/wire, 매직 넘버:
+CamelCase, suffix, reg/wire, magic numbers:
 ```systemverilog
 module cabac_encoder #(
   parameter int CtxAddrWidth = 9   // WRONG: CamelCase
@@ -289,20 +289,20 @@ module cabac_encoder #(
 </Examples>
 
 <Escalation_And_Stop_Conditions>
-- lint-check 실행 시 컨벤션 위반 발견 → rtl-coder에게 수정 요청
-- 파워 최적화 패턴이 기능에 영향 → rtl-architect에게 검토 요청
-- FPGA vs ASIC 타겟에 따라 다른 패턴 필요 → 사용자에게 타겟 확인
+- Convention violation found during lint-check → request fix from rtl-coder
+- Power optimization pattern affects functionality → request review from rtl-architect
+- Different patterns needed for FPGA vs ASIC target → confirm target with user
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] 포트 naming: `i_`/`o_`/`io_` prefix 필수
-- [ ] 클럭: `clk` (단일) 또는 `{domain}_clk` (다중), 리셋: `rst_n` 또는 `{domain}_rst_n`
-- [ ] CamelCase 없음: Parameter `ALL_CAPS`, localparam `L_` prefix, enum 값 `ALL_CAPS`
-- [ ] `logic` 만 사용 (no `reg`/`wire`)
+- [ ] Port naming: `i_`/`o_`/`io_` prefix mandatory
+- [ ] Clock: `clk` (single) or `{domain}_clk` (multi), Reset: `rst_n` or `{domain}_rst_n`
+- [ ] No CamelCase: Parameter `ALL_CAPS`, localparam `L_` prefix, enum values `ALL_CAPS`
+- [ ] Use `logic` only (no `reg`/`wire`)
 - [ ] `always_ff` (sequential), `always_comb` (combinational)
-- [ ] 모든 `case`에 `default` 존재
-- [ ] 인스턴스 `u_` prefix, generate `gen_` prefix
-- [ ] 매직 넘버 없음 (parameter/localparam 사용)
-- [ ] 파일명 = 모듈명
+- [ ] `default` present in all `case` statements
+- [ ] Instance `u_` prefix, generate `gen_` prefix
+- [ ] No magic numbers (use parameter/localparam)
+- [ ] Filename = module name
 - [ ] One module per file
 </Final_Checklist>

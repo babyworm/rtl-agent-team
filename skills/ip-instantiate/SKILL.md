@@ -32,8 +32,8 @@ eliminates transcription errors and documents all connections explicitly.
 - rtl-coder writes the wrapper RTL
 - Wrapper MUST follow project coding conventions:
   - Port prefixes: `i_` (input), `o_` (output), `io_` (bidirectional)
-  - Clock: `clk` (단일) or `{domain}_clk` (다중, e.g., `sys_clk`) — NOT `clk_i`
-  - Reset: `rst_n` (단일) or `{domain}_rst_n` (다중, e.g., `sys_rst_n`) — NOT `rst_ni`
+  - Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
+  - Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
   - `logic` only — no `reg`/`wire`
   - Instance: `u_` prefix (e.g., `u_sram`)
   - Generate: `gen_` prefix
