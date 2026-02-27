@@ -23,7 +23,7 @@ and verify that required EDA tools are installed and accessible.
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-The 5-Phase pipeline expects a standard directory layout (specs/, rtl/src/, tb/, ref_model/, etc.)
+The 6-Phase pipeline expects a standard directory layout (specs/, rtl/src/, tb/, ref_model/, etc.)
 and depends on EDA CLI tools (Verilator, Yosys, cocotb, etc.) being available.
 Without proper setup, agents fail with missing directory or tool-not-found errors.
 This skill ensures everything is in place before design work begins.

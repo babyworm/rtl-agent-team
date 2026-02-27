@@ -1,12 +1,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 42 specialized AI agents + 32 skills automate the 6-Phase pipeline:
+> 46 specialized AI agents + 34 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-42개 전문 AI 에이전트 + 32개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+46개 전문 AI 에이전트 + 34개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ## Quick Start
 
@@ -78,7 +78,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 32개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 34개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -107,8 +107,8 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 42개 에이전트 (설계/검증/리뷰/EDA/도메인)
-├── skills/                     # 32개 스킬 (SKILL.md + templates/ + examples/)
+├── agents/                     # 46개 에이전트 (설계/검증/리뷰/EDA/도메인)
+├── skills/                     # 34개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
 │   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
@@ -127,7 +127,7 @@ rtl-agent-team/
 
 ## 에이전트 팀
 
-### 에이전트 구성 (42개, 전체 Opus)
+### 에이전트 구성 (46개, 전체 Opus)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
