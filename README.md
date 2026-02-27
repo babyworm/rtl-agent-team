@@ -8,30 +8,53 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 50개 전문 AI 에이전트 + 34개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
+## Marketplace
+
+이 repository는 **RTL Agent Marketplace**로, 하드웨어 설계 관련 플러그인들을 제공합니다.
+
+| 플러그인 | 설명 | 버전 |
+|---------|------|------|
+| **rtl-agent-team** | 50-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.1.0 |
+| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.0 |
+
+Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
+
 ## Quick Start
 
 ```bash
-# 1. 설치
-claude plugin marketplace add https://github.com/babyworm/rtl-agent-team.git
-claude plugin install rtl-agent-team@rtl-agent-marketplace
+# 1. Marketplace 등록
+/plugin marketplace add babyworm/rtl-agent-team
 
-# 2. 환경 점검
+# 2. 플러그인 설치
+/plugin install rtl-agent-team
+/plugin install systemverilog-lsp   # (선택) SV LSP
+
+# 3. 환경 점검
 /rtl-agent-team:rtl-setup
 
-# 3. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
+# 4. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
 /rtl-agent-team:rtl-autopilot
 ```
 
 ## 설치
 
-### CLI에서 설치 (권장)
+### Claude Code 대화창에서 설치 (권장)
 
-```bash
-claude plugin marketplace add https://github.com/babyworm/rtl-agent-team.git
-claude plugin install rtl-agent-team@rtl-agent-marketplace
+```
+/plugin marketplace add babyworm/rtl-agent-team
+/plugin install rtl-agent-team
 ```
 
-### 대안: 개발용 로컬 심볼릭 링크
+설치 확인: `/plugin`
+
+### CLI에서 설치
+
+```bash
+claude plugin marketplace add babyworm/rtl-agent-team
+claude plugin install rtl-agent-team
+```
+
+### 개발용 로컬 심볼릭 링크
 
 플러그인 소스를 직접 수정하며 개발할 때:
 
@@ -39,15 +62,6 @@ claude plugin install rtl-agent-team@rtl-agent-marketplace
 git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
-
-### 대안: Claude Code 대화창
-
-```
-/plugin marketplace add babyworm/rtl-agent-team
-/plugin install rtl-agent-team@rtl-agent-marketplace
-```
-
-> GitHub public repo shorthand 방식. 설치 확인: `/plugin`
 
 ## 사용법
 
@@ -207,6 +221,28 @@ docker build -t rtl-eda-tools \
 
 Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rtl-setup` 실행 후 Docker 옵션 선택.
 
+## Marketplace 구조
+
+이 repository는 단일 플러그인이 아닌 **marketplace**로 동작합니다.
+
+```
+rtl-agent-team/                          # Marketplace root
+├── .claude-plugin/
+│   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
+│   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
+├── agents/                              # rtl-agent-team 에이전트 (50개)
+├── skills/                              # rtl-agent-team 스킬 (34개)
+├── references/                          # 레퍼런스 문서 (11개)
+├── plugins/
+│   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
+└── domain-packages/                     # 도메인 지식 패키지
+    └── video-codec/                     # H.264/H.265 코덱 지식
+```
+
+Marketplace에 새 플러그인을 추가하려면 `marketplace.json`의 `plugins` 배열에 항목을 추가합니다:
+- 같은 repo 내: `"source": "./plugins/new-plugin"`
+- 외부 repo: `"source": {"source": "github", "repo": "owner/repo"}`
+
 ## 개발
 
 이 플러그인은 순수 선언형(`.md` + `.json` 파일만)으로 빌드 과정이 필요 없습니다.
@@ -215,9 +251,6 @@ Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `
 git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
-
-> **참고**: 설계 산출물 이동(`specs/` → `docs/phase-1-research/` 등)은 후속 작업으로 진행됩니다.
-> 현재 데모 산출물이 기존 위치에 있을 수 있습니다.
 
 ## 라이선스
 
