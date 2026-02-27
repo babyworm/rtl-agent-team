@@ -415,19 +415,31 @@ reviews/
 │   ├── architecture-review-r1.md        # Round 1 review (3-round iterative)
 │   ├── architecture-review-r2.md        # Round 2 review
 │   ├── architecture-review-r3.md        # Round 3 review (mandatory final pass)
-│   └── architecture-review.md           # Consolidated verdict on whether Arch complies with Spec
+│   ├── architecture-review.md           # Consolidated verdict on whether Arch complies with Spec
+│   ├── feature-coverage.md              # Feature Coverage Checklist (100% REQ mapping)
+│   └── architecture-diagram.md          # Mermaid block diagram
 ├── phase-3-uarch/
 │   ├── uarch-review-r1.md              # Round 1 review (3-round iterative)
 │   ├── uarch-review-r2.md              # Round 2 review
 │   ├── uarch-review-r3.md              # Round 3 review (mandatory final pass)
-│   └── uarch-review.md                  # Consolidated verdict on whether μArch complies with Arch
+│   ├── uarch-review.md                  # Consolidated verdict on whether μArch complies with Arch
+│   ├── feature-preservation.md          # Feature Preservation Checklist (100% preserved)
+│   └── pipeline-diagram.md             # Mermaid pipeline diagram
 ├── phase-4-rtl/
-│   └── design-review.md                 # verdict on whether RTL complies with μArch
+│   ├── functional-completeness.md       # Requirement → uarch → RTL traceability
+│   ├── design-review.md                 # Verdict on whether RTL complies with μArch
+│   └── lint-report.md                   # Verilator lint results
 ├── phase-5-verify/
+│   ├── formal-review.md                 # SVA formal verification results
+│   ├── cdc-report.md                    # Clock domain crossing analysis
+│   ├── requirement-traceability.md      # Requirement → test → result mapping
+│   ├── coverage-report.md               # Line/toggle/FSM coverage analysis
 │   └── final-compliance.md              # Final compliance verdict against original Spec
 ├── phase-6-review/
 │   ├── code-review.md                   # Code quality verdict
-│   └── design-review.md                 # Design quality verdict
+│   ├── design-review.md                 # Design quality verdict
+│   ├── design-note.md                   # Comprehensive design document
+│   └── improvements.md                  # Prioritized improvement recommendations
 └── phase-7-exploration/
     └── exploration-review.md            # Exploration results review verdict
 ```

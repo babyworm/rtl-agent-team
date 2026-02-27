@@ -4,7 +4,7 @@ description: "This skill should be used when starting a full RTL design pipeline
 ---
 
 <Purpose>
-Drive the complete RTL design pipeline through five sequential phases with enforced dual-layer phase gates.
+Drive the complete RTL design pipeline through six sequential phases with enforced dual-layer phase gates.
 Each phase must pass both an Artifact Gate (verify deliverables exist) and a Quality Gate (verify quality + hierarchical spec compliance) before the next phase begins.
 
 **Hierarchical Spec Compliance Principle:**
@@ -330,7 +330,7 @@ On phase gate FAIL + retry:
 This pattern follows Document-as-Memory: agents communicate through files, not direct coupling.
 
 **Coding Convention Enforcement (all phases):**
-See CLAUDE.md "Core Overrides" section for complete naming rules.
+See CLAUDE.md "Coding Conventions" section for full rules (language standards + Core Overrides).
 Summary: i_/o_/io_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates, logic only.
 </Steps>
 
