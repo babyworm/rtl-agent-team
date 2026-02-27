@@ -114,7 +114,7 @@ timing-advisor ensures designs are achievable at the target frequency.
 Bash("mkdir -p reviews/phase-3-uarch")
 
 # --- Step 3: uarch-designer draft ---
-Task(subagent_type="rtl-agent-team:rtl-uarch-designer",
+Task(subagent_type="rtl-agent-team:uarch-designer",
      prompt="Produce microarchitecture docs at uarch/ from architecture.md. Include FSM, pipeline, register map per block. All signal names MUST use: i_/o_/io_ prefix (NOT _i/_o suffix), {domain}_clk (e.g. sys_clk), {domain}_rst_n (e.g. sys_rst_n), u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params, typedef enum for FSM states.")
 
 # --- Step 4: Parallel initial review (4 reviewers) ---
@@ -135,7 +135,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Aggregate Round 1 findings from all 4 reviewers. Consolidate: feature preservation, performance, memory optimization, interface optimization, model consistency. Save to reviews/phase-3-uarch/uarch-review-r1.md. Output targeted feedback for each expert/module that needs revision.")
 
 # --- Step 6: Targeted revision Round 1→2 ---
-Task(subagent_type="rtl-agent-team:rtl-uarch-designer",
+Task(subagent_type="rtl-agent-team:uarch-designer",
      prompt="Revise specific uarch/*.md files to address Round 1 findings: [paste targeted feedback]. Only modify files with identified issues.")
 
 # --- Step 7: Review Round 2 (4 reviewers in parallel) ---

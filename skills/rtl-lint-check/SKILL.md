@@ -78,7 +78,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 
 <Tool_Usage>
 ```
-Task(subagent_type="rtl-agent-team:rtl-lint-checker",
+Task(subagent_type="rtl-agent-team:lint-checker",
      prompt="Run Verilator, Verible, and slang lint on rtl/src/ via Bash CLI. Verilator: --lint-only -Wall -Wpedantic -sv. Verible: --rules_config .verible_lint.cfg. slang: --lint-only. Also check naming conventions: i_/o_ port prefixes, {domain}_clk/{domain}_rst_n, logic not reg/wire, u_ instance prefix. Report all violations grouped by file and severity (Critical/Major/Minor). Return PASS or FAIL summary.")
 ```
 </Tool_Usage>

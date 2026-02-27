@@ -266,7 +266,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | Specification analysis | `rtl-agent-team:spec-analyst` | Opus |
 | Architecture design | `rtl-agent-team:arch-designer` | Opus |
 | Architecture review | `rtl-agent-team:rtl-architect` | Opus |
-| μArch design | `rtl-agent-team:rtl-uarch-designer` | Opus |
+| μArch design | `rtl-agent-team:uarch-designer` | Opus |
 | RTL coding | `rtl-agent-team:rtl-coder` | Opus |
 | RTL review | `rtl-agent-team:rtl-critic` | Opus |
 | Design planning | `rtl-agent-team:rtl-planner` | Opus |
@@ -301,14 +301,14 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | **--- EDA/Synthesis ---** | | |
 | EDA tool execution | `rtl-agent-team:eda-runner` | Opus |
 | Synthesis metric extraction | `rtl-agent-team:synthesis-reporter` | Opus |
-| Lint checking | `rtl-agent-team:rtl-lint-checker` | Opus |
+| Lint checking | `rtl-agent-team:lint-checker` | Opus |
 | SDC constraint generation | `rtl-agent-team:constraint-writer` | Opus |
 | Timing analysis (STA) | `rtl-agent-team:timing-advisor` | Opus |
 | CDC static analysis | `rtl-agent-team:cdc-checker` | Opus |
 | Clock architecture review | `rtl-agent-team:clock-architect` | Opus |
 | DFT design | `rtl-agent-team:dft-designer` | Opus |
 | **--- Infrastructure ---** | | |
-| IP-XACT generation | `rtl-agent-team:rtl-ipxact-generator` | Opus |
+| IP-XACT generation | `rtl-agent-team:ipxact-generator` | Opus |
 | BFM development | `rtl-agent-team:bfm-dev` | Opus |
 | Reference Model development | `rtl-agent-team:ref-model-dev` | Opus |
 | **--- Domain Experts ---** | | |

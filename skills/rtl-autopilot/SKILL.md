@@ -548,7 +548,7 @@ Save the full design review to reviews/phase-4-rtl/design-review.md in standard 
 Output the Functional Coverage Matrix table, then:
 verdict: PASS or FAIL + findings[]")
 
-Task(subagent_type="rtl-agent-team:rtl-lint-checker",
+Task(subagent_type="rtl-agent-team:lint-checker",
      prompt="Run full lint on rtl/src/*.sv. Zero errors required. Review warnings for false positives. Report lint summary.
 Save the lint report to reviews/phase-4-rtl/lint-report.md in this format:
   # Phase 4 Review: Lint Report
