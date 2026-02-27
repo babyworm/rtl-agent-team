@@ -684,32 +684,7 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 - [ ] All 6 phases completed
 - [ ] State file removed on clean completion
 - [ ] Summary report generated with Final Compliance Matrix and Phase 6 deliverables
-- [ ] **Review artifacts saved to reviews/ directory:**
-  - reviews/phase-1-research/research-review.md
-  - reviews/phase-2-architecture/architecture-review-r1.md (Round 1)
-  - reviews/phase-2-architecture/architecture-review-r2.md (Round 2)
-  - reviews/phase-2-architecture/architecture-review-r3.md (Round 3)
-  - reviews/phase-2-architecture/feature-coverage.md
-  - reviews/phase-2-architecture/architecture-review.md (consolidated)
-  - reviews/phase-2-architecture/architecture-diagram.md (Mermaid block diagram)
-  - reviews/phase-3-uarch/uarch-review-r1.md (Round 1)
-  - reviews/phase-3-uarch/uarch-review-r2.md (Round 2)
-  - reviews/phase-3-uarch/uarch-review-r3.md (Round 3)
-  - reviews/phase-3-uarch/feature-preservation.md
-  - reviews/phase-3-uarch/uarch-review.md (consolidated)
-  - reviews/phase-3-uarch/pipeline-diagram.md (Mermaid pipeline diagram)
-  - reviews/phase-4-rtl/functional-completeness.md
-  - reviews/phase-4-rtl/design-review.md
-  - reviews/phase-4-rtl/lint-report.md
-  - reviews/phase-5-verify/requirement-traceability.md
-  - reviews/phase-5-verify/formal-review.md
-  - reviews/phase-5-verify/cdc-report.md
-  - reviews/phase-5-verify/coverage-report.md
-  - reviews/phase-5-verify/final-compliance.md
-  - reviews/phase-6-review/code-review.md
-  - reviews/phase-6-review/design-review.md
-  - reviews/phase-6-review/design-note.md
-  - reviews/phase-6-review/improvements.md
+- [ ] **Review artifacts verified**: Read `references/review-checklist.md` and confirm all 25 files exist
 </Final_Checklist>
 
 <Advanced>
