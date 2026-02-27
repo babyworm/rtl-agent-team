@@ -154,7 +154,9 @@ reviews/
 ## 6. Automatic State Tracking
 
 Gate pass/fail results are recorded in `.rtl-agent-team/state/rtl-autopilot-state.json` (schema v2.0).
-The unified schema tracks per-phase progress, gate results, and partial work for resumability:
+The unified schema tracks per-phase progress, gate results, and partial work for resumability.
+Full schema: see `templates/autopilot-state.json`. Below is an abbreviated example (showing key fields;
+`artifacts`, `artifact_gate` and phase-specific fields like `completed_modules` omitted for brevity):
 
 ```json
 {
@@ -171,6 +173,8 @@ The unified schema tracks per-phase progress, gate results, and partial work for
       "completed_at": "2025-01-15T12:00:00Z",
       "gate_passed_at": "2025-01-15T12:30:00Z",
       "review_rounds_completed": 1,
+      "artifacts": { "...": "see template for full field list" },
+      "artifact_gate": "PASS",
       "quality_gate": "PASS",
       "quality_gate_retries": 0,
       "partial_work": {
@@ -186,6 +190,8 @@ The unified schema tracks per-phase progress, gate results, and partial work for
       "completed_at": "2025-01-16T10:00:00Z",
       "gate_passed_at": "2025-01-16T11:00:00Z",
       "review_rounds_completed": 3,
+      "artifacts": { "...": "see template" },
+      "artifact_gate": "PASS",
       "quality_gate": "PASS",
       "quality_gate_retries": 1,
       "partial_work": {
@@ -201,6 +207,8 @@ The unified schema tracks per-phase progress, gate results, and partial work for
       "completed_at": null,
       "gate_passed_at": null,
       "review_rounds_completed": 1,
+      "artifacts": { "uarch_md": true, "bfm_dir": false },
+      "artifact_gate": null,
       "quality_gate": null,
       "quality_gate_retries": 0,
       "partial_work": {

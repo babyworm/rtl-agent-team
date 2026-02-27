@@ -5,9 +5,10 @@
     "docs/phase-2-architecture/architecture.md"
   ],
   "required_summary_only": [
-    "docs/phase-1-research/requirements.json"
+    "docs/phase-1-research/phase-1-summary.md"
   ],
   "optional_on_demand": [
+    "docs/phase-1-research/requirements.json",
     "docs/phase-1-research/io_definition.json",
     "docs/phase-1-research/domain-analysis.md",
     "ref_model/src/*.cpp",

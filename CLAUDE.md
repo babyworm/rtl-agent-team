@@ -496,9 +496,10 @@ PASS | FAIL: [Reason]
 
 ## State Files
 
-Design flow state is stored under `.rtl-agent-team/state/`:
-- `.rtl-agent-team/state/rtl-autopilot-state.json` — Pipeline progress state (for resumption)
+Design flow state is stored under `.rtl-agent-team/`:
+- `.rtl-agent-team/state/rtl-autopilot-state.json` — Pipeline progress state (for resumption, schema v2.0)
 - `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase completion gate
 - `.rtl-agent-team/scratch/phase-{N}/` — Temporary working files for iterative review rounds (cleaned on phase completion)
+- `.rtl-agent-team/context/` — Context manifests and phase summaries (auto-managed)
 
 <!-- RTL-AGENT-TEAM:END -->

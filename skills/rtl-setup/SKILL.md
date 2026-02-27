@@ -201,7 +201,7 @@ docker run -it --rm \
 <Tool_Usage>
 ```
 # Directory creation (Bash CLI)
-Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb ref_model/src ref_model/build uarch bfm formal synth docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-design-note} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify} .rtl-agent-team/state .rtl-agent-team/context
+Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb tb/formal ref_model/src ref_model/build uarch bfm formal synth docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-design-note,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify} reviews/phase-{6-review,7-exploration} .rtl-agent-team/state .rtl-agent-team/context .rtl-agent-team/scratch
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"

@@ -6,9 +6,11 @@
     "docs/phase-1-research/io_definition.json"
   ],
   "required_summary_only": [
-    "docs/phase-2-architecture/architecture.md"
+    "docs/phase-2-architecture/phase-2-summary.md",
+    "docs/phase-1-research/phase-1-summary.md"
   ],
   "optional_on_demand": [
+    "docs/phase-2-architecture/architecture.md",
     "docs/phase-1-research/requirements.json",
     "docs/decisions/ADR-*.md",
     "ref_model/src/*.cpp"
