@@ -1,12 +1,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 46 specialized AI agents + 34 skills automate the 6-Phase pipeline:
+> 50 specialized AI agents + 34 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-46개 전문 AI 에이전트 + 34개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+50개 전문 AI 에이전트 + 34개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ## Quick Start
 
@@ -107,7 +107,7 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 46개 에이전트 (설계/검증/리뷰/EDA/도메인)
+├── agents/                     # 50개 에이전트 (설계/검증/리뷰/EDA/도메인)
 ├── skills/                     # 34개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
@@ -127,7 +127,7 @@ rtl-agent-team/
 
 ## 에이전트 팀
 
-### 에이전트 구성 (46개, 전체 Opus)
+### 에이전트 구성 (50개, 전체 Opus)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
@@ -136,7 +136,7 @@ rtl-agent-team/
 | 전문 리뷰 | 15 | cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, dft-designer, clock-architect, security-reviewer |
 | EDA/합성 | 6 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker |
 | 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| 도메인 전문가 | 3 | codec-standards-expert, codec-architecture-expert, video-processing-expert |
+| 도메인 전문가 | 7 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert |
 
 ### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
 

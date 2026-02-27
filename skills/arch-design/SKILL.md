@@ -27,7 +27,7 @@ Dedicated domain experts catch codec-specific pitfalls early.
 </Why_This_Exists>
 
 <Execution_Policy>
-- Parallel: codec-standards-expert + video-processing-expert provide domain constraints
+- Parallel: codec sub-domain experts (vcodec-syntax-entropy, vcodec-prediction, vcodec-transform-quant, vcodec-filter-recon) + video-processing-expert provide domain constraints, coordinated by vcodec-chief-standard-expert
 - arch-designer produces the architecture document
 - rtl-architect performs review before gate passes
 - Review comments must be addressed before gate clears
@@ -36,7 +36,7 @@ Dedicated domain experts catch codec-specific pitfalls early.
 <Steps>
 1. Read requirements.json and io_definition.json
 2. `mkdir -p reviews/phase-2-architecture`
-3. Parallel: codec-standards-expert (interface standard compliance), video-processing-expert (pipeline and memory constraints)
+3. Parallel: vcodec-chief-standard-expert (cross-block interface compliance and domain constraints from sub-domain experts), video-processing-expert (pipeline and memory constraints)
 4. arch-designer produces architecture.md draft and block_diagram
    - All interface signal names MUST follow naming conventions:
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)

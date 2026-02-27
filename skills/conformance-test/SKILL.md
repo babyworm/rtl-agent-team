@@ -34,7 +34,7 @@ Conformance testbenches and simulation wrappers MUST follow project conventions 
 </Coding_Convention_Requirements>
 
 <Execution_Policy>
-- codec-standards-expert selects the applicable conformance test suite
+- vcodec-syntax-entropy-expert selects the applicable conformance test suite (bitstream-level compliance)
 - video-processing-expert validates test vector applicability
 - eda-runner runs RTL simulation via Bash CLI and captures output bitstream
 - Comparison done via Bash CLI: `cmp -l rtl_output.bin jm_output.bin`
@@ -42,7 +42,7 @@ Conformance testbenches and simulation wrappers MUST follow project conventions 
 </Execution_Policy>
 
 <Steps>
-1. codec-standards-expert selects conformance test vectors (JVT suite or project-specific)
+1. vcodec-syntax-entropy-expert selects conformance test vectors (JVT suite or project-specific)
 2. video-processing-expert validates vector coverage against requirements
 3. eda-runner runs RTL simulation on each vector via Bash CLI, captures encoded bitstream
    - Simulation uses correct `i_`/`o_` port naming and `sys_clk`/`sys_rst_n`
@@ -53,7 +53,7 @@ Conformance testbenches and simulation wrappers MUST follow project conventions 
 
 <Tool_Usage>
 ```
-Task(subagent_type="rtl-agent-team:codec-standards-expert",
+Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Select H.264 conformance test vectors applicable to CABAC encoder. List vector files and JM version to use.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
@@ -68,7 +68,7 @@ Task(subagent_type="rtl-agent-team:func-verifier",
 <Good>
 500 conformance vectors; RTL simulation uses `sys_clk` and `i_pixel_data`/`o_bitstream` correctly;
 498 PASS; 2 FAIL at byte offset 1024 (CABAC flush sequence);
-codec-standards-expert identifies spec section 9.3.4.6; RTL fix applied; re-run all 500 PASS.
+vcodec-syntax-entropy-expert identifies spec section 9.3.4.6; RTL fix applied; re-run all 500 PASS.
 </Good>
 <Bad>
 Accepting 99% bitexact match — codec standards require 100% bitexact; partial match means non-conformant.
@@ -79,7 +79,7 @@ Using `clk` or `data_i` in conformance testbench — violates project convention
 <Escalation_And_Stop_Conditions>
 - JM/HM not available → halt, instruct user to install (provide download URL)
 - >10 vectors fail → likely systemic issue; escalate to ref-model for model review before RTL debug
-- Single vector fails repeatedly after fix attempts → report to codec-standards-expert for spec interpretation
+- Single vector fails repeatedly after fix attempts → report to relevant sub-domain expert (vcodec-syntax-entropy, vcodec-prediction, vcodec-transform-quant, or vcodec-filter-recon) for spec interpretation
 - Testbench naming convention violation → must fix before running conformance
 </Escalation_And_Stop_Conditions>
 

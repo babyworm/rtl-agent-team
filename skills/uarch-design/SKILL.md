@@ -28,7 +28,7 @@ timing-advisor ensures designs are achievable at the target frequency.
 
 <Execution_Policy>
 - uarch-designer drives the document set
-- codec-architecture-expert provides algorithm-specific micro-decisions
+- vcodec-architecture-expert provides algorithm-specific micro-decisions
 - timing-advisor reviews for frequency feasibility
 - One review round from timing-advisor required before gate passes
 </Execution_Policy>
@@ -90,7 +90,7 @@ timing-advisor ensures designs are achievable at the target frequency.
      graph LR
          IF[Fetch] --> ID[Decode] --> EX[Execute] --> WB[Writeback]
      ```
-6. codec-architecture-expert reviews algorithm alignment (no spec violations)
+6. vcodec-architecture-expert reviews algorithm alignment (no spec violations)
 7. timing-advisor reviews critical paths and pipeline balance
 8. Verify all signal names in uarch/*.md comply with naming conventions
 9. Resolve review comments, finalize uarch/*.md
@@ -135,7 +135,7 @@ Skipping timing-advisor review — RTL coder implements the design, synthesis fa
 - [ ] rtl-architect hierarchical spec compliance verdict is PASS
 - [ ] Each doc has FSM, pipeline diagram, register map
 - [ ] timing-advisor review complete with no blockers
-- [ ] codec-architecture-expert approved algorithm correctness
+- [ ] vcodec-architecture-expert approved algorithm correctness
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT `_i`/`_o` suffix)
 - [ ] All clocks named `{domain}_clk` (e.g., `sys_clk`) — bare `clk` OK for single domain, `{domain}_clk` for multiple domains. NOT `clk_i`
 - [ ] All resets named `{domain}_rst_n` (e.g., `sys_rst_n`) — bare `rst_n` OK for single domain, `{domain}_rst_n` for multiple domains. NOT `rst_ni`

@@ -69,6 +69,33 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 | "버그 재현", "bug repro", "파형 디버그" | `/rtl-agent-team:bug-repro` |
 | "모델 일관성", "RTL-모델 비교", "model consistency" | `/rtl-agent-team:model-consistency` |
 
+## IMPORTANT — Phase 1 요구사항 명확화 (Proactive Requirement Clarification)
+
+> **Phase 1에서 사용자 요청이 모호하거나 불완전하면, AskUserQuestion을 적극적으로 사용하여 요구사항을 명확히 한다.**
+>
+> Phase 1의 목적은 완전하고 명확한 요구사항을 확보하는 것이다.
+> 모호한 상태로 Phase 2에 진입하면, 아키텍처 전체를 재설계해야 할 수 있다.
+>
+> **AskUserQuestion을 사용해야 하는 경우:**
+> - 타겟 해상도/프레임레이트/코덱이 명시되지 않은 경우
+> - 인터페이스 프로토콜(AXI/APB/custom)이 지정되지 않은 경우
+> - 클럭 주파수, 타이밍 제약이 불명확한 경우
+> - 기능 범위가 모호한 경우 (인코더/디코더/양쪽, 지원 프로파일/레벨 등)
+> - spec-analyst가 `[AMBIGUITY]` 또는 `[CONFLICT]`를 플래그한 경우
+> - 도메인 전문가 간 해석이 충돌하는 경우
+>
+> **AskUserQuestion 사용하지 않는 경우:**
+> - 사용자가 상세한 스펙 문서를 이미 제공한 경우
+> - 표준에서 유일한 해석이 존재하는 경우
+> - 설계 관례로 결정 가능한 사항 (예: active-low 리셋)
+>
+> **흐름:**
+> ```
+> 사용자 요청 수신 → 요구사항 완전성 판단 → 부족하면 AskUserQuestion
+> → 답변 반영 → spec-analyst/도메인 전문가 위임 → [AMBIGUITY] 발견 시 재질문
+> → 요구사항 확정 → Phase 2 진행
+> ```
+
 ## 절대 규칙
 
 1. 사양서 없이 RTL 코딩 시작 금지 (spec-analyst 먼저)
@@ -229,8 +256,12 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 | BFM 개발 | `rtl-agent-team:bfm-dev` | Opus |
 | Reference Model 개발 | `rtl-agent-team:ref-model-dev` | Opus |
 | **--- 도메인 전문가 ---** | | |
-| 코덱 표준 전문가 | `rtl-agent-team:codec-standards-expert` | Opus |
-| 코덱 아키텍처 전문가 | `rtl-agent-team:codec-architecture-expert` | Opus |
+| 코덱 Chief 전문가 | `rtl-agent-team:vcodec-chief-standard-expert` | Opus |
+| 구문/엔트로피 전문가 | `rtl-agent-team:vcodec-syntax-entropy-expert` | Opus |
+| 예측 전문가 | `rtl-agent-team:vcodec-prediction-expert` | Opus |
+| 변환/양자화 전문가 | `rtl-agent-team:vcodec-transform-quant-expert` | Opus |
+| 필터/복원 전문가 | `rtl-agent-team:vcodec-filter-recon-expert` | Opus |
+| 코덱 아키텍처 전문가 | `rtl-agent-team:vcodec-architecture-expert` | Opus |
 | 비디오 처리 전문가 | `rtl-agent-team:video-processing-expert` | Opus |
 
 ## 코딩 컨벤션 (필수)

@@ -56,10 +56,31 @@
 
   "agents": [
     {
-      "id": "codec-standards-expert",
-      "file": "agents/domain/video-codec/codec-standards-expert.md",
+      "id": "vcodec-chief-standard-expert",
+      "file": "agents/vcodec-chief-standard-expert.md",
       "model": "claude-opus-4-6",
-      "role": "Standards interpretation — H.264/H.265 clause analysis, algorithm extraction, conformance definition",
+      "role": "Cross-block review coordination — reviews 4 sub-domain experts, identifies cross-block dependencies, iterates to Architecture-Ready",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "support",
+        "microarchitecture": "low",
+        "rtl": "none",
+        "verification": "none"
+      },
+      "output_tags": ["ARCHITECTURE_DECISION"],
+      "triggers": [
+        "cross-block dependency",
+        "architecture-ready assessment",
+        "codec domain coordination",
+        "block interaction review",
+        "pipeline data flow"
+      ]
+    },
+    {
+      "id": "vcodec-syntax-entropy-expert",
+      "file": "agents/vcodec-syntax-entropy-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "HLS and entropy coding interpretation — NAL parsing, CABAC/CAVLC context models, binarization, DPB management",
       "phase_intensity": {
         "research": "primary",
         "architecture": "primary",
@@ -69,15 +90,90 @@
       },
       "output_tags": ["DOMAIN_UNCERTAINTY"],
       "triggers": [
-        "standard clause interpretation",
-        "algorithm definition",
-        "conformance test vector",
-        "H.264 specification",
-        "H.265 HEVC specification",
-        "intra prediction modes",
+        "NAL unit parsing",
         "CABAC binarization",
-        "deblocking filter parameters",
-        "SAO filter"
+        "CAVLC coding",
+        "entropy coding",
+        "DPB management",
+        "slice header",
+        "bitstream syntax",
+        "context model",
+        "Exp-Golomb"
+      ]
+    },
+    {
+      "id": "vcodec-prediction-expert",
+      "file": "agents/vcodec-prediction-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Prediction interpretation — intra prediction modes, motion estimation, motion compensation, sub-pixel interpolation, MV prediction",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": ["DOMAIN_UNCERTAINTY"],
+      "triggers": [
+        "intra prediction modes",
+        "motion estimation",
+        "motion compensation",
+        "sub-pixel interpolation",
+        "MV prediction",
+        "AMVP",
+        "merge mode",
+        "bi-prediction",
+        "reference frame"
+      ]
+    },
+    {
+      "id": "vcodec-transform-quant-expert",
+      "file": "agents/vcodec-transform-quant-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Transform and quantization interpretation — DCT/DST, scaling matrices, QP-dependent quantization, RDOQ, fixed-point arithmetic",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "primary",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": ["DOMAIN_UNCERTAINTY"],
+      "triggers": [
+        "DCT transform",
+        "DST transform",
+        "quantization",
+        "RDOQ",
+        "fixed-point arithmetic",
+        "scaling matrix",
+        "QP",
+        "inverse transform",
+        "butterfly",
+        "coefficient"
+      ]
+    },
+    {
+      "id": "vcodec-filter-recon-expert",
+      "file": "agents/vcodec-filter-recon-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "In-loop filter and reconstruction interpretation — deblocking filter, SAO, boundary strength, reconstruction path",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": ["DOMAIN_UNCERTAINTY"],
+      "triggers": [
+        "deblocking filter",
+        "SAO filter",
+        "boundary strength",
+        "filter decision",
+        "reconstruction path",
+        "edge offset",
+        "band offset",
+        "in-loop filter"
       ]
     },
     {
@@ -109,8 +205,8 @@
       ]
     },
     {
-      "id": "codec-architecture-expert",
-      "file": "agents/domain/video-codec/codec-architecture-expert.md",
+      "id": "vcodec-architecture-expert",
+      "file": "agents/vcodec-architecture-expert.md",
       "model": "claude-opus-4-6",
       "role": "HW architecture advisory — proven HW patterns, SRAM organization, fixed-point arithmetic, datapath specification",
       "phase_intensity": {
@@ -259,34 +355,34 @@
   "agent_coordination": {
     "description": "How domain expert agents coordinate with RTL design pipeline agents",
     "phase_1_research": {
-      "primary_domain_agents": ["codec-standards-expert"],
-      "support_domain_agents": ["video-processing-expert"],
+      "primary_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-prediction-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert"],
+      "support_domain_agents": ["video-processing-expert", "vcodec-chief-standard-expert"],
       "rtl_agents": ["spec-analyst"],
-      "workflow": "codec-standards-expert provides algorithm definitions -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
+      "workflow": "4 sub-domain experts provide algorithm definitions in parallel -> vcodec-chief-standard-expert reviews cross-block consistency (3 mandatory rounds) -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
     },
     "phase_2_architecture": {
-      "primary_domain_agents": ["codec-architecture-expert", "video-processing-expert"],
-      "support_domain_agents": ["codec-standards-expert"],
+      "primary_domain_agents": ["vcodec-architecture-expert", "video-processing-expert"],
+      "support_domain_agents": ["vcodec-chief-standard-expert"],
       "rtl_agents": ["arch-designer"],
-      "workflow": "video-processing-expert validates throughput -> codec-architecture-expert recommends HW patterns -> arch-designer produces block-level architecture"
+      "workflow": "video-processing-expert validates throughput -> vcodec-architecture-expert recommends HW patterns -> vcodec-chief-standard-expert provides cross-block domain constraints -> arch-designer produces block-level architecture"
     },
     "phase_3_microarchitecture": {
-      "primary_domain_agents": ["codec-architecture-expert", "video-processing-expert"],
+      "primary_domain_agents": ["vcodec-architecture-expert", "video-processing-expert"],
       "support_domain_agents": [],
       "rtl_agents": ["uarch-designer"],
-      "workflow": "codec-architecture-expert specifies SRAM/datapath -> video-processing-expert validates pipeline budget -> uarch-designer produces microarchitecture spec"
+      "workflow": "vcodec-architecture-expert specifies SRAM/datapath -> video-processing-expert validates pipeline budget -> uarch-designer produces microarchitecture spec"
     },
     "phase_4_rtl": {
       "primary_domain_agents": [],
-      "support_domain_agents": ["codec-standards-expert", "codec-architecture-expert"],
+      "support_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-prediction-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert", "vcodec-architecture-expert"],
       "rtl_agents": ["rtl-coder", "lint-checker"],
-      "workflow": "rtl-coder implements from microarch spec -> codec-standards-expert spot-checks compliance -> lint-checker runs static analysis"
+      "workflow": "rtl-coder implements from microarch spec -> relevant sub-domain expert spot-checks compliance -> lint-checker runs static analysis"
     },
     "phase_5_verification": {
       "primary_domain_agents": [],
-      "support_domain_agents": ["codec-standards-expert", "video-processing-expert"],
+      "support_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-prediction-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert", "video-processing-expert"],
       "rtl_agents": ["func-verifier", "perf-verifier"],
-      "workflow": "codec-standards-expert defines conformance vectors -> func-verifier runs bit-exact comparison -> video-processing-expert defines performance scenarios -> perf-verifier validates throughput"
+      "workflow": "relevant sub-domain experts define conformance vectors -> func-verifier runs bit-exact comparison -> video-processing-expert defines performance scenarios -> perf-verifier validates throughput"
     }
   }
 }

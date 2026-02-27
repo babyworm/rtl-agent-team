@@ -28,14 +28,14 @@ Bitexact match against JM/HM is the industry standard acceptance criterion.
 </Why_This_Exists>
 
 <Execution_Policy>
-- codec-standards-expert provides algorithm specification details
+- Relevant sub-domain expert(s) provide algorithm specification details (vcodec-syntax-entropy, vcodec-prediction, vcodec-transform-quant, or vcodec-filter-recon depending on the algorithm)
 - ref-model-dev implements C++ model
 - Run JM/HM bitexact comparison as automated gate
 - Gate fails if any test vector mismatches
 </Execution_Policy>
 
 <Steps>
-1. codec-standards-expert provides algorithm pseudocode and edge case table
+1. Relevant sub-domain expert provides algorithm pseudocode and edge case table (e.g., vcodec-syntax-entropy-expert for CABAC, vcodec-transform-quant-expert for DCT/IDCT, vcodec-prediction-expert for MC, vcodec-filter-recon-expert for deblocking)
 2. ref-model-dev implements ref_model/src/*.cpp with clean C++ (no RTL bias)
    - C++ function/variable names for I/O interfaces should align with io_definition.json port names
      (e.g., use `i_data`, `o_result` naming in API to match RTL port conventions)
@@ -48,7 +48,7 @@ Bitexact match against JM/HM is the industry standard acceptance criterion.
 
 <Tool_Usage>
 ```
-Task(subagent_type="rtl-agent-team:codec-standards-expert",
+Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Provide algorithm pseudocode and edge case table for CABAC entropy coding per H.264 spec section 9.3.")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
