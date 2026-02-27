@@ -59,6 +59,8 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 | "DFT", "scan chain", "BIST", "JTAG", "testability" | `dft-designer` 에이전트 직접 위임 |
 | "클럭 아키텍처", "clock tree", "PLL", "clock gating 리뷰" | `clock-architect` 에이전트 직접 위임 |
 | "보안 리뷰", "security", "side-channel", "fault injection" | `security-reviewer` 에이전트 직접 위임 |
+| **--- Phase 6: Review+Doc ---** | |
+| "설계 리뷰", "design review", "Phase 6", "design note", "코드 리뷰 문서화" | `/rtl-agent-team:design-review-phase` |
 | **--- 기타 검증 ---** | |
 | "regression", "리그레션", "다중 시드" | `/rtl-agent-team:regression-run` |
 | "conformance", "적합성 테스트", "골든 비교" | `/rtl-agent-team:conformance-test` |
@@ -74,6 +76,7 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 5. **RTL 수정 후 기능 검증 없이 완료 선언 금지** (lint만으로는 불충분)
 6. **Phase 4 완료 시 모듈별 unit test 없이 Phase 5 진행 금지** (tb/unit/tb_{module}.sv 필수)
 7. **Phase 5 FAIL 시 최대 2회 Phase 4 feedback loop 허용, 초과 시 user 에스컬레이션**
+8. **Phase 5 PASS 없이 Phase 6 진행 금지** (final-compliance.md verdict=PASS 필수)
 
 ## IMPORTANT — RTL 수정 후 필수 검증 (Mandatory Verification After RTL Changes)
 
@@ -149,7 +152,7 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 > - 상위 스펙 대비 인터페이스 변경 여부
 > - 변경이 있다면: 정당한 사유 + 사용자 승인 여부
 
-## 5-Phase 설계 파이프라인
+## 6-Phase 설계 파이프라인
 
 ```
 Phase 1: Research    → 자연어 스펙 분석, 도메인 지식 적용
@@ -157,6 +160,7 @@ Phase 2: Arch/Ref    → 블록 아키텍처 + Reference Model 개발
 Phase 3: μArch/TLM   → 마이크로아키텍처 + BFM 개발
 Phase 4: RTL+Unit    → 합성 가능한 SV 구현 + 모듈별 unit test (lint→TB→sim 병렬)
 Phase 5: Extensive   → SVA/Formal, CDC, Integration TB, Coverage, Design Review + Phase 4 feedback loop
+Phase 6: Review+Doc  → Intensive 코드/설계 리뷰, Design Note 작성, 개선 권고사항 도출
 ```
 
 ## 위임 규칙
@@ -196,6 +200,11 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 | 등가 검증 | `rtl-agent-team:equivalence-checker` | Opus |
 | 통합 검증 | `rtl-agent-team:integration-verifier` | Opus |
 | 하드웨어 보안 리뷰 | `rtl-agent-team:security-reviewer` | Opus |
+| **--- Phase 6: 설계 리뷰/문서 ---** | | |
+| 코드 품질 심층 리뷰 | `rtl-agent-team:code-quality-reviewer` | Opus |
+| 설계 품질 리뷰 | `rtl-agent-team:design-quality-reviewer` | Opus |
+| 설계 문서 작성 | `rtl-agent-team:design-note-writer` | Opus |
+| 개선 분석 | `rtl-agent-team:improvement-analyst` | Opus |
 | **--- EDA/합성 ---** | | |
 | EDA 도구 실행 | `rtl-agent-team:eda-runner` | Opus |
 | 합성 메트릭 추출 | `rtl-agent-team:synthesis-reporter` | Opus |
@@ -276,13 +285,18 @@ reviews/
 │   ├── protocol-design-review.md   # protocol-reviewer 프로토콜 설계 리뷰
 │   ├── power-analysis.md           # power-analyzer 전력 분석 리뷰
 │   └── synthesis-review.md         # synthesis-reviewer 합성 결과 리뷰
-└── phase-5-verify/
-    ├── requirement-traceability.md # func-verifier 요구사항 추적 매트릭스 (REQ → Test)
-    ├── formal-review.md            # sva-extractor + eda-runner SVA/Formal 검증 결과
-    ├── cdc-report.md               # cdc-checker CDC 분석 리포트
-    ├── coverage-report.md          # coverage-analyst 커버리지 분석 리포트
-    ├── uvm-review.md               # uvm-reviewer UVM TB 품질 리뷰
-    └── final-compliance.md         # rtl-architect 최종 스펙 준수 확인 리포트
+├── phase-5-verify/
+│   ├── requirement-traceability.md # func-verifier 요구사항 추적 매트릭스 (REQ → Test)
+│   ├── formal-review.md            # sva-extractor + eda-runner SVA/Formal 검증 결과
+│   ├── cdc-report.md               # cdc-checker CDC 분석 리포트
+│   ├── coverage-report.md          # coverage-analyst 커버리지 분석 리포트
+│   ├── uvm-review.md               # uvm-reviewer UVM TB 품질 리뷰
+│   └── final-compliance.md         # rtl-architect 최종 스펙 준수 확인 리포트
+└── phase-6-review/
+    ├── code-review.md              # code-quality-reviewer 코드 품질 심층 리뷰
+    ├── design-review.md            # design-quality-reviewer 설계 품질 리뷰
+    ├── design-note.md              # design-note-writer 상세 설계 문서
+    └── improvements.md             # improvement-analyst 개선 권고사항
 ```
 
 ### 리뷰 Markdown 형식

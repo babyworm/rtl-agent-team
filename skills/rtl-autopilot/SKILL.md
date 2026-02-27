@@ -203,7 +203,23 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-7. **On completion**: remove state file, report summary with final compliance matrix
+7. **Phase 6 — Design Review & Documentation**: invoke design-review-phase skill
+
+   **Phase 5→6 Artifact Gate**: `reviews/phase-5-verify/final-compliance.md` exists AND verdict=PASS
+
+   **Phase 6 Execution** (2-wave parallel):
+   - **Wave 1 (parallel)**: `code-quality-reviewer` + `design-quality-reviewer` — code quality scoring + cross-phase design consistency
+   - **Wave 2 (parallel, after Wave 1)**: `design-note-writer` + `improvement-analyst` — comprehensive design note + prioritized improvement recommendations
+
+   **Phase 6 Completion Gate**: All 4 deliverables exist:
+   - `reviews/phase-6-review/code-review.md`
+   - `reviews/phase-6-review/design-review.md`
+   - `reviews/phase-6-review/design-note.md`
+   - `reviews/phase-6-review/improvements.md`
+
+---
+
+8. **On completion**: remove state file, report summary with final compliance matrix and Phase 6 deliverables
 
 ---
 
@@ -471,6 +487,56 @@ verdict: PASS or FAIL + findings[]")
 #        args="Phase 5a formal FAIL. Counterexample: [details]. feedback_origin=5a-formal")
 
 # Gate Failure Handling: see references/gate-failure-handling.md for examples
+
+# ============================================================
+# Phase 6: Design Review & Documentation (2-wave parallel)
+# ============================================================
+Bash("mkdir -p reviews/phase-6-review")
+
+# --- Phase 5→6 Artifact Gate ---
+Read("reviews/phase-5-verify/final-compliance.md")
+# → Verify verdict=PASS. If FAIL or missing → STOP.
+
+# --- Wave 1: Code Quality + Design Quality (parallel) ---
+Task(subagent_type="rtl-agent-team:code-quality-reviewer",
+     model="opus",
+     prompt="Perform intensive per-module code quality review for Phase 6.
+Read requirements.json, uarch/*.md for context. Read ALL rtl/src/*.sv.
+Read reviews/phase-4-rtl/design-review.md for prior findings.
+Score each module on 5 dimensions (1-10). Detect anti-patterns. Assess cross-module consistency.
+Save to reviews/phase-6-review/code-review.md.")
+
+Task(subagent_type="rtl-agent-team:design-quality-reviewer",
+     model="opus",
+     prompt="Perform cross-phase design quality review for Phase 6.
+Read ALL artifacts: requirements.json → architecture.md → uarch/*.md → rtl/src/*.sv.
+Build hierarchical consistency matrix. Document design decisions. Assess interface quality.
+Evaluate scalability. Inventory design debt. Classify Phase 5 bugs.
+Save to reviews/phase-6-review/design-review.md.")
+
+# Wait for Wave 1 completion
+
+# --- Wave 2: Design Note + Improvement Analysis (parallel, after Wave 1) ---
+Task(subagent_type="rtl-agent-team:design-note-writer",
+     model="opus",
+     prompt="Write comprehensive design note for Phase 6.
+Read ALL artifacts and Phase 6 reviews (code-review.md, design-review.md).
+Document each module: purpose, I/O, structure (Mermaid), algorithm, FSM, timing, edge cases.
+Document system integration: data flow, control flow, modes, reset.
+Save to reviews/phase-6-review/design-note.md.")
+
+Task(subagent_type="rtl-agent-team:improvement-analyst",
+     model="opus",
+     prompt="Produce prioritized improvement recommendations for Phase 6.
+Read Phase 6 reviews (code-review.md, design-review.md) and Phase 4/5 reviews.
+Build Impact×Effort matrix. Highlight Quick Wins. Specify WHERE/WHAT/HOW for each.
+Build long-term improvement roadmap.
+Save to reviews/phase-6-review/improvements.md.")
+
+# Wait for Wave 2 completion
+
+# --- Phase 6 Completion Gate ---
+# Bash("ls reviews/phase-6-review/code-review.md reviews/phase-6-review/design-review.md reviews/phase-6-review/design-note.md reviews/phase-6-review/improvements.md")
 ```
 </Tool_Usage>
 
@@ -546,9 +612,9 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   - architecture.md: interface signal names, clock/reset naming
   - uarch/*.md: all signal names, FSM states, instance prefixes
   - rtl/src/*.sv: lint-clean, naming compliant
-- [ ] All 5 phases completed
+- [ ] All 6 phases completed
 - [ ] State file removed on clean completion
-- [ ] Summary report generated with Final Compliance Matrix
+- [ ] Summary report generated with Final Compliance Matrix and Phase 6 deliverables
 - [ ] **Review artifacts saved to reviews/ directory:**
   - reviews/phase-1-research/research-review.md
   - reviews/phase-2-architecture/feature-coverage.md
@@ -565,6 +631,10 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   - reviews/phase-5-verify/cdc-report.md
   - reviews/phase-5-verify/coverage-report.md
   - reviews/phase-5-verify/final-compliance.md
+  - reviews/phase-6-review/code-review.md
+  - reviews/phase-6-review/design-review.md
+  - reviews/phase-6-review/design-note.md
+  - reviews/phase-6-review/improvements.md
 </Final_Checklist>
 
 <Advanced>
