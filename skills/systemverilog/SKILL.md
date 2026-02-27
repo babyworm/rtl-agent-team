@@ -8,7 +8,8 @@ SystemVerilog coding standards and design guidelines.
 All agents generating or modifying .sv, .v files must follow the rules in this skill.
 
 Target standard: **IEEE 1800-2009** for synthesizable RTL.
-- 2009 features: always_ff, always_comb, logic, typedef enum/struct, interface, packages — all available
+- 2009 features: always_ff, always_comb, logic, typedef enum/struct, packages — all available
+- `interface`/`modport` is 2009 standard but iverilog unsupported — do NOT generate (see §4.3)
 - 2012+ features (checker, interface class, let, soft constraint) are verification-only — do NOT use in RTL
 - Tool flags: iverilog uses `-g2012` for parser compatibility (2012 parser handles 2009 code)
 
