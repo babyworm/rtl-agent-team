@@ -59,8 +59,10 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 | "DFT", "scan chain", "BIST", "JTAG", "testability" | `dft-designer` 에이전트 직접 위임 |
 | "클럭 아키텍처", "clock tree", "PLL", "clock gating 리뷰" | `clock-architect` 에이전트 직접 위임 |
 | "보안 리뷰", "security", "side-channel", "fault injection" | `security-reviewer` 에이전트 직접 위임 |
-| **--- Phase 6: Review+Doc ---** | |
+| **--- Phase 6: Design Note ---** | |
 | "설계 리뷰", "design review", "Phase 6", "design note", "코드 리뷰 문서화" | `/rtl-agent-team:design-review-phase` |
+| **--- Phase 7: Exploration (선택적) ---** | |
+| "자유 탐색", "exploration", "Phase 7", "개선 탐색", "실험적 개선" | `/rtl-agent-team:design-review-phase` (탐색 모드) |
 | **--- 기타 검증 ---** | |
 | "regression", "리그레션", "다중 시드" | `/rtl-agent-team:regression-run` |
 | "conformance", "적합성 테스트", "골든 비교" | `/rtl-agent-team:conformance-test` |
@@ -77,6 +79,7 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 6. **Phase 4 완료 시 모듈별 unit test 없이 Phase 5 진행 금지** (tb/unit/tb_{module}.sv 필수)
 7. **Phase 5 FAIL 시 최대 2회 Phase 4 feedback loop 허용, 초과 시 user 에스컬레이션**
 8. **Phase 5 PASS 없이 Phase 6 진행 금지** (final-compliance.md verdict=PASS 필수)
+9. **Phase 7은 절대 규칙에서 면제된다** — 파이프라인 Gate 없이 자유 탐색 허용
 
 ## IMPORTANT — RTL 수정 후 필수 검증 (Mandatory Verification After RTL Changes)
 
@@ -152,16 +155,23 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 > - 상위 스펙 대비 인터페이스 변경 여부
 > - 변경이 있다면: 정당한 사유 + 사용자 승인 여부
 
-## 6-Phase 설계 파이프라인
+## 6-Phase 설계 파이프라인 (+Phase 7 선택적 탐색)
+
+각 Phase의 설계 산출물은 `docs/phase-N-*/`에 저장되며, 다음 Phase의 입력(가이드)으로 사용된다.
+상위 스펙 준수 여부 검증 결과(verdict)는 `reviews/phase-N-*/`에 저장된다.
 
 ```
-Phase 1: Research    → 자연어 스펙 분석, 도메인 지식 적용
-Phase 2: Arch/Ref    → 블록 아키텍처 + Reference Model 개발
-Phase 3: μArch/TLM   → 마이크로아키텍처 + BFM 개발
-Phase 4: RTL+Unit    → 합성 가능한 SV 구현 + 모듈별 unit test (lint→TB→sim 병렬)
-Phase 5: Extensive   → SVA/Formal, CDC, Integration TB, Coverage, Design Review + Phase 4 feedback loop
-Phase 6: Review+Doc  → Intensive 코드/설계 리뷰, Design Note 작성, 개선 권고사항 도출
+Phase 1: Research    → docs/phase-1-research/      (자연어 스펙, 도메인 지식)
+Phase 2: Arch/Ref    → docs/phase-2-architecture/   (블록 아키텍처) + ref_model/ (C++ 골든)
+Phase 3: μArch/TLM   → docs/phase-3-uarch/         (마이크로아키텍처) + BFM
+Phase 4: RTL+Unit    → rtl/src/ + tb/unit/ + docs/phase-4-rtl/ (모듈 설계문서, 유닛 설계)
+Phase 5: Verify      → tb/formal/ + docs/phase-5-verify/ (검증 리포트, lint, 합성추정)
+Phase 6: Design Note → docs/phase-6-design-note/    (설계문서, 개선 권고)
+Phase 7: Exploration → docs/phase-7-exploration/    (자유 탐색, 파이프라인 규칙 미적용)
 ```
+
+> **Phase 7은 선택적 단계이다.** 파이프라인 절대 규칙(Phase Gate)이 적용되지 않으며,
+> 기존 설계의 개선점을 자유롭게 탐색하는 과정이다.
 
 ## 위임 규칙
 
@@ -200,7 +210,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 | 등가 검증 | `rtl-agent-team:equivalence-checker` | Opus |
 | 통합 검증 | `rtl-agent-team:integration-verifier` | Opus |
 | 하드웨어 보안 리뷰 | `rtl-agent-team:security-reviewer` | Opus |
-| **--- Phase 6: 설계 리뷰/문서 ---** | | |
+| **--- Phase 6: Design Note ---** | | |
 | 코드 품질 심층 리뷰 | `rtl-agent-team:code-quality-reviewer` | Opus |
 | 설계 품질 리뷰 | `rtl-agent-team:design-quality-reviewer` | Opus |
 | 설계 문서 작성 | `rtl-agent-team:design-note-writer` | Opus |
@@ -260,48 +270,77 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 도구 미설치 시 `eda-runner`가 설치 안내를 제공한다.
 `/rtl-agent-team:rtl-setup` 스킬로 환경 점검 및 프로젝트 초기화가 가능하다.
 
-## 리뷰 산출물
+## 산출물 구조
 
-각 Phase Gate 리뷰어가 생성한 리포트는 `reviews/` 디렉토리에 Markdown으로 저장한다.
-블록 다이어그램, 데이터 흐름 등은 Mermaid chart로 표현한다.
+설계 산출물은 두 가지로 분리된다:
+- **`docs/`** = Phase별 설계 문서. Phase N의 산출물이 Phase N+1의 가이드/입력이 되는 파이프라인
+- **`reviews/`** = 상위 스펙/요구사항 준수 여부만 검증하는 verdict 문서
+
+### docs/ — 설계 산출물 (Phase 가이드 파이프라인)
+
+```
+docs/
+├── phase-1-research/                    # → Phase 2의 입력
+│   ├── requirements.json                # 요구사항 목록
+│   ├── io_definition.json               # I/O 포트 스펙
+│   └── domain-analysis.md               # 도메인 분석 (알고리즘, 표준)
+├── phase-2-architecture/                # → Phase 3의 입력
+│   └── architecture.md                  # 블록 아키텍처 (모듈 계층, 데이터패스, 타이밍)
+├── phase-3-uarch/                       # → Phase 4의 입력
+│   └── {module_name}.md                 # 모듈별 마이크로아키텍처
+├── phase-4-rtl/                         # → Phase 5의 입력
+│   ├── module-descriptions.md           # 모듈별 설계 요약 (포트, 기능, 의존관계)
+│   └── unit-test-design.md              # 단위 테스트 설계 (테스트 전략, 커버리지 목표)
+├── phase-5-verify/                      # → Phase 6의 입력
+│   ├── unit-test-report.md              # 유닛 테스트 결과 요약
+│   ├── integration-report.md            # 통합 테스트 결과
+│   ├── ref-model-consistency.md         # RTL vs C++ 골든 모델 정합성 비교
+│   ├── lint-report.md                   # Verilator lint 결과 요약
+│   └── synthesis-estimate.md            # Yosys 합성 추정치 (면적, 타이밍)
+├── phase-6-design-note/                 # 최종 설계 문서
+│   ├── design-note.md                   # 상세 설계 문서 (알고리즘, HW 구현, 트레이드오프)
+│   └── improvements.md                  # 개선 권고사항 (must-fix, should-fix, nice-to-have)
+└── phase-7-exploration/                 # 자유 탐색 (파이프라인 규칙 미적용)
+    └── exploration-notes.md             # 개선점 탐색, 실험적 아이디어
+```
+
+### reviews/ — 검증 verdict (상위 스펙 준수 확인)
 
 ```
 reviews/
 ├── phase-1-research/
-│   └── research-review.md          # 스펙 완전성 자기검증 + 실현가능성 평가
+│   └── research-review.md               # 스펙 완전성 + 실현가능성 verdict
 ├── phase-2-architecture/
-│   ├── feature-coverage.md         # Feature Coverage Checklist (REQ → Arch block 매핑)
-│   ├── architecture-review.md      # rtl-architect 구조 리뷰
-│   └── architecture-diagram.md     # Mermaid 블록 다이어그램
+│   └── architecture-review.md           # Arch가 Spec 준수하는지 verdict
 ├── phase-3-uarch/
-│   ├── feature-preservation.md     # Feature Preservation Checklist (Arch → μArch 매핑)
-│   ├── uarch-review.md             # rtl-architect μArch 리뷰
-│   └── pipeline-diagram.md         # Mermaid 파이프라인/데이터플로우 다이어그램
+│   └── uarch-review.md                  # μArch가 Arch 준수하는지 verdict
 ├── phase-4-rtl/
-│   ├── functional-completeness.md  # Functional Completeness Check (REQ → RTL 매핑)
-│   ├── design-review.md            # rtl-critic 설계 리뷰
-│   ├── lint-report.md              # lint-checker 리포트
-│   ├── cdc-design-review.md        # cdc-reviewer CDC 설계 전략 리뷰
-│   ├── protocol-design-review.md   # protocol-reviewer 프로토콜 설계 리뷰
-│   ├── power-analysis.md           # power-analyzer 전력 분석 리뷰
-│   └── synthesis-review.md         # synthesis-reviewer 합성 결과 리뷰
+│   └── design-review.md                 # RTL이 μArch 준수하는지 verdict
 ├── phase-5-verify/
-│   ├── requirement-traceability.md # func-verifier 요구사항 추적 매트릭스 (REQ → Test)
-│   ├── formal-review.md            # sva-extractor + eda-runner SVA/Formal 검증 결과
-│   ├── cdc-report.md               # cdc-checker CDC 분석 리포트
-│   ├── coverage-report.md          # coverage-analyst 커버리지 분석 리포트
-│   ├── uvm-review.md               # uvm-reviewer UVM TB 품질 리뷰
-│   └── final-compliance.md         # rtl-architect 최종 스펙 준수 확인 리포트
-└── phase-6-review/
-    ├── code-review.md              # code-quality-reviewer 코드 품질 심층 리뷰
-    ├── design-review.md            # design-quality-reviewer 설계 품질 리뷰
-    ├── design-note.md              # design-note-writer 상세 설계 문서
-    └── improvements.md             # improvement-analyst 개선 권고사항
+│   └── final-compliance.md              # 원래 Spec 기준 최종 준수 verdict
+├── phase-6-review/
+│   ├── code-review.md                   # 코드 품질 verdict
+│   └── design-review.md                 # 설계 품질 verdict
+└── phase-7-exploration/
+    └── exploration-review.md            # 탐색 결과 리뷰 verdict
 ```
+
+### 코드 산출물
+
+```
+rtl/src/                                 # RTL 소스코드 (Phase 4)
+tb/                                      # 테스트벤치 (Phase 4-5)
+├── unit/                                # 단위 테스트
+└── formal/                              # SVA formal 검증
+ref_model/                               # C++ 골든 레퍼런스 (Phase 2)
+```
+
+> **원칙**: `docs/`에는 데이터/수치/설계 내용을, `reviews/`에는 verdict(PASS/FAIL)만 저장한다.
+> 예: formal 검증 데이터는 `docs/phase-5-verify/`에, 스펙 준수 판정은 `reviews/phase-5-verify/final-compliance.md`에.
 
 ### 리뷰 Markdown 형식
 
-모든 리뷰 리포트는 다음 구조를 따른다:
+모든 verdict 리포트(`reviews/`)는 다음 구조를 따른다:
 ```markdown
 # [Phase] Review: [제목]
 - Date: YYYY-MM-DD
@@ -314,9 +353,6 @@ reviews/
 |--------|---------|------|----------|
 | REQ-001 | ... | COVERED | module.sv:42 |
 | REQ-002 | ... | MISSING | — |
-
-## Block Diagram (Mermaid)
-(해당하는 경우)
 
 ## Findings
 ### [severity] Finding-1: ...

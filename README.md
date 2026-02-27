@@ -1,51 +1,53 @@
 # RTL Agent Team
 
+> A Claude Code plugin for automated RTL design and verification.
+> 42 specialized AI agents + 32 skills automate the 6-Phase pipeline:
+> Research → Architecture → μArch → RTL → Verify → Design Note.
+
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-42개 전문 AI 에이전트 + 32개 스킬 + 11개 레퍼런스 문서를 통해 5-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify)을 자동화합니다.
+42개 전문 AI 에이전트 + 32개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+
+## Quick Start
+
+```bash
+# 1. 설치
+claude plugin marketplace add https://github.com/babyworm/rtl-agent-team.git
+claude plugin install rtl-agent-team@rtl-agent-marketplace
+
+# 2. 환경 점검
+/rtl-agent-team:rtl-setup
+
+# 3. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
+/rtl-agent-team:rtl-autopilot
+```
 
 ## 설치
 
-### Claude Code에서 설치 (권장)
-
-Claude Code 대화창에서 다음 명령을 순서대로 실행합니다:
-
-```
-/plugin marketplace add babyworm/rtl-agent-team
-```
-
-```
-/plugin install rtl-agent-team@rtl-agent-marketplace
-```
-
-설치 확인:
-
-```
-/plugin
-```
-
-### 대안: CLI에서 설치
+### CLI에서 설치 (권장)
 
 ```bash
 claude plugin marketplace add https://github.com/babyworm/rtl-agent-team.git
 claude plugin install rtl-agent-team@rtl-agent-marketplace
 ```
 
-### 대안: 프로젝트 로컬 설치
-
-특정 프로젝트에서만 사용하려면:
-
-```bash
-mkdir -p my-chip-project/.claude/plugins/
-ln -s /path/to/rtl-agent-team my-chip-project/.claude/plugins/rtl-agent-team
-```
-
 ### 대안: 개발용 로컬 심볼릭 링크
 
+플러그인 소스를 직접 수정하며 개발할 때:
+
 ```bash
-cd /path/to/rtl-agent-team
-ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
+git clone https://github.com/babyworm/rtl-agent-team.git
+ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
+
+### 대안: Claude Code 대화창
+
+```
+/plugin marketplace add babyworm/rtl-agent-team
+/plugin install rtl-agent-team@rtl-agent-marketplace
+```
+
+> GitHub public repo shorthand 방식. 설치 확인: `/plugin`
 
 ## 사용법
 
@@ -55,7 +57,7 @@ ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
 /rtl-agent-team:rtl-autopilot
 ```
 
-5-Phase 파이프라인 전체를 자동 실행합니다.
+6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
 
 ### 프로젝트 초기화
 
@@ -78,14 +80,33 @@ ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
 
 전체 32개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
-## 구조
+## 프로젝트 산출물 구조
+
+각 Phase의 설계 산출물(`docs/`)은 다음 Phase의 입력이 되는 파이프라인을 형성합니다.
+상위 스펙 준수 여부 verdict(`reviews/`)는 별도로 관리됩니다.
+
+```
+docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase-3-uarch/
+        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ docs/phase-6-design-note/
+        ──→ docs/phase-7-exploration/ (선택적, 자유 탐색)
+```
+
+| 디렉토리 | 역할 | 비고 |
+|----------|------|------|
+| `docs/phase-N-*/` | Phase별 설계 문서 (가이드 파이프라인) | Phase N → Phase N+1 입력 |
+| `reviews/phase-N-*/` | 상위 스펙 준수 verdict (PASS/FAIL) | 데이터 없이 판정만 |
+| `rtl/src/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
+| `tb/unit/`, `tb/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
+| `ref_model/` | C++ 골든 레퍼런스 모델 | Phase 2 코드 산출물 |
+
+## 플러그인 구조
 
 ```
 rtl-agent-team/
 ├── .claude-plugin/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
-├── CLAUDE.md                   # 5-Phase 파이프라인 규칙
+├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
 ├── agents/                     # 42개 에이전트 (설계/검증/리뷰/EDA/도메인)
 ├── skills/                     # 32개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
@@ -117,15 +138,17 @@ rtl-agent-team/
 | 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
 | 도메인 전문가 | 3 | codec-standards-expert, codec-architecture-expert, video-processing-expert |
 
-### 5-Phase 파이프라인
+### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
 
-| Phase | 이름 | 주요 에이전트 | 리뷰 에이전트 |
-|-------|------|-------------|-------------|
-| 1 | Research | spec-analyst | — |
-| 2 | Architecture + Ref Model | arch-designer, ref-model-dev | rtl-architect |
-| 3 | μArch + BFM | uarch-designer, bfm-dev | rtl-architect |
-| 4 | RTL Coding | rtl-coder, lint-checker | rtl-critic, cdc-reviewer, protocol-reviewer, power-analyzer, synthesis-reviewer |
-| 5 | Verification | func-verifier, sva-extractor, synthesis-reporter | formal-reviewer, uvm-reviewer, cocotb-reviewer, requirement-tracer |
+| Phase | 이름 | 주요 에이전트 | docs/ 산출물 | reviews/ verdict |
+|-------|------|-------------|-------------|-----------------|
+| 1 | Research | spec-analyst | requirements.json, io_definition.json, domain-analysis.md | research-review.md |
+| 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
+| 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (모듈별) | uarch-review.md |
+| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md | design-review.md |
+| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md 등 5개 | final-compliance.md |
+| 6 | Design Note | code-quality-reviewer, design-note-writer | design-note.md, improvements.md | code-review.md, design-review.md |
+| 7 | Exploration (선택) | improvement-analyst | exploration-notes.md | exploration-review.md |
 
 ### 코딩 컨벤션 스킬
 
@@ -192,6 +215,9 @@ Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `
 git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
+
+> **참고**: 설계 산출물 이동(`specs/` → `docs/phase-1-research/` 등)은 후속 작업으로 진행됩니다.
+> 현재 데모 산출물이 기존 위치에 있을 수 있습니다.
 
 ## 라이선스
 
