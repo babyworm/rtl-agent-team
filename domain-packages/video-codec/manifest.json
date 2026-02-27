@@ -178,7 +178,7 @@
     },
     {
       "id": "video-processing-expert",
-      "file": "agents/domain/video-codec/video-processing-expert.md",
+      "file": "agents/video-processing-expert.md",
       "model": "claude-opus-4-6",
       "role": "Performance analysis — throughput, memory bandwidth, cycles-per-block, parallelism requirements",
       "phase_intensity": {
