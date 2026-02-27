@@ -9,7 +9,7 @@ All agents generating or modifying .sv, .v files must follow the rules in this s
 
 Target standard: **IEEE 1800-2009** for synthesizable RTL.
 - 2009 features: always_ff, always_comb, logic, typedef enum/struct, packages — all available
-- `interface`/`modport` is 2009 standard but iverilog unsupported — do NOT generate (see §4.3)
+- `interface`/`modport` is 2009 standard but iverilog unsupported — do NOT generate in RTL (see §4.3)
 - 2012+ features (checker, interface class, let, soft constraint) are verification-only — do NOT use in RTL
 - Tool flags: iverilog uses `-g2012` for parser compatibility (2012 parser handles 2009 code)
 
@@ -136,10 +136,13 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - Combinational loops are forbidden
 - `#delay` in synthesizable code is forbidden
 
-### 4.3 iverilog Compatibility (Avoid)
+### 4.3 iverilog Incompatible Constructs (Do Not Generate)
+
+> 이 제한은 합성 가능 RTL 코드에만 적용된다. 검증 TB는 대상 시뮬레이터가 지원하면 `interface` 사용 가능.
+
 - `interface` / `modport` — iverilog 미지원. 포트 리스트로 대체
 - unpacked `struct` / `union` — iverilog 미지원. 개별 signal 또는 `packed` 버전 사용
-- 에이전트는 위 구문을 생성하지 않는다
+- 에이전트는 위 구문을 RTL 코드에서 생성하지 않는다
 - `typedef struct packed` / `typedef union packed`는 지원됨 (사용 가능)
 - 사용자가 직접 추가하거나 기존 코드에 존재하는 경우 수정하지 않는다
 

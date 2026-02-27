@@ -334,5 +334,6 @@ iverilog는 `-g2012` 옵션으로 SystemVerilog 기본 문법을 지원하지만
 | Parameter | `ALL_CAPS` (`DATA_WIDTH`) |
 | 인스턴스 | `u_` prefix (`u_fifo`) |
 | FSM 상태 | `typedef enum logic` + `UPPER_SNAKE_CASE` (`ST_IDLE`) |
+| UVM 멤버 핸들 | `m_` prefix 허용 (업계 관행). `u_`는 RTL 인스턴스 전용 |
 
 상세: `references/coding-style-guide.md`, `skills/systemverilog/SKILL.md`
