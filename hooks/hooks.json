@@ -1,8 +1,8 @@
 {
   "hooks": {
-    "PostToolUse:Edit": [
+    "PostToolUse": [
       {
-        "matcher": "*",
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
@@ -10,11 +10,9 @@
             "timeout": 3
           }
         ]
-      }
-    ],
-    "PostToolUse:Write": [
+      },
       {
-        "matcher": "*",
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
