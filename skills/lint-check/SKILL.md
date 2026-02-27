@@ -68,7 +68,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
    slang --lint-only {files}
    ```
 5. Run supplementary convention checks via Bash CLI:
-   - Use `scripts/check_conventions.sh {files}` for automated convention checking
+   - Use `skills/lint-check/scripts/check_conventions.sh {files}` for automated convention checking
    - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes
 6. Merge all results; report violations grouped by file then by severity
 7. Return PASS (zero violations) or FAIL (violation count + list)
@@ -114,7 +114,7 @@ Not checking naming conventions — allows `clk_i`, `data_o` to pass lint despit
 <Advanced>
 Project lint config: .verible_lint.cfg in repo root. Override rules only with user approval.
 slang --lint-only treats warnings as errors in CI mode.
-Convention check script: `scripts/check_conventions.sh` — ready for CI integration.
+Convention check script: `skills/lint-check/scripts/check_conventions.sh` — ready for CI integration.
 See `examples/lint-output-example.txt` for sample merged lint output across all tools.
 
 Verilator waiver file (`.verilator.vlt`) for intentional suppressions:

@@ -37,9 +37,9 @@ in a single automated flow.
 <Steps>
 1. Read regression/seed_list.txt (or use default seeds: 1, 42, 1337, 65536, 999999)
 2. eda-runner runs full test suite per seed via Bash CLI.
-   Use `scripts/run_regression.sh` for automated multi-seed execution:
+   Use `skills/regression-run/scripts/run_regression.sh` for automated multi-seed execution:
    ```bash
-   bash scripts/run_regression.sh --seeds "1 42 1337 65536 999999" --sim icarus
+   bash skills/regression-run/scripts/run_regression.sh --seeds "1 42 1337 65536 999999" --sim icarus
    ```
    Or run individually:
    ```bash
@@ -47,9 +47,9 @@ in a single automated flow.
    ```
 3. Capture per-seed results to regression/seed_{seed}_results.json
 4. On failure: capture .vcd waveform for failing test (signals use i_/o_ prefixes, {domain}_clk/{domain}_rst_n)
-5. coverage-analyst merges coverage via `scripts/merge_coverage.sh`:
+5. coverage-analyst merges coverage via `skills/regression-run/scripts/merge_coverage.sh`:
    ```bash
-   bash scripts/merge_coverage.sh --format verilator --output coverage/merged.info
+   bash skills/regression-run/scripts/merge_coverage.sh --format verilator --output coverage/merged.info
    ```
 6. Write coverage/coverage.xml (merged) and regression/results_{timestamp}.json
 7. Report using `templates/regression-report.md` format: seeds run, pass rate, total failures, coverage percentage, failing seed list

@@ -63,7 +63,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    - See `references/yosys-commands.md` for latch detection details
 6. Check for other concerning cells: `$mem` (unintended RAM), `$mul` (area-heavy multipliers)
 7. Write synth/summary.json (see `templates/synth-summary.json` for format).
-   Use `scripts/parse_yosys_stat.py` to automate parsing: `python scripts/parse_yosys_stat.py synth/reports/{module}_synth.txt`
+   Use `skills/synth-check/scripts/parse_yosys_stat.py` to automate parsing: `python skills/synth-check/scripts/parse_yosys_stat.py synth/reports/{module}_synth.txt`
 8. Flag any inferred latches as hard errors
 9. **SDC Generation** (when timing constraints are needed):
    - constraint-writer reads requirements.json (clock frequencies), uarch/*.md (multicycle paths), RTL top-level (port list)
