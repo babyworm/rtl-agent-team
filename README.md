@@ -75,6 +75,10 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
 
+### Resume interrupted pipeline
+
+If `rtl-autopilot` is interrupted, progress is saved automatically. Re-run the same command to resume from the last incomplete step — completed phases are skipped.
+
 ### Project initialization
 
 ```
@@ -114,6 +118,8 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 | `rtl/src/` | RTL SystemVerilog source code | Phase 4 code artifact |
 | `tb/unit/`, `tb/formal/` | Testbenches | Phase 4-5 code artifacts |
 | `ref_model/` | C++ golden reference model | Phase 2 code artifact |
+| `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 decision rationale |
+| `docs/lessons-learned.md` | Lessons learned from feedback loops | Accumulated across phases |
 
 ## Plugin Structure
 
@@ -162,10 +168,12 @@ rtl-agent-team/
 | 1 | Research | spec-analyst | requirements.json, io_definition.json, domain-analysis.md | research-review.md |
 | 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
 | 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (per module) | uarch-review.md |
-| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md | design-review.md |
-| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md, etc. (5 total) | final-compliance.md |
+| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B artifacts | design-review.md |
+| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md, etc. | final-compliance.md, e2e-traceability.md |
 | 6 | Design Note | code-quality-reviewer, design-note-writer | design-note.md, improvements.md | code-review.md, design-review.md |
 | 7 | Exploration (optional) | improvement-analyst | exploration-notes.md | exploration-review.md |
+
+> **Additional pipeline artifacts:** Each Phase (1-5) generates `phase-N-summary.md` for downstream context compression. Phase 4 Stream B produces SVA/CDC/TB skeletons in parallel with RTL coding. Phase 2-3 record Architecture Decision Records in `docs/decisions/`.
 
 ### Coding Convention Skills
 

@@ -75,6 +75,10 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
 
+### 중단된 파이프라인 재개
+
+`rtl-autopilot` 실행 중 중단되면 진행 상태가 자동 저장됩니다. 동일 명령을 다시 실행하면 완료된 Phase를 건너뛰고 마지막 미완료 단계부터 재개합니다.
+
 ### 프로젝트 초기화
 
 ```
@@ -114,6 +118,8 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 | `rtl/src/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
 | `tb/unit/`, `tb/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
 | `ref_model/` | C++ 골든 레퍼런스 모델 | Phase 2 코드 산출물 |
+| `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 설계 결정 근거 |
+| `docs/lessons-learned.md` | 피드백 루프에서 축적된 교훈 | Phase 전체에 걸쳐 누적 |
 
 ## 플러그인 구조
 
@@ -162,10 +168,12 @@ rtl-agent-team/
 | 1 | Research | spec-analyst | requirements.json, io_definition.json, domain-analysis.md | research-review.md |
 | 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
 | 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (모듈별) | uarch-review.md |
-| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md | design-review.md |
-| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md 등 5개 | final-compliance.md |
+| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B 산출물 | design-review.md |
+| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md 등 | final-compliance.md, e2e-traceability.md |
 | 6 | Design Note | code-quality-reviewer, design-note-writer | design-note.md, improvements.md | code-review.md, design-review.md |
 | 7 | Exploration (선택) | improvement-analyst | exploration-notes.md | exploration-review.md |
+
+> **추가 파이프라인 산출물:** 각 Phase(1-5) 완료 시 `phase-N-summary.md`가 생성되어 하위 Phase의 컨텍스트 압축에 사용됩니다. Phase 4 Stream B는 RTL 코딩과 병렬로 SVA/CDC/TB 스켈레톤을 생성합니다. Phase 2-3은 주요 설계 결정을 `docs/decisions/`에 ADR로 기록합니다.
 
 ### 코딩 컨벤션 스킬
 

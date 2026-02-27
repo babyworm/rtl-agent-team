@@ -112,10 +112,21 @@ description: "이 스킬을 사용해야 하는 상황을 설명합니다."
 </Final_Checklist>
 ```
 
+**스킬 하위 디렉토리** (선택):
+
+```
+skills/{skill-name}/
+├── SKILL.md              # 스킬 정의 (필수)
+├── templates/            # 출력 템플릿, JSON 스키마 등
+└── examples/             # 예시 입출력
+```
+
 **체크리스트**:
 - [ ] `description:`이 Claude의 자동 라우팅에 충분한 정보를 제공하는가
 - [ ] CLAUDE.md 스킬 호출 규칙 테이블에 패턴을 추가했는가
 - [ ] README.md 스킬 카운트를 업데이트했는가
+- [ ] 스킬이 review artifact를 생성하면 `review-checklist.md`에 추가했는가
+- [ ] 스킬이 Phase 입출력을 변경하면 해당 `context-manifest-phase-*.json`을 업데이트했는가
 
 ### 레퍼런스 문서 추가
 
@@ -130,6 +141,8 @@ description: "이 스킬을 사용해야 하는 상황을 설명합니다."
 | `CLAUDE.md` | 위임 테이블 + 스킬 호출 규칙 테이블 |
 | `README.md` | 에이전트/스킬 카운트, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
+| `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
+| `skills/rtl-autopilot/templates/context-manifest-phase-*.json` | Phase별 입출력 artifact 변경 시 manifest 업데이트 |
 
 ---
 
