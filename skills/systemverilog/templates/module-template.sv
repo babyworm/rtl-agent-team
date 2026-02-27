@@ -44,9 +44,9 @@ module {{MODULE_NAME}} #(
   // Type Definitions (or import from _pkg.sv)
   // ===========================================================================
   typedef enum logic [1:0] {
-    IDLE    = 2'b00,
-    ACTIVE  = 2'b01,
-    DONE    = 2'b10
+    ST_IDLE    = 2'b00,
+    ST_ACTIVE  = 2'b01,
+    ST_DONE    = 2'b10
   } state_t;
 
   // ===========================================================================
@@ -76,27 +76,27 @@ module {{MODULE_NAME}} #(
     o_data  = '0;
 
     unique case (state_q)
-      IDLE: begin
+      ST_IDLE: begin
         o_ready = 1'b1;
         if (i_valid) begin
-          state_d = ACTIVE;
+          state_d = ST_ACTIVE;
         end
       end
 
-      ACTIVE: begin
+      ST_ACTIVE: begin
         o_valid = 1'b1;
         o_data  = data_q;
         if (i_ready) begin
-          state_d = DONE;
+          state_d = ST_DONE;
         end
       end
 
-      DONE: begin
-        state_d = IDLE;
+      ST_DONE: begin
+        state_d = ST_IDLE;
       end
 
       default: begin
-        state_d = IDLE;
+        state_d = ST_IDLE;
       end
     endcase
   end
@@ -106,7 +106,7 @@ module {{MODULE_NAME}} #(
   // ===========================================================================
   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
     if (!sys_rst_n) begin
-      state_q <= IDLE;
+      state_q <= ST_IDLE;
       data_q  <= '0;
     end else begin
       state_q <= state_d;

@@ -127,15 +127,15 @@ module good_parameterized #(
   input  logic [DATA_WIDTH-1:0]     i_data,
   output logic [2*DATA_WIDTH-1:0]   o_result
 );
-  localparam int unsigned ADDR_WIDTH  = $clog2(MEM_DEPTH);
-  localparam int unsigned COUNT_WIDTH = $clog2(MAX_COUNT + 1);
+  localparam int unsigned L_ADDR_WIDTH  = $clog2(MEM_DEPTH);
+  localparam int unsigned L_COUNT_WIDTH = $clog2(MAX_COUNT + 1);
 
   logic [DATA_WIDTH-1:0] mem [0:MEM_DEPTH-1];
-  logic [COUNT_WIDTH-1:0] count;
+  logic [L_COUNT_WIDTH-1:0] count;
 
   always_ff @(posedge sys_clk or negedge sys_rst_n) begin
     if (!sys_rst_n) count <= '0;
-    else if (count < COUNT_WIDTH'(MAX_COUNT)) count <= count + 1'b1;
+    else if (count < L_COUNT_WIDTH'(MAX_COUNT)) count <= count + 1'b1;
   end
 endmodule
 
