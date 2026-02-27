@@ -1,0 +1,19 @@
+{
+  "phase": 2,
+  "phase_name": "architecture",
+  "required_full_read": [
+    "docs/phase-1-research/requirements.json",
+    "docs/phase-1-research/io_definition.json",
+    "docs/phase-1-research/domain-analysis.md"
+  ],
+  "required_summary_only": [],
+  "optional_on_demand": [
+    "specs/**/*"
+  ],
+  "outputs": [
+    "docs/phase-2-architecture/architecture.md",
+    "docs/phase-2-architecture/phase-2-summary.md",
+    "docs/decisions/ADR-*.md",
+    "ref_model/src/*.cpp"
+  ]
+}

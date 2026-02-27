@@ -83,7 +83,20 @@ This skill automates sequencing, gate checking, and recovery.
 - **On upper-spec violation**: return to the violated upper phase (e.g., Architecture violates Spec → return to Phase 1). Report violation to user and DO NOT proceed without approval
 - Maximum 2 Quality Gate retry cycles per phase before escalating to user
 - **Phase 5→4 Feedback Loop**: On Phase 5 sub-phase FAIL, classify as UNIT_FIX/INTEGRATION_FIX/DESIGN_FIX and handle accordingly (max 2 feedback loops per sub-phase)
-- On interruption: state file is preserved; re-invoking this skill resumes from last phase
+- On interruption: state file is preserved with detailed context for resumability:
+  - Set `interrupted_reason` (e.g., "user_cancel", "gate_fail_escalated", "error")
+  - Set `partial_work_summary` with human-readable progress description
+  - Update per-phase `partial_work`: move completed items, record `current_action` and `last_agent`
+  - For Phase 4: update `completed_modules`, `stream_a_status`, `stream_b_status`
+  - For Phase 5: update `completed_sub_phases`, `fix_history`
+  - For Phase 6: update `completed_waves`, `current_wave`
+  - Re-invoking this skill triggers the Resume check (Step 1.5) which reads partial_work to skip completed work
+- **Context Manifest**: Each phase has a manifest (`templates/context-manifest-phase-{N}.json`) that declares:
+  - `required_full_read`: files that MUST be fully read before starting the phase
+  - `required_summary_only`: files where only the phase summary (`phase-N-summary.md`) is sufficient
+  - `optional_on_demand`: files read only when a specific question arises during the phase
+  This prevents both context starvation (missing upstream docs) and context waste (loading unnecessary files).
+  Agents entering a phase MUST load `required_full_read` first, then `required_summary_only` summaries.
 - **Scratchpad for intra-phase communication**: During iterative reviews, agents write findings
   to `.rtl-agent-team/scratch/phase-{N}/` as temporary working files. The coordinator reads
   these to aggregate feedback. On phase completion, findings are consolidated into reviews/
@@ -92,6 +105,24 @@ This skill automates sequencing, gate checking, and recovery.
 
 <Steps>
 1. **Initialize state**: write .rtl-agent-team/state/rtl-autopilot-state.json with phase=1, sub_phase=null, feedback_loops=0, max_feedback_loops=2
+
+1.5. **Resume check** (if state file already exists):
+   - Read `.rtl-agent-team/state/rtl-autopilot-state.json`
+   - **Schema migration**: if `schema_version` is missing or `"1.0"`, migrate to v2.0:
+     - Add `schema_version: "2.0"`, `current_phase`, `current_phase_name`, `interrupted_reason`, `partial_work_summary`
+     - Add per-phase fields: `started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`
+     - Add Phase 4 fields: `completed_modules`, `pending_modules`, `stream_a_status`, `stream_b_status`
+     - Add Phase 5 fields: `completed_sub_phases`, `pending_sub_phases`, `fix_history`
+     - Add Phase 6 fields: `completed_waves`, `current_wave`
+   - **Skip completed phases**: for each phase where `status == "completed"` AND `gate_passed_at != null`, skip entirely
+   - **Resume in-progress phase**: read `partial_work.completed_items` to determine what is already done
+     - Skip completed items, continue from `partial_work.current_action`
+     - Resume review rounds from `review_rounds_completed` (e.g., if 1 of 3 rounds done, start at round 2)
+   - **Phase 4 resume**: check `completed_modules` vs `pending_modules`, resume `stream_a_status`/`stream_b_status`
+   - **Phase 5 resume**: check `completed_sub_phases` vs `pending_sub_phases`, resume from next pending sub-phase
+   - **Phase 6 resume**: check `completed_waves`, resume from `current_wave`
+   - **Context reload**: read upstream documents for the resumed phase per Context Manifest (see #3)
+   - Clear `interrupted_reason` and `partial_work_summary` after successful resume
 
 ---
 
@@ -110,6 +141,11 @@ This skill automates sequencing, gate checking, and recovery.
      - Can every requirement be realized in RTL within reasonable area/timing?
      - Are there missing constraints (clock frequency, interface protocols)?
    - **Verdict**: PASS if all requirements are clear, consistent, and implementable; FAIL + findings otherwise
+
+   **Phase 1 Summary Generation** (after Quality Gate PASS, before Phase 2 starts):
+   - Delegate to `rtl-architect` (model=sonnet): read all Phase 1 artifacts and generate
+     `docs/phase-1-research/phase-1-summary.md` using `templates/phase-summary.md` format.
+   - This summary is used by Phase 3+ as compressed context via `required_summary_only`.
 
 ---
 
@@ -143,6 +179,17 @@ This skill automates sequencing, gate checking, and recovery.
    - **Save consolidated review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
    - **Verdict**: PASS if Spec feature coverage is 100% AND no structural defects AND iterative review converged; FAIL + findings otherwise
 
+   **Phase 2 Summary Generation** (after Quality Gate PASS, before Phase 3 starts):
+   - Delegate to `rtl-architect` (model=sonnet): read all Phase 2 artifacts and generate
+     `docs/phase-2-architecture/phase-2-summary.md` using `templates/phase-summary.md` format.
+   - This summary is used by Phase 4+ as compressed context via `required_summary_only`.
+
+   **Phase 2 ADR Recording** (after summary, before Phase 3 starts):
+   - Delegate to `arch-designer` (model=sonnet): identify 3-5 key architectural decisions made
+     during Phase 2 (e.g., pipeline vs combinational, memory architecture, interface protocol choice).
+   - For each decision, create `docs/decisions/ADR-{NNN}.md` using `templates/adr-template.md` format.
+   - Link each ADR to relevant REQ IDs and architecture.md sections.
+
 ---
 
 4. **Phase 3 — μArch + BFM (parallel + 3-round iterative review)**:
@@ -174,6 +221,17 @@ This skill automates sequencing, gate checking, and recovery.
    - Per-round review artifacts: uarch-review-r1.md, r2.md, r3.md
    - **Save consolidated review to `reviews/phase-3-uarch/uarch-review.md`** in standard review Markdown format
    - **Verdict**: PASS if architecture is fully and faithfully decomposed into μArch with no feature loss AND timing paths are reasonable AND iterative review converged; FAIL + findings otherwise
+
+   **Phase 3 Summary Generation** (after Quality Gate PASS, before Phase 4 starts):
+   - Delegate to `rtl-architect` (model=sonnet): read all Phase 3 artifacts and generate
+     `docs/phase-3-uarch/phase-3-summary.md` using `templates/phase-summary.md` format.
+   - This summary is used by Phase 5+ as compressed context via `required_summary_only`.
+
+   **Phase 3 ADR Recording** (after summary, before Phase 4 starts):
+   - Delegate to `uarch-designer` (model=sonnet): identify 3-5 key μArch decisions made
+     during Phase 3 (e.g., pipeline depth, SRAM banking strategy, FSM decomposition, handshake protocol).
+   - For each decision, create `docs/decisions/ADR-{NNN}.md` using `templates/adr-template.md` format.
+   - Link each ADR to relevant architecture.md sections and upstream Phase 2 ADRs.
 
 ---
 
@@ -216,6 +274,11 @@ This skill automates sequencing, gate checking, and recovery.
      - Zero errors required; warnings reviewed for false positives
      - **Save lint report to `reviews/phase-4-rtl/lint-report.md`** in standard review Markdown format
    - **Verdict**: PASS if functional coverage is 100% AND lint-clean AND design quality passes; FAIL + findings otherwise
+
+   **Phase 4 Summary Generation** (after Quality Gate PASS, before Phase 5 starts):
+   - Delegate to `rtl-architect` (model=sonnet): read all Phase 4 artifacts and generate
+     `docs/phase-4-rtl/phase-4-summary.md` using `templates/phase-summary.md` format.
+   - This summary is used by Phase 6 as compressed context via `required_summary_only`.
 
 ---
 
@@ -272,6 +335,11 @@ This skill automates sequencing, gate checking, and recovery.
    - After ALL fixes complete: re-run ONLY affected sub-phases in parallel
      (e.g., if 5a and 5c both failed, re-run 5a + 5c simultaneously after fixes)
    - Maximum 2 feedback loops per sub-phase (escalate to user if exceeded)
+   - **Lesson Learned Recording** (after each successful feedback fix):
+     - Delegate to `rtl-coder` (model=sonnet): append a lesson entry to `docs/lessons-learned.md`
+       using `templates/lessons-learned-entry.md` format.
+     - Record: symptom, root cause, fix applied, prevention strategy, related REQ/module/ADR.
+     - This builds a cross-project knowledge base that Phase 4/5 agents can reference to avoid repeat bugs.
    - DESIGN_FIX handling:
      1. IMMEDIATE STOP — classified as upper-spec violation
      2. Report to user: violation details + impact scope + recommended action
@@ -285,6 +353,11 @@ This skill automates sequencing, gate checking, and recovery.
    - `rtl-architect` performs end-to-end review via Phase 5e results:
      - **Save final compliance review to `reviews/phase-5-verify/final-compliance.md`** in standard review Markdown format
    - **Verdict**: PASS if every original requirement is implemented, verified, and passing; FAIL + findings otherwise
+
+   **Phase 5 Summary Generation** (after Quality Gate PASS, before Phase 6 starts):
+   - Delegate to `rtl-architect` (model=sonnet): read all Phase 5 artifacts and generate
+     `docs/phase-5-verify/phase-5-summary.md` using `templates/phase-summary.md` format.
+   - This summary captures verification results for Phase 6 design review reference.
 
 ---
 
@@ -336,6 +409,21 @@ Summary: i_/o_/io_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ 
 
 <Tool_Usage>
 ```
+# ============================================================
+# Context Manifest: Before starting each Phase N, load files per
+#   templates/context-manifest-phase-{N}.json
+#   1. Read all required_full_read files
+#   2. Read phase-summary.md for required_summary_only files
+#   3. Load optional_on_demand only when needed during the phase
+# ============================================================
+
+# ============================================================
+# State Update Pattern (apply after each milestone):
+#   Read state → update partial_work.completed_items → update current_action → write state
+#   On phase completion: set status="completed", completed_at, gate_passed_at
+#   On interruption: set interrupted_reason, partial_work_summary, per-phase partial_work
+# ============================================================
+
 # ============================================================
 # Phase 1: Research
 # ============================================================
@@ -529,6 +617,17 @@ Perform the FINAL end-to-end audit:
 3. **Untested paths**: Any RTL functionality without verification coverage?
 4. **Spec fidelity**: Has implementation drifted from original spec?
 Save to reviews/phase-5-verify/final-compliance.md in standard review Markdown format.
+
+5. **End-to-End Traceability Matrix**: Read and unify the 4 segmented traceability artifacts:
+   - reviews/phase-2-architecture/feature-coverage.md (REQ → Arch)
+   - reviews/phase-3-uarch/feature-preservation.md (Arch → μArch)
+   - reviews/phase-4-rtl/functional-completeness.md (REQ → μArch → RTL)
+   - reviews/phase-5-verify/requirement-traceability.md (REQ → Test → Result)
+   Produce a unified matrix with columns:
+   | REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
+   Save to reviews/phase-5-verify/e2e-traceability.md in standard review Markdown format.
+   Any row with a gap (empty cell) in the chain → flag as TRACEABILITY_GAP.
+
 verdict: PASS or FAIL + findings[]")
 
 # --- Phase 5→4 Feedback Loop (parallel UNIT_FIX) ---
@@ -688,8 +787,30 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 </Final_Checklist>
 
 <Advanced>
-Resume: read existing state file, skip completed phases, continue from current phase.
+**Resume Protocol (5 steps):**
+
+1. **Read**: Load `.rtl-agent-team/state/rtl-autopilot-state.json`. If missing, start fresh (Step 1).
+2. **Migrate**: If `schema_version` is absent or `"1.0"`, upgrade to v2.0 schema in-place:
+   - Add missing top-level fields (`current_phase_name`, `interrupted_reason`, `partial_work_summary`)
+   - Add missing per-phase fields (`started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`)
+   - Add phase-specific fields (Phase 4: streams/modules, Phase 5: sub-phases/fix_history, Phase 6: waves)
+   - Write migrated state back to disk immediately
+3. **Skip**: Iterate phases in order (1→6). For each phase with `status == "completed"` AND `gate_passed_at != null`, mark as skipped — do not re-execute.
+4. **Resume**: For the first phase with `status == "in_progress"`:
+   - Read `partial_work.completed_items` — these are done, do not redo
+   - Read `partial_work.pending_items` — these need execution
+   - Read `review_rounds_completed` — if iterative review was partial (e.g., 1 of 3), resume from next round
+   - Phase 4: check `stream_a_status`/`stream_b_status` and `completed_modules`/`pending_modules`
+   - Phase 5: check `completed_sub_phases`/`pending_sub_phases` and `fix_history`
+   - Phase 6: check `completed_waves` and `current_wave`
+5. **Context Load**: Read upstream documents for the resumed phase using the Context Manifest
+   (`templates/context-manifest-phase-{N}.json`). Load `required_full_read` files first,
+   then `required_summary_only` (via phase summary docs), skip `optional_on_demand`.
+
+After successful resume, clear `interrupted_reason` and `partial_work_summary`.
+
 Parallel phases (2 and 3) use separate state sub-keys to track each sub-task independently.
 Templates: `templates/autopilot-state.json` (state file), `templates/review-report.md` (gate reports).
+Templates: `templates/context-manifest-phase-{1..6}.json` (per-phase context manifests).
 See `references/gate-failure-handling.md` for gate retry flow and upper-spec violation handling.
 </Advanced>

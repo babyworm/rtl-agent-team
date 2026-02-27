@@ -33,6 +33,7 @@ Each file must contain a valid verdict (PASS/FAIL) in standard review Markdown f
 - [ ] `reviews/phase-5-verify/cdc-report.md`
 - [ ] `reviews/phase-5-verify/coverage-report.md`
 - [ ] `reviews/phase-5-verify/final-compliance.md`
+- [ ] `reviews/phase-5-verify/e2e-traceability.md` (unified REQ→Arch→μArch→RTL→Test→Result)
 
 ## Phase 6: Design Review
 - [ ] `reviews/phase-6-review/code-review.md`

@@ -227,6 +227,11 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > This enables resumability: any phase can restart by re-reading its input documents.
 > Intra-phase communication (iterative reviews) uses scratchpad files at
 > `.rtl-agent-team/scratch/phase-{N}/` which are cleaned on phase completion.
+>
+> **Context Summarization**: Each phase generates a `phase-N-summary.md` on completion.
+> Downstream phases use these summaries (via `required_summary_only` in Context Manifest)
+> instead of reading full upstream documents, reducing context window consumption.
+> Full documents are only loaded when declared as `required_full_read` or on-demand.
 
 ## 6-Phase Design Pipeline (+Phase 7 Optional Exploration)
 
@@ -381,26 +386,34 @@ docs/
 ├── phase-1-research/                    # → Input for Phase 2
 │   ├── requirements.json                # Requirements list
 │   ├── io_definition.json               # I/O port spec
-│   └── domain-analysis.md               # Domain analysis (algorithms, standards)
+│   ├── domain-analysis.md               # Domain analysis (algorithms, standards)
+│   └── phase-1-summary.md              # Phase 1 compressed summary (auto-generated)
 ├── phase-2-architecture/                # → Input for Phase 3
-│   └── architecture.md                  # Block architecture (module hierarchy, datapath, timing)
+│   ├── architecture.md                  # Block architecture (module hierarchy, datapath, timing)
+│   └── phase-2-summary.md              # Phase 2 compressed summary (auto-generated)
 ├── phase-3-uarch/                       # → Input for Phase 4
-│   └── {module_name}.md                 # Per-module microarchitecture
+│   ├── {module_name}.md                 # Per-module microarchitecture
+│   └── phase-3-summary.md              # Phase 3 compressed summary (auto-generated)
 ├── phase-4-rtl/                         # → Input for Phase 5
 │   ├── module-descriptions.md           # Per-module design summary (ports, functions, dependencies)
 │   ├── unit-test-design.md              # Unit test design (test strategy, coverage targets)
 │   ├── stream-b-sva-skeletons.md        # SVA property skeletons from uarch (Stream B, Phase 4)
 │   ├── stream-b-cdc-preliminary.md      # Preliminary CDC topology report (Stream B, Phase 4)
-│   └── stream-b-tb-skeletons.md         # cocotb TB skeletons from uarch (Stream B, Phase 4)
+│   ├── stream-b-tb-skeletons.md         # cocotb TB skeletons from uarch (Stream B, Phase 4)
+│   └── phase-4-summary.md              # Phase 4 compressed summary (auto-generated)
 ├── phase-5-verify/                      # → Input for Phase 6
 │   ├── unit-test-report.md              # Unit test results summary
 │   ├── integration-report.md            # Integration test results
 │   ├── ref-model-consistency.md         # RTL vs C++ golden model consistency comparison
 │   ├── lint-report.md                   # Verilator lint results summary
-│   └── synthesis-estimate.md            # Yosys synthesis estimates (area, timing)
+│   ├── synthesis-estimate.md            # Yosys synthesis estimates (area, timing)
+│   └── phase-5-summary.md              # Phase 5 compressed summary (auto-generated)
 ├── phase-6-design-note/                 # Final design documents
 │   ├── design-note.md                   # Detailed design document (algorithms, HW implementation, trade-offs)
 │   └── improvements.md                  # Improvement recommendations (must-fix, should-fix, nice-to-have)
+├── decisions/                           # Architecture Decision Records (ADR)
+│   └── ADR-{NNN}.md                    # Per-decision record (context, options, decision, consequences)
+├── lessons-learned.md                   # Cross-phase lessons learned (appended per bug fix)
 └── phase-7-exploration/                 # Free exploration (pipeline rules not applied)
     └── exploration-notes.md             # Improvement exploration, experimental ideas
 ```
@@ -434,7 +447,8 @@ reviews/
 │   ├── cdc-report.md                    # Clock domain crossing analysis
 │   ├── requirement-traceability.md      # Requirement → test → result mapping
 │   ├── coverage-report.md               # Line/toggle/FSM coverage analysis
-│   └── final-compliance.md              # Final compliance verdict against original Spec
+│   ├── final-compliance.md              # Final compliance verdict against original Spec
+│   └── e2e-traceability.md             # Unified end-to-end: REQ→Arch→μArch→RTL→Test→Result
 ├── phase-6-review/
 │   ├── code-review.md                   # Code quality verdict
 │   ├── design-review.md                 # Design quality verdict

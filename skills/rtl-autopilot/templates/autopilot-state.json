@@ -1,11 +1,18 @@
 {
-  "phase": 1,
-  "phase_name": "research",
+  "schema_version": "2.0",
+  "current_phase": 1,
+  "current_phase_name": "research",
   "status": "in_progress",
   "started_at": "{{TIMESTAMP}}",
+  "interrupted_reason": null,
+  "partial_work_summary": null,
   "phases": {
     "1_research": {
       "status": "in_progress",
+      "started_at": "{{TIMESTAMP}}",
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 0,
       "artifacts": {
         "requirements_json": false,
         "io_definition_json": false,
@@ -13,10 +20,20 @@
       },
       "artifact_gate": null,
       "quality_gate": null,
-      "quality_gate_retries": 0
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": [],
+        "pending_items": ["requirements_json", "io_definition_json", "domain_analysis_md"],
+        "current_action": null,
+        "last_agent": null
+      }
     },
     "2_architecture": {
       "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 0,
       "artifacts": {
         "architecture_md": false,
         "block_diagram": false,
@@ -24,30 +41,64 @@
       },
       "artifact_gate": null,
       "quality_gate": null,
-      "quality_gate_retries": 0
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": [],
+        "pending_items": ["architecture_md", "block_diagram", "ref_model_src"],
+        "current_action": null,
+        "last_agent": null
+      }
     },
     "3_uarch": {
       "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 0,
       "artifacts": {
         "uarch_md": false,
         "bfm_dir": false
       },
       "artifact_gate": null,
       "quality_gate": null,
-      "quality_gate_retries": 0
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": [],
+        "pending_items": ["uarch_md", "bfm_dir"],
+        "current_action": null,
+        "last_agent": null
+      }
     },
     "4_rtl": {
       "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 0,
       "artifacts": {
         "rtl_src_sv": false,
         "lint_clean": false
       },
       "artifact_gate": null,
       "quality_gate": null,
-      "quality_gate_retries": 0
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": [],
+        "pending_items": ["rtl_src_sv", "lint_clean"],
+        "current_action": null,
+        "last_agent": null
+      },
+      "completed_modules": [],
+      "pending_modules": [],
+      "stream_a_status": "pending",
+      "stream_b_status": "pending"
     },
     "5_verify": {
       "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 0,
       "artifacts": {
         "unit_tests": false,
         "func_tests": false,
@@ -56,7 +107,40 @@
       },
       "artifact_gate": null,
       "quality_gate": null,
-      "quality_gate_retries": 0
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": [],
+        "pending_items": ["unit_tests", "func_tests", "sva_formal", "traceability_matrix"],
+        "current_action": null,
+        "last_agent": null
+      },
+      "completed_sub_phases": [],
+      "pending_sub_phases": ["5a_formal", "5b_cdc", "5c_integration", "5d_coverage", "5e_compliance"],
+      "fix_history": []
+    },
+    "6_design_note": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 0,
+      "artifacts": {
+        "code_review_md": false,
+        "design_review_md": false,
+        "design_note_md": false,
+        "improvements_md": false
+      },
+      "artifact_gate": null,
+      "quality_gate": null,
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": [],
+        "pending_items": ["code_review_md", "design_review_md", "design_note_md", "improvements_md"],
+        "current_action": null,
+        "last_agent": null
+      },
+      "completed_waves": [],
+      "current_wave": null
     }
   },
   "upper_spec_violations": [],

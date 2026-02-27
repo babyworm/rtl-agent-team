@@ -1,0 +1,26 @@
+{
+  "phase": 4,
+  "phase_name": "rtl",
+  "required_full_read": [
+    "docs/phase-3-uarch/*.md",
+    "docs/phase-1-research/io_definition.json"
+  ],
+  "required_summary_only": [
+    "docs/phase-2-architecture/architecture.md"
+  ],
+  "optional_on_demand": [
+    "docs/phase-1-research/requirements.json",
+    "docs/decisions/ADR-*.md",
+    "ref_model/src/*.cpp"
+  ],
+  "outputs": [
+    "rtl/src/*.sv",
+    "tb/unit/tb_*.sv",
+    "docs/phase-4-rtl/module-descriptions.md",
+    "docs/phase-4-rtl/unit-test-design.md",
+    "docs/phase-4-rtl/stream-b-sva-skeletons.md",
+    "docs/phase-4-rtl/stream-b-cdc-preliminary.md",
+    "docs/phase-4-rtl/stream-b-tb-skeletons.md",
+    "docs/phase-4-rtl/phase-4-summary.md"
+  ]
+}

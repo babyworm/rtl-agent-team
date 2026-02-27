@@ -1,0 +1,24 @@
+{
+  "phase": 6,
+  "phase_name": "design_note",
+  "required_full_read": [
+    "rtl/src/*.sv",
+    "docs/phase-1-research/requirements.json"
+  ],
+  "required_summary_only": [
+    "docs/phase-2-architecture/architecture.md",
+    "docs/phase-3-uarch/*.md"
+  ],
+  "optional_on_demand": [
+    "docs/phase-4-rtl/module-descriptions.md",
+    "docs/phase-5-verify/*.md",
+    "reviews/phase-4-rtl/*.md",
+    "reviews/phase-5-verify/*.md",
+    "docs/decisions/ADR-*.md",
+    "docs/lessons-learned.md"
+  ],
+  "outputs": [
+    "docs/phase-6-design-note/design-note.md",
+    "docs/phase-6-design-note/improvements.md"
+  ]
+}

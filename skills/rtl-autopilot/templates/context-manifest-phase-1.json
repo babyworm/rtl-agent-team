@@ -1,0 +1,15 @@
+{
+  "phase": 1,
+  "phase_name": "research",
+  "required_full_read": [
+    "specs/**/*"
+  ],
+  "required_summary_only": [],
+  "optional_on_demand": [],
+  "outputs": [
+    "docs/phase-1-research/requirements.json",
+    "docs/phase-1-research/io_definition.json",
+    "docs/phase-1-research/domain-analysis.md",
+    "docs/phase-1-research/phase-1-summary.md"
+  ]
+}

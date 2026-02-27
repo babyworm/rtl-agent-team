@@ -112,9 +112,12 @@ Passing lint is merely "compilation success" — simulation is required to prove
      - UNIT_FIX: single module fix → lint → unit TB → unit sim → return after PASS
      - INTEGRATION_FIX: multi-module fix → lint → unit TB + integration TB → sim → return after PASS
 
-6. **(Optional) Save review report**
-   - For complex bugs, save a fix report to the `reviews/` directory
-   - Document the bug cause, fix details, and verification results
+6. **Append lesson learned** (recommended; mandatory in Phase 5→4 feedback mode)
+   - Append a lesson entry to `docs/lessons-learned.md` using `templates/lessons-learned-entry.md` format
+   - Record: symptom, root cause, fix applied, prevention strategy
+   - In Phase 5→4 feedback mode (`feedback_origin` is set): this step is **mandatory**
+   - In normal bugfix mode: this step is **recommended** for non-trivial bugs
+   - For complex bugs, additionally save a fix report to the `reviews/` directory
 </Steps>
 
 <Tool_Usage>

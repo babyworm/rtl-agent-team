@@ -56,6 +56,13 @@ This skill ensures everything is in place before design work begins.
    formal/             # SymbiYosys .sby configurations
    synth/              # Synthesis scripts and reports
    docs/               # Design documentation
+     phase-1-research/   # Phase 1 artifacts
+     phase-2-architecture/ # Phase 2 artifacts
+     phase-3-uarch/      # Phase 3 artifacts
+     phase-4-rtl/        # Phase 4 artifacts
+     phase-5-verify/     # Phase 5 artifacts
+     phase-6-design-note/ # Phase 6 artifacts
+     decisions/          # Architecture Decision Records (ADR)
    reviews/            # Phase gate review reports (Markdown)
      phase-1-research/
      phase-2-architecture/
@@ -64,6 +71,7 @@ This skill ensures everything is in place before design work begins.
      phase-5-verify/
    .rtl-agent-team/
      state/            # Plugin state files (auto-managed)
+     context/          # Context manifests and phase summaries (auto-managed)
    ```
 
 3. **Check EDA tool availability** (via `which` or `--version`):
@@ -84,13 +92,26 @@ This skill ensures everything is in place before design work begins.
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
    | make | `make --version` | Build system | Yes |
 
-4. **Generate filelist template** (if rtl/src/ is empty):
+4. **Generate lessons-learned.md** (if docs/lessons-learned.md does not exist):
+   Create `docs/lessons-learned.md` with initial header:
+   ```markdown
+   # Lessons Learned
+
+   > Cross-phase knowledge base. Entries are appended after each bug fix (especially Phase 5→4 feedback).
+   > Agents in Phase 4/5 should read this file to avoid repeating known issues.
+   >
+   > Entry format: see `skills/rtl-autopilot/templates/lessons-learned-entry.md`
+
+   ---
+   ```
+
+5. **Generate filelist template** (if rtl/src/ is empty):
    Create `rtl/filelist.f` with comment explaining format.
 
-5. **Generate cocotb Makefile template** (if tb/cocotb/ is empty):
+6. **Generate cocotb Makefile template** (if tb/cocotb/ is empty):
    Create `tb/cocotb/Makefile` with standard cocotb make targets.
 
-6. **Generate module template** (if rtl/src/ is empty):
+7. **Generate module template** (if rtl/src/ is empty):
    Create `rtl/src/template_module.sv` demonstrating project naming conventions:
    ```systemverilog
    // template_module.sv — Template demonstrating project coding conventions
@@ -111,7 +132,7 @@ This skill ensures everything is in place before design work begins.
    endmodule
    ```
 
-7. **Report setup summary**:
+8. **Report setup summary**:
    ```
    ## RTL Project Setup Report
    - Directory structure: [N] directories created, [M] already existed
@@ -125,7 +146,7 @@ This skill ensures everything is in place before design work begins.
    - Ready to start: Yes/No
    ```
 
-8. **Docker EDA image build** (on user request):
+9. **Docker EDA image build** (on user request):
    When the user requests "docker image", "EDA docker environment", etc., build the Docker image.
    See the `<Advanced>` section for detailed build/run commands and included tool list.
 
@@ -180,7 +201,7 @@ docker run -it --rm \
 <Tool_Usage>
 ```
 # Directory creation (Bash CLI)
-Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb ref_model/src ref_model/build uarch bfm formal synth docs reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify} .rtl-agent-team/state
+Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb ref_model/src ref_model/build uarch bfm formal synth docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-design-note} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify} .rtl-agent-team/state .rtl-agent-team/context
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"
@@ -191,6 +212,9 @@ Bash: slang --version 2>&1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 Bash: pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && test -f "$SYSTEMC_HOME/lib-linux64/libsystemc.a" && echo "$SYSTEMC_HOME (found via SYSTEMC_HOME)") || echo "NOT_FOUND"
 Bash: g++ --version 2>&1 || echo "NOT_FOUND"
+
+# Lessons learned initial file (if not exists)
+# Write: docs/lessons-learned.md — initial header (see Step 4)
 
 # Template generation
 Write: rtl/filelist.f          — filelist with format comment

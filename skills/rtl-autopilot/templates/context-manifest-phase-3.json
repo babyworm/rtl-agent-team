@@ -1,0 +1,22 @@
+{
+  "phase": 3,
+  "phase_name": "uarch",
+  "required_full_read": [
+    "docs/phase-2-architecture/architecture.md"
+  ],
+  "required_summary_only": [
+    "docs/phase-1-research/requirements.json"
+  ],
+  "optional_on_demand": [
+    "docs/phase-1-research/io_definition.json",
+    "docs/phase-1-research/domain-analysis.md",
+    "ref_model/src/*.cpp",
+    "docs/decisions/ADR-*.md"
+  ],
+  "outputs": [
+    "docs/phase-3-uarch/*.md",
+    "docs/phase-3-uarch/phase-3-summary.md",
+    "docs/decisions/ADR-*.md",
+    "bfm/"
+  ]
+}

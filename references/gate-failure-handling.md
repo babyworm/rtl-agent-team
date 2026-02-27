@@ -153,17 +153,76 @@ reviews/
 
 ## 6. Automatic State Tracking
 
-Gate pass/fail results are recorded in `.rtl-agent-team/state/rtl-autopilot-state.json`:
+Gate pass/fail results are recorded in `.rtl-agent-team/state/rtl-autopilot-state.json` (schema v2.0).
+The unified schema tracks per-phase progress, gate results, and partial work for resumability:
 
 ```json
 {
+  "schema_version": "2.0",
   "current_phase": 3,
-  "gates": {
-    "gate_1": { "status": "PASS", "date": "2025-01-15" },
-    "gate_2": { "status": "PASS", "date": "2025-01-16", "retries": 1 },
-    "gate_3": { "status": "PENDING" }
+  "current_phase_name": "uarch",
+  "status": "in_progress",
+  "interrupted_reason": null,
+  "partial_work_summary": null,
+  "phases": {
+    "1_research": {
+      "status": "completed",
+      "started_at": "2025-01-15T10:00:00Z",
+      "completed_at": "2025-01-15T12:00:00Z",
+      "gate_passed_at": "2025-01-15T12:30:00Z",
+      "review_rounds_completed": 1,
+      "quality_gate": "PASS",
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": ["requirements_json", "io_definition_json", "domain_analysis_md"],
+        "pending_items": [],
+        "current_action": null,
+        "last_agent": "spec-analyst"
+      }
+    },
+    "2_architecture": {
+      "status": "completed",
+      "started_at": "2025-01-15T13:00:00Z",
+      "completed_at": "2025-01-16T10:00:00Z",
+      "gate_passed_at": "2025-01-16T11:00:00Z",
+      "review_rounds_completed": 3,
+      "quality_gate": "PASS",
+      "quality_gate_retries": 1,
+      "partial_work": {
+        "completed_items": ["architecture_md", "block_diagram", "ref_model_src"],
+        "pending_items": [],
+        "current_action": null,
+        "last_agent": "arch-designer"
+      }
+    },
+    "3_uarch": {
+      "status": "in_progress",
+      "started_at": "2025-01-16T12:00:00Z",
+      "completed_at": null,
+      "gate_passed_at": null,
+      "review_rounds_completed": 1,
+      "quality_gate": null,
+      "quality_gate_retries": 0,
+      "partial_work": {
+        "completed_items": ["uarch_md"],
+        "pending_items": ["bfm_dir"],
+        "current_action": "BFM development",
+        "last_agent": "bfm-dev"
+      }
+    }
   },
-  "violations": [],
-  "blocked": false
+  "upper_spec_violations": [],
+  "review_artifacts": []
 }
 ```
+
+On interruption, `interrupted_reason` and `partial_work_summary` are populated:
+```json
+{
+  "interrupted_reason": "user_cancel",
+  "partial_work_summary": "Phase 3 uarch: uarch specs complete, BFM development in progress (60%)"
+}
+```
+
+This enables the resume protocol (see SKILL.md `<Advanced>`) to skip completed work
+and continue from the exact point of interruption.
