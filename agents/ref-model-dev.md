@@ -102,24 +102,21 @@ color: green
           test_vectors.json — generated I/O pairs for func-verifier
 
     Interface convention (C example):
-    Port names must match the RTL naming convention (lowRISC style with project overrides):
-    - Data ports use `i_`/`o_` prefix (e.g., `i_data`, `o_result`)
-    - **No clock/reset in model** — pure functional, no cycle concept
+    Field names are plain C identifiers — no RTL port prefix (`i_`/`o_`).
+    No valid/ready handshaking — pure functional call semantics (pass data in, get result out).
     ```c
     #include <stdint.h>
     #include <stdbool.h>
 
-    /* Input/output as function argument structs */
+    /* Input/output as function argument structs — plain C, no RTL naming */
     typedef struct {
-        uint32_t i_data;
-        uint16_t i_coeff;
-        bool     i_valid;
+        uint32_t data;
+        uint16_t coeff;
     } ref_model_inputs_t;
 
     typedef struct {
-        uint64_t o_result;
-        bool     o_valid;
-        bool     o_overflow;
+        uint64_t result;
+        bool     overflow;
     } ref_model_outputs_t;
 
     /* Context holds internal state (SRAM, registers as arrays/variables) */
@@ -132,7 +129,7 @@ color: green
     void ext_mem_read(uint32_t addr, void *buf, uint32_t size);
     void ext_mem_write(uint32_t addr, const void *buf, uint32_t size);
 
-    /* Pure functional — no clock, no reset, no step */
+    /* Pure functional — no clock, no reset, no valid/ready */
     void ref_model_init(ref_model_ctx_t *ctx);  /* initialize context (not reset!) */
     void ref_model_process(const ref_model_inputs_t *in, ref_model_outputs_t *out,
                            ref_model_ctx_t *ctx);
@@ -189,23 +186,24 @@ color: green
 
   <Examples>
     <Good>
-      Spec: "Multiply i_data (24-bit unsigned) by i_coeff (16-bit unsigned), output lower 32 bits, set o_overflow if result exceeds 32 bits."
+      Spec: "Multiply data (24-bit unsigned) by coeff (16-bit unsigned), output lower 32 bits, set overflow if result exceeds 32 bits."
 
       ```c
-      void ref_model_step(const ref_model_inputs_t *in, ref_model_outputs_t *out) {
-          uint64_t product = (uint64_t)in->i_data * (uint64_t)in->i_coeff;
-          out->o_overflow = (product > UINT32_MAX) ? true : false;
-          out->o_result   = (uint32_t)(product & 0xFFFFFFFFULL);
-          out->o_valid    = in->i_valid;
+      void ref_model_process(const ref_model_inputs_t *in, ref_model_outputs_t *out,
+                             ref_model_ctx_t *ctx) {
+          uint64_t product = (uint64_t)in->data * (uint64_t)in->coeff;
+          out->overflow = (product > UINT32_MAX) ? true : false;
+          out->result   = (uint32_t)(product & 0xFFFFFFFFULL);
       }
       ```
       Explicit cast to uint64_t before multiply, explicit mask for truncation, exact overflow detection.
+      No valid/ready — just call the function and read the result.
     </Good>
     <Bad>
       ```c
-      void ref_model_step(ref_model_inputs_t *in, ref_model_outputs_t *out) {
-          out->o_result = in->i_data * in->i_coeff;  // silent 32-bit overflow
-          out->o_valid  = in->i_valid;
+      void ref_model_process(ref_model_inputs_t *in, ref_model_outputs_t *out,
+                             ref_model_ctx_t *ctx) {
+          out->result = in->data * in->coeff;  // silent 32-bit overflow
           // no overflow detection
       }
       ```

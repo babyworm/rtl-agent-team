@@ -40,7 +40,7 @@ disallowedTools: Write, Edit
     - architecture.md is produced with: executive summary, block diagram (ASCII art), block descriptions,
       interface table, data flow narrative, clock domain diagram, and tradeoff analysis
     - Every block is named with a lowercase_snake_case identifier that becomes the RTL module name
-    - Every inter-block interface is defined: signal names, widths, direction, handshaking protocol
+    - Every inter-block data path is defined: interface name, data width, direction, protocol type
     - Clock domain crossings (CDC) are explicitly identified with recommended synchronization strategy
     - Area/performance/power tradeoff analysis covers at least 2 alternative partitioning options
     - The chosen architecture is justified against REQ-XXXX requirements with explicit traceability
@@ -53,9 +53,9 @@ disallowedTools: Write, Edit
     - Do not make microarchitecture decisions (FSM states, pipeline register placement) — that is uarch-designer's job.
     - Do not resolve [AMBIGUITY] or [CONFLICT] items from spec-analyst. Reference them and note they block design.
     - Block names must be lowercase_snake_case and globally unique within the design.
-    - Interface descriptions must specify: data width, protocol (valid/ready, req/ack, etc.), direction.
+    - Interface descriptions must specify: data width, protocol type (valid/ready, req/ack, etc.), direction.
     - RTL-level naming (i_/o_ prefix, clock/reset naming, instance prefix) is NOT required at this stage.
-    - Latency budgets must be allocated across pipeline stages in whole clock cycles only.
+    - Total latency budget per block must be stated in clock cycles. Per-stage pipeline allocation is μArch's job.
     - Area estimates must be stated as approximate gate equivalents (GE), not vague terms like "small" or "large".
     - Power decisions (clock gating, power domains) must reference the spec or be marked as architectural assumptions.
   </Constraints>
@@ -67,11 +67,11 @@ disallowedTools: Write, Edit
     4. Group requirements by functional affinity to identify natural block boundaries.
     5. For each candidate block: name it, describe its function, list its inputs/outputs.
     6. Draw the ASCII block diagram showing data flow between blocks.
-    7. Define all inter-block interfaces: signal name, width, direction, protocol (valid/ready, req/ack, etc.).
+    7. Define all inter-block data paths: interface name, width, direction, protocol type (valid/ready, req/ack, etc.).
     8. Identify clock domain crossings: which blocks are in which domain, what data crosses.
     9. Evaluate at least 2 partitioning alternatives: document area/timing tradeoffs.
     10. Select and justify the chosen architecture against explicit REQ-XXXX references.
-    11. Allocate the timing budget: assign clock cycles to each pipeline stage.
+    11. Set total latency budget per block in clock cycles. Do NOT allocate per-pipeline-stage — that is μArch's job.
     12. Produce the traceability matrix: REQ-XXXX -> block(s) responsible.
   </Investigation_Protocol>
 
@@ -96,11 +96,11 @@ disallowedTools: Write, Edit
     └─────────────────────────────────────────────────────────┘
     ```
 
-    Interface table format:
-    | Signal Name       | Width | Direction | From Block     | To Block    | Protocol   |
+    Data path table format:
+    | Data Path         | Width | Direction | From Block     | To Block    | Protocol   |
     |-------------------|-------|-----------|----------------|-------------|------------|
-    | proc_data         | 32    | →         | input_buffer   | data_proc   | valid/ready |
-    | proc_result       | 48    | →         | data_proc      | output_fmt  | valid/ready |
+    | pixel_data        | 32    | →         | input_buffer   | data_proc   | valid/ready |
+    | processed_result  | 48    | →         | data_proc      | output_fmt  | valid/ready |
 
     Tradeoff table format:
     | Option | Latency (cycles) | Area (GE) | Power | Notes |
@@ -121,7 +121,7 @@ disallowedTools: Write, Edit
   <Output_Format>
     ## Architecture Analysis Summary
     - Blocks identified: N
-    - Inter-block interfaces: N
+    - Inter-block data paths: N
     - Clock domains: N
     - CDC crossings: N
     - Unresolved ambiguities blocking design: N
@@ -133,9 +133,9 @@ disallowedTools: Write, Edit
     1. Executive Summary
     2. Block Diagram (ASCII art)
     3. Block Descriptions (one subsection per block)
-    4. Inter-Block Interface Table
+    4. Inter-Block Data Path Table
     5. Clock Domain Diagram
-    6. Timing Budget Allocation
+    6. Per-Block Latency Budget (total cycles per block, NOT per-pipeline-stage)
     7. Tradeoff Analysis (min 2 alternatives)
     8. Chosen Architecture Justification
     9. Requirement Traceability Matrix
@@ -147,14 +147,14 @@ disallowedTools: Write, Edit
       Instead: partition by function, clock domain, and reuse potential as guided by requirements.
     - Ignoring CDC: not identifying clock domain crossings because they're "just wires."
       Instead: explicitly list every signal that crosses clock domains and recommend synchronizers.
-    - Missing interface definition: describing blocks without specifying inter-block signals.
-      Instead: produce the complete interface table before handing off to uarch-designer.
+    - Missing interface definition: describing blocks without specifying inter-block data paths.
+      Instead: produce the complete data path table before handing off to uarch-designer.
     - Vague area estimates: saying "small block" without gate-equivalent estimates.
       Instead: use approximate GE counts based on bit width and operation complexity.
     - Assuming resolved ambiguities: designing around a conflict from spec-analyst as if it were resolved.
       Instead: list the ambiguity in Open Issues and note which design decisions depend on its resolution.
-    - Latency budget overflow: allocating 5 cycles across stages when max is 4 cycles total.
-      Instead: verify budget sums before committing to pipeline stage count.
+    - Latency budget overflow: setting a per-block budget that exceeds total system budget.
+      Instead: verify per-block budgets sum to <= total system latency constraint.
   </Failure_Modes_To_Avoid>
 
   <Examples>
@@ -184,8 +184,8 @@ disallowedTools: Write, Edit
 
   <Final_Checklist>
     - Are all blocks named with lowercase_snake_case identifiers?
-    - Does the timing budget sum to <= max_cycles from timing_constraints.json?
-    - Is every inter-block interface fully specified (name, width, direction, protocol)?
+    - Does the per-block latency budget sum to <= total system latency from timing_constraints.json?
+    - Is every inter-block data path fully specified (name, width, direction, protocol)?
     - Are all CDC crossings identified with recommended synchronizer topology?
     - Does the traceability matrix cover every REQ-XXXX?
     - Are at least 2 partitioning alternatives evaluated in the tradeoff table?

@@ -5,7 +5,18 @@ description: "This skill should be used when creating microarchitecture specs (F
 
 <Purpose>
 Translate the system architecture into implementable microarchitecture specifications.
-Outputs: uarch/*.md files covering FSM diagrams, pipeline stages, register maps, memory organization.
+Phase 3 has three key responsibilities:
+
+1. **Module decomposition**: Break architecture-level blocks into smaller hardware sub-modules where needed
+   (e.g., a single `prediction` block may decompose into `intra_pred`, `inter_pred`, `mv_predictor`)
+2. **Inter-module and intra-module pipeline design**:
+   - Inter-module pipelines: how data flows between sub-modules, handshake protocols, backpressure
+   - Intra-module pipelines: pipeline stages within each sub-module, register cut points, hazards
+3. **Signal interface concretization**: Define concrete signal names (`i_`/`o_` prefix), exact bit widths,
+   FSM states, register maps — these flow directly to RTL in Phase 4
+
+Outputs: uarch/*.md files covering module decomposition, pipeline diagrams (inter/intra),
+FSM specifications, register maps, memory organization.
 Runs in parallel with bfm-develop during Phase 3.
 </Purpose>
 
@@ -21,8 +32,13 @@ Runs in parallel with bfm-develop during Phase 3.
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-Architecture describes what blocks exist; microarchitecture describes how each block works internally.
-Without explicit FSM and pipeline specs, RTL coders make inconsistent implementation choices.
+Architecture describes what blocks exist and how data flows between them.
+Microarchitecture describes how each block decomposes into sub-modules and how they work internally:
+- Which blocks need further decomposition into smaller hardware modules
+- How sub-modules interact (inter-module pipeline, handshake, data dependencies)
+- How each sub-module is structured internally (intra-module pipeline, FSM, datapath)
+
+Without explicit module decomposition and pipeline specs, RTL coders make inconsistent implementation choices.
 timing-advisor ensures designs are achievable at the target frequency.
 </Why_This_Exists>
 
@@ -42,7 +58,17 @@ timing-advisor ensures designs are achievable at the target frequency.
 <Steps>
 1. Read architecture.md and block_diagram
 2. `mkdir -p reviews/phase-3-uarch`
-3. uarch-designer produces per-block uarch/*.md: FSM, pipeline diagram, register map, memory map
+3. uarch-designer produces per-block uarch/*.md with the following structure:
+   - **Module decomposition**: Identify which architecture blocks need sub-module decomposition
+     - e.g., `prediction` → `intra_pred` + `inter_pred` + `mv_predictor`
+     - Blocks that are small enough remain as single modules
+   - **Inter-module pipeline**: Define data flow between sub-modules within the same architecture block
+     - Handshake protocol, backpressure mechanism, data dependencies between sub-modules
+   - **Intra-module pipeline**: Define pipeline stages within each sub-module
+     - Stage names, register cut points, operations per stage, hazard analysis
+   - **FSM specification**: State encoding, transitions, outputs, reset state
+   - **Register map**: Programmable registers with fields, widths, reset values
+   - **Memory map**: SRAM banking, access scheduling, port allocation
    - **Signal naming conventions (MANDATORY — these flow directly to RTL):**
      - Inputs: `i_` prefix, Outputs: `o_` prefix, Bidirectional: `io_` prefix (NOT suffix `_i`/`_o`)
      - Clocks: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
@@ -201,6 +227,9 @@ requiring μArch redesign and full RTL rewrite. Cascading Quality Principle viol
 
 <Final_Checklist>
 - [ ] uarch/*.md exists for each block in architecture.md
+- [ ] **Module decomposition documented** for every block (sub-modules defined or single-module rationale)
+- [ ] **Inter-module pipelines defined** (data flow, handshake, backpressure between sub-modules)
+- [ ] **Intra-module pipelines defined** (stages, register cuts, hazard analysis per sub-module)
 - [ ] **All block boundaries from architecture.md preserved (no unauthorized merges/splits)**
 - [ ] **All functional responsibilities from architecture.md present in uarch specs**
 - [ ] **3-round iterative review completed** (or remaining gaps escalated to user and approved)
@@ -209,7 +238,7 @@ requiring μArch redesign and full RTL rewrite. Cascading Quality Principle viol
 - [ ] **μArch ↔ ref model consistency verified** (behavior, data widths, fixed-point formats, rounding modes)
 - [ ] **μArch code review passed** (naming, FSM completeness, no dead states)
 - [ ] rtl-architect hierarchical spec compliance verdict is PASS
-- [ ] Each doc has FSM, pipeline diagram, register map
+- [ ] Each doc has module decomposition, inter/intra-module pipeline, FSM, register map
 - [ ] timing-advisor review complete with no blockers
 - [ ] vcodec-architecture-expert approved algorithm correctness
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT `_i`/`_o` suffix)

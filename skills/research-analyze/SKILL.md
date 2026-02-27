@@ -1,11 +1,23 @@
 ---
 name: research-analyze
-description: "This skill should be used when extracting structured requirements from raw specifications in Phase 1. Produces requirements.json with REQ-NNN IDs and complexity tags."
+description: "This skill should be used when analyzing algorithms, selecting optimal approaches, and extracting structured requirements from raw specifications in Phase 1. Produces domain-analysis.md (algorithm trade-offs), requirements.json, and io_definition.json."
 ---
 
 <Purpose>
-Transform raw specification documents into structured artifacts that downstream phases can consume.
-Produces three mandatory outputs: requirements.json, io_definition.json, domain-analysis.md.
+Research, analyze, and select the optimal algorithms and implementation approaches for the target design.
+Phase 1 has two equally important outputs:
+
+1. **Algorithm analysis and selection** (domain-analysis.md) — the PRIMARY creative output:
+   - Compare candidate algorithms for each functional block (e.g., diamond search vs full search for ME)
+   - Analyze trade-offs: computational complexity, memory access patterns, quality impact, HW-friendliness
+   - Select and justify the optimal algorithm for each functional area given the design constraints
+   - Identify fixed-point precision requirements and HW-friendly algorithm modifications
+
+2. **Structured requirement extraction** (requirements.json, io_definition.json):
+   - Transform the selected algorithms and spec constraints into structured, traceable requirements
+   - Define the system I/O boundary
+
+Domain experts drive algorithm analysis; spec-analyst captures the results as structured artifacts.
 </Purpose>
 
 <Use_When>
@@ -63,12 +75,12 @@ rounds by default). This ensures cross-block dependencies are identified and res
      skip tree exploration entirely and proceed directly to Step 2
 
 2. **Parallel sub-domain analysis**: Delegate to 6 agents in parallel:
-   - `vcodec-syntax-entropy-expert`: HLS/entropy coding requirements (NAL, CABAC/CAVLC, DPB)
-   - `vcodec-prediction-expert`: Intra/inter prediction requirements (modes, ME, MC, sub-pel filters)
-   - `vcodec-transform-quant-expert`: Transform/quantization requirements (DCT/DST, QP, RDOQ, fixed-point)
-   - `vcodec-filter-recon-expert`: In-loop filter/reconstruction requirements (deblocking, SAO, recon path)
-   - `video-processing-expert`: Signal processing and performance requirements
-   - `spec-analyst`: Formal requirement extraction (requirements.json, io_definition.json)
+   - `vcodec-syntax-entropy-expert`: Entropy coding algorithm analysis (CABAC vs CAVLC trade-offs, context model complexity, HW-friendly binarization)
+   - `vcodec-prediction-expert`: Prediction algorithm analysis (ME search algorithms comparison, sub-pel filter complexity, mode decision trade-offs)
+   - `vcodec-transform-quant-expert`: Transform/quantization algorithm analysis (DCT/DST butterfly structures, fixed-point precision chain, RDOQ HW feasibility)
+   - `vcodec-filter-recon-expert`: Filter algorithm analysis (deblocking decision logic, SAO classification, processing order constraints)
+   - `video-processing-expert`: Signal processing algorithm analysis (pixel throughput, fixed-point vs floating-point, HW-friendly modifications)
+   - `spec-analyst`: Formal requirement extraction from spec + algorithm selections (requirements.json, io_definition.json)
 
 3. **Chief expert review — Round 1**: Delegate to `vcodec-chief-standard-expert` with all 4 sub-domain outputs.
    Chief reviews for:
@@ -140,9 +152,15 @@ rounds by default). This ensures cross-block dependencies are identified and res
      - Resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
    - Single clock domain defaults to `sys_clk` / `sys_rst_n`
 
-10. Produce domain-analysis.md (algorithm overview, known implementation challenges, references)
+10. Produce domain-analysis.md — **the primary algorithm analysis deliverable**:
+    - **Algorithm trade-off analysis per functional area**: candidate algorithms compared on
+      computational complexity, memory access patterns, quality impact, HW-friendliness
+    - **Selected algorithm per block** with justification against design constraints (area, power, throughput)
+    - **Fixed-point precision chain**: bit widths, rounding modes, dynamic range per algorithm stage
+    - **HW-friendly algorithm modifications**: standard algorithm adaptations for efficient RTL implementation
     - Include vcodec-chief-standard-expert's cross-block dependency matrix
     - Include Architecture-Ready assessment summary
+    - Known implementation challenges and references
 
 11. Validate all three files exist and JSON is well-formed
 
