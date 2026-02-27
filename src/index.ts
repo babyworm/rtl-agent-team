@@ -5,10 +5,7 @@
  * The actual functionality is provided via:
  * - agents/*.md  — Agent definitions (loaded by Claude Code)
  * - skills/      — Skill definitions (loaded by Claude Code)
- * - hooks/       — Hook wiring (hooks.json → bridge/*.cjs)
+ * - CLAUDE.md    — Design pipeline rules and coding conventions
  */
 
-export { RTL_KEYWORDS, type RTLKeyword } from './hooks/rtl-keyword-detector/index.js';
-export { type DesignState, type DesignPhase } from './hooks/design-stage-control/index.js';
-export { type LintState } from './hooks/rtl-lint-guard/index.js';
-export { type VerificationState } from './hooks/verification-gate/index.js';
+export {};

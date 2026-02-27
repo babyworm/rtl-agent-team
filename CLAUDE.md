@@ -273,9 +273,6 @@ PASS | FAIL: [사유]
 ## 상태 파일
 
 설계 흐름 상태는 `.rtl-agent-team/state/` 하위에 저장한다:
-- `.rtl-agent-team/state/rtl-design-state.json` — 설계 단계 추적
-- `.rtl-agent-team/state/rtl-verification-state.json` — 검증 상태
-- `.rtl-agent-team/state/rtl-lint-state.json` — 린트 상태
 - `.rtl-agent-team/state/rtl-autopilot-state.json` — 파이프라인 진행 상태 (재개용)
 - `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase 완료 게이트
 

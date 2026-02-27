@@ -87,7 +87,6 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 5-Phase 파이프라인 규칙
-├── hooks/hooks.json            # Hook 이벤트 와이어링
 ├── agents/                     # 42개 에이전트 (설계/검증/리뷰/EDA/도메인)
 ├── skills/                     # 32개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
@@ -102,8 +101,6 @@ rtl-agent-team/
 │   └── ...                     # + 7개 (CDC, UVM, Yosys, SDC 등)
 ├── docker/                     # EDA 도구 Docker 이미지
 │   └── Dockerfile              # 오픈소스 EDA 전체 번들
-├── src/hooks/                  # Hook (TypeScript)
-├── bridge/                     # Hook CJS 번들 (빌드 산출물)
 └── domain-packages/            # 도메인 지식 패키지
     └── video-codec/            # H.264/H.265 지식, 적합성 데이터
 ```
@@ -192,7 +189,7 @@ Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `
 
 ```bash
 npm install
-npm run build       # tsc + esbuild (hooks)
+npm run build       # tsc
 npm run dev         # tsc --watch
 npm test            # vitest
 ```
