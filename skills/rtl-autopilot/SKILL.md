@@ -123,11 +123,32 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-5. **Phase 4 — RTL Implementation**: invoke rtl-code skill (parallel per module)
+5. **Phase 4 — RTL Implementation + Early Verification (PARALLEL STREAMS)**
+   Two parallel streams run simultaneously after Phase 3→4 gate passes:
    - Enforce: `logic` only (no `reg`/`wire`), `always_ff`/`always_comb`, ANSI port style
    - **Review artifacts setup**: `mkdir -p reviews/phase-4-rtl`
 
-   **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean + tb/unit/tb_*.sv exist for all modules + sim/unit/*_results.txt exist and all PASS + basic integration smoke test PASS
+   **Stream A — RTL Implementation (invoke rtl-code skill):**
+   - rtl-coder writes modules (wave-based parallel per module)
+   - lint-checker validates (Wave 2: lint all at once)
+   - testbench-dev generates unit TBs (Wave 4)
+   - eda-runner runs unit sim (Wave 4)
+
+   **Stream B — Early Verification Framework (NEW, starts simultaneously with Stream A):**
+   - B1. `sva-extractor`: Generate SVA property skeletons from uarch/*.md
+     (signal names, FSM states, protocol handshakes are known from μArch specs)
+   - B2. `cdc-checker`: Analyze clock domain topology from uarch/*.md
+     (identify synchronizer requirements, crossing points, generate preliminary CDC report)
+   - B3. `testbench-dev`: Generate cocotb TB skeletons from uarch/*.md
+     (port connectivity, clock/reset structure, test vector scaffolds)
+     Mark as "skeleton" — full execution deferred to Phase 5c
+
+   **Merge Point (Phase 4→5 Gate):**
+   - Stream A: all RTL lint-clean + unit tests PASS + basic integration PASS
+   - Stream B artifacts (SVA skeletons, preliminary CDC report, TB skeletons) ready for Phase 5
+   - Stream B CDC findings fed back to RTL coders if synchronizers are missing
+
+   **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean + tb/unit/tb_*.sv exist for all modules + sim/unit/*_results.txt exist and all PASS + basic integration smoke test PASS + Stream B artifacts exist (tb/formal/ SVA skeletons, preliminary CDC report, tb/cocotb/ TB skeletons)
 
    **Phase 4→5 Quality Gate (RTL Design Review)**:
    - `rtl-critic` reviews RTL code against μArch specs AND requirements.json:
@@ -149,23 +170,27 @@ This skill automates sequencing, gate checking, and recovery.
    - Phase 5 is structured into 5 sub-phases (some can run in parallel)
    - State tracking: uses `sub_phase`, `feedback_loops`, `max_feedback_loops` fields in `rtl-autopilot-state.json`
 
-   **Phase 5a: SVA Generation + Formal Verification (parallel with 5b/5c)**
-   - `sva-extractor`: generate SVA properties based on uarch/*.md
+   **Phase 5a: SVA Completion + Formal Verification (parallel with 5b/5c)**
+   - `sva-extractor`: Complete SVA properties using Stream B skeletons + actual RTL
+     (Stream B provided structural skeletons; now add RTL-specific signal bindings)
    - `eda-runner`: run formal verification with SymbiYosys
    - Output: `reviews/phase-5-verify/formal-review.md`
 
-   **Phase 5b: CDC Analysis (parallel with 5a/5c)**
-   - `cdc-checker`: analyze multiple clock domains
+   **Phase 5b: CDC Verification (parallel with 5a/5c)**
+   - `cdc-checker`: Update preliminary CDC report (from Stream B) with final RTL
+     Compare Stream B CDC predictions vs actual RTL implementation
+     Verify synchronizers exist where Stream B identified crossing points
    - Output: `reviews/phase-5-verify/cdc-report.md`
 
    **Phase 5c: Integration TB + Ref Model Comparison (parallel with 5a/5b)**
-   - `testbench-dev`: create cocotb integration TB
+   - `testbench-dev`: Complete cocotb TB skeletons from Stream B with actual test logic
    - `func-verifier`: extensive RTL vs ref_model comparison
-   - `eda-runner`: run cocotb regression (multiple seeds)
+   - `eda-runner`: run cocotb regression — **per-module parallel + multi-seed (3 seeds × N modules)**
    - Output: `reviews/phase-5-verify/requirement-traceability.md`
 
-   **Phase 5d: Coverage Analysis (after 5a-5c complete)**
-   - `coverage-analyst`: analyze line/toggle/FSM coverage
+   **Phase 5d: Coverage Analysis (incremental, starts as modules complete 5a-5c)**
+   - `coverage-analyst`: analyze line/toggle/FSM coverage incrementally
+     Don't wait for ALL modules — analyze completed modules as they finish
    - If below target: `testbench-dev` generates additional tests
    - Output: `reviews/phase-5-verify/coverage-report.md`
 
@@ -177,16 +202,22 @@ This skill automates sequencing, gate checking, and recovery.
    - `rtl-critic`: comprehensive design review
    - Output: `reviews/phase-5-verify/final-compliance.md`
 
-   **Phase 5→4 Feedback Loop:**
-   - When a FAIL is detected in a Phase 5 sub-phase, classify the FAIL type:
+   **Phase 5→4 Feedback Loop (with parallel UNIT_FIX):**
+   - Collect ALL FAIL results from sub-phases 5a, 5b, 5c before starting fixes
+   - Classify each FAIL:
      - **UNIT_FIX**: resolvable by fixing a single module (e.g., SVA counterexample, assertion failure)
      - **INTEGRATION_FIX**: requires inter-module interface modification
      - **DESIGN_FIX**: requires architecture-level design change (→ user approval mandatory)
-   - UNIT_FIX / INTEGRATION_FIX handling:
-     1. Automatically invoke `rtl-bugfix` skill (with feedback_origin specified)
-     2. Fix → lint → update unit TB → unit sim → confirm PASS
-     3. Return to the corresponding Phase 5 sub-phase for re-verification
-     4. Maximum 2 feedback loops per sub-phase (escalate to user if exceeded)
+   - **Batch UNIT_FIX across sub-phases:**
+     - Group all UNIT_FIX failures by module
+     - If failures are in DIFFERENT modules → launch parallel rtl-bugfix tasks (one per module)
+     - If failures are in SAME module → sequential fix within single rtl-bugfix task
+     - Each rtl-bugfix follows: analyze → fix → lint → TB → sim
+     - All parallel fixes run concurrently with `run_in_background: true`
+   - INTEGRATION_FIX: always sequential (cross-module dependencies)
+   - After ALL fixes complete: re-run ONLY affected sub-phases in parallel
+     (e.g., if 5a and 5c both failed, re-run 5a + 5c simultaneously after fixes)
+   - Maximum 2 feedback loops per sub-phase (escalate to user if exceeded)
    - DESIGN_FIX handling:
      1. IMMEDIATE STOP — classified as upper-spec violation
      2. Report to user: violation details + impact scope + recommended action
@@ -375,6 +406,19 @@ Bash("mkdir -p reviews/phase-4-rtl")
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Implement rtl/src/{module}.sv from uarch/{module}.md. Use logic only (no reg/wire), i_/o_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates. Run lint after writing.")
 
+# --- Stream B: Early Verification Framework (parallel with Stream A) ---
+Task(subagent_type="rtl-agent-team:sva-extractor",
+     prompt="Generate SVA property skeletons from uarch/*.md. Extract: FSM state assertions, protocol handshake properties, signal range constraints. Write skeleton bind files to tb/formal/. These are structural skeletons — actual RTL signal bindings will be completed in Phase 5a.",
+     run_in_background=true)
+
+Task(subagent_type="rtl-agent-team:cdc-checker",
+     prompt="Analyze clock domain topology from uarch/*.md. Identify: clock domain boundaries, synchronizer requirements, crossing points. Generate preliminary CDC report. This will be updated with actual RTL in Phase 5b.",
+     run_in_background=true)
+
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Generate cocotb TB skeletons from uarch/*.md at tb/cocotb/. Include: port connectivity structure, clock/reset generation, test vector scaffolds. Mark as SKELETON — full test logic deferred to Phase 5c. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.",
+     run_in_background=true)
+
 # --- Phase 4→5 Quality Gate ---
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="READ-ONLY RTL design review. Read requirements.json, then read uarch/*.md, then read rtl/src/*.sv.
@@ -440,7 +484,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Create cocotb integration testbench at tb/cocotb/. Test end-to-end data flow through all modules. Include ref_model comparison for bitexact verification.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb integration tests with multiple seeds against ref_model.
+     prompt="Run cocotb integration tests with per-module parallelism and multi-seed (seeds: 42, 123, 456) against ref_model. Each module runs as an independent parallel task with run_in_background=true. 3 seeds × N modules = up to 3N parallel sim tasks.
 After regression completes, produce a Requirement Traceability Matrix and save it to
 reviews/phase-5-verify/requirement-traceability.md in this format:
   # Phase 5 Review: Requirement Traceability
@@ -476,15 +520,26 @@ Perform the FINAL end-to-end audit:
 Save to reviews/phase-5-verify/final-compliance.md in standard review Markdown format.
 verdict: PASS or FAIL + findings[]")
 
-# --- Phase 5→4 Feedback Loop ---
-# On any Phase 5 sub-phase FAIL:
-#   1. Classify: UNIT_FIX | INTEGRATION_FIX | DESIGN_FIX
-#   2. UNIT_FIX/INTEGRATION_FIX → invoke rtl-bugfix skill with feedback_origin
-#   3. DESIGN_FIX → STOP and escalate to user
-#   4. Max 2 feedback loops per sub-phase
-# Example:
+# --- Phase 5→4 Feedback Loop (parallel UNIT_FIX) ---
+# 1. Collect ALL FAIL results from 5a, 5b, 5c
+# 2. Classify each: UNIT_FIX | INTEGRATION_FIX | DESIGN_FIX
+# 3. Batch UNIT_FIX: group by module, launch parallel fixes for different modules
+# 4. INTEGRATION_FIX → sequential rtl-bugfix
+# 5. DESIGN_FIX → STOP and escalate to user
+# 6. After all fixes: re-run affected sub-phases in parallel
+# 7. Max 2 feedback loops per sub-phase
+#
+# Example: Parallel UNIT_FIX across sub-phases
+# Phase 5a FAIL: SVA counterexample in module_a (UNIT_FIX)
+# Phase 5c FAIL: cocotb assertion error in module_b (UNIT_FIX)
+# → Different modules → parallel fix:
 # Skill(skill="rtl-agent-team:rtl-bugfix",
-#        args="Phase 5a formal FAIL. Counterexample: [details]. feedback_origin=5a-formal")
+#        args="Phase 5a formal FAIL in module_a. Counterexample: [details]. feedback_origin=5a-formal",
+#        run_in_background=true)
+# Skill(skill="rtl-agent-team:rtl-bugfix",
+#        args="Phase 5c cocotb FAIL in module_b. Assertion: [details]. feedback_origin=5c-integration",
+#        run_in_background=true)
+# → After both fix: re-run 5a + 5c in parallel
 
 # Gate Failure Handling: see references/gate-failure-handling.md for examples
 
@@ -605,6 +660,9 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   - Phase 2→3: architecture covers 100% of requirements (Feature Coverage Checklist PASS)
   - Phase 3→4: μArch preserves 100% of architecture features (Feature Preservation Checklist PASS)
   - Phase 4→5: RTL implements 100% of requirements (Functional Coverage Matrix PASS) + lint-clean + all unit tests PASS + basic integration PASS
+  - Phase 4 Stream B: SVA skeletons, preliminary CDC report, TB skeletons generated
+  - Phase 5 multi-seed regression: 3 seeds per module passed
+  - Phase 5→4 feedback: UNIT_FIX failures in different modules fixed in parallel
   - Phase 5 final: every requirement is implemented, verified, and passing (Final Compliance Matrix PASS)
 - [ ] No upper-spec violations were left unresolved
 - [ ] Naming conventions enforced at every phase gate:

@@ -46,27 +46,50 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 </Coding_Convention_Requirements>
 
 <Execution_Policy>
-- testbench-dev writes cocotb test cases (Python)
-- eda-runner runs the regression via Bash CLI
+- testbench-dev writes cocotb test cases (Python) — pipelined with execution
+- As each module TB completes → immediately launch eda-runner for that module (don't wait for all TBs)
+- Module-level parallelism: each module's TB + sim runs as an independent parallel task
+- Multi-seed regression: each module runs with 3 seeds in parallel (seed=42, seed=123, seed=456)
 - On any failure: waveform-analyzer diagnoses before reporting
 - Coverage report generated regardless of pass/fail
+- Incremental coverage: coverage-analyst can start partial analysis on completed modules
 </Execution_Policy>
 
 <Steps>
 1. `mkdir -p reviews/phase-5-verify`
-2. testbench-dev writes tb/cocotb/test_{module}.py for each module
-   - Use `templates/cocotb-test-template.py` as the test file scaffold
-   - Signal access uses `i_`/`o_` prefixes matching RTL ports
-   - Clock driven as `dut.sys_clk`, reset as `dut.sys_rst_n`
-3. eda-runner compiles RTL and runs cocotb regression via Bash CLI:
-   ```bash
-   # Icarus Verilog (default — good SV support, fast compile)
-   make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}
-   # Verilator (fastest simulation, FST traces)
-   make -C tb/cocotb SIM=verilator TOPLEVEL={module} MODULE=test_{module} \
-     EXTRA_ARGS="--trace-fst --timing"
+2. **Pipelined TB Generation + Execution (per-module parallel)**:
+   For each module, launch TB generation and immediately follow with simulation — do NOT wait for all TBs:
+   - testbench-dev writes tb/cocotb/test_{module}.py
+     - Use `templates/cocotb-test-template.py` as the test file scaffold
+     - Signal access uses `i_`/`o_` prefixes matching RTL ports
+     - Clock driven as `dut.sys_clk`, reset as `dut.sys_rst_n`
+   - As EACH module's TB completes → immediately launch eda-runner for that module:
+     ```bash
+     # Icarus Verilog (default — good SV support, fast compile)
+     make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}
+     ```
+   - Use `run_in_background: true` for each module sim to maximize parallelism
+   - Use `COCOTB_RESOLVE_X=RANDOM` for X-state handling and `RANDOM_SEED=42` for reproducibility
+
+3. **Multi-Seed Parallel Regression (per-module)**:
+   After initial single-seed sim passes for a module, launch multi-seed regression in parallel:
    ```
-   Use `COCOTB_RESOLVE_X=RANDOM` for X-state handling and `RANDOM_SEED=42` for reproducibility.
+   For each module:
+     Task(eda-runner, seed=42,  module=A, run_in_background=true)
+     Task(eda-runner, seed=123, module=A, run_in_background=true)
+     Task(eda-runner, seed=456, module=A, run_in_background=true)
+   → 3 seeds × N modules = up to 3N parallel sim tasks
+   ```
+   - Each seed tests different random stimulus ordering
+   - A module passes multi-seed regression only when ALL 3 seeds pass
+   - On any seed failure: waveform-analyzer reads .vcd, identifies divergence point
+
+3.5. **Incremental Coverage Analysis**:
+   - As modules complete their multi-seed regression, coverage-analyst begins partial analysis
+   - Don't wait for ALL modules to finish — analyze completed modules incrementally
+   - Early coverage gaps inform testbench-dev to generate additional tests for remaining modules
+   - This overlaps coverage analysis with ongoing simulation for maximum throughput
+
 4. For each test: compare RTL output with ref_model output byte-by-byte
 5. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
 6. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
@@ -118,16 +141,52 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 
 <Tool_Usage>
 ```
+# ============================================================
+# Pipelined per-module TB + Sim (each module is independent)
+# ============================================================
+# Module A: TB → Sim (immediate, don't wait for other modules)
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write cocotb test tb/cocotb/test_cabac_encoder.py. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming per CLAUDE.md conventions. Drive RTL, compare output with ref_model binary on 100 random vectors.")
-
+# → As soon as TB is ready, launch sim:
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression via Bash CLI: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder. Report pass/fail per test and overall coverage.")
+     prompt="Run cocotb regression via Bash CLI: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=42. Report pass/fail per test and overall coverage.",
+     run_in_background=true)
 
+# Module B: TB → Sim (parallel with Module A)
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Write cocotb test tb/cocotb/test_transform.py. [same conventions]")
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb regression: make -C tb/cocotb SIM=icarus TOPLEVEL=transform MODULE=test_transform RANDOM_SEED=42.",
+     run_in_background=true)
+# ... one pair per module, all running in parallel
+
+# ============================================================
+# Multi-Seed Parallel Regression (after initial seed passes)
+# ============================================================
+# For each module that passes seed=42, launch additional seeds in parallel
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb regression: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=123.",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb regression: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=456.",
+     run_in_background=true)
+# → 3 seeds × N modules = up to 3N parallel sim tasks
+
+# ============================================================
+# Incremental Coverage Analysis (starts as modules complete)
+# ============================================================
+Task(subagent_type="rtl-agent-team:coverage-analyst",
+     prompt="Analyze coverage from completed module sims. Don't wait for all modules — analyze incrementally. Report early coverage gaps to guide additional test generation.")
+
+# ============================================================
+# Waveform Analysis (on failure)
+# ============================================================
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze sim/waveforms/cabac_encoder_fail.vcd. Find first divergence between RTL o_data and expected output.")
 
-# Requirement Traceability Matrix (after regression completes)
+# ============================================================
+# Requirement Traceability Matrix (after ALL regression completes)
+# ============================================================
 Bash("mkdir -p reviews/phase-5-verify")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
@@ -168,10 +227,12 @@ Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes Attr
 - [ ] **All covered requirements pass their tests (or failures are escalated)**
 - [ ] **Traceability verdict is PASS**
 - [ ] **reviews/phase-5-verify/requirement-traceability.md saved with Requirement Traceability Matrix**
+- [ ] Multi-seed regression passed (3 seeds per module: 42, 123, 456)
+- [ ] Per-module pipelined execution used (TB → sim without waiting for all TBs)
 </Final_Checklist>
 
 <Advanced>
-Run with multiple seeds: `make SEED=42 SIM=icarus` for broader randomization coverage.
+Multi-seed regression is now mandatory: seeds 42, 123, 456 per module. For even broader coverage, add seeds: `make RANDOM_SEED=789 SIM=icarus`.
 Coverage target: 90% line, 80% toggle, 70% FSM state.
 Use `COCOTB_RESOLVE_X=RANDOM` to handle X propagation in simulation.
 

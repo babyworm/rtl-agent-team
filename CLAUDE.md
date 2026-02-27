@@ -104,7 +104,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 3. Do not run synthesis without RTL code
 4. Do not run Formal verification without passing Lint
 5. **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient)
-6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (tb/unit/tb_{module}.sv required)
+6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (tb/unit/tb_{module}.sv required) + Stream B early verification artifacts (SVA skeletons, CDC report, TB skeletons)
 7. **When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded**
 8. **Do not proceed to Phase 6 without Phase 5 PASS** (final-compliance.md verdict=PASS required)
 9. **Phase 7 is exempt from absolute rules** — free exploration allowed without pipeline Gate
@@ -138,6 +138,13 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > **Correct flow:**
 > ```
 > RTL modify → lint pass → TB create/update → simulation PASS → "done"
+> ```
+>
+> **Phase 4 Parallel Streams (rtl-autopilot mode):**
+> ```
+> Stream A: RTL coding (wave-based) → lint → unit TB → unit sim
+> Stream B: SVA skeletons + CDC topology + TB skeletons (from uarch, parallel with Stream A)
+> Merge: Phase 4→5 Gate (Stream A PASS + Stream B artifacts ready)
 > ```
 >
 > | 5. Phase 5 Integration | On Phase 5 FAIL, automatic feedback → rtl-bugfix → fix → re-verify (max 2 times) | Automatic |
@@ -193,7 +200,10 @@ Phase 1: Research    → docs/phase-1-research/      (natural language spec, dom
 Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + ref_model/ (C++ golden)
 Phase 3: μArch/TLM   → docs/phase-3-uarch/         (microarchitecture) + BFM
 Phase 4: RTL+Unit    → rtl/src/ + tb/unit/ + docs/phase-4-rtl/ (module design docs, unit design)
+                       Stream A: RTL implementation (wave-based parallel coding + lint + unit test)
+                       Stream B: Early verification framework (SVA skeletons, CDC topology, TB skeletons)
 Phase 5: Verify      → tb/formal/ + docs/phase-5-verify/ (verification reports, lint, synthesis estimates)
+                       Leverages Stream B artifacts from Phase 4 for faster verification startup
 Phase 6: Design Note → docs/phase-6-design-note/    (design documents, improvement recommendations)
 Phase 7: Exploration → docs/phase-7-exploration/    (free exploration, pipeline rules not applied)
 ```
@@ -338,7 +348,10 @@ docs/
 │   └── {module_name}.md                 # Per-module microarchitecture
 ├── phase-4-rtl/                         # → Input for Phase 5
 │   ├── module-descriptions.md           # Per-module design summary (ports, functions, dependencies)
-│   └── unit-test-design.md              # Unit test design (test strategy, coverage targets)
+│   ├── unit-test-design.md              # Unit test design (test strategy, coverage targets)
+│   ├── stream-b-sva-skeletons.md        # SVA property skeletons from uarch (Stream B, Phase 4)
+│   ├── stream-b-cdc-preliminary.md      # Preliminary CDC topology report (Stream B, Phase 4)
+│   └── stream-b-tb-skeletons.md         # cocotb TB skeletons from uarch (Stream B, Phase 4)
 ├── phase-5-verify/                      # → Input for Phase 6
 │   ├── unit-test-report.md              # Unit test results summary
 │   ├── integration-report.md            # Integration test results

@@ -38,11 +38,15 @@ Passing lint is merely "compilation success" — simulation is required to prove
 </Why_This_Exists>
 
 <Execution_Policy>
-- Mandatory 4-step sequence: analyze → fix+lint → TB → functional verification
+- Mandatory 4-step sequence per module: analyze → fix+lint → TB → functional verification
 - Each step can only proceed after the previous step is complete
+- **Parallel UNIT_FIX**: When multiple independent modules fail, fix them in parallel
+  - UNIT_FIX (different modules): parallel rtl-bugfix tasks, one per module
+  - UNIT_FIX (same module): sequential within single task
+  - INTEGRATION_FIX: always sequential (cross-module dependencies)
 - If TB already exists: update existing TB (add new test cases)
 - If no TB exists: creating at least a smoke test TB is mandatory
-- Verification-done marker is only created after functional verification PASS
+- Verification-done marker is only created after ALL parallel fixes pass functional verification
 - The Stop hook checks the verification-done marker to allow session termination
 </Execution_Policy>
 
@@ -52,6 +56,20 @@ Passing lint is merely "compilation success" — simulation is required to prove
    - Identify the bug's root cause
    - Compile a list of affected modules
    - Formulate a fix plan (which files, what changes)
+
+1.5. **Classify and Batch Parallel Fixes**:
+   When multiple Phase 5 sub-phases report FAIL simultaneously:
+   - Classify each FAIL as: **UNIT_FIX** (single module) or **INTEGRATION_FIX** (multi-module)
+   - Group UNIT_FIX failures by module
+   - **If failures are in DIFFERENT modules** (independent):
+     → Launch parallel rtl-bugfix tasks, one per module
+     → Each follows the full cycle: analyze → fix → lint → TB → sim
+     → All run concurrently (use `run_in_background: true`)
+     → Collect results: all must PASS before returning to Phase 5
+   - **If failures are in the SAME module** (dependent):
+     → Sequential fix within a single rtl-bugfix task (fix all issues together)
+   - **INTEGRATION_FIX**: Always sequential (may affect shared interfaces across multiple modules)
+   - After all parallel fixes complete, re-run ONLY the affected Phase 5 sub-phases in parallel
 
 2. **Fix+lint step**: Modify RTL code and verify syntax
    - rtl-coder implements the bug fix
@@ -150,6 +168,44 @@ Bash("touch .rtl-agent-team/state/rtl-verify-done")
 # If feedback_origin is not set, Step 5 is skipped (normal bug fix mode)
 Bash("touch .rtl-agent-team/state/rtl-verify-done")
 # rtl-autopilot reads feedback_origin and re-executes the corresponding Phase 5 sub-phase
+
+# ============================================================
+# Step 1.5: Parallel UNIT_FIX (when multiple independent modules fail)
+# ============================================================
+# Example: Phase 5a SVA counterexample in module_a, Phase 5c cocotb failure in module_b
+# These are independent UNIT_FIX failures → fix in parallel
+
+# Module A fix (background)
+Task(subagent_type="rtl-agent-team:rtl-coder",
+     prompt="Fix SVA counterexample in rtl/src/module_a.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/src/module_a.sv",
+     run_in_background=true)
+
+# Module B fix (background, parallel with Module A)
+Task(subagent_type="rtl-agent-team:rtl-coder",
+     prompt="Fix cocotb test failure in rtl/src/module_b.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/src/module_b.sv",
+     run_in_background=true)
+
+# After both fixes complete: parallel TB update + sim
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Update TB for module_a with fix verification test case.",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Update TB for module_b with fix verification test case.",
+     run_in_background=true)
+
+# Parallel re-verification
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb test for module_a: make -C tb/cocotb SIM=icarus TOPLEVEL=module_a MODULE=test_module_a",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb test for module_b: make -C tb/cocotb SIM=icarus TOPLEVEL=module_b MODULE=test_module_b",
+     run_in_background=true)
+
+# After all pass: create verification-done marker
+Bash("touch .rtl-agent-team/state/rtl-verify-done")
+
+# Return to Phase 5: re-run ONLY affected sub-phases in parallel
+# Phase 5a (formal) + Phase 5c (integration) re-run simultaneously
 ```
 </Tool_Usage>
 
@@ -163,6 +219,18 @@ Bash("touch .rtl-agent-team/state/rtl-verify-done")
   → RTL output vs C reference model comparison
   → All tests PASS → touch rtl-verify-done
   → Session terminates normally
+</Good>
+<Good>
+Parallel UNIT_FIX:
+  Phase 5a formal FAIL: SVA counterexample in cabac_encoder.sv (UNIT_FIX)
+  Phase 5c cocotb FAIL: assertion error in transform.sv (UNIT_FIX)
+  Different modules → parallel fix:
+    → rtl-coder fixes cabac_encoder.sv (background)
+    → rtl-coder fixes transform.sv (background, parallel)
+    → Both lint-clean → parallel TB update → parallel sim
+    → Both PASS → touch rtl-verify-done
+    → Return to Phase 5: re-run 5a + 5c in parallel
+  Total time: ~1x single fix (not 2x sequential)
 </Good>
 <Bad>
 5-Wave bug fix plan:
@@ -191,6 +259,9 @@ Bash("touch .rtl-agent-team/state/rtl-verify-done")
 - [ ] **All tests PASS**
 - [ ] **Verification-done marker created (.rtl-agent-team/state/rtl-verify-done)**
 - [ ] TB signal naming convention followed (dut.sys_clk, dut.i_*, dut.o_*)
+- [ ] Multi-module failures classified (UNIT_FIX vs INTEGRATION_FIX)
+- [ ] Independent UNIT_FIX modules fixed in parallel (not sequentially)
+- [ ] All parallel fixes passed functional verification before verify-done marker
 </Final_Checklist>
 
 <Advanced>
@@ -207,4 +278,10 @@ Bash("touch .rtl-agent-team/state/rtl-verify-done")
 - Test individual modes first (MODE_FWD_TQ, MODE_INV_TQ)
 - Add compound mode tests separately
 - Include mode transition scenarios
+
+**Parallel UNIT_FIX decision tree:**
+- Multiple FAILs in DIFFERENT modules → parallel fix (each module independent)
+- Multiple FAILs in SAME module → sequential fix (single task handles all)
+- Any INTEGRATION_FIX → sequential (shared interfaces require coordinated changes)
+- Mixed UNIT_FIX + INTEGRATION_FIX → INTEGRATION_FIX first (sequential), then remaining UNIT_FIX in parallel
 </Advanced>

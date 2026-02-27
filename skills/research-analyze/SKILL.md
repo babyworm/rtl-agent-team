@@ -36,6 +36,7 @@ rounds by default). This ensures cross-block dependencies are identified and res
 - vcodec-chief-standard-expert reviews combined output iteratively (3 mandatory rounds by default, user-adjustable)
 - Merge outputs into unified artifacts after chief declares Architecture-Ready
 - Validate JSON schemas before declaring gate passed
+- (Optional) Tree-based solution path exploration before sub-domain analysis — skipped when user provides explicit scope
 </Execution_Policy>
 
 <Steps>
@@ -47,6 +48,19 @@ rounds by default). This ensures cross-block dependencies are identified and res
    - Clock frequency target and process node (ASIC vs FPGA)
    - Any feature scope restrictions (e.g., "TQ only", "intra-only")
    Skip this step if the user has already provided a detailed spec document or explicit parameters.
+
+1.5. **Solution Path Exploration (optional tree-based)**:
+   Before committing to a single design scope, explore multiple feasible design paths in parallel.
+   - spec-analyst identifies 2-4 feasible design paths from the user's requirements
+     (e.g., full decoder vs intra-only decoder vs specific subsystem like TQ block)
+   - Each path is delegated to a separate research agent in parallel (Task with model=sonnet)
+   - Each agent studies: feasibility, complexity estimate (gate count range), risk factors, resource requirements
+   - Results collected and presented to vcodec-chief-standard-expert
+   - Chief ranks paths by optimality (complexity vs risk vs value)
+   - AskUserQuestion presents top-ranked paths for user selection with trade-off summary
+   - Selected path drives the rest of Phase 1 sub-domain analysis (Step 2 onward)
+   - **Skip condition**: If the user already specified exact scope (e.g., "H.264 TQ block only"),
+     skip tree exploration entirely and proceed directly to Step 2
 
 2. **Parallel sub-domain analysis**: Delegate to 6 agents in parallel:
    - `vcodec-syntax-entropy-expert`: HLS/entropy coding requirements (NAL, CABAC/CAVLC, DPB)
@@ -139,6 +153,30 @@ rounds by default). This ensures cross-block dependencies are identified and res
 ```
 Bash("mkdir -p reviews/phase-1-research")
 
+# Step 1.5: Solution Path Exploration (optional — skip if user specified exact scope)
+# spec-analyst identifies feasible design paths, then parallel research agents explore each
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     model="sonnet",
+     prompt="From the user's requirements and specs/, identify 2-4 feasible design paths (e.g., full decoder, intra-only, specific subsystem). For each path, describe: scope, estimated complexity, key risks. Output a ranked list.")
+
+# Parallel path exploration (one agent per path, model=sonnet for cost efficiency)
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
+     model="sonnet",
+     prompt="Explore design path: [path 1 description]. Assess: feasibility, gate count estimate, risk factors, resource requirements, timeline impact. Output structured assessment.",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
+     model="sonnet",
+     prompt="Explore design path: [path 2 description]. Assess: feasibility, gate count estimate, risk factors, resource requirements, timeline impact. Output structured assessment.",
+     run_in_background=true)
+# ... one Task per identified path
+
+# Chief ranks paths after all exploration agents complete
+Task(subagent_type="rtl-agent-team:vcodec-chief-standard-expert",
+     prompt="Review the exploration results for all design paths. Rank by optimality: complexity vs risk vs value. Recommend the top path with justification. Present trade-offs for AskUserQuestion.")
+
+# AskUserQuestion: present top paths to user for selection
+# Selected path drives Step 2 onward
+
 # Step 2: Parallel sub-domain analysis (6 agents)
 Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Extract HLS and entropy coding requirements from spec at specs/. Cover NAL parsing, CABAC/CAVLC context models, DPB management. Output structured algorithm descriptions with standard clause citations.")
@@ -175,6 +213,9 @@ Input: H.264 spec PDF + system constraints doc
 Output: requirements.json with 47 functional requirements, io_definition.json with all AXI ports (using i_/o_ prefix, sys_clk/sys_rst_n naming), domain-analysis.md with cross-block dependency matrix and CABAC algorithm notes.
 Example io_definition.json port: `{"name": "i_axi_awaddr", "direction": "input", "width": 32, "protocol": "AXI4-Lite"}`
 Chief expert review: 3 mandatory rounds to Architecture-Ready. Round 1 identified missing MC output bit width; vcodec-prediction-expert updated. Round 2-3 confirmed convergence.
+Tree exploration: spec-analyst identified 3 paths (full H.264 decoder, intra-only decoder, TQ subsystem).
+3 parallel research agents explored each. Chief ranked: TQ subsystem (lowest risk, fastest delivery).
+User selected TQ subsystem via AskUserQuestion. Sub-domain analysis (Step 2) scoped to TQ only.
 </Good>
 <Bad>
 Skipping vcodec-chief-standard-expert review and merging sub-domain outputs directly — misses cross-block dependency issues.
@@ -203,6 +244,7 @@ Skipping spec-analyst and writing requirements.json manually — misses formal t
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED with suspected omissions)
 - [ ] Spec feature count vs requirements.json item count comparison documented
 - [ ] **reviews/phase-1-research/research-review.md saved with self-verification result**
+- [ ] Solution path selected (or explicit scope given by user — tree exploration skipped)
 </Final_Checklist>
 
 <Advanced>
