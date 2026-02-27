@@ -31,7 +31,10 @@ Parallelizing per-module coding maximizes throughput.
 - One rtl-coder Task per module, all launched in parallel
 - After each module is written, lint-checker runs on that file immediately
 - rtl-coder fixes lint errors (max 3 rounds per module)
-- Gate: all modules lint-clean before Phase 5 begins
+- After lint-clean, one testbench-dev Task per module for unit TB (parallel)
+- After all unit TBs, one eda-runner Task per module for unit sim (parallel)
+- After all unit sims PASS, basic integration smoke test on top-level
+- Gate: all modules lint-clean AND unit test PASS AND basic integration PASS before Phase 5 begins
 </Execution_Policy>
 
 <Steps>
@@ -52,7 +55,25 @@ Parallelizing per-module coding maximizes throughput.
 4. Each rtl-coder produces rtl/src/{module}.sv
 5. lint-checker runs on each produced file via Bash CLI: `verilator --lint-only -Wall rtl/src/{module}.sv`
 6. rtl-coder fixes reported lint violations (up to 3 rounds)
-7. **Hierarchical Spec Compliance Check — functional coverage review:**
+7. **Per-Module Unit Test Generation (병렬)**
+   - 각 모듈에 대해 testbench-dev가 `tb/unit/tb_{module}.sv` 생성
+   - Smoke test 수준: reset sequence, basic I/O, FSM state coverage
+   - Signal naming: `sys_clk`, `sys_rst_n`, `i_*/o_*` 규칙 준수
+   - 이미 TB가 존재하면 업데이트 (새 테스트 케이스 추가)
+8. **Per-Module Unit Simulation (병렬)**
+   - eda-runner가 각 unit test 실행:
+     ```bash
+     iverilog -g2012 -o sim/unit/{module} rtl/src/{module}.sv tb/unit/tb_{module}.sv
+     vvp sim/unit/{module}
+     ```
+   - 실패 시: waveform-analyzer 디버그 → rtl-coder 수정 → 재실행 (max 3회)
+   - 결과 저장: `sim/unit/{module}_results.txt`
+9. **Basic Integration Check**
+   - top-level 모듈에 대한 smoke test 실행
+   - 모듈 간 연결 기본 검증 (reset propagation, clock connectivity)
+   - testbench-dev가 `tb/unit/tb_{top_module}_smoke.sv` 생성
+   - eda-runner가 실행: 전 모듈 포함 컴파일 + top-level sim
+10. **Hierarchical Spec Compliance Check — functional coverage review:**
    - rtl-critic reads requirements.json, uarch/*.md, and all rtl/src/*.sv files
    - Verify every functional requirement (REQ-NNN) from requirements.json is implemented in RTL
    - Verify every uarch/*.md behavioral specification is reflected in the corresponding module
@@ -69,7 +90,7 @@ Parallelizing per-module coding maximizes throughput.
    - Verdict: `VERDICT: PASS` or `VERDICT: FAIL — [N] functional gaps found`
    - On FAIL: rtl-coder receives the gap list and implements missing functionality
    - Re-run lint after any functional additions
-8. Collect lint status per module; gate passes when all are lint-clean AND functional coverage is PASS
+11. Collect lint status per module; gate passes when all are lint-clean AND functional coverage is PASS AND unit tests PASS AND basic integration PASS
 </Steps>
 
 <Tool_Usage>
@@ -97,6 +118,23 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 # On FAIL: fix missing functionality
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Implement the following missing functionality in rtl/src/ per rtl-critic report: [paste gaps]. Then re-run lint.")
+
+# ============================================================
+# Per-Module Unit Test Generation (parallel, after lint-clean)
+# ============================================================
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Create SV unit test for rtl/src/{module}.sv at tb/unit/tb_{module}.sv. Include: (1) clock/reset generation (sys_clk, sys_rst_n), (2) basic I/O stimulus, (3) FSM state coverage, (4) self-checking assertions. Use i_*/o_* signal naming.")
+
+# Per-Module Unit Simulation (parallel)
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run unit test via Bash CLI: 'mkdir -p sim/unit && iverilog -g2012 -o sim/unit/{module} rtl/src/{module}.sv tb/unit/tb_{module}.sv && vvp sim/unit/{module} | tee sim/unit/{module}_results.txt'. Report pass/fail.")
+
+# Basic Integration Smoke Test
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Create top-level integration smoke test at tb/unit/tb_{top_module}_smoke.sv. Include: (1) reset propagation check, (2) clock connectivity, (3) basic data flow through all modules.")
+
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run integration smoke test via Bash CLI: compile all rtl/src/*.sv with tb/unit/tb_{top_module}_smoke.sv using iverilog -g2012. Execute and report pass/fail.")
 ```
 </Tool_Usage>
 
@@ -120,6 +158,9 @@ that should be caught before coding modules B-F.
 - [ ] All files pass Verible lint with zero errors (via Bash CLI)
 - [ ] All files pass slang lint with zero errors (via Bash CLI)
 - [ ] No module blocked after 3 fix rounds
+- [ ] tb/unit/tb_{module}.sv exists for every module
+- [ ] All unit tests PASS (sim/unit/{module}_results.txt)
+- [ ] Basic integration smoke test PASS (tb/unit/tb_{top_module}_smoke.sv)
 - [ ] **rtl-critic functional coverage verdict is PASS**
 - [ ] **Every REQ-NNN from requirements.json implemented in at least one RTL module**
 - [ ] **Every uarch/*.md behavioral spec reflected in corresponding RTL module**

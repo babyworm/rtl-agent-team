@@ -52,11 +52,12 @@ This skill automates sequencing, gate checking, and recovery.
 - On Quality Gate failure: pass findings back to the phase's worker agent for correction, then re-run Quality Gate
 - **On upper-spec violation**: return to the violated upper phase (e.g., Architecture violates Spec → return to Phase 1). Report violation to user and DO NOT proceed without approval
 - Maximum 2 Quality Gate retry cycles per phase before escalating to user
+- **Phase 5→4 Feedback Loop**: On Phase 5 sub-phase FAIL, classify as UNIT_FIX/INTEGRATION_FIX/DESIGN_FIX and handle accordingly (max 2 feedback loops per sub-phase)
 - On interruption: state file is preserved; re-invoking this skill resumes from last phase
 </Execution_Policy>
 
 <Steps>
-1. **Initialize state**: write .rtl-agent-team/state/rtl-autopilot-state.json with phase=1
+1. **Initialize state**: write .rtl-agent-team/state/rtl-autopilot-state.json with phase=1, sub_phase=null, feedback_loops=0, max_feedback_loops=2
 
 ---
 
@@ -126,7 +127,7 @@ This skill automates sequencing, gate checking, and recovery.
    - Enforce: `logic` only (no `reg`/`wire`), `always_ff`/`always_comb`, ANSI port style
    - **Review artifacts setup**: `mkdir -p reviews/phase-4-rtl`
 
-   **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean
+   **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean + tb/unit/tb_*.sv exist for all modules + sim/unit/*_results.txt exist and all PASS + basic integration smoke test PASS
 
    **Phase 4→5 Quality Gate (RTL Design Review)**:
    - `rtl-critic` reviews RTL code against μArch specs AND requirements.json:
@@ -143,19 +144,60 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-6. **Phase 5 — Verification**: invoke sv-unit-test, sva-check, func-verify, perf-verify, conformance-test sequentially
-   - Gate for each sub-phase: tests pass before proceeding to next verification stage
+6. **Phase 5 — Extensive Verification (Sub-Phases)**
    - **Review artifacts setup**: `mkdir -p reviews/phase-5-verify`
+   - Phase 5 is structured into 5 sub-phases (일부 병렬 실행 가능)
+   - State tracking: `rtl-autopilot-state.json`에 `sub_phase`, `feedback_loops`, `max_feedback_loops` 필드 사용
 
-   **Phase 5 Completion Artifact Gate**: all verification suites pass
+   **Phase 5a: SVA Generation + Formal Verification (5b/5c와 병렬)**
+   - `sva-extractor`: uarch/*.md 기반 SVA property 생성
+   - `eda-runner`: SymbiYosys로 formal 검증 실행
+   - 결과: `reviews/phase-5-verify/formal-review.md`
+
+   **Phase 5b: CDC Analysis (5a/5c와 병렬)**
+   - `cdc-checker`: 다중 clock domain 분석
+   - 결과: `reviews/phase-5-verify/cdc-report.md`
+
+   **Phase 5c: Integration TB + Ref Model Comparison (5a/5b와 병렬)**
+   - `testbench-dev`: cocotb integration TB 생성
+   - `func-verifier`: RTL vs ref_model extensive 비교
+   - `eda-runner`: cocotb regression 실행 (다중 시드)
+   - 결과: `reviews/phase-5-verify/requirement-traceability.md`
+
+   **Phase 5d: Coverage Analysis (5a-5c 완료 후)**
+   - `coverage-analyst`: line/toggle/FSM coverage 분석
+   - 미달 시: `testbench-dev`가 추가 테스트 생성
+   - 결과: `reviews/phase-5-verify/coverage-report.md`
+
+   **Phase 5e: Extensive Design Review (5a-5d 완료 후)**
+   - `rtl-architect`: Final Compliance Matrix (end-to-end audit)
+     - **Final Feature Completeness Audit**: re-read every requirement from requirements.json and confirm: (a) it is implemented in RTL, (b) it has at least one verification test covering it, (c) that test passed
+     - Interface completeness: are all ports in io_definition.json present and connected in the top-level RTL?
+     - Untested paths: identify any functionality that lacks verification coverage
+   - `rtl-critic`: 종합 설계 리뷰
+   - 결과: `reviews/phase-5-verify/final-compliance.md`
+
+   **Phase 5→4 Feedback Loop:**
+   - Phase 5 sub-phase에서 FAIL 감지 시 FAIL 유형을 분류:
+     - **UNIT_FIX**: 단일 모듈 수정으로 해결 가능 (e.g., SVA counterexample, assertion 실패)
+     - **INTEGRATION_FIX**: 모듈 간 인터페이스 수정 필요
+     - **DESIGN_FIX**: μArch 수준 설계 변경 필요 (→ user 승인 필수)
+   - UNIT_FIX / INTEGRATION_FIX 처리:
+     1. `rtl-bugfix` 스킬 자동 호출 (feedback_origin 지정)
+     2. 수정 → lint → unit TB 업데이트 → unit sim → PASS 확인
+     3. Phase 5 해당 sub-phase로 복귀하여 재검증
+     4. Maximum 2회 feedback loop per sub-phase (초과 시 user 에스컬레이션)
+   - DESIGN_FIX 처리:
+     1. IMMEDIATE STOP — 상위 스펙 위반으로 판정
+     2. user에게 보고: 위반 내용 + 영향 범위 + 권장 조치
+     3. user 승인 후 Phase 3(μArch) 또는 Phase 2(Architecture)로 회귀
+
+   **Phase 5 Completion Artifact Gate**: all verification sub-phases (5a-5e) pass
 
    **Phase 5 Completion Quality Gate (Final Spec Compliance Review)**:
    - `func-verifier` produces Requirement Traceability Matrix:
      - **Save to `reviews/phase-5-verify/requirement-traceability.md`** in standard review Markdown format
-   - `rtl-architect` performs end-to-end review of the entire design against the original requirements.json:
-     - **Final Feature Completeness Audit**: re-read every requirement from requirements.json and confirm: (a) it is implemented in RTL, (b) it has at least one verification test covering it, (c) that test passed. Produce a final compliance matrix
-     - Interface completeness: are all ports in io_definition.json present and connected in the top-level RTL?
-     - Untested paths: identify any functionality that lacks verification coverage
+   - `rtl-architect` performs end-to-end review via Phase 5e results:
      - **Save final compliance review to `reviews/phase-5-verify/final-compliance.md`** in standard review Markdown format
    - **Verdict**: PASS if every original requirement is implemented, verified, and passing; FAIL + findings otherwise
 
@@ -362,14 +404,27 @@ Save the lint report to reviews/phase-4-rtl/lint-report.md in this format:
 verdict: PASS (0 errors, warnings reviewed) or FAIL + error list[]")
 
 # ============================================================
-# Phase 5: Verification (sequential)
+# Phase 5: Extensive Verification (Sub-Phases)
 # ============================================================
 Bash("mkdir -p reviews/phase-5-verify")
 
+# --- Phase 5a: SVA + Formal (병렬 시작) ---
+Task(subagent_type="rtl-agent-team:sva-extractor",
+     prompt="Generate SVA properties from uarch/*.md specifications. Write bind files for each module at tb/formal/. Follow systemverilog-assertion conventions.")
+
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run SymbiYosys formal verification on all SVA bind files in tb/formal/. Report counterexamples if any. Save results to reviews/phase-5-verify/formal-review.md in standard review Markdown format. verdict: PASS or FAIL + counterexamples[]")
+
+# --- Phase 5b: CDC Analysis (5a와 병렬) ---
+Task(subagent_type="rtl-agent-team:cdc-checker",
+     prompt="Analyze all clock domain crossings in rtl/src/*.sv. Check synchronizer presence, FIFO usage, and handshake protocols. Save CDC report to reviews/phase-5-verify/cdc-report.md in standard review Markdown format. verdict: PASS or FAIL + findings[]")
+
+# --- Phase 5c: Integration TB + Ref Model (5a/5b와 병렬) ---
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Write SV unit tests for rtl/src/{module}.sv at tb/unit/.")
+     prompt="Create cocotb integration testbench at tb/cocotb/. Test end-to-end data flow through all modules. Include ref_model comparison for bitexact verification.")
+
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb functional tests on rtl/src/*.sv against ref_model.
+     prompt="Run cocotb integration tests with multiple seeds against ref_model.
 After regression completes, produce a Requirement Traceability Matrix and save it to
 reviews/phase-5-verify/requirement-traceability.md in this format:
   # Phase 5 Review: Requirement Traceability
@@ -382,12 +437,16 @@ reviews/phase-5-verify/requirement-traceability.md in this format:
   |--------|-----------|--------|--------|
   ## Findings
   ## Verdict
-  PASS | FAIL: [reason]")
+  PASS | FAIL: [reason]
+verdict: PASS or FAIL + findings[]")
 
-# --- Phase 5 Completion Quality Gate ---
+# --- Phase 5d: Coverage Analysis (5a-5c 후) ---
+Task(subagent_type="rtl-agent-team:coverage-analyst",
+     prompt="Analyze line/toggle/FSM coverage from simulation results. Identify coverage gaps below target. Save to reviews/phase-5-verify/coverage-report.md in standard review Markdown format. If coverage < target, list specific uncovered areas for testbench-dev to address. verdict: PASS or FAIL + gap list[]")
+
+# --- Phase 5e: Final Compliance Review (5a-5d 후) ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY final spec compliance review. Read the original requirements.json,
-then read io_definition.json, architecture.md, rtl/src/*.sv, and verification results.
+     prompt="READ-ONLY final spec compliance review. Read requirements.json, io_definition.json, architecture.md, rtl/src/*.sv, and ALL Phase 5 review results (formal-review.md, cdc-report.md, requirement-traceability.md, coverage-report.md).
 Perform the FINAL end-to-end audit:
 1. **Final Compliance Matrix**: For EVERY requirement in requirements.json, confirm:
    - (a) It is implemented in RTL (cite module and mechanism)
@@ -395,24 +454,21 @@ Perform the FINAL end-to-end audit:
    - (c) That test PASSED in the latest run
    Mark each requirement: VERIFIED / IMPLEMENTED-BUT-UNTESTED / MISSING.
    Any MISSING or IMPLEMENTED-BUT-UNTESTED → FAIL.
-2. **Interface completeness**: Are all ports defined in io_definition.json present and
-   correctly connected in the top-level RTL module?
-3. **Untested paths**: Identify any functionality that exists in RTL but has no verification coverage.
-4. **Spec fidelity**: Has the final implementation drifted from the original spec in any way?
-Save the final compliance review to reviews/phase-5-verify/final-compliance.md in this format:
-  # Phase 5 Review: Final Spec Compliance
-  - Date: (today)
-  - Reviewer: rtl-architect
-  - Upper Spec: requirements.json, io_definition.json
-  - Verdict: PASS | FAIL
-  ## Feature Coverage Checklist
-  | REQ ID | RTL Module | Test Name | Test Result | Status |
-  |--------|-----------|-----------|-------------|--------|
-  ## Findings
-  ## Verdict
-  PASS | FAIL: [reason]
-Output the Final Compliance Matrix table, then:
+2. **Interface completeness**: All io_definition.json ports present and connected?
+3. **Untested paths**: Any RTL functionality without verification coverage?
+4. **Spec fidelity**: Has implementation drifted from original spec?
+Save to reviews/phase-5-verify/final-compliance.md in standard review Markdown format.
 verdict: PASS or FAIL + findings[]")
+
+# --- Phase 5→4 Feedback Loop ---
+# On any Phase 5 sub-phase FAIL:
+#   1. Classify: UNIT_FIX | INTEGRATION_FIX | DESIGN_FIX
+#   2. UNIT_FIX/INTEGRATION_FIX → invoke rtl-bugfix skill with feedback_origin
+#   3. DESIGN_FIX → STOP and escalate to user
+#   4. Max 2 feedback loops per sub-phase
+# Example:
+# Skill(skill="rtl-agent-team:rtl-bugfix",
+#        args="Phase 5a formal FAIL. Counterexample: [details]. feedback_origin=5a-formal")
 
 # Gate Failure Handling: see references/gate-failure-handling.md for examples
 ```
@@ -436,6 +492,21 @@ Quality Gate detects upper-spec violation:
   IMMEDIATE STOP. Reports: "μArch altered Architecture decision: context table size 460→256.
   This violates Hierarchical Spec Compliance." Waits for user approval before proceeding.
 </Good>
+<Good>
+Phase 5→4 Feedback Loop:
+→ Phase 5a formal verification finds SVA counterexample in cabac_encoder.sv.
+  Classified as UNIT_FIX (single module). Invokes rtl-bugfix with feedback_origin=5a-formal.
+  rtl-coder fixes the logic error. lint-checker verifies. testbench-dev updates unit TB.
+  eda-runner re-runs unit sim (PASS). Returns to Phase 5a: re-run formal (PASS).
+  feedback_loops incremented to 1. Pipeline continues to Phase 5b.
+</Good>
+<Good>
+Phase 5→4 DESIGN_FIX escalation:
+→ Phase 5c integration test shows throughput 50% below spec. Classified as DESIGN_FIX —
+  pipeline architecture needs rework. IMMEDIATE STOP. Reports to user:
+  "Integration test reveals throughput gap. μArch pipeline depth may need increase from 3 to 5 stages."
+  Waits for user approval before returning to Phase 3 (μArch).
+</Good>
 <Bad>
 User: "quickly sketch a block diagram"
 → Do NOT invoke rtl-autopilot. Use arch-design or domain-consult directly.
@@ -454,6 +525,8 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   2. Report to user with full context (which requirement/feature, how it was violated)
   3. DO NOT proceed — wait for user to approve rollback or waiver
   4. If approved, return to the appropriate upper phase and re-run from there
+- **Phase 5→4 Feedback Loop exhausted** (2 cycles per sub-phase) → escalate to user with accumulated FAIL findings
+- **Phase 5 DESIGN_FIX detected** → IMMEDIATE STOP, report upper-spec violation, wait for user approval
 - **Verification phase fails after 2 retries** → invoke bug-repro skill, report findings
 - **User says "cancel" or "stop"** → delete .rtl-agent-team/state/rtl-autopilot-state.json, report progress summary
 </Escalation_And_Stop_Conditions>
@@ -465,7 +538,7 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   - Phase 1→2: requirements are complete, consistent, and implementable
   - Phase 2→3: architecture covers 100% of requirements (Feature Coverage Checklist PASS)
   - Phase 3→4: μArch preserves 100% of architecture features (Feature Preservation Checklist PASS)
-  - Phase 4→5: RTL implements 100% of requirements (Functional Coverage Matrix PASS) + lint-clean
+  - Phase 4→5: RTL implements 100% of requirements (Functional Coverage Matrix PASS) + lint-clean + all unit tests PASS + basic integration PASS
   - Phase 5 final: every requirement is implemented, verified, and passing (Final Compliance Matrix PASS)
 - [ ] No upper-spec violations were left unresolved
 - [ ] Naming conventions enforced at every phase gate:
@@ -488,6 +561,9 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   - reviews/phase-4-rtl/design-review.md
   - reviews/phase-4-rtl/lint-report.md
   - reviews/phase-5-verify/requirement-traceability.md
+  - reviews/phase-5-verify/formal-review.md
+  - reviews/phase-5-verify/cdc-report.md
+  - reviews/phase-5-verify/coverage-report.md
   - reviews/phase-5-verify/final-compliance.md
 </Final_Checklist>
 

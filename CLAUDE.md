@@ -26,6 +26,7 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 | UVM testbench, agent, sequence 생성 | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
 | **--- Phase 4: RTL ---** | |
+| "버그 수정", "RTL 수정", "bug fix", "RTL 버그", "기능 오류" | `/rtl-agent-team:rtl-bugfix` |
 | "RTL 코딩", "모듈 구현", "SV 작성" | `/rtl-agent-team:rtl-code` |
 | "리팩토링", "RTL 리팩토링", "코드 정리" (RTL 컨텍스트) | `/rtl-agent-team:rtl-refactor` |
 | "문서화", "RTL 문서" | `/rtl-agent-team:rtl-document` |
@@ -70,6 +71,44 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 2. Reference Model 없이 Testbench 작성 금지
 3. RTL 코딩 없이 합성 실행 금지
 4. Lint 통과 없이 Formal 검증 실행 금지
+5. **RTL 수정 후 기능 검증 없이 완료 선언 금지** (lint만으로는 불충분)
+6. **Phase 4 완료 시 모듈별 unit test 없이 Phase 5 진행 금지** (tb/unit/tb_{module}.sv 필수)
+7. **Phase 5 FAIL 시 최대 2회 Phase 4 feedback loop 허용, 초과 시 user 에스컬레이션**
+
+## IMPORTANT — RTL 수정 후 필수 검증 (Mandatory Verification After RTL Changes)
+
+> **이 규칙은 .sv/.svh/.v/.vh 파일을 수정하는 모든 작업에 적용된다.**
+>
+> **lint 통과 ≠ 기능 정확성 검증. lint는 필요 조건이지 충분 조건이 아니다.**
+>
+> RTL 파일 수정 시 다음 4단계를 반드시 완료해야 한다:
+>
+> | 단계 | 내용 | 필수 여부 |
+> |------|------|----------|
+> | 1. 수정 | RTL 코드 변경 | 필수 |
+> | 2. Lint | `verilator --lint-only -Wall` 통과 | 필수 |
+> | 3. TB | 수정된 모듈의 테스트벤치 생성 또는 업데이트 | **필수** |
+> | 4. 기능 검증 | cocotb/verilator 시뮬레이션 실행 및 PASS | **필수** |
+>
+> **Hook 기반 강제 메커니즘:**
+> - `PostToolUse:Edit/Write` 훅이 .sv 파일 수정을 자동 추적
+> - `Stop` 훅이 기능 검증 없이 세션 종료 시 차단
+> - 검증 완료 시 `touch .rtl-agent-team/state/rtl-verify-done`으로 게이트 해제
+> - 검증이 불필요한 경우 (주석만 변경 등): `touch .rtl-agent-team/state/rtl-verify-waiver`
+>
+> **Anti-pattern (금지):**
+> ```
+> RTL 수정 → lint 통과 → "완료" ← 이것은 완료가 아님
+> ```
+>
+> **올바른 흐름:**
+> ```
+> RTL 수정 → lint 통과 → TB 생성/업데이트 → 시뮬레이션 PASS → "완료"
+> ```
+>
+> | 5. Phase 5 연동 | Phase 5 FAIL 시 자동 feedback → rtl-bugfix → 수정 → 재검증 (max 2회) | 자동 |
+>
+> 이 규칙을 스킬로 구조화한 것이 `/rtl-agent-team:rtl-bugfix`이다.
 
 ## IMPORTANT — 상위 스펙 준수 원칙 (Hierarchical Spec Compliance)
 
@@ -116,8 +155,8 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 Phase 1: Research    → 자연어 스펙 분석, 도메인 지식 적용
 Phase 2: Arch/Ref    → 블록 아키텍처 + Reference Model 개발
 Phase 3: μArch/TLM   → 마이크로아키텍처 + BFM 개발
-Phase 4: RTL         → 합성 가능한 SystemVerilog 구현
-Phase 5: Verify      → SV 유닛(1차) → cocotb Regression(2차) → 합성
+Phase 4: RTL+Unit    → 합성 가능한 SV 구현 + 모듈별 unit test (lint→TB→sim 병렬)
+Phase 5: Extensive   → SVA/Formal, CDC, Integration TB, Coverage, Design Review + Phase 4 feedback loop
 ```
 
 ## 위임 규칙
@@ -238,10 +277,12 @@ reviews/
 │   ├── power-analysis.md           # power-analyzer 전력 분석 리뷰
 │   └── synthesis-review.md         # synthesis-reviewer 합성 결과 리뷰
 └── phase-5-verify/
-    ├── requirement-traceability.md # requirement-tracer 요구사항 추적 매트릭스 (REQ → Test)
-    ├── formal-review.md            # formal-reviewer SVA/Formal 품질 리뷰
+    ├── requirement-traceability.md # func-verifier 요구사항 추적 매트릭스 (REQ → Test)
+    ├── formal-review.md            # sva-extractor + eda-runner SVA/Formal 검증 결과
+    ├── cdc-report.md               # cdc-checker CDC 분석 리포트
+    ├── coverage-report.md          # coverage-analyst 커버리지 분석 리포트
     ├── uvm-review.md               # uvm-reviewer UVM TB 품질 리뷰
-    └── final-compliance.md         # 최종 스펙 준수 확인 리포트
+    └── final-compliance.md         # rtl-architect 최종 스펙 준수 확인 리포트
 ```
 
 ### 리뷰 Markdown 형식

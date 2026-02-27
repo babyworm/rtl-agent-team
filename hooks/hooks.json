@@ -1,5 +1,29 @@
 {
   "hooks": {
+    "PostToolUse:Edit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse:Write": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",
@@ -7,6 +31,11 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh\"",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-verify-stop-gate.sh\"",
             "timeout": 3
           }
         ]
