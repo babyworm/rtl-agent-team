@@ -93,8 +93,8 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 | Generate blocks | `gen_` prefix | `gen_pipeline_stage` |
 | Signals (internal) | `snake_case` | `write_enable`, `addr_valid` |
 
-> **UVM 예외**: UVM 클래스 내부 멤버 핸들은 업계 관행에 따라 `m_` prefix 허용
-> (`m_driver`, `m_monitor`). `u_` prefix는 RTL 모듈 인스턴스에만 적용.
+> **UVM Exception**: UVM class member handles use `m_` prefix per industry convention
+> (`m_driver`, `m_monitor`). `u_` prefix applies to RTL module instances only.
 
 ### CamelCase Prohibition Examples
 
@@ -111,7 +111,7 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 |------|---------|---------|
 | Module | `module_name.sv` | `axi_lite_slave.sv` |
 | Package | `module_name_pkg.sv` | `cabac_pkg.sv` |
-| Interface | `module_name_if.sv` | `axi_if.sv` *(iverilog 미지원 — 에이전트 생성 금지, §4.3)* |
+| Interface | `module_name_if.sv` | `axi_if.sv` *(iverilog unsupported — do NOT generate, §4.3)* |
 | Testbench | `tb_module_name.sv` | `tb_axi_lite_slave.sv` |
 | SVA bind | `sva_module_name.sv` | `sva_axi_lite_slave.sv` |
 
@@ -138,13 +138,13 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 
 ### 4.3 iverilog Incompatible Constructs (Do Not Generate)
 
-> 이 제한은 합성 가능 RTL 코드에만 적용된다. 검증 TB는 대상 시뮬레이터가 지원하면 `interface` 사용 가능.
+> This restriction applies to synthesizable RTL code only. Verification TBs may use `interface` if the target simulator supports it.
 
-- `interface` / `modport` — iverilog 미지원. 포트 리스트로 대체
-- unpacked `struct` / `union` — iverilog 미지원. 개별 signal 또는 `packed` 버전 사용
-- 에이전트는 위 구문을 RTL 코드에서 생성하지 않는다
-- `typedef struct packed` / `typedef union packed`는 지원됨 (사용 가능)
-- 사용자가 직접 추가하거나 기존 코드에 존재하는 경우 수정하지 않는다
+- `interface` / `modport` — unsupported by iverilog. Use port lists instead
+- unpacked `struct` / `union` — unsupported by iverilog. Use individual signals or `packed` versions
+- Agents must NOT generate these constructs in RTL code
+- `typedef struct packed` / `typedef union packed` are supported (OK to use)
+- Do not modify existing code or user-added code that contains these constructs
 
 ### 4.4 Module Structure
 ```

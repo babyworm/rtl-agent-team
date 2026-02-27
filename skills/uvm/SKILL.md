@@ -74,8 +74,8 @@ Following consistent naming conventions, class structure, and factory usage patt
 
 ### 1.3 Instance Naming (create)
 
-> **`m_` prefix 규칙**: UVM 클래스 내부 멤버 핸들은 `m_` prefix를 사용한다 (업계 관행).
-> 이는 RTL의 `u_` prefix 규칙과 별개이며, UVM TB에서만 적용된다.
+> **`m_` prefix rule**: UVM class member handles use `m_` prefix per industry convention.
+> This is separate from the RTL `u_` prefix rule and applies to UVM TBs only.
 
 ```systemverilog
 // Instance name matches the variable name
