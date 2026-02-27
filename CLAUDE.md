@@ -266,6 +266,18 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 
 ## 코딩 컨벤션 (필수)
 
+> **IMPORTANT — 언어 표준 (프로젝트 기본)**
+>
+> | 언어 | 표준 | 비고 |
+> |------|------|------|
+> | **SystemVerilog (RTL)** | **IEEE 1800-2009** | 합성 가능 RTL 코드의 기준. 2012 이후 추가 기능은 검증 전용 |
+> | **SystemVerilog (검증)** | **IEEE 1800-2012** | SVA, UVM TB에서 2012 기능 허용 (checker, interface class 등) |
+> | **C++ (Ref Model, BFM)** | **C++17** (`-std=c++17`) | SystemC 3.0, cocotb DPI 등 모든 C++ 코드에 적용 |
+>
+> - iverilog 플래그는 `-g2012` 사용 (2012 파서가 2009 코드를 하위 호환 파싱)
+> - verilator/slang은 기본 설정으로 2009 기능을 완전 지원
+> - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
+
 > **IMPORTANT — 핵심 오버라이드 (항상 적용)**
 >
 > 1. **포트 prefix**: `i_`, `o_`, `io_` 필수 (NOT suffix `_i`, `_o`). 단, **클럭과 리셋은 예외** (prefix 불필요)

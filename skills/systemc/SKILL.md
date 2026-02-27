@@ -7,6 +7,11 @@ description: "SystemC/TLM-2.0 coding convention and design guideline skill. Enfo
 SystemC/TLM-2.0 coding standards and design guidelines.
 All agents generating or modifying .cpp, .h files in a SystemC/TLM context must follow the rules in this skill.
 Applies to BFM (Bus Functional Model) and Reference Model development.
+
+Target standard: **C++17** (`-std=c++17`).
+- C++17 features: structured bindings, if constexpr, std::optional, std::string_view, fold expressions — all permitted
+- C++20 features (concepts, ranges, coroutines, modules) — do NOT use (tool/platform compatibility concerns)
+- All compile commands must include `-std=c++17`
 </Purpose>
 
 <Use_When>

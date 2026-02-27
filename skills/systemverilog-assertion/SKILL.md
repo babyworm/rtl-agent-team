@@ -6,7 +6,9 @@ description: "SVA (SystemVerilog Assertion) coding convention and formal verific
 <Purpose>
 SystemVerilog Assertion (SVA) coding standards and formal verification guidelines.
 All agents writing or modifying SVA must follow the rules in this skill.
-Based on the IEEE 1800-2017 Assertion syntax.
+Target standard: **IEEE 1800-2012** for SVA and verification code.
+2012 adds checker construct, restrict property, and sequence methods useful for formal verification.
+(2017 had no new features — errata/clarification only.)
 </Purpose>
 
 <Use_When>

@@ -296,7 +296,18 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 mark
 
 ## 코딩 컨벤션
 
-RTL 관련 코드나 문서를 작성할 때 프로젝트 컨벤션을 준수합니다:
+### 언어 표준
+
+| 언어 | 표준 | 용도 |
+|------|------|------|
+| **SystemVerilog (RTL)** | IEEE 1800-2009 | 합성 가능 RTL. 2012+ 기능은 RTL에서 사용 금지 |
+| **SystemVerilog (검증)** | IEEE 1800-2012 | SVA, UVM TB. checker, interface class 등 허용 |
+| **C++** | C++17 (`-std=c++17`) | Ref Model, BFM, DPI. C++20 사용 금지 |
+
+- iverilog 플래그: `-g2012` (2009 하위 호환 파싱)
+- 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
+
+### RTL 네이밍 규칙
 
 | 항목 | 규칙 |
 |------|------|
