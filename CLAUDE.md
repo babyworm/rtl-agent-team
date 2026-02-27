@@ -56,9 +56,10 @@ RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스�
 | "리그레션 분석", "flaky test", "시드 분석", "커버리지 수렴" | `regression-analyzer` 에이전트 직접 위임 |
 | "등가 검증", "equivalence", "RTL vs netlist" | `equivalence-checker` 에이전트 직접 위임 |
 | "통합 검증", "integration", "모듈 연결 확인", "top-level" | `integration-verifier` 에이전트 직접 위임 |
+| "보안 리뷰", "security", "side-channel", "fault injection" | `security-reviewer` 에이전트 직접 위임 |
+| **--- EDA 전문가 ---** | |
 | "DFT", "scan chain", "BIST", "JTAG", "testability" | `dft-designer` 에이전트 직접 위임 |
 | "클럭 아키텍처", "clock tree", "PLL", "clock gating 리뷰" | `clock-architect` 에이전트 직접 위임 |
-| "보안 리뷰", "security", "side-channel", "fault injection" | `security-reviewer` 에이전트 직접 위임 |
 | **--- Phase 6: Design Note ---** | |
 | "설계 리뷰", "design review", "Phase 6", "design note", "코드 리뷰 문서화" | `/rtl-agent-team:design-review-phase` |
 | **--- Phase 7: Exploration (선택적) ---** | |

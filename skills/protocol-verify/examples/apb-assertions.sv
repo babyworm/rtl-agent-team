@@ -16,9 +16,9 @@ module apb3_slave_assertions (
 
   // APB FSM states
   typedef enum logic [1:0] {
-    IDLE   = 2'b00,
-    SETUP  = 2'b01,
-    ACCESS = 2'b10
+    ST_IDLE   = 2'b00,
+    ST_SETUP  = 2'b01,
+    ST_ACCESS = 2'b10
   } apb_state_e;
 
   // APB-1: PSEL must assert one cycle before PENABLE (setup phase)

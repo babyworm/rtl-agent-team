@@ -41,7 +41,7 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - Violations will result in a FAIL verdict from the lint-check skill
 - Use `templates/module-template.sv` as the starting point for new modules
 - Review `examples/good-vs-bad.sv` for correct/incorrect pattern examples
-- See `references/lowrisc-overrides.md` for detailed project overrides vs. original lowRISC rules
+- See `references/coding-style-guide.md` for detailed project overrides vs. original lowRISC rules
 </Execution_Policy>
 
 <Steps>

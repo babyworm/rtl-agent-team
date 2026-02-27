@@ -38,7 +38,7 @@ module {{MODULE_NAME}} #(
   // ===========================================================================
   // Local Parameters
   // ===========================================================================
-  localparam int unsigned DEPTH = 2**ADDR_WIDTH;
+  localparam int unsigned L_DEPTH = 2**ADDR_WIDTH;
 
   // ===========================================================================
   // Type Definitions (or import from _pkg.sv)
