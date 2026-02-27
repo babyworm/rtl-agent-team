@@ -1,216 +1,218 @@
+> **한국어 문서**: [README_kr.md](./README_kr.md)
+
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
 > 50 specialized AI agents + 34 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
-RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
+A Claude Code plugin for automated RTL design and verification.
 
-50개 전문 AI 에이전트 + 34개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 34 skills + 11 reference documents.
 
 ## Marketplace
 
-이 repository는 **RTL Agent Marketplace**로, 하드웨어 설계 관련 플러그인들을 제공합니다.
+This repository serves as the **RTL Agent Marketplace**, providing hardware design plugins.
 
-| 플러그인 | 설명 | 버전 |
-|---------|------|------|
-| **rtl-agent-team** | 50-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.1.0 |
-| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.0 |
+| Plugin | Description | Version |
+|--------|-------------|---------|
+| **rtl-agent-team** | 50-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.1.0 |
+| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.0 |
 
-Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
+Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
 
 ## Quick Start
 
 ```bash
-# 1. Marketplace 등록
+# 1. Register the Marketplace
 /plugin marketplace add babyworm/rtl-agent-team
 
-# 2. 플러그인 설치
+# 2. Install plugins
 /plugin install rtl-agent-team
-/plugin install systemverilog-lsp   # (선택) SV LSP
+/plugin install systemverilog-lsp   # (optional) SV LSP
 
-# 3. 환경 점검
+# 3. Check environment
 /rtl-agent-team:rtl-setup
 
-# 4. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
+# 4. Full automation (or "Design an H.264 TQ subsystem")
 /rtl-agent-team:rtl-autopilot
 ```
 
-## 설치
+## Installation
 
-### Claude Code 대화창에서 설치 (권장)
+### Install from Claude Code chat (recommended)
 
 ```
 /plugin marketplace add babyworm/rtl-agent-team
 /plugin install rtl-agent-team
 ```
 
-설치 확인: `/plugin`
+Verify installation: `/plugin`
 
-### CLI에서 설치
+### Install from CLI
 
 ```bash
 claude plugin marketplace add babyworm/rtl-agent-team
 claude plugin install rtl-agent-team
 ```
 
-### 개발용 로컬 심볼릭 링크
+### Local symlink for development
 
-플러그인 소스를 직접 수정하며 개발할 때:
+When developing with direct access to the plugin source:
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
-## 사용법
+## Usage
 
-### 전체 자동화
+### Full automation
 
 ```
 /rtl-agent-team:rtl-autopilot
 ```
 
-6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
+Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
 
-### 프로젝트 초기화
+### Project initialization
 
 ```
 /rtl-agent-team:rtl-setup
 ```
 
-프로젝트 디렉토리 구조 생성 + EDA 도구 설치 확인을 수행합니다.
+Creates the project directory structure and verifies EDA tool installation.
 
-### 개별 스킬
+### Individual skills
 
 ```
-/rtl-agent-team:lint-check        # RTL lint 검사
-/rtl-agent-team:func-verify       # cocotb 기능 검증
-/rtl-agent-team:synth-check       # Yosys 합성
-/rtl-agent-team:sva-check         # SVA formal 검증
-/rtl-agent-team:arch-design       # 아키텍처 설계
-/rtl-agent-team:domain-consult    # 도메인 전문가 상담
+/rtl-agent-team:lint-check        # RTL lint check
+/rtl-agent-team:func-verify       # cocotb functional verification
+/rtl-agent-team:synth-check       # Yosys synthesis
+/rtl-agent-team:sva-check         # SVA formal verification
+/rtl-agent-team:arch-design       # Architecture design
+/rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-전체 34개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+See the `skills/` directory for the full list of 34 skills.
 
-## 프로젝트 산출물 구조
+## Project Artifact Structure
 
-각 Phase의 설계 산출물(`docs/`)은 다음 Phase의 입력이 되는 파이프라인을 형성합니다.
-상위 스펙 준수 여부 verdict(`reviews/`)는 별도로 관리됩니다.
+Each Phase's design artifacts (`docs/`) serve as inputs to the next Phase, forming a pipeline.
+Spec compliance verdicts (`reviews/`) are managed separately.
 
 ```
 docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase-3-uarch/
         ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ docs/phase-6-design-note/
-        ──→ docs/phase-7-exploration/ (선택적, 자유 탐색)
+        ──→ docs/phase-7-exploration/ (optional, free exploration)
 ```
 
-| 디렉토리 | 역할 | 비고 |
-|----------|------|------|
-| `docs/phase-N-*/` | Phase별 설계 문서 (가이드 파이프라인) | Phase N → Phase N+1 입력 |
-| `reviews/phase-N-*/` | 상위 스펙 준수 verdict (PASS/FAIL) | 데이터 없이 판정만 |
-| `rtl/src/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
-| `tb/unit/`, `tb/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
-| `ref_model/` | C++ 골든 레퍼런스 모델 | Phase 2 코드 산출물 |
+| Directory | Role | Notes |
+|-----------|------|-------|
+| `docs/phase-N-*/` | Phase-specific design documents (guide pipeline) | Phase N → Phase N+1 input |
+| `reviews/phase-N-*/` | Spec compliance verdict (PASS/FAIL) | Verdict only, no data |
+| `rtl/src/` | RTL SystemVerilog source code | Phase 4 code artifact |
+| `tb/unit/`, `tb/formal/` | Testbenches | Phase 4-5 code artifacts |
+| `ref_model/` | C++ golden reference model | Phase 2 code artifact |
 
-## 플러그인 구조
+## Plugin Structure
 
 ```
 rtl-agent-team/
 ├── .claude-plugin/
-│   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
-│   └── marketplace.json        # 마켓플레이스 정의
-├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 50개 에이전트 (설계/검증/리뷰/EDA/도메인)
-├── skills/                     # 34개 스킬 (SKILL.md + templates/ + examples/)
-│   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
-│   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
-│   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
+│   ├── plugin.json             # Plugin manifest (auto-discovery)
+│   └── marketplace.json        # Marketplace definition
+├── CLAUDE.md                   # 6-Phase pipeline rules
+├── agents/                     # 50 agents (design/verification/review/EDA/domain)
+├── skills/                     # 34 skills (SKILL.md + templates/ + examples/)
+│   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
+│   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
+│   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
 │   └── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-├── references/                 # 11개 상세 레퍼런스 문서
-│   ├── coding-style-guide.md   # SV 명명 규칙 상세
-│   ├── axi-protocol-rules.md   # AXI4 채널별 SVA 템플릿
-│   ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리
+├── references/                 # 11 detailed reference documents
+│   ├── coding-style-guide.md   # SV naming conventions (detailed)
+│   ├── axi-protocol-rules.md   # AXI4 per-channel SVA templates
+│   ├── sva-patterns.md         # SVA temporal operators + pattern library
 │   ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage
-│   └── ...                     # + 7개 (CDC, UVM, Yosys, SDC 등)
-├── docker/                     # EDA 도구 Docker 이미지
-│   └── Dockerfile              # 오픈소스 EDA 전체 번들
-└── domain-packages/            # 도메인 지식 패키지
-    └── video-codec/            # H.264/H.265 지식, 적합성 데이터
+│   └── ...                     # + 7 more (CDC, UVM, Yosys, SDC, etc.)
+├── docker/                     # EDA tool Docker image
+│   └── Dockerfile              # Open-source EDA full bundle
+└── domain-packages/            # Domain knowledge packages
+    └── video-codec/            # H.264/H.265 knowledge, conformance data
 ```
 
-## 에이전트 팀
+## Agent Team
 
-### 에이전트 구성 (50개, 전체 Opus)
+### Agent Composition (50 agents, all Opus)
 
-| 카테고리 | 에이전트 수 | 주요 에이전트 |
-|---------|-----------|-------------|
-| 설계 | 8 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer |
-| 검증 | 7 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer |
-| 전문 리뷰 | 13 | cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer |
-| Phase 6 설계 노트 | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
-| EDA/합성 | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
-| 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| 도메인 전문가 | 7 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert |
+| Category | Count | Key Agents |
+|----------|-------|------------|
+| Design | 8 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer |
+| Verification | 7 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer |
+| Specialized Review | 13 | cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer |
+| Phase 6 Design Note | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
+| EDA/Synthesis | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
+| Infrastructure | 3 | ipxact-generator, bfm-dev, ref-model-dev |
+| Domain Experts | 7 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert |
 
-### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
+### 6-Phase Pipeline (+Phase 7 Optional Exploration)
 
-| Phase | 이름 | 주요 에이전트 | docs/ 산출물 | reviews/ verdict |
-|-------|------|-------------|-------------|-----------------|
+| Phase | Name | Key Agents | docs/ Artifacts | reviews/ Verdict |
+|-------|------|------------|-----------------|------------------|
 | 1 | Research | spec-analyst | requirements.json, io_definition.json, domain-analysis.md | research-review.md |
 | 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
-| 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (모듈별) | uarch-review.md |
+| 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (per module) | uarch-review.md |
 | 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md | design-review.md |
-| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md 등 5개 | final-compliance.md |
+| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md, etc. (5 total) | final-compliance.md |
 | 6 | Design Note | code-quality-reviewer, design-note-writer | design-note.md, improvements.md | code-review.md, design-review.md |
-| 7 | Exploration (선택) | improvement-analyst | exploration-notes.md | exploration-review.md |
+| 7 | Exploration (optional) | improvement-analyst | exploration-notes.md | exploration-review.md |
 
-### 코딩 컨벤션 스킬
+### Coding Convention Skills
 
-| 스킬 | 적용 대상 | 주요 내용 |
-|------|----------|----------|
-| `systemverilog` | `.sv`, `.svh`, `.v`, `.vh` | lowRISC + 프로젝트 오버라이드, Power, FPGA, Pipelining |
-| `systemverilog-assertion` | SVA, bind 파일 | assume/assert/cover, SymbiYosys, bind 패턴 |
-| `uvm` | UVM testbench | factory, TLM 포트, coverage, phase callback |
+| Skill | Target | Key Content |
+|-------|--------|-------------|
+| `systemverilog` | `.sv`, `.svh`, `.v`, `.vh` | lowRISC + project overrides, Power, FPGA, Pipelining |
+| `systemverilog-assertion` | SVA, bind files | assume/assert/cover, SymbiYosys, bind patterns |
+| `uvm` | UVM testbench | factory, TLM ports, coverage, phase callback |
 | `systemc` | `.cpp`, `.h` (SystemC) | TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ |
 
-### 문서 3계층 구조 (점진적 공개)
+### 3-Layer Documentation Structure (Progressive Disclosure)
 
-| 계층 | 위치 | 역할 |
-|------|------|------|
-| 핵심 규칙 | `skills/*/SKILL.md` → `<Steps>` | 에이전트가 항상 읽는 필수 규칙 |
-| 상황별 가이드 | `skills/*/SKILL.md` → `<Advanced>` | 특정 최적화/상황에서만 참조 |
-| 상세 레퍼런스 | `references/*.md` | 명령 레퍼런스, 패턴 라이브러리, 프로토콜 상세 |
+| Layer | Location | Role |
+|-------|----------|------|
+| Core rules | `skills/*/SKILL.md` → `<Steps>` | Mandatory rules that agents always read |
+| Situational guides | `skills/*/SKILL.md` → `<Advanced>` | Referenced only in specific optimization/scenarios |
+| Detailed references | `references/*.md` | Command references, pattern libraries, protocol details |
 
-## EDA 도구
+## EDA Tools
 
-`eda-runner` 에이전트가 Bash를 통해 로컬 EDA CLI 도구를 직접 실행합니다.
+The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 
-| 도구 | 용도 | 필수 여부 |
-|------|------|----------|
-| verilator | 시뮬레이션 + Lint | 필수 |
-| verible | 스타일 Lint + 포매팅 | 필수 |
-| yosys | 합성 | 필수 |
-| cocotb (Python) | 기능 검증 | 필수 |
-| iverilog | 대안 시뮬레이터 | 선택 |
-| slang | IEEE 1800 시맨틱 Lint | 선택 |
-| sby (SymbiYosys) | Formal 검증 | 선택 |
-| gtkwave | 파형 뷰어 | 선택 |
+| Tool | Purpose | Required |
+|------|---------|----------|
+| verilator | Simulation + Lint | Required |
+| verible | Style Lint + Formatting | Required |
+| yosys | Synthesis | Required |
+| cocotb (Python) | Functional verification | Required |
+| iverilog | Alternative simulator | Optional |
+| slang | IEEE 1800 semantic Lint | Optional |
+| sby (SymbiYosys) | Formal verification | Optional |
+| gtkwave | Waveform viewer | Optional |
 
-`/rtl-agent-team:rtl-setup`으로 도구 설치 상태를 확인할 수 있습니다.
+Use `/rtl-agent-team:rtl-setup` to check tool installation status.
 
-### Docker EDA 이미지 (권장)
+### Docker EDA Image (Recommended)
 
-EDA 도구 설치가 번거롭다면, 모든 도구가 포함된 Docker 이미지를 빌드할 수 있습니다:
+If installing EDA tools individually is cumbersome, you can build a Docker image containing all tools:
 
 ```bash
-# 이미지 빌드 (최초 1회)
+# Build image (one-time)
 docker build -t rtl-eda-tools docker/
 
-# 프로젝트 마운트하여 실행
+# Run with project mounted
 docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
 
-# 버전 지정 빌드
+# Build with specific versions
 docker build -t rtl-eda-tools \
   --build-arg VERILATOR_VERSION=5.024 \
   --build-arg SLANG_VERSION=v6.0 \
@@ -218,41 +220,41 @@ docker build -t rtl-eda-tools \
   docker/
 ```
 
-포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
+Included tools: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
 
-Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rtl-setup` 실행 후 Docker 옵션 선택.
+You can also build from Claude Code: "Build the EDA Docker image" or run `/rtl-agent-team:rtl-setup` and select the Docker option.
 
-## Marketplace 구조
+## Marketplace Structure
 
-이 repository는 단일 플러그인이 아닌 **marketplace**로 동작합니다.
+This repository operates as a **marketplace**, not a single plugin.
 
 ```
 rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
-│   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
-│   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (50개)
-├── skills/                              # rtl-agent-team 스킬 (34개)
-├── references/                          # 레퍼런스 문서 (11개)
+│   ├── plugin.json                      # rtl-agent-team plugin manifest
+│   └── marketplace.json                 # Marketplace definition (plugin list)
+├── agents/                              # rtl-agent-team agents (50)
+├── skills/                              # rtl-agent-team skills (34)
+├── references/                          # Reference documents (11)
 ├── plugins/
-│   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
-└── domain-packages/                     # 도메인 지식 패키지
-    └── video-codec/                     # H.264/H.265 코덱 지식
+│   └── systemverilog-lsp/               # SV LSP plugin (standalone)
+└── domain-packages/                     # Domain knowledge packages
+    └── video-codec/                     # H.264/H.265 codec knowledge
 ```
 
-Marketplace에 새 플러그인을 추가하려면 `marketplace.json`의 `plugins` 배열에 항목을 추가합니다:
-- 같은 repo 내: `"source": "./plugins/new-plugin"`
-- 외부 repo: `"source": {"source": "github", "repo": "owner/repo"}`
+To add a new plugin to the Marketplace, add an entry to the `plugins` array in `marketplace.json`:
+- Same repo: `"source": "./plugins/new-plugin"`
+- External repo: `"source": {"source": "github", "repo": "owner/repo"}`
 
-## 개발
+## Development
 
-이 플러그인은 순수 선언형(`.md` + `.json` 파일만)으로 빌드 과정이 필요 없습니다.
+This plugin is purely declarative (`.md` + `.json` files only) — no build step required.
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
-## 라이선스
+## License
 
 MIT

@@ -1,13 +1,13 @@
 # CDC (Clock Domain Crossing) Patterns and Constraints
 
-> 이 문서는 `cdc-verify` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/cdc-verify/SKILL.md`의 `<Steps>` 참조.
+> This document is the detailed reference for the `cdc-verify` skill.
+> For core rules, see `<Steps>` in `skills/cdc-verify/SKILL.md`.
 
 ## 1. Synchronizer Types
 
 ### 1.1 2-FF Synchronizer (Single Bit)
 
-가장 기본적인 CDC 패턴. 단일 비트 신호 전용.
+The most basic CDC pattern. For single-bit signals only.
 
 ```systemverilog
 module sync_2ff #(
@@ -31,14 +31,14 @@ module sync_2ff #(
 endmodule
 ```
 
-**적용**: 단일 비트 제어 신호 (enable, flag, interrupt)
+**Usage**: Single-bit control signals (enable, flag, interrupt)
 
 ### 1.2 Gray Code FIFO (Multi-bit Bus)
 
-다중 비트 데이터는 gray code FIFO로 전달.
+Multi-bit data is transferred via a gray code FIFO.
 
 ```systemverilog
-// Gray code 변환
+// Gray code conversion
 function automatic logic [W-1:0] bin2gray(input logic [W-1:0] bin);
   return bin ^ (bin >> 1);
 endfunction
@@ -52,18 +52,18 @@ function automatic logic [W-1:0] gray2bin(input logic [W-1:0] gray);
 endfunction
 ```
 
-**구조**:
+**Structure**:
 ```
 Writer (src_clk) → FIFO RAM → Reader (dst_clk)
   wr_ptr (binary) → bin2gray → 2-FF sync → gray2bin → wr_ptr_sync
   rd_ptr (binary) → bin2gray → 2-FF sync → gray2bin → rd_ptr_sync
 ```
 
-**적용**: 다중 비트 데이터 스트림, 버퍼링 필요한 CDC
+**Usage**: Multi-bit data streams, CDC requiring buffering
 
 ### 1.3 Pulse Synchronizer
 
-소스 도메인의 1-cycle pulse를 목적지 도메인으로 전달.
+Transfers a 1-cycle pulse from the source domain to the destination domain.
 
 ```systemverilog
 module sync_pulse (
@@ -93,11 +93,11 @@ module sync_pulse (
 endmodule
 ```
 
-**적용**: 인터럽트, 이벤트 통지
+**Usage**: Interrupts, event notifications
 
 ### 1.4 Handshake Synchronizer
 
-데이터 + valid를 안전하게 전달. 양방향 핸드셰이크.
+Safely transfers data + valid. Bidirectional handshake.
 
 ```
 src_clk domain:          dst_clk domain:
@@ -106,39 +106,39 @@ src_clk domain:          dst_clk domain:
   data ─────────────────► data (stable while req high)
 ```
 
-**적용**: 느린 제어 경로, 레지스터 설정값 전달
+**Usage**: Slow control paths, register configuration value transfers
 
 ## 2. Common CDC Violations
 
-| 위반 | 설명 | 심각도 | 수정 |
-|------|------|--------|------|
-| Multi-bit bus crossing | 여러 비트를 직접 sync | Critical | Gray code FIFO 사용 |
-| Missing synchronizer | CDC 경로에 sync 없음 | Critical | 2-FF sync 추가 |
-| Reconvergence | CDC 신호가 분기 후 재합류 | High | 단일 sync 후 분배 |
-| Glitch on MUX select | CDC 신호로 MUX 제어 | High | Sync 후 MUX 선택 |
-| Reset domain crossing | 비동기 리셋이 다른 도메인 | Medium | Reset sync 추가 |
-| FIFO pointer sync | Binary pointer 직접 sync | Critical | Gray code 필수 |
-| Pulse too narrow | src pulse < dst period | High | Pulse sync 사용 |
+| Violation | Description | Severity | Fix |
+|-----------|-------------|----------|-----|
+| Multi-bit bus crossing | Directly syncing multiple bits | Critical | Use gray code FIFO |
+| Missing synchronizer | No sync on CDC path | Critical | Add 2-FF sync |
+| Reconvergence | CDC signal diverges then reconverges | High | Distribute after single sync |
+| Glitch on MUX select | CDC signal controls MUX | High | Sync before MUX select |
+| Reset domain crossing | Async reset in different domain | Medium | Add reset sync |
+| FIFO pointer sync | Directly syncing binary pointer | Critical | Gray code required |
+| Pulse too narrow | src pulse < dst period | High | Use pulse sync |
 
 ## 3. SDC Constraint Templates for CDC
 
-### 3.1 비동기 클럭 그룹
+### 3.1 Asynchronous Clock Groups
 
 ```tcl
-# 서로 관련 없는 클럭 도메인
+# Unrelated clock domains
 set_clock_groups -asynchronous \
   -group [get_clocks sys_clk] \
   -group [get_clocks pixel_clk]
 ```
 
-### 3.2 개별 False Path
+### 3.2 Individual False Paths
 
 ```tcl
-# 2-FF synchronizer 경로
+# 2-FF synchronizer path
 set_false_path -from [get_clocks sys_clk] \
   -to [get_pins u_sync_*/sync_q_reg[0]/D]
 
-# Gray code FIFO pointer 경로
+# Gray code FIFO pointer path
 set_false_path -from [get_clocks sys_clk] \
   -to [get_pins u_async_fifo/rd_ptr_gray_sync_reg[*][0]/D]
 ```
@@ -146,7 +146,7 @@ set_false_path -from [get_clocks sys_clk] \
 ### 3.3 Max Delay (optional)
 
 ```tcl
-# Synchronizer 경로에 max_delay 설정 (skew 제한)
+# Set max_delay on synchronizer path (skew limitation)
 set_max_delay -datapath_only \
   -from [get_clocks sys_clk] -to [get_pins u_sync_*/sync_q_reg[0]/D] \
   [expr {$dst_period * 0.8}]
@@ -154,22 +154,22 @@ set_max_delay -datapath_only \
 
 ## 4. CDC Verification Checklist
 
-| 항목 | 검사 방법 | 도구 |
-|------|----------|------|
-| 모든 CDC 경로에 synchronizer | 구조 검사 | CDC tool / grep |
-| Multi-bit bus에 gray code | 코드 리뷰 | Manual / CDC tool |
-| Reconvergence 없음 | 경로 추적 | CDC tool |
-| SDC false_path 설정 | SDC 리뷰 | 합성 도구 |
-| Reset synchronizer 존재 | 코드 리뷰 | Manual |
-| Pulse width ≥ dst period | 타이밍 분석 | Simulation |
+| Item | Verification Method | Tool |
+|------|---------------------|------|
+| Synchronizer on all CDC paths | Structural check | CDC tool / grep |
+| Gray code for multi-bit bus | Code review | Manual / CDC tool |
+| No reconvergence | Path tracing | CDC tool |
+| SDC false_path settings | SDC review | Synthesis tool |
+| Reset synchronizer present | Code review | Manual |
+| Pulse width >= dst period | Timing analysis | Simulation |
 
-## 5. CDC 검증 도구
+## 5. CDC Verification Tools
 
-| 도구 | 유형 | 사용법 |
-|------|------|--------|
-| Verilator | 구조 검사 (제한적) | `--lint-only -Wall` |
-| Slang | 구조 검사 | `--lint-only` |
-| CDC formal (상용) | 수학적 증명 | Cadence JasperGold CDC, Synopsys VC CDC |
-| Simulation | 동적 검증 | 다중 클럭 testbench |
+| Tool | Type | Usage |
+|------|------|-------|
+| Verilator | Structural check (limited) | `--lint-only -Wall` |
+| Slang | Structural check | `--lint-only` |
+| CDC formal (commercial) | Mathematical proof | Cadence JasperGold CDC, Synopsys VC CDC |
+| Simulation | Dynamic verification | Multi-clock testbench |
 
-오픈소스 환경에서는 구조적 검사(grep + lint)와 시뮬레이션 기반 CDC 검증을 조합한다.
+In open-source environments, combine structural checks (grep + lint) with simulation-based CDC verification.

@@ -1,11 +1,11 @@
 # Coverage Tools Reference
 
-> 이 문서는 `regression-run` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/regression-run/SKILL.md`의 `<Steps>` 참조.
+> This document is the detailed reference for the `regression-run` skill.
+> For core rules, see `<Steps>` in `skills/regression-run/SKILL.md`.
 
 ## 1. Verilator Coverage
 
-### 1.1 활성화 플래그
+### 1.1 Activation Flags
 
 ```bash
 # Line coverage
@@ -21,73 +21,73 @@ verilator --cc --coverage-user -f filelist.f
 verilator --cc --coverage -f filelist.f
 ```
 
-### 1.2 Coverage 데이터 수집
+### 1.2 Coverage Data Collection
 
 ```bash
-# 시뮬레이션 실행 후 coverage.dat 생성
+# Generate coverage.dat after simulation run
 ./obj_dir/Vtop_module +verilator+coverage+file+cov_seed1.dat
 
-# 여러 시드 실행
+# Run with multiple seeds
 for seed in 1 2 3 4 5; do
   ./obj_dir/Vtop_module +verilator+seed+$seed \
     +verilator+coverage+file+cov_seed${seed}.dat
 done
 ```
 
-### 1.3 Coverage 리포트
+### 1.3 Coverage Report
 
 ```bash
-# 텍스트 리포트
+# Text report
 verilator_coverage --annotate coverage_report cov_seed*.dat
 
-# Annotated source (소스 코드에 커버리지 표시)
+# Annotated source (coverage annotated on source code)
 verilator_coverage --annotate-all --annotate coverage_annotated cov_seed*.dat
 
-# 특정 모듈만
+# Specific module only
 verilator_coverage --annotate coverage_report --annotate-min 1 cov_seed*.dat
 ```
 
 ## 2. Coverage Merge
 
-### 2.1 Verilator 내장 merge
+### 2.1 Verilator Built-in Merge
 
 ```bash
-# 다중 .dat 파일 merge
+# Merge multiple .dat files
 verilator_coverage --write merged.dat cov_seed*.dat
 
-# Merge 후 리포트
+# Report after merge
 verilator_coverage --annotate merged_report merged.dat
 ```
 
 ### 2.2 lcov Integration
 
 ```bash
-# Verilator coverage → lcov 형식 변환
+# Convert Verilator coverage to lcov format
 verilator_coverage --write-info coverage.info cov_seed*.dat
 
-# lcov로 리포트 생성
+# Generate report with lcov
 genhtml coverage.info --output-directory coverage_html
 
-# 브라우저에서 확인
+# View in browser
 # open coverage_html/index.html
 ```
 
-### 2.3 lcov 필터링
+### 2.3 lcov Filtering
 
 ```bash
-# 특정 디렉토리만 포함
+# Include only specific directories
 lcov --extract coverage.info '*/rtl/src/*' -o rtl_coverage.info
 
-# 테스트벤치 제외
+# Exclude testbench
 lcov --remove coverage.info '*/tb/*' '*/test/*' -o rtl_only.info
 
-# HTML 리포트
+# HTML report
 genhtml rtl_only.info -o coverage_html
 ```
 
 ## 3. cocotb-coverage (Functional Coverage)
 
-### 3.1 기본 사용
+### 3.1 Basic Usage
 
 ```python
 from cocotb_coverage.coverage import CoverPoint, CoverCross, coverage_db
@@ -103,19 +103,19 @@ from cocotb_coverage.coverage import CoverPoint, CoverCross, coverage_db
 def sample(cmd, addr):
     pass
 
-# 테스트에서 호출
+# Call in test
 sample(cmd=dut.i_cmd.value.integer, addr=dut.i_addr.value.integer)
 
-# 리포트
+# Report
 coverage_db.report_coverage(cocotb.log.info, bins=True)
 coverage_db.export_to_xml("functional_coverage.xml")
 ```
 
-### 3.2 Coverage Goal 확인
+### 3.2 Coverage Goal Check
 
 ```python
 def check_coverage_goals(min_pct=90.0):
-    """모든 커버 포인트가 목표 달성했는지 확인"""
+    """Check whether all cover points have met the target"""
     all_met = True
     for name, cp in coverage_db.items():
         pct = cp.cover_percentage
@@ -128,7 +128,7 @@ def check_coverage_goals(min_pct=90.0):
 
 ## 4. Regression Coverage Workflow
 
-### 4.1 표준 플로우
+### 4.1 Standard Flow
 
 ```bash
 #!/bin/bash
@@ -142,7 +142,7 @@ COV_FILES=""
 for seed in $SEEDS; do
   echo "=== Running seed $seed ==="
 
-  # cocotb 실행
+  # Run cocotb
   RANDOM_SEED=$seed make -C tb/cocotb SIM=icarus 2>&1 | tee run_${seed}.log
 
   if [ $? -eq 0 ]; then
@@ -151,7 +151,7 @@ for seed in $SEEDS; do
     FAIL=$((FAIL + 1))
   fi
 
-  # Verilator coverage 수집 (Verilator SIM 사용 시)
+  # Collect Verilator coverage (when using Verilator SIM)
   # COV_FILES="$COV_FILES cov_seed${seed}.dat"
 done
 
@@ -164,7 +164,7 @@ echo "Pass rate: $(echo "scale=1; $PASS * 100 / ($PASS + $FAIL)" | bc)%"
 # verilator_coverage --annotate coverage_report merged.dat
 ```
 
-### 4.2 cocotb 다중 시드
+### 4.2 cocotb Multiple Seeds
 
 ```python
 import cocotb
@@ -179,27 +179,27 @@ async def test_random(dut):
     # ... random stimulus ...
 ```
 
-## 5. Coverage Types 비교
+## 5. Coverage Types Comparison
 
-| 타입 | 측정 대상 | 도구 | 목표 |
-|------|----------|------|------|
-| Line coverage | 코드 라인 실행 여부 | Verilator | ≥ 95% |
-| Toggle coverage | 신호 0↔1 전이 | Verilator | ≥ 85% |
-| Branch coverage | if/case 분기 | Verilator | ≥ 90% |
-| FSM coverage | 상태/전이 커버 | Verilator/UVM | 100% states |
-| Functional coverage | 시나리오 커버 | cocotb-coverage/UVM | ≥ 90% |
+| Type | Measurement Target | Tool | Goal |
+|------|--------------------|------|------|
+| Line coverage | Code line execution | Verilator | >= 95% |
+| Toggle coverage | Signal 0<->1 transitions | Verilator | >= 85% |
+| Branch coverage | if/case branches | Verilator | >= 90% |
+| FSM coverage | State/transition coverage | Verilator/UVM | 100% states |
+| Functional coverage | Scenario coverage | cocotb-coverage/UVM | >= 90% |
 | Assertion coverage | SVA cover hits | SymbiYosys cover | All reachable |
 
-## 6. Coverage 리포트 형식
+## 6. Coverage Report Format
 
-`skills/regression-run/templates/regression-report.md` 참조.
+See `skills/regression-run/templates/regression-report.md`.
 
-### 주요 지표
+### Key Metrics
 
-| 지표 | 설명 | 목표 |
-|------|------|------|
+| Metric | Description | Goal |
+|--------|-------------|------|
 | Pass Rate | pass / total seeds | 100% |
-| Line Coverage | Verilator line | ≥ 95% |
-| Functional Coverage | cocotb-coverage | ≥ 90% |
-| Unique Failures | 고유 실패 시나리오 수 | 0 |
-| Regression Time | 전체 실행 시간 | — |
+| Line Coverage | Verilator line | >= 95% |
+| Functional Coverage | cocotb-coverage | >= 90% |
+| Unique Failures | Number of unique failure scenarios | 0 |
+| Regression Time | Total execution time | — |

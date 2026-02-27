@@ -1,80 +1,80 @@
 # AXI Protocol Rules and SVA Assertion Templates
 
-> 이 문서는 `protocol-verify` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/protocol-verify/SKILL.md`의 `<Steps>` 참조.
+> This document is the detailed reference for the `protocol-verify` skill.
+> For core rules, see `<Steps>` in `skills/protocol-verify/SKILL.md`.
 
-## 1. AXI4 채널 개요
+## 1. AXI4 Channel Overview
 
-| 채널 | 방향 (Master→Slave) | 용도 |
-|------|---------------------|------|
-| AW (Write Address) | M → S | 쓰기 주소 + 버스트 정보 |
-| W (Write Data) | M → S | 쓰기 데이터 + 스트로브 |
-| B (Write Response) | S → M | 쓰기 응답 |
-| AR (Read Address) | M → S | 읽기 주소 + 버스트 정보 |
-| R (Read Data) | S → M | 읽기 데이터 + 응답 |
+| Channel | Direction (Master→Slave) | Purpose |
+|---------|--------------------------|---------|
+| AW (Write Address) | M → S | Write address + burst info |
+| W (Write Data) | M → S | Write data + strobe |
+| B (Write Response) | S → M | Write response |
+| AR (Read Address) | M → S | Read address + burst info |
+| R (Read Data) | S → M | Read data + response |
 
-모든 채널은 **VALID/READY 핸드셰이크** 사용.
+All channels use **VALID/READY handshake**.
 
-## 2. AXI4 Protocol Rules (AMBA Spec 기준)
+## 2. AXI4 Protocol Rules (per AMBA Spec)
 
-### 2.1 Handshake Rules (모든 채널 공통)
+### 2.1 Handshake Rules (Common to All Channels)
 
-| Rule ID | 규칙 | SVA 패턴 |
-|---------|------|---------|
-| A3.2.1 | VALID는 READY 없이도 assert 가능 | — (제약 아님) |
-| A3.2.2 | VALID assert 후 READY 올 때까지 유지 | `valid && !ready \|=> valid` |
-| A3.2.1 | READY는 VALID 없이도 assert 가능 | — (제약 아님) |
-| — | VALID 중 payload stable | `valid && !ready \|=> $stable(payload)` |
+| Rule ID | Rule | SVA Pattern |
+|---------|------|-------------|
+| A3.2.1 | VALID can be asserted without READY | — (not a constraint) |
+| A3.2.2 | VALID must hold after assertion until READY | `valid && !ready \|=> valid` |
+| A3.2.1 | READY can be asserted without VALID | — (not a constraint) |
+| — | Payload stable while VALID | `valid && !ready \|=> $stable(payload)` |
 
 ### 2.2 Write Address Channel (AW)
 
-| 신호 (프로젝트 규칙) | 방향 | 설명 |
-|---------------------|------|------|
-| `i_awaddr` | M→S | 쓰기 시작 주소 |
-| `i_awlen` | M→S | 버스트 길이 (beats - 1) |
-| `i_awsize` | M→S | 비트/바이트 크기 (log2) |
-| `i_awburst` | M→S | 버스트 타입 (FIXED/INCR/WRAP) |
-| `i_awvalid` | M→S | 주소 유효 |
-| `o_awready` | S→M | 주소 수락 |
+| Signal (Project Convention) | Direction | Description |
+|-----------------------------|-----------|-------------|
+| `i_awaddr` | M→S | Write start address |
+| `i_awlen` | M→S | Burst length (beats - 1) |
+| `i_awsize` | M→S | Bit/byte size (log2) |
+| `i_awburst` | M→S | Burst type (FIXED/INCR/WRAP) |
+| `i_awvalid` | M→S | Address valid |
+| `o_awready` | S→M | Address accepted |
 
 ### 2.3 Write Data Channel (W)
 
-| 신호 | 방향 | 설명 |
-|------|------|------|
-| `i_wdata` | M→S | 쓰기 데이터 |
-| `i_wstrb` | M→S | 바이트 스트로브 |
-| `i_wlast` | M→S | 마지막 beat |
-| `i_wvalid` | M→S | 데이터 유효 |
-| `o_wready` | S→M | 데이터 수락 |
+| Signal | Direction | Description |
+|--------|-----------|-------------|
+| `i_wdata` | M→S | Write data |
+| `i_wstrb` | M→S | Byte strobe |
+| `i_wlast` | M→S | Last beat |
+| `i_wvalid` | M→S | Data valid |
+| `o_wready` | S→M | Data accepted |
 
 ### 2.4 Write Response Channel (B)
 
-| 신호 | 방향 | 설명 |
-|------|------|------|
-| `o_bresp` | S→M | 응답 (OKAY/SLVERR/DECERR) |
-| `o_bvalid` | S→M | 응답 유효 |
-| `i_bready` | M→S | 응답 수락 |
+| Signal | Direction | Description |
+|--------|-----------|-------------|
+| `o_bresp` | S→M | Response (OKAY/SLVERR/DECERR) |
+| `o_bvalid` | S→M | Response valid |
+| `i_bready` | M→S | Response accepted |
 
 ### 2.5 Read Address Channel (AR)
 
-| 신호 | 방향 | 설명 |
-|------|------|------|
-| `i_araddr` | M→S | 읽기 시작 주소 |
-| `i_arlen` | M→S | 버스트 길이 |
-| `i_arsize` | M→S | 비트/바이트 크기 |
-| `i_arburst` | M→S | 버스트 타입 |
-| `i_arvalid` | M→S | 주소 유효 |
-| `o_arready` | S→M | 주소 수락 |
+| Signal | Direction | Description |
+|--------|-----------|-------------|
+| `i_araddr` | M→S | Read start address |
+| `i_arlen` | M→S | Burst length |
+| `i_arsize` | M→S | Bit/byte size |
+| `i_arburst` | M→S | Burst type |
+| `i_arvalid` | M→S | Address valid |
+| `o_arready` | S→M | Address accepted |
 
 ### 2.6 Read Data Channel (R)
 
-| 신호 | 방향 | 설명 |
-|------|------|------|
-| `o_rdata` | S→M | 읽기 데이터 |
-| `o_rresp` | S→M | 응답 |
-| `o_rlast` | S→M | 마지막 beat |
-| `o_rvalid` | S→M | 데이터 유효 |
-| `i_rready` | M→S | 데이터 수락 |
+| Signal | Direction | Description |
+|--------|-----------|-------------|
+| `o_rdata` | S→M | Read data |
+| `o_rresp` | S→M | Response |
+| `o_rlast` | S→M | Last beat |
+| `o_rvalid` | S→M | Data valid |
+| `i_rready` | M→S | Data accepted |
 
 ## 3. SVA Assertion Templates per Channel
 
@@ -189,49 +189,49 @@ a_r_last_stable: assert property (
 ) else $error("[%m] RLAST changed");
 ```
 
-## 4. AXI4-Lite 차이점
+## 4. AXI4-Lite Differences
 
-AXI4-Lite는 AXI4의 간소화 버전:
+AXI4-Lite is a simplified version of AXI4:
 
-| 항목 | AXI4 | AXI4-Lite |
+| Item | AXI4 | AXI4-Lite |
 |------|------|-----------|
-| 버스트 | AWLEN/ARLEN 지원 | 단일 전송만 (len=0) |
-| 데이터 폭 | 설정 가능 | 32 또는 64 bit |
-| WSTRB | 전체 지원 | 전체 지원 |
-| WLAST | 필요 | 불필요 (항상 1) |
-| ID | 지원 | 미지원 |
-| SIZE | 지원 | 데이터 폭 고정 |
+| Burst | AWLEN/ARLEN supported | Single transfer only (len=0) |
+| Data width | Configurable | 32 or 64 bit |
+| WSTRB | Fully supported | Fully supported |
+| WLAST | Required | Not required (always 1) |
+| ID | Supported | Not supported |
+| SIZE | Supported | Fixed to data width |
 
 ## 5. Burst Type Rules
 
-| Type | AxBURST | 동작 | 제약 |
-|------|---------|------|------|
-| FIXED | 2'b00 | 같은 주소 반복 | len ≤ 15 |
-| INCR | 2'b01 | 주소 증가 | len ≤ 255 |
-| WRAP | 2'b10 | 주소 감싸기 | len ∈ {1,3,7,15}, aligned |
+| Type | AxBURST | Behavior | Constraint |
+|------|---------|----------|------------|
+| FIXED | 2'b00 | Same address repeated | len ≤ 15 |
+| INCR | 2'b01 | Address incrementing | len ≤ 255 |
+| WRAP | 2'b10 | Address wrapping | len ∈ {1,3,7,15}, aligned |
 
 ## 6. Response Codes
 
-| Code | RESP | 의미 |
-|------|------|------|
-| OKAY | 2'b00 | 정상 완료 |
-| EXOKAY | 2'b01 | 독점 접근 성공 |
-| SLVERR | 2'b10 | Slave 에러 |
-| DECERR | 2'b11 | Decode 에러 (주소 범위 초과) |
+| Code | RESP | Meaning |
+|------|------|---------|
+| OKAY | 2'b00 | Normal completion |
+| EXOKAY | 2'b01 | Exclusive access success |
+| SLVERR | 2'b10 | Slave error |
+| DECERR | 2'b11 | Decode error (address out of range) |
 
 ## 7. APB Protocol Rules
 
-APB(Advanced Peripheral Bus)는 간단한 레지스터 접근용:
+APB (Advanced Peripheral Bus) is for simple register access:
 
-| 신호 | 방향 | 설명 |
-|------|------|------|
-| `i_psel` | M→S | Slave 선택 |
+| Signal | Direction | Description |
+|--------|-----------|-------------|
+| `i_psel` | M→S | Slave select |
 | `i_penable` | M→S | Transfer enable |
-| `i_pwrite` | M→S | 쓰기(1)/읽기(0) |
-| `i_paddr` | M→S | 주소 |
-| `i_pwdata` | M→S | 쓰기 데이터 |
-| `o_prdata` | S→M | 읽기 데이터 |
-| `o_pready` | S→M | Transfer 완료 |
-| `o_pslverr` | S→M | 에러 응답 |
+| `i_pwrite` | M→S | Write(1)/Read(0) |
+| `i_paddr` | M→S | Address |
+| `i_pwdata` | M→S | Write data |
+| `o_prdata` | S→M | Read data |
+| `o_pready` | S→M | Transfer complete |
+| `o_pslverr` | S→M | Error response |
 
-APB 프로토콜 2-phase: SETUP (psel=1, penable=0) → ACCESS (psel=1, penable=1, wait pready).
+APB protocol 2-phase: SETUP (psel=1, penable=0) → ACCESS (psel=1, penable=1, wait pready).

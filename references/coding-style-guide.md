@@ -1,35 +1,35 @@
 # SystemVerilog Coding Style Guide — Detailed Reference
 
-> 이 문서는 `systemverilog` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/systemverilog/SKILL.md`의 `<Steps>` 참조.
+> This document is the detailed reference for the `systemverilog` skill.
+> For core rules, see `<Steps>` in `skills/systemverilog/SKILL.md`.
 
-## 1. 명명 규칙 상세
+## 1. Naming Convention Details
 
-### 1.1 식별자 규칙 종합표
+### 1.1 Identifier Rules Summary Table
 
-| 대상 | 스타일 | Prefix/Suffix | 예시 | 금지 |
-|------|--------|--------------|------|------|
-| 모듈 | `snake_case` | — | `axi_lite_slave` | `AXI_Lite_Slave` |
-| 인터페이스 | `snake_case` | `_if` suffix | `axi_if` | `AXI_IF` |
-| 패키지 | `snake_case` | `_pkg` suffix | `cabac_pkg` | `CabacPkg` |
-| Parameter (외부) | `ALL_CAPS` | — | `DATA_WIDTH` | `DataWidth` |
-| Localparam (내부) | `ALL_CAPS` | `L_` prefix | `L_ADDR_BITS` | `AddrBits` |
+| Target | Style | Prefix/Suffix | Example | Forbidden |
+|--------|-------|---------------|---------|-----------|
+| Module | `snake_case` | — | `axi_lite_slave` | `AXI_Lite_Slave` |
+| Interface | `snake_case` | `_if` suffix | `axi_if` | `AXI_IF` |
+| Package | `snake_case` | `_pkg` suffix | `cabac_pkg` | `CabacPkg` |
+| Parameter (external) | `ALL_CAPS` | — | `DATA_WIDTH` | `DataWidth` |
+| Localparam (internal) | `ALL_CAPS` | `L_` prefix | `L_ADDR_BITS` | `AddrBits` |
 | Typedef struct | `snake_case` | `_t` suffix | `bus_req_t` | `BusReq` |
 | Typedef enum type | `snake_case` | `_e` suffix | `state_e` | `StateType` |
-| Enum 값 | `ALL_CAPS` | — | `ST_IDLE` | `StIdle` |
-| `define 매크로 | `ALL_CAPS` | — | `MAX_DEPTH` | `maxDepth` |
-| 인스턴스 | `snake_case` | `u_` prefix | `u_fifo` | `fifo_inst` |
-| Generate 블록 | `snake_case` | `gen_` prefix | `gen_pipeline` | `GEN_PIPE` |
-| 내부 신호 | `snake_case` | — | `write_en` | `writeEn` |
-| 입력 포트 | `snake_case` | `i_` prefix | `i_data` | `data_i` |
-| 출력 포트 | `snake_case` | `o_` prefix | `o_valid` | `valid_o` |
-| 양방향 포트 | `snake_case` | `io_` prefix | `io_sda` | `sda_io` |
-| 클럭 | `snake_case` | — | `sys_clk`, `clk` | `clk_i` |
-| 리셋 | `snake_case` | `_n` suffix | `sys_rst_n`, `rst_n` | `rst_ni` |
+| Enum value | `ALL_CAPS` | — | `ST_IDLE` | `StIdle` |
+| `define macro | `ALL_CAPS` | — | `MAX_DEPTH` | `maxDepth` |
+| Instance | `snake_case` | `u_` prefix | `u_fifo` | `fifo_inst` |
+| Generate block | `snake_case` | `gen_` prefix | `gen_pipeline` | `GEN_PIPE` |
+| Internal signal | `snake_case` | — | `write_en` | `writeEn` |
+| Input port | `snake_case` | `i_` prefix | `i_data` | `data_i` |
+| Output port | `snake_case` | `o_` prefix | `o_valid` | `valid_o` |
+| Bidirectional port | `snake_case` | `io_` prefix | `io_sda` | `sda_io` |
+| Clock | `snake_case` | — | `sys_clk`, `clk` | `clk_i` |
+| Reset | `snake_case` | `_n` suffix | `sys_rst_n`, `rst_n` | `rst_ni` |
 
-### 1.2 클럭/리셋 예외 규칙
+### 1.2 Clock/Reset Exception Rules
 
-클럭과 리셋 포트는 `i_` prefix를 사용하지 **않는다**:
+Clock and reset ports do **not** use the `i_` prefix:
 ```systemverilog
 // CORRECT
 input logic sys_clk,
@@ -48,35 +48,35 @@ input logic clk_i,        // suffix style
 input logic rst_ni,       // suffix style
 ```
 
-### 1.3 파이프라인 스테이지 신호
+### 1.3 Pipeline Stage Signals
 
-| 패턴 | 용도 | 예시 |
-|------|------|------|
+| Pattern | Usage | Example |
+|---------|-------|---------|
 | `{name}_d` | combinational (next value) | `state_d`, `count_d` |
 | `{name}_q` | registered (current value) | `state_q`, `count_q` |
 | `stage{N}_{name}` | pipeline register | `stage1_data`, `stage2_valid` |
 
-## 2. 타입 사용 규칙
+## 2. Type Usage Rules
 
-### 2.1 필수 타입
+### 2.1 Required Types
 
 ```systemverilog
-// 항상 logic 사용
+// Always use logic
 logic [7:0] data;          // NOT: reg [7:0] data; wire [7:0] data;
 logic       valid;
 
-// signed 연산 시 명시적 signed
+// Explicit signed for signed arithmetic
 logic signed [15:0] coefficient;
 
-// 비트폭이 있는 parameter는 int unsigned
+// Use int unsigned for parameters with bit width
 parameter int unsigned DATA_WIDTH = 32;
 parameter int unsigned DEPTH      = 16;
 ```
 
-### 2.2 Struct/Enum 패턴
+### 2.2 Struct/Enum Patterns
 
 ```systemverilog
-// 패키지에 정의
+// Define in package
 package my_module_pkg;
   typedef struct packed {
     logic [31:0] addr;
@@ -93,7 +93,7 @@ package my_module_pkg;
 endpackage
 ```
 
-### 2.3 금지 패턴
+### 2.3 Forbidden Patterns
 
 ```systemverilog
 // FORBIDDEN
@@ -103,7 +103,7 @@ integer    count;          // use int unsigned
 real       delay_val;      // no real in synth code
 ```
 
-## 3. 모듈 구조 표준 순서
+## 3. Module Structure Standard Order
 
 ```systemverilog
 module my_module
@@ -167,19 +167,19 @@ module my_module
 endmodule
 ```
 
-## 4. always 블록 규칙
+## 4. always Block Rules
 
-| 블록 | 용도 | 할당 | sensitivity |
-|------|------|------|-------------|
+| Block | Usage | Assignment | sensitivity |
+|-------|-------|------------|-------------|
 | `always_ff` | Sequential | `<=` (non-blocking) | `@(posedge clk or negedge rst_n)` |
-| `always_comb` | Combinational | `=` (blocking) | 자동 |
-| `always_latch` | **금지** | — | — |
-| `always @(*)` | **금지** | — | `always_comb` 사용 |
+| `always_comb` | Combinational | `=` (blocking) | Automatic |
+| `always_latch` | **Forbidden** | — | — |
+| `always @(*)` | **Forbidden** | — | Use `always_comb` |
 
-## 5. case 문 규칙
+## 5. case Statement Rules
 
 ```systemverilog
-// REQUIRED: 모든 case에 default
+// REQUIRED: default for every case
 always_comb begin
   unique case (state_q)
     ST_IDLE:  state_d = i_valid ? ST_RUN : ST_IDLE;
@@ -190,11 +190,11 @@ always_comb begin
 end
 ```
 
-- `unique case`: 모든 값이 커버됨을 보장 (합성 최적화 힌트)
-- `priority case`: 우선순위 인코딩이 필요한 경우
-- plain `case`: 특별한 의미 없을 때 (default 필수는 동일)
+- `unique case`: Guarantees all values are covered (synthesis optimization hint)
+- `priority case`: When priority encoding is needed
+- plain `case`: When no special semantics needed (default is still required)
 
-## 6. 포트 선언 스타일
+## 6. Port Declaration Style
 
 ```systemverilog
 // ANSI style (REQUIRED)

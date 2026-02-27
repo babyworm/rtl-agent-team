@@ -1,403 +1,403 @@
 <!-- RTL-AGENT-TEAM:START -->
-# RTL Agent Team - 플러그인 지침
+# RTL Agent Team - Plugin Instructions
 
-## 스킬 호출 규칙
+## Skill Invocation Rules
 
-RTL/HDL/FPGA/ASIC 관련 작업이 감지되면 이 플러그인의 전문 스킬을 사용한다.
+When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized skills.
 
-| 패턴 감지 | 호출할 스킬 |
+| Pattern Detected | Skill to Invoke |
 |-----------|------------|
-| **--- 전체 파이프라인 ---** | |
-| "RTL 설계", "verilog", "FPGA", "ASIC", "칩 설계", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
-| "setup", "초기화", "프로젝트 시작", "init", "docker image", "EDA 도커" | `/rtl-agent-team:rtl-setup` |
+| **--- Full Pipeline ---** | |
+| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
+| "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` |
 | **--- Phase 1: Research ---** | |
-| "스펙 분석", "요구사항", "논문 조사", "research" | `/rtl-agent-team:research-analyze` |
-| "코덱 자문", "H.264", "H.265", "도메인 전문가" | `/rtl-agent-team:domain-consult` |
+| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:research-analyze` |
+| "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` |
 | **--- Phase 2: Architecture ---** | |
-| "아키텍처 설계" (RTL 컨텍스트) | `/rtl-agent-team:arch-design` |
-| "아키텍처 리뷰", "설계 리뷰" | `/rtl-agent-team:arch-review` |
-| "reference model", "레퍼런스 모델", "C 모델" | `/rtl-agent-team:ref-model` |
-| "BFM", "bus functional model", "SystemC 모델" | `/rtl-agent-team:bfm-develop` |
+| "architecture design" (RTL context) | `/rtl-agent-team:arch-design` |
+| "architecture review", "design review" | `/rtl-agent-team:arch-review` |
+| "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
+| "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
 | **--- Phase 3: μArch ---** | |
-| "마이크로아키텍처", "μArch", "uarch", "파이프라인 설계" | `/rtl-agent-team:uarch-design` |
-| **--- 코딩 컨벤션 (확장자/Phase 자동 적용) ---** | |
-| `.sv`, `.svh`, `.v`, `.vh` RTL 코드 생성 | `/rtl-agent-team:systemverilog` |
-| `.sva`, SVA bind 파일, formal assertion | `/rtl-agent-team:systemverilog-assertion` |
-| UVM testbench, agent, sequence 생성 | `/rtl-agent-team:uvm` |
+| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:uarch-design` |
+| **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
+| `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
+| `.sva`, SVA bind files, formal assertion | `/rtl-agent-team:systemverilog-assertion` |
+| UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
 | **--- Phase 4: RTL ---** | |
-| "버그 수정", "RTL 수정", "bug fix", "RTL 버그", "기능 오류" | `/rtl-agent-team:rtl-bugfix` |
-| "RTL 코딩", "모듈 구현", "SV 작성" | `/rtl-agent-team:rtl-code` |
-| "리팩토링", "RTL 리팩토링", "코드 정리" (RTL 컨텍스트) | `/rtl-agent-team:rtl-refactor` |
-| "문서화", "RTL 문서" | `/rtl-agent-team:rtl-document` |
-| "IP 인스턴스", "IP 통합", "서브모듈 연결" | `/rtl-agent-team:ip-instantiate` |
-| "IP-XACT", "ipxact", "레지스터 맵 생성" | `/rtl-agent-team:ipxact-gen` |
-| "lint", "린트" (RTL 컨텍스트) | `/rtl-agent-team:lint-check` |
-| "합성", "synthesis", "yosys", "SDC" | `/rtl-agent-team:synth-check` |
+| "bug fix", "RTL fix", "bug fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-bugfix` |
+| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-code` |
+| "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-refactor` |
+| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
+| "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:ip-instantiate` |
+| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:ipxact-gen` |
+| "lint", "lint check" (RTL context) | `/rtl-agent-team:lint-check` |
+| "synthesis", "synthesis", "yosys", "SDC" | `/rtl-agent-team:synth-check` |
 | **--- Phase 5: Verify ---** | |
-| "시뮬레이션", "기능 검증", "testbench", "cocotb" | `/rtl-agent-team:func-verify` |
-| "SV 유닛 테스트", "단위 테스트" (RTL 컨텍스트) | `/rtl-agent-team:sv-unit-test` |
-| "UVM", "UVM 검증", "시퀀스", "에이전트" (UVM 컨텍스트) | `/rtl-agent-team:uvm-verify` |
-| "성능 검증", "throughput", "latency 측정" | `/rtl-agent-team:perf-verify` |
+| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:func-verify` |
+| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:sv-unit-test` |
+| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:uvm-verify` |
+| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:perf-verify` |
 | "formal", "SVA", "assertion" | `/rtl-agent-team:sva-check` |
 | "CDC", "clock domain" | `/rtl-agent-team:cdc-verify` |
-| "AXI", "APB", "AHB", "프로토콜" (RTL 컨텍스트) | `/rtl-agent-team:protocol-verify` |
-| "커버리지", "coverage" | `/rtl-agent-team:coverage-analyze` |
-| **--- 전문 리뷰 ---** | |
-| "CDC 리뷰", "CDC 설계 리뷰", "동기화 전략 리뷰" | `cdc-reviewer` 에이전트 직접 위임 |
-| "프로토콜 리뷰", "AXI 설계 리뷰", "인터페이스 리뷰" | `protocol-reviewer` 에이전트 직접 위임 |
-| "formal 리뷰", "SVA 리뷰", "assertion 품질" | `formal-reviewer` 에이전트 직접 위임 |
-| "전력 분석", "power analysis", "clock gating 리뷰" | `power-analyzer` 에이전트 직접 위임 |
-| "합성 리뷰", "synthesis review", "면적/타이밍 리뷰" | `synthesis-reviewer` 에이전트 직접 위임 |
-| "UVM 리뷰", "testbench 리뷰", "TB 품질" | `uvm-reviewer` 에이전트 직접 위임 |
-| "요구사항 추적", "traceability", "feature coverage", "스펙 검증 상태" | `requirement-tracer` 에이전트 직접 위임 |
-| "cocotb 리뷰", "cocotb 품질", "Python TB 리뷰" | `cocotb-reviewer` 에이전트 직접 위임 |
-| "레퍼런스 모델 리뷰", "ref model 검증", "golden model 리뷰" | `ref-model-reviewer` 에이전트 직접 위임 |
-| "리그레션 분석", "flaky test", "시드 분석", "커버리지 수렴" | `regression-analyzer` 에이전트 직접 위임 |
-| "등가 검증", "equivalence", "RTL vs netlist" | `equivalence-checker` 에이전트 직접 위임 |
-| "통합 검증", "integration", "모듈 연결 확인", "top-level" | `integration-verifier` 에이전트 직접 위임 |
-| "보안 리뷰", "security", "side-channel", "fault injection" | `security-reviewer` 에이전트 직접 위임 |
-| **--- EDA 전문가 ---** | |
-| "DFT", "scan chain", "BIST", "JTAG", "testability" | `dft-designer` 에이전트 직접 위임 |
-| "클럭 아키텍처", "clock tree", "PLL", "clock gating 리뷰" | `clock-architect` 에이전트 직접 위임 |
+| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:protocol-verify` |
+| "coverage", "coverage" | `/rtl-agent-team:coverage-analyze` |
+| **--- Expert Reviews ---** | |
+| "CDC review", "CDC design review", "synchronization strategy review" | Delegate directly to `cdc-reviewer` agent |
+| "protocol review", "AXI design review", "interface review" | Delegate directly to `protocol-reviewer` agent |
+| "formal review", "SVA review", "assertion quality" | Delegate directly to `formal-reviewer` agent |
+| "power analysis", "power analysis", "clock gating review" | Delegate directly to `power-analyzer` agent |
+| "synthesis review", "synthesis review", "area/timing review" | Delegate directly to `synthesis-reviewer` agent |
+| "UVM review", "testbench review", "TB quality" | Delegate directly to `uvm-reviewer` agent |
+| "requirement tracing", "traceability", "feature coverage", "spec verification status" | Delegate directly to `requirement-tracer` agent |
+| "cocotb review", "cocotb quality", "Python TB review" | Delegate directly to `cocotb-reviewer` agent |
+| "reference model review", "ref model verification", "golden model review" | Delegate directly to `ref-model-reviewer` agent |
+| "regression analysis", "flaky test", "seed analysis", "coverage convergence" | Delegate directly to `regression-analyzer` agent |
+| "equivalence checking", "equivalence", "RTL vs netlist" | Delegate directly to `equivalence-checker` agent |
+| "integration verification", "integration", "module connection check", "top-level" | Delegate directly to `integration-verifier` agent |
+| "security review", "security", "side-channel", "fault injection" | Delegate directly to `security-reviewer` agent |
+| **--- EDA Experts ---** | |
+| "DFT", "scan chain", "BIST", "JTAG", "testability" | Delegate directly to `dft-designer` agent |
+| "clock architecture", "clock tree", "PLL", "clock gating review" | Delegate directly to `clock-architect` agent |
 | **--- Phase 6: Design Note ---** | |
-| "설계 리뷰", "design review", "Phase 6", "design note", "코드 리뷰 문서화" | `/rtl-agent-team:design-review-phase` |
-| **--- Phase 7: Exploration (선택적) ---** | |
-| "자유 탐색", "exploration", "Phase 7", "개선 탐색", "실험적 개선" | `/rtl-agent-team:design-review-phase` (탐색 모드) |
-| **--- 기타 검증 ---** | |
-| "regression", "리그레션", "다중 시드" | `/rtl-agent-team:regression-run` |
-| "conformance", "적합성 테스트", "골든 비교" | `/rtl-agent-team:conformance-test` |
-| "버그 재현", "bug repro", "파형 디버그" | `/rtl-agent-team:bug-repro` |
-| "모델 일관성", "RTL-모델 비교", "model consistency" | `/rtl-agent-team:model-consistency` |
+| "design review", "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:design-review-phase` |
+| **--- Phase 7: Exploration (optional) ---** | |
+| "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:design-review-phase` (exploration mode) |
+| **--- Other Verification ---** | |
+| "regression", "regression", "multi-seed" | `/rtl-agent-team:regression-run` |
+| "conformance", "conformance test", "golden comparison" | `/rtl-agent-team:conformance-test` |
+| "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:bug-repro` |
+| "model consistency", "RTL-model comparison", "model consistency" | `/rtl-agent-team:model-consistency` |
 
-## IMPORTANT — Phase 1 요구사항 명확화 (Proactive Requirement Clarification)
+## IMPORTANT — Phase 1 Proactive Requirement Clarification
 
-> **Phase 1에서 사용자 요청이 모호하거나 불완전하면, AskUserQuestion을 적극적으로 사용하여 요구사항을 명확히 한다.**
+> **If the user's request is ambiguous or incomplete in Phase 1, proactively use AskUserQuestion to clarify requirements.**
 >
-> Phase 1의 목적은 완전하고 명확한 요구사항을 확보하는 것이다.
-> 모호한 상태로 Phase 2에 진입하면, 아키텍처 전체를 재설계해야 할 수 있다.
+> The purpose of Phase 1 is to secure complete and clear requirements.
+> Entering Phase 2 in an ambiguous state may require redesigning the entire architecture.
 >
-> **AskUserQuestion을 사용해야 하는 경우:**
-> - 타겟 해상도/프레임레이트/코덱이 명시되지 않은 경우
-> - 인터페이스 프로토콜(AXI/APB/custom)이 지정되지 않은 경우
-> - 클럭 주파수, 타이밍 제약이 불명확한 경우
-> - 기능 범위가 모호한 경우 (인코더/디코더/양쪽, 지원 프로파일/레벨 등)
-> - spec-analyst가 `[AMBIGUITY]` 또는 `[CONFLICT]`를 플래그한 경우
-> - 도메인 전문가 간 해석이 충돌하는 경우
+> **When to use AskUserQuestion:**
+> - When target resolution/frame rate/codec is not specified
+> - When interface protocol (AXI/APB/custom) is not specified
+> - When clock frequency or timing constraints are unclear
+> - When functional scope is ambiguous (encoder/decoder/both, supported profiles/levels, etc.)
+> - When spec-analyst flags `[AMBIGUITY]` or `[CONFLICT]`
+> - When interpretations conflict between domain experts
 >
-> **AskUserQuestion 사용하지 않는 경우:**
-> - 사용자가 상세한 스펙 문서를 이미 제공한 경우
-> - 표준에서 유일한 해석이 존재하는 경우
-> - 설계 관례로 결정 가능한 사항 (예: active-low 리셋)
+> **When NOT to use AskUserQuestion:**
+> - When the user has already provided a detailed spec document
+> - When a standard has only one valid interpretation
+> - When the matter can be decided by design convention (e.g., active-low reset)
 >
-> **흐름:**
+> **Flow:**
 > ```
-> 사용자 요청 수신 → 요구사항 완전성 판단 → 부족하면 AskUserQuestion
-> → 답변 반영 → spec-analyst/도메인 전문가 위임 → [AMBIGUITY] 발견 시 재질문
-> → 요구사항 확정 → Phase 2 진행
+> Receive user request → Assess requirement completeness → AskUserQuestion if insufficient
+> → Incorporate answers → Delegate to spec-analyst/domain expert → Re-ask if [AMBIGUITY] found
+> → Finalize requirements → Proceed to Phase 2
 > ```
 
-## 절대 규칙
+## Absolute Rules
 
-1. 사양서 없이 RTL 코딩 시작 금지 (spec-analyst 먼저)
-2. Reference Model 없이 Testbench 작성 금지
-3. RTL 코딩 없이 합성 실행 금지
-4. Lint 통과 없이 Formal 검증 실행 금지
-5. **RTL 수정 후 기능 검증 없이 완료 선언 금지** (lint만으로는 불충분)
-6. **Phase 4 완료 시 모듈별 unit test 없이 Phase 5 진행 금지** (tb/unit/tb_{module}.sv 필수)
-7. **Phase 5 FAIL 시 최대 2회 Phase 4 feedback loop 허용, 초과 시 user 에스컬레이션**
-8. **Phase 5 PASS 없이 Phase 6 진행 금지** (final-compliance.md verdict=PASS 필수)
-9. **Phase 7은 절대 규칙에서 면제된다** — 파이프라인 Gate 없이 자유 탐색 허용
+1. Do not start RTL coding without a specification (spec-analyst first)
+2. Do not write a Testbench without a Reference Model
+3. Do not run synthesis without RTL code
+4. Do not run Formal verification without passing Lint
+5. **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient)
+6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (tb/unit/tb_{module}.sv required)
+7. **When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded**
+8. **Do not proceed to Phase 6 without Phase 5 PASS** (final-compliance.md verdict=PASS required)
+9. **Phase 7 is exempt from absolute rules** — free exploration allowed without pipeline Gate
 
-## IMPORTANT — RTL 수정 후 필수 검증 (Mandatory Verification After RTL Changes)
+## IMPORTANT — Mandatory Verification After RTL Changes
 
-> **이 규칙은 .sv/.svh/.v/.vh 파일을 수정하는 모든 작업에 적용된다.**
+> **This rule applies to all tasks that modify .sv/.svh/.v/.vh files.**
 >
-> **lint 통과 ≠ 기능 정확성 검증. lint는 필요 조건이지 충분 조건이 아니다.**
+> **Passing lint does NOT equal functional correctness verification. Lint is a necessary condition, not a sufficient one.**
 >
-> RTL 파일 수정 시 다음 4단계를 반드시 완료해야 한다:
+> The following 4 steps must be completed when modifying RTL files:
 >
-> | 단계 | 내용 | 필수 여부 |
+> | Step | Description | Required |
 > |------|------|----------|
-> | 1. 수정 | RTL 코드 변경 | 필수 |
-> | 2. Lint | `verilator --lint-only -Wall` 통과 | 필수 |
-> | 3. TB | 수정된 모듈의 테스트벤치 생성 또는 업데이트 | **필수** |
-> | 4. 기능 검증 | cocotb/verilator 시뮬레이션 실행 및 PASS | **필수** |
+> | 1. Modify | Change RTL code | Required |
+> | 2. Lint | Pass `verilator --lint-only -Wall` | Required |
+> | 3. TB | Create or update testbench for the modified module | **Required** |
+> | 4. Functional Verification | Run cocotb/verilator simulation and PASS | **Required** |
 >
-> **Hook 기반 강제 메커니즘:**
-> - `PostToolUse:Edit/Write` 훅이 .sv 파일 수정을 자동 추적
-> - `Stop` 훅이 기능 검증 없이 세션 종료 시 차단
-> - 검증 완료 시 `touch .rtl-agent-team/state/rtl-verify-done`으로 게이트 해제
-> - 검증이 불필요한 경우 (주석만 변경 등): `touch .rtl-agent-team/state/rtl-verify-waiver`
+> **Hook-based enforcement mechanism:**
+> - `PostToolUse:Edit/Write` hook automatically tracks .sv file modifications
+> - `Stop` hook blocks session termination without functional verification
+> - Upon verification completion, release the gate with `touch .rtl-agent-team/state/rtl-verify-done`
+> - When verification is unnecessary (e.g., comment-only changes): `touch .rtl-agent-team/state/rtl-verify-waiver`
 >
-> **Anti-pattern (금지):**
+> **Anti-pattern (prohibited):**
 > ```
-> RTL 수정 → lint 통과 → "완료" ← 이것은 완료가 아님
-> ```
->
-> **올바른 흐름:**
-> ```
-> RTL 수정 → lint 통과 → TB 생성/업데이트 → 시뮬레이션 PASS → "완료"
+> RTL modify → lint pass → "done" ← This is NOT done
 > ```
 >
-> | 5. Phase 5 연동 | Phase 5 FAIL 시 자동 feedback → rtl-bugfix → 수정 → 재검증 (max 2회) | 자동 |
+> **Correct flow:**
+> ```
+> RTL modify → lint pass → TB create/update → simulation PASS → "done"
+> ```
 >
-> 이 규칙을 스킬로 구조화한 것이 `/rtl-agent-team:rtl-bugfix`이다.
+> | 5. Phase 5 Integration | On Phase 5 FAIL, automatic feedback → rtl-bugfix → fix → re-verify (max 2 times) | Automatic |
+>
+> This rule is structured as the `/rtl-agent-team:rtl-bugfix` skill.
 
-## IMPORTANT — 상위 스펙 준수 원칙 (Hierarchical Spec Compliance)
+## IMPORTANT — Hierarchical Spec Compliance
 
-> **이 원칙은 모든 Phase, 모든 에이전트, 모든 리뷰에 적용되는 최상위 규칙이다.**
+> **This principle is the top-level rule that applies to all Phases, all agents, and all reviews.**
 >
-> **하위 단계는 상위 단계의 스펙을 절대 위반할 수 없다.**
+> **Lower stages must never violate the spec of upper stages.**
 >
 > ```
-> 요구사항(Spec) → Architecture → μArch → RTL → Verification
->     ↑ 각 단계는 왼쪽 단계의 결정을 반드시 준수한다
+> Requirements(Spec) → Architecture → μArch → RTL → Verification
+>     ↑ Each stage must comply with the decisions of the stage to its left
 > ```
 >
-> 1. **Architecture는 Spec의 요구 기능을 모두 구현해야 한다.**
->    - 아키텍처 편의를 위해 요구 기능을 삭제하거나 축소하는 것은 금지
->    - 기능 변경이 필요하면 Spec 단계로 되돌아가 사용자 승인을 받아야 한다
+> 1. **Architecture must implement all required functions from the Spec.**
+>    - Deleting or reducing required functions for architectural convenience is prohibited
+>    - If functional changes are needed, return to the Spec stage and obtain user approval
 >
-> 2. **μArch는 Architecture의 블록 경계와 인터페이스를 준수해야 한다.**
->    - 타이밍/설계 편의를 위해 블록 경계를 임의로 변경하는 것은 금지
->    - 블록 분할 변경이 필요하면 Architecture 단계로 되돌아가야 한다
+> 2. **μArch must comply with Architecture's block boundaries and interfaces.**
+>    - Arbitrarily changing block boundaries for timing/design convenience is prohibited
+>    - If block partitioning changes are needed, return to the Architecture stage
 >
-> 3. **RTL은 μArch의 설계를 충실히 구현해야 한다.**
->    - 구현 편의를 위해 기능을 생략하거나 인터페이스를 변경하는 것은 금지
+> 3. **RTL must faithfully implement the μArch design.**
+>    - Omitting functions or changing interfaces for implementation convenience is prohibited
 >
-> 4. **Verification은 원래 Spec의 요구사항 기준으로 검증한다.**
->    - 테스트가 RTL에 맞춰져서는 안 된다 — Spec에 맞춰야 한다
+> 4. **Verification must validate against the original Spec requirements.**
+>    - Tests must not be tailored to the RTL — they must be tailored to the Spec
 >
-> **설계 우선순위 (RTL 품질 판단 기준):**
+> **Design priorities (RTL quality criteria):**
 >
-> | 우선순위 | 항목 | 설명 |
+> | Priority | Item | Description |
 > |---------|------|------|
-> | 1 (최고) | **기능 정확성** | Spec의 모든 요구 기능이 정확히 동작하는가? |
-> | 2 | **인터페이스 준수** | 포트, 프로토콜, 타이밍 인터페이스가 Architecture와 일치하는가? |
-> | 3 | **타이밍/성능** | throughput, latency, 클럭 주파수 목표를 달성하는가? |
-> | 4 | **면적/전력** | 리소스 사용이 합리적인가? |
+> | 1 (Highest) | **Functional Correctness** | Do all required functions from the Spec work correctly? |
+> | 2 | **Interface Compliance** | Do ports, protocols, and timing interfaces match the Architecture? |
+> | 3 | **Timing/Performance** | Are throughput, latency, and clock frequency targets met? |
+> | 4 | **Area/Power** | Is resource usage reasonable? |
 >
-> **Phase Gate 리뷰 시 반드시 확인할 사항:**
-> - 상위 스펙 대비 기능 누락 여부 (Feature Coverage Checklist)
-> - 상위 스펙 대비 인터페이스 변경 여부
-> - 변경이 있다면: 정당한 사유 + 사용자 승인 여부
+> **Items to verify during Phase Gate reviews:**
+> - Whether any functions are missing compared to the upper spec (Feature Coverage Checklist)
+> - Whether any interfaces have changed compared to the upper spec
+> - If changes exist: valid justification + user approval status
 
-## 6-Phase 설계 파이프라인 (+Phase 7 선택적 탐색)
+## 6-Phase Design Pipeline (+Phase 7 Optional Exploration)
 
-각 Phase의 설계 산출물은 `docs/phase-N-*/`에 저장되며, 다음 Phase의 입력(가이드)으로 사용된다.
-상위 스펙 준수 여부 검증 결과(verdict)는 `reviews/phase-N-*/`에 저장된다.
+Design artifacts for each Phase are stored in `docs/phase-N-*/` and serve as input (guides) for the next Phase.
+Upper spec compliance verification results (verdict) are stored in `reviews/phase-N-*/`.
 
 ```
-Phase 1: Research    → docs/phase-1-research/      (자연어 스펙, 도메인 지식)
-Phase 2: Arch/Ref    → docs/phase-2-architecture/   (블록 아키텍처) + ref_model/ (C++ 골든)
-Phase 3: μArch/TLM   → docs/phase-3-uarch/         (마이크로아키텍처) + BFM
-Phase 4: RTL+Unit    → rtl/src/ + tb/unit/ + docs/phase-4-rtl/ (모듈 설계문서, 유닛 설계)
-Phase 5: Verify      → tb/formal/ + docs/phase-5-verify/ (검증 리포트, lint, 합성추정)
-Phase 6: Design Note → docs/phase-6-design-note/    (설계문서, 개선 권고)
-Phase 7: Exploration → docs/phase-7-exploration/    (자유 탐색, 파이프라인 규칙 미적용)
+Phase 1: Research    → docs/phase-1-research/      (natural language spec, domain knowledge)
+Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + ref_model/ (C++ golden)
+Phase 3: μArch/TLM   → docs/phase-3-uarch/         (microarchitecture) + BFM
+Phase 4: RTL+Unit    → rtl/src/ + tb/unit/ + docs/phase-4-rtl/ (module design docs, unit design)
+Phase 5: Verify      → tb/formal/ + docs/phase-5-verify/ (verification reports, lint, synthesis estimates)
+Phase 6: Design Note → docs/phase-6-design-note/    (design documents, improvement recommendations)
+Phase 7: Exploration → docs/phase-7-exploration/    (free exploration, pipeline rules not applied)
 ```
 
-> **Phase 7은 선택적 단계이다.** 파이프라인 절대 규칙(Phase Gate)이 적용되지 않으며,
-> 기존 설계의 개선점을 자유롭게 탐색하는 과정이다.
+> **Phase 7 is an optional stage.** Pipeline absolute rules (Phase Gate) do not apply,
+> and it is a process for freely exploring improvements to the existing design.
 
-## 위임 규칙
+## Delegation Rules
 
-RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd` 파일을 다루거나 EDA 도구를 사용하는 작업에 적용된다.
+RTL tasks must be delegated to specialized agents. This applies to tasks that handle `.sv`, `.v`, `.vhd` files or use EDA tools.
 
-| 작업 유형 | 위임 대상 에이전트 | 모델 |
+| Task Type | Delegated Agent | Model |
 |----------|-----------------|------|
-| **--- 설계 ---** | | |
-| 사양서 분석 | `rtl-agent-team:spec-analyst` | Opus |
-| 아키텍처 설계 | `rtl-agent-team:arch-designer` | Opus |
-| 아키텍처 리뷰 | `rtl-agent-team:rtl-architect` | Opus |
-| μArch 설계 | `rtl-agent-team:uarch-designer` | Opus |
-| RTL 코딩 | `rtl-agent-team:rtl-coder` | Opus |
-| RTL 리뷰 | `rtl-agent-team:rtl-critic` | Opus |
-| 설계 계획 | `rtl-agent-team:rtl-planner` | Opus |
-| 코드베이스 탐색 | `rtl-agent-team:rtl-explorer` | Opus |
-| **--- 검증 ---** | | |
-| 테스트벤치 작성 | `rtl-agent-team:testbench-dev` | Opus |
-| 기능 검증 | `rtl-agent-team:func-verifier` | Opus |
-| 성능 검증 | `rtl-agent-team:perf-verifier` | Opus |
-| SVA 추출/작성 | `rtl-agent-team:sva-extractor` | Opus |
-| 프로토콜 준수 검사 | `rtl-agent-team:protocol-checker` | Opus |
-| 커버리지 분석 | `rtl-agent-team:coverage-analyst` | Opus |
-| 파형 분석 | `rtl-agent-team:waveform-analyzer` | Opus |
-| **--- 전문 리뷰 ---** | | |
-| CDC 설계 리뷰 | `rtl-agent-team:cdc-reviewer` | Opus |
-| 프로토콜 설계 리뷰 | `rtl-agent-team:protocol-reviewer` | Opus |
-| Formal 품질 리뷰 | `rtl-agent-team:formal-reviewer` | Opus |
-| 전력 분석 | `rtl-agent-team:power-analyzer` | Opus |
-| 합성 결과 리뷰 | `rtl-agent-team:synthesis-reviewer` | Opus |
-| UVM TB 품질 리뷰 | `rtl-agent-team:uvm-reviewer` | Opus |
-| 요구사항 추적성 | `rtl-agent-team:requirement-tracer` | Opus |
-| cocotb TB 품질 리뷰 | `rtl-agent-team:cocotb-reviewer` | Opus |
-| 레퍼런스 모델 리뷰 | `rtl-agent-team:ref-model-reviewer` | Opus |
-| 리그레션 분석 | `rtl-agent-team:regression-analyzer` | Opus |
-| 등가 검증 | `rtl-agent-team:equivalence-checker` | Opus |
-| 통합 검증 | `rtl-agent-team:integration-verifier` | Opus |
-| 하드웨어 보안 리뷰 | `rtl-agent-team:security-reviewer` | Opus |
+| **--- Design ---** | | |
+| Specification analysis | `rtl-agent-team:spec-analyst` | Opus |
+| Architecture design | `rtl-agent-team:arch-designer` | Opus |
+| Architecture review | `rtl-agent-team:rtl-architect` | Opus |
+| μArch design | `rtl-agent-team:uarch-designer` | Opus |
+| RTL coding | `rtl-agent-team:rtl-coder` | Opus |
+| RTL review | `rtl-agent-team:rtl-critic` | Opus |
+| Design planning | `rtl-agent-team:rtl-planner` | Opus |
+| Codebase exploration | `rtl-agent-team:rtl-explorer` | Opus |
+| **--- Verification ---** | | |
+| Testbench development | `rtl-agent-team:testbench-dev` | Opus |
+| Functional verification | `rtl-agent-team:func-verifier` | Opus |
+| Performance verification | `rtl-agent-team:perf-verifier` | Opus |
+| SVA extraction/writing | `rtl-agent-team:sva-extractor` | Opus |
+| Protocol compliance checking | `rtl-agent-team:protocol-checker` | Opus |
+| Coverage analysis | `rtl-agent-team:coverage-analyst` | Opus |
+| Waveform analysis | `rtl-agent-team:waveform-analyzer` | Opus |
+| **--- Expert Reviews ---** | | |
+| CDC design review | `rtl-agent-team:cdc-reviewer` | Opus |
+| Protocol design review | `rtl-agent-team:protocol-reviewer` | Opus |
+| Formal quality review | `rtl-agent-team:formal-reviewer` | Opus |
+| Power analysis | `rtl-agent-team:power-analyzer` | Opus |
+| Synthesis results review | `rtl-agent-team:synthesis-reviewer` | Opus |
+| UVM TB quality review | `rtl-agent-team:uvm-reviewer` | Opus |
+| Requirement traceability | `rtl-agent-team:requirement-tracer` | Opus |
+| cocotb TB quality review | `rtl-agent-team:cocotb-reviewer` | Opus |
+| Reference model review | `rtl-agent-team:ref-model-reviewer` | Opus |
+| Regression analysis | `rtl-agent-team:regression-analyzer` | Opus |
+| Equivalence checking | `rtl-agent-team:equivalence-checker` | Opus |
+| Integration verification | `rtl-agent-team:integration-verifier` | Opus |
+| Hardware security review | `rtl-agent-team:security-reviewer` | Opus |
 | **--- Phase 6: Design Note ---** | | |
-| 코드 품질 심층 리뷰 | `rtl-agent-team:code-quality-reviewer` | Opus |
-| 설계 품질 리뷰 | `rtl-agent-team:design-quality-reviewer` | Opus |
-| 설계 문서 작성 | `rtl-agent-team:design-note-writer` | Opus |
-| 개선 분석 | `rtl-agent-team:improvement-analyst` | Opus |
-| **--- EDA/합성 ---** | | |
-| EDA 도구 실행 | `rtl-agent-team:eda-runner` | Opus |
-| 합성 메트릭 추출 | `rtl-agent-team:synthesis-reporter` | Opus |
-| 린트 검사 | `rtl-agent-team:lint-checker` | Opus |
-| SDC 제약조건 생성 | `rtl-agent-team:constraint-writer` | Opus |
-| 타이밍 분석 (STA) | `rtl-agent-team:timing-advisor` | Opus |
-| CDC 정적 분석 | `rtl-agent-team:cdc-checker` | Opus |
-| 클럭 아키텍처 리뷰 | `rtl-agent-team:clock-architect` | Opus |
-| DFT 설계 | `rtl-agent-team:dft-designer` | Opus |
-| **--- 인프라 ---** | | |
-| IP-XACT 생성 | `rtl-agent-team:ipxact-generator` | Opus |
-| BFM 개발 | `rtl-agent-team:bfm-dev` | Opus |
-| Reference Model 개발 | `rtl-agent-team:ref-model-dev` | Opus |
-| **--- 도메인 전문가 ---** | | |
-| 코덱 Chief 전문가 | `rtl-agent-team:vcodec-chief-standard-expert` | Opus |
-| 구문/엔트로피 전문가 | `rtl-agent-team:vcodec-syntax-entropy-expert` | Opus |
-| 예측 전문가 | `rtl-agent-team:vcodec-prediction-expert` | Opus |
-| 변환/양자화 전문가 | `rtl-agent-team:vcodec-transform-quant-expert` | Opus |
-| 필터/복원 전문가 | `rtl-agent-team:vcodec-filter-recon-expert` | Opus |
-| 코덱 아키텍처 전문가 | `rtl-agent-team:vcodec-architecture-expert` | Opus |
-| 비디오 처리 전문가 | `rtl-agent-team:video-processing-expert` | Opus |
+| In-depth code quality review | `rtl-agent-team:code-quality-reviewer` | Opus |
+| Design quality review | `rtl-agent-team:design-quality-reviewer` | Opus |
+| Design document writing | `rtl-agent-team:design-note-writer` | Opus |
+| Improvement analysis | `rtl-agent-team:improvement-analyst` | Opus |
+| **--- EDA/Synthesis ---** | | |
+| EDA tool execution | `rtl-agent-team:eda-runner` | Opus |
+| Synthesis metric extraction | `rtl-agent-team:synthesis-reporter` | Opus |
+| Lint checking | `rtl-agent-team:lint-checker` | Opus |
+| SDC constraint generation | `rtl-agent-team:constraint-writer` | Opus |
+| Timing analysis (STA) | `rtl-agent-team:timing-advisor` | Opus |
+| CDC static analysis | `rtl-agent-team:cdc-checker` | Opus |
+| Clock architecture review | `rtl-agent-team:clock-architect` | Opus |
+| DFT design | `rtl-agent-team:dft-designer` | Opus |
+| **--- Infrastructure ---** | | |
+| IP-XACT generation | `rtl-agent-team:ipxact-generator` | Opus |
+| BFM development | `rtl-agent-team:bfm-dev` | Opus |
+| Reference Model development | `rtl-agent-team:ref-model-dev` | Opus |
+| **--- Domain Experts ---** | | |
+| Codec Chief expert | `rtl-agent-team:vcodec-chief-standard-expert` | Opus |
+| Syntax/entropy expert | `rtl-agent-team:vcodec-syntax-entropy-expert` | Opus |
+| Prediction expert | `rtl-agent-team:vcodec-prediction-expert` | Opus |
+| Transform/quantization expert | `rtl-agent-team:vcodec-transform-quant-expert` | Opus |
+| Filter/reconstruction expert | `rtl-agent-team:vcodec-filter-recon-expert` | Opus |
+| Codec architecture expert | `rtl-agent-team:vcodec-architecture-expert` | Opus |
+| Video processing expert | `rtl-agent-team:video-processing-expert` | Opus |
 
-## 코딩 컨벤션 (필수)
+## Coding Conventions (Mandatory)
 
-> **IMPORTANT — 언어 표준 (프로젝트 기본)**
+> **IMPORTANT — Language Standards (Project Defaults)**
 >
-> | 언어 | 표준 | 비고 |
+> | Language | Standard | Notes |
 > |------|------|------|
-> | **SystemVerilog (RTL)** | **IEEE 1800-2009** | 합성 가능 RTL 코드의 기준. 2012 이후 추가 기능은 검증 전용 |
-> | **SystemVerilog (검증)** | **IEEE 1800-2012** | SVA, UVM TB에서 2012 기능 허용 (checker, interface class 등) |
-> | **C++ (Ref Model, BFM)** | **C++17** (`-std=c++17`) | SystemC 3.0, cocotb DPI 등 모든 C++ 코드에 적용 |
+> | **SystemVerilog (RTL)** | **IEEE 1800-2009** | Baseline for synthesizable RTL code. Features added after 2012 are for verification only |
+> | **SystemVerilog (Verification)** | **IEEE 1800-2012** | 2012 features allowed in SVA, UVM TB (checker, interface class, etc.) |
+> | **C++ (Ref Model, BFM)** | **C++17** (`-std=c++17`) | Applies to all C++ code including SystemC 3.0, cocotb DPI, etc. |
 >
-> - iverilog 플래그는 `-g2012` 사용 (SV 기본 문법 지원)
-> - **iverilog 미지원**: `interface`, unpacked `struct`/`union` — 에이전트 생성 금지
-> - `typedef struct packed` / `typedef union packed`는 지원됨 (사용 가능)
-> - 사용자가 직접 추가하거나 기존 코드에 존재하는 경우 수정하지 않는다
-> - verilator/slang은 기본 설정으로 2009 기능을 완전 지원
-> - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
+> - iverilog flag uses `-g2012` (basic SV syntax support)
+> - **iverilog unsupported**: `interface`, unpacked `struct`/`union` — agents must not generate these
+> - `typedef struct packed` / `typedef union packed` are supported (usable)
+> - Do not modify if the user has added them directly or they exist in existing code
+> - verilator/slang fully support 2009 features with default settings
+> - No synthesis-related feature additions after 2012 (2017 is errata only, 2023 has early tool support)
 
-> **IMPORTANT — 핵심 오버라이드 (항상 적용)**
+> **IMPORTANT — Core Overrides (Always Applied)**
 >
-> 1. **포트 prefix**: `i_`, `o_`, `io_` 필수 (NOT suffix `_i`, `_o`). 단, **클럭과 리셋은 예외** (prefix 불필요)
-> 2. **클럭**: `clk` (단일) 또는 `{domain}_clk` (다중, 예: `sys_clk`) — NOT `clk_i`. `i_` prefix 불필요
-> 3. **리셋**: `rst_n` (단일) 또는 `{domain}_rst_n` (다중, 예: `sys_rst_n`) — NOT `rst_ni`. Active-low 비동기 리셋 필수. `i_` prefix 불필요
-> 4. **CamelCase 전면 금지**: Parameter → `ALL_CAPS` (`DATA_WIDTH`). 내부 localparam → `L_` prefix (`L_ADDR_BITS`). Enum 값 → `ALL_CAPS` (`ST_IDLE`). 모든 식별자는 `snake_case` 또는 `ALL_CAPS`만 허용
-> 5. **UVM 예외**: UVM 클래스 내부 멤버 핸들은 `m_` prefix 허용 (업계 관행). `u_`는 RTL 인스턴스 전용
+> 1. **Port prefix**: `i_`, `o_`, `io_` required (NOT suffix `_i`, `_o`). However, **clock and reset are exceptions** (no prefix needed)
+> 2. **Clock**: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) — NOT `clk_i`. `i_` prefix not needed
+> 3. **Reset**: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`. Active-low asynchronous reset required. `i_` prefix not needed
+> 4. **CamelCase completely prohibited**: Parameter → `ALL_CAPS` (`DATA_WIDTH`). Internal localparam → `L_` prefix (`L_ADDR_BITS`). Enum values → `ALL_CAPS` (`ST_IDLE`). All identifiers must use only `snake_case` or `ALL_CAPS`
+> 5. **UVM exception**: `m_` prefix allowed for UVM class internal member handles (industry practice). `u_` is for RTL instances only
 
-**확장자/Phase별 코딩 컨벤션 스킬 자동 적용:**
+**Coding convention skills auto-applied by extension/Phase:**
 
-| 파일 확장자 / 컨텍스트 | 설계 Phase | 적용 스킬 |
+| File Extension / Context | Design Phase | Applied Skill |
 |----------------------|-----------|----------|
 | `.sv`, `.svh`, `.v`, `.vh` (RTL) | Phase 4 (RTL) | `/rtl-agent-team:systemverilog` |
 | `.sv` (SVA, assertion, bind) | Phase 5 (Formal) | `/rtl-agent-team:systemverilog-assertion` |
 | `.sv` (UVM testbench) | Phase 5 (UVM) | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `/rtl-agent-team:systemc` |
 
-- `systemverilog`: lowRISC + 오버라이드, Power 최적화, FPGA, Pipelining
-- `systemverilog-assertion`: SVA 패턴, bind 파일, SymbiYosys 통합, assume/assert/cover
-- `uvm`: UVM 클래스 계층, factory, TLM 포트, coverage, phase callback
-- `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb 연동
+- `systemverilog`: lowRISC + overrides, Power optimization, FPGA, Pipelining
+- `systemverilog-assertion`: SVA patterns, bind files, SymbiYosys integration, assume/assert/cover
+- `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
+- `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
 
-## EDA 도구 사용
+## EDA Tool Usage
 
-`eda-runner` 에이전트가 Bash를 통해 EDA CLI 도구를 직접 실행한다:
-- 시뮬레이션: `verilator`, `iverilog` (Icarus Verilog)
-- 합성: `yosys`
-- Formal 검증: `sby` (SymbiYosys)
+The `eda-runner` agent directly executes EDA CLI tools via Bash:
+- Simulation: `verilator`, `iverilog` (Icarus Verilog)
+- Synthesis: `yosys`
+- Formal verification: `sby` (SymbiYosys)
 - Lint: `verilator --lint-only`, `verible-verilog-lint`, `slang`
-- cocotb 테스트: `make SIM=icarus TOPLEVEL=<mod> MODULE=<test>`
-- SystemC: `g++ -lsystemc` (로컬 빌드)
-- 파형 뷰어: `gtkwave` (VCD/FST 파형 분석)
+- cocotb tests: `make SIM=icarus TOPLEVEL=<mod> MODULE=<test>`
+- SystemC: `g++ -lsystemc` (local build)
+- Waveform viewer: `gtkwave` (VCD/FST waveform analysis)
 
-도구 미설치 시 `eda-runner`가 설치 안내를 제공한다.
-`/rtl-agent-team:rtl-setup` 스킬로 환경 점검 및 프로젝트 초기화가 가능하다.
+When tools are not installed, `eda-runner` provides installation guidance.
+Environment checking and project initialization are available via the `/rtl-agent-team:rtl-setup` skill.
 
-## 산출물 구조
+## Artifact Structure
 
-설계 산출물은 두 가지로 분리된다:
-- **`docs/`** = Phase별 설계 문서. Phase N의 산출물이 Phase N+1의 가이드/입력이 되는 파이프라인
-- **`reviews/`** = 상위 스펙/요구사항 준수 여부만 검증하는 verdict 문서
+Design artifacts are separated into two categories:
+- **`docs/`** = Per-Phase design documents. Phase N's artifacts serve as guides/inputs for Phase N+1 in the pipeline
+- **`reviews/`** = verdict documents that only verify compliance with upper specs/requirements
 
-### docs/ — 설계 산출물 (Phase 가이드 파이프라인)
+### docs/ — Design Artifacts (Phase Guide Pipeline)
 
 ```
 docs/
-├── phase-1-research/                    # → Phase 2의 입력
-│   ├── requirements.json                # 요구사항 목록
-│   ├── io_definition.json               # I/O 포트 스펙
-│   └── domain-analysis.md               # 도메인 분석 (알고리즘, 표준)
-├── phase-2-architecture/                # → Phase 3의 입력
-│   └── architecture.md                  # 블록 아키텍처 (모듈 계층, 데이터패스, 타이밍)
-├── phase-3-uarch/                       # → Phase 4의 입력
-│   └── {module_name}.md                 # 모듈별 마이크로아키텍처
-├── phase-4-rtl/                         # → Phase 5의 입력
-│   ├── module-descriptions.md           # 모듈별 설계 요약 (포트, 기능, 의존관계)
-│   └── unit-test-design.md              # 단위 테스트 설계 (테스트 전략, 커버리지 목표)
-├── phase-5-verify/                      # → Phase 6의 입력
-│   ├── unit-test-report.md              # 유닛 테스트 결과 요약
-│   ├── integration-report.md            # 통합 테스트 결과
-│   ├── ref-model-consistency.md         # RTL vs C++ 골든 모델 정합성 비교
-│   ├── lint-report.md                   # Verilator lint 결과 요약
-│   └── synthesis-estimate.md            # Yosys 합성 추정치 (면적, 타이밍)
-├── phase-6-design-note/                 # 최종 설계 문서
-│   ├── design-note.md                   # 상세 설계 문서 (알고리즘, HW 구현, 트레이드오프)
-│   └── improvements.md                  # 개선 권고사항 (must-fix, should-fix, nice-to-have)
-└── phase-7-exploration/                 # 자유 탐색 (파이프라인 규칙 미적용)
-    └── exploration-notes.md             # 개선점 탐색, 실험적 아이디어
+├── phase-1-research/                    # → Input for Phase 2
+│   ├── requirements.json                # Requirements list
+│   ├── io_definition.json               # I/O port spec
+│   └── domain-analysis.md               # Domain analysis (algorithms, standards)
+├── phase-2-architecture/                # → Input for Phase 3
+│   └── architecture.md                  # Block architecture (module hierarchy, datapath, timing)
+├── phase-3-uarch/                       # → Input for Phase 4
+│   └── {module_name}.md                 # Per-module microarchitecture
+├── phase-4-rtl/                         # → Input for Phase 5
+│   ├── module-descriptions.md           # Per-module design summary (ports, functions, dependencies)
+│   └── unit-test-design.md              # Unit test design (test strategy, coverage targets)
+├── phase-5-verify/                      # → Input for Phase 6
+│   ├── unit-test-report.md              # Unit test results summary
+│   ├── integration-report.md            # Integration test results
+│   ├── ref-model-consistency.md         # RTL vs C++ golden model consistency comparison
+│   ├── lint-report.md                   # Verilator lint results summary
+│   └── synthesis-estimate.md            # Yosys synthesis estimates (area, timing)
+├── phase-6-design-note/                 # Final design documents
+│   ├── design-note.md                   # Detailed design document (algorithms, HW implementation, trade-offs)
+│   └── improvements.md                  # Improvement recommendations (must-fix, should-fix, nice-to-have)
+└── phase-7-exploration/                 # Free exploration (pipeline rules not applied)
+    └── exploration-notes.md             # Improvement exploration, experimental ideas
 ```
 
-### reviews/ — 검증 verdict (상위 스펙 준수 확인)
+### reviews/ — Verification verdict (Upper Spec Compliance Check)
 
 ```
 reviews/
 ├── phase-1-research/
-│   └── research-review.md               # 스펙 완전성 + 실현가능성 verdict
+│   └── research-review.md               # Spec completeness + feasibility verdict
 ├── phase-2-architecture/
-│   └── architecture-review.md           # Arch가 Spec 준수하는지 verdict
+│   └── architecture-review.md           # verdict on whether Arch complies with Spec
 ├── phase-3-uarch/
-│   └── uarch-review.md                  # μArch가 Arch 준수하는지 verdict
+│   └── uarch-review.md                  # verdict on whether μArch complies with Arch
 ├── phase-4-rtl/
-│   └── design-review.md                 # RTL이 μArch 준수하는지 verdict
+│   └── design-review.md                 # verdict on whether RTL complies with μArch
 ├── phase-5-verify/
-│   └── final-compliance.md              # 원래 Spec 기준 최종 준수 verdict
+│   └── final-compliance.md              # Final compliance verdict against original Spec
 ├── phase-6-review/
-│   ├── code-review.md                   # 코드 품질 verdict
-│   └── design-review.md                 # 설계 품질 verdict
+│   ├── code-review.md                   # Code quality verdict
+│   └── design-review.md                 # Design quality verdict
 └── phase-7-exploration/
-    └── exploration-review.md            # 탐색 결과 리뷰 verdict
+    └── exploration-review.md            # Exploration results review verdict
 ```
 
-### 코드 산출물
+### Code Artifacts
 
 ```
-rtl/src/                                 # RTL 소스코드 (Phase 4)
-tb/                                      # 테스트벤치 (Phase 4-5)
-├── unit/                                # 단위 테스트
-└── formal/                              # SVA formal 검증
-ref_model/                               # C++ 골든 레퍼런스 (Phase 2)
+rtl/src/                                 # RTL source code (Phase 4)
+tb/                                      # Testbenches (Phase 4-5)
+├── unit/                                # Unit tests
+└── formal/                              # SVA formal verification
+ref_model/                               # C++ golden reference (Phase 2)
 ```
 
-> **원칙**: `docs/`에는 데이터/수치/설계 내용을, `reviews/`에는 verdict(PASS/FAIL)만 저장한다.
-> 예: formal 검증 데이터는 `docs/phase-5-verify/`에, 스펙 준수 판정은 `reviews/phase-5-verify/final-compliance.md`에.
+> **Principle**: Store data/metrics/design content in `docs/`, and only verdict (PASS/FAIL) in `reviews/`.
+> Example: formal verification data goes in `docs/phase-5-verify/`, while spec compliance judgment goes in `reviews/phase-5-verify/final-compliance.md`.
 
-### 리뷰 Markdown 형식
+### Review Markdown Format
 
-모든 verdict 리포트(`reviews/`)는 다음 구조를 따른다:
+All verdict reports (`reviews/`) follow this structure:
 ```markdown
-# [Phase] Review: [제목]
+# [Phase] Review: [Title]
 - Date: YYYY-MM-DD
-- Reviewer: [에이전트 이름]
-- Upper Spec: [참조한 상위 문서]
+- Reviewer: [Agent Name]
+- Upper Spec: [Referenced Upper Document]
 - Verdict: PASS | FAIL
 
 ## Feature Coverage Checklist
-| REQ ID | 요구사항 | 상태 | 구현 위치 |
+| REQ ID | Requirement | Status | Implementation Location |
 |--------|---------|------|----------|
 | REQ-001 | ... | COVERED | module.sv:42 |
 | REQ-002 | ... | MISSING | — |
@@ -406,13 +406,13 @@ ref_model/                               # C++ 골든 레퍼런스 (Phase 2)
 ### [severity] Finding-1: ...
 
 ## Verdict
-PASS | FAIL: [사유]
+PASS | FAIL: [Reason]
 ```
 
-## 상태 파일
+## State Files
 
-설계 흐름 상태는 `.rtl-agent-team/state/` 하위에 저장한다:
-- `.rtl-agent-team/state/rtl-autopilot-state.json` — 파이프라인 진행 상태 (재개용)
-- `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase 완료 게이트
+Design flow state is stored under `.rtl-agent-team/state/`:
+- `.rtl-agent-team/state/rtl-autopilot-state.json` — Pipeline progress state (for resumption)
+- `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase completion gate
 
 <!-- RTL-AGENT-TEAM:END -->

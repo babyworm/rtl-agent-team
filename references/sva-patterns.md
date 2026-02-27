@@ -1,50 +1,50 @@
 # SVA Temporal Operator Reference and Pattern Library
 
-> 이 문서는 `sva-check` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/sva-check/SKILL.md`의 `<Steps>` 참조.
+> This document is the detailed reference for the `sva-check` skill.
+> For core rules, see `<Steps>` in `skills/sva-check/SKILL.md`.
 
 ## 1. Temporal Operators
 
 ### 1.1 Sequence Operators
 
-| 연산자 | 의미 | 예시 |
-|--------|------|------|
-| `##N` | N 사이클 후 | `a ##1 b` — a 후 1사이클 뒤 b |
-| `##[M:N]` | M~N 사이클 범위 | `a ##[1:3] b` — 1~3사이클 내 b |
-| `##[0:$]` | 언젠가 (eventually) | `a ##[0:$] b` — a 이후 언젠가 b |
-| `[*N]` | N 연속 반복 | `a[*3]` — a가 3사이클 연속 |
-| `[*M:N]` | M~N 반복 | `a[*1:5]` — 1~5회 연속 |
-| `[*0:$]` | 0회 이상 반복 | `a[*0:$]` — 0회 이상 연속 |
-| `[=N]` | 비연속 N회 | `a[=3]` — (간격 허용) 총 3회 |
-| `[->N]` | 비연속 goto N회 | `a[->3]` — 3번째 a까지 |
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `##N` | After N cycles | `a ##1 b` — b one cycle after a |
+| `##[M:N]` | Range of M to N cycles | `a ##[1:3] b` — b within 1 to 3 cycles |
+| `##[0:$]` | Eventually | `a ##[0:$] b` — b sometime after a |
+| `[*N]` | N consecutive repetitions | `a[*3]` — a for 3 consecutive cycles |
+| `[*M:N]` | M to N repetitions | `a[*1:5]` — 1 to 5 consecutive times |
+| `[*0:$]` | Zero or more repetitions | `a[*0:$]` — zero or more consecutive times |
+| `[=N]` | Non-consecutive N times | `a[=3]` — total 3 times (gaps allowed) |
+| `[->N]` | Non-consecutive goto N times | `a[->3]` — until the 3rd occurrence of a |
 
 ### 1.2 Property Operators
 
-| 연산자 | 의미 | 예시 |
-|--------|------|------|
-| `\|->` | Overlapping implication | `a \|-> b` — a와 같은 사이클에 b 검사 |
-| `\|=>` | Non-overlapping implication | `a \|=> b` — a 다음 사이클에 b 검사 |
-| `not` | 부정 | `not (a ##1 b)` — 시퀀스 미발생 |
-| `and` | 둘 다 성립 | `p1 and p2` |
-| `or` | 하나 이상 성립 | `p1 or p2` |
-| `if...else` | 조건부 | `if(cond) p1 else p2` |
-| `until` | ~ 전까지 유지 | `a until b` — b 될 때까지 a 유지 |
-| `s_until` | strong until | 반드시 b 발생 보장 |
-| `eventually` | 언젠가 성립 | `s_eventually(a)` — 언젠가 a |
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `\|->` | Overlapping implication | `a \|-> b` — check b in same cycle as a |
+| `\|=>` | Non-overlapping implication | `a \|=> b` — check b in cycle after a |
+| `not` | Negation | `not (a ##1 b)` — sequence does not occur |
+| `and` | Both hold | `p1 and p2` |
+| `or` | At least one holds | `p1 or p2` |
+| `if...else` | Conditional | `if(cond) p1 else p2` |
+| `until` | Holds until | `a until b` — a holds until b |
+| `s_until` | Strong until | Guarantees b eventually occurs |
+| `eventually` | Eventually holds | `s_eventually(a)` — a holds eventually |
 
 ### 1.3 System Functions
 
-| 함수 | 의미 | 주의사항 |
-|------|------|---------|
-| `$rose(sig)` | 0→1 전이 | |
-| `$fell(sig)` | 1→0 전이 | |
-| `$stable(sig)` | 값 변화 없음 | |
-| `$changed(sig)` | 값 변화 있음 | |
-| `$past(sig, N)` | N 사이클 전 값 | **past_valid guard 필수** |
+| Function | Meaning | Notes |
+|----------|---------|-------|
+| `$rose(sig)` | 0 to 1 transition | |
+| `$fell(sig)` | 1 to 0 transition | |
+| `$stable(sig)` | Value unchanged | |
+| `$changed(sig)` | Value changed | |
+| `$past(sig, N)` | Value N cycles ago | **past_valid guard required** |
 | `$onehot(sig)` | exactly one bit high | |
 | `$onehot0(sig)` | at most one bit high | |
-| `$isunknown(sig)` | X 또는 Z 포함 | |
-| `$countones(sig)` | 1인 비트 수 | |
+| `$isunknown(sig)` | Contains X or Z | |
+| `$countones(sig)` | Number of bits set to 1 | |
 
 ## 2. Assertion Pattern Library
 
@@ -132,7 +132,7 @@ a_pipe_data: assert property (
 ) else $error("[%m] pipeline data corruption");
 ```
 
-### 2.5 AXI Protocol (기본)
+### 2.5 AXI Protocol (Basic)
 
 ```systemverilog
 // AW channel: AWVALID holds until AWREADY
@@ -179,27 +179,27 @@ a_bounded_resp: assert property (
 ) else $error("[%m] no response within %0d cycles", MAX_LATENCY);
 ```
 
-## 3. Formal Verification 모드별 적합한 패턴
+## 3. Suitable Patterns by Formal Verification Mode
 
-| 패턴 | BMC | Prove | Cover |
-|------|-----|-------|-------|
+| Pattern | BMC | Prove | Cover |
+|---------|-----|-------|-------|
 | Handshake valid/ready | O | O | — |
 | FIFO overflow/underflow | O | O | — |
 | FSM one-hot | O | O | — |
 | No deadlock (s_eventually) | X | O | — |
-| Bounded response | O (depth ≥ MAX_LATENCY) | O | — |
+| Bounded response | O (depth >= MAX_LATENCY) | O | — |
 | Reachability | — | — | O |
 | Back-to-back transfer | — | — | O |
 | Max burst length | — | — | O |
 
-## 4. assume vs assert 가이드
+## 4. assume vs assert Guide
 
-| 상황 | 사용 | 예시 |
-|------|------|------|
-| DUT 내부 property | `assert` | `a_fifo_no_overflow` |
-| 입력 제약 (formal) | `assume` | `m_valid_no_x` |
-| 입력 프로토콜 (formal) | `assume` | `m_valid_stable` |
-| 커버리지 목표 | `cover` | `c_back_to_back` |
-| formal 전용 제약 | `restrict` | `restrict property (i_mode == 2'b01)` |
+| Situation | Use | Example |
+|-----------|-----|---------|
+| DUT internal property | `assert` | `a_fifo_no_overflow` |
+| Input constraint (formal) | `assume` | `m_valid_no_x` |
+| Input protocol (formal) | `assume` | `m_valid_stable` |
+| Coverage goal | `cover` | `c_back_to_back` |
+| Formal-only constraint | `restrict` | `restrict property (i_mode == 2'b01)` |
 
-**Over-constraint 방지**: 모든 `assume`에 대응하는 `cover`를 작성하여 assume이 valid trace를 남기는지 확인.
+**Over-constraint prevention**: Write a corresponding `cover` for every `assume` to verify that the assume leaves valid traces.

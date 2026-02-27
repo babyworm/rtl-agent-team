@@ -1,7 +1,7 @@
 # cocotb Ecosystem Reference
 
-> 이 문서는 `func-verify` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/func-verify/SKILL.md`의 `<Steps>` 참조.
+> This document is the detailed reference for the `func-verify` skill.
+> For core rules, see `<Steps>` in `skills/func-verify/SKILL.md`.
 
 ## 1. cocotb Core API
 
@@ -16,20 +16,20 @@ from cocotb.triggers import (
 
 @cocotb.test()
 async def my_test(dut):
-    # 시간 기반
+    # Time-based
     await Timer(10, units="ns")
 
-    # 에지 기반 (프로젝트 규칙: dut.sys_clk, NOT dut.clk_i)
+    # Edge-based (project rule: dut.sys_clk, NOT dut.clk_i)
     await RisingEdge(dut.sys_clk)
     await FallingEdge(dut.sys_rst_n)
 
-    # N 사이클 대기
+    # Wait N cycles
     await ClockCycles(dut.sys_clk, 10)
 
-    # 타임아웃
+    # Timeout
     await with_timeout(RisingEdge(dut.o_done), timeout_time=1, timeout_unit="us")
 
-    # 여러 이벤트 중 하나
+    # First of multiple events
     trigger = await First(
         RisingEdge(dut.o_done),
         Timer(100, units="us")
@@ -39,24 +39,24 @@ async def my_test(dut):
 ### 1.2 Signal Access
 
 ```python
-# 프로젝트 규칙: i_/o_ prefix, sys_clk/sys_rst_n
+# Project rule: i_/o_ prefix, sys_clk/sys_rst_n
 # NOT: dut.clk_i, dut.data_i
 
-# 쓰기
+# Write
 dut.i_data.value = 0xFF
 dut.i_valid.value = 1
 
-# 읽기
+# Read
 val = dut.o_result.value
 val_int = dut.o_result.value.integer
 val_bin = dut.o_result.value.binstr
 
-# 확인
+# Assert
 assert dut.o_valid.value == 1, "output not valid"
 
-# 다중 비트
-dut.i_data.value = 0xDEADBEEF  # 정수
-dut.i_data.value = BinaryValue("10101010")  # 바이너리 문자열
+# Multi-bit
+dut.i_data.value = 0xDEADBEEF  # integer
+dut.i_data.value = BinaryValue("10101010")  # binary string
 ```
 
 ### 1.3 Clock Generation
@@ -64,7 +64,7 @@ dut.i_data.value = BinaryValue("10101010")  # 바이너리 문자열
 ```python
 from cocotb.clock import Clock
 
-# 10ns 주기 (100MHz) 클럭 생성
+# Generate 10ns period (100MHz) clock
 clock = Clock(dut.sys_clk, 10, units="ns")
 cocotb.start_soon(clock.start())
 ```
@@ -83,7 +83,7 @@ async def reset_dut(dut, duration_ns=50):
 
 ## 2. cocotb-bus (Bus Protocol Drivers)
 
-### 2.1 설치
+### 2.1 Installation
 
 ```bash
 pip install cocotb-bus
@@ -153,7 +153,7 @@ class AXILiteMaster:
 
 ## 3. cocotb-coverage (Functional Coverage)
 
-### 3.1 설치
+### 3.1 Installation
 
 ```bash
 pip install cocotb-coverage
@@ -166,7 +166,7 @@ from cocotb_coverage.coverage import (
     CoverPoint, CoverCross, coverage_db, CoverCheck
 )
 
-# CoverPoint 정의
+# CoverPoint definition
 @CoverPoint("top.cmd", xf=lambda dut: dut.i_cmd.value.integer,
             bins=[0, 1, 2, 3])
 @CoverPoint("top.size", xf=lambda dut: dut.i_size.value.integer,
@@ -177,14 +177,14 @@ def sample_coverage(dut):
     """Sample coverage after each transaction."""
     pass
 
-# 테스트에서 사용
+# Usage in test
 @cocotb.test()
 async def test_coverage(dut):
     for _ in range(100):
         # ... drive stimulus ...
         sample_coverage(dut)
 
-    # 커버리지 리포트
+    # Coverage report
     coverage_db.report_coverage(cocotb.log.info, bins=True)
     coverage_db.export_to_xml("coverage.xml")
 ```
@@ -192,7 +192,7 @@ async def test_coverage(dut):
 ### 3.3 Coverage Goal Check
 
 ```python
-# 특정 목표 달성 확인
+# Check specific goal achievement
 for cp_name, cp in coverage_db.items():
     pct = cp.cover_percentage
     cocotb.log.info(f"{cp_name}: {pct:.1f}%")
@@ -202,7 +202,7 @@ for cp_name, cp in coverage_db.items():
 ## 4. Makefile Template
 
 ```makefile
-# cocotb Makefile (프로젝트 표준)
+# cocotb Makefile (project standard)
 TOPLEVEL_LANG = verilog
 SIM           ?= icarus
 
@@ -239,14 +239,14 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 
 ```python
 # VCD dump (Icarus)
-# Makefile에서: PLUSARGS += +DUMP_WAVES=1
-# Icarus가 자동으로 dump.vcd 생성
+# In Makefile: PLUSARGS += +DUMP_WAVES=1
+# Icarus automatically generates dump.vcd
 
 # FST dump (Verilator)
-# Makefile에서: EXTRA_ARGS += --trace --trace-fst
-# build 디렉토리에 dump.fst 생성
+# In Makefile: EXTRA_ARGS += --trace --trace-fst
+# Generates dump.fst in build directory
 
-# gtkwave로 확인
+# View with gtkwave
 # gtkwave dump.vcd &
 # gtkwave dump.fst &
 ```
@@ -256,7 +256,7 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 ```python
 import ctypes
 
-# C reference model 로드
+# Load C reference model
 lib = ctypes.CDLL("./ref_model/build/libref_model.so")
 lib.ref_compute.restype = ctypes.c_uint32
 lib.ref_compute.argtypes = [ctypes.c_uint32]
@@ -282,11 +282,11 @@ async def test_vs_ref(dut):
             f"Mismatch: input={input_val:#x} expected={expected:#x} got={actual:#x}"
 ```
 
-## 7. 프로젝트 규칙 요약 (cocotb)
+## 7. Project Rules Summary (cocotb)
 
-| 항목 | 올바른 사용 | 금지 |
-|------|-----------|------|
-| 클럭 | `dut.sys_clk`, `dut.clk` | `dut.clk_i` |
-| 리셋 | `dut.sys_rst_n`, `dut.rst_n` | `dut.rst_ni` |
-| 입력 | `dut.i_data`, `dut.i_valid` | `dut.data_i`, `dut.data_in` |
-| 출력 | `dut.o_result`, `dut.o_ready` | `dut.result_o`, `dut.data_out` |
+| Item | Correct Usage | Prohibited |
+|------|---------------|------------|
+| Clock | `dut.sys_clk`, `dut.clk` | `dut.clk_i` |
+| Reset | `dut.sys_rst_n`, `dut.rst_n` | `dut.rst_ni` |
+| Input | `dut.i_data`, `dut.i_valid` | `dut.data_i`, `dut.data_in` |
+| Output | `dut.o_result`, `dut.o_ready` | `dut.result_o`, `dut.data_out` |

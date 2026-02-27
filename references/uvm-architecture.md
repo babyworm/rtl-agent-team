@@ -1,8 +1,8 @@
 # UVM Architecture Reference
 
-> 이 문서는 `uvm-verify` 스킬의 상세 레퍼런스이다.
-> 핵심 규칙은 `skills/uvm-verify/SKILL.md`의 `<Steps>` 참조.
-> 코딩 컨벤션: `skills/uvm/SKILL.md` 참조.
+> This document is the detailed reference for the `uvm-verify` skill.
+> For core rules, see `<Steps>` in `skills/uvm-verify/SKILL.md`.
+> For coding conventions, see `skills/uvm/SKILL.md`.
 
 ## 1. UVM Component Hierarchy
 
@@ -24,24 +24,24 @@ uvm_top (implicit root)
 
 ### 2.1 Build Phases (top-down)
 
-| Phase | 방향 | 용도 |
-|-------|------|------|
+| Phase | Direction | Purpose |
+|-------|-----------|---------|
 | `build_phase` | Top → Down | create components, config_db get |
 | `connect_phase` | Bottom → Up | TLM port connections |
 | `end_of_elaboration_phase` | Bottom → Up | final topology check |
 
 ### 2.2 Run Phases (parallel)
 
-| Phase | 실행 | 용도 |
-|-------|------|------|
+| Phase | Execution | Purpose |
+|-------|-----------|---------|
 | `start_of_simulation_phase` | — | print topology |
 | `run_phase` | **parallel** | main test body (sequences) |
 | `pre_reset_phase` ~ `post_shutdown_phase` | parallel (12 sub-phases) | optional fine-grained control |
 
 ### 2.3 Cleanup Phases (bottom-up)
 
-| Phase | 방향 | 용도 |
-|-------|------|------|
+| Phase | Direction | Purpose |
+|-------|-----------|---------|
 | `extract_phase` | Bottom → Up | collect results |
 | `check_phase` | Bottom → Up | compare, pass/fail |
 | `report_phase` | Bottom → Up | print summary |
@@ -91,14 +91,14 @@ set_inst_override_by_type("*.m_env.m_agent.m_driver",
 
 ### 4.1 Port Types
 
-| Port | 방향 | 연결 | 용도 |
-|------|------|------|------|
-| `uvm_analysis_port` | 송신 (1:N) | → `uvm_analysis_imp` | Monitor → Scoreboard, Coverage |
-| `uvm_seq_item_pull_port` | Driver ↔ Sequencer | 자동 연결 | Sequence item 전달 |
-| `uvm_blocking_put_port` | 1:1 blocking | → `uvm_blocking_put_imp` | 동기 전달 |
-| `uvm_tlm_analysis_fifo` | FIFO 버퍼 | analysis_port → FIFO → get | 순서 보장 |
+| Port | Direction | Connection | Purpose |
+|------|-----------|------------|---------|
+| `uvm_analysis_port` | Transmit (1:N) | → `uvm_analysis_imp` | Monitor → Scoreboard, Coverage |
+| `uvm_seq_item_pull_port` | Driver ↔ Sequencer | Auto-connected | Sequence item delivery |
+| `uvm_blocking_put_port` | 1:1 blocking | → `uvm_blocking_put_imp` | Synchronous delivery |
+| `uvm_tlm_analysis_fifo` | FIFO buffer | analysis_port → FIFO → get | Order-preserving |
 
-### 4.2 Analysis Port 연결 패턴
+### 4.2 Analysis Port Connection Pattern
 
 ```systemverilog
 // Environment connect_phase
@@ -143,10 +143,10 @@ endclass
 
 ```
 uvm_sequence #(seq_item)
- └── {proto}_base_seq          ← 공통 메서드
-      ├── {proto}_single_seq   ← 단일 전송
-      ├── {proto}_burst_seq    ← 버스트 전송
-      └── {proto}_random_seq   ← 랜덤 시나리오
+ └── {proto}_base_seq          ← Common methods
+      ├── {proto}_single_seq   ← Single transfer
+      ├── {proto}_burst_seq    ← Burst transfer
+      └── {proto}_random_seq   ← Random scenario
 ```
 
 ### 5.2 Sequence Body Pattern
@@ -201,22 +201,22 @@ endclass
 
 ## 6. config_db Best Practices
 
-| Pattern | 용도 | 예시 |
-|---------|------|------|
+| Pattern | Purpose | Example |
+|---------|---------|---------|
 | Test → Agent | virtual interface | `set(this, "m_env.m_agt*", "vif", vif)` |
 | Test → Env | configuration | `set(this, "m_env", "cfg", cfg)` |
-| Wildcard `*` | 계층 내 전체 | `"m_env.m_agt*"` matches all agents |
-| Get + Fatal | 필수 설정 검증 | `if (!get(...)) uvm_fatal(...)` |
+| Wildcard `*` | All within hierarchy | `"m_env.m_agt*"` matches all agents |
+| Get + Fatal | Mandatory config check | `if (!get(...)) uvm_fatal(...)` |
 
-**규칙**: `config_db::get()` 실패 시 반드시 `uvm_fatal` — silent failure 금지.
+**Rule**: `config_db::get()` failure must always result in `uvm_fatal` -- silent failure is prohibited.
 
 ## 7. Objection Rules
 
-| 규칙 | 설명 |
-|------|------|
-| Test에서만 raise/drop | Driver, Sequence에서 금지 |
-| raise → body → drop 순서 | body 시작 전 raise, 완료 후 drop |
-| drain_time 설정 | `set_drain_time(this, 100ns)` — 마지막 응답 대기 |
+| Rule | Description |
+|------|-------------|
+| raise/drop only in Test | Prohibited in Driver, Sequence |
+| raise → body → drop order | raise before body starts, drop after completion |
+| Set drain_time | `set_drain_time(this, 100ns)` -- wait for last response |
 
 ```systemverilog
 task my_test::run_phase(uvm_phase phase);

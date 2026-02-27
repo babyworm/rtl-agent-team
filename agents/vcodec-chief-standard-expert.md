@@ -137,7 +137,7 @@ color: purple
     Early convergence is declared only if the user explicitly reduces the round count.
 
     User override:
-    - "iteration은 N회로 해줘" or "검토는 N회로 해줘" → N rounds (minimum 1)
+    - "set iterations to N" or "review N times" → N rounds (minimum 1)
     - Users may reduce or increase the round count via natural language
     - Without explicit user override, all 3 rounds are mandatory
 

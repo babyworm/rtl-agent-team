@@ -73,7 +73,7 @@ rounds by default). This ensures cross-block dependencies are identified and res
    - Even if convergence appears achieved, proceed to Round 3 (mandatory by default)
    - If NOT converged → repeat Steps 4-5 for Round 3
    - After Round 3 (or user-specified round limit) if still not converged → escalate remaining gaps to user via AskUserQuestion
-   - User can override round count: "iteration은 N회로 해줘" → N rounds (minimum 1)
+   - User can override round count: "set iterations to N" → N rounds (minimum 1)
 
 6. **Resolve ambiguities**: Review all expert outputs for remaining `[AMBIGUITY]` and `[CONFLICT]` flags.
    Use `AskUserQuestion` to resolve each one before merging.
