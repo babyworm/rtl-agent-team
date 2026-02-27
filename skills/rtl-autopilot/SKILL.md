@@ -20,6 +20,24 @@ If a change is needed, control returns to the upper phase for approval.
 3. Timing/Performance — Throughput, latency targets met
 4. Area/Power (lowest)
 
+**Cascading Quality Principle:**
+Good research → good architecture → good μArch → good RTL.
+Higher abstraction levels demand MORE iterative refinement because their quality cascades
+to ALL downstream phases. A defect at the architecture level costs orders of magnitude more
+to fix at RTL than if caught during architecture review. Time is NOT a constraint at upper
+levels — it is better to spend extra review rounds perfecting architecture than to discover
+fundamental issues during RTL.
+
+Graduated iteration by abstraction level:
+  Phase 1 (Research): 3 mandatory rounds (existing — chief-coordinated)
+  Phase 2 (Architecture): 3 mandatory rounds — memory, performance, ref model consistency
+  Phase 3 (μArch): 3 mandatory rounds — performance, interface, memory optimization
+  Phase 4 (RTL): Wave-based lint+sim (implementation-level)
+  Phase 5 (Verify): Sub-phase parallel (terminal verification)
+
+Iteration count can be increased beyond 3 if convergence is not achieved.
+The principle: **refine thoroughly at the top, execute efficiently at the bottom.**
+
 State is persisted at .rtl-agent-team/state/rtl-autopilot-state.json for resumability.
 </Purpose>
 
@@ -79,47 +97,67 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-3. **Phase 2 — Architecture + Reference Model (parallel)**: invoke arch-design and ref-model skills concurrently
+3. **Phase 2 — Architecture + Reference Model (parallel + 3-round iterative review)**:
+   invoke arch-design and ref-model skills concurrently
+   - arch-designer + ref-model-dev produce initial artifacts concurrently
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n` naming
    - **Review artifacts setup**: `mkdir -p reviews/phase-2-architecture`
+   - **Cascading Quality: 3-round mandatory iterative review** coordinated by rtl-architect:
+     - Parallel reviewers each round:
+       (a) `rtl-architect`: spec compliance (Feature Coverage Checklist) + structural review
+       (b) `vcodec-architecture-expert`: memory access patterns, performance analysis (SRAM sizing, bandwidth, access conflicts)
+       (c) `ref-model-dev`: architecture ↔ C model consistency (block mapping, data flow, interface alignment)
+     - Round 1-2: review → targeted feedback → revision (only experts with findings re-run)
+     - Round 3 mandatory even if converged: cross-block interface audit + memory conflict analysis + ref model code review
+     - After 3 rounds if not converged → escalate to user via AskUserQuestion
+     - User may request additional rounds beyond 3 ("set iterations to N")
+   - `rtl-critic` performs synthesizability pre-assessment (parallel with Round 1)
 
    **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + ref_model/src/*.cpp exist
 
    **Phase 2→3 Quality Gate (Architecture Review)**:
-   - `rtl-architect` reviews architecture.md against requirements.json:
-     - **Feature Coverage Checklist**: enumerate every functional requirement from requirements.json and confirm it is addressed in architecture.md. Flag any missing feature as FAIL
-       - **Save checklist to `reviews/phase-2-architecture/feature-coverage.md`** in standard review Markdown format
-     - Block decomposition: are blocks well-bounded with clear responsibilities?
-     - Interface adequacy: do inter-block interfaces carry all required signals?
-     - Port naming compliance: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`
-     - **Save full review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
+   - 3-round iterative review converged (or gaps escalated and user-approved)
+   - **Feature Coverage Checklist**: 100% of REQ-NNN mapped to architecture blocks
+     - **Save checklist to `reviews/phase-2-architecture/feature-coverage.md`** in standard review Markdown format
+   - Memory access review PASS: all large blocks have viable memory strategy
+   - Architecture ↔ ref model consistency PASS: block mapping + data flow + interface alignment
+   - Ref model code review: quality, bitexact correctness verified
    - **Architecture Diagram**: Save Mermaid block diagram to `reviews/phase-2-architecture/architecture-diagram.md`
-     - Include a `graph TD` Mermaid diagram showing top-level block decomposition and connectivity
-   - `rtl-critic` performs synthesizability pre-assessment:
-     - Are there architectural patterns known to cause synthesis issues?
-     - Clock domain crossing strategy defined where needed?
-   - **Verdict**: PASS if Spec feature coverage is 100% AND no structural defects; FAIL + findings otherwise
+   - Per-round review artifacts: architecture-review-r1.md, r2.md, r3.md
+   - **Save consolidated review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
+   - **Verdict**: PASS if Spec feature coverage is 100% AND no structural defects AND iterative review converged; FAIL + findings otherwise
 
 ---
 
-4. **Phase 3 — μArch + BFM (parallel)**: invoke uarch-design and bfm-develop skills concurrently
+4. **Phase 3 — μArch + BFM (parallel + 3-round iterative review)**:
+   invoke uarch-design and bfm-develop skills concurrently
+   - uarch-designer + bfm-dev produce initial artifacts concurrently
    - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
    - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch`
+   - **Cascading Quality: 3-round mandatory iterative review** coordinated by rtl-architect:
+     - Parallel reviewers each round:
+       (a) `rtl-architect`: feature preservation + block boundary alignment + interface correctness
+       (b) `timing-advisor`: critical paths at target frequency, pipeline balance
+       (c) `vcodec-architecture-expert`: algorithm/memory/interface optimization (SRAM banking, port conflicts, handshake, backpressure)
+       (d) `ref-model-dev`: model consistency (behavioral match, data widths, fixed-point formats, rounding modes)
+     - Each round focuses on: performance, interface, memory access optimization per module
+     - Round 3 mandatory: model consistency matrix + cross-module interface audit + μArch code review
+     - After 3 rounds if not converged → escalate to user via AskUserQuestion
+     - User may request additional rounds beyond 3
 
    **Phase 3→4 Artifact Gate**: uarch/*.md + bfm/ directory exist
 
    **Phase 3→4 Quality Gate (μArch Review)**:
-   - `rtl-architect` reviews uarch/*.md against architecture.md:
-     - **Block boundary alignment**: does each uarch document correspond 1:1 to an architecture block? Flag any split/merge that deviates from architecture.md
-     - **Feature preservation**: for each feature assigned to a block in architecture.md, verify the corresponding uarch/*.md describes its implementation. Flag any feature dropped or altered
-       - **Save feature preservation checklist to `reviews/phase-3-uarch/feature-preservation.md`** in standard review Markdown format
-     - Pipeline depth and staging: is the proposed pipeline feasible for target frequency?
-     - Timing path analysis: are there combinational paths that clearly violate timing?
-     - Signal/register naming compliance with conventions
-     - **Save full review to `reviews/phase-3-uarch/uarch-review.md`** in standard review Markdown format
+   - 3-round iterative review converged (or gaps escalated and user-approved)
+   - **Feature Preservation Checklist**: 100% of architecture features preserved in μArch
+     - **Save checklist to `reviews/phase-3-uarch/feature-preservation.md`** in standard review Markdown format
+   - Block boundary alignment: 1:1 correspondence with architecture.md
+   - Memory access optimization PASS: SRAM banking, port conflicts, access scheduling reviewed
+   - μArch ↔ ref model consistency PASS: behavior, data widths, fixed-point formats aligned
    - **Pipeline Diagram**: Save Mermaid pipeline diagram to `reviews/phase-3-uarch/pipeline-diagram.md`
-     - Include a `graph LR` Mermaid diagram showing pipeline stages and data flow
-   - **Verdict**: PASS if architecture is fully and faithfully decomposed into μArch with no feature loss AND timing paths are reasonable; FAIL + findings otherwise
+   - Per-round review artifacts: uarch-review-r1.md, r2.md, r3.md
+   - **Save consolidated review to `reviews/phase-3-uarch/uarch-review.md`** in standard review Markdown format
+   - **Verdict**: PASS if architecture is fully and faithfully decomposed into μArch with no feature loss AND timing paths are reasonable AND iterative review converged; FAIL + findings otherwise
 
 ---
 
@@ -310,7 +348,7 @@ Evaluate each requirement for RTL implementation feasibility:
 verdict: PASS or FAIL + findings[]")
 
 # ============================================================
-# Phase 2: Architecture + Reference Model (parallel)
+# Phase 2: Architecture + Reference Model (parallel + 3-round iterative review)
 # ============================================================
 Bash("mkdir -p reviews/phase-2-architecture")
 
@@ -319,35 +357,7 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Implement C++ ref model at ref_model/src/ from requirements.json. Must be bitexact vs JM/HM.")
 
-# --- Phase 2→3 Quality Gate ---
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY architecture review. Read requirements.json, then read architecture.md.
-Perform the following checks:
-1. **Feature Coverage Checklist**: List EVERY functional requirement from requirements.json.
-   For each, state whether architecture.md addresses it and where (section/block).
-   Mark COVERED or MISSING. Any MISSING item → FAIL.
-   Save the checklist to reviews/phase-2-architecture/feature-coverage.md in this format:
-     # Phase 2 Review: Feature Coverage
-     - Date: (today)
-     - Reviewer: rtl-architect
-     - Upper Spec: requirements.json
-     - Verdict: PASS | FAIL
-     ## Feature Coverage Checklist
-     | REQ ID | Description | Architecture Block | Status |
-     |--------|-------------|-------------------|--------|
-     ## Findings
-     ## Verdict
-2. **Block decomposition**: Are blocks well-bounded with single responsibilities?
-3. **Interface adequacy**: Do inter-block interfaces carry all signals needed for the requirements?
-4. **Port naming**: Verify all interface tables use i_/o_ prefix, {domain}_clk/{domain}_rst_n.
-5. **Hierarchical compliance**: Does architecture introduce any feature not in requirements.json?
-   Unauthorized additions → FAIL.
-Save the full architecture review to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format.
-Also save a Mermaid block diagram to reviews/phase-2-architecture/architecture-diagram.md showing
-the top-level block decomposition (use graph TD with block names and connections).
-Output the Feature Coverage Checklist table, then:
-verdict: PASS or FAIL + findings[]")
-
+# --- Phase 2 Synthesizability Pre-Assessment (parallel with Round 1) ---
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="READ-ONLY synthesizability pre-assessment. Read architecture.md.
 Evaluate:
@@ -357,8 +367,48 @@ Evaluate:
 4. Any combinational loop risks in the proposed block connectivity?
 verdict: PASS or FAIL + findings[]")
 
+# --- Phase 2 Iterative Review: Round 1 (3 reviewers in parallel) ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Review Round 1: Read requirements.json and architecture.md.
+1. **Feature Coverage Checklist**: List EVERY functional requirement. Mark COVERED or MISSING.
+2. **Block decomposition**: Well-bounded with single responsibilities?
+3. **Interface adequacy**: All signals needed for requirements?
+4. **Port naming**: i_/o_ prefix, {domain}_clk/{domain}_rst_n compliance.
+5. **Hierarchical compliance**: No unauthorized features added.
+Output Feature Coverage Checklist and findings.")
+
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
+     prompt="Review Round 1: Read architecture.md. Analyze memory access patterns for all large blocks:
+SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns,
+line buffer organization, shared memory arbitration. Identify performance bottlenecks
+(pipeline depth, throughput, latency vs spec targets). Output findings.")
+
+Task(subagent_type="rtl-agent-team:ref-model-dev",
+     prompt="Review Round 1: Read architecture.md and ref_model/src/. Check architecture-to-model
+consistency: block ↔ ref_model module mapping, data flow order, interface widths/formats.
+Identify any misalignment. Output findings.")
+
+# --- Round 1 Coordinator aggregation ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Aggregate Round 1 findings from rtl-architect, vcodec-architecture-expert, ref-model-dev.
+Save consolidated review to reviews/phase-2-architecture/architecture-review-r1.md.
+Output targeted feedback for each expert that needs to revise.")
+
+# --- Targeted revision Round 1→2 (only experts with findings) ---
+# --- Review Round 2 (same 3 reviewers) → architecture-review-r2.md ---
+# --- Targeted revision Round 2→3 (skip if converged) ---
+# --- Review Round 3 (mandatory final pass) → architecture-review-r3.md ---
+
+# --- Finalize ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Finalize Phase 2 review. Consolidate r1, r2, r3 into:
+- reviews/phase-2-architecture/architecture-review.md (consolidated final review)
+- reviews/phase-2-architecture/feature-coverage.md (Feature Coverage Checklist)
+- reviews/phase-2-architecture/architecture-diagram.md (Mermaid graph TD)
+Output: VERDICT: PASS or VERDICT: FAIL + findings[]")
+
 # ============================================================
-# Phase 3: μArch + BFM (parallel)
+# Phase 3: μArch + BFM (parallel + 3-round iterative review)
 # ============================================================
 Bash("mkdir -p reviews/phase-3-uarch")
 
@@ -367,36 +417,48 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
 Task(subagent_type="rtl-agent-team:bfm-dev",
      prompt="Implement SystemC TLM BFMs at bfm/src/ from architecture.md. Interface names must match io_definition.json.")
 
-# --- Phase 3→4 Quality Gate ---
+# --- Phase 3 Iterative Review: Round 1 (4 reviewers in parallel) ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY μArch review. Read architecture.md, then read all uarch/*.md files.
-Perform the following checks:
-1. **Block boundary alignment**: Does each uarch document correspond 1:1 to an architecture block?
-   Flag any block that was split, merged, or renamed without architecture.md approval.
-2. **Feature preservation**: For each feature assigned to a block in architecture.md,
-   verify the corresponding uarch/*.md describes its detailed implementation.
-   List each feature and mark PRESERVED or DROPPED. Any DROPPED item → FAIL.
-   Save the feature preservation checklist to reviews/phase-3-uarch/feature-preservation.md in this format:
-     # Phase 3 Review: Feature Preservation
-     - Date: (today)
-     - Reviewer: rtl-architect
-     - Upper Spec: architecture.md
-     - Verdict: PASS | FAIL
-     ## Feature Coverage Checklist
-     | Feature | Architecture Block | μArch Doc | Status |
-     |---------|-------------------|-----------|--------|
-     ## Findings
-     ## Verdict
-3. **Pipeline/timing feasibility**: Is the proposed pipeline depth achievable at target frequency?
-   Are there obvious critical paths that span too many logic levels?
-4. **Signal naming compliance**: i_/o_ ports, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates.
-5. **Hierarchical compliance**: Does any μArch document alter a decision made in architecture.md
-   (e.g., change interface width, remove a port, alter FSM states)? Any such change → FAIL.
-Save the full μArch review to reviews/phase-3-uarch/uarch-review.md in standard review Markdown format.
-Also save a Mermaid pipeline diagram to reviews/phase-3-uarch/pipeline-diagram.md showing
-the pipeline stages and data flow (use graph LR with stage names and connections).
-Output the Feature Preservation Checklist table, then:
-verdict: PASS or FAIL + findings[]")
+     prompt="Review Round 1: Read architecture.md and all uarch/*.md.
+1. **Block boundary alignment**: 1:1 correspondence with architecture blocks?
+2. **Feature preservation**: All features PRESERVED or DROPPED? Any DROPPED → FAIL.
+3. **Signal naming**: i_/o_ ports, {domain}_clk/{domain}_rst_n, u_ instances.
+4. **Hierarchical compliance**: Any unauthorized architecture alterations? → FAIL.
+Output Feature Preservation Checklist and findings.")
+
+Task(subagent_type="rtl-agent-team:timing-advisor",
+     prompt="Review Round 1: Review uarch/*.md for critical path issues at target frequency.
+Flag pipeline imbalance, register placement feasibility, combinational paths that violate timing.
+Output findings.")
+
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
+     prompt="Review Round 1: Read uarch/*.md. Verify algorithm ↔ μArch consistency.
+Analyze memory access optimization: SRAM banking, port conflicts, access scheduling.
+Review interface optimization: handshake protocols, backpressure mechanisms.
+Output findings.")
+
+Task(subagent_type="rtl-agent-team:ref-model-dev",
+     prompt="Review Round 1: Read uarch/*.md and ref_model/src/. Check model consistency:
+behavioral match, data widths, fixed-point formats, rounding modes.
+Output findings.")
+
+# --- Round 1 Coordinator aggregation ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Aggregate Round 1 findings from all 4 reviewers.
+Save to reviews/phase-3-uarch/uarch-review-r1.md. Output targeted feedback.")
+
+# --- Targeted revision Round 1→2 (only modules/experts with feedback) ---
+# --- Review Round 2 (same 4 reviewers) → uarch-review-r2.md ---
+# --- Targeted revision Round 2→3 (skip if converged) ---
+# --- Review Round 3 (mandatory final pass) → uarch-review-r3.md ---
+
+# --- Finalize ---
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Finalize Phase 3 review. Consolidate r1, r2, r3 into:
+- reviews/phase-3-uarch/uarch-review.md (consolidated final review)
+- reviews/phase-3-uarch/feature-preservation.md (Feature Preservation Checklist)
+- reviews/phase-3-uarch/pipeline-diagram.md (Mermaid graph LR)
+Output: VERDICT: PASS or VERDICT: FAIL + findings[]")
 
 # ============================================================
 # Phase 4: RTL Implementation (parallel per module)
@@ -657,8 +719,8 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 - [ ] Each phase passed BOTH Artifact Gate AND Quality Gate before proceeding
 - [ ] **Hierarchical Spec Compliance** verified at every Quality Gate:
   - Phase 1→2: requirements are complete, consistent, and implementable
-  - Phase 2→3: architecture covers 100% of requirements (Feature Coverage Checklist PASS)
-  - Phase 3→4: μArch preserves 100% of architecture features (Feature Preservation Checklist PASS)
+  - Phase 2→3: architecture covers 100% of requirements (Feature Coverage Checklist PASS) + 3-round iterative review converged (memory, performance, ref model consistency)
+  - Phase 3→4: μArch preserves 100% of architecture features (Feature Preservation Checklist PASS) + 3-round iterative review converged (performance, interface, memory optimization)
   - Phase 4→5: RTL implements 100% of requirements (Functional Coverage Matrix PASS) + lint-clean + all unit tests PASS + basic integration PASS
   - Phase 4 Stream B: SVA skeletons, preliminary CDC report, TB skeletons generated
   - Phase 5 multi-seed regression: 3 seeds per module passed
@@ -675,11 +737,17 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
 - [ ] Summary report generated with Final Compliance Matrix and Phase 6 deliverables
 - [ ] **Review artifacts saved to reviews/ directory:**
   - reviews/phase-1-research/research-review.md
+  - reviews/phase-2-architecture/architecture-review-r1.md (Round 1)
+  - reviews/phase-2-architecture/architecture-review-r2.md (Round 2)
+  - reviews/phase-2-architecture/architecture-review-r3.md (Round 3)
   - reviews/phase-2-architecture/feature-coverage.md
-  - reviews/phase-2-architecture/architecture-review.md
+  - reviews/phase-2-architecture/architecture-review.md (consolidated)
   - reviews/phase-2-architecture/architecture-diagram.md (Mermaid block diagram)
+  - reviews/phase-3-uarch/uarch-review-r1.md (Round 1)
+  - reviews/phase-3-uarch/uarch-review-r2.md (Round 2)
+  - reviews/phase-3-uarch/uarch-review-r3.md (Round 3)
   - reviews/phase-3-uarch/feature-preservation.md
-  - reviews/phase-3-uarch/uarch-review.md
+  - reviews/phase-3-uarch/uarch-review.md (consolidated)
   - reviews/phase-3-uarch/pipeline-diagram.md (Mermaid pipeline diagram)
   - reviews/phase-4-rtl/functional-completeness.md
   - reviews/phase-4-rtl/design-review.md

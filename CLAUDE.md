@@ -190,6 +190,28 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > - Whether any interfaces have changed compared to the upper spec
 > - If changes exist: valid justification + user approval status
 
+## IMPORTANT — Cascading Quality Principle
+
+> **Higher abstraction levels require MORE iterative refinement.**
+>
+> Good research → good architecture → good μArch → good RTL.
+> A defect at the architecture level costs orders of magnitude more to fix at RTL
+> than if caught during architecture review.
+>
+> **Time is NOT a constraint at upper levels.** Spend extra review rounds perfecting
+> architecture and μArch rather than discovering fundamental issues during RTL coding.
+>
+> | Phase | Abstraction | Mandatory Review Iterations |
+> |-------|------------|---------------------------|
+> | Phase 1: Research | Highest | 3 rounds (chief-coordinated) |
+> | Phase 2: Architecture | High | 3 rounds (memory, performance, ref model) |
+> | Phase 3: μArch | Medium | 3 rounds (performance, interface, memory) |
+> | Phase 4: RTL | Low | Wave-based lint+sim |
+> | Phase 5: Verify | Lowest | Sub-phase parallel |
+>
+> Iteration count may be increased beyond 3 if convergence is not achieved.
+> The principle: **refine thoroughly at the top, execute efficiently at the bottom.**
+
 ## 6-Phase Design Pipeline (+Phase 7 Optional Exploration)
 
 Design artifacts for each Phase are stored in `docs/phase-N-*/` and serve as input (guides) for the next Phase.
@@ -198,7 +220,9 @@ Upper spec compliance verification results (verdict) are stored in `reviews/phas
 ```
 Phase 1: Research    → docs/phase-1-research/      (natural language spec, domain knowledge)
 Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + ref_model/ (C++ golden)
+                       + 3-round iterative review (memory, performance, ref model consistency)
 Phase 3: μArch/TLM   → docs/phase-3-uarch/         (microarchitecture) + BFM
+                       + 3-round iterative review (performance, interface, memory optimization)
 Phase 4: RTL+Unit    → rtl/src/ + tb/unit/ + docs/phase-4-rtl/ (module design docs, unit design)
                        Stream A: RTL implementation (wave-based parallel coding + lint + unit test)
                        Stream B: Early verification framework (SVA skeletons, CDC topology, TB skeletons)
@@ -372,9 +396,15 @@ reviews/
 ├── phase-1-research/
 │   └── research-review.md               # Spec completeness + feasibility verdict
 ├── phase-2-architecture/
-│   └── architecture-review.md           # verdict on whether Arch complies with Spec
+│   ├── architecture-review-r1.md        # Round 1 review (3-round iterative)
+│   ├── architecture-review-r2.md        # Round 2 review
+│   ├── architecture-review-r3.md        # Round 3 review (mandatory final pass)
+│   └── architecture-review.md           # Consolidated verdict on whether Arch complies with Spec
 ├── phase-3-uarch/
-│   └── uarch-review.md                  # verdict on whether μArch complies with Arch
+│   ├── uarch-review-r1.md              # Round 1 review (3-round iterative)
+│   ├── uarch-review-r2.md              # Round 2 review
+│   ├── uarch-review-r3.md              # Round 3 review (mandatory final pass)
+│   └── uarch-review.md                  # Consolidated verdict on whether μArch complies with Arch
 ├── phase-4-rtl/
 │   └── design-review.md                 # verdict on whether RTL complies with μArch
 ├── phase-5-verify/
