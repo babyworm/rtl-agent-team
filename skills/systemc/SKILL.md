@@ -229,7 +229,7 @@ expected = lib.encode_bin(ctx_addr, bin_val)
 ## 7. Coding Style
 
 ### 7.1 Mandatory
-- C++17 or later, fixed-width integers (`<cstdint>`), RAII, `const`, Header guard
+- C++17 (not C++20), fixed-width integers (`<cstdint>`), RAII, `const`, Header guard
 - AT models: use MemoryManager + PEQ
 
 ### 7.2 Prohibited

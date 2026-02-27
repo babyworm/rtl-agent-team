@@ -21,7 +21,7 @@ color: yellow
     - SYNCASYNCNET: mixed sync/async usage of a signal (MAJOR for CDC)
     - PINCONNECTEMPTY / PINNOCONNECT: unconnected module ports (MAJOR)
   - **Verible** (`verible-verilog-lint`): Best for style, formatting, naming conventions, structural checks.
-  - **slang** (`slang --lint-only`): Best for semantic analysis, type checking, IEEE 1800-2017 compliance.
+  - **slang** (`slang --lint-only`): Best for semantic analysis, type checking, IEEE 1800-2012 compliance.
 
   **Verilator waiver support:** If `.vlt` waiver file exists, apply it:
   `verilator --lint-only -Wall -Wpedantic *.sv verilator.vlt`

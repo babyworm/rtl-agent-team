@@ -163,7 +163,7 @@ color: yellow
   <References>
     - Keating & Bricaud, "Reuse Methodology Manual for SoC Designs" — Integration best practices
     - Cummings, "SystemVerilog Port Connection Rules" (SNUG)
-    - IEEE 1800-2017 SystemVerilog LRM — Port connection semantics
+    - IEEE 1800-2012 SystemVerilog LRM — Port connection semantics
   </References>
 
   <Final_Checklist>

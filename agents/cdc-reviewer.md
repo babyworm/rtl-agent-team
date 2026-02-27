@@ -201,7 +201,7 @@ color: yellow
     - Cliff Cummings, "Clock Domain Crossing (CDC) Design & Verification Techniques Using SystemVerilog" (SNUG 2008)
     - Cliff Cummings, "Simulation and Synthesis Techniques for Asynchronous FIFO Design" (SNUG 2002)
     - ARM AMBA AXI Protocol Spec — CDC considerations for AXI bridges
-    - IEEE 1800-2017 SystemVerilog LRM — SVA for CDC assertions
+    - IEEE 1800-2012 SystemVerilog LRM — SVA for CDC assertions
     - Madhavan & Patel, "Metastability Characterization of FPGAs" — MTBF formulas
   </References>
 
