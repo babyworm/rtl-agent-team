@@ -6,6 +6,16 @@ node_modules/
 .env
 .env.local
 
+# Pipeline execution artifacts (generated per-project, not part of plugin)
+reviews/
+rtl/
+tb/
+ref_model/
+specs/
+uarch/
+docs/
+architecture.md
+
 # EDA simulation artifacts
 *.vcd
 *.fst
