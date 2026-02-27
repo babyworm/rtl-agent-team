@@ -22,6 +22,7 @@
     "formal"
   ],
   "agents": "./agents/",
+  "hooks": "./hooks/hooks.json",
   "skills": "./skills/",
   "lspServers": "./.lsp.json"
 }

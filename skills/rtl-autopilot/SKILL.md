@@ -455,7 +455,7 @@ Quality Gate returns FAIL but pipeline proceeds anyway:
   3. DO NOT proceed — wait for user to approve rollback or waiver
   4. If approved, return to the appropriate upper phase and re-run from there
 - **Verification phase fails after 2 retries** → invoke bug-repro skill, report findings
-- **User says "cancelomc"** → invoke cancel skill, preserve state file for resume
+- **User says "cancel" or "stop"** → delete .rtl-agent-team/state/rtl-autopilot-state.json, report progress summary
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
