@@ -92,6 +92,9 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 | Generate blocks | `gen_` prefix | `gen_pipeline_stage` |
 | Signals (internal) | `snake_case` | `write_enable`, `addr_valid` |
 
+> **UVM 예외**: UVM 클래스 내부 멤버 핸들은 업계 관행에 따라 `m_` prefix 허용
+> (`m_driver`, `m_monitor`). `u_` prefix는 RTL 모듈 인스턴스에만 적용.
+
 ### CamelCase Prohibition Examples
 
 | Forbidden (CamelCase) | Correct Form |
@@ -132,7 +135,14 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - Combinational loops are forbidden
 - `#delay` in synthesizable code is forbidden
 
-### 4.3 Module Structure
+### 4.3 iverilog Compatibility (Avoid)
+- `interface` / `modport` — iverilog 미지원. 포트 리스트로 대체
+- unpacked `struct` / `union` — iverilog 미지원. 개별 signal 또는 `packed` 버전 사용
+- 에이전트는 위 구문을 생성하지 않는다
+- `typedef struct packed` / `typedef union packed`는 지원됨 (사용 가능)
+- 사용자가 직접 추가하거나 기존 코드에 존재하는 경우 수정하지 않는다
+
+### 4.4 Module Structure
 ```
 module_name_pkg.sv    <- Shared type/constant definitions
 module_name.sv        <- Module implementation

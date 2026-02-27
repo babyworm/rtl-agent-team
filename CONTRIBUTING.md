@@ -307,6 +307,22 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 mark
 - iverilog 플래그: `-g2012` (2009 하위 호환 파싱)
 - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
 
+### iverilog 호환성
+
+iverilog는 `-g2012` 옵션으로 SystemVerilog 기본 문법을 지원하지만 일부 기능은 미지원:
+
+| 구문 | iverilog 지원 | 대체 |
+|------|-------------|------|
+| `logic`, `always_ff`, `always_comb` | 지원 | — |
+| `typedef enum` | 지원 | — |
+| `typedef struct packed` | 지원 | — |
+| `typedef union packed` | 지원 | — |
+| `interface` / `modport` | 미지원 | 포트 리스트 |
+| unpacked `struct` / `union` | 미지원 | 개별 signal 또는 packed 버전 |
+
+코딩 에이전트는 미지원 구문을 생성하지 않는다.
+사용자가 직접 추가한 코드는 수정하지 않는다.
+
 ### RTL 네이밍 규칙
 
 | 항목 | 규칙 |

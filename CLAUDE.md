@@ -275,7 +275,10 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 > | **SystemVerilog (검증)** | **IEEE 1800-2012** | SVA, UVM TB에서 2012 기능 허용 (checker, interface class 등) |
 > | **C++ (Ref Model, BFM)** | **C++17** (`-std=c++17`) | SystemC 3.0, cocotb DPI 등 모든 C++ 코드에 적용 |
 >
-> - iverilog 플래그는 `-g2012` 사용 (2012 파서가 2009 코드를 하위 호환 파싱)
+> - iverilog 플래그는 `-g2012` 사용 (SV 기본 문법 지원)
+> - **iverilog 미지원**: `interface`, unpacked `struct`/`union` — 에이전트 생성 금지
+> - `typedef struct packed` / `typedef union packed`는 지원됨 (사용 가능)
+> - 기존 코드에 존재하거나 사용자가 직접 추가한 경우 수정하지 않음
 > - verilator/slang은 기본 설정으로 2009 기능을 완전 지원
 > - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
 
@@ -285,6 +288,7 @@ RTL 작업은 반드시 전문 에이전트에 위임한다. `.sv`, `.v`, `.vhd`
 > 2. **클럭**: `clk` (단일) 또는 `{domain}_clk` (다중, 예: `sys_clk`) — NOT `clk_i`. `i_` prefix 불필요
 > 3. **리셋**: `rst_n` (단일) 또는 `{domain}_rst_n` (다중, 예: `sys_rst_n`) — NOT `rst_ni`. Active-low 비동기 리셋 필수. `i_` prefix 불필요
 > 4. **CamelCase 전면 금지**: Parameter → `ALL_CAPS` (`DATA_WIDTH`). 내부 localparam → `L_` prefix (`L_ADDR_BITS`). Enum 값 → `ALL_CAPS` (`ST_IDLE`). 모든 식별자는 `snake_case` 또는 `ALL_CAPS`만 허용
+> 5. **UVM 예외**: UVM 클래스 내부 멤버 핸들은 `m_` prefix 허용 (업계 관행). `u_`는 RTL 인스턴스 전용
 
 **확장자/Phase별 코딩 컨벤션 스킬 자동 적용:**
 
