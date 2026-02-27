@@ -44,7 +44,6 @@ ln -s /path/to/rtl-agent-team my-chip-project/.claude/plugins/rtl-agent-team
 
 ```bash
 cd /path/to/rtl-agent-team
-npm install && npm run build
 ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
 ```
 
@@ -187,11 +186,11 @@ Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `
 
 ## 개발
 
+이 플러그인은 순수 선언형(`.md` + `.json` 파일만)으로 빌드 과정이 필요 없습니다.
+
 ```bash
-npm install
-npm run build       # tsc
-npm run dev         # tsc --watch
-npm test            # vitest
+git clone https://github.com/babyworm/rtl-agent-team.git
+ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
 ## 라이선스

@@ -33,6 +33,7 @@ UVM은 산업 표준 검증 방법론이나, 자유도가 높아 일관되지 �
 <Execution_Policy>
 - UVM 환경을 생성하는 모든 에이전트에 적용
 - `templates/uvm-env-template.sv`를 새 환경의 시작점으로 사용
+- `examples/uvm-smoke-test-example.sv`로 기본 smoke test 구조 확인
 - 모든 UVM 컴포넌트는 factory에 등록 (`uvm_component_utils` / `uvm_object_utils`)
 - Phase callback 순서를 정확히 따를 것
 </Execution_Policy>

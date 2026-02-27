@@ -7,7 +7,12 @@
     "skills",
     "references",
     "domain-packages",
+    "hooks",
+    "docker",
+    "scripts",
+    "plugins",
     ".claude-plugin",
+    ".lsp.json",
     "CLAUDE.md",
     "LICENSE"
   ],

@@ -35,6 +35,7 @@ lowRISC 기반이지만 포트 네이밍, 클럭/리셋 규칙 등 프로젝트 
 - 위반 시 lint-check 스킬이 FAIL 판정을 내린다
 - `templates/module-template.sv`를 새 모듈의 시작점으로 사용할 것
 - `examples/good-vs-bad.sv`로 올바른/잘못된 패턴을 확인할 것
+- `references/lowrisc-overrides.md`로 lowRISC 원본 규칙 대비 프로젝트 오버라이드 상세 확인
 </Execution_Policy>
 
 <Steps>

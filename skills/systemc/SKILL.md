@@ -36,6 +36,7 @@ BFM과 Reference Model은 RTL 검증의 기준점(golden reference)이다.
 - **AT (Approximately Timed) non-blocking이 BFM의 기본 모델링 스타일**
 - `templates/tlm2-module-template.cpp`를 새 모듈의 시작점으로 사용
 - `examples/bfm-at-pattern.cpp`로 AT BFM 구현 패턴 확인
+- `examples/bfm-pattern.cpp`로 LT 스타일 BFM 구현 패턴 확인 (단순 레지스터 접근용)
 </Execution_Policy>
 
 <Steps>

@@ -37,6 +37,7 @@ SVA는 RTL 설계의 의도(intent)를 수학적으로 표현하는 유일한 �
 - RTL 모듈 내부 assertion보다 bind 파일 방식 우선 권장
 - 모든 assertion에는 failure message 필수
 - `templates/sva-bind-template.sv`를 새 SVA 파일의 시작점으로 사용
+- `examples/fifo-sva-example.sv`로 FIFO safety assertion 패턴 확인
 </Execution_Policy>
 
 <Steps>
