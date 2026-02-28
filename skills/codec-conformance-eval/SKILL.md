@@ -35,7 +35,7 @@ used at any Phase where decoder conformance verification is needed.
 
 **Key features**:
 - Profile/level filtering for targeted conformance testing
-- Multiple conformance sources: JVET (mandatory), JCTVC (mandatory), 3rd party (optional)
+- Multiple conformance sources: JVET/JCTVC (mandatory per standard), 3rd party (optional)
 - Configurable comparison: MD5 checksum, bitexact byte comparison, PSNR threshold
 - SSIM/VMAF opt-in (only on explicit user request)
 - Profile coverage matrix generation
@@ -46,7 +46,7 @@ used at any Phase where decoder conformance verification is needed.
 - Verifying that a C ref model decoder passes JVET/JCTVC conformance requirements
 - Testing decoder support for specific profiles/levels before hardware implementation
 - Evaluating 3rd-party conformance streams for additional coverage
-- The user explicitly says "decoder conformance", "conformance stream", "decoder verify", "bitexact decoder"
+- The user explicitly says "decoder conformance", "conformance stream", "conformance test", "decoder verify", "bitexact decoder"
 </Use_When>
 
 <Do_Not_Use_When>

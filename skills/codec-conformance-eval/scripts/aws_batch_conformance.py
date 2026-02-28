@@ -67,6 +67,7 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
     for stream in streams:
         stream_name = stream["name"]
         source_id = stream["source_id"]
+        # AWS Batch job names only allow [a-zA-Z0-9_-] — stricter than local filesystem sanitization
         safe_name = re.sub(r'[^a-zA-Z0-9_-]', '-', stream_name)[:64]
         job_name = f"conf-{safe_name}"
 

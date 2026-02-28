@@ -86,9 +86,9 @@ def submit_jobs(config: dict, output_dir: str):
 
         for seq in sequences:
             for qp in qp_points:
+                # AWS Batch job names only allow [a-zA-Z0-9_-] — stricter than local filesystem sanitization
                 safe_label = re.sub(r'[^a-zA-Z0-9_-]', '-', label)[:32]
                 job_name = f"rd-eval-{safe_label}-{seq['name']}-qp{qp}"
-                # Sanitize job name (AWS Batch: alphanumeric + hyphens + underscores, max 128 chars)
                 job_name = re.sub(r'[^a-zA-Z0-9_-]', '-', job_name)[:128]
 
                 try:
@@ -268,7 +268,10 @@ def fetch_job_result(batch_client, s3_client, job: dict, meta: dict,
     qp = meta["qp"]
     label = meta["config_label"]
 
-    result_key = f"{eval_name}/{label}_{seq}_qp{qp}_result.json"
+    # Sanitize for S3 key (AWS Batch job names only allow [a-zA-Z0-9_-])
+    safe_label = re.sub(r'[^a-zA-Z0-9_-]', '-', label)[:32]
+    safe_seq = re.sub(r'[^a-zA-Z0-9_-]', '-', seq)[:64]
+    result_key = f"{eval_name}/{safe_label}_{safe_seq}_qp{qp}_result.json"
     bucket = config.get("execution", {}).get("aws_batch", {}).get(
         "s3_bucket", "codec-eval-results")
 

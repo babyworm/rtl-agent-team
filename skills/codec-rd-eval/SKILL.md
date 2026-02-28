@@ -109,7 +109,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
    - Results saved to: `.rtl-agent-team/scratch/rd-eval/results.json`
 
 4. **BD-PSNR/BD-rate calculation** (bd_rate.py)
-   - `python3 skills/codec-rd-eval/scripts/bd_rate.py .rtl-agent-team/scratch/rd-eval/results.json`
+   - `python3 skills/codec-rd-eval/scripts/bd_rate.py .rtl-agent-team/scratch/rd-eval/results.json --output .rtl-agent-team/scratch/rd-eval/bd-metrics.json`
    - VCEG-M33 algorithm with N-point support:
      1. Transform rates to log10 domain
      2. Fit polynomial (degree = min(3, N-1)) — exact interpolation for 4 points, least-squares fitting for 5+

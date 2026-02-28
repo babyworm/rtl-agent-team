@@ -230,13 +230,7 @@ def run_local(config: dict, output_dir: str) -> list:
     decoder_binary = decoder_cfg.get("decoder_binary", "")
     cmd_template = decoder_cfg.get("decoder_cmd_template", DEFAULT_DECODER_CMD_TEMPLATE)
     extra_args = decoder_cfg.get("extra_args", "")
-    # Validate extra_args: reject shell metacharacters to prevent command injection
-    if extra_args and re.search(r'[;&|`$(){}]', extra_args):
-        print(f"ERROR: extra_args contains shell metacharacters: {extra_args!r}",
-              file=sys.stderr)
-        print("  Only plain flags are allowed (e.g., '-DDECODER_ONLY -v').",
-              file=sys.stderr)
-        sys.exit(1)
+    # Note: extra_args metacharacter validation is done in main() for both execution modes
 
     target = config.get("target", {})
     standard = target.get("standard", "h264")
@@ -373,6 +367,16 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
+
+    # Validate extra_args early: reject shell metacharacters to prevent command injection
+    # (applies to both local and aws-batch modes for defense-in-depth)
+    extra_args = config.get("decoder", {}).get("extra_args", "")
+    if extra_args and re.search(r'[;&|`$(){}]', extra_args):
+        print(f"ERROR: extra_args contains shell metacharacters: {extra_args!r}",
+              file=sys.stderr)
+        print("  Only plain flags are allowed (e.g., '-DDECODER_ONLY -v').",
+              file=sys.stderr)
+        sys.exit(1)
 
     output_dir = args.output_dir or config.get("output", {}).get(
         "raw_data_path", ".rtl-agent-team/scratch/conformance-eval"
