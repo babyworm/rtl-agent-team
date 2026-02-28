@@ -36,16 +36,16 @@
 
 ```bash
 # Standard lint check
-verilator --lint-only -Wall -Wpedantic -sv rtl/src/*.sv
+verilator --lint-only -Wall -Wpedantic -sv rtl/*/*.sv
 
 # Generate waiver template for existing warnings
-verilator --lint-only -Wall --waiver-output verilator.vlt rtl/src/*.sv
+verilator --lint-only -Wall --waiver-output verilator.vlt rtl/*/*.sv
 
 # Apply waiver file
-verilator --lint-only -Wall -Wpedantic rtl/src/*.sv verilator.vlt
+verilator --lint-only -Wall -Wpedantic rtl/*/*.sv verilator.vlt
 
 # Disable specific warnings (use sparingly, with justification)
-verilator --lint-only -Wall -Wno-UNUSED -sv rtl/src/*.sv
+verilator --lint-only -Wall -Wno-UNUSED -sv rtl/*/*.sv
 ```
 
 ## Waiver File Format (.vlt)
@@ -53,7 +53,7 @@ verilator --lint-only -Wall -Wno-UNUSED -sv rtl/src/*.sv
 ```
 `verilator_config
 // Waiver: signal unused intentionally for future expansion
-lint_off -rule UNUSED -file "rtl/src/reserved_ports.sv" -lines 10-15
+lint_off -rule UNUSED -file "rtl/reserved_ports.sv" -lines 10-15
 // Waiver: width mismatch is intentional truncation
-lint_off -rule WIDTH -file "rtl/src/datapath.sv" -match "Operator *"
+lint_off -rule WIDTH -file "rtl/datapath.sv" -match "Operator *"
 ```

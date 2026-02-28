@@ -66,10 +66,10 @@ Project rules not caught by Verilator are inspected by the `lint-checker` agent 
 // Format: lint_off -rule WARNING -file "path" [-match "pattern"]
 
 // Intentionally unused signals
-lint_off -rule UNUSED -file "rtl/src/my_module.sv" -match "Signal is not used: 'i_debug_*'"
+lint_off -rule UNUSED -file "rtl/my_module/my_module.sv" -match "Signal is not used: 'i_debug_*'"
 
 // Intentional bit-width truncation (algorithm requirement)
-lint_off -rule WIDTHTRUNC -file "rtl/src/dsp_core.sv" -match "*truncat*"
+lint_off -rule WIDTHTRUNC -file "rtl/dsp_core/dsp_core.sv" -match "*truncat*"
 
 // Third-party IP (cannot modify)
 lint_off -rule WIDTH -file "rtl/ip/*"
@@ -89,21 +89,21 @@ lint_off -rule WIDTH -file "rtl/ip/*"
 
 ```bash
 # Basic lint-only (no simulation)
-verilator --lint-only -Wall --top-module my_module rtl/src/my_module.sv
+verilator --lint-only -Wall --top-module my_module rtl/my_module/my_module.sv
 
 # Include packages
 verilator --lint-only -Wall --top-module my_module \
-  -y rtl/include/ rtl/src/my_module_pkg.sv rtl/src/my_module.sv
+  -y rtl/include/ rtl/my_module/my_module_pkg.sv rtl/my_module/my_module.sv
 
 # Apply waivers
 verilator --lint-only -Wall --top-module my_module \
-  .verilator.vlt rtl/src/my_module.sv
+  .verilator.vlt rtl/my_module/my_module.sv
 
 # Use filelist
 verilator --lint-only -Wall --top-module top_module -f rtl/filelist.f
 
 # Enable specific warnings only
-verilator --lint-only -Wno-fatal -Wwarn-LATCH -Wwarn-WIDTH rtl/src/*.sv
+verilator --lint-only -Wno-fatal -Wwarn-LATCH -Wwarn-WIDTH rtl/*/*.sv
 ```
 
 ## 6. Verilator + Verible Combination
@@ -113,8 +113,8 @@ verilator --lint-only -Wno-fatal -Wwarn-LATCH -Wwarn-WIDTH rtl/src/*.sv
 verilator --lint-only -Wall -f rtl/filelist.f 2>&1 | tee lint_verilator.log
 
 # Step 2: Verible (style lint)
-verible-verilog-lint --rules_config .verible.rules rtl/src/*.sv 2>&1 | tee lint_verible.log
+verible-verilog-lint --rules_config .verible.rules rtl/*/*.sv 2>&1 | tee lint_verible.log
 
 # Step 3: slang (IEEE 1800 semantic, optional)
-slang --lint-only rtl/src/*.sv 2>&1 | tee lint_slang.log
+slang --lint-only rtl/*/*.sv 2>&1 | tee lint_slang.log
 ```

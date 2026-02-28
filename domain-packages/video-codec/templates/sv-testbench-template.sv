@@ -52,8 +52,8 @@ module tb_{MODULE_NAME};
   // logic [DATA_WIDTH-1:0] expected_output;
   //
   // initial begin
-  //   fd_input    = $fopen("ref_model/vectors/inputs.txt", "r");
-  //   fd_expected = $fopen("ref_model/vectors/expected.txt", "r");
+  //   fd_input    = $fopen("refc/vectors/inputs.txt", "r");
+  //   fd_expected = $fopen("refc/vectors/expected.txt", "r");
   // end
 
   // =========================================================================

@@ -112,7 +112,7 @@ disallowedTools: Write, Edit
     wide arithmetic (`+`, `*`, `<<`), high-fanout signals
   - Bash: run Yosys for logic level estimation if available:
     ```bash
-    yosys -p "read_verilog -sv rtl/src/*.sv; synth; stat" 2>&1 | grep -E "cells|wire|logic"
+    yosys -p "read_verilog -sv rtl/*/*.sv; synth; stat" 2>&1 | grep -E "cells|wire|logic"
     ```
   - NO Write, NO Edit
   - Use parallel Read calls for independent module analysis

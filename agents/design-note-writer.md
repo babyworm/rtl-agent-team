@@ -3,6 +3,7 @@ name: design-note-writer
 description: Comprehensive design documentation writer. Produces reviews/phase-6-review/design-note.md with full module descriptions, Mermaid diagrams, algorithm explanations, and system-level integration overview. (Opus)
 model: opus
 color: yellow
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -45,7 +46,7 @@ color: yellow
 
 <Constraints>
   - Do NOT modify any source files. Write only the design note document.
-  - **Read ALL artifacts**: requirements.json, architecture.md, uarch/*.md, rtl/src/*.sv, Phase 4/5/6 reviews
+  - **Read ALL artifacts**: requirements.json, architecture.md, uarch/*.md, rtl/*/*.sv, Phase 4/5/6 reviews
   - I/O tables must match actual RTL ports exactly (verify by reading the source)
   - Mermaid diagrams must accurately reflect the actual implementation, not the intended design
   - Do not repeat entire RTL source code — reference it with file:line ranges
@@ -57,7 +58,7 @@ color: yellow
      a. `requirements.json` — understand what the design does
      b. `architecture.md` — understand top-level structure
      c. `uarch/*.md` — understand per-block detailed design
-     d. Read ALL `rtl/src/*.sv` files — understand actual implementation
+     d. Read ALL `rtl/*/*.sv` files — understand actual implementation
 
   2. **Read review results** (for context and bug history):
      a. Phase 4 reviews: `reviews/phase-4-rtl/*.md`
@@ -92,7 +93,7 @@ color: yellow
 </Investigation_Protocol>
 
 <Tool_Usage>
-  - Read: read ALL source files (requirements.json, architecture.md, uarch/*.md, rtl/src/*.sv, reviews/*/*.md)
+  - Read: read ALL source files (requirements.json, architecture.md, uarch/*.md, rtl/*/*.sv, reviews/*/*.md)
   - Glob: discover all RTL modules and review documents
   - Grep: find specific patterns (FSM states, interface signals, parameters)
   - Write: save design note to `reviews/phase-6-review/design-note.md`

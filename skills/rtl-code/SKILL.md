@@ -1,12 +1,12 @@
 ---
 name: rtl-code
-description: "This skill should be used when implementing SystemVerilog RTL modules from uarch specs in Phase 4. Produces lint-clean rtl/src/*.sv with write-lint-fix cycles."
+description: "This skill should be used when implementing SystemVerilog RTL modules from uarch specs in Phase 4. Produces lint-clean rtl/*/*.sv with write-lint-fix cycles."
 ---
 
 <Purpose>
 Generate synthesizable SystemVerilog RTL for every block defined in uarch/*.md.
 Each module goes through a write → lint → fix cycle before the phase gate passes.
-Output: rtl/src/*.sv, all lint-clean under Verible and slang.
+Output: rtl/*/*.sv, all lint-clean under Verible and slang.
 </Purpose>
 
 <Use_When>
@@ -53,10 +53,10 @@ Parallelizing per-module coding maximizes throughput.
      - Instance prefix: `u_`, generate prefix: `gen_`
      - Parameters: `UPPER_SNAKE_CASE`, types: `snake_case_t`
      - ANSI port style, one module per file
-   - Each rtl-coder produces rtl/src/{module}.sv
+   - Each rtl-coder produces rtl/{module}/{module}.sv
 
 5. **Wave 2 — Lint All (parallel)**: After ALL modules from Wave 1 are written, launch N lint-checker tasks simultaneously
-   - Each lint-checker runs: `verilator --lint-only -Wall rtl/src/{module}.sv`
+   - Each lint-checker runs: `verilator --lint-only -Wall rtl/{module}/{module}.sv`
    - Collect results: classify each module as PASS or FAIL
    - Do NOT fix yet — collect ALL lint results first for pattern analysis
 
@@ -68,25 +68,25 @@ Parallelizing per-module coding maximizes throughput.
 
 6. **Wave 4 — Unit TB + Sim (parallel, overlapping with Wave 3)**:
    - Lint-clean modules can start TB generation while other modules are still in Wave 3 fix rounds
-   - testbench-dev generates `tb/unit/tb_{module}.sv` for each lint-clean module
+   - testbench-dev generates `sim/{module}/tb_{module}.sv` for each lint-clean module
    - Smoke test level: reset sequence, basic I/O, FSM state coverage
    - Signal naming: follows `sys_clk`, `sys_rst_n`, `i_*/o_*` conventions
    - If TB already exists, update it (add new test cases)
 7. **Per-Module Unit Simulation (parallel)**
-   - eda-runner runs each unit test:
+   - eda-runner runs each unit test via simulate.sh:
      ```bash
-     iverilog -g2012 -o sim/unit/{module} rtl/src/{module}.sv tb/unit/tb_{module}.sv
-     vvp sim/unit/{module}
+     scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
+       rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv
      ```
    - On failure: waveform-analyzer debug → rtl-coder fix → re-run (max 3 rounds)
-   - Save results: `sim/unit/{module}_results.txt`
+   - Save results: `sim/{module}/{module}_results.txt`
 8. **Basic Integration Check**
    - Run smoke test on the top-level module
    - Basic verification of inter-module connections (reset propagation, clock connectivity)
-   - testbench-dev generates `tb/unit/tb_{top_module}_smoke.sv`
+   - testbench-dev generates `sim/top/tb_{top_module}_smoke.sv`
    - eda-runner executes: compile all modules + top-level sim
 9. **Hierarchical Spec Compliance Check — functional coverage review:**
-   - rtl-critic reads requirements.json, uarch/*.md, and all rtl/src/*.sv files
+   - rtl-critic reads requirements.json, uarch/*.md, and all rtl/*/*.sv files
    - Verify every functional requirement (REQ-NNN) from requirements.json is implemented in RTL
    - Verify every uarch/*.md behavioral specification is reflected in the corresponding module
    - Output a Functional Completeness Report:
@@ -112,9 +112,9 @@ Parallelizing per-module coding maximizes throughput.
 # ============================================================
 # Launch one rtl-coder task per module — ALL modules simultaneously
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement rtl/src/cabac_encoder.sv from uarch/cabac_encoder.md. Conventions: i_/o_/io_ port prefix (NOT _i/_o suffix), sys_clk/sys_rst_n (NOT clk_i/rst_ni), logic only (no reg/wire), always_ff/always_comb, u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params.")
+     prompt="Implement rtl/cabac_encoder/cabac_encoder.sv from uarch/cabac_encoder.md. Conventions: i_/o_/io_ port prefix (NOT _i/_o suffix), sys_clk/sys_rst_n (NOT clk_i/rst_ni), logic only (no reg/wire), always_ff/always_comb, u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params.")
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement rtl/src/transform.sv from uarch/transform.md. [same conventions]")
+     prompt="Implement rtl/transform/transform.sv from uarch/transform.md. [same conventions]")
 # ... one Task per module, all launched in parallel
 
 # ============================================================
@@ -122,9 +122,9 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 # ============================================================
 # Launch lint on ALL modules simultaneously — do NOT fix yet
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run lint on rtl/src/cabac_encoder.sv via Bash CLI: 'verilator --lint-only -Wall rtl/src/cabac_encoder.sv' and 'slang --lint-only rtl/src/cabac_encoder.sv'. Report all violations with line numbers. Classify result as PASS or FAIL. Also check naming conventions: i_/o_ prefix, {domain}_clk/{domain}_rst_n.")
+     prompt="Run lint on rtl/cabac_encoder/cabac_encoder.sv via Bash CLI: 'verilator --lint-only -Wall rtl/cabac_encoder/cabac_encoder.sv' and 'slang --lint-only rtl/cabac_encoder/cabac_encoder.sv'. Report all violations with line numbers. Classify result as PASS or FAIL. Also check naming conventions: i_/o_ prefix, {domain}_clk/{domain}_rst_n.")
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run lint on rtl/src/transform.sv via Bash CLI. [same pattern]")
+     prompt="Run lint on rtl/transform/transform.sv via Bash CLI. [same pattern]")
 # ... one lint Task per module, all launched in parallel
 # Collect all results: PASS modules → proceed to Wave 4, FAIL modules → Wave 3
 
@@ -133,10 +133,10 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 # ============================================================
 # Launch rtl-coder ONLY for modules that FAILED lint in Wave 2
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Fix lint violations in rtl/src/cabac_encoder.sv per lint report: [paste report]. Maintain all naming conventions (i_/o_ prefix, sys_clk/sys_rst_n). After fix, re-run lint on THIS file only.")
+     prompt="Fix lint violations in rtl/cabac_encoder/cabac_encoder.sv per lint report: [paste report]. Maintain all naming conventions (i_/o_ prefix, sys_clk/sys_rst_n). After fix, re-run lint on THIS file only.")
 # Re-lint ONLY the fixed modules (not all)
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Re-lint ONLY rtl/src/cabac_encoder.sv (fixed in Wave 3). Report PASS/FAIL.")
+     prompt="Re-lint ONLY rtl/cabac_encoder/cabac_encoder.sv (fixed in Wave 3). Report PASS/FAIL.")
 # Max 3 fix rounds per module
 
 # ============================================================
@@ -144,32 +144,32 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 # ============================================================
 # Lint-clean modules start TB generation immediately (overlap with Wave 3)
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Create SV unit test for rtl/src/{module}.sv at tb/unit/tb_{module}.sv. Include: (1) clock/reset generation (sys_clk, sys_rst_n), (2) basic I/O stimulus, (3) FSM state coverage, (4) self-checking assertions. Use i_*/o_* signal naming.")
+     prompt="Create SV unit test for rtl/{module}/{module}.sv at sim/{module}/tb_{module}.sv. Include: (1) clock/reset generation (sys_clk, sys_rst_n), (2) basic I/O stimulus, (3) FSM state coverage, (4) self-checking assertions. Use i_*/o_* signal naming.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run unit test via Bash CLI: 'mkdir -p sim/unit && iverilog -g2012 -o sim/unit/{module} rtl/src/{module}.sv tb/unit/tb_{module}.sv && vvp sim/unit/{module} | tee sim/unit/{module}_results.txt'. Report pass/fail.")
+     prompt="Run unit test via Bash CLI: 'scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv | tee sim/{module}/{module}_results.txt'. Report pass/fail.")
 
 # ============================================================
 # Integration Smoke Test (after all modules lint-clean and unit tested)
 # ============================================================
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Create top-level integration smoke test at tb/unit/tb_{top_module}_smoke.sv. Include: (1) reset propagation check, (2) clock connectivity, (3) basic data flow through all modules.")
+     prompt="Create top-level integration smoke test at sim/top/tb_{top_module}_smoke.sv. Include: (1) reset propagation check, (2) clock connectivity, (3) basic data flow through all modules.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run integration smoke test via Bash CLI: compile all rtl/src/*.sv with tb/unit/tb_{top_module}_smoke.sv using iverilog -g2012. Execute and report pass/fail.")
+     prompt="Run integration smoke test via Bash CLI: scripts/simulate.sh --sim iverilog --top tb_{top_module}_smoke --filelist rtl/filelist.f --outdir sim/{module} --trace sim/top/tb_{top_module}_smoke.sv. Execute and report pass/fail.")
 
 # ============================================================
 # Functional Coverage Review (after all modules lint-clean + unit tested)
 # ============================================================
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/src/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Save the Functional Completeness Report to reviews/phase-4-rtl/functional-completeness.md in standard review Markdown format. Save the full design review to reviews/phase-4-rtl/design-review.md. verdict: PASS or FAIL — [N] functional gaps found.")
+     prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/*/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Save the Functional Completeness Report to reviews/phase-4-rtl/functional-completeness.md in standard review Markdown format. Save the full design review to reviews/phase-4-rtl/design-review.md. verdict: PASS or FAIL — [N] functional gaps found.")
 
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run lint on all rtl/src/*.sv. Save the lint report to reviews/phase-4-rtl/lint-report.md in standard review Markdown format. verdict: PASS or FAIL + error list[]")
+     prompt="Run lint on all rtl/*/*.sv. Save the lint report to reviews/phase-4-rtl/lint-report.md in standard review Markdown format. verdict: PASS or FAIL + error list[]")
 
 # On FAIL: fix missing functionality
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement the following missing functionality in rtl/src/ per rtl-critic report: [paste gaps]. Then re-run lint.")
+     prompt="Implement the following missing functionality in rtl/ per rtl-critic report: [paste gaps]. Then re-run lint.")
 ```
 </Tool_Usage>
 
@@ -194,13 +194,13 @@ Only re-lint the modules that were actually fixed in Wave 3.
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] rtl/src/*.sv exists for every block in architecture.md
+- [ ] rtl/*/*.sv exists for every block in architecture.md
 - [ ] All files pass Verible lint with zero errors (via Bash CLI)
 - [ ] All files pass slang lint with zero errors (via Bash CLI)
 - [ ] No module blocked after 3 fix rounds
-- [ ] tb/unit/tb_{module}.sv exists for every module
-- [ ] All unit tests PASS (sim/unit/{module}_results.txt)
-- [ ] Basic integration smoke test PASS (tb/unit/tb_{top_module}_smoke.sv)
+- [ ] sim/{module}/tb_{module}.sv exists for every module
+- [ ] All unit tests PASS (sim/{module}/{module}_results.txt)
+- [ ] Basic integration smoke test PASS (sim/top/tb_{top_module}_smoke.sv)
 - [ ] **rtl-critic functional coverage verdict is PASS**
 - [ ] **Every REQ-NNN from requirements.json implemented in at least one RTL module**
 - [ ] **Every uarch/*.md behavioral spec reflected in corresponding RTL module**
@@ -231,7 +231,7 @@ rtl-coder should use parameters for all configurable constants (widths, depths).
 
 **EDA tools run via Bash CLI directly** (not through MCP):
 ```bash
-verilator --lint-only -Wall rtl/src/{module}.sv
-slang --lint-only rtl/src/{module}.sv
+verilator --lint-only -Wall rtl/{module}/{module}.sv
+slang --lint-only rtl/{module}/{module}.sv
 ```
 </Advanced>

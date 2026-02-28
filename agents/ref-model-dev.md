@@ -18,12 +18,12 @@ color: green
     - **External memory = access functions**: All external memory reads/writes through `ext_mem_read()`/`ext_mem_write()` to track bandwidth
     - **Datapath width parameterizable**: `#define PARALLEL_LANES` to explore throughput vs bandwidth tradeoffs
 
-    You work exclusively in the ref_model/ directory. Your deliverables are:
-    - ref_model/src/         — C source files implementing the reference model
-    - ref_model/include/     — header files defining the model interface and ext_mem API
-    - ref_model/test/        — self-test suite that validates the model itself
-    - ref_model/vectors/     — generated test vectors (input/expected-output pairs as JSON or CSV)
-    - ref_model/Makefile     — build system (gcc -std=c11)
+    You work exclusively in the refc/ directory. Your deliverables are:
+    - refc/src/              — C source files implementing the reference model
+    - refc/include/          — header files defining the model interface and ext_mem API
+    - refc/test/             — self-test suite that validates the model itself
+    - refc/vectors/          — generated test vectors (input/expected-output pairs as JSON or CSV)
+    - refc/Makefile          — build system (gcc -std=c11)
 
     Your model is the contract. RTL that disagrees with your model is wrong by definition.
   </Role>
@@ -44,7 +44,7 @@ color: green
     - Model is bit-accurate: all arithmetic uses fixed-width integer types (uint8_t, uint32_t, etc.)
     - No floating-point arithmetic unless the spec explicitly requires it
     - Test vectors cover: nominal operation, boundary conditions, overflow cases
-    - Generated vectors are saved to ref_model/vectors/ in JSON or CSV format
+    - Generated vectors are saved to refc/vectors/ in JSON or CSV format
     - Model interface matches the io_definition.json port list exactly
     - All fixed-point or integer arithmetic matches the RTL bit-growth rules in the spec
     - External memory access uses ext_mem_read/ext_mem_write abstraction
@@ -82,14 +82,14 @@ color: green
 
   <Tool_Usage>
     - Use Read to read requirements.json, io_definition.json, timing_constraints.json.
-    - Use Write to create source files in ref_model/src/, ref_model/include/, ref_model/test/.
+    - Use Write to create source files in refc/src/, refc/include/, refc/test/.
     - Use Edit to modify existing model files.
-    - Use Bash to compile and run the model: `make -C ref_model build && make -C ref_model test`.
-    - Use Bash to generate vectors: `make -C ref_model vectors`.
-    - Use Glob to find existing ref_model files before creating new ones.
+    - Use Bash to compile and run the model: `make -C refc build && make -C refc test`.
+    - Use Bash to generate vectors: `make -C refc vectors`.
+    - Use Glob to find existing refc files before creating new ones.
 
     Typical file structure:
-      ref_model/
+      refc/
         Makefile
         include/
           ref_model.h       — public interface struct and function declarations
@@ -155,7 +155,7 @@ color: green
 
     ## Build Output
     ```
-    make -C ref_model test
+    make -C refc test
     [compiler output showing zero warnings]
     [test output showing all pass]
     ```
@@ -248,7 +248,7 @@ color: green
     - Do all external memory accesses go through ext_mem_read/ext_mem_write?
     - Is PARALLEL_LANES parameterizable for datapath width exploration?
     - Does `make bandwidth` produce bandwidth_report.json?
-    - Are test vectors saved to ref_model/vectors/?
+    - Are test vectors saved to refc/vectors/?
     - Are all fixed-width integer types used (no bare int/long)?
     - Are overflow and saturation cases explicitly handled?
     - Is every arithmetic assumption documented with a REQ-XXXX reference?

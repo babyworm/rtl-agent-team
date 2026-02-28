@@ -6,7 +6,7 @@ description: "This skill should be used when verifying bus protocol compliance (
 <Purpose>
 Verify that RTL bus interfaces comply with AXI, AHB, or APB protocol specifications
 using formal SVA assertions and simulation-based protocol checking.
-Outputs: protocol/protocol_report.md + tb/sva/{bus}_assertions.sv.
+Outputs: protocol/protocol_report.md + sim/formal/{bus}_assertions.sv.
 </Purpose>
 
 <Use_When>
@@ -63,7 +63,7 @@ Note: For master-perspective modules, `i_`/`o_` directions are reversed.
 1. sva-extractor reads RTL to identify bus type (AXI/AHB/APB) and interface signals
    - Verifies signals use `i_`/`o_` prefix convention
    - Flags any non-conformant signal names (e.g., `AWVALID` instead of `i_awvalid`)
-2. protocol-checker writes tb/sva/{bus}_assertions.sv using `i_`/`o_` signal names:
+2. protocol-checker writes sim/formal/{bus}_assertions.sv using `i_`/`o_` signal names:
    - See `examples/axi4-lite-assertions.sv` for complete AXI4-Lite assertion set
    - See `examples/apb-assertions.sv` for APB3 protocol assertion patterns
    - Handshake rules: `i_awvalid`/`o_awready` stability, `i_wvalid`/`o_wready` timing
@@ -78,13 +78,13 @@ Note: For master-perspective modules, `i_`/`o_` directions are reversed.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read rtl/src/axi_slave.sv. Identify AXI4 interface signals with i_/o_ prefix convention (i_awvalid, o_awready, etc.). Verify all signal names follow CLAUDE.md conventions. List all existing SVA assertions if any.")
+     prompt="Read rtl/axi_slave/axi_slave.sv. Identify AXI4 interface signals with i_/o_ prefix convention (i_awvalid, o_awready, etc.). Verify all signal names follow CLAUDE.md conventions. List all existing SVA assertions if any.")
 
 Task(subagent_type="rtl-agent-team:protocol-checker",
-     prompt="Write complete AXI4 protocol SVA assertions for axi_slave.sv interface using i_/o_ signal names per CLAUDE.md. Use sys_clk/sys_rst_n (or axi_clk/axi_rst_n). Cover: i_awvalid/o_awready handshake stability, i_wvalid/o_wready ordering, no X/Z on valid channels. Save to tb/sva/axi4_assertions.sv.")
+     prompt="Write complete AXI4 protocol SVA assertions for axi_slave.sv interface using i_/o_ signal names per CLAUDE.md. Use sys_clk/sys_rst_n (or axi_clk/axi_rst_n). Cover: i_awvalid/o_awready handshake stability, i_wvalid/o_wready ordering, no X/Z on valid channels. Save to sim/formal/axi4_assertions.sv.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Bind tb/sva/axi4_assertions.sv to rtl/src/axi_slave.sv. Run cocotb regression via Bash CLI with assertions enabled: make -C tb/cocotb SIM=icarus TOPLEVEL=axi_slave MODULE=test_axi_slave. Report all assertion violations with cycle numbers.")
+     prompt="Bind sim/formal/axi4_assertions.sv to rtl/axi_slave/axi_slave.sv. Run cocotb regression via Bash CLI with assertions enabled: make -C sim/axi_slave SIM=icarus TOPLEVEL=axi_slave MODULE=test_axi_slave. Report all assertion violations with cycle numbers.")
 ```
 </Tool_Usage>
 

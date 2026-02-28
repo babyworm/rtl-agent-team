@@ -43,7 +43,7 @@ a signal connection. Combining rtl-architect analysis with lint-checker verifica
 2. rtl-coder implements changes per plan, maintaining naming conventions
 3. lint-checker validates lint-clean via Bash CLI: `verilator --lint-only -Wall` and `slang --lint-only`
 4. Run smoke simulation or formal equivalence check to confirm no behavioral change
-   - Bash CLI: `verilator --cc rtl/src/{module}.sv --exe tb/unit/tb_{module}.cpp && make -C obj_dir`
+   - Bash CLI: `verilator --cc rtl/{module}/{module}.sv --exe sim/{module}/tb_{module}.cpp && make -C obj_dir`
    - Or: `cd formal/ && sby -f {module}.sby`
 5. Report: what changed, naming convention fixes applied, equivalence evidence
 </Steps>
@@ -51,13 +51,13 @@ a signal connection. Combining rtl-architect analysis with lint-checker verifica
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Analyze rtl/src/entropy_coder.sv and produce a refactoring plan. Include: (1) naming convention fixes (i_/o_ prefix NOT _i/_o suffix, clk or {domain}_clk NOT clk_i, rst_n or {domain}_rst_n NOT rst_ni, u_ instance prefix, gen_ generate prefix), (2) module size reduction, (3) reg/wire to logic conversion. READ-ONLY analysis.")
+     prompt="Analyze rtl/entropy_coder/entropy_coder.sv and produce a refactoring plan. Include: (1) naming convention fixes (i_/o_ prefix NOT _i/_o suffix, clk or {domain}_clk NOT clk_i, rst_n or {domain}_rst_n NOT rst_ni, u_ instance prefix, gen_ generate prefix), (2) module size reduction, (3) reg/wire to logic conversion. READ-ONLY analysis.")
 
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Apply refactoring plan to rtl/src/entropy_coder.sv: [paste plan]. Ensure all names use i_/o_ prefix, sys_clk/sys_rst_n convention. Do not change behavior.")
+     prompt="Apply refactoring plan to rtl/entropy_coder/entropy_coder.sv: [paste plan]. Ensure all names use i_/o_ prefix, sys_clk/sys_rst_n convention. Do not change behavior.")
 
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run lint via Bash CLI: 'verilator --lint-only -Wall rtl/src/entropy_coder.sv' and 'slang --lint-only rtl/src/entropy_coder.sv'. Report any violations. Verify naming conventions (i_/o_ prefix, {domain}_clk/{domain}_rst_n).")
+     prompt="Run lint via Bash CLI: 'verilator --lint-only -Wall rtl/entropy_coder/entropy_coder.sv' and 'slang --lint-only rtl/entropy_coder/entropy_coder.sv'. Report any violations. Verify naming conventions (i_/o_ prefix, {domain}_clk/{domain}_rst_n).")
 ```
 </Tool_Usage>
 

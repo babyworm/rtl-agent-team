@@ -59,7 +59,7 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
    - DUT wrapped with `u_dut` instance name
    - Interface signals match RTL port names exactly
 4. eda-runner compiles via Bash CLI:
-   `vcs -full64 -sverilog -ntb_opts uvm rtl/src/*.sv uvm/*.sv -o simv`
+   `vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv uvm/*.sv -o simv`
 5. eda-runner runs via Bash CLI:
    `./simv +UVM_TESTNAME={test} +ntb_random_seed={seed}`
 6. Capture results to uvm/results/run_summary.log
@@ -75,7 +75,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write UVM verification environment for dma_controller in uvm/. Use i_/o_ port prefixes, sys_clk/sys_rst_n, u_dut instance name per CLAUDE.md conventions. Include: UVM agent with driver/monitor, scoreboard comparing DMA transfers, base_test and directed_test sequences.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Compile and run UVM environment via Bash CLI with VCS: vcs -full64 -sverilog -ntb_opts uvm rtl/src/*.sv uvm/*.sv -o simv && ./simv +UVM_TESTNAME=directed_test. Report pass/fail and capture results to uvm/results/run_summary.log.")
+     prompt="Compile and run UVM environment via Bash CLI with VCS: vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv uvm/*.sv -o simv && ./simv +UVM_TESTNAME=directed_test. Report pass/fail and capture results to uvm/results/run_summary.log.")
 
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze UVM scoreboard mismatch waveform. Identify divergence between DUT o_data and expected value from reference model.")
@@ -122,15 +122,15 @@ UVM component naming conventions (aligned with project style):
 Simulator-specific flags:
 ```bash
 # VCS with coverage
-vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/src/*.sv uvm/*.sv -o simv
+vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/*/*.sv uvm/*.sv -o simv
 ./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} -cm line+cond+fsm+tgl
 
 # Questa with coverage
-vlog -sv +incdir+uvm rtl/src/*.sv uvm/*.sv
+vlog -sv +incdir+uvm rtl/*/*.sv uvm/*.sv
 vsim -c -coverage opt_tb +UVM_TESTNAME={test} -do "coverage save -onexit cov.ucdb; run -all"
 
 # Xcelium with coverage
-xrun -sv -uvm -coverage all rtl/src/*.sv uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
+xrun -sv -uvm -coverage all rtl/*/*.sv uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
 ```
 
 See `references/uvm-architecture.md` for complete UVM class hierarchy, phase order,

@@ -91,7 +91,7 @@ golden baseline for RTL verification.
 ---
 
 2. **Detect input mode**: check for user-provided functional C model
-   - Scan for C source files provided by user (in specs/ or ref_model/ or user-specified path)
+   - Scan for C source files provided by user (in specs/ or refc/ or user-specified path)
    - If functional C model found → set `input_mode = "transform"` (restructure existing model)
    - If no C model found → set `input_mode = "create"` (build from scratch)
    - Record input_mode in state file
@@ -196,12 +196,12 @@ golden baseline for RTL verification.
      3. Verify functional equivalence:
         - Run same test vectors through original and transformed models
         - Bitexact match required — any mismatch is a transformation bug
-     4. Output: ref_model/src/*.c (restructured), ref_model/include/*.h
+     4. Output: refc/*.c (restructured), refc/include/*.h
 
    - **If input_mode == "create"** (build from scratch):
      1. Invoke ref-model skill (standard flow)
      2. C model follows: no clock/reset, I/O as function args, ext_mem abstraction
-     3. Output: ref_model/src/*.c, ref_model/include/*.h
+     3. Output: refc/*.c, refc/include/*.h
 
    **Step 4e: 3-round iterative review** (same as standard Phase 2):
    - Coordinated by `rtl-architect`:
@@ -212,7 +212,7 @@ golden baseline for RTL verification.
    - Round 3 mandatory: cross-block interface audit + memory conflict analysis + ref model code review
    - After 3 rounds if not converged → escalate to user
 
-   **Phase 2 Artifact Gate**: architecture.md + architecture-candidates.md + ref_model/src/*.c exist
+   **Phase 2 Artifact Gate**: architecture.md + architecture-candidates.md + refc/*.c exist
 
    **Phase 2 Quality Gate (Architecture Review)**:
    - 3-round iterative review converged (or user-approved)
@@ -243,7 +243,7 @@ golden baseline for RTL verification.
    - Architecture DSE: N candidates compared, selected architecture documented
    - Reference C model: created / transformed (bitexact equivalence verified if transformed)
    - Phase 1 artifacts: requirements.json, io_definition.json, domain-analysis.md (enhanced)
-   - Phase 2 artifacts: architecture.md, architecture-candidates.md, ref_model/src/*.c
+   - Phase 2 artifacts: architecture.md, architecture-candidates.md, refc/*.c
    - Reviews: research-review.md PASS, architecture-review.md PASS
    - ADR count and key decisions
    - Next step: "Run `/rtl-agent-team:rtl-uarch-design` for Phase 3 μArch, or `/rtl-agent-team:rtl-spec-to-uarch` (will skip completed Phase 1-2 and run Phase 3)"
@@ -273,7 +273,7 @@ Port naming: i_/o_/io_ prefix, {domain}_clk/{domain}_rst_n.
 # Input Detection
 # ============================================================
 Glob("specs/**/*.c")                    # Check for user-provided functional C model
-Glob("ref_model/src/*.c")              # Or already in ref_model/
+Glob("refc/*.c")                       # Or already in refc/
 # → set input_mode = "transform" or "create"
 
 # ============================================================
@@ -352,7 +352,7 @@ Task(subagent_type="rtl-agent-team:ref-model-dev",
 3. Restructure: split into per-block functions, add ext_mem_read/write abstraction,
    convert global state to per-block context_t structs
 4. Verify bitexact equivalence: same test vectors → identical outputs
-5. Output: ref_model/src/*.c (restructured), ref_model/include/*.h
+5. Output: refc/*.c (restructured), refc/include/*.h
 C11 standard, no clock/reset, DPI-C compatible.")
 
 # If input_mode == "create":
@@ -398,7 +398,7 @@ User: "H.264 인트라 예측 모듈을 설계하려고 해. 알고리즘 비교
 **Example 2: DSE with existing functional C model**
 ```
 User: "이미 있는 functional C model을 기반으로 아키텍처를 설계해줘. specs/에 스펙도 있고
-ref_model/src/transform.c에 기존 모델이 있어."
+refc/transform.c에 기존 모델이 있어."
 → Invoke /rtl-agent-team:rtl-dse
 → input_mode = "transform" (existing functional C model detected)
 → Phase 1: Extract requirements + deep algorithm study (informed by existing model)
@@ -418,14 +418,14 @@ User: "간단한 UART 설계해줘."
 ```
 </Examples>
 
-<Escalation>
+<Escalation_And_Stop_Conditions>
 - Algorithm candidates cannot be differentiated quantitatively → ask user for priority (area vs throughput vs quality)
 - Architecture candidates are too similar → ask user for dominant constraint
 - Functional C model is too complex to transform automatically → report complexity, suggest manual restructuring guidance
 - Phase 1 Quality Gate fails after 2 retries → ask user to clarify spec
 - Phase 2 Quality Gate fails after 2 retries → ask user for architecture direction
 - Ref model transformation breaks bitexact equivalence → report divergence point, ask user to verify original model correctness
-</Escalation>
+</Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 Before reporting completion, verify ALL of the following:
@@ -437,7 +437,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Phase 2: architecture-candidates.md contains 2+ candidates with quantitative comparison
 - [ ] Phase 2: Architecture selection ADR recorded with user's decision
 - [ ] Phase 2: architecture.md exists (refined from selected candidate)
-- [ ] Phase 2: ref_model/src/*.c exists
+- [ ] Phase 2: refc/*.c exists
 - [ ] Phase 2: If transform mode — bitexact equivalence verified between original and transformed model
 - [ ] Phase 2: reviews/phase-2-architecture/architecture-review.md verdict=PASS
 - [ ] Phase 2: reviews/phase-2-architecture/feature-coverage.md shows 100% coverage

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build_encoder.sh — Build ref_model C source into encoder binary
+# build_encoder.sh — Build refc/ C source into encoder binary
 # Usage: build_encoder.sh <src_dir> <output_binary> [extra_cflags...]
 #
 # Builds C11 encoder from source directory using gcc.
@@ -18,8 +18,8 @@ usage() {
     echo "  extra_cflags   Additional compiler flags (optional)"
     echo ""
     echo "Examples:"
-    echo "  $0 ref_model/src ./build/encoder"
-    echo "  $0 ref_model/src ./build/encoder -DUSE_HADAMARD"
+    echo "  $0 refc/ ./build/encoder"
+    echo "  $0 refc/ ./build/encoder -DUSE_HADAMARD"
     exit "${1:-1}"
 }
 

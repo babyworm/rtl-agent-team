@@ -3,6 +3,7 @@ name: cdc-reviewer
 description: CDC design strategy reviewer. Evaluates synchronization architecture quality, FIFO depth calculations, metastability budgets, and reset synchronization. Produces review reports in reviews/.
 model: opus
 color: yellow
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>

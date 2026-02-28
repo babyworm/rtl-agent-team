@@ -51,7 +51,7 @@ in addition to any CDC violations.
 </Execution_Policy>
 
 <Steps>
-1. cdc-checker reads rtl/src/*.sv and identifies all clock domain signals
+1. cdc-checker reads rtl/*/*.sv and identifies all clock domain signals
    - Expects `{domain}_clk` naming; flag any non-conformant clock names as CONVENTION violation
 2. cdc-checker analyzes all cross-domain paths:
    - Missing synchronizers (flip-flop to flip-flop, different clocks)
@@ -72,10 +72,10 @@ in addition to any CDC violations.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Analyze rtl/src/*.sv for CDC violations. Identify all clock domains (expect {domain}_clk naming per CLAUDE.md). List all cross-domain signal paths, flag missing synchronizers. Also flag any non-conformant clock/reset names (clk_i, rst_ni, etc.). Write cdc/cdc_report.md.")
+     prompt="Analyze rtl/*/*.sv for CDC violations. Identify all clock domains (expect {domain}_clk naming per CLAUDE.md). List all cross-domain signal paths, flag missing synchronizers. Also flag any non-conformant clock/reset names (clk_i, rst_ni, etc.). Write cdc/cdc_report.md.")
 
 Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Read cdc/cdc_report.md and rtl/src/*.sv. Write constraints/cdc_constraints.sdc defining clock groups for all identified clock domains. Use {domain}_clk names matching RTL (e.g., sys_clk, axi_clk, codec_clk).")
+     prompt="Read cdc/cdc_report.md and rtl/*/*.sv. Write constraints/cdc_constraints.sdc defining clock groups for all identified clock domains. Use {domain}_clk names matching RTL (e.g., sys_clk, axi_clk, codec_clk).")
 ```
 </Tool_Usage>
 

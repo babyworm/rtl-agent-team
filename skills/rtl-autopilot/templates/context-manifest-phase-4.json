@@ -13,11 +13,11 @@
     "docs/phase-2-architecture/architecture.md",
     "docs/phase-1-research/requirements.json",
     "docs/decisions/ADR-*.md",
-    "ref_model/src/*.c"
+    "refc/*.c"
   ],
   "outputs": [
-    "rtl/src/*.sv",
-    "tb/unit/tb_*.sv",
+    "rtl/*/*.sv",
+    "sim/*/tb_*.sv",
     "docs/phase-4-rtl/module-descriptions.md",
     "docs/phase-4-rtl/unit-test-design.md",
     "docs/phase-4-rtl/stream-b-sva-skeletons.md",

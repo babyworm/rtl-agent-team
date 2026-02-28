@@ -3,6 +3,7 @@ name: protocol-reviewer
 description: Bus protocol interface design reviewer. Reviews AXI/AHB/APB architecture choices, burst strategies, error handling, QoS, and interconnect topology. Produces review reports in reviews/.
 model: opus
 color: yellow
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>

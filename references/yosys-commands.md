@@ -7,8 +7,8 @@
 
 ```tcl
 # === 1. Read Design ===
-read_verilog -sv rtl/src/my_module_pkg.sv
-read_verilog -sv rtl/src/my_module.sv
+read_verilog -sv rtl/my_module/my_module_pkg.sv
+read_verilog -sv rtl/my_module/my_module.sv
 
 # === 2. Elaborate ===
 hierarchy -top my_module -check
@@ -29,8 +29,8 @@ stat                             # Area/resource report
 check -assert                    # Final consistency check
 
 # === 6. Write Output ===
-write_verilog -noattr synth/netlist.v
-write_json synth/netlist.json
+write_verilog -noattr syn/netlist.v
+write_json syn/netlist.json
 ```
 
 ## 2. Latch Detection
@@ -133,28 +133,28 @@ select t:$dff; stat; select -clear
 ### 4.1 Xilinx
 
 ```tcl
-read_verilog -sv rtl/src/*.sv
+read_verilog -sv rtl/*/*.sv
 synth_xilinx -top my_module -family xc7
 stat
-write_verilog -noattr synth/xilinx_netlist.v
+write_verilog -noattr syn/xilinx_netlist.v
 ```
 
 ### 4.2 iCE40
 
 ```tcl
-read_verilog -sv rtl/src/*.sv
+read_verilog -sv rtl/*/*.sv
 synth_ice40 -top my_module
 stat
-write_blif synth/ice40_netlist.blif
+write_blif syn/ice40_netlist.blif
 ```
 
 ### 4.3 ECP5
 
 ```tcl
-read_verilog -sv rtl/src/*.sv
+read_verilog -sv rtl/*/*.sv
 synth_ecp5 -top my_module
 stat
-write_json synth/ecp5_netlist.json
+write_json syn/ecp5_netlist.json
 ```
 
 ## 5. Common Yosys Errors and Solutions

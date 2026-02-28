@@ -3,6 +3,7 @@ name: security-reviewer
 description: Hardware security reviewer. Reviews RTL for side-channel vulnerabilities, fault injection resilience, secure reset/boot, secret handling, and OWASP hardware security risks. Produces security review reports in reviews/.
 model: opus
 color: red
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -107,16 +108,16 @@ color: red
     Security pattern detection:
     ```bash
     # Find secret-dependent conditionals
-    grep -rn "if.*key\|if.*secret\|if.*password\|case.*key" rtl/src/*.sv
+    grep -rn "if.*key\|if.*secret\|if.*password\|case.*key" rtl/*/*.sv
 
     # Find debug interfaces
-    grep -rn "jtag\|debug\|tap_" rtl/src/*.sv
+    grep -rn "jtag\|debug\|tap_" rtl/*/*.sv
 
     # Find key handling
-    grep -rn "key\|secret\|nonce\|token\|password\|credential" rtl/src/*.sv
+    grep -rn "key\|secret\|nonce\|token\|password\|credential" rtl/*/*.sv
 
     # Find zeroization patterns
-    grep -rn "<=.*'0\|<=.*{" rtl/src/*.sv | grep -i "key\|secret"
+    grep -rn "<=.*'0\|<=.*{" rtl/*/*.sv | grep -i "key\|secret"
     ```
   </Tool_Usage>
 

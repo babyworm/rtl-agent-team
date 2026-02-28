@@ -2,7 +2,7 @@
   "phase": 6,
   "phase_name": "design_note",
   "required_full_read": [
-    "rtl/src/*.sv",
+    "rtl/*/*.sv",
     "docs/phase-1-research/requirements.json"
   ],
   "required_summary_only": [
@@ -22,7 +22,9 @@
     "docs/lessons-learned.md"
   ],
   "outputs": [
-    "docs/phase-6-design-note/design-note.md",
-    "docs/phase-6-design-note/improvements.md"
+    "reviews/phase-6-review/code-review.md",
+    "reviews/phase-6-review/design-review.md",
+    "reviews/phase-6-review/design-note.md",
+    "reviews/phase-6-review/improvements.md"
   ]
 }

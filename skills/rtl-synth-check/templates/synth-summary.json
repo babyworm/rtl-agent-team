@@ -19,5 +19,5 @@
   "latches_found": 0,
   "concerns": [],
   "verdict": "PASS | FAIL: reason",
-  "source_file": "synth/reports/{{MODULE}}_synth.txt"
+  "source_file": "syn/reports/{{MODULE}}_synth.txt"
 }

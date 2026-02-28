@@ -117,7 +117,7 @@ set_multicycle_path 4 -from [get_cells u_mac/*] -to [get_cells u_mac/o_result_re
 
 ### Design Compiler (Synopsys)
 ```tcl
-read_file -format sverilog {rtl/src/*.sv}
+read_file -format sverilog {rtl/*/*.sv}
 source constraints/design.sdc
 compile_ultra
 report_timing -max_paths 10
@@ -126,7 +126,7 @@ report_area
 
 ### Genus (Cadence)
 ```tcl
-read_hdl -sv {rtl/src/*.sv}
+read_hdl -sv {rtl/*/*.sv}
 elaborate {{TOP_MODULE}}
 read_sdc constraints/design.sdc
 syn_generic; syn_map; syn_opt
@@ -137,7 +137,7 @@ report_area
 ### OpenSTA (Open-Source)
 ```tcl
 read_liberty {{LIB_FILE}}
-read_verilog synth/netlist/{{MODULE}}_netlist.v
+read_verilog syn/netlist/{{MODULE}}_netlist.v
 link_design {{TOP_MODULE}}
 read_sdc constraints/design.sdc
 report_checks -path_delay max -format full
@@ -146,13 +146,13 @@ report_checks -path_delay max -format full
 ### Yosys + OpenSTA Flow
 ```bash
 # Synthesize with Yosys
-yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {{TOP}}; \
-  write_verilog synth/netlist.v"
+yosys -p "read_verilog -sv rtl/*/*.sv; synth -top {{TOP}}; \
+  write_verilog syn/netlist.v"
 
 # Timing analysis with OpenSTA
 sta -exit <<EOF
 read_liberty sky130_fd_sc_hd__tt_025C_1v80.lib
-read_verilog synth/netlist.v
+read_verilog syn/netlist.v
 link_design {{TOP}}
 read_sdc constraints/design.sdc
 report_checks -path_delay max

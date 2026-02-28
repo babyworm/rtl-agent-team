@@ -3,6 +3,7 @@ name: equivalence-checker
 description: Equivalence checking specialist. Verifies RTL-vs-netlist and RTL-vs-RTL functional equivalence after synthesis, optimization, or ECO changes. Uses Yosys-based open-source equivalence checking.
 model: opus
 color: magenta
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -54,8 +55,8 @@ color: magenta
 
   <Investigation_Protocol>
     1. Identify the two designs to compare:
-       a. Reference: RTL source files (rtl/src/*.sv)
-       b. Implementation: synthesis output (synth/netlist.v) OR modified RTL
+       a. Reference: RTL source files (rtl/*/*.sv)
+       b. Implementation: synthesis output (syn/netlist.v) OR modified RTL
     2. Prepare both designs for equivalence checking:
        a. Read both into Yosys
        b. Flatten hierarchies if needed
@@ -64,10 +65,10 @@ color: magenta
     3. Run combinational equivalence checking:
        ```
        yosys -p "
-         read_verilog -sv rtl/src/*.sv
+         read_verilog -sv rtl/*/*.sv
          prep -top <module> -flatten
          design -stash reference
-         read_verilog synth/netlist.v
+         read_verilog syn/netlist.v
          prep -top <module> -flatten
          design -stash implementation
          design -copy-from reference -as reference <module>
@@ -99,14 +100,14 @@ color: magenta
     ```bash
     yosys -p "
       # Load reference (RTL)
-      read_verilog -sv rtl/src/*.sv;
+      read_verilog -sv rtl/*/*.sv;
       hierarchy -top <module>;
       proc; opt; memory; opt;
       flatten;
       design -stash gold;
 
       # Load implementation (netlist)
-      read_verilog synth/netlist.v;
+      read_verilog syn/netlist.v;
       hierarchy -top <module>;
       proc; opt;
       flatten;
@@ -120,7 +121,7 @@ color: magenta
       equiv_simple;
       equiv_induct;
       equiv_status -assert;
-    " 2>&1 | tee synth/equiv_report.txt
+    " 2>&1 | tee syn/equiv_report.txt
     ```
   </Tool_Usage>
 
@@ -129,7 +130,7 @@ color: magenta
     # Equivalence Check Report: [design name]
     - Date: YYYY-MM-DD
     - Checker: equivalence-checker
-    - Reference: RTL (rtl/src/*.sv)
+    - Reference: RTL (rtl/*/*.sv)
     - Implementation: [netlist / modified RTL]
     - Tool: Yosys equiv_*
     - Verdict: EQUIVALENT | NOT EQUIVALENT

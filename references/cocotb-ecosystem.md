@@ -208,8 +208,8 @@ SIM           ?= icarus
 
 # Source files (project convention: _pkg first)
 VERILOG_SOURCES = \
-    $(PWD)/../../rtl/include/my_module_pkg.sv \
-    $(PWD)/../../rtl/src/my_module.sv
+    $(PWD)/../../rtl/my_module/my_module_pkg.sv \
+    $(PWD)/../../rtl/my_module/my_module.sv
 
 # Top module
 TOPLEVEL = my_module
@@ -257,7 +257,7 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 import ctypes
 
 # Load C reference model
-lib = ctypes.CDLL("./ref_model/build/libref_model.so")
+lib = ctypes.CDLL("./refc/build/libref_model.so")
 lib.ref_compute.restype = ctypes.c_uint32
 lib.ref_compute.argtypes = [ctypes.c_uint32]
 

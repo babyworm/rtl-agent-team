@@ -9,7 +9,7 @@ This is NOT an RTL-style model — no clock, no reset, no cycle concept.
 Inputs/outputs are function arguments. Internal state is variables/arrays.
 External memory access is abstracted through dedicated access functions for bandwidth analysis.
 
-Outputs: ref_model/src/*.c, ref_model/include/*.h, conformance_report.json.
+Outputs: refc/*.c, refc/include/*.h, conformance_report.json.
 Must achieve bitexact match against JM (H.264) or HM (H.265) reference software.
 Runs in parallel with arch-design during Phase 2.
 </Purpose>
@@ -53,16 +53,16 @@ SystemVerilog testbenches without wrapper overhead.
 
 <Steps>
 1. Relevant sub-domain expert provides algorithm pseudocode and edge case table
-2. ref-model-dev implements ref_model/src/*.c with clean C (no RTL bias, no clock/reset)
+2. ref-model-dev implements refc/*.c with clean C (no RTL bias, no clock/reset)
    - Function signatures: `void block_process(const input_t *in, output_t *out, context_t *ctx)`
    - Internal SRAM/registers: `ctx->sram[SIZE]`, `ctx->reg_field` (plain arrays/variables)
    - External memory: `ext_mem_read(addr, buf, size)` / `ext_mem_write(addr, buf, size)`
    - Datapath width: `#define PARALLEL_LANES 4` — process N elements per call, adjustable
    - C coding conventions: snake_case, stdint.h types, C11 standard
    - DPI-C compatible: no C++ features (no classes, no templates, no exceptions)
-3. Build ref model via Bash CLI: `cd ref_model && make build`
-4. Run bitexact comparison via Bash CLI: `cd ref_model && make test`
-5. Run bandwidth analysis: `cd ref_model && make bandwidth` (reports ext_mem access count/pattern)
+3. Build ref model via Bash CLI: `cd refc && make build`
+4. Run bitexact comparison via Bash CLI: `cd refc && make test`
+5. Run bandwidth analysis: `cd refc && make bandwidth` (reports ext_mem access count/pattern)
 6. Fix any mismatches (iterate until all vectors pass)
 7. Write conformance_report.json with pass/fail per vector and JM/HM version
 8. Write bandwidth_report.json with external memory access statistics per block
@@ -74,17 +74,17 @@ Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Provide algorithm pseudocode and edge case table for CABAC entropy coding per H.264 spec section 9.3.")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Implement C functional reference model at ref_model/src/. Must be bitexact vs JM. "
+     prompt="Implement C functional reference model at refc/. Must be bitexact vs JM. "
             "No clock/reset — pure functional model. I/O as function arguments. "
             "Internal memory as arrays/variables. External memory via ext_mem_read/write functions. "
             "Datapath width parameterizable via PARALLEL_LANES define. "
             "C11, DPI-C compatible (no C++ features). Follow C coding conventions.")
 
 # Build and test via Bash CLI (NOT MCP)
-Bash: cd ref_model && make build          # gcc -std=c11 -Wall -Wextra -Werror
-Bash: cd ref_model && make test           # bitexact comparison
-Bash: cd ref_model && make bandwidth      # external memory access analysis
-Bash: cd ref_model && make sanitize       # run with -fsanitize=address,undefined
+Bash: cd refc && make build          # gcc -std=c11 -Wall -Wextra -Werror
+Bash: cd refc && make test           # bitexact comparison
+Bash: cd refc && make bandwidth      # external memory access analysis
+Bash: cd refc && make sanitize       # run with -fsanitize=address,undefined
 ```
 </Tool_Usage>
 
@@ -124,7 +124,7 @@ unnecessary complexity for a functional model.
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] ref_model/src/*.c compiles cleanly with `gcc -std=c11 -Wall -Wextra -Werror`
+- [ ] refc/*.c compiles cleanly with `gcc -std=c11 -Wall -Wextra -Werror`
 - [ ] No C++ features used (DPI-C compatible pure C)
 - [ ] No clock/reset in model — pure functional
 - [ ] External memory access uses ext_mem_read/ext_mem_write abstraction

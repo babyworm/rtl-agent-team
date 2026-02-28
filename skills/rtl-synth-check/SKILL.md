@@ -6,7 +6,7 @@ description: "This skill should be used when running Yosys synthesis for area/ti
 <Purpose>
 Run Yosys synthesis on RTL and generate area, cell count, and critical path reports.
 Optionally generate SDC timing constraints for commercial synthesis (Design Compiler, Genus).
-Outputs: synth/reports/{module}_synth.txt, synth/summary.json, and constraints/design.sdc.
+Outputs: syn/reports/{module}_synth.txt, syn/summary.json, and constraints/design.sdc.
 
 Supports both generic synthesis (no technology) and technology-mapped synthesis
 (sky130, nangate45) for more accurate area/timing estimates.
@@ -45,25 +45,25 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 2. eda-runner runs Yosys via Bash CLI (see `templates/yosys-synth-script.ys` for script template) — choose synthesis mode:
    **Generic synthesis** (no technology mapping, quick check):
    ```bash
-   yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top} -flatten; stat" \
-     | tee synth/reports/{module}_synth.txt
+   yosys -p "read_verilog -sv rtl/*/*.sv; synth -top {top} -flatten; stat" \
+     | tee syn/reports/{module}_synth.txt
    ```
    **Technology-mapped synthesis** (accurate area/timing with liberty file):
    ```bash
-   yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top}; \
+   yosys -p "read_verilog -sv rtl/*/*.sv; synth -top {top}; \
      dfflibmap -liberty {lib}.lib; abc -liberty {lib}.lib; \
-     stat -liberty {lib}.lib" | tee synth/reports/{module}_synth.txt
+     stat -liberty {lib}.lib" | tee syn/reports/{module}_synth.txt
    ```
    Supported libraries: sky130_fd_sc_hd (open-source), NangateOpenCellLibrary (academic)
-3. Capture synth/reports/{module}_synth.txt (raw Yosys output)
+3. Capture syn/reports/{module}_synth.txt (raw Yosys output)
 4. synthesis-reporter parses: cell count, estimated area, critical path depth
 5. **Latch detection** — check `stat` output for `$_DLATCH_` cells:
    - Any `$_DLATCH_*` count > 0 is a **HARD FAIL**
    - Common causes: missing `default:` in case, unassigned signal in if-else branches
    - See `references/yosys-commands.md` for latch detection details
 6. Check for other concerning cells: `$mem` (unintended RAM), `$mul` (area-heavy multipliers)
-7. Write synth/summary.json (see `templates/synth-summary.json` for format).
-   Use `skills/rtl-synth-check/scripts/parse_yosys_stat.py` to automate parsing: `python skills/rtl-synth-check/scripts/parse_yosys_stat.py synth/reports/{module}_synth.txt`
+7. Write syn/summary.json (see `templates/synth-summary.json` for format).
+   Use `skills/rtl-synth-check/scripts/parse_yosys_stat.py` to automate parsing: `python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/reports/{module}_synth.txt`
 8. Flag any inferred latches as hard errors
 9. **SDC Generation** (when timing constraints are needed):
    - constraint-writer reads requirements.json (clock frequencies), uarch/*.md (multicycle paths), RTL top-level (port list)
@@ -76,10 +76,10 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run Yosys synthesis via Bash CLI on rtl/src/ with top module cabac_top. Command: yosys -p 'read_verilog -sv rtl/src/*.sv; synth -top cabac_top -flatten; stat' | tee synth/reports/cabac_top_synth.txt. Check output for inferred latches and reg/wire usage warnings.")
+     prompt="Run Yosys synthesis via Bash CLI on rtl/ with top module cabac_top. Command: yosys -p 'read_verilog -sv rtl/*/*.sv; synth -top cabac_top -flatten; stat' | tee syn/reports/cabac_top_synth.txt. Check output for inferred latches and reg/wire usage warnings.")
 
 Task(subagent_type="rtl-agent-team:synthesis-reporter",
-     prompt="Parse synth/reports/ Yosys output. Extract cell count, area estimate, logic depth. Flag any inferred latches as hard errors. Write synth/summary.json.")
+     prompt="Parse syn/reports/ Yosys output. Extract cell count, area estimate, logic depth. Flag any inferred latches as hard errors. Write syn/summary.json.")
 
 # SDC Generation (optional — when timing constraints needed)
 Task(subagent_type="rtl-agent-team:constraint-writer",
@@ -105,7 +105,7 @@ Ignoring Yosys latch warnings — inferred latches cause hold-time violations in
 <Final_Checklist>
 - [ ] Yosys synthesis completed without errors
 - [ ] No inferred latches
-- [ ] synth/summary.json written
+- [ ] syn/summary.json written
 - [ ] Area estimate within target range (or deviation documented)
 - [ ] constraints/design.sdc written (if SDC requested):
   - [ ] Every clock has create_clock or create_generated_clock
@@ -139,6 +139,6 @@ Key `stat` output fields to monitor:
 | `$mem` | Check if SRAM inference was intended |
 
 Additional useful commands: `scc -max_depth 10` (combinational loop check),
-`write_verilog synth/netlist.v` (export netlist), `show -format dot` (schematic).
+`write_verilog syn/netlist.v` (export netlist), `show -format dot` (schematic).
 See `references/yosys-commands.md` for complete command reference.
 </Advanced>

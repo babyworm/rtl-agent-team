@@ -32,14 +32,14 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
 | **--- Phase 4: RTL ---** | |
-| "bug fix", "RTL fix", "bug fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-bugfix` |
+| "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-bugfix` |
 | "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-code` |
 | "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-refactor` |
 | "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
 | "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
 | "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
 | "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` |
-| "synthesis", "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
+| "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
 | **--- Phase 5: Verify ---** | |
 | "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-func-verify` |
 | "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-sv-unit-test` |
@@ -48,13 +48,13 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-sva-check` |
 | "CDC", "clock domain" | `/rtl-agent-team:rtl-cdc-verify` |
 | "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-protocol-verify` |
-| "coverage", "coverage" | `/rtl-agent-team:rtl-coverage-analyze` |
+| "coverage" | `/rtl-agent-team:rtl-coverage-analyze` |
 | **--- Expert Reviews ---** | |
 | "CDC review", "CDC design review", "synchronization strategy review" | Delegate directly to `cdc-reviewer` agent |
 | "protocol review", "AXI design review", "interface review" | Delegate directly to `protocol-reviewer` agent |
 | "formal review", "SVA review", "assertion quality" | Delegate directly to `formal-reviewer` agent |
-| "power analysis", "power analysis", "clock gating review" | Delegate directly to `power-analyzer` agent |
-| "synthesis review", "synthesis review", "area/timing review" | Delegate directly to `synthesis-reviewer` agent |
+| "power analysis", "clock gating review" | Delegate directly to `power-analyzer` agent |
+| "synthesis review", "area/timing review" | Delegate directly to `synthesis-reviewer` agent |
 | "UVM review", "testbench review", "TB quality" | Delegate directly to `uvm-reviewer` agent |
 | "requirement tracing", "traceability", "feature coverage", "spec verification status" | Delegate directly to `requirement-tracer` agent |
 | "cocotb review", "cocotb quality", "Python TB review" | Delegate directly to `cocotb-reviewer` agent |
@@ -67,14 +67,15 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "DFT", "scan chain", "BIST", "JTAG", "testability" | Delegate directly to `dft-designer` agent |
 | "clock architecture", "clock tree", "PLL", "clock gating review" | Delegate directly to `clock-architect` agent |
 | **--- Phase 6: Design Note ---** | |
-| "design review", "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-design-review-phase` |
+| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-design-review-phase` |
 | **--- Phase 7: Exploration (optional) ---** | |
 | "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-design-review-phase` (exploration mode) |
 | **--- Other Verification ---** | |
-| "regression", "regression", "multi-seed" | `/rtl-agent-team:rtl-regression-run` |
+| "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-integration-test` |
+| "regression", "multi-seed" | `/rtl-agent-team:rtl-func-verify` (Tier 3, absorbs rtl-regression-run) |
 | "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
 | "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` |
-| "model consistency", "RTL-model comparison", "model consistency" | `/rtl-agent-team:rtl-model-consistency` |
+| "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` |
 
 ## IMPORTANT — Phase 1 Proactive Requirement Clarification
 
@@ -110,7 +111,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 3. Do not run synthesis without RTL code
 4. Do not run Formal verification without passing Lint
 5. **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient)
-6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (tb/unit/tb_{module}.sv required) + Stream B early verification artifacts (SVA skeletons, CDC report, TB skeletons)
+6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (sim/{module}/tb_{module}.sv required) + Stream B early verification artifacts (SVA skeletons, CDC report, TB skeletons)
 7. **When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded**
 8. **Do not proceed to Phase 6 without Phase 5 PASS** (final-compliance.md verdict=PASS required)
 9. **Phase 7 is exempt from absolute rules** — free exploration allowed without pipeline Gate
@@ -148,7 +149,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 >
 > **Phase 4 Parallel Streams (rtl-autopilot mode):**
 > ```
-> Stream A: RTL coding (wave-based) → lint → unit TB → unit sim
+> Stream A: RTL coding (wave-based, rtl/{module}/) → lint → unit TB (sim/{module}/) → unit sim
 > Stream B: SVA skeletons + CDC topology + TB skeletons (from uarch, parallel with Stream A)
 > Merge: Phase 4→5 Gate (Stream A PASS + Stream B artifacts ready)
 > ```
@@ -246,21 +247,29 @@ Upper spec compliance verification results (verdict) are stored in `reviews/phas
 
 ```
 Phase 1: Research    → docs/phase-1-research/      (natural language spec, domain knowledge)
-Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + ref_model/ (C golden)
+Phase 2: Arch/Ref    → docs/phase-2-architecture/   (block architecture) + refc/ (C golden)
                        + 3-round iterative review (memory, performance, ref model consistency)
 Phase 3: μArch/TLM   → docs/phase-3-uarch/         (microarchitecture) + BFM
                        + 3-round iterative review (performance, interface, memory optimization)
-Phase 4: RTL+Unit    → rtl/src/ + tb/unit/ + docs/phase-4-rtl/ (module design docs, unit design)
+Phase 4: RTL+Unit    → rtl/{module}/ + sim/{module}/ + docs/phase-4-rtl/ (module design docs, unit design)
                        Stream A: RTL implementation (wave-based parallel coding + lint + unit test)
                        Stream B: Early verification framework (SVA skeletons, CDC topology, TB skeletons)
-Phase 5: Verify      → tb/formal/ + docs/phase-5-verify/ (verification reports, lint, synthesis estimates)
+Phase 5: Verify      → sim/formal/ + docs/phase-5-verify/ (verification reports, lint, synthesis estimates)
                        Leverages Stream B artifacts from Phase 4 for faster verification startup
-Phase 6: Design Note → docs/phase-6-design-note/    (design documents, improvement recommendations)
+Phase 6: Design Note → reviews/phase-6-review/       (code review, design review, design note, improvements)
 Phase 7: Exploration → docs/phase-7-exploration/    (free exploration, pipeline rules not applied)
 ```
 
 > **Phase 7 is an optional stage.** Pipeline absolute rules (Phase Gate) do not apply,
 > and it is a process for freely exploring improvements to the existing design.
+>
+> **Phase 7 Exploration Guard Rails:**
+> - Pipeline absolute rules (Phase Gate) do NOT apply — free exploration allowed
+> - However, direct modification of existing `rtl/` source files is prohibited (use exploration branch)
+> - Output: `docs/phase-7-exploration/exploration-notes.md`
+> - Successful exploration → write ADR, then propose integration into the formal pipeline
+> - Exploration scope: algorithm alternatives, optimization experiments, technology evaluation
+> - Prohibited: production RTL changes, verification bypass, feature additions without spec changes
 
 ## Delegation Rules
 
@@ -272,6 +281,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | Specification analysis | `rtl-agent-team:spec-analyst` | Opus |
 | Architecture design | `rtl-agent-team:arch-designer` | Opus |
 | Architecture review | `rtl-agent-team:rtl-architect` | Opus |
+| Phase 3 μArch review coordinator | `rtl-agent-team:rtl-architect` | Opus |
 | μArch design | `rtl-agent-team:uarch-designer` | Opus |
 | RTL coding | `rtl-agent-team:rtl-coder` | Opus |
 | RTL review | `rtl-agent-team:rtl-critic` | Opus |
@@ -366,10 +376,31 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 - `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
 - `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
 
+## 4-Tier Testing Hierarchy
+
+Testing is organized into 4 tiers with clear boundaries. Each tier has a dedicated skill:
+
+| Tier | Name | Skill | Scope | Prerequisite |
+|------|------|-------|-------|-------------|
+| 1 | Smoke Test | `rtl-code` Wave 4 | Connectivity, R/W, basic ops | Lint pass |
+| 2 | Unit Test | `rtl-sv-unit-test` | Reference model comparison, uarch features | Tier 1 pass |
+| 3 | Module Regression | `rtl-func-verify` | cocotb multi-seed, coverage closure | Tier 2 pass |
+| 4 | Integration | `rtl-integration-test` | Cross-module data flow, end-to-end | Tier 3 pass |
+
+**Tier progression rules:**
+- Each tier must PASS before proceeding to the next
+- On FAIL: fix via `rtl-bugfix`, re-verify at the failing tier
+- Tier 3 absorbs the former `rtl-regression-run` skill (deprecated)
+- Coverage targets (Tier 3): line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
+
 ## EDA Tool Usage
 
 The `eda-runner` agent directly executes EDA CLI tools via Bash:
-- Simulation: `verilator`, `iverilog` (Icarus Verilog)
+- **Simulator-agnostic script**: `scripts/simulate.sh` (preferred for SV testbenches)
+  - Supports: `iverilog`, `verilator`, `vcs`, `xrun`, `questa`
+  - Usage: `scripts/simulate.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
+  - Full options: `scripts/simulate.sh --help`
+- Simulation (direct): `verilator`, `iverilog` (Icarus Verilog)
 - Synthesis: `yosys`
 - Formal verification: `sby` (SymbiYosys)
 - Lint: `verilator --lint-only`, `verible-verilog-lint`, `slang`
@@ -415,9 +446,6 @@ docs/
 │   ├── lint-report.md                   # Verilator lint results summary
 │   ├── synthesis-estimate.md            # Yosys synthesis estimates (area, timing)
 │   └── phase-5-summary.md              # Phase 5 compressed summary (auto-generated)
-├── phase-6-design-note/                 # Final design documents
-│   ├── design-note.md                   # Detailed design document (algorithms, HW implementation, trade-offs)
-│   └── improvements.md                  # Improvement recommendations (must-fix, should-fix, nice-to-have)
 ├── decisions/                           # Architecture Decision Records (ADR)
 │   └── ADR-{NNN}.md                    # Per-decision record (context, options, decision, consequences)
 ├── lessons-learned.md                   # Cross-phase lessons learned (appended per bug fix)
@@ -468,12 +496,48 @@ reviews/
 ### Code Artifacts
 
 ```
-rtl/src/                                 # RTL source code (Phase 4)
-tb/                                      # Testbenches (Phase 4-5)
-├── unit/                                # Unit tests
+refc/                                    # C reference model (Phase 2)
+├── {module}/                            # Per-module ref model source
+├── include/                             # Common headers
+└── build/                               # Build output (.so for DPI-C)
+bfm/                                     # Bus Functional Models (Phase 2-3)
+├── {module}/                            # Per-module BFM
+└── include/                             # Common BFM headers
+rtl/                                     # RTL source code (Phase 4)
+├── {module}/                            # Per-module RTL (e.g., entropy/, itq/, intra_pred/)
+│   ├── {module}_top.sv                  #   Module top-level (instantiates sub-modules)
+│   ├── {module}_aa.sv                   #   Sub-module A
+│   └── {module}_bb.sv                   #   Sub-module B
+├── common/                              # Shared utility modules (ICG, synchronizer, CDC primitives)
+├── include/                             # Common defines, packages
+├── top/                                 # Top-level module instantiation
+├── filelist_{module}.f                  # Per-module filelist (MUST exist)
+└── filelist_top.f                       # Top-level filelist (MUST exist, includes module filelists)
+sim/                                     # Simulation & testbenches (Phase 4-5)
+├── {module}/                            # Per-module tests (flat + naming convention)
+│   ├── tb_{module}_smoke.sv             # Tier 1: smoke test
+│   ├── tb_{module}.sv                   # Tier 2: unit test (SV)
+│   ├── test_{module}.py                 # Tier 3: cocotb regression
+│   └── Makefile                         # cocotb Makefile for this module
+├── top/                                 # Tier 4: integration tests
+│   ├── tb_top_integration.sv            # SV integration TB
+│   └── test_top_integration.py          # cocotb integration TB
 └── formal/                              # SVA formal verification
-ref_model/                               # C golden reference (Phase 2)
+lint/                                    # Lint flow
+├── scripts/                             # Lint scripts (run_lint.sh)
+└── reports/{module}/                    # Per-module lint results
+syn/                                     # Synthesis flow
+├── scripts/                             # Synthesis scripts (run_syn.sh)
+└── reports/{module}/                    # Per-module synthesis results
 ```
+
+**Filelist convention (3 types):**
+
+| Type | Location | Required | Description |
+|------|----------|----------|-------------|
+| Module-level | `rtl/filelist_{module}.f` | **MUST exist** | Module's RTL sources + dependencies |
+| Top-level | `rtl/filelist_top.f` | **MUST exist** | Includes all module filelists, adds top.sv |
+| TB/test | in sim/ scope | Dynamic | Scripts add TB files at runtime |
 
 > **Principle**: Store data/metrics/design content in `docs/`, and only verdict (PASS/FAIL) in `reviews/`.
 > Example: formal verification data goes in `docs/phase-5-verify/`, while spec compliance judgment goes in `reviews/phase-5-verify/final-compliance.md`.
@@ -504,9 +568,14 @@ PASS | FAIL: [Reason]
 ## State Files
 
 Design flow state is stored under `.rtl-agent-team/`:
-- `.rtl-agent-team/state/rtl-autopilot-state.json` — Pipeline progress state (for resumption, schema v2.0)
+- `.rtl-agent-team/state/rtl-autopilot-state.json` — Full pipeline (Phase 1-6) progress state (for resumption, schema v2.0)
+- `.rtl-agent-team/state/rtl-spec-to-uarch-state.json` — Phase 1-3 pipeline progress state (for resumption)
+- `.rtl-agent-team/state/rtl-uarch-to-verify-state.json` — Phase 4-5 pipeline progress state (for resumption)
+- `.rtl-agent-team/state/feedback-loop-state.json` — Phase 5→4 feedback loop tracking (loop count, failures, fix status)
+- `.rtl-agent-team/state/rtl-dse-state.json` — DSE (Design Space Exploration) pipeline progress state (for resumption)
+- `.rtl-agent-team/state/rtl-verify-done` — RTL modification verification completion gate marker
+- `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver for non-functional changes (e.g., comment-only)
 - `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase completion gate
 - `.rtl-agent-team/scratch/phase-{N}/` — Temporary working files for iterative review rounds (cleaned on phase completion)
-- `.rtl-agent-team/context/` — Context manifests and phase summaries (auto-managed)
 
 <!-- RTL-AGENT-TEAM:END -->

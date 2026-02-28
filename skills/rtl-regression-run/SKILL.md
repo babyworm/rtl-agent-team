@@ -1,7 +1,11 @@
 ---
 name: rtl-regression-run
-description: "This skill should be used when running multi-seed regression suites with coverage collection and failure tracking."
+description: "DEPRECATED — Use rtl-func-verify (Tier 3) for module-level regression with multi-seed support."
 ---
+
+> **DEPRECATED**: This skill's functionality has been absorbed into `rtl-func-verify` (Tier 3).
+> Use `/rtl-agent-team:rtl-func-verify` for module-level regression with multi-seed support.
+> The `scripts/run_regression.sh` script is still available and is invoked by rtl-func-verify.
 
 <Purpose>
 Run the full test suite with multiple random seeds to maximize functional coverage.
@@ -43,7 +47,7 @@ in a single automated flow.
    ```
    Or run individually:
    ```bash
-   make -C tb/cocotb SIM=icarus SEED={seed} COVERAGE=1
+   make -C sim/top SIM=icarus SEED={seed} COVERAGE=1
    ```
 3. Capture per-seed results to regression/seed_{seed}_results.json
 4. On failure: capture .vcd waveform for failing test (signals use i_/o_ prefixes, {domain}_clk/{domain}_rst_n)
@@ -58,7 +62,7 @@ in a single automated flow.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 1337, 65536, 999999]. For each seed: make -C tb/cocotb SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to regression/seed_{seed}_results.json.")
+     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 1337, 65536, 999999]. For each seed: make -C sim/top SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to regression/seed_{seed}_results.json.")
 
 Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Merge coverage data from regression/seed_*_results.json via Bash CLI (lcov --add-tracefile or equivalent). Produce coverage/coverage.xml with line, branch, and toggle coverage. Report overall coverage percentage.")
@@ -94,7 +98,7 @@ time on a task that is embarrassingly parallel.
 Coverage collection with Verilator:
 ```bash
 # Compile with coverage
-make -C tb/cocotb SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut MODULE=test_dut
+make -C sim/top SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut MODULE=test_dut
 
 # Merge multi-seed coverage data
 verilator_coverage --write-info merged.info seed_*/coverage.dat

@@ -143,6 +143,17 @@
       "current_wave": null
     }
   },
-  "upper_spec_violations": [],
+  "upper_spec_violations": [
+    {
+      "_comment": "Template entry — remove when creating actual state file",
+      "detected_at_phase": "{{N}}",
+      "violation_type": "DESIGN_FIX | INTEGRATION_FIX",
+      "description": "{{violation description}}",
+      "return_to_phase": "{{N}}",
+      "user_approved": false,
+      "resolution": null,
+      "resolved_at": null
+    }
+  ],
   "review_artifacts": []
 }

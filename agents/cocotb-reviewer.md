@@ -3,6 +3,7 @@ name: cocotb-reviewer
 description: cocotb testbench quality reviewer. Reviews Python test code quality, stimulus generation, assertion patterns, async/await correctness, BFM integration, and cocotb-specific pitfalls. Produces review reports in reviews/.
 model: opus
 color: green
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -65,7 +66,7 @@ color: green
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read all test files in `tb/cocotb/`:
+    1. Read all test files in `sim/`:
        a. Identify all @cocotb.test() decorated functions.
        b. Check test isolation: does each test reset DUT state?
     2. **async/await Correctness**:
@@ -108,19 +109,19 @@ color: green
   <Tool_Usage>
     - Read: test files (*.py), Makefile, conftest.py
     - Grep: find `@cocotb.test`, `await`, `RisingEdge`, `Timer`, `dut.` patterns
-    - Glob: find all tb/cocotb/*.py, tb/cocotb/Makefile
+    - Glob: find all sim/*.py, sim/Makefile
     - Write: save review report to reviews/ path
 
     Common issue detection:
     ```bash
     # Find missing awaits (coroutine calls without await)
-    grep -n "Timer\|RisingEdge\|FallingEdge\|ClockCycles\|ReadOnly\|ReadWrite" tb/cocotb/*.py | grep -v "await"
+    grep -n "Timer\|RisingEdge\|FallingEdge\|ClockCycles\|ReadOnly\|ReadWrite" sim/*.py | grep -v "await"
 
     # Find signal reads immediately after edge (potential race)
-    grep -A1 "await RisingEdge" tb/cocotb/*.py | grep "\.value"
+    grep -A1 "await RisingEdge" sim/*.py | grep "\.value"
 
     # Find non-conformant clock/reset names (clk_i, rst_ni are forbidden)
-    grep -n "dut\.clk_i\|dut\.rst_ni" tb/cocotb/*.py
+    grep -n "dut\.clk_i\|dut\.rst_ni" sim/*.py
     ```
   </Tool_Usage>
 

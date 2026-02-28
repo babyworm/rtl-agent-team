@@ -3,6 +3,7 @@ name: formal-reviewer
 description: Formal verification quality reviewer. Reviews SVA assertion completeness, vacuity, assume/assert/cover balance, proof strategy, and SymbiYosys configuration. Produces review reports in reviews/.
 model: opus
 color: magenta
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>

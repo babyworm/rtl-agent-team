@@ -99,16 +99,16 @@ color: red
     DFT readiness checks:
     ```bash
     # Find latches (DFT-hostile)
-    grep -rn "always_latch\|always @\*" rtl/src/*.sv
+    grep -rn "always_latch\|always @\*" rtl/*/*.sv
 
     # Find gated clocks
-    grep -rn "assign.*clk.*&\|assign.*clk.*|" rtl/src/*.sv
+    grep -rn "assign.*clk.*&\|assign.*clk.*|" rtl/*/*.sv
 
     # Find async resets not gated by test_mode
-    grep -rn "negedge.*rst" rtl/src/*.sv | grep -v "test_mode"
+    grep -rn "negedge.*rst" rtl/*/*.sv | grep -v "test_mode"
 
     # Estimate FF count via Yosys
-    yosys -p "read_verilog -sv rtl/src/*.sv; synth; stat" 2>&1 | grep "flip-flop"
+    yosys -p "read_verilog -sv rtl/*/*.sv; synth; stat" 2>&1 | grep "flip-flop"
     ```
   </Tool_Usage>
 

@@ -80,7 +80,7 @@ endclass
 ```bash
 # Compile
 vcs -full64 -sverilog -ntb_opts uvm-1.2 \
-  +incdir+uvm/ rtl/src/*.sv uvm/*.sv \
+  +incdir+uvm/ rtl/*/*.sv uvm/*.sv \
   -timescale=1ns/1ps -o simv
 
 # Run
@@ -91,7 +91,7 @@ vcs -full64 -sverilog -ntb_opts uvm-1.2 \
 ### Siemens Questa
 ```bash
 # Compile
-vlog -sv +incdir+uvm rtl/src/*.sv uvm/*.sv
+vlog -sv +incdir+uvm rtl/*/*.sv uvm/*.sv
 vopt +acc top_tb -o opt_tb
 
 # Run
@@ -103,7 +103,7 @@ vsim -c opt_tb +UVM_TESTNAME=base_test +UVM_VERBOSITY=UVM_MEDIUM \
 ```bash
 # Compile and run
 xrun -sv -uvm -access +rwc \
-  +incdir+uvm rtl/src/*.sv uvm/*.sv \
+  +incdir+uvm rtl/*/*.sv uvm/*.sv \
   +UVM_TESTNAME=base_test -seed 42 -l run.log
 ```
 

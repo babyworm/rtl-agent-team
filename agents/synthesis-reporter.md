@@ -74,9 +74,9 @@ color: green
 
   <Tool_Usage>
     - Read: read requirements.json, CLAUDE.md, existing synthesis scripts
-    - Write: create synth/synth_block.ys synthesis script
-    - Bash: run `yosys -s synth/synth_block.ys 2>&1 | tee synth/synth_block.log`,
-            run `grep -E "(Warning|Error|Cells|Flip-flop)" synth/synth_block.log`
+    - Write: create syn/synth_block.ys synthesis script
+    - Bash: run `yosys -s syn/synth_block.ys 2>&1 | tee syn/synth_block.log`,
+            run `grep -E "(Warning|Error|Cells|Flip-flop)" syn/synth_block.log`
     - Glob: find all RTL files for target module hierarchy
     - Grep: parse log file for specific metrics
 
@@ -90,18 +90,18 @@ color: green
     opt
     synth -top module_name
     stat -top module_name
-    tee -a synth/area_hier.txt stat
-    write_json synth/netlist_module_name.json
+    tee -a syn/area_hier.txt stat
+    write_json syn/netlist_module_name.json
     ```
 
     Metric extraction:
     ```bash
     # Extract cell count table from Yosys output
-    grep -A 30 "Number of cells:" synth/synth_block.log
+    grep -A 30 "Number of cells:" syn/synth_block.log
     # Extract warning count
-    grep -c "Warning:" synth/synth_block.log
+    grep -c "Warning:" syn/synth_block.log
     # Extract FF count
-    grep "Flip-flop" synth/synth_block.log
+    grep "Flip-flop" syn/synth_block.log
     ```
   </Tool_Usage>
 

@@ -76,10 +76,10 @@ genhtml coverage.info --output-directory coverage_html
 
 ```bash
 # Include only specific directories
-lcov --extract coverage.info '*/rtl/src/*' -o rtl_coverage.info
+lcov --extract coverage.info '*/rtl/*/*' -o rtl_coverage.info
 
 # Exclude testbench
-lcov --remove coverage.info '*/tb/*' '*/test/*' -o rtl_only.info
+lcov --remove coverage.info '*/sim/*' '*/test/*' -o rtl_only.info
 
 # HTML report
 genhtml rtl_only.info -o coverage_html
@@ -143,7 +143,7 @@ for seed in $SEEDS; do
   echo "=== Running seed $seed ==="
 
   # Run cocotb
-  RANDOM_SEED=$seed make -C tb/cocotb SIM=icarus 2>&1 | tee run_${seed}.log
+  RANDOM_SEED=$seed make -C sim/my_module SIM=icarus 2>&1 | tee run_${seed}.log
 
   if [ $? -eq 0 ]; then
     PASS=$((PASS + 1))

@@ -3,6 +3,7 @@ name: power-analyzer
 description: Power analysis specialist. Reviews clock gating effectiveness, switching activity, power domain strategy, leakage/dynamic power estimates, and power budget compliance. Produces review reports in reviews/.
 model: opus
 color: red
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -118,15 +119,15 @@ color: red
     Clock gating opportunity detection:
     ```bash
     # Find always_ff blocks without enable conditions (potential gating targets)
-    grep -n "always_ff" rtl/src/*.sv
+    grep -n "always_ff" rtl/*/*.sv
     # Find existing clock gate instances
-    grep -rn "clock_gate\|clk_gate\|ICG\|TLATNCAX" rtl/src/*.sv
+    grep -rn "clock_gate\|clk_gate\|ICG\|TLATNCAX" rtl/*/*.sv
     ```
 
     Gate count estimation for power:
     ```bash
     # Quick Yosys gate count for power estimation
-    yosys -p "read_verilog -sv rtl/src/*.sv; synth; stat" 2>&1 | grep -E "cells|wire|memory"
+    yosys -p "read_verilog -sv rtl/*/*.sv; synth; stat" 2>&1 | grep -E "cells|wire|memory"
     ```
 
     Power estimation:

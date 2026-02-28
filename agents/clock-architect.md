@@ -3,6 +3,7 @@ name: clock-architect
 description: Clock architecture specialist. Reviews clock tree design, clock distribution strategy, clock gating structure, PLL/MMCM configuration, clock mux safety, and skew budgets. Produces review reports in reviews/.
 model: opus
 color: red
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -101,16 +102,16 @@ color: red
     Clock inventory:
     ```bash
     # Find all clock signals
-    grep -rn "_clk\b" rtl/src/*.sv | grep -E "input|output" | sort -u
+    grep -rn "_clk\b" rtl/*/*.sv | grep -E "input|output" | sort -u
 
     # Find clock gating instances
-    grep -rn "ICG\|clock_gate\|clk_gate\|BUFGCE" rtl/src/*.sv
+    grep -rn "ICG\|clock_gate\|clk_gate\|BUFGCE" rtl/*/*.sv
 
     # Find clock muxes
-    grep -rn "clk_mux\|BUFGMUX\|clk_sel\|clk_select" rtl/src/*.sv
+    grep -rn "clk_mux\|BUFGMUX\|clk_sel\|clk_select" rtl/*/*.sv
 
     # Find clock dividers
-    grep -rn "clk_div\|clk_en.*toggle\|posedge.*counter" rtl/src/*.sv
+    grep -rn "clk_div\|clk_en.*toggle\|posedge.*counter" rtl/*/*.sv
     ```
   </Tool_Usage>
 

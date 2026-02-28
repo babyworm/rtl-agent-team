@@ -127,11 +127,24 @@ for rtl-uarch-to-verify to begin RTL implementation.
    **Phase 1 Summary Generation** (after Quality Gate PASS, before Phase 2 starts):
    - Delegate to `rtl-architect` (model=sonnet): read all Phase 1 artifacts and generate
      `docs/phase-1-research/phase-1-summary.md` using `templates/phase-summary.md` format.
-   - This summary is used by Phase 3+ as compressed context via `required_summary_only`.
+   - This summary is used by Phase 3-4 as compressed context via `required_summary_only`.
+
+   **Phase 1→2 Summary Validation**:
+   - Verify `docs/phase-1-research/phase-1-summary.md` exists
+   - If missing: delegate to `rtl-architect` (model=sonnet) to generate from Phase 1 artifacts
+   - Summary must follow `templates/phase-summary.md` format
 
 ---
 
 3. **Phase 2 — Architecture + Reference Model (parallel + 3-round iterative review)**:
+
+   **Context Manifest Preload Validation** (Phase 2 start):
+   - Load `templates/context-manifest-phase-2.json`
+   - For each `required_full_read` entry: verify file exists, read into context
+   - For each `required_summary_only` entry: verify referenced phase summaries exist
+   - If ANY required file missing: STOP with clear error listing missing files
+   - `optional_on_demand` files: skip validation, load lazily during execution
+
    invoke arch-design and ref-model skills concurrently
    - arch-designer + ref-model-dev produce initial artifacts concurrently
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n` naming
@@ -147,7 +160,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
      - User may request additional rounds beyond 3 ("set iterations to N")
    - `rtl-critic` performs synthesizability pre-assessment (parallel with Round 1)
 
-   **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + ref_model/src/*.c exist
+   **Phase 2→3 Artifact Gate**: architecture.md + block_diagram + refc/*/*.c exist
 
    **Phase 2→3 Quality Gate (Architecture Review)**:
    - 3-round iterative review converged (or gaps escalated and user-approved)
@@ -166,6 +179,11 @@ for rtl-uarch-to-verify to begin RTL implementation.
      `docs/phase-2-architecture/phase-2-summary.md` using `templates/phase-summary.md` format.
    - This summary is used by Phase 4+ as compressed context via `required_summary_only`.
 
+   **Phase 2→3 Summary Validation**:
+   - Verify `docs/phase-2-architecture/phase-2-summary.md` exists
+   - If missing: delegate to `rtl-architect` (model=sonnet) to generate from Phase 2 artifacts
+   - Summary must follow `templates/phase-summary.md` format
+
    **Phase 2 ADR Recording** (after summary, before Phase 3 starts):
    - Delegate to `arch-designer` (model=sonnet): identify 3-5 key architectural decisions made
      during Phase 2 (e.g., pipeline vs combinational, memory architecture, interface protocol choice).
@@ -175,6 +193,14 @@ for rtl-uarch-to-verify to begin RTL implementation.
 ---
 
 4. **Phase 3 — μArch + BFM (parallel + 3-round iterative review)**:
+
+   **Context Manifest Preload Validation** (Phase 3 start):
+   - Load `templates/context-manifest-phase-3.json`
+   - For each `required_full_read` entry: verify file exists, read into context
+   - For each `required_summary_only` entry: verify referenced phase summaries exist
+   - If ANY required file missing: STOP with clear error listing missing files
+   - `optional_on_demand` files: skip validation, load lazily during execution
+
    invoke rtl-uarch-design and bfm-develop skills concurrently
    - uarch-designer + bfm-dev produce initial artifacts concurrently
    - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
@@ -207,7 +233,12 @@ for rtl-uarch-to-verify to begin RTL implementation.
    **Phase 3 Summary Generation** (after Quality Gate PASS):
    - Delegate to `rtl-architect` (model=sonnet): read all Phase 3 artifacts and generate
      `docs/phase-3-uarch/phase-3-summary.md` using `templates/phase-summary.md` format.
-   - This summary is used by Phase 4+ (via rtl-uarch-to-verify) as compressed context.
+   - This summary is used by Phase 5+ as compressed context via `required_summary_only`.
+
+   **Phase 3 Summary Validation:**
+   - Verify `docs/phase-3-uarch/phase-3-summary.md` exists
+   - If missing: delegate to `rtl-architect` (model=sonnet) to generate from Phase 3 artifacts
+   - Summary must follow `templates/phase-summary.md` format
 
    **Phase 3 ADR Recording** (after summary):
    - Delegate to `uarch-designer` (model=sonnet): identify 3-5 key μArch decisions made
@@ -217,11 +248,32 @@ for rtl-uarch-to-verify to begin RTL implementation.
 
 ---
 
+**Parallel Execution Pattern:**
+Phase 2 iterative review runs parallel reviewers each round:
+- `rtl-architect` + `vcodec-architecture-expert` + `ref-model-dev`: independent, parallel via `run_in_background: true`
+- Wait for all background tasks before aggregating round feedback
+- Collect results via TaskOutput before proceeding to next round or gate
+
+Phase 3 iterative review similarly runs parallel reviewers:
+- `rtl-architect` + `timing-advisor` + `vcodec-architecture-expert` + `ref-model-dev`: parallel
+- Same wait/collect pattern as Phase 2
+
+**Handoff Checklist (rtl-spec-to-uarch → rtl-uarch-to-verify):**
+Before reporting completion, verify handoff readiness:
+- [ ] Phase 3 summary exists: `docs/phase-3-uarch/phase-3-summary.md`
+- [ ] All μArch specs exist: `docs/phase-3-uarch/{module}.md` for each module
+- [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
+- [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
+- [ ] State file updated: `.rtl-agent-team/rtl/{module}/phase-3-complete.json`
+- [ ] Context manifest ready: `templates/context-manifest-phase-4.json` references valid files
+
+---
+
 5. **On completion**: update state file with all phases completed, report summary.
 
    **Completion Report** (presented to user):
    - Phase 1 artifacts: requirements.json, io_definition.json, domain-analysis.md
-   - Phase 2 artifacts: architecture.md, ref_model/src/*.c, architecture-review.md (PASS)
+   - Phase 2 artifacts: architecture.md, refc/*/*.c, architecture-review.md (PASS)
    - Phase 3 artifacts: uarch/*.md, bfm/, uarch-review.md (PASS)
    - ADR count and key decisions
    - Next step: "Run `/rtl-agent-team:rtl-uarch-to-verify` to begin RTL implementation + verification"
@@ -377,13 +429,13 @@ User: "두 가지 아키텍처를 비교하고 싶어. 먼저 설계 문서만 �
 ```
 </Examples>
 
-<Escalation>
+<Escalation_And_Stop_Conditions>
 - Phase 1 Quality Gate fails after 2 retries → ask user to clarify/refine spec
 - Phase 2 Quality Gate fails after 2 retries → ask user for architecture direction
 - Phase 3 Quality Gate fails after 2 retries → ask user for μArch decisions
 - Upper-spec violation detected → STOP and report to user immediately
 - Any phase cannot be completed due to missing information → use AskUserQuestion
-</Escalation>
+</Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 Before reporting completion, verify ALL of the following:
@@ -391,7 +443,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Phase 1: reviews/phase-1-research/research-review.md verdict=PASS
 - [ ] Phase 1: phase-1-summary.md generated
 - [ ] Phase 2: architecture.md exists with proper naming conventions
-- [ ] Phase 2: ref_model/src/*.c exists
+- [ ] Phase 2: refc/*/*.c exists
 - [ ] Phase 2: reviews/phase-2-architecture/architecture-review.md verdict=PASS
 - [ ] Phase 2: reviews/phase-2-architecture/feature-coverage.md shows 100% coverage
 - [ ] Phase 2: phase-2-summary.md generated
@@ -402,7 +454,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Phase 3: reviews/phase-3-uarch/feature-preservation.md shows 100% preserved
 - [ ] Phase 3: phase-3-summary.md generated
 - [ ] Phase 3: ADRs recorded in docs/decisions/
-- [ ] Scratch directories cleaned (phase-1, phase-2, phase-3)
+- [ ] Scratch directories cleaned (phase-2, phase-3)
 - [ ] State file updated with all phases completed
 - [ ] Pipeline did NOT proceed to Phase 4
 

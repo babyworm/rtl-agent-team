@@ -40,3 +40,6 @@ Each file must contain a valid verdict (PASS/FAIL) in standard review Markdown f
 - [ ] `reviews/phase-6-review/design-review.md`
 - [ ] `reviews/phase-6-review/design-note.md`
 - [ ] `reviews/phase-6-review/improvements.md`
+
+## Phase 7: Exploration (optional — only if Phase 7 was executed)
+- [ ] `reviews/phase-7-exploration/exploration-review.md`

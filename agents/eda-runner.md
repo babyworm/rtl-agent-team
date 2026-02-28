@@ -41,16 +41,22 @@ color: green
   4. Select the appropriate CLI tool and construct the Bash command:
 
      **Verilator (simulation + lint):**
-     - Lint: `verilator --lint-only -Wall -Wpedantic -sv rtl/src/*.sv`
-     - Simulation: `verilator --binary -j 0 --trace-fst --timing -sv -o sim_out rtl/src/*.sv`
+     - Lint: `verilator --lint-only -Wall -Wpedantic -sv rtl/*/*.sv`
+     - Simulation: `verilator --binary -j 0 --trace-fst --timing -sv -o sim_out rtl/*/*.sv`
      - Waiver generation: `verilator --lint-only -Wall --waiver-output verilator.vlt *.sv`
      - Key warning categories: BLKANDNBLK (blocking+nonblocking mix), LATCH (inferred latch),
        UNDRIVEN, UNUSED, SYNCASYNCNET, WIDTH (width mismatch), CASEINCOMPLETE
      - Use `--trace-fst` (not `--trace`) for smaller waveform files (FST vs VCD)
      - Use `--trace-depth N` to limit hierarchy depth and reduce dump size
 
-     **Icarus Verilog (alternative simulator):**
-     - Compile: `iverilog -g2012 -o sim_out rtl/src/*.sv tb/*.sv`
+     **Simulator-Agnostic Script (preferred for SV testbenches):**
+     - `scripts/simulate.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
+     - `scripts/simulate.sh --sim verilator --top tb_module -f rtl/filelist.f --dpi ref.so`
+     - Supports: iverilog, verilator, vcs, xrun, questa
+     - Use `--help` for full option list
+
+     **Icarus Verilog (direct invocation, when simulate.sh not available):**
+     - Compile: `iverilog -g2012 -o sim_out rtl/*/*.sv sim/*/*.sv`
      - Run: `vvp sim_out -fst` (prefer FST format over VCD)
 
      **Yosys (synthesis):**

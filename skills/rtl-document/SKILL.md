@@ -35,9 +35,9 @@ with port tables and functional descriptions accelerate integration and review.
 </Execution_Policy>
 
 <Steps>
-1. rtl-explorer reads rtl/src/{module}.sv: extracts ports, parameters, internal signals, FSM states
+1. rtl-explorer reads rtl/{module}/{module}.sv: extracts ports, parameters, internal signals, FSM states
 2. rtl-explorer reads module header comments for existing functional description
-3. If synth/synth_report.txt exists, read for area/timing data
+3. If syn/synth_report.txt exists, read for area/timing data
 4. rtl-explorer writes docs/rtl/{module}.md:
    - Module overview (functional description)
    - Port table (name, direction, width, description)
@@ -55,10 +55,10 @@ with port tables and functional descriptions accelerate integration and review.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:rtl-explorer",
-     prompt="Read rtl/src/cabac_encoder.sv. Extract all ports, parameters, and functional behavior. Write docs/rtl/cabac_encoder.md with: port table (noting i_/o_/io_ prefix convention, {domain}_clk/{domain}_rst_n), parameter table (UPPER_SNAKE_CASE), instance table (u_ prefix), FSM state list, and functional description. Flag any naming convention violations found.")
+     prompt="Read rtl/cabac_encoder/cabac_encoder.sv. Extract all ports, parameters, and functional behavior. Write docs/rtl/cabac_encoder.md with: port table (noting i_/o_/io_ prefix convention, {domain}_clk/{domain}_rst_n), parameter table (UPPER_SNAKE_CASE), instance table (u_ prefix), FSM state list, and functional description. Flag any naming convention violations found.")
 
 Task(subagent_type="rtl-agent-team:synthesis-reporter",
-     prompt="Read synth/synth_report.txt and synth/timing_report.txt. Provide area and timing summary section for docs/rtl/cabac_encoder.md.")
+     prompt="Read syn/synth_report.txt and syn/timing_report.txt. Provide area and timing summary section for docs/rtl/cabac_encoder.md.")
 ```
 
 Port table format in generated docs:

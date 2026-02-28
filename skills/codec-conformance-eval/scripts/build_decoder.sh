@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build_decoder.sh — Build ref_model C source into decoder binary
+# build_decoder.sh — Build refc/ C source into decoder binary
 # Usage: build_decoder.sh <src_dir> <output_binary> [extra_cflags...]
 #
 # Builds C11 decoder from source directory using gcc.
@@ -18,8 +18,8 @@ usage() {
     echo "  extra_cflags   Additional compiler flags (optional)"
     echo ""
     echo "Examples:"
-    echo "  $0 ref_model/src ./build/decoder"
-    echo "  $0 ref_model/src ./build/decoder -DDECODER_ONLY"
+    echo "  $0 refc/ ./build/decoder"
+    echo "  $0 refc/ ./build/decoder -DDECODER_ONLY"
     exit "${1:-1}"
 }
 

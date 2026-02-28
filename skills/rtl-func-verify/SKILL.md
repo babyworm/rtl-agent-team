@@ -1,10 +1,24 @@
 ---
 name: rtl-func-verify
-description: "This skill should be used when running cocotb regression tests comparing RTL against reference models in Phase 5. Produces Requirement Traceability Matrix."
+description: "Tier 3 module-level regression: cocotb multi-seed regression comparing RTL against reference models. Absorbs rtl-regression-run. Produces Requirement Traceability Matrix."
 ---
 
 <Purpose>
-Run cocotb-based regression tests comparing RTL simulation output against the C reference model.
+Run cocotb-based module-level regression tests with multi-seed coverage, comparing RTL simulation
+output against the C reference model. This is Tier 3 testing — comprehensive module-level regression
+that goes beyond Tier 2 unit tests with randomized stimulus and coverage closure.
+
+**Testing Tier Context:**
+```
+Tier 1: Smoke Test     — connectivity, R/W, basic ops (rtl-code Wave 4)
+Tier 2: Unit Test      — reference comparison, uarch features (rtl-sv-unit-test)
+Tier 3: Module Regr.   — cocotb multi-seed (THIS SKILL) ←
+Tier 4: Integration    — cross-module, end-to-end (rtl-integration-test)
+```
+
+**Note:** This skill absorbs the former `rtl-regression-run` skill. Multi-seed regression,
+coverage collection, and failure tracking are now unified here.
+
 Outputs: sim/regression/{test}_result.json per test + coverage/coverage.xml.
 On failure: invoke waveform-analyzer for debug.
 
@@ -13,14 +27,17 @@ cocotb-coverage (functional coverage). See `references/cocotb-ecosystem.md` for 
 </Purpose>
 
 <Use_When>
-- RTL passes unit tests and needs regression verification against reference model
+- RTL passes Tier 2 unit tests and needs multi-seed regression verification
 - Adding new test vectors to the regression suite
 - Debugging a regression failure
+- Full multi-seed regression gate (pre-tapeout, coverage closure)
+- Coverage closure requires multi-seed runs
 </Use_When>
 
 <Do_Not_Use_When>
-- Reference model (ref_model/) does not exist (run ref-model first)
-- Only unit-level SV tests needed (use rtl-sv-unit-test instead)
+- Reference model (refc/) does not exist (run ref-model first)
+- Only unit-level SV tests needed (use rtl-sv-unit-test — Tier 2)
+- Integration/cross-module testing needed (use rtl-integration-test — Tier 4)
 - Performance comparison needed (use rtl-perf-verify instead)
 </Do_Not_Use_When>
 
@@ -49,46 +66,66 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 - testbench-dev writes cocotb test cases (Python) — pipelined with execution
 - As each module TB completes → immediately launch eda-runner for that module (don't wait for all TBs)
 - Module-level parallelism: each module's TB + sim runs as an independent parallel task
-- Multi-seed regression: each module runs with 3 seeds in parallel (seed=42, seed=123, seed=456)
+- Multi-seed regression: each module runs with 5 seeds (default: 1, 42, 123, 1337, 65536), configurable
 - On any failure: waveform-analyzer diagnoses before reporting
 - Coverage report generated regardless of pass/fail
 - Incremental coverage: coverage-analyst can start partial analysis on completed modules
+- Early termination: >5% failure rate across seeds → halt and report immediately
 </Execution_Policy>
 
 <Steps>
 1. `mkdir -p reviews/phase-5-verify`
 2. **Pipelined TB Generation + Execution (per-module parallel)**:
    For each module, launch TB generation and immediately follow with simulation — do NOT wait for all TBs:
-   - testbench-dev writes tb/cocotb/test_{module}.py
+   - testbench-dev writes sim/{module}/test_{module}.py
      - Use `templates/cocotb-test-template.py` as the test file scaffold
      - Signal access uses `i_`/`o_` prefixes matching RTL ports
      - Clock driven as `dut.sys_clk`, reset as `dut.sys_rst_n`
    - As EACH module's TB completes → immediately launch eda-runner for that module:
      ```bash
      # Icarus Verilog (default — good SV support, fast compile)
-     make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}
+     make -C sim/{module} SIM=icarus TOPLEVEL={module} MODULE=test_{module}
      ```
    - Use `run_in_background: true` for each module sim to maximize parallelism
    - Use `COCOTB_RESOLVE_X=RANDOM` for X-state handling and `RANDOM_SEED=42` for reproducibility
 
-3. **Multi-Seed Parallel Regression (per-module)**:
-   After initial single-seed sim passes for a module, launch multi-seed regression in parallel:
+3. **Multi-Seed Parallel Regression (per-module, absorbed from rtl-regression-run)**:
+   After initial single-seed sim passes for a module, launch full multi-seed regression:
    ```
+   # Option A: Automated regression script (preferred)
+   bash skills/rtl-regression-run/scripts/run_regression.sh \
+     --seeds "1 42 123 1337 65536" --sim icarus --parallel 4
+
+   # Option B: Manual per-seed launch
    For each module:
-     Task(eda-runner, seed=42,  module=A, run_in_background=true)
-     Task(eda-runner, seed=123, module=A, run_in_background=true)
-     Task(eda-runner, seed=456, module=A, run_in_background=true)
-   → 3 seeds × N modules = up to 3N parallel sim tasks
+     Task(eda-runner, seed=1,     module=A, run_in_background=true)
+     Task(eda-runner, seed=42,    module=A, run_in_background=true)
+     Task(eda-runner, seed=123,   module=A, run_in_background=true)
+     Task(eda-runner, seed=1337,  module=A, run_in_background=true)
+     Task(eda-runner, seed=65536, module=A, run_in_background=true)
+   → 5 seeds × N modules = up to 5N parallel sim tasks
    ```
+   - Default 5 seeds: 1, 42, 123, 1337, 65536 (configurable via seed_list.txt)
    - Each seed tests different random stimulus ordering
-   - A module passes multi-seed regression only when ALL 3 seeds pass
-   - On any seed failure: waveform-analyzer reads .vcd, identifies divergence point
+   - A module passes multi-seed regression only when ALL seeds pass
+   - **Early termination**: >5% failure rate → halt, report immediately
+   - On any seed failure: capture waveform, waveform-analyzer identifies divergence point
+   - Seed-specific results: regression/seed_{seed}_results.json
 
 3.5. **Incremental Coverage Analysis**:
    - As modules complete their multi-seed regression, coverage-analyst begins partial analysis
    - Don't wait for ALL modules to finish — analyze completed modules incrementally
    - Early coverage gaps inform testbench-dev to generate additional tests for remaining modules
    - This overlaps coverage analysis with ongoing simulation for maximum throughput
+
+3.7. **Coverage Merge (absorbed from rtl-regression-run)**:
+   - Merge multi-seed coverage data:
+     ```bash
+     bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output coverage/merged.info
+     ```
+   - coverage-analyst checks targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
+   - Below target: testbench-dev generates additional tests → re-run regression
+   - Generate HTML report: `genhtml coverage/merged.info -o coverage_html/`
 
 4. For each test: compare RTL output with ref_model output byte-by-byte
 5. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
@@ -146,31 +183,45 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 # ============================================================
 # Module A: TB → Sim (immediate, don't wait for other modules)
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Write cocotb test tb/cocotb/test_cabac_encoder.py. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming per CLAUDE.md conventions. Drive RTL, compare output with ref_model binary on 100 random vectors.")
+     prompt="Write cocotb test sim/cabac_encoder/test_cabac_encoder.py. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming per CLAUDE.md conventions. Drive RTL, compare output with ref model binary on 100 random vectors.")
 # → As soon as TB is ready, launch sim:
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression via Bash CLI: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=42. Report pass/fail per test and overall coverage.",
+     prompt="Run cocotb regression via Bash CLI: make -C sim/cabac_encoder SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=42. Report pass/fail per test and overall coverage.",
      run_in_background=true)
 
 # Module B: TB → Sim (parallel with Module A)
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Write cocotb test tb/cocotb/test_transform.py. [same conventions]")
+     prompt="Write cocotb test sim/transform/test_transform.py. [same conventions]")
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression: make -C tb/cocotb SIM=icarus TOPLEVEL=transform MODULE=test_transform RANDOM_SEED=42.",
+     prompt="Run cocotb regression: make -C sim/transform SIM=icarus TOPLEVEL=transform MODULE=test_transform RANDOM_SEED=42.",
      run_in_background=true)
 # ... one pair per module, all running in parallel
 
 # ============================================================
-# Multi-Seed Parallel Regression (after initial seed passes)
+# Multi-Seed Full Regression (absorbed from rtl-regression-run)
 # ============================================================
-# For each module that passes seed=42, launch additional seeds in parallel
+# Option A: Automated script (preferred for 5+ seeds)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=123.",
+     prompt="Run full multi-seed regression via Bash CLI: bash skills/rtl-regression-run/scripts/run_regression.sh --seeds '1 42 123 1337 65536' --sim icarus --parallel 4. Report per-seed pass/fail, capture .vcd on failure. Save results to regression/seed_{seed}_results.json.",
+     run_in_background=true)
+
+# Option B: Manual per-seed launch (for fine-grained control)
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb regression: make -C sim/cabac_encoder SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=123.",
      run_in_background=true)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression: make -C tb/cocotb SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=456.",
+     prompt="Run cocotb regression: make -C sim/cabac_encoder SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=1337.",
      run_in_background=true)
-# → 3 seeds × N modules = up to 3N parallel sim tasks
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Run cocotb regression: make -C sim/cabac_encoder SIM=icarus TOPLEVEL=cabac_encoder MODULE=test_cabac_encoder RANDOM_SEED=65536.",
+     run_in_background=true)
+# → 5 seeds × N modules = up to 5N parallel sim tasks
+
+# ============================================================
+# Coverage Merge (absorbed from rtl-regression-run)
+# ============================================================
+Task(subagent_type="rtl-agent-team:coverage-analyst",
+     prompt="Merge coverage from multi-seed regression: bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output coverage/merged.info. Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%. Report gaps and suggest additional test vectors.")
 
 # ============================================================
 # Incremental Coverage Analysis (starts as modules complete)
@@ -227,14 +278,45 @@ Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes Attr
 - [ ] **All covered requirements pass their tests (or failures are escalated)**
 - [ ] **Traceability verdict is PASS**
 - [ ] **reviews/phase-5-verify/requirement-traceability.md saved with Requirement Traceability Matrix**
-- [ ] Multi-seed regression passed (3 seeds per module: 42, 123, 456)
+- [ ] Multi-seed regression passed (5 seeds per module: 1, 42, 123, 1337, 65536)
 - [ ] Per-module pipelined execution used (TB → sim without waiting for all TBs)
+- [ ] Coverage merged across seeds (coverage/merged.info or coverage/coverage.xml)
+- [ ] Coverage targets met: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
+- [ ] regression/seed_{seed}_results.json written per seed
+- [ ] Early termination applied if failure rate >5%
 </Final_Checklist>
 
 <Advanced>
-Multi-seed regression is now mandatory: seeds 42, 123, 456 per module. For even broader coverage, add seeds: `make RANDOM_SEED=789 SIM=icarus`.
-Coverage target: 90% line, 80% toggle, 70% FSM state.
+Multi-seed regression is now mandatory: default seeds 1, 42, 123, 1337, 65536 per module.
+For even broader coverage, add random seeds or use `regression/seed_list.txt`.
+Coverage targets: ≥90% line, ≥80% toggle, ≥85% branch, ≥70% FSM state.
 Use `COCOTB_RESOLVE_X=RANDOM` to handle X propagation in simulation.
+
+**Full regression via script (absorbed from rtl-regression-run):**
+```bash
+# Automated multi-seed regression
+bash skills/rtl-regression-run/scripts/run_regression.sh \
+  --seeds "1 42 123 1337 65536" --sim icarus --parallel 4
+
+# Coverage merge
+bash skills/rtl-regression-run/scripts/merge_coverage.sh \
+  --format verilator --output coverage/merged.info
+
+# Coverage HTML report
+genhtml coverage/merged.info -o coverage_html/ --title "Regression Coverage"
+```
+
+**Verilator coverage collection:**
+```bash
+# Compile with coverage
+make -C sim/{module} SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut MODULE=test_dut
+
+# Merge multi-seed coverage data
+verilator_coverage --write-info merged.info seed_*/coverage.dat
+```
+
+**Early termination:** When failure rate exceeds 5% across seeds, halt immediately and report.
+This prevents wasting compute on a fundamentally broken module.
 
 See `examples/cocotb-axi-lite-test.py` for a complete AXI-Lite register test using cocotbext-axi.
 
@@ -245,4 +327,9 @@ See `examples/cocotb-axi-lite-test.py` for a complete AXI-Lite register test usi
 - Parameterized tests: `TestFactory(run_test).add_option("width", [8,16,32]).generate_tests()`
 
 See `references/cocotb-ecosystem.md` for complete API reference with code examples.
+
+**Tier transition rules:**
+- Tier 2 PASS (rtl-sv-unit-test) → Tier 3 eligible
+- Tier 3 PASS (this skill) → Tier 4 eligible (rtl-integration-test)
+- Tier 3 FAIL → fix via rtl-bugfix, re-run Tier 2 then Tier 3
 </Advanced>

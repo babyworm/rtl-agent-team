@@ -23,7 +23,7 @@ and verify that required EDA tools are installed and accessible.
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-The 6-Phase pipeline expects a standard directory layout (specs/, rtl/src/, tb/, ref_model/, etc.)
+The 6-Phase pipeline expects a standard directory layout (rtl/, refc/, bfm/, sim/, lint/, syn/, etc.)
 and depends on EDA CLI tools (Verilator, Yosys, cocotb, etc.) being available.
 Without proper setup, agents fail with missing directory or tool-not-found errors.
 This skill ensures everything is in place before design work begins.
@@ -42,26 +42,30 @@ This skill ensures everything is in place before design work begins.
 2. **Create directory structure** (skip existing):
    ```
    specs/              # Input specifications and datasheets
-   rtl/
-     src/              # Synthesizable SystemVerilog source
-     include/          # Shared headers and packages
-   tb/
-     unit/             # SV unit tests
-     cocotb/           # cocotb Python testbenches
-   ref_model/
-     src/              # C reference model source (DPI-C compatible)
-     build/            # Reference model build output
-   uarch/              # Micro-architecture documents
+   refc/               # C reference model (DPI-C compatible)
+     include/          # Common ref model headers
+     build/            # Build output (.so for DPI-C)
    bfm/                # Bus Functional Models
-   formal/             # SymbiYosys .sby configurations
-   synth/              # Synthesis scripts and reports
+     include/          # Common BFM headers
+   rtl/                # Synthesizable SystemVerilog source
+     common/           # Shared utility modules (ICG, synchronizer, CDC primitives)
+     include/          # Common defines, packages
+     top/              # Top-level module instantiation
+   sim/                # Simulation & testbenches
+     top/              # Tier 4: integration tests
+     formal/           # SVA formal verification (.sby configs)
+   lint/               # Lint flow
+     scripts/          # Lint scripts (run_lint.sh)
+     reports/          # Per-module lint results
+   syn/                # Synthesis flow
+     scripts/          # Synthesis scripts (run_syn.sh)
+     reports/          # Per-module synthesis results
    docs/               # Design documentation
      phase-1-research/   # Phase 1 artifacts
      phase-2-architecture/ # Phase 2 artifacts
      phase-3-uarch/      # Phase 3 artifacts
      phase-4-rtl/        # Phase 4 artifacts
      phase-5-verify/     # Phase 5 artifacts
-     phase-6-design-note/ # Phase 6 artifacts
      decisions/          # Architecture Decision Records (ADR)
    reviews/            # Phase gate review reports (Markdown)
      phase-1-research/
@@ -69,10 +73,13 @@ This skill ensures everything is in place before design work begins.
      phase-3-uarch/
      phase-4-rtl/
      phase-5-verify/
+     phase-6-review/    # Phase 6 review deliverables
    .rtl-agent-team/
      state/            # Plugin state files (auto-managed)
-     context/          # Context manifests and phase summaries (auto-managed)
    ```
+   Note: Per-module subdirectories under `refc/`, `bfm/`, `rtl/`, `sim/` are created
+   during Phase 2 (architecture) when module decomposition is decided.
+   Example: `rtl/entropy/`, `rtl/itq/`, `sim/entropy/`, `sim/itq/`, etc.
 
 3. **Check EDA tool availability** (via `which` or `--version`):
 
@@ -105,14 +112,41 @@ This skill ensures everything is in place before design work begins.
    ---
    ```
 
-5. **Generate filelist template** (if rtl/src/ is empty):
-   Create `rtl/filelist.f` with comment explaining format.
+5. **Generate filelist templates** (if rtl/ has no .f files):
+   - Copy `skills/rtl-setup/templates/filelist.f` to `rtl/filelist_top.f` as starting point.
+   - Per-module filelists (`rtl/filelist_{module}.f`) are created during Phase 4 when modules are coded.
+   - Filelists support all simulators via simulate.sh (+incdir+ auto-converted for iverilog).
+   - **Filelist convention (3 types):**
+     | Type | Location | Required |
+     |------|----------|----------|
+     | Module-level | `rtl/filelist_{module}.f` | MUST exist per module |
+     | Top-level | `rtl/filelist_top.f` | MUST exist (includes module filelists) |
+     | TB/test | in sim/ scope | Dynamic (scripts add at runtime) |
 
-6. **Generate cocotb Makefile template** (if tb/cocotb/ is empty):
-   Create `tb/cocotb/Makefile` with standard cocotb make targets.
+5.5. **Install simulate.sh** (if scripts/simulate.sh does not exist):
+   Copy `scripts/simulate.sh` and make executable:
+   ```bash
+   chmod +x scripts/simulate.sh
+   ```
+   This simulator-agnostic script supports iverilog, verilator, vcs, xrun, questa.
+   All skill files reference this script instead of direct simulator invocations.
 
-7. **Generate module template** (if rtl/src/ is empty):
-   Create `rtl/src/template_module.sv` demonstrating project naming conventions:
+5.7. **Install lint/syn scripts** (if lint/scripts/ or syn/scripts/ is empty):
+   Create `lint/scripts/run_lint.sh` and `syn/scripts/run_syn.sh`.
+   These scripts support both open-source (verilator, verible, yosys) and commercial tools (vcs, xrun, questa, dc_shell).
+
+6. **Generate cocotb Makefile template** (if sim/ has no Makefile):
+   Copy `skills/rtl-setup/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
+   Per-module cocotb Makefiles are created in `sim/{module}/Makefile` during Phase 4-5.
+   Supports icarus, verilator, vcs, xcelium, questa with per-simulator compile args.
+
+6.5. **Generate SV testbench template** (inform user):
+   Reference `skills/rtl-sv-unit-test/templates/sv-testbench-template.sv` for Tier 2 unit tests.
+   Replace `{{MODULE_NAME}}` and `{{DOMAIN}}` placeholders when creating per-module TBs.
+   TB files go in `sim/{module}/tb_{module}.sv`.
+
+7. **Generate module template** (if rtl/ has no .sv files):
+   Create `rtl/include/template_module.sv` demonstrating project naming conventions:
    ```systemverilog
    // template_module.sv — Template demonstrating project coding conventions
    // Style: lowRISC SV Style Guide + project overrides (i_/o_ prefix, {domain}_clk/rst_n)
@@ -201,7 +235,7 @@ docker run -it --rm \
 <Tool_Usage>
 ```
 # Directory creation (Bash CLI)
-Bash: mkdir -p specs rtl/src rtl/include tb/unit tb/cocotb tb/formal ref_model/src ref_model/build uarch bfm formal synth docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-design-note,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify} reviews/phase-{6-review,7-exploration} .rtl-agent-team/state .rtl-agent-team/context .rtl-agent-team/scratch
+Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include rtl/top sim/top sim/formal lint/scripts lint/reports syn/scripts syn/reports docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-review,7-exploration} .rtl-agent-team/state .rtl-agent-team/scratch
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"
@@ -216,10 +250,11 @@ Bash: g++ --version 2>&1 || echo "NOT_FOUND"
 # Lessons learned initial file (if not exists)
 # Write: docs/lessons-learned.md — initial header (see Step 4)
 
-# Template generation
-Write: rtl/filelist.f          — filelist with format comment
-Write: tb/cocotb/Makefile      — standard cocotb targets
-Write: rtl/src/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
+# Template generation (copy from plugin templates)
+Bash: cp skills/rtl-setup/templates/filelist.f rtl/filelist_top.f
+Bash: cp skills/rtl-setup/templates/cocotb-makefile sim/top/Makefile
+Bash: chmod +x scripts/simulate.sh
+Write: rtl/include/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
 ```
 
 **All EDA tools are executed via Bash CLI directly. No MCP tool servers for EDA.**
@@ -286,7 +321,7 @@ docker build -t rtl-eda-tools docker/
 <Escalation_And_Stop_Conditions>
 - Required tool not found (verilator, verible, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
 - Directory creation permission denied → report error, suggest user fix permissions
-- Existing project detected (rtl/src/ has .sv files) → warn user, ask whether to skip template generation
+- Existing project detected (rtl/ has .sv files in subdirectories) → warn user, ask whether to skip template generation
 - Python version < 3.8 → cocotb 2.0 requires Python 3.8+; report incompatibility
 - No write access to project directory → halt, cannot create structure
 </Escalation_And_Stop_Conditions>
@@ -296,7 +331,7 @@ docker build -t rtl-eda-tools docker/
 - [ ] Tool availability checked via Bash CLI and reported
 - [ ] Missing tools listed with install instructions
 - [ ] Template files created for empty directories
-- [ ] Module template (rtl/src/template_module.sv) demonstrates naming conventions
+- [ ] Module template (rtl/include/template_module.sv) demonstrates naming conventions
 - [ ] Setup report includes coding convention summary (i_/o_ prefix, {domain}_clk/{domain}_rst_n)
 - [ ] Setup report displayed to user
 </Final_Checklist>

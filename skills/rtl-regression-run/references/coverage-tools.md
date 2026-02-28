@@ -10,10 +10,10 @@ verilator --cc --exe --build -j 0 \
   --coverage-line     # Line coverage only
   --coverage-toggle   # Toggle coverage only
   --trace-fst         # Also enable waveform traces
-  rtl/src/*.sv tb/sim_main.cpp
+  rtl/*/*.sv sim/sim_main.cpp
 
 # Or via cocotb Makefile
-make -C tb/cocotb SIM=verilator EXTRA_ARGS="--coverage --trace-fst" \
+make -C sim/ SIM=verilator EXTRA_ARGS="--coverage --trace-fst" \
   TOPLEVEL=dut MODULE=test_dut
 ```
 
@@ -68,7 +68,7 @@ lcov --add-tracefile seed_1.info --add-tracefile seed_42.info \
   --output-file merged.info
 
 # Remove unwanted files from coverage (testbench files)
-lcov --remove merged.info '*/tb/*' '*/test_*' --output-file filtered.info
+lcov --remove merged.info '*/sim/*' '*/test_*' --output-file filtered.info
 
 # Generate HTML report
 genhtml filtered.info --output-directory coverage_report/ \
@@ -99,7 +99,7 @@ PASS=0; FAIL=0
 
 for SEED in "${SEEDS[@]}"; do
   echo "=== Running seed $SEED ==="
-  make -C tb/cocotb SIM=verilator RANDOM_SEED=$SEED \
+  make -C sim/ SIM=verilator RANDOM_SEED=$SEED \
     EXTRA_ARGS="--coverage" TOPLEVEL=dut MODULE=test_dut 2>&1 \
     | tee regression/seed_${SEED}.log
 

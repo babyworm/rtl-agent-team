@@ -9,7 +9,7 @@ computing BD-PSNR and BD-rate metrics (VCEG-M33 methodology) to quantitatively c
 codec algorithm candidates.
 
 This skill automates the full Rate-Distortion evaluation pipeline:
-1. Build encoder binaries from ref_model/src/*.c (C11, gcc)
+1. Build encoder binaries from refc/*.c (C11, gcc)
 2. Run parallel encoding simulations across (sequence, QP, config) combinations
 3. Compute BD-PSNR/BD-rate using VCEG-M33 polynomial interpolation (3+ points)
 4. Generate comparison reports with per-sequence and aggregate metrics
@@ -68,7 +68,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 </Why_This_Exists>
 
 <Execution_Policy>
-- Requires ref_model/src/*.c to exist (or user-specified encoder source path)
+- Requires refc/*.c to exist (or user-specified encoder source path)
 - HJSON test configuration defines all evaluation parameters
 - Local execution is the default; AWS Batch is opt-in via configuration
 - Simulation results are cached at .rtl-agent-team/scratch/rd-eval/ for re-analysis
@@ -84,7 +84,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 
 <Steps>
 1. **Prerequisite validation**
-   - Verify ref_model/src/*.c (or configured encoder_src) exists
+   - Verify refc/*.c (or configured encoder_src) exists
    - Verify test configuration file exists (HJSON format)
      - If not provided, generate from template at skills/codec-rd-eval/templates/test-config.hjson
      - Ask user to fill in sequence paths and encoder configurations
@@ -139,15 +139,15 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 # ============================================================
 # Step 1: Prerequisite validation
 # ============================================================
-Glob("ref_model/src/*.c")              # Verify encoder source exists
+Glob("refc/*.c")                       # Verify encoder source exists
 Read("<test-config.hjson>")            # Read test configuration
 Bash("python3 -c 'import numpy; import hjson; print(\"OK\")'")  # Check dependencies
 
 # ============================================================
 # Step 2: Encoder build (for each unique encoder_src)
 # ============================================================
-Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh ref_model/src .rtl-agent-team/scratch/rd-eval/anchor_encoder")
-Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh ref_model/src .rtl-agent-team/scratch/rd-eval/test_encoder")
+Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rtl-agent-team/scratch/rd-eval/anchor_encoder")
+Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rtl-agent-team/scratch/rd-eval/test_encoder")
 
 # ============================================================
 # Step 3: Simulation execution (parallel)
@@ -174,7 +174,7 @@ Read(".rtl-agent-team/scratch/rd-eval/bd-metrics.json")
 ```
 User: "H.264 인트라 예측 알고리즘 후보 3개의 실제 RD 성능을 비교해줘"
 → Invoke /rtl-agent-team:codec-rd-eval
-→ Step 1: ref_model/src/ 존재 확인, test-config.hjson 생성 (candidates[] 모드)
+→ Step 1: refc/ 존재 확인, test-config.hjson 생성 (candidates[] 모드)
 → Step 2: SAD, Hadamard, SATD+RDOQ 인코더 3개 빌드
 → Step 3: BasketballDrill, BQTerrace, RaceHorses × QP{22,27,32,37} 시뮬레이션
 → Step 4: SAD(anchor) 대비 Hadamard BD-rate=-3.2%, SATD+RDOQ BD-rate=-5.1%
@@ -195,13 +195,13 @@ User: "12비트 vs 16비트 내부 경로의 품질 차이를 SSIM 포함해서 
 **Example 3: No encoder source available**
 ```
 User: "BD-rate 비교 해줘"
-→ Step 1: ref_model/src/*.c 미존재
+→ Step 1: refc/*.c 미존재
 → "ref C model 인코더 소스가 없습니다. 먼저 /rtl-agent-team:ref-model로 레퍼런스 모델을 생성하세요."
 ```
 </Examples>
 
-<Escalation>
-- ref_model/src/ does not exist → suggest running ref-model skill first
+<Escalation_And_Stop_Conditions>
+- refc/ does not exist → suggest running ref-model skill first
 - Encoder build fails → report gcc error details, check C11 compliance
 - Test sequences not found at configured paths → ask user for correct paths
 - All simulations fail → check encoder binary, report common error pattern
@@ -210,7 +210,7 @@ User: "BD-rate 비교 해줘"
 - AWS Batch credentials not configured → fall back to local mode with warning
 - numpy/hjson not installed → provide pip install command
 - SSIM/VMAF requested but ffmpeg not available → warn and skip optional metrics
-</Escalation>
+</Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 Before reporting completion, verify ALL of the following:

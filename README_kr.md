@@ -122,7 +122,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 ```
 docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase-3-uarch/
-        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ docs/phase-6-design-note/
+        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ reviews/phase-6-review/
         ──→ docs/phase-7-exploration/ (선택적, 자유 탐색)
 ```
 
@@ -130,9 +130,9 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 |----------|------|------|
 | `docs/phase-N-*/` | Phase별 설계 문서 (가이드 파이프라인) | Phase N → Phase N+1 입력 |
 | `reviews/phase-N-*/` | 상위 스펙 준수 verdict (PASS/FAIL) | 데이터 없이 판정만 |
-| `rtl/src/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
-| `tb/unit/`, `tb/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
-| `ref_model/` | C 골든 레퍼런스 모델 (DPI-C 호환) | Phase 2 코드 산출물 |
+| `rtl/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
+| `sim/`, `sim/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
+| `refc/` | C 골든 레퍼런스 모델 (DPI-C 호환) | Phase 2 코드 산출물 |
 | `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 설계 결정 근거 |
 | `docs/lessons-learned.md` | 피드백 루프에서 축적된 교훈 | Phase 전체에 걸쳐 누적 |
 
@@ -185,7 +185,7 @@ rtl-agent-team/
 | 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (모듈별) | uarch-review.md |
 | 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B 산출물 | design-review.md |
 | 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md 등 | final-compliance.md, e2e-traceability.md |
-| 6 | Design Note | code-quality-reviewer, design-note-writer | design-note.md, improvements.md | code-review.md, design-review.md |
+| 6 | Design Note | code-quality-reviewer, design-note-writer | - | code-review.md, design-review.md, design-note.md, improvements.md |
 | 7 | Exploration (선택) | improvement-analyst | exploration-notes.md | exploration-review.md |
 
 > **추가 파이프라인 산출물:** 각 Phase(1-5) 완료 시 `phase-N-summary.md`가 생성되어 하위 Phase의 컨텍스트 압축에 사용됩니다. Phase 4 Stream B는 RTL 코딩과 병렬로 SVA/CDC/TB 스켈레톤을 생성합니다. Phase 2-3은 주요 설계 결정을 `docs/decisions/`에 ADR로 기록합니다.

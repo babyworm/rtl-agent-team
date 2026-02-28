@@ -8,7 +8,7 @@ Build and evaluate ref_model C decoder binaries against official conformance bit
 verifying bitexact output match with golden references to ensure decoder algorithmic correctness.
 
 This skill automates the full decoder conformance evaluation pipeline:
-1. Build decoder binary from ref_model/src/*.c (C11, gcc)
+1. Build decoder binary from refc/*.c (C11, gcc)
 2. Run parallel decoding of conformance bitstreams (JVET, JCTVC, 3rd party)
 3. Compare decoded output against golden references (MD5, bitexact, optional PSNR/SSIM/VMAF)
 4. Generate conformance report with profile/level coverage matrix
@@ -70,7 +70,7 @@ comparing outputs, and tracking which profile features are covered.
 </Why_This_Exists>
 
 <Execution_Policy>
-- Requires ref_model/src/*.c with decoder functionality (or configured decoder_src)
+- Requires refc/*.c with decoder functionality (or configured decoder_src)
 - HJSON conformance configuration defines all test parameters
 - Local execution is the default; AWS Batch is opt-in via configuration
 - Conformance results are cached at .rtl-agent-team/scratch/conformance-eval/
@@ -87,7 +87,7 @@ comparing outputs, and tracking which profile features are covered.
 
 <Steps>
 1. **Prerequisite validation**
-   - Verify ref_model/src/*.c (or configured decoder_src) exists with decoder code
+   - Verify refc/*.c (or configured decoder_src) exists with decoder code
    - Verify conformance configuration file exists (HJSON format)
      - If not provided, generate from template at skills/codec-conformance-eval/templates/conformance-config.hjson
    - Verify conformance bitstream directories exist
@@ -138,7 +138,7 @@ comparing outputs, and tracking which profile features are covered.
 # ============================================================
 # Step 1: Prerequisite validation
 # ============================================================
-Glob("ref_model/src/*.c")              # Verify decoder source exists
+Glob("refc/*.c")                       # Verify decoder source exists
 Read("<conformance-config.hjson>")     # Read conformance configuration
 Bash("python3 -c 'import hjson; print(\"OK\")'")  # Check dependencies
 Bash("ls conformance/")               # Verify conformance bitstream dirs exist
@@ -147,7 +147,7 @@ Bash("ls conformance/golden-outputs/") # Verify golden output references exist
 # ============================================================
 # Step 2: Decoder build
 # ============================================================
-Bash("bash skills/codec-conformance-eval/scripts/build_decoder.sh ref_model/src .rtl-agent-team/scratch/conformance-eval/decoder")
+Bash("bash skills/codec-conformance-eval/scripts/build_decoder.sh refc .rtl-agent-team/scratch/conformance-eval/decoder")
 
 # ============================================================
 # Step 3: Conformance test execution (parallel)
@@ -173,7 +173,7 @@ Read(".rtl-agent-team/scratch/conformance-eval/conformance-metrics.json")
 ```
 User: "H.264 Baseline 프로파일 디코더 conformance 테스트 해줘"
 → Invoke /rtl-agent-team:codec-conformance-eval
-→ Step 1: ref_model/src/ 존재 확인, conformance-config.hjson 생성 (target: h264/Baseline)
+→ Step 1: refc/ 존재 확인, conformance-config.hjson 생성 (target: h264/Baseline)
 → Step 2: 디코더 빌드
 → Step 3: JVET + JCTVC conformance streams 중 Baseline 프로파일 필터링, 병렬 디코딩
 → Step 4: 각 stream별 MD5 비교 → 42/45 PASS, 3 FAIL
@@ -194,13 +194,13 @@ User: "H.265 Main 프로파일 conformance를 SSIM 포함해서 돌려줘"
 **Example 3: No decoder source**
 ```
 User: "디코더 conformance 테스트 해줘"
-→ Step 1: ref_model/src/ 에 디코더 코드 미존재
+→ Step 1: refc/ 에 디코더 코드 미존재
 → "ref C model 디코더 소스가 없습니다. /rtl-agent-team:ref-model로 레퍼런스 모델을 먼저 생성하세요."
 ```
 </Examples>
 
-<Escalation>
-- ref_model/src/ does not exist → suggest running ref-model skill first
+<Escalation_And_Stop_Conditions>
+- refc/ does not exist → suggest running ref-model skill first
 - Decoder build fails → report gcc error details, check C11 compliance
 - Conformance bitstreams not found → provide download guidance (JVET/JCTVC URLs)
 - Golden outputs missing → suggest generating from reference decoder (JM/HM)
@@ -208,7 +208,7 @@ User: "디코더 conformance 테스트 해줘"
 - High failure rate (>20%) → suggest verifying decoder binary correctness first
 - AWS Batch credentials not configured → fall back to local mode
 - SSIM/VMAF requested but ffmpeg not available → warn and skip optional metrics
-</Escalation>
+</Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 Before reporting completion, verify ALL of the following:

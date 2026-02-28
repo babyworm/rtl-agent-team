@@ -57,7 +57,7 @@ Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Select H.264 conformance test vectors applicable to CABAC encoder. List vector files and JM version to use.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run RTL conformance simulation via Bash CLI for each vector in conformance/vectors/*.yuv. Compile: iverilog -g2012 -o sim/conformance/cabac_sim rtl/src/cabac_encoder.sv tb/conformance/tb_cabac_conformance.sv. Compare output bitstreams with JM 19.0 reference: cmp -l sim/conformance/rtl_output.bin conformance/ref/jm_output.bin. Report PASS/FAIL per vector.")
+     prompt="Run RTL conformance simulation via Bash CLI for each vector in conformance/vectors/*.yuv. Compile and run: scripts/simulate.sh --sim iverilog --top tb_cabac_conformance --outdir sim/conformance --trace rtl/cabac_encoder/cabac_encoder.sv sim/top/tb_cabac_conformance.sv. Compare output bitstreams with JM 19.0 reference: cmp -l sim/conformance/rtl_output.bin conformance/ref/jm_output.bin. Report PASS/FAIL per vector.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
      prompt="Validate conformance/results.json: verify all vectors ran, all have status, any FAIL has byte offset and divergence details.")

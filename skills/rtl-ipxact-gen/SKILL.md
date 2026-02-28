@@ -34,7 +34,7 @@ generating from RTL source ensures port widths and parameter values are accurate
 </Execution_Policy>
 
 <Steps>
-1. rtl-explorer reads rtl/src/{module}.sv: extracts ports (name, direction, width), parameters, clock/reset ports
+1. rtl-explorer reads rtl/{module}/{module}.sv: extracts ports (name, direction, width), parameters, clock/reset ports
    - Port direction inferred from prefix: `i_` = input, `o_` = output, `io_` = inout
    - Clock ports identified by `{domain}_clk` pattern (e.g., `sys_clk`, `axi_clk`)
    - Reset ports identified by `{domain}_rst_n` pattern (e.g., `sys_rst_n`)
@@ -53,7 +53,7 @@ generating from RTL source ensures port widths and parameter values are accurate
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:rtl-explorer",
-     prompt="Read rtl/src/dma_controller.sv. Extract all ports (name/direction/width), parameters, and identify any AXI/APB/AHB bus interfaces. Port direction follows project convention: i_ prefix = input, o_ prefix = output, io_ prefix = inout. Clocks match {domain}_clk, resets match {domain}_rst_n. Provide structured summary for IP-XACT generation.")
+     prompt="Read rtl/dma_controller/dma_controller.sv. Extract all ports (name/direction/width), parameters, and identify any AXI/APB/AHB bus interfaces. Port direction follows project convention: i_ prefix = input, o_ prefix = output, io_ prefix = inout. Clocks match {domain}_clk, resets match {domain}_rst_n. Provide structured summary for IP-XACT generation.")
 
 Task(subagent_type="rtl-agent-team:ipxact-generator",
      prompt="Generate IEEE 1685-2014 IP-XACT XML for dma_controller. Ports: {port_list}. Parameters: {param_list}. Bus interfaces: AXI4-Lite slave. Preserve i_/o_/io_ port name prefixes in spirit:name elements. Map {domain}_clk ports as clock roles and {domain}_rst_n as reset roles. Write ipxact/dma_controller.xml.")

@@ -3,6 +3,7 @@ name: improvement-analyst
 description: Identifies improvement opportunities from Phase 6 reviews and produces prioritized recommendations with Impact×Effort matrix. Produces reviews/phase-6-review/improvements.md. (Opus)
 model: opus
 color: magenta
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>

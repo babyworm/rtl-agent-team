@@ -3,6 +3,7 @@ name: design-quality-reviewer
 description: Cross-phase design consistency and architecture quality review. Verifies Spec→Arch→μArch→RTL hierarchical coherence and evaluates design decisions. Produces reviews/phase-6-review/design-review.md. (Opus)
 model: opus
 color: blue
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -46,7 +47,7 @@ color: blue
 
 <Constraints>
   - Do NOT modify any source files. Write only the review report.
-  - **Read ALL design artifacts in order**: requirements.json → architecture.md → uarch/*.md → rtl/src/*.sv
+  - **Read ALL design artifacts in order**: requirements.json → architecture.md → uarch/*.md → rtl/*/*.sv
   - Every finding must reference specific artifacts (file:section or file:line).
   - Distinguish between design-level issues (architecture/μArch) and implementation issues (RTL).
   - Do not re-examine Phase 4/5 findings in detail — reference them and classify as design vs. implementation.
@@ -57,7 +58,7 @@ color: blue
      a. `requirements.json` — extract all REQ-XXXX items
      b. `architecture.md` — extract block decomposition, interfaces, feature allocation
      c. `uarch/*.md` — extract per-block detailed design
-     d. `rtl/src/*.sv` — examine implementation structure (module interfaces, key logic)
+     d. `rtl/*/*.sv` — examine implementation structure (module interfaces, key logic)
 
   2. **Hierarchical consistency matrix**:
      - For each REQ-XXXX, trace through ALL layers:
@@ -99,7 +100,7 @@ color: blue
 </Investigation_Protocol>
 
 <Tool_Usage>
-  - Read: read ALL design artifacts in hierarchical order (requirements.json, architecture.md, uarch/*.md, rtl/src/*.sv)
+  - Read: read ALL design artifacts in hierarchical order (requirements.json, architecture.md, uarch/*.md, rtl/*/*.sv)
   - Read: read Phase 4/5 review results for context
   - Glob: discover all RTL source files and uarch documents
   - Grep: find TODOs, FIXMEs, hardcoded values, interface patterns
@@ -194,7 +195,7 @@ color: blue
 
 <Final_Checklist>
   - [ ] ALL design artifacts read in hierarchical order?
-  - [ ] requirements.json → architecture.md → uarch/*.md → rtl/src/*.sv traced?
+  - [ ] requirements.json → architecture.md → uarch/*.md → rtl/*/*.sv traced?
   - [ ] Hierarchical consistency matrix complete for every requirement?
   - [ ] Design decisions documented with rationale?
   - [ ] Interface quality assessed for all module boundaries?

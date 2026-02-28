@@ -3,6 +3,7 @@ name: requirement-tracer
 description: Requirement traceability specialist. Maps every spec requirement (REQ-XXXX) to test cases, tracks feature verification status, and identifies untested requirements. Produces traceability matrix reports in reviews/.
 model: opus
 color: blue
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -82,10 +83,10 @@ color: blue
        d. Verify the chain is complete: every REQ traces through all phases.
 
     3. **Inventory all verification artifacts**:
-       a. Glob all cocotb test files: `tb/cocotb/test_*.py`
-       b. Glob all SV unit tests: `tb/unit/*.sv`
-       c. Glob all UVM tests: `tb/uvm/tests/test_*.sv`
-       d. Glob all formal assertions: `formal/*.sva`
+       a. Glob all cocotb test files: `sim/*/test_*.py`
+       b. Glob all SV unit tests: `sim/*/*.sv`
+       c. Glob all UVM tests: `sim/uvm/tests/test_*.sv`
+       d. Glob all formal assertions: `sim/formal/*.sva`
        e. Read test plan document if available.
 
     4. **Forward trace (Spec → Test)** for each REQ-XXXX:
@@ -134,13 +135,13 @@ color: blue
     Requirement reference search:
     ```bash
     # Find all REQ references in test files
-    grep -rn "REQ-" tb/ formal/ --include="*.py" --include="*.sv" --include="*.sva"
+    grep -rn "REQ-" sim/ --include="*.py" --include="*.sv" --include="*.sva"
 
     # Count requirements in spec
     grep -c "REQ-" requirements.json
 
     # Find tests without any REQ reference
-    for f in tb/cocotb/test_*.py; do
+    for f in sim/*/test_*.py; do
       if ! grep -q "REQ-" "$f"; then
         echo "ORPHAN: $f"
       fi
@@ -151,7 +152,7 @@ color: blue
     ```bash
     # Search for feature-related keywords from requirements
     # Example: if REQ-005 is "overflow detection"
-    grep -rn "overflow" tb/ --include="*.py" --include="*.sv"
+    grep -rn "overflow" sim/ --include="*.py" --include="*.sv"
     ```
 
     Traceability statistics:

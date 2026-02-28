@@ -1,0 +1,87 @@
+# cocotb Makefile Template
+# Usage: make -C sim/{module} SIM=icarus TOPLEVEL=<module> MODULE=test_<module>
+#
+# Simulator support: icarus (default), verilator, vcs, xcelium, questa
+# Copy this file to sim/top/Makefile and customize per module at sim/{module}/Makefile.
+
+TOPLEVEL_LANG = verilog
+
+# Default simulator
+SIM ?= icarus
+
+# Top-level module and test module (set from command line)
+# TOPLEVEL = my_module
+# MODULE   = test_my_module
+
+# ─── Source files ───────────────────────────────────────────────────────────
+# Option 1: Read from filelist (recommended)
+FILELIST := $(wildcard ../../rtl/filelist_top.f)
+ifneq ($(FILELIST),)
+  # Parse filelist: extract .sv/.v files, skip comments and directives
+  VERILOG_SOURCES += $(shell grep -v '^\s*//' $(FILELIST) | grep -v '^\s*+' | grep -v '^\s*$$' | sed 's|^|../../|')
+else
+  # Option 2: Glob fallback
+  VERILOG_SOURCES += $(wildcard ../../rtl/*/*.sv)
+endif
+
+# Include directories
+VERILOG_INCLUDE_DIRS = ../../rtl/include
+
+# ─── Per-simulator compile args ─────────────────────────────────────────────
+ifeq ($(SIM),icarus)
+  COMPILE_ARGS += -g2012
+  COMPILE_ARGS += $(addprefix -I,$(VERILOG_INCLUDE_DIRS))
+endif
+
+ifeq ($(SIM),verilator)
+  COMPILE_ARGS += --timing -sv -j0
+  COMPILE_ARGS += $(addprefix +incdir+,$(VERILOG_INCLUDE_DIRS))
+  # Verilator trace support
+  ifdef TRACE
+    EXTRA_ARGS += --trace-fst
+  endif
+endif
+
+ifeq ($(SIM),vcs)
+  COMPILE_ARGS += -full64 -sverilog +v2k
+  COMPILE_ARGS += $(addprefix +incdir+,$(VERILOG_INCLUDE_DIRS))
+endif
+
+ifeq ($(SIM),xcelium)
+  COMPILE_ARGS += -sv
+  COMPILE_ARGS += $(addprefix +incdir+,$(VERILOG_INCLUDE_DIRS))
+endif
+
+ifeq ($(SIM),questa)
+  COMPILE_ARGS += -sv
+  COMPILE_ARGS += $(addprefix +incdir+,$(VERILOG_INCLUDE_DIRS))
+endif
+
+# ─── Coverage ───────────────────────────────────────────────────────────────
+ifdef COVERAGE
+  ifeq ($(SIM),verilator)
+    EXTRA_ARGS += --coverage
+  endif
+  ifeq ($(SIM),vcs)
+    COMPILE_ARGS += -cm line+tgl+fsm+branch
+  endif
+endif
+
+# ─── Random seed ────────────────────────────────────────────────────────────
+ifdef RANDOM_SEED
+  ifeq ($(SIM),icarus)
+    PLUSARGS += +seed=$(RANDOM_SEED)
+  endif
+  ifeq ($(SIM),verilator)
+    PLUSARGS += +verilator+seed+$(RANDOM_SEED)
+  endif
+  ifeq ($(SIM),vcs)
+    PLUSARGS += +ntb_random_seed=$(RANDOM_SEED)
+  endif
+endif
+
+# ─── X-state resolution ────────────────────────────────────────────────────
+export COCOTB_RESOLVE_X ?= RANDOM
+
+# ─── cocotb Makefile include ────────────────────────────────────────────────
+include $(shell cocotb-config --makefiles)/Makefile.sim

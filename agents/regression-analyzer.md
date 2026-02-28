@@ -3,6 +3,7 @@ name: regression-analyzer
 description: Regression analysis specialist. Tracks multi-seed pass/fail trends, detects flaky tests, analyzes coverage convergence, and identifies seed-bug correlations. Produces regression reports in reviews/.
 model: opus
 color: blue
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>

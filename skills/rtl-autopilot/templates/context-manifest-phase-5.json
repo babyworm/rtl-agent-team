@@ -2,12 +2,13 @@
   "phase": 5,
   "phase_name": "verify",
   "required_full_read": [
-    "rtl/src/*.sv",
+    "rtl/*/*.sv",
     "docs/phase-1-research/requirements.json"
   ],
   "required_summary_only": [
     "docs/phase-2-architecture/phase-2-summary.md",
-    "docs/phase-3-uarch/phase-3-summary.md"
+    "docs/phase-3-uarch/phase-3-summary.md",
+    "docs/phase-4-rtl/phase-4-summary.md"
   ],
   "optional_on_demand": [
     "docs/phase-2-architecture/architecture.md",
@@ -17,16 +18,16 @@
     "docs/phase-4-rtl/stream-b-sva-skeletons.md",
     "docs/phase-4-rtl/stream-b-cdc-preliminary.md",
     "docs/phase-4-rtl/stream-b-tb-skeletons.md",
-    "ref_model/src/*.c",
+    "refc/*.c",
     "docs/decisions/ADR-*.md",
     "docs/lessons-learned.md"
   ],
   "outputs": [
-    "tb/formal/*.sv",
-    "tb/cocotb/test_*.py",
+    "sim/formal/*.sv",
+    "sim/*/test_*.py",
     "docs/phase-5-verify/unit-test-report.md",
     "docs/phase-5-verify/integration-report.md",
-    "docs/phase-5-verify/ref-model-consistency.md",
+    "docs/phase-5-verify/ref-rtl-model-consistency.md",
     "docs/phase-5-verify/lint-report.md",
     "docs/phase-5-verify/synthesis-estimate.md",
     "docs/phase-5-verify/phase-5-summary.md"

@@ -5,11 +5,11 @@
 
 ## 1. Phase Gate Overview
 
-A Gate Review is performed upon completion of each Phase in the 5-Phase pipeline:
+A Gate Review is performed upon completion of each Phase in the 6-Phase pipeline:
 
 ```
-Phase 1 → [Gate 1] → Phase 2 → [Gate 2] → Phase 3 → [Gate 3] → Phase 4 → [Gate 4] → Phase 5 → [Gate 5]
-Research    Review    Arch/Ref    Review    μArch/BFM    Review    RTL         Review    Verify      Final
+Phase 1 → [Gate 1] → Phase 2 → [Gate 2] → Phase 3 → [Gate 3] → Phase 4 → [Gate 4] → Phase 5 → [Gate 5] → Phase 6 → [Gate 6]
+Research    Review    Arch/Ref    Review    μArch/BFM    Review    RTL         Review    Verify      Review    Design Note  Final
 ```
 
 ## 2. Gate Review Checklist
@@ -48,13 +48,22 @@ Research    Review    Arch/Ref    Review    μArch/BFM    Review    RTL         
 | Synthesis PASS | Yosys latch-free | Fix via rtl-coder |
 | Convention compliance | i_/o_, sys_clk, ALL_CAPS, etc. | Fix via rtl-coder |
 
-### Gate 5: Final
+### Gate 5: Verify → Design Note
 
 | Item | Verification | On Failure |
 |------|--------------|------------|
 | Regression PASS | All seeds pass | Fix bugs and re-run |
 | Coverage ≥ target | Line ≥ 95%, Func ≥ 90% | Write additional tests |
 | Requirement Traceability | Tests exist for all REQs | Add missing tests |
+
+### Gate 6: Final
+
+| Item | Verification | On Failure |
+|------|--------------|------------|
+| Code quality review | code-review.md verdict PASS | Re-review → fix cycle (max 2) |
+| Design quality review | design-review.md verdict PASS | Re-review → fix cycle (max 2) |
+| Design note | design-note.md produced | Delegate to design-note-writer |
+| Improvements | improvements.md produced | Delegate to improvement-analyst |
 
 ## 3. Gate Failure Retry Flow
 
@@ -146,9 +155,14 @@ reviews/
 │   ├── functional-completeness.md   ← REQ → RTL mapping
 │   ├── design-review.md
 │   └── lint-report.md
-└── phase-5-verify/
-    ├── requirement-traceability.md  ← REQ → Test mapping
-    └── final-compliance.md
+├── phase-5-verify/
+│   ├── requirement-traceability.md  ← REQ → Test mapping
+│   └── final-compliance.md
+└── phase-6-review/
+    ├── code-review.md               ← Code quality verdict
+    ├── design-review.md             ← Design quality verdict
+    ├── design-note.md               ← Comprehensive design document
+    └── improvements.md              ← Prioritized improvements
 ```
 
 ## 6. Automatic State Tracking

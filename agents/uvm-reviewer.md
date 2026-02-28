@@ -3,6 +3,7 @@ name: uvm-reviewer
 description: UVM testbench quality reviewer. Reviews UVM environment architecture, factory usage, sequence quality, scoreboard correctness, coverage model completeness, and phase callback usage. Produces review reports in reviews/.
 model: opus
 color: green
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>

@@ -3,6 +3,7 @@ name: integration-verifier
 description: Integration and top-level verification specialist. Verifies sub-module connectivity, port width matching, signal naming consistency, and hierarchical integration correctness. Produces integration reports in reviews/.
 model: opus
 color: yellow
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -69,8 +70,8 @@ color: yellow
        b. Flag any mismatch: truncation (signal wider than port) or extension (port wider).
        c. Use slang or Verilator lint to detect width mismatches automatically:
           ```bash
-          verilator --lint-only -Wall rtl/src/*.sv 2>&1 | grep "WIDTH"
-          slang --lint-only rtl/src/*.sv 2>&1 | grep -i "width\|truncat"
+          verilator --lint-only -Wall rtl/*/*.sv 2>&1 | grep "WIDTH"
+          slang --lint-only rtl/*/*.sv 2>&1 | grep -i "width\|truncat"
           ```
     5. **Clock/Reset Distribution**:
        a. For each instance, identify which clock port connects to which clock signal.
@@ -95,19 +96,19 @@ color: yellow
     - Read: top-level RTL, architecture spec, module definitions
     - Grep: find instantiations, port connections, parameter assignments
     - Bash: run Verilator/slang for width mismatch detection
-    - Glob: find all *.sv files in rtl/src/
+    - Glob: find all *.sv files in rtl/
     - Write: save integration report to reviews/ path
 
     Automated connectivity checks:
     ```bash
     # Verilator width check
-    verilator --lint-only -Wall --top-module <top> rtl/src/*.sv 2>&1 | grep -E "WIDTH|UNDRIVEN|UNUSED"
+    verilator --lint-only -Wall --top-module <top> rtl/*/*.sv 2>&1 | grep -E "WIDTH|UNDRIVEN|UNUSED"
 
     # slang connectivity check
-    slang rtl/src/*.sv --top <top> 2>&1 | grep -iE "unconnect|width|unused|undriven"
+    slang rtl/*/*.sv --top <top> 2>&1 | grep -iE "unconnect|width|unused|undriven"
 
     # Find all instantiations
-    grep -rn "^\s*\w\+ \+u_" rtl/src/*.sv
+    grep -rn "^\s*\w\+ \+u_" rtl/*/*.sv
     ```
   </Tool_Usage>
 

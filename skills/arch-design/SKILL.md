@@ -18,7 +18,7 @@ belong to Phase 3 (μArch). Here we decide WHAT blocks exist and HOW data flows 
 
 Outputs architecture.md (block descriptions, interfaces, data flow) and block_diagram (ASCII or Mermaid).
 Runs in parallel with ref-model during Phase 2.
-The C reference model (ref_model/) validates functional correctness and provides
+The C reference model (refc/) validates functional correctness and provides
 bandwidth analysis — architecture decisions should be informed by bandwidth_report.json.
 </Purpose>
 
@@ -80,7 +80,7 @@ Dedicated domain experts catch codec-specific pitfalls early.
    - 3 parallel reviewers:
      - a. `rtl-architect`: Spec compliance (Feature Coverage Checklist — every REQ-NNN mapped?) + structural review (block decomposition, interface adequacy)
      - b. `vcodec-architecture-expert`: Memory access pattern analysis for large blocks (SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns, line buffer organization, shared memory arbitration)
-     - c. `ref-model-dev`: Architecture-to-model consistency check (block ↔ ref_model module mapping, data flow order, interface widths/formats)
+     - c. `ref-model-dev`: Architecture-to-model consistency check (block ↔ refc module mapping, data flow order, interface widths/formats)
    - rtl-architect as coordinator aggregates findings:
      - Functional completeness (all REQ-NNN covered?)
      - Memory access (SRAM sizes adequate? bandwidth bottlenecks?)
@@ -90,7 +90,7 @@ Dedicated domain experts catch codec-specific pitfalls early.
    - **Save to `reviews/phase-2-architecture/architecture-review-r1.md`** in standard review Markdown format
 7. **Targeted revision Round 1→2** — re-delegate ONLY to experts whose review found issues:
    - arch-designer revises architecture.md for spec/structure issues
-   - ref-model-dev revises ref_model for consistency issues
+   - ref-model-dev revises refc for consistency issues
    - Experts without findings are NOT re-invoked
 8. **Review Round 2** — same 3 reviewers in parallel, coordinator assesses convergence:
    - Focus on: were Round 1 issues resolved? Any new issues introduced by revisions?
@@ -100,7 +100,7 @@ Dedicated domain experts catch codec-specific pitfalls early.
     - Cross-block interface completeness (all data paths connected, no orphan ports)
     - Memory access conflict analysis (concurrent read/write patterns across blocks)
     - Ref model code review: code quality, bitexact correctness, test coverage
-    - Architecture-to-model complete consistency matrix (every arch block ↔ ref model module)
+    - Architecture-to-model complete consistency matrix (every arch block ↔ refc module)
     - **Save to `reviews/phase-2-architecture/architecture-review-r3.md`** in standard review Markdown format
     - If still not converged → escalate to user via AskUserQuestion with specific unresolved items
 11. **Finalize**:
@@ -129,7 +129,7 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 
 # ref-model (parallel with arch-designer)
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Implement C functional reference model at ref_model/src/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays/variables. External memory via ext_mem_read/write. Generate bandwidth_report.json with external memory access statistics per block.")
+     prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays/variables. External memory via ext_mem_read/write. Generate bandwidth_report.json with external memory access statistics per block.")
 
 # --- Step 5: Parallel initial review (3 reviewers) ---
 # After arch-designer draft + ref-model are ready, launch 3 reviewers in parallel:
@@ -140,7 +140,7 @@ Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
      prompt="Review Round 1: Read architecture.md. Analyze memory access patterns for all large blocks: SRAM/register file sizing, bandwidth requirements, access conflicts, DMA burst patterns, line buffer organization, shared memory arbitration. Identify performance bottlenecks (pipeline depth, throughput, latency vs spec targets).")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Read architecture.md and ref_model/src/. Check architecture-to-model consistency: block ↔ ref_model module mapping, data flow order, interface widths/formats. Identify any misalignment between architecture blocks and C model structure.")
+     prompt="Review Round 1: Read architecture.md and refc/. Check architecture-to-model consistency: block ↔ ref_model module mapping, data flow order, interface widths/formats. Identify any misalignment between architecture blocks and C model structure.")
 
 # --- Step 6: Coordinator aggregates Round 1 findings ---
 Task(subagent_type="rtl-agent-team:rtl-architect",

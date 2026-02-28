@@ -5,7 +5,7 @@ description: "This skill should be used when generating IP instantiation wrapper
 
 <Purpose>
 Generate an RTL wrapper module that instantiates a third-party IP with correct port connections,
-parameter settings, and tie-offs. Outputs: rtl/src/ip_wrappers/{ip_name}_wrapper.sv.
+parameter settings, and tie-offs. Outputs: rtl/ip_wrappers/{ip_name}_wrapper.sv.
 </Purpose>
 
 <Use_When>
@@ -40,13 +40,13 @@ eliminates transcription errors and documents all connections explicitly.
 </Execution_Policy>
 
 <Steps>
-1. rtl-explorer reads project structure: existing wrappers in rtl/src/ip_wrappers/, interface conventions, coding style
+1. rtl-explorer reads project structure: existing wrappers in rtl/ip_wrappers/, interface conventions, coding style
 2. rtl-architect reads IP descriptor (IP-XACT or datasheet): lists all ports, parameters, tie-off requirements
 3. rtl-architect designs wrapper interface — adapts IP vendor port names to project conventions:
    - Vendor `clk_i` → project `clk` or `{domain}_clk` (e.g., `sys_clk`)
    - Vendor `rst_ni` → project `rst_n` or `{domain}_rst_n` (e.g., `sys_rst_n`)
    - Vendor ports → project `i_`/`o_`/`io_` prefix convention
-4. rtl-coder writes rtl/src/ip_wrappers/{ip_name}_wrapper.sv:
+4. rtl-coder writes rtl/ip_wrappers/{ip_name}_wrapper.sv:
    - Module declaration with `i_`/`o_`/`io_` prefixed ports, `logic` types only
    - IP instantiation with `u_` prefix (e.g., `u_{ip_name}`)
    - All ports connected or explicitly tied off with `// TIED: reason` comments
@@ -58,13 +58,13 @@ eliminates transcription errors and documents all connections explicitly.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:rtl-explorer",
-     prompt="Read rtl/src/ip_wrappers/ and docs/ for existing wrapper patterns. Summarize: port naming convention (i_/o_/io_ prefixes), clock naming ({domain}_clk), reset naming ({domain}_rst_n), instance naming (u_ prefix).")
+     prompt="Read rtl/ip_wrappers/ and docs/ for existing wrapper patterns. Summarize: port naming convention (i_/o_/io_ prefixes), clock naming ({domain}_clk), reset naming ({domain}_rst_n), instance naming (u_ prefix).")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Read IP descriptor at docs/ip/{ip_name}.xml (or datasheet). List all ports, required tie-offs, and parameter settings. Design wrapper interface: map vendor port names to project convention (i_/o_/io_ prefixes, {domain}_clk, {domain}_rst_n).")
 
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Write rtl/src/ip_wrappers/{ip_name}_wrapper.sv. Instantiate {ip_name} as u_{ip_name} with all ports connected per architect spec. Use logic only (no reg/wire). Port prefixes: i_ (input), o_ (output), io_ (bidirectional). Clock: sys_clk, reset: sys_rst_n. Follow CLAUDE.md coding conventions.")
+     prompt="Write rtl/ip_wrappers/{ip_name}_wrapper.sv. Instantiate {ip_name} as u_{ip_name} with all ports connected per architect spec. Use logic only (no reg/wire). Port prefixes: i_ (input), o_ (output), io_ (bidirectional). Clock: sys_clk, reset: sys_rst_n. Follow CLAUDE.md coding conventions.")
 ```
 </Tool_Usage>
 
@@ -96,5 +96,5 @@ that breaks downstream integration.
 - [ ] IP instance uses `u_` prefix (e.g., `u_{ip_name}`)
 - [ ] `logic` types only — no `reg`/`wire`
 - [ ] rtl-lint-check passes on generated wrapper (Verible + slang)
-- [ ] Wrapper path reported: rtl/src/ip_wrappers/{ip_name}_wrapper.sv
+- [ ] Wrapper path reported: rtl/ip_wrappers/{ip_name}_wrapper.sv
 </Final_Checklist>

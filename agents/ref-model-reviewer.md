@@ -3,6 +3,7 @@ name: ref-model-reviewer
 description: Reference model quality reviewer. Primarily reviews C reference models (project default); also supports C++/Python. Checks numerical accuracy, algorithm fidelity to spec, and test oracle reliability. Produces review reports in reviews/.
 model: opus
 color: cyan
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -63,7 +64,7 @@ color: cyan
 
   <Investigation_Protocol>
     1. Read the spec (requirements.json, specs/) to understand the algorithm.
-    2. Read all reference model source files in `ref_model/src/`.
+    2. Read all reference model source files in `refc/`.
     3. **Algorithm Fidelity**:
        a. Map each spec algorithm step to its implementation in the model.
        b. Verify loop bounds, coefficient values, state machine transitions.
@@ -95,14 +96,14 @@ color: cyan
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: ref_model/src/*.c, ref_model/include/*.h, ref_model/src/*.py, specs/
+    - Read: refc/*.c, refc/*.h, refc/*.py, specs/
     - Grep: find type declarations, arithmetic operations, boundary checks
     - Bash: compile model with warnings (`gcc -std=c11 -Wall -Wextra -Werror`), run tests
     - Write: save review report to reviews/ path
 
     Compile with strict warnings:
     ```bash
-    cd ref_model && gcc -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
+    cd refc && gcc -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion \
       -o model_test src/*.c 2>&1 | head -50
     ```
   </Tool_Usage>

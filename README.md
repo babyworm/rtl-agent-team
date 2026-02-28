@@ -122,7 +122,7 @@ Spec compliance verdicts (`reviews/`) are managed separately.
 
 ```
 docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase-3-uarch/
-        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ docs/phase-6-design-note/
+        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ reviews/phase-6-review/
         ──→ docs/phase-7-exploration/ (optional, free exploration)
 ```
 
@@ -130,9 +130,9 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 |-----------|------|-------|
 | `docs/phase-N-*/` | Phase-specific design documents (guide pipeline) | Phase N → Phase N+1 input |
 | `reviews/phase-N-*/` | Spec compliance verdict (PASS/FAIL) | Verdict only, no data |
-| `rtl/src/` | RTL SystemVerilog source code | Phase 4 code artifact |
-| `tb/unit/`, `tb/formal/` | Testbenches | Phase 4-5 code artifacts |
-| `ref_model/` | C golden reference model (DPI-C compatible) | Phase 2 code artifact |
+| `rtl/` | RTL SystemVerilog source code | Phase 4 code artifact |
+| `sim/`, `sim/formal/` | Testbenches | Phase 4-5 code artifacts |
+| `refc/` | C golden reference model (DPI-C compatible) | Phase 2 code artifact |
 | `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 decision rationale |
 | `docs/lessons-learned.md` | Lessons learned from feedback loops | Accumulated across phases |
 
@@ -185,7 +185,7 @@ rtl-agent-team/
 | 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (per module) | uarch-review.md |
 | 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B artifacts | design-review.md |
 | 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md, etc. | final-compliance.md, e2e-traceability.md |
-| 6 | Design Note | code-quality-reviewer, design-note-writer | design-note.md, improvements.md | code-review.md, design-review.md |
+| 6 | Design Note | code-quality-reviewer, design-note-writer | - | code-review.md, design-review.md, design-note.md, improvements.md |
 | 7 | Exploration (optional) | improvement-analyst | exploration-notes.md | exploration-review.md |
 
 > **Additional pipeline artifacts:** Each Phase (1-5) generates `phase-N-summary.md` for downstream context compression. Phase 4 Stream B produces SVA/CDC/TB skeletons in parallel with RTL coding. Phase 2-3 record Architecture Decision Records in `docs/decisions/`.

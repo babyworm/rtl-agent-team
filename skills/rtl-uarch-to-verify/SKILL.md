@@ -93,17 +93,34 @@ Separating design from implementation also enables:
    | `reviews/phase-3-uarch/uarch-review.md` | File exists AND contains `Verdict: PASS` |
    | `docs/phase-1-research/requirements.json` | File exists (needed for traceability) |
    | `docs/phase-1-research/io_definition.json` | File exists (needed for port verification) |
-   | `ref_model/src/*.c` | At least one C reference model source exists |
+   | `refc/*/*.c` | At least one C reference model source exists |
+   | `docs/phase-3-uarch/phase-3-summary.md` | File exists (Phase 3 summary for context) |
 
    **On prerequisite failure**:
    - Report which artifacts are missing
    - Suggest: "Run `/rtl-agent-team:rtl-spec-to-uarch` to complete Phase 1-3 design documents first"
    - DO NOT proceed — exit immediately
 
+   **Intake Checklist (from rtl-spec-to-uarch):**
+   - [ ] Phase 3 summary exists: `docs/phase-3-uarch/phase-3-summary.md`
+   - [ ] All μArch specs exist: `docs/phase-3-uarch/{module}.md` for each module
+   - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
+   - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
+   - [ ] State file updated: `.rtl-agent-team/rtl/{module}/phase-3-complete.json`
+   - [ ] Context manifest ready: `templates/context-manifest-phase-4.json` references valid files
+
    **On prerequisite PASS**:
    - Read `reviews/phase-3-uarch/uarch-review.md` to confirm PASS verdict
-   - Load Context Manifest for Phase 4 (`templates/context-manifest-phase-4.json`)
-   - Read required_full_read files (uarch/*.md, requirements.json, io_definition.json)
+
+   **Context Manifest Preload Validation** (Phase 4 start):
+   - Load `templates/context-manifest-phase-4.json`
+   - For each `required_full_read` entry: verify file exists, read into context
+   - For each `required_summary_only` entry: verify referenced phase summaries exist
+   - If ANY required file missing: STOP with clear error listing missing files
+   - `optional_on_demand` files: skip validation, load lazily during execution
+
+   Context loading:
+   - Read required_full_read files (uarch/*.md, io_definition.json)
    - Read required_summary_only files (phase-1-summary.md, phase-2-summary.md)
 
 ---
@@ -139,12 +156,21 @@ Separating design from implementation also enables:
      (port connectivity, clock/reset structure, test vector scaffolds)
      Mark as "skeleton" — full execution deferred to Phase 5c
 
+   **Stream B Traceability Convention:**
+   Each Stream B artifact must include source traceability:
+   - SVA skeletons (`docs/phase-4-rtl/stream-b-sva-skeletons.md`):
+     Each property must reference μArch source: `// Source: docs/phase-3-uarch/{module}.md, Section: {section}`
+   - CDC preliminary (`docs/phase-4-rtl/stream-b-cdc-preliminary.md`):
+     Each CDC path must reference architecture clock domain definition
+   - TB skeletons (`docs/phase-4-rtl/stream-b-tb-skeletons.md`):
+     Each test scenario must reference requirement: `# REQ-{NNN}: {description}`
+
    **Merge Point (Phase 4→5 Gate):**
    - Stream A: all RTL lint-clean + unit tests PASS + basic integration PASS
    - Stream B artifacts (SVA skeletons, preliminary CDC report, TB skeletons) ready for Phase 5
    - Stream B CDC findings fed back to RTL coders if synchronizers are missing
 
-   **Phase 4→5 Artifact Gate**: rtl/src/*.sv exist and all lint-clean + tb/unit/tb_*.sv exist for all modules + sim/unit/*_results.txt exist and all PASS + basic integration smoke test PASS + Stream B artifacts exist (tb/formal/ SVA skeletons, preliminary CDC report, tb/cocotb/ TB skeletons)
+   **Phase 4→5 Artifact Gate**: rtl/*/*.sv exist and all lint-clean + sim/*/tb_*.sv exist for all modules + sim/*/*_results.txt exist and all PASS + basic integration smoke test PASS + Stream B artifacts exist (sim/formal/ SVA skeletons, preliminary CDC report, sim/ TB skeletons)
 
    **Phase 4→5 Quality Gate (RTL Design Review)**:
    - `rtl-critic` reviews RTL code against μArch specs AND requirements.json:
@@ -163,10 +189,23 @@ Separating design from implementation also enables:
    - Delegate to `rtl-architect` (model=sonnet): read all Phase 4 artifacts and generate
      `docs/phase-4-rtl/phase-4-summary.md` using `templates/phase-summary.md` format.
 
+   **Phase 4→5 Summary Validation:**
+   - Verify `docs/phase-4-rtl/phase-4-summary.md` exists
+   - If missing: delegate to `rtl-architect` (model=sonnet) to generate from Phase 4 artifacts
+   - Summary must follow `templates/phase-summary.md` format
+
 ---
 
 3. **Phase 5 — Extensive Verification (Sub-Phases)**
    - **Review artifacts setup**: `mkdir -p reviews/phase-5-verify`
+
+   **Context Manifest Preload Validation** (Phase 5 start):
+   - Load `templates/context-manifest-phase-5.json`
+   - For each `required_full_read` entry: verify file exists, read into context
+   - For each `required_summary_only` entry: verify phase summary exists
+   - If ANY required file missing: STOP with clear error listing missing files
+   - `optional_on_demand` files: skip validation, load lazily during execution
+
    - Phase 5 is structured into 5 sub-phases (some can run in parallel)
    - State tracking: uses `sub_phase`, `feedback_loops`, `max_feedback_loops` fields
 
@@ -199,8 +238,16 @@ Separating design from implementation also enables:
      - **Final Feature Completeness Audit**: re-read every requirement from requirements.json and confirm: (a) it is implemented in RTL, (b) it has at least one verification test covering it, (c) that test passed
      - Interface completeness: are all ports in io_definition.json present and connected in the top-level RTL?
      - Untested paths: identify any functionality that lacks verification coverage
+     - **End-to-End Traceability Matrix**: unify segmented traceability artifacts:
+       - reviews/phase-2-architecture/feature-coverage.md (REQ → Arch)
+       - reviews/phase-3-uarch/feature-preservation.md (Arch → μArch)
+       - reviews/phase-4-rtl/functional-completeness.md (REQ → μArch → RTL)
+       - reviews/phase-5-verify/requirement-traceability.md (REQ → Test → Result)
+       Produce unified matrix: | REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
+       Any row with a gap → flag as TRACEABILITY_GAP
+       Save to `reviews/phase-5-verify/e2e-traceability.md`
    - `rtl-critic`: comprehensive design review
-   - Output: `reviews/phase-5-verify/final-compliance.md`
+   - Output: `reviews/phase-5-verify/final-compliance.md`, `reviews/phase-5-verify/e2e-traceability.md`
 
    **Phase 5→4 Feedback Loop (with parallel UNIT_FIX):**
    - Collect ALL FAIL results from sub-phases 5a, 5b, 5c before starting fixes
@@ -219,11 +266,45 @@ Separating design from implementation also enables:
    - Maximum 2 feedback loops per sub-phase (escalate to user if exceeded)
    - **Lesson Learned Recording** (after each successful feedback fix):
      - Delegate to `rtl-coder` (model=sonnet): append a lesson entry to `docs/lessons-learned.md`
+       using `templates/lessons-learned-entry.md` format.
      - Record: symptom, root cause, fix applied, prevention strategy, related REQ/module/ADR
    - DESIGN_FIX handling:
      1. IMMEDIATE STOP — classified as upper-spec violation
      2. Report to user: violation details + impact scope + recommended action
      3. After user approval, return to Phase 3 (μArch) or Phase 2 (Architecture)
+
+   **Sub-phase Re-entry Criteria:**
+   | Fix Type | Re-run Sub-phases | Condition |
+   |----------|------------------|-----------|
+   | UNIT_FIX (SVA fail) | 5a only (formal) | SVA property affected |
+   | UNIT_FIX (sim fail) | 5c only (integration) | Testbench affected |
+   | INTEGRATION_FIX | 5b + 5c (CDC + integration) | Interface modified |
+   | DESIGN_FIX | All (5a-5e) after upper phase approval | Architecture changed |
+
+   **Timeout Policy:**
+   - Per feedback loop: max 30 min wall-clock (estimated, not enforced)
+   - Per rtl-bugfix task: inherits `execution.timeout_per_job` from config
+   - If loop 2 fails: STOP, report to user with full failure context
+
+   **Feedback Loop State Tracking:**
+   State file: `.rtl-agent-team/state/feedback-loop-state.json`
+   ```json
+   {
+     "loop_count": 1,
+     "max_loops": 2,
+     "failures": [
+       {
+         "sub_phase": "5a",
+         "type": "UNIT_FIX",
+         "module": "example_module",
+         "description": "SVA counterexample at cycle 42",
+         "fix_applied": "Added pipeline register",
+         "re_run_phases": ["5a"]
+       }
+     ],
+     "status": "in_progress"
+   }
+   ```
 
    **Phase 5 Completion Artifact Gate**: all verification sub-phases (5a-5e) pass
 
@@ -238,12 +319,17 @@ Separating design from implementation also enables:
    - Delegate to `rtl-architect` (model=sonnet): read all Phase 5 artifacts and generate
      `docs/phase-5-verify/phase-5-summary.md` using `templates/phase-summary.md` format.
 
+   **Phase 5 Summary Validation:**
+   - Verify `docs/phase-5-verify/phase-5-summary.md` exists
+   - If missing: delegate to `rtl-architect` (model=sonnet) to generate from Phase 5 artifacts
+   - Summary must follow `templates/phase-summary.md` format
+
 ---
 
 4. **On completion**: update state file with all phases completed, report summary.
 
    **Completion Report** (presented to user):
-   - Phase 4 artifacts: rtl/src/*.sv (module count), tb/unit/*.sv, Stream B artifacts
+   - Phase 4 artifacts: rtl/*/*.sv (module count), sim/*/*.sv, Stream B artifacts
    - Phase 5 artifacts: formal-review.md, cdc-report.md, requirement-traceability.md, coverage-report.md
    - Final compliance: reviews/phase-5-verify/final-compliance.md verdict=PASS
    - Feedback loop count and lessons learned
@@ -272,7 +358,7 @@ Read("docs/phase-3-uarch/")           # Verify μArch docs exist
 Read("reviews/phase-3-uarch/uarch-review.md")  # Verify PASS verdict
 Read("docs/phase-1-research/requirements.json") # Verify requirements exist
 Read("docs/phase-1-research/io_definition.json") # Verify I/O spec exists
-Glob("ref_model/src/*.c")             # Verify ref model exists
+Glob("refc/*/*.c")                    # Verify ref model exists
 
 # If any missing → report and EXIT
 # If all present → load Context Manifest for Phase 4
@@ -298,18 +384,18 @@ Skill(skill="rtl-agent-team:rtl-code")
 
 # Stream B: Early verification framework (parallel with Stream A)
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Generate SVA property skeletons from uarch/*.md. Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and tb/formal/.")
+     prompt="Generate SVA property skeletons from uarch/*.md. Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and sim/formal/.")
 Task(subagent_type="rtl-agent-team:cdc-checker",
      prompt="Analyze clock domain topology from uarch/*.md. Save preliminary CDC report to docs/phase-4-rtl/stream-b-cdc-preliminary.md.")
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Generate cocotb TB skeletons from uarch/*.md. Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and tb/cocotb/.")
+     prompt="Generate cocotb TB skeletons from uarch/*.md. Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and sim/.")
 
 # Phase 4→5 Quality Gate
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="Review RTL against μArch specs and requirements.json. Produce functional coverage matrix.
 Save to reviews/phase-4-rtl/functional-completeness.md and reviews/phase-4-rtl/design-review.md.")
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run full lint pass on rtl/src/. Save to reviews/phase-4-rtl/lint-report.md.")
+     prompt="Run full lint pass on rtl/. Save to reviews/phase-4-rtl/lint-report.md.")
 
 # Phase 4 Summary
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
@@ -338,10 +424,11 @@ Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Analyze line/toggle/FSM coverage. Generate additional tests if below target.
 Output: reviews/phase-5-verify/coverage-report.md")
 
-# 5e: Final compliance (after 5a-5d)
+# 5e: Final compliance + e2e traceability (after 5a-5d)
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Final Compliance Matrix: every requirement implemented, verified, passing.
-Output: reviews/phase-5-verify/final-compliance.md")
+Unify segmented traceability (feature-coverage, feature-preservation, functional-completeness, requirement-traceability) into e2e matrix.
+Output: reviews/phase-5-verify/final-compliance.md, reviews/phase-5-verify/e2e-traceability.md")
 
 # Phase 5 Summary
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
@@ -395,21 +482,43 @@ User: "설계 문서 검토 완료. RTL 구현 진행해."
 ```
 </Examples>
 
-<Escalation>
+<Escalation_And_Stop_Conditions>
 - Prerequisites not met → report missing artifacts, suggest rtl-spec-to-uarch
 - Phase 4 Quality Gate fails after 2 retries → ask user for RTL implementation direction
 - Phase 5 sub-phase fails after 2 feedback loops → escalate to user
 - DESIGN_FIX detected → STOP immediately, report upper-spec violation to user
 - Coverage below target after additional test generation → ask user for acceptable threshold
-</Escalation>
+</Escalation_And_Stop_Conditions>
+
+<Parallel_Execution_Pattern>
+Phase 5 sub-phases use a dependency-aware parallel execution pattern:
+
+**Independent sub-phases (parallel):**
+- 5a (formal) + 5b (CDC) + 5c (integration): independent, run in parallel via `run_in_background: true`
+- Each sub-phase completes independently and reports results
+
+**Dependent sub-phases (sequential):**
+- 5d (coverage): starts incrementally as modules complete 5a-5c (partial dependency)
+- 5e (design review): requires ALL of 5a-5d complete (full dependency)
+
+**Phase 4 parallel streams:**
+- Stream A (RTL coding) + Stream B (early verification): independent, run in parallel
+- Merge point at Phase 4→5 Gate requires both streams complete
+
+**Task tool usage:**
+- Use `run_in_background: true` for independent sub-phases within a wave
+- Wait for all background tasks before dependent phases
+- Collect results via TaskOutput before proceeding
+- Phase 5→4 feedback: parallel UNIT_FIX across different modules with `run_in_background: true`
+</Parallel_Execution_Pattern>
 
 <Final_Checklist>
 Before reporting completion, verify ALL of the following:
 - [ ] Prerequisites: all Phase 1-3 artifacts verified present
-- [ ] Phase 4 Stream A: rtl/src/*.sv exist, all lint-clean
-- [ ] Phase 4 Stream A: tb/unit/tb_*.sv exist for all modules
+- [ ] Phase 4 Stream A: rtl/*/*.sv exist, all lint-clean
+- [ ] Phase 4 Stream A: sim/*/tb_*.sv exist for all modules
 - [ ] Phase 4 Stream A: unit tests all PASS
-- [ ] Phase 4 Stream B: SVA skeletons in tb/formal/ and docs/phase-4-rtl/stream-b-sva-skeletons.md
+- [ ] Phase 4 Stream B: SVA skeletons in sim/formal/ and docs/phase-4-rtl/stream-b-sva-skeletons.md
 - [ ] Phase 4 Stream B: CDC preliminary report in docs/phase-4-rtl/stream-b-cdc-preliminary.md
 - [ ] Phase 4 Stream B: TB skeletons in docs/phase-4-rtl/stream-b-tb-skeletons.md
 - [ ] Phase 4: reviews/phase-4-rtl/functional-completeness.md shows 100% coverage
@@ -420,6 +529,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Phase 5b: reviews/phase-5-verify/cdc-report.md exists
 - [ ] Phase 5c: reviews/phase-5-verify/requirement-traceability.md exists
 - [ ] Phase 5d: reviews/phase-5-verify/coverage-report.md exists
+- [ ] Phase 5e: reviews/phase-5-verify/e2e-traceability.md exists (unified traceability matrix)
 - [ ] Phase 5e: reviews/phase-5-verify/final-compliance.md verdict=PASS
 - [ ] Phase 5: phase-5-summary.md generated
 - [ ] State file updated with all phases completed

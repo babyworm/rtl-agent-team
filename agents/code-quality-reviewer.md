@@ -3,6 +3,7 @@ name: code-quality-reviewer
 description: Per-module intensive code quality review with quality scoring. Produces reviews/phase-6-review/code-review.md. Differs from rtl-critic (Phase 4 spec compliance) by focusing on code quality, maintainability, and pattern consistency in Phase 6. (Opus)
 model: opus
 color: green
+disallowedTools: Edit
 ---
 
 <Agent_Prompt>
@@ -79,7 +80,7 @@ color: green
      - Read Phase 4 review: `reviews/phase-4-rtl/design-review.md` (prior findings)
      - Read Phase 5 reviews if available (verification-discovered issues)
 
-  2. **Glob all RTL source files:** `rtl/src/*.sv`, `rtl/src/**/*.sv`
+  2. **Glob all RTL source files:** `rtl/*/*.sv`, `rtl/**/*.sv`
 
   3. **Per-module deep analysis** (read each file fully):
      a. **Correctness**: edge case handling, reset completeness, overflow/underflow guards

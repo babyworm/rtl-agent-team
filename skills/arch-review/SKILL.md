@@ -37,7 +37,7 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
 </Execution_Policy>
 
 <Steps>
-1. Read requirements.json, docs/uarch_spec.md, and rtl/src/*.sv to pass context
+1. Read requirements.json, docs/uarch_spec.md, and rtl/*/*.sv to pass context
 2. `mkdir -p reviews/phase-2-architecture`
 3. Run three agents in parallel (all READ-ONLY):
    a. rtl-architect: spec vs RTL structure review **+ requirements.json full coverage check**
@@ -93,13 +93,13 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
 Bash("mkdir -p reviews/phase-2-architecture")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/src/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/uarch_spec.md against rtl/src/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Save the review result to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format with Date, Reviewer (rtl-architect, timing-advisor, rtl-critic), Upper Spec (requirements.json, docs/uarch_spec.md), Verdict, Feature Coverage Checklist table, Findings, and Verdict sections. If the file already exists, update it with the latest review results. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
+     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/uarch_spec.md against rtl/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Save the review result to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format with Date, Reviewer (rtl-architect, timing-advisor, rtl-critic), Upper Spec (requirements.json, docs/uarch_spec.md), Verdict, Feature Coverage Checklist table, Findings, and Verdict sections. If the file already exists, update it with the latest review results. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
-     prompt="READ-ONLY review. Analyze rtl/src/ pipeline depth, clock domains ({domain}_clk naming, e.g. sys_clk), and reset strategy ({domain}_rst_n naming, e.g. sys_rst_n). Flag timing feasibility concerns and any clock/reset naming violations.")
+     prompt="READ-ONLY review. Analyze rtl/ pipeline depth, clock domains ({domain}_clk naming, e.g. sys_clk), and reset strategy ({domain}_rst_n naming, e.g. sys_rst_n). Flag timing feasibility concerns and any clock/reset naming violations.")
 
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY review. Assess rtl/src/ code quality: synthesizability, coding style (lowRISC base with project overrides: i_/o_/io_ port prefixes, {domain}_clk/{domain}_rst_n naming, logic only, u_ instance prefix, gen_ generate prefix), maintainability. List issues with severity.")
+     prompt="READ-ONLY review. Assess rtl/ code quality: synthesizability, coding style (lowRISC base with project overrides: i_/o_/io_ port prefixes, {domain}_clk/{domain}_rst_n naming, logic only, u_ instance prefix, gen_ generate prefix), maintainability. List issues with severity.")
 ```
 </Tool_Usage>
 

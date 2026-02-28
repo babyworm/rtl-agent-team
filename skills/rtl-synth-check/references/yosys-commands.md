@@ -4,10 +4,10 @@
 
 ```bash
 # Generic synthesis (no technology mapping)
-yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top}; stat"
+yosys -p "read_verilog -sv rtl/*/*.sv; synth -top {top}; stat"
 
 # With flatten for area analysis
-yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top} -flatten; stat"
+yosys -p "read_verilog -sv rtl/*/*.sv; synth -top {top} -flatten; stat"
 ```
 
 ## Technology-Mapped Synthesis
@@ -15,7 +15,7 @@ yosys -p "read_verilog -sv rtl/src/*.sv; synth -top {top} -flatten; stat"
 ### Sky130 (open-source PDK)
 ```bash
 yosys -p "
-  read_verilog -sv rtl/src/*.sv;
+  read_verilog -sv rtl/*/*.sv;
   synth -top {top};
   dfflibmap -liberty sky130_fd_sc_hd__tt_025C_1v80.lib;
   abc -liberty sky130_fd_sc_hd__tt_025C_1v80.lib;
@@ -26,7 +26,7 @@ yosys -p "
 ### NanGate45 (academic PDK)
 ```bash
 yosys -p "
-  read_verilog -sv rtl/src/*.sv;
+  read_verilog -sv rtl/*/*.sv;
   synth -top {top};
   dfflibmap -liberty NangateOpenCellLibrary_typical.lib;
   abc -liberty NangateOpenCellLibrary_typical.lib;
@@ -78,16 +78,16 @@ flatten
 opt; opt_clean; opt_merge
 
 # Write synthesized netlist
-write_verilog synth/netlist.v
+write_verilog syn/netlist.v
 
 # Generate dot graph for visualization
-show -format dot -prefix synth/schematic
+show -format dot -prefix syn/schematic
 
 # Check for combinational loops
 scc -max_depth 10
 
 # Report timing estimate (logic levels)
-tee -q -o synth/reports/timing.txt stat
+tee -q -o syn/reports/timing.txt stat
 ```
 
 ## Synthesis Warnings to Watch

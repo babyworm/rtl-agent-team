@@ -79,7 +79,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run Verilator, Verible, and slang lint on rtl/src/ via Bash CLI. Verilator: --lint-only -Wall -Wpedantic -sv. Verible: --rules_config .verible_lint.cfg. slang: --lint-only. Also check naming conventions: i_/o_ port prefixes, {domain}_clk/{domain}_rst_n, logic not reg/wire, u_ instance prefix. Report all violations grouped by file and severity (Critical/Major/Minor). Return PASS or FAIL summary.")
+     prompt="Run Verilator, Verible, and slang lint on rtl/ via Bash CLI. Verilator: --lint-only -Wall -Wpedantic -sv. Verible: --rules_config .verible_lint.cfg. slang: --lint-only. Also check naming conventions: i_/o_ port prefixes, {domain}_clk/{domain}_rst_n, logic not reg/wire, u_ instance prefix. Report all violations grouped by file and severity (Critical/Major/Minor). Return PASS or FAIL summary.")
 ```
 </Tool_Usage>
 
@@ -120,9 +120,9 @@ See `examples/lint-output-example.txt` for sample merged lint output across all 
 Verilator waiver file (`.verilator.vlt`) for intentional suppressions:
 ```
 `verilator_config
-lint_off -rule UNUSED -file "rtl/src/reserved.sv" -lines 10-15
-lint_off -rule WIDTH -file "rtl/src/datapath.sv" -match "Operator *"
+lint_off -rule UNUSED -file "rtl/reserved/reserved.sv" -lines 10-15
+lint_off -rule WIDTH -file "rtl/datapath/datapath.sv" -match "Operator *"
 ```
-Generate waiver template: `verilator --lint-only -Wall --waiver-output verilator.vlt rtl/src/*.sv`
+Generate waiver template: `verilator --lint-only -Wall --waiver-output verilator.vlt rtl/*/*.sv`
 See `references/verilator-warnings.md` for complete warning reference.
 </Advanced>

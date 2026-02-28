@@ -10,7 +10,7 @@ Outputs: consistency/consistency_report.md with per-vector comparison matrix.
 </Purpose>
 
 <Use_When>
-- All three models exist (ref_model/, bfm/, rtl/)
+- All three models exist (refc/, bfm/, rtl/)
 - Checking for drift between models after independent updates
 - Pre-regression gate to ensure baseline consistency
 - Debugging discrepancy between two models (need third to arbitrate)
@@ -39,7 +39,7 @@ if ref != BFM == RTL, ref model diverged; if ref == RTL != BFM, BFM has an issue
 <Steps>
 1. Select shared test vector set (use consistency/test_vectors.bin or generate 50 vectors)
 2. Run all three models in parallel on identical input via Bash CLI:
-   a. ref-model-dev: `./ref_model/build/ref_model < consistency/test_vectors.bin > consistency/ref_output.bin`
+   a. ref-model-dev: `./refc/build/ref_model < consistency/test_vectors.bin > consistency/ref_output.bin`
    b. bfm-dev: `./bfm/build/bfm_smoke < consistency/test_vectors.bin > consistency/bfm_output.bin`
    c. func-verifier: simulate RTL with vectors using iverilog/cocotb, capture output to consistency/rtl_output.bin
       - RTL ports use project convention: i_/o_ prefixes, {domain}_clk, {domain}_rst_n
@@ -55,7 +55,7 @@ if ref != BFM == RTL, ref model diverged; if ref == RTL != BFM, BFM has an issue
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Run ref_model/build/ref_model on consistency/test_vectors.bin via Bash CLI. Capture output to consistency/ref_output.bin. Build first if needed: make -C ref_model/.")
+     prompt="Run refc/build/ref_model on consistency/test_vectors.bin via Bash CLI. Capture output to consistency/ref_output.bin. Build first if needed: make -C refc/.")
 
 Task(subagent_type="rtl-agent-team:bfm-dev",
      prompt="Run bfm/build/bfm_smoke on consistency/test_vectors.bin via Bash CLI. Capture output to consistency/bfm_output.bin. Build first if needed: make -C bfm/.")

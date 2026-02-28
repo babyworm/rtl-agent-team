@@ -11,7 +11,7 @@ Runs in parallel with rtl-uarch-design during Phase 3.
 </Purpose>
 
 <Use_When>
-- Phase 2 artifacts (architecture.md, ref_model/) are complete
+- Phase 2 artifacts (architecture.md, refc/) are complete
 - TLM models are needed for early performance estimation or protocol verification
 - BFM needed as stimulus/checker in verification environment
 - AMBA bus protocol modeling required (AXI/AHB/APB)

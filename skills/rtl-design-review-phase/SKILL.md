@@ -51,12 +51,13 @@ Phase 6 formalizes this process for all RTL projects.
 - Wave 1 agents (code-quality-reviewer, design-quality-reviewer) run in parallel
 - Wave 2 agents (design-note-writer, improvement-analyst) run in parallel AFTER Wave 1 completes
   (Wave 2 agents reference Wave 1 outputs for richer analysis)
-- **Phase 6 Completion Gate**: All 4 deliverables must exist:
-  - `reviews/phase-6-review/code-review.md`
-  - `reviews/phase-6-review/design-review.md`
-  - `reviews/phase-6-review/design-note.md`
-  - `reviews/phase-6-review/improvements.md`
-- On agent failure: retry once, then escalate to user
+- **Phase 6 Completion Quality Gate**: All 4 deliverables must exist AND pass quality checks:
+  - `reviews/phase-6-review/code-review.md` — `code-quality-reviewer` verdict must be PASS
+  - `reviews/phase-6-review/design-review.md` — `design-quality-reviewer` verdict must be PASS
+  - `reviews/phase-6-review/design-note.md` — `design-note-writer` must produce complete document
+  - `reviews/phase-6-review/improvements.md` — `improvement-analyst` must produce recommendations
+  - On FAIL: iterate review → fix cycle (max 2 rounds, same as Phase 5)
+  - On agent failure: retry once, then escalate to user
 - State tracking: update `.rtl-agent-team/state/rtl-autopilot-state.json` if running within autopilot
 </Execution_Policy>
 
@@ -84,8 +85,10 @@ Phase 6 formalizes this process for all RTL projects.
      - `reviews/phase-6-review/design-note.md`
      - `reviews/phase-6-review/improvements.md`
 
-5. **Phase 6 Completion Gate**:
+5. **Phase 6 Completion Quality Gate**:
    - Verify all 4 deliverables exist
+   - Verify `code-review.md` and `design-review.md` contain verdict=PASS
+   - If either verdict is FAIL: pass findings to relevant Wave 1 agent for correction, re-run Wave 1 → Wave 2 (max 2 rounds)
    - Report summary to user with key highlights from each deliverable
 
 6. **Final Summary Report**:
@@ -112,7 +115,7 @@ Task(subagent_type="rtl-agent-team:code-quality-reviewer",
      model="opus",
      prompt="Perform intensive per-module code quality review for Phase 6.
 Read requirements.json, uarch/*.md for context.
-Read ALL rtl/src/*.sv files for full code review.
+Read ALL rtl/*/*.sv files for full code review.
 Read reviews/phase-4-rtl/design-review.md for prior findings to track.
 Read reviews/phase-5-verify/*.md for verification-discovered issues.
 Score each module on 5 dimensions (correctness, synthesizability, style, maintainability, testability) on 1-10 scale.
@@ -124,7 +127,7 @@ Save comprehensive review to reviews/phase-6-review/code-review.md.")
 Task(subagent_type="rtl-agent-team:design-quality-reviewer",
      model="opus",
      prompt="Perform cross-phase design quality review for Phase 6.
-Read ALL design artifacts in order: requirements.json → architecture.md → uarch/*.md → rtl/src/*.sv.
+Read ALL design artifacts in order: requirements.json → architecture.md → uarch/*.md → rtl/*/*.sv.
 Read Phase 4/5 review results for context.
 Build hierarchical consistency matrix: trace every REQ through Spec→Arch→μArch→RTL.
 Document major design decisions with rationale and trade-off assessment.
@@ -144,7 +147,7 @@ Save comprehensive review to reviews/phase-6-review/design-review.md.")
 Task(subagent_type="rtl-agent-team:design-note-writer",
      model="opus",
      prompt="Write comprehensive design note for Phase 6.
-Read ALL artifacts: requirements.json, architecture.md, uarch/*.md, rtl/src/*.sv.
+Read ALL artifacts: requirements.json, architecture.md, uarch/*.md, rtl/*/*.sv.
 Read Phase 4/5/6 reviews for context: reviews/phase-4-rtl/*.md, reviews/phase-5-verify/*.md, reviews/phase-6-review/code-review.md, reviews/phase-6-review/design-review.md.
 For each RTL module: document purpose, I/O table (verified against actual ports), internal structure (Mermaid), algorithm, FSM diagrams, timing, edge cases.
 Document system-level integration: data flow, control flow, mode operations, reset sequence.
@@ -205,6 +208,38 @@ Skipping Wave 1 and going directly to Wave 2.
 → NEVER skip Wave 1. Wave 2 agents depend on Wave 1 outputs for richer analysis.
 </Bad>
 </Examples>
+
+<Phase_7_Exploration_Mode>
+When invoked with exploration mode (user requests "Phase 7", "exploration", "free exploration"):
+- **Entry**: Phase 6 completion is recommended but NOT required (Phase 7 is exempt from pipeline gates)
+- **Guard Rails**:
+  - Pipeline absolute rules (Phase Gate) do NOT apply — free exploration allowed
+  - Existing `rtl/` files must NOT be directly modified (use exploration branch)
+  - Results stored in `docs/phase-7-exploration/exploration-notes.md`
+  - Successful exploration → ADR creation + formal pipeline integration proposal
+  - Scope: algorithm alternatives, optimization experiments, technology evaluation
+  - Prohibited: production RTL changes, verification bypass, feature additions without spec change
+- **Output**: `reviews/phase-7-exploration/exploration-review.md` with findings and integration recommendations
+</Phase_7_Exploration_Mode>
+
+<Parallel_Execution_Pattern>
+Phase 6 uses a 2-wave parallel execution pattern:
+
+**Wave 1 (parallel, independent)**:
+- `code-quality-reviewer` + `design-quality-reviewer` run concurrently via `run_in_background: true`
+- Wait for both to complete before proceeding to Wave 2
+- Collect results via TaskOutput
+
+**Wave 2 (parallel, depends on Wave 1)**:
+- `design-note-writer` + `improvement-analyst` run concurrently
+- Both reference Wave 1 outputs for richer analysis
+- Wait for both to complete before Completion Gate
+
+Task tool usage:
+- Use `run_in_background: true` for independent agents within a wave
+- Wait for all background tasks before dependent wave
+- Collect results via TaskOutput before proceeding
+</Parallel_Execution_Pattern>
 
 <Escalation_And_Stop_Conditions>
 - **Phase 5 not complete**: STOP, report that Phase 5 final-compliance.md must exist with verdict=PASS

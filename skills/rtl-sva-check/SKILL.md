@@ -45,7 +45,7 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 </Execution_Policy>
 
 <Steps>
-1. sva-extractor reads rtl/src/*.sv and uarch/*.md, writes formal/props/*.sv with SVA properties
+1. sva-extractor reads rtl/*/*.sv and uarch/*.md, writes formal/props/*.sv with SVA properties
    - All signal names must match RTL port conventions (`i_`/`o_` prefixes, `sys_clk`, `sys_rst_n`)
    - Use temporal operators appropriately: `|->` (overlapping), `|=>` (non-overlapping), `##[M:N]` (delay range)
    - Guard `$past()` with a `past_valid` register to avoid undefined first-cycle behavior
@@ -65,7 +65,7 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Write SVA properties for rtl/src/cabac_encoder.sv at formal/props/cabac_encoder_props.sv. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md conventions. Cover: no overflow on o_data, valid handshake (i_valid/o_ready), FIFO no underflow.")
+     prompt="Write SVA properties for rtl/cabac_encoder/cabac_encoder.sv at formal/props/cabac_encoder_props.sv. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md conventions. Cover: no overflow on o_data, valid handshake (i_valid/o_ready), FIFO no underflow.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run SymbiYosys formal verification via Bash CLI: sby -f formal/props/cabac_encoder.sby. Parse output and write results to formal_verify.json with status per property.")

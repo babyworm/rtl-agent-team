@@ -78,7 +78,7 @@ Passing lint is merely "compilation success" — simulation is required to prove
    - **This step is a necessary condition, not a sufficient one**
 
 3. **TB creation/update step**: Write tests to verify the fix
-   - Check for existing TBs: `ls tb/cocotb/test_*.py tb/unit/*.sv 2>/dev/null`
+   - Check for existing TBs: `ls sim/*/test_*.py sim/*/tb_*.sv 2>/dev/null`
    - **If no TB exists**: testbench-dev creates at least a smoke test TB
      - At least 1 test file per modified module
      - Include the bug reproduction scenario as a test case
@@ -91,9 +91,10 @@ Passing lint is merely "compilation success" — simulation is required to prove
    - eda-runner executes simulation:
      ```bash
      # cocotb (Python TB)
-     make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}
-     # Or Verilator sim
-     verilator --cc --exe --build --trace rtl/src/{module}.sv tb/sim_main.cpp
+     make -C sim/{module} SIM=icarus TOPLEVEL={module} MODULE=test_{module}
+     # Or SV TB via simulate.sh
+     scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
+       rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv
      ```
    - On failure: debug waveforms with waveform-analyzer
    - Confirm **all tests PASS**
@@ -126,33 +127,33 @@ Passing lint is merely "compilation success" — simulation is required to prove
 # Step 1: Analysis
 # ============================================================
 Task(subagent_type="rtl-agent-team:rtl-explorer",
-     prompt="Analyze bug: [bug description]. Identify affected modules, root cause, and impact scope in rtl/src/. List all files that need modification.")
+     prompt="Analyze bug: [bug description]. Identify affected modules, root cause, and impact scope in rtl/. List all files that need modification.")
 
 # ============================================================
 # Step 2: Fix + lint
 # ============================================================
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Fix bug in rtl/src/{module}.sv: [fix description]. Follow coding conventions: i_/o_ port prefix, sys_clk/sys_rst_n, logic only, always_ff/always_comb. After fix, run: verilator --lint-only -Wall rtl/src/{module}.sv")
+     prompt="Fix bug in rtl/{module}/{module}.sv: [fix description]. Follow coding conventions: i_/o_ port prefix, sys_clk/sys_rst_n, logic only, always_ff/always_comb. After fix, run: verilator --lint-only -Wall rtl/{module}/{module}.sv")
 
 # ============================================================
 # Step 3: TB creation/update
 # ============================================================
 # Check for existing TBs
-Bash("ls tb/cocotb/test_*.py tb/unit/*.sv 2>/dev/null || echo 'NO_TB_EXISTS'")
+Bash("ls sim/*/test_*.py sim/*/tb_*.sv 2>/dev/null || echo 'NO_TB_EXISTS'")
 
 # If no TB exists: create new
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Create cocotb smoke test for rtl/src/{module}.sv at tb/cocotb/test_{module}.py. Include: (1) basic reset sequence, (2) bug reproduction scenario: [describe], (3) normal operation check. Signal naming: dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_*.")
+     prompt="Create cocotb smoke test for rtl/{module}/{module}.sv at sim/{module}/test_{module}.py. Include: (1) basic reset sequence, (2) bug reproduction scenario: [describe], (3) normal operation check. Signal naming: dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_*.")
 
 # If TB exists: add test cases
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Add test case to tb/cocotb/test_{module}.py for bug fix verification: [describe bug and fix]. Add assertion checking correct behavior after fix. Signal naming: dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_*.")
+     prompt="Add test case to sim/{module}/test_{module}.py for bug fix verification: [describe bug and fix]. Add assertion checking correct behavior after fix. Signal naming: dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_*.")
 
 # ============================================================
 # Step 4: Run functional verification
 # ============================================================
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb test via Bash CLI: make -C tb/cocotb SIM=icarus TOPLEVEL={module} MODULE=test_{module}. Report pass/fail. On failure, capture waveform for debug.")
+     prompt="Run cocotb test via Bash CLI: make -C sim/{module} SIM=icarus TOPLEVEL={module} MODULE=test_{module}. Report pass/fail. On failure, capture waveform for debug.")
 
 # Create verification-done marker when all tests PASS
 Bash("touch .rtl-agent-team/state/rtl-verify-done")
@@ -180,12 +181,12 @@ Bash("touch .rtl-agent-team/state/rtl-verify-done")
 
 # Module A fix (background)
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Fix SVA counterexample in rtl/src/module_a.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/src/module_a.sv",
+     prompt="Fix SVA counterexample in rtl/module_a.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/module_a.sv",
      run_in_background=true)
 
 # Module B fix (background, parallel with Module A)
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Fix cocotb test failure in rtl/src/module_b.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/src/module_b.sv",
+     prompt="Fix cocotb test failure in rtl/module_b.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/module_b.sv",
      run_in_background=true)
 
 # After both fixes complete: parallel TB update + sim
@@ -198,10 +199,10 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
 
 # Parallel re-verification
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb test for module_a: make -C tb/cocotb SIM=icarus TOPLEVEL=module_a MODULE=test_module_a",
+     prompt="Run cocotb test for module_a: make -C sim/module_a SIM=icarus TOPLEVEL=module_a MODULE=test_module_a",
      run_in_background=true)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb test for module_b: make -C tb/cocotb SIM=icarus TOPLEVEL=module_b MODULE=test_module_b",
+     prompt="Run cocotb test for module_b: make -C sim/module_b SIM=icarus TOPLEVEL=module_b MODULE=test_module_b",
      run_in_background=true)
 
 # After all pass: create verification-done marker
