@@ -38,7 +38,7 @@
     {
       "id": "HM",
       "name": "HEVC Test Model Reference Software (H.265)",
-      "version": "16.20",
+      "version": "16.25",
       "language": "C++",
       "url": "https://hevc.hhi.fraunhofer.de/HM-doc/",
       "repository": "https://vcgit.hhi.fraunhofer.de/jvet/HM",

@@ -30,15 +30,17 @@ check_file() {
     add_violation "$file" "$lineno" "PORT_SUFFIX" "Use i_/o_ prefix instead of _i/_o suffix: $content"
   done < <(grep -nE '\b\w+_(i|o)\b\s*[,;)]' "$file" 2>/dev/null || true)
 
-  # Rule 3: Clock naming — should be {domain}_clk
+  # Rule 3: Clock naming — should be clk (single) or {domain}_clk (multiple)
+  # Note: bare 'clk' is VALID for single-domain designs per CLAUDE.md
   while IFS=: read -r lineno content; do
-    add_violation "$file" "$lineno" "CLOCK_NAME" "Use {domain}_clk format (e.g., sys_clk): $content"
-  done < <(grep -nE '\b(clk_i|clk_o|clk)\b\s*[,;)]' "$file" 2>/dev/null || true)
+    add_violation "$file" "$lineno" "CLOCK_NAME" "Use clk (single domain) or {domain}_clk format (e.g., sys_clk): $content"
+  done < <(grep -nE '\b(clk_i|clk_o)\b\s*[,;)]' "$file" 2>/dev/null || true)
 
-  # Rule 4: Reset naming — should be {domain}_rst_n
+  # Rule 4: Reset naming — should be rst_n (single) or {domain}_rst_n (multiple)
+  # Note: bare 'rst_n' is VALID for single-domain designs per CLAUDE.md
   while IFS=: read -r lineno content; do
-    add_violation "$file" "$lineno" "RESET_NAME" "Use {domain}_rst_n format (e.g., sys_rst_n): $content"
-  done < <(grep -nE '\b(rst_ni|rst_n)\b\s*[,;)]' "$file" 2>/dev/null || true)
+    add_violation "$file" "$lineno" "RESET_NAME" "Use rst_n (single domain) or {domain}_rst_n format (e.g., sys_rst_n): $content"
+  done < <(grep -nE '\b(rst_ni)\b\s*[,;)]' "$file" 2>/dev/null || true)
 
   # Rule 5: Instance prefix u_ — flag instances without it
   while IFS=: read -r lineno content; do
