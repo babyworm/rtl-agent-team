@@ -20,6 +20,10 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
 | **--- Phase 3: μArch ---** | |
 | "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-uarch-design` |
+| **--- Pipeline Composition ---** | |
+| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` |
+| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` |
+| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` |
 | **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
 | `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
 | `.sva`, SVA bind files, formal assertion | `/rtl-agent-team:systemverilog-assertion` |

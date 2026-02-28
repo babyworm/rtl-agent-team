@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 50 specialized AI agents + 34 skills automate the 6-Phase pipeline:
+> 50 specialized AI agents + 37 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 34 skills + 11 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 37 skills + 11 reference documents.
 
 ## Marketplace
 
@@ -75,6 +75,19 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
 
+### Pipeline composition (split execution)
+
+```
+/rtl-agent-team:rtl-dse              # Phase 1→2: Deep algorithm + architecture exploration (DSE)
+/rtl-agent-team:rtl-spec-to-uarch    # Phase 1→3: Spec → μArch design documents
+/rtl-agent-team:rtl-uarch-to-verify  # Phase 4→5: μArch → RTL implementation + verification
+```
+
+Split the pipeline for human review between design and implementation:
+- `rtl-dse`: Deep Design Space Exploration — compare multiple algorithms and architecture candidates with quantitative trade-offs. Can also transform an existing functional C model into an architectural reference model. Stops at Phase 2 for review.
+- `rtl-spec-to-uarch`: Standard Phase 1→3 — produce design documents through μArch. Stops for review before RTL.
+- `rtl-uarch-to-verify`: Phase 4→5 — implement RTL and run full verification from approved μArch documents.
+
 ### Resume interrupted pipeline
 
 If `rtl-autopilot` is interrupted, progress is saved automatically. Re-run the same command to resume from the last incomplete step — completed phases are skipped.
@@ -98,7 +111,7 @@ Creates the project directory structure and verifies EDA tool installation.
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 34 skills.
+See the `skills/` directory for the full list of 37 skills.
 
 ## Project Artifact Structure
 
@@ -130,7 +143,7 @@ rtl-agent-team/
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
 ├── agents/                     # 50 agents (design/verification/review/EDA/domain)
-├── skills/                     # 34 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 37 skills (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
@@ -242,7 +255,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
 ├── agents/                              # rtl-agent-team agents (50)
-├── skills/                              # rtl-agent-team skills (34)
+├── skills/                              # rtl-agent-team skills (37)
 ├── references/                          # Reference documents (11)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
