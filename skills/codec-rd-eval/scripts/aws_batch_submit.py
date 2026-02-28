@@ -21,6 +21,7 @@ by run_eval.py).
 import argparse
 import json
 import os
+import re
 import sys
 import time
 
@@ -85,10 +86,10 @@ def submit_jobs(config: dict, output_dir: str):
 
         for seq in sequences:
             for qp in qp_points:
-                safe_label = "".join(c if c.isalnum() or c == "-" else "-" for c in label)[:32]
+                safe_label = re.sub(r'[^a-zA-Z0-9_-]', '-', label)[:32]
                 job_name = f"rd-eval-{safe_label}-{seq['name']}-qp{qp}"
-                # Sanitize job name (AWS Batch: alphanumeric + hyphens, max 128 chars)
-                job_name = "".join(c if c.isalnum() or c == "-" else "-" for c in job_name)[:128]
+                # Sanitize job name (AWS Batch: alphanumeric + hyphens + underscores, max 128 chars)
+                job_name = re.sub(r'[^a-zA-Z0-9_-]', '-', job_name)[:128]
 
                 try:
                     response = batch_client.submit_job(
@@ -105,6 +106,8 @@ def submit_jobs(config: dict, output_dir: str):
                                 "--fps", str(seq.get("fps", 30)),
                                 "--frames", str(seq.get("frames", 100)),
                                 "--qp", str(qp),
+                                "--bit-depth", str(seq.get("bit_depth", 8)),
+                                "--chroma-format", str(seq.get("chroma_format", "420")),
                                 "--output-s3", f"s3://{s3_bucket}/{config.get('eval_name', 'eval')}/",
                             ],
                             "environment": [

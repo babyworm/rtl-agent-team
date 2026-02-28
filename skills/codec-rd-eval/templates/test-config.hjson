@@ -140,7 +140,7 @@
   // Output settings
   output: {
     report_path: "docs/phase-1-research/rd-eval-report.md"
-    raw_data_path: ".rtl-agent-team/scratch/rd-eval/"
+    raw_data_path: ".rtl-agent-team/scratch/rd-eval"
     // Bitstreams and reconstructed YUV files are always preserved in raw_data_path
   }
 }

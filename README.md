@@ -271,7 +271,7 @@ To add a new plugin to the Marketplace, add an entry to the `plugins` array in `
 
 ## Development
 
-This plugin is purely declarative (`.md` + `.json` files only) — no build step required.
+This plugin is declarative-first (`.md` + `.json` skill definitions with helper `.py`/`.sh` scripts) — no build step required.
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git

@@ -15,6 +15,7 @@ import argparse
 import glob
 import hashlib
 import json
+import math
 import os
 import re
 import shlex
@@ -25,6 +26,22 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 from typing import Optional
+
+
+def _sanitize_for_json(obj):
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization.
+
+    Note: Duplicated in run_eval.py and compare_output.py for standalone script usage.
+    """
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
 
 
 # Default decoder CLI template
@@ -60,7 +77,7 @@ def load_config(config_path: str) -> dict:
         print("ERROR: hjson package not installed. Run: pip install hjson", file=sys.stderr)
         sys.exit(1)
 
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return hjson.load(f)
 
 
@@ -209,6 +226,13 @@ def run_local(config: dict, output_dir: str) -> list:
     decoder_binary = decoder_cfg.get("decoder_binary", "")
     cmd_template = decoder_cfg.get("decoder_cmd_template", DEFAULT_DECODER_CMD_TEMPLATE)
     extra_args = decoder_cfg.get("extra_args", "")
+    # Validate extra_args: reject shell metacharacters to prevent command injection
+    if extra_args and re.search(r'[;&|`$(){}]', extra_args):
+        print(f"ERROR: extra_args contains shell metacharacters: {extra_args!r}",
+              file=sys.stderr)
+        print("  Only plain flags are allowed (e.g., '-DDECODER_ONLY -v').",
+              file=sys.stderr)
+        sys.exit(1)
 
     target = config.get("target", {})
     standard = target.get("standard", "h264")
@@ -316,7 +340,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
             [sys.executable, aws_script, config_path, "--output-dir", output_dir],
             capture_output=True,
             text=True,
-            timeout=600,  # 10 min for submission + polling
+            timeout=14400,  # 4 hours for submission + polling (matches wait_for_jobs max_wait)
         )
     except subprocess.TimeoutExpired:
         print("ERROR: AWS Batch script timed out after 600s", file=sys.stderr)
@@ -377,10 +401,10 @@ def main():
                 tag = " [MANDATORY]" if r.source_priority == "mandatory" else ""
                 print(f"  [{r.source_id}] {r.stream_name}{tag}: {r.error}")
 
-    # Save results
+    # Save results (sanitize NaN/Inf for valid JSON per RFC 8259)
     results_path = os.path.join(output_dir, "results.json")
     with open(results_path, "w") as f:
-        json.dump([asdict(r) for r in results], f, indent=2)
+        json.dump(_sanitize_for_json([asdict(r) for r in results]), f, indent=2)
 
     print(f"\nResults saved to: {results_path}")
 

@@ -42,14 +42,14 @@ precision impact), or standalone evaluation outside the pipeline.
 - Evaluating fixed-point precision impact on codec quality (e.g., 12-bit vs 16-bit paths)
 - Validating that HW-friendly algorithm modifications preserve acceptable quality
 - N-way comparison of multiple encoder configurations (candidates[] mode)
-- The user explicitly says "RD eval", "BD-PSNR", "BD-rate", "codec quality evaluation"
+- The user explicitly says "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation"
 </Use_When>
 
 <Do_Not_Use_When>
 - No ref C model encoder exists yet (build ref model first via ref-model skill)
-- Comparing RTL vs C model output (use model-consistency skill instead)
-- Running decoder conformance tests against standard bitstreams (use codec-conformance-eval skill)
-- Running RTL-level conformance against reference decoder (use rtl-conformance-test skill)
+- Comparing RTL vs C model output (use `/rtl-agent-team:model-consistency` instead)
+- Running decoder conformance tests against standard bitstreams (use `/rtl-agent-team:codec-conformance-eval`)
+- Running RTL-level conformance against reference decoder (use `/rtl-agent-team:conformance-test`)
 - Non-codec designs where RD metrics don't apply
 </Do_Not_Use_When>
 
@@ -78,7 +78,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - On metric parsing failure (bitrate=0 or PSNR=0): mark job as failed with guidance to check output_parsing
 - timeout_per_job is in seconds (default: 3600s = 1 hour per encoding job)
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
-- Dependencies: gcc (C11), Python 3.8+, numpy, hjson. Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf")
+- Dependencies: gcc (C11), Python 3.8+, numpy, hjson. Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
 - Self-test: `python3 skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests
 </Execution_Policy>
 

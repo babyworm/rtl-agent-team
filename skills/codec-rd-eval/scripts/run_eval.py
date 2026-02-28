@@ -15,7 +15,7 @@ Usage:
     python3 run_eval.py <config.hjson> --mode local [--max-parallel N]
     python3 run_eval.py <config.hjson> --mode aws-batch
 
-Dependencies: hjson, numpy (for result aggregation)
+Dependencies: hjson
 """
 
 import argparse
@@ -29,7 +29,6 @@ import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, asdict, fields
-from pathlib import Path
 from typing import Optional
 
 
@@ -108,7 +107,7 @@ def load_config(config_path: str) -> dict:
         print("ERROR: hjson package not installed. Run: pip install hjson", file=sys.stderr)
         sys.exit(1)
 
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return hjson.load(f)
 
 
@@ -495,7 +494,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
             [sys.executable, aws_script, config_path, "--output-dir", output_dir],
             capture_output=True,
             text=True,
-            timeout=600,  # 10 min for submission + polling
+            timeout=14400,  # 4 hours for submission + polling (matches wait_for_jobs max_wait)
         )
     except subprocess.TimeoutExpired:
         print("ERROR: AWS Batch script timed out after 600s", file=sys.stderr)

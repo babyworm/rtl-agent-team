@@ -34,6 +34,8 @@
     {
       id: "JVET"
       label: "ITU-T JVET Official"
+      // Note: JVET applies to H.265 (HEVC) and H.266 (VVC).
+      // For H.264 (AVC), use JVT/JCTVC sources instead.
       path: "conformance/jvet/"
       // url: "https://www.itu.int/..."     // Download reference (informational)
       priority: "mandatory"
@@ -95,7 +97,7 @@
   // Output settings
   output: {
     report_path: "docs/phase-1-research/conformance-eval-report.md"
-    raw_data_path: ".rtl-agent-team/scratch/conformance-eval/"
+    raw_data_path: ".rtl-agent-team/scratch/conformance-eval"
     // Decoded YUV files are always preserved in raw_data_path (needed for PSNR/SSIM comparison)
   }
 }

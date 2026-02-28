@@ -108,11 +108,16 @@ def compare_md5(decoded_md5: str, golden_md5: str) -> dict:
 
 def compute_psnr_from_files(file_a: str, file_b: str,
                             width: int, height: int, bit_depth: int = 8) -> Optional[float]:
-    """Compute Y-PSNR between two raw YUV files.
+    """Compute Y-PSNR between two raw YUV files (first frame only).
 
     Uses simple MSE calculation on Y (luma) plane only — chroma planes (U/V) are
     not included. This is intentional for conformance divergence measurement where
     luma fidelity is the primary indicator.
+
+    Note: Only the FIRST frame is compared. For full multi-frame conformance,
+    use MD5 or bitexact comparison mode. This function is intended as a
+    divergence magnitude indicator when bitexact comparison fails, not as a
+    substitute for full-stream conformance checking.
 
     Returns None if files cannot be read or arrays are empty.
     """
@@ -411,27 +416,37 @@ def compare_results(results_path: str, config: dict) -> dict:
                 "stream_count": len(matching),
             })
 
-    # Build SSIM streams list when opt-in (H4: wire up existing SSIM/VMAF functions)
+    # Build SSIM/VMAF streams lists when opt-in
     ssim_enabled = "ssim" in quality_metrics
+    vmaf_enabled = "vmaf" in quality_metrics
     ssim_streams = []
-    if ssim_enabled:
+    vmaf_streams = []
+    if ssim_enabled or vmaf_enabled:
         target = config.get("target", {})
         w = target.get("width")
         h = target.get("height")
         bd = target.get("bit_depth", 8)
+        cf = target.get("chroma_format", "420")
         results_by_name = {r["stream_name"]: r for r in results}
         for entry in stream_results:
             if entry.get("conformance") == "PASS" and w and h:
-                # Try to compute SSIM if decoded and golden files are available
                 r_match = results_by_name.get(entry["stream_name"])
                 if r_match and r_match.get("output_path"):
                     golden_yuv = os.path.join(golden_path, f"{entry['stream_name']}.yuv")
-                    ssim_val = run_ffmpeg_ssim(golden_yuv, r_match["output_path"], w, h, bd)
-                    ssim_streams.append({
-                        "stream_name": entry["stream_name"],
-                        "ssim": ssim_val,
-                        "status": "PASS" if ssim_val is not None and ssim_val > 0.99 else "CHECK",
-                    })
+                    if ssim_enabled:
+                        ssim_val = run_ffmpeg_ssim(golden_yuv, r_match["output_path"], w, h, bd, cf)
+                        ssim_streams.append({
+                            "stream_name": entry["stream_name"],
+                            "ssim": ssim_val,
+                            "status": "PASS" if ssim_val is not None and ssim_val > 0.99 else "CHECK",
+                        })
+                    if vmaf_enabled:
+                        vmaf_val = run_ffmpeg_vmaf(golden_yuv, r_match["output_path"], w, h, bd, cf)
+                        vmaf_streams.append({
+                            "stream_name": entry["stream_name"],
+                            "vmaf": vmaf_val,
+                            "status": "PASS" if vmaf_val is not None and vmaf_val > 90.0 else "CHECK",
+                        })
 
     metrics = {
         "overall_verdict": overall_verdict,
@@ -456,6 +471,8 @@ def compare_results(results_path: str, config: dict) -> dict:
         "coverage": coverage,
         "ssim_enabled": ssim_enabled,
         "ssim_streams": ssim_streams,
+        "vmaf_enabled": vmaf_enabled,
+        "vmaf_streams": vmaf_streams,
         "target": config.get("target", {}),
         "comparison_mode": comparison_mode,
         "decoder": config.get("decoder", {}),

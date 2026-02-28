@@ -50,10 +50,10 @@ used at any Phase where decoder conformance verification is needed.
 </Use_When>
 
 <Do_Not_Use_When>
-- No ref C model decoder exists yet (build ref model first via ref-model skill)
-- Testing RTL decoder implementation (use rtl-conformance-test skill, Phase 5)
-- Comparing encoder quality (use codec-rd-eval skill)
-- Comparing RTL vs C model output (use model-consistency skill)
+- No ref C model decoder exists yet (build ref model first via `/rtl-agent-team:ref-model`)
+- Testing RTL decoder implementation (use `/rtl-agent-team:conformance-test`, Phase 5)
+- Comparing encoder quality (use `/rtl-agent-team:codec-rd-eval`)
+- Comparing RTL vs C model output (use `/rtl-agent-team:model-consistency`)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -81,7 +81,7 @@ comparing outputs, and tracking which profile features are covered.
 - Optional streams (3rd party) failures are reported but do not affect overall verdict
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - timeout_per_job is in seconds (default: 300s = 5 min per decoding job)
-- Dependencies: gcc (C11), Python 3.8+, hjson, numpy (optional, for PSNR computation). Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf")
+- Dependencies: gcc (C11), Python 3.8+, hjson, numpy (optional, for PSNR computation). Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
 - Self-test: `python3 skills/codec-conformance-eval/scripts/compare_output.py --test` runs built-in unit tests
 </Execution_Policy>
 
@@ -93,6 +93,7 @@ comparing outputs, and tracking which profile features are covered.
    - Verify conformance bitstream directories exist
    - Verify golden output references exist (MD5 checksums or reference YUV files)
    - Check Python dependencies: `python3 -c "import hjson; print('OK')"`
+     - Optional: `python3 -c "import numpy; print('numpy OK')"` (needed for PSNR comparison mode)
 
 2. **Decoder build** (build_decoder.sh)
    - `bash skills/codec-conformance-eval/scripts/build_decoder.sh <decoder_src> <decoder_binary> [extra_cflags...]`

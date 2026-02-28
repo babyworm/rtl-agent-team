@@ -66,6 +66,9 @@
 | Config | Avg Encode Time (s) | Speedup vs Anchor |
 |--------|---------------------|-------------------|
 | {{anchor_label}} (Anchor) | {{aggregate.avg_anchor_encode_time_s}} | 1.00x |
+<!-- comparisons_or_single: Agent-constructed variable (not from bd-metrics.json).
+     For 2-config mode: single-element array wrapping the bd-metrics.json root object.
+     For N-candidate mode: bd-metrics.json "comparisons" array (one entry per test candidate). -->
 {{#each comparisons_or_single}}
 | {{test_label}} | {{aggregate.avg_test_encode_time_s}} | {{#if aggregate.computed_speedup}}{{aggregate.computed_speedup}}x{{else}}N/A{{/if}} |
 {{/each}}

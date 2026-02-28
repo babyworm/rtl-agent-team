@@ -105,6 +105,7 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
                 "job_id": None,
                 "stream_name": stream_name,
                 "source_id": source_id,
+                "priority": stream.get("priority", "optional"),
                 "error": str(e),
             })
 

@@ -67,12 +67,26 @@
 {{/if}}
 
 {{#if ssim_enabled}}
+## SSIM Comparison (opt-in)
+
 <!-- Condition: ssim_enabled = "ssim" in quality_metrics (from HJSON config). JSON source: ssim_streams[] (from conformance-metrics.json) -->
 
 | Stream | SSIM | Status |
 |--------|------|--------|
 {{#each ssim_streams}}
 | {{stream_name}} | {{ssim}} | {{status}} |
+{{/each}}
+{{/if}}
+
+{{#if vmaf_enabled}}
+## VMAF Comparison (opt-in)
+
+<!-- Condition: vmaf_enabled = "vmaf" in quality_metrics (from HJSON config). JSON source: vmaf_streams[] (from conformance-metrics.json) -->
+
+| Stream | VMAF | Status |
+|--------|------|--------|
+{{#each vmaf_streams}}
+| {{stream_name}} | {{vmaf}} | {{status}} |
 {{/each}}
 {{/if}}
 
