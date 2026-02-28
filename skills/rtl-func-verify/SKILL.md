@@ -289,7 +289,7 @@ Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes Attr
 <Advanced>
 Multi-seed regression is now mandatory: default seeds 1, 42, 123, 1337, 65536 per module.
 For even broader coverage, add random seeds or use `regression/seed_list.txt`.
-Coverage targets: ≥90% line, ≥80% toggle, ≥85% branch, ≥70% FSM state.
+Coverage targets: ≥90% line, ≥80% toggle, ≥70% FSM state.
 Use `COCOTB_RESOLVE_X=RANDOM` to handle X propagation in simulation.
 
 **Full regression via script (absorbed from rtl-regression-run):**

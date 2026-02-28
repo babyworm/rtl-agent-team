@@ -497,7 +497,8 @@ reviews/
 
 ```
 refc/                                    # C reference model (Phase 2)
-├── {module}/                            # Per-module ref model source
+├── src/                                 # Flat source (single-module or shared ref model)
+├── {module}/                            # Per-module ref model source (multi-module projects)
 ├── include/                             # Common headers
 ├── build/                               # Build output (.so for DPI-C)
 ├── test/                                # Ref model unit tests

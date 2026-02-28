@@ -47,7 +47,7 @@ root_cause.md documents the finding for the RTL engineer making the fix.
    - `logic` types only, instance prefix `u_` for DUT
 4. func-verifier runs repro_tb.sv via run_sim.sh and confirms reproduction:
    ```bash
-   scripts/run_sim.sh --sim iverilog --top repro_tb --outdir bugs/{bug_id} --trace \
+   scripts/run_sim.sh --sim iverilog --top repro_tb --outdir sim/bugs/{bug_id} --trace \
      rtl/{module}/{module}.sv sim/bugs/{bug_id}/repro_tb.sv
    ```
 5. waveform-analyzer performs deep analysis on repro waveform
@@ -63,7 +63,7 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze sim/regression/test_cabac_fail.vcd. Find first divergence between actual and expected output. Identify originating module and signal. Note: port signals use i_/o_ prefixes, clocks are {domain}_clk, resets are {domain}_rst_n.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Write sim/bugs/BUG-042/repro_tb.sv that reproduces the CABAC bypass mode failure at cycle ~250. Minimize stimulus to the essential sequence. Use project conventions: i_/o_ port prefixes, sys_clk for clock, sys_rst_n for reset, u_dut for DUT instance, logic types only. Run via: scripts/run_sim.sh --sim iverilog --top repro_tb --outdir bugs/BUG-042 --trace rtl/cabac_encoder/cabac_encoder.sv sim/bugs/BUG-042/repro_tb.sv. Confirm reproduction.")
+     prompt="Write sim/bugs/BUG-042/repro_tb.sv that reproduces the CABAC bypass mode failure at cycle ~250. Minimize stimulus to the essential sequence. Use project conventions: i_/o_ port prefixes, sys_clk for clock, sys_rst_n for reset, u_dut for DUT instance, logic types only. Run via: scripts/run_sim.sh --sim iverilog --top repro_tb --outdir sim/bugs/BUG-042 --trace rtl/cabac_encoder/cabac_encoder.sv sim/bugs/BUG-042/repro_tb.sv. Confirm reproduction.")
 ```
 </Tool_Usage>
 

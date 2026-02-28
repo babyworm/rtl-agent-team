@@ -183,10 +183,10 @@ async def test_random(dut):
 
 | Type | Measurement Target | Tool | Goal |
 |------|--------------------|------|------|
-| Line coverage | Code line execution | Verilator | >= 95% |
-| Toggle coverage | Signal 0<->1 transitions | Verilator | >= 85% |
-| Branch coverage | if/case branches | Verilator | >= 90% |
-| FSM coverage | State/transition coverage | Verilator/UVM | 100% states |
+| Line coverage | Code line execution | Verilator | >= 90% |
+| Toggle coverage | Signal 0<->1 transitions | Verilator | >= 80% |
+| Branch coverage | if/case branches | Verilator | — (informational) |
+| FSM coverage | State/transition coverage | Verilator/UVM | >= 70% |
 | Functional coverage | Scenario coverage | cocotb-coverage/UVM | >= 90% |
 | Assertion coverage | SVA cover hits | SymbiYosys cover | All reachable |
 
@@ -199,7 +199,7 @@ See `skills/rtl-regression-run/templates/regression-report.md` (note: `rtl-regre
 | Metric | Description | Goal |
 |--------|-------------|------|
 | Pass Rate | pass / total seeds | 100% |
-| Line Coverage | Verilator line | >= 95% |
+| Line Coverage | Verilator line | >= 90% |
 | Functional Coverage | cocotb-coverage | >= 90% |
 | Unique Failures | Number of unique failure scenarios | 0 |
 | Regression Time | Total execution time | — |

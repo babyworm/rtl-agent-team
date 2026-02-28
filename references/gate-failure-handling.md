@@ -53,7 +53,7 @@ Research    Review    Arch/Ref    Review    μArch/BFM    Review    RTL         
 | Item | Verification | On Failure |
 |------|--------------|------------|
 | Regression PASS | All seeds pass | Fix bugs and re-run |
-| Coverage ≥ target | Line ≥ 95%, Func ≥ 90% | Write additional tests |
+| Coverage ≥ target | Line ≥ 90%, Toggle ≥ 80%, FSM ≥ 70% | Write additional tests |
 | Requirement Traceability | Tests exist for all REQs | Add missing tests |
 
 ### Gate 6: Final

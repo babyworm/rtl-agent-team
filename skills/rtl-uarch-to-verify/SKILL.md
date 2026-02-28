@@ -224,7 +224,7 @@ Separating design from implementation also enables:
    **Phase 5c: Integration TB + Ref Model Comparison (parallel with 5a/5b)**
    - `testbench-dev`: Complete cocotb TB skeletons from Stream B with actual test logic
    - `func-verifier`: extensive RTL vs ref_model comparison
-   - `eda-runner`: run cocotb regression — **per-module parallel + multi-seed (3 seeds x N modules)**
+   - `eda-runner`: run cocotb regression — **per-module parallel + multi-seed (5 seeds: 1, 42, 123, 1337, 65536 x N modules)**
    - Output: `reviews/phase-5-verify/requirement-traceability.md`
 
    **Phase 5d: Coverage Analysis (incremental, starts as modules complete 5a-5c)**
@@ -416,7 +416,7 @@ Task(subagent_type="rtl-agent-team:cdc-checker",
 Output: reviews/phase-5-verify/cdc-report.md")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb regression: RTL vs ref_model comparison. Multi-seed (3 seeds).
+     prompt="Run cocotb regression: RTL vs ref_model comparison. Multi-seed (5 seeds: 1, 42, 123, 1337, 65536).
 Output: reviews/phase-5-verify/requirement-traceability.md")
 
 # 5d: Coverage analysis

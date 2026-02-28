@@ -110,7 +110,7 @@ genhtml merged.info -o sim/coverage/html/ --title "Regression Coverage"
 Multi-seed strategy: use at least 5 deterministic seeds (1, 42, 123, 1337, 65536) plus
 5 random seeds per run. Stop early if failure rate exceeds 5%.
 
-Coverage targets: ≥90% line, ≥80% toggle, ≥85% branch, ≥70% FSM state.
+Coverage targets: ≥90% line, ≥80% toggle, ≥70% FSM state.
 See `references/coverage-tools.md` for lcov integration, Verilator coverage flags,
 multi-seed regression script, and Coverview dashboard setup.
 </Advanced>

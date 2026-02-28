@@ -231,7 +231,7 @@ a_valid_hold: assert property (
 Direct insertion inside RTL, immediate assert, no message:
 ```systemverilog
 always_ff @(posedge clk) begin
-  assert(valid);  // WRONG: immediate, no message, wrong clock name
+  assert(valid);  // WRONG: immediate assert (not concurrent), no message, no label
 end
 ```
 </Bad>
