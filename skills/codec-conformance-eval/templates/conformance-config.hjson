@@ -2,6 +2,9 @@
   // codec-conformance-eval configuration
   // Decoder conformance evaluation against official bitstreams.
 
+  // NOTE: This template defaults to H.264 Baseline.
+  // For H.264, the primary mandatory sources are JCTVC (JCT-VC) and JVT.
+  // JVET applies to H.265 (HEVC) / H.266 (VVC) — adjust conformance_sources accordingly.
   eval_name: "h264_baseline_decoder_conformance"
 
   // Target profile to test

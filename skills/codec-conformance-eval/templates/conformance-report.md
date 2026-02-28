@@ -53,7 +53,7 @@
 <!-- Filter: streams[] where conformance="FAIL" -->
 
 {{#each failures}}
-### {{stream_name}} [{{source_id}}] {{#if (eq priority "mandatory")}}[MANDATORY]{{/if}}
+### {{stream_name}} [{{source_id}}] {{#if is_mandatory}}[MANDATORY]{{/if}}
 
 - **Error**: {{error}}
 {{#if comparison.first_mismatch_offset}}

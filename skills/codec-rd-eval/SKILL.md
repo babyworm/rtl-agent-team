@@ -47,9 +47,9 @@ precision impact), or standalone evaluation outside the pipeline.
 
 <Do_Not_Use_When>
 - No ref C model encoder exists yet (build ref model first via ref-model skill)
-- Comparing RTL vs C model output (use `/rtl-agent-team:model-consistency` instead)
+- Comparing RTL vs C model output (use `/rtl-agent-team:rtl-model-consistency` instead)
 - Running decoder conformance tests against standard bitstreams (use `/rtl-agent-team:codec-conformance-eval`)
-- Running RTL-level conformance against reference decoder (use `/rtl-agent-team:conformance-test`)
+- Running RTL-level conformance against reference decoder (use `/rtl-agent-team:rtl-conformance-test`)
 - Non-codec designs where RD metrics don't apply
 </Do_Not_Use_When>
 

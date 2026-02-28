@@ -377,6 +377,12 @@ def _compute_one_comparison(anchor_label, anchor_data, test_label, test_data) ->
             seq_metrics["bd_rate_yuv"] = round(bd_rate(a_rates, a_psnr_yuv, t_rates, t_psnr_yuv), 4)
             seq_metrics["bd_psnr_yuv"] = round(bd_psnr(a_rates, a_psnr_yuv, t_rates, t_psnr_yuv), 4)
 
+            # Warn when BD metrics return NaN (near-identical values or no overlap)
+            if any(math.isnan(seq_metrics[k]) for k in
+                   ("bd_rate_y", "bd_psnr_y", "bd_rate_yuv", "bd_psnr_yuv")):
+                seq_metrics["warning"] = (
+                    "BD metrics returned NaN (near-identical RD curves or no overlap range)")
+
             bd_rates_y.append(seq_metrics["bd_rate_y"])
             bd_psnrs_y.append(seq_metrics["bd_psnr_y"])
             bd_rates_yuv.append(seq_metrics["bd_rate_yuv"])

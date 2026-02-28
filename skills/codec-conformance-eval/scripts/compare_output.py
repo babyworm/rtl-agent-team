@@ -352,6 +352,8 @@ def compare_results(results_path: str, config: dict) -> dict:
                 mandatory_fail += 1
             else:
                 optional_fail += 1
+        elif entry["conformance"] == "SKIP":
+            source_breakdown[source_id]["skip"] += 1
 
         if priority == "mandatory":
             mandatory_total += 1
@@ -382,7 +384,10 @@ def compare_results(results_path: str, config: dict) -> dict:
     # Pre-filter streams by priority (M2)
     mandatory_streams = [s for s in stream_results if s.get("priority") == "mandatory"]
     optional_streams = [s for s in stream_results if s.get("priority") != "mandatory"]
-    failures = [s for s in stream_results if s.get("conformance") == "FAIL"]
+    failures = [
+        {**s, "is_mandatory": s.get("priority") == "mandatory"}
+        for s in stream_results if s.get("conformance") == "FAIL"
+    ]
 
     # Count sources (for config section)
     all_sources = config.get("conformance_sources", [])

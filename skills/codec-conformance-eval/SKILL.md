@@ -51,9 +51,9 @@ used at any Phase where decoder conformance verification is needed.
 
 <Do_Not_Use_When>
 - No ref C model decoder exists yet (build ref model first via `/rtl-agent-team:ref-model`)
-- Testing RTL decoder implementation (use `/rtl-agent-team:conformance-test`, Phase 5)
+- Testing RTL decoder implementation (use `/rtl-agent-team:rtl-conformance-test`, Phase 5)
 - Comparing encoder quality (use `/rtl-agent-team:codec-rd-eval`)
-- Comparing RTL vs C model output (use `/rtl-agent-team:model-consistency`)
+- Comparing RTL vs C model output (use `/rtl-agent-team:rtl-model-consistency`)
 </Do_Not_Use_When>
 
 <Why_This_Exists>

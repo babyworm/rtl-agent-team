@@ -343,7 +343,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
             timeout=14400,  # 4 hours for submission + polling (matches wait_for_jobs max_wait)
         )
     except subprocess.TimeoutExpired:
-        print("ERROR: AWS Batch script timed out after 600s", file=sys.stderr)
+        print("ERROR: AWS Batch script timed out after 14400s", file=sys.stderr)
         sys.exit(1)
 
     if proc.returncode != 0:
