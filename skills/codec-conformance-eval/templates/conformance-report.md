@@ -13,7 +13,7 @@
 
 | Category | Pass | Fail | Total | Pass Rate |
 |----------|------|------|-------|-----------|
-| **Mandatory** (JVET/JCTVC) | {{summary.mandatory.pass}} | {{summary.mandatory.fail}} | {{summary.mandatory.total}} | {{mandatory_rate}}% |
+| **Mandatory** | {{summary.mandatory.pass}} | {{summary.mandatory.fail}} | {{summary.mandatory.total}} | {{mandatory_rate}}% |
 | **Optional** (3rd party) | {{summary.optional.pass}} | {{summary.optional.fail}} | {{summary.optional.total}} | {{optional_rate}}% |
 | **Total** | {{total_pass}} | {{total_fail}} | {{summary.total_streams}} | {{total_rate}}% |
 

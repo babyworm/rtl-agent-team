@@ -612,7 +612,8 @@ def _sanitize_for_json(obj):
     """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization.
 
     Also converts numpy scalar types (e.g. numpy.float64) to Python natives.
-    Note: Duplicated in run_eval.py and compare_output.py for standalone script usage.
+    Note: Duplicated across codec-rd-eval and codec-conformance-eval scripts
+    for standalone usage.
     """
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
