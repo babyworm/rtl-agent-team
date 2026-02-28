@@ -53,7 +53,7 @@ verilator --lint-only -Wall -Wno-UNUSED -sv rtl/*/*.sv
 ```
 `verilator_config
 // Waiver: signal unused intentionally for future expansion
-lint_off -rule UNUSED -file "rtl/reserved_ports.sv" -lines 10-15
+lint_off -rule UNUSED -file "rtl/{module}/reserved_ports.sv" -lines 10-15
 // Waiver: width mismatch is intentional truncation
-lint_off -rule WIDTH -file "rtl/datapath.sv" -match "Operator *"
+lint_off -rule WIDTH -file "rtl/{module}/datapath.sv" -match "Operator *"
 ```

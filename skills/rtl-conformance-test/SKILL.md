@@ -72,7 +72,7 @@ vcodec-syntax-entropy-expert identifies spec section 9.3.4.6; RTL fix applied; r
 </Good>
 <Bad>
 Accepting 99% bitexact match — codec standards require 100% bitexact; partial match means non-conformant.
-Using `clk` or `data_i` in conformance testbench — violates project conventions and may cause binding errors.
+Using `data_i` (suffix convention) in conformance testbench — violates project conventions (use `i_data` prefix). Bare `clk` is valid for single-domain designs.
 </Bad>
 </Examples>
 

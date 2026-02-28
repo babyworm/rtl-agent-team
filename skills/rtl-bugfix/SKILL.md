@@ -181,12 +181,12 @@ Bash("touch .rtl-agent-team/state/rtl-verify-done")
 
 # Module A fix (background)
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Fix SVA counterexample in rtl/module_a.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/module_a.sv",
+     prompt="Fix SVA counterexample in rtl/module_a/module_a.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/module_a/module_a.sv",
      run_in_background=true)
 
 # Module B fix (background, parallel with Module A)
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Fix cocotb test failure in rtl/module_b.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/module_b.sv",
+     prompt="Fix cocotb test failure in rtl/module_b/module_b.sv: [details]. Follow coding conventions. After fix, run: verilator --lint-only -Wall rtl/module_b/module_b.sv",
      run_in_background=true)
 
 # After both fixes complete: parallel TB update + sim
