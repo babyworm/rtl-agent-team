@@ -1,6 +1,6 @@
 ---
 name: ref-model-reviewer
-description: Reference model quality reviewer. Reviews C/C++/Python reference model correctness, numerical accuracy, algorithm fidelity to spec, and test oracle reliability. Produces review reports in reviews/.
+description: Reference model quality reviewer. Primarily reviews C reference models (project default); also supports C++/Python. Checks numerical accuracy, algorithm fidelity to spec, and test oracle reliability. Produces review reports in reviews/.
 model: opus
 color: cyan
 ---

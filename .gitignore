@@ -1,6 +1,6 @@
 node_modules/
 .rtl-agent-team/
-.omc/
+**/.omc/
 *.log
 .DS_Store
 .env
