@@ -142,9 +142,9 @@ def run_single_decode(
 
     try:
         cmd_str = cmd_template.format(
-            decoder=decoder_binary,
-            bitstream=stream["path"],
-            output=output_yuv,
+            decoder=shlex.quote(decoder_binary),
+            bitstream=shlex.quote(stream["path"]),
+            output=shlex.quote(output_yuv),
             extra_args=extra_args,
         )
         cmd = shlex.split(cmd_str)
@@ -289,8 +289,11 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     all_streams = []
     for source in config.get("conformance_sources", []):
         streams = discover_streams(source, standard)
+        # Use word-boundary regex (consistent with run_local filter)
         if target_profile:
-            streams = [s for s in streams if target_profile in s["name"].lower()]
+            profile_re = re.compile(
+                r'(?:^|[\W_])' + re.escape(target_profile) + r'(?:[\W_]|$)', re.I)
+            streams = [s for s in streams if profile_re.search(s["name"])]
         for s in streams:
             # Add s3_path: use explicit s3_path if present, else derive from local path
             if "s3_path" not in s:

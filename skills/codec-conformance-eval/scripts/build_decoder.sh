@@ -3,6 +3,8 @@
 # Usage: build_decoder.sh <src_dir> <output_binary> [extra_cflags...]
 #
 # Builds C11 decoder from source directory using gcc.
+# Note: Shares build logic with codec-rd-eval/scripts/build_encoder.sh.
+# Both kept separate for standalone skill execution.
 # If a Makefile exists in src_dir, uses make. Otherwise compiles all *.c files.
 
 set -euo pipefail

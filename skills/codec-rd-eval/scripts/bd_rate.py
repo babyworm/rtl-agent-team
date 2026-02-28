@@ -594,7 +594,10 @@ def main():
 
 
 def _sanitize_for_json(obj):
-    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization."""
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization.
+
+    Note: Duplicated in run_eval.py and compare_output.py for standalone script usage.
+    """
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
             return None
@@ -604,6 +607,13 @@ def _sanitize_for_json(obj):
     if isinstance(obj, (list, tuple)):
         return [_sanitize_for_json(v) for v in obj]
     return obj
+
+
+def _fmt_metric(val, fmt_str):
+    """Format a metric value, returning 'N/A' for NaN."""
+    if isinstance(val, float) and math.isnan(val):
+        return "N/A"
+    return format(val, fmt_str)
 
 
 def _print_comparison(comp: dict):
@@ -618,10 +628,10 @@ def _print_comparison(comp: dict):
         else:
             pts_info = f" ({data.get('num_anchor_points', '?')}/{data.get('num_test_points', '?')} pts)"
             print(f"  {seq}{pts_info}:")
-            print(f"    BD-rate (Y):   {data['bd_rate_y']:+.2f}%")
-            print(f"    BD-PSNR (Y):   {data['bd_psnr_y']:+.4f} dB")
-            print(f"    BD-rate (YUV): {data['bd_rate_yuv']:+.2f}%")
-            print(f"    BD-PSNR (YUV): {data['bd_psnr_yuv']:+.4f} dB")
+            print(f"    BD-rate (Y):   {_fmt_metric(data['bd_rate_y'], '+.2f')}%")
+            print(f"    BD-PSNR (Y):   {_fmt_metric(data['bd_psnr_y'], '+.4f')} dB")
+            print(f"    BD-rate (YUV): {_fmt_metric(data['bd_rate_yuv'], '+.2f')}%")
+            print(f"    BD-PSNR (YUV): {_fmt_metric(data['bd_psnr_yuv'], '+.4f')} dB")
             if "test_avg_ssim" in data:
                 print(f"    SSIM (avg):    {data['test_avg_ssim']:.6f}")
             if "test_avg_vmaf" in data:
@@ -630,10 +640,10 @@ def _print_comparison(comp: dict):
     agg = comp.get("aggregate", {})
     if agg:
         print(f"\n  --- Average ({agg['num_sequences']} sequences) ---")
-        print(f"    BD-rate (Y):   {agg['avg_bd_rate_y']:+.2f}%")
-        print(f"    BD-PSNR (Y):   {agg['avg_bd_psnr_y']:+.4f} dB")
-        print(f"    BD-rate (YUV): {agg['avg_bd_rate_yuv']:+.2f}%")
-        print(f"    BD-PSNR (YUV): {agg['avg_bd_psnr_yuv']:+.4f} dB")
+        print(f"    BD-rate (Y):   {_fmt_metric(agg['avg_bd_rate_y'], '+.2f')}%")
+        print(f"    BD-PSNR (Y):   {_fmt_metric(agg['avg_bd_psnr_y'], '+.4f')} dB")
+        print(f"    BD-rate (YUV): {_fmt_metric(agg['avg_bd_rate_yuv'], '+.2f')}%")
+        print(f"    BD-PSNR (YUV): {_fmt_metric(agg['avg_bd_psnr_yuv'], '+.4f')} dB")
         if "avg_anchor_encode_time_s" in agg:
             print(f"    Anchor avg encode time: {agg['avg_anchor_encode_time_s']:.2f}s")
         if "avg_test_encode_time_s" in agg:

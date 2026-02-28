@@ -23,7 +23,10 @@ from typing import Optional
 
 
 def _sanitize_for_json(obj):
-    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization."""
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization.
+
+    Note: Duplicated in run_eval.py and bd_rate.py for standalone script usage.
+    """
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
             return None
@@ -154,7 +157,7 @@ def run_ffmpeg_ssim(original: str, decoded: str,
                     chroma_format: str = "420") -> Optional[float]:
     """Compute SSIM using ffmpeg."""
     base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
-    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
+    pix_fmt = base_fmt if bit_depth <= 8 else f"{base_fmt}{bit_depth}le"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", original,
@@ -176,7 +179,7 @@ def run_ffmpeg_vmaf(original: str, decoded: str,
                     chroma_format: str = "420") -> Optional[float]:
     """Compute VMAF using ffmpeg."""
     base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
-    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
+    pix_fmt = base_fmt if bit_depth <= 8 else f"{base_fmt}{bit_depth}le"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", decoded,
@@ -566,6 +569,8 @@ def run_tests():
 
 def main():
     parser = argparse.ArgumentParser(description="Conformance output comparison")
+    # Both positional args use nargs="?" to allow --test mode without arguments.
+    # When running normally, both must be provided (validated below).
     parser.add_argument("results", nargs="?", help="Path to results.json from run_conformance.py")
     parser.add_argument("config", nargs="?", help="HJSON conformance configuration file")
     parser.add_argument("--output", "-o", default=None, help="Output path for metrics JSON")

@@ -38,7 +38,10 @@
   Fields per entry: sequence, qp, config_label, bitrate_kbps, psnr_y, psnr_yuv, encode_time_s, is_anchor, status
 
   Agent instructions:
-  - Group results by config_label
+  - Group results by config_label (field name in results.json)
+  - Note: "label" is the HJSON config field name, "config_label" is the results.json field name.
+    They refer to the same value. Template uses {{label}} when iterating over HJSON config entries,
+    and config_label when referencing results.json data.
   - For 2-config mode: show Anchor table then Test table
   - For N-candidate mode: show one table per config_label
   - Filter to status="success" entries only

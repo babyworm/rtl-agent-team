@@ -71,7 +71,10 @@ class EncodingResult:
 
 
 def _sanitize_for_json(obj):
-    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization."""
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization.
+
+    Note: Duplicated in bd_rate.py and compare_output.py for standalone script usage.
+    """
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
             return None
@@ -200,7 +203,7 @@ def _run_ffmpeg_ssim(original_yuv: str, recon_yuv: str,
                      chroma_format: str = "420") -> Optional[float]:
     """Compute SSIM using ffmpeg (fallback when encoder doesn't output SSIM)."""
     base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
-    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
+    pix_fmt = base_fmt if bit_depth <= 8 else f"{base_fmt}{bit_depth}le"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", original_yuv,
@@ -222,7 +225,7 @@ def _run_ffmpeg_vmaf(original_yuv: str, recon_yuv: str,
                      chroma_format: str = "420") -> Optional[float]:
     """Compute VMAF using ffmpeg (opt-in quality metric)."""
     base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
-    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
+    pix_fmt = base_fmt if bit_depth <= 8 else f"{base_fmt}{bit_depth}le"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", recon_yuv,

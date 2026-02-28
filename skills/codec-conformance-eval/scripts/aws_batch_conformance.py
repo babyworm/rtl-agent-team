@@ -49,6 +49,8 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
     if batch_client is None:
         batch_client = boto3.client("batch", region_name=region)
 
+    s3_bucket = aws_cfg.get("s3_bucket", "codec-eval-results")
+
     decoder_cfg = config.get("decoder", {})
     eval_name = config.get("eval_name", "conformance-eval")
 
@@ -77,7 +79,7 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
                     "command": [
                         "/app/decode.sh",
                         "--bitstream", stream["s3_path"],
-                        "--output-s3", f"s3://codec-eval-results/{eval_name}/{safe_name}_decoded.yuv",
+                        "--output-s3", f"s3://{s3_bucket}/{eval_name}/{safe_name}_decoded.yuv",
                     ],
                     "environment": [
                         {"name": "EVAL_NAME", "value": eval_name},
@@ -168,20 +170,22 @@ def wait_for_jobs(batch_client, jobs: list, poll_interval: int = 30,
     return completed
 
 
-def fetch_job_result(s3_client, eval_name: str, stream_name: str) -> Optional[dict]:
+def fetch_job_result(s3_client, eval_name: str, stream_name: str,
+                     s3_bucket: str = "codec-eval-results") -> Optional[dict]:
     """Fetch decoding result from S3.
 
     Args:
         s3_client: boto3 S3 client
         eval_name: Evaluation name (S3 prefix)
         stream_name: Stream name
+        s3_bucket: S3 bucket name (from execution.aws_batch.s3_bucket config)
 
     Returns:
         Result dict with md5_decoded, decode_time_s, or None if not found.
     """
     safe_name = re.sub(r'[^a-zA-Z0-9_-]', '-', stream_name)[:64]
     s3_key = f"{eval_name}/{safe_name}_result.json"
-    bucket = "codec-eval-results"  # TODO: make configurable via execution.aws_batch.s3_bucket
+    bucket = s3_bucket
 
     try:
         response = s3_client.get_object(Bucket=bucket, Key=s3_key)
@@ -221,13 +225,27 @@ def main():
 
     # Fetch results
     eval_name = config.get("eval_name", "conformance-eval")
+    s3_bucket = aws_cfg.get("s3_bucket", "codec-eval-results")
     results = []
+
+    # Include submit-failed jobs (job_id=None) that wait_for_jobs skips
+    for job in submitted:
+        if job.get("job_id") is None and job.get("error"):
+            results.append({
+                "stream_name": job["stream_name"],
+                "source_id": job.get("source_id", ""),
+                "source_priority": job.get("priority", "optional"),
+                "status": "failed",
+                "md5_decoded": None,
+                "decode_time_s": 0,
+                "error": f"Submit failed: {job['error']}",
+            })
 
     for job in completed:
         stream_name = job["stream_name"]
 
         if job.get("status") == "success":
-            s3_result = fetch_job_result(s3_client, eval_name, stream_name)
+            s3_result = fetch_job_result(s3_client, eval_name, stream_name, s3_bucket)
             if s3_result:
                 results.append({
                     "stream_name": stream_name,
