@@ -20,8 +20,6 @@ import math
 import os
 import sys
 import warnings
-from typing import Optional
-
 import numpy as np
 
 

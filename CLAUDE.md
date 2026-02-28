@@ -25,7 +25,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` |
 | "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` |
 | "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` |
-| "decoder conformance", "conformance stream", "decoder verify", "bitexact decoder" | `/rtl-agent-team:codec-conformance-eval` |
+| "decoder conformance", "conformance stream", "conformance test", "decoder verify", "bitexact decoder" | `/rtl-agent-team:codec-conformance-eval` |
 | **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
 | `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
 | `.sva`, SVA bind files, formal assertion | `/rtl-agent-team:systemverilog-assertion` |
