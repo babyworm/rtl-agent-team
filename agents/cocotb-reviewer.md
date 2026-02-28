@@ -109,19 +109,19 @@ disallowedTools: Edit
   <Tool_Usage>
     - Read: test files (*.py), Makefile, conftest.py
     - Grep: find `@cocotb.test`, `await`, `RisingEdge`, `Timer`, `dut.` patterns
-    - Glob: find all sim/*.py, sim/Makefile
+    - Glob: find all sim/*/test_*.py, sim/*/Makefile
     - Write: save review report to reviews/ path
 
     Common issue detection:
     ```bash
     # Find missing awaits (coroutine calls without await)
-    grep -n "Timer\|RisingEdge\|FallingEdge\|ClockCycles\|ReadOnly\|ReadWrite" sim/*.py | grep -v "await"
+    grep -rn "Timer\|RisingEdge\|FallingEdge\|ClockCycles\|ReadOnly\|ReadWrite" sim/*/test_*.py | grep -v "await"
 
     # Find signal reads immediately after edge (potential race)
-    grep -A1 "await RisingEdge" sim/*.py | grep "\.value"
+    grep -rA1 "await RisingEdge" sim/*/test_*.py | grep "\.value"
 
     # Find non-conformant clock/reset names (clk_i, rst_ni are forbidden)
-    grep -n "dut\.clk_i\|dut\.rst_ni" sim/*.py
+    grep -rn "dut\.clk_i\|dut\.rst_ni" sim/*/test_*.py
     ```
   </Tool_Usage>
 

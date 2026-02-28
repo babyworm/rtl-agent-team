@@ -6,7 +6,7 @@ description: "This skill should be used when analyzing functional coverage repor
 <Purpose>
 Analyze simulation coverage data to identify uncovered lines, branches, and FSM states.
 Generate a prioritized list of coverage gaps and new test cases to close them.
-Outputs: sim/coverage/coverage_gaps.md + sim/test_coverage_fill.py.
+Outputs: sim/coverage/coverage_gaps.md + sim/coverage/test_coverage_fill.py.
 </Purpose>
 
 <Use_When>
@@ -42,7 +42,7 @@ targeted tests for the high-value gaps, making coverage closure systematic.
    - Notes signal names using project convention (i_/o_ prefixes, {domain}_clk/{domain}_rst_n)
 2. coverage-analyst prioritizes gaps: HIGH (functional path), MED (error path), LOW (unreachable)
 3. coverage-analyst writes sim/coverage/coverage_gaps.md with prioritized gap list
-4. testbench-dev writes sim/test_coverage_fill.py targeting HIGH gaps
+4. testbench-dev writes sim/coverage/test_coverage_fill.py targeting HIGH gaps
    - Test signals reference RTL ports with correct i_/o_ prefixes
    - Clock driven as {domain}_clk, reset as {domain}_rst_n
 5. Report: current coverage %, gap count by priority, new tests added
@@ -54,7 +54,7 @@ Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Analyze sim/coverage/coverage.xml. List uncovered lines, branches, and FSM states. Prioritize gaps as HIGH/MED/LOW. Write sim/coverage/coverage_gaps.md.")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read sim/coverage/coverage_gaps.md. Write sim/test_coverage_fill.py targeting all HIGH priority gaps. Each test must exercise the specific uncovered condition.")
+     prompt="Read sim/coverage/coverage_gaps.md. Write sim/coverage/test_coverage_fill.py targeting all HIGH priority gaps. Each test must exercise the specific uncovered condition.")
 ```
 </Tool_Usage>
 

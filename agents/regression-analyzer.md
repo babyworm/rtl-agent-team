@@ -95,12 +95,12 @@ disallowedTools: Edit
     Regression data analysis:
     ```bash
     # Count pass/fail per test
-    grep -c "PASS\|FAIL" regression_results/*.log
+    grep -c "PASS\|FAIL" sim/regression/*.log
 
     # Find flaky tests (both PASS and FAIL across seeds)
-    for test in $(ls regression_results/); do
-      pass=$(grep -c PASS "regression_results/$test")
-      fail=$(grep -c FAIL "regression_results/$test")
+    for test in $(ls sim/regression/); do
+      pass=$(grep -c PASS "sim/regression/$test")
+      fail=$(grep -c FAIL "sim/regression/$test")
       if [ "$pass" -gt 0 ] && [ "$fail" -gt 0 ]; then
         echo "FLAKY: $test (pass=$pass, fail=$fail, rate=$(echo "scale=1; $pass*100/($pass+$fail)" | bc)%)"
       fi
