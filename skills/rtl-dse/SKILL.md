@@ -126,6 +126,11 @@ golden baseline for RTL verification.
    - Coordinated by `vcodec-chief-standard-expert` with sub-domain experts
    - Output: `docs/phase-1-research/domain-analysis.md` (ENHANCED with comparison matrices)
 
+   > **Quantitative RD evaluation (optional):**
+   > If ref C model encoder is buildable and test sequences are available,
+   > invoke `/rtl-agent-team:codec-rd-eval` to measure BD-PSNR between algorithm candidates.
+   > This provides objective quality metrics beyond theoretical analysis.
+
    **Step 3c: Algorithm selection** (user decision point):
    - Present algorithm candidates with quantitative trade-off matrix to user via AskUserQuestion
    - User selects preferred algorithm per functional block (or accepts recommended defaults)

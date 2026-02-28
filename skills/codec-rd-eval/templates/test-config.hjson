@@ -1,0 +1,80 @@
+{
+  // codec-rd-eval test configuration
+  // Copy this template and customize for your evaluation.
+  eval_name: "algorithm_comparison"
+
+  // Anchor configuration (baseline)
+  anchor: {
+    encoder_src: "ref_model/src"       // C source directory
+    encoder_binary: ".rtl-agent-team/scratch/rd-eval/anchor_encoder"
+    encoder_cfg: "configs/anchor.cfg"  // Encoder configuration file
+    label: "Anchor (baseline)"
+  }
+
+  // Test configuration (modified algorithm)
+  test: {
+    encoder_src: "ref_model/src"       // Same source or different branch
+    encoder_binary: ".rtl-agent-team/scratch/rd-eval/test_encoder"
+    encoder_cfg: "configs/test.cfg"    // Modified encoder configuration
+    label: "Test (improved)"
+  }
+
+  // Test sequences (JVET Common Test Conditions recommended)
+  // Adjust paths to match your local sequence storage
+  sequences: [
+    {
+      name: "BasketballDrill"
+      path: "sequences/BasketballDrill_832x480_50.yuv"
+      width: 832
+      height: 480
+      fps: 50
+      frames: 500
+    }
+    {
+      name: "BQTerrace"
+      path: "sequences/BQTerrace_1920x1080_60.yuv"
+      width: 1920
+      height: 1080
+      fps: 60
+      frames: 600
+    }
+    {
+      name: "RaceHorses"
+      path: "sequences/RaceHorses_416x240_30.yuv"
+      width: 416
+      height: 240
+      fps: 30
+      frames: 300
+    }
+  ]
+
+  // QP points — standard 4-point for VCEG-M33 BD calculation
+  // JVET CTC: {22, 27, 32, 37}  |  JCT-VC CTC: {22, 27, 32, 37}
+  qp_points: [22, 27, 32, 37]
+
+  // Execution settings
+  execution: {
+    mode: "local"              // "local" | "aws-batch"
+    max_parallel: 8            // Concurrent processes for local mode
+    timeout_per_job: 3600      // Seconds per encoding job
+
+    // AWS Batch settings (used only when mode="aws-batch")
+    aws_batch: {
+      region: "ap-northeast-2"
+      job_queue: "codec-eval-spot-queue"
+      job_definition: "codec-eval-job"
+      compute_env: "codec-eval-spot-ce"
+      instance_types: ["c5.xlarge", "c5.2xlarge", "c6i.xlarge"]
+      spot: true
+      max_vcpus: 64
+    }
+  }
+
+  // Output settings
+  output: {
+    report_path: "docs/phase-1-research/rd-eval-report.md"
+    raw_data_path: ".rtl-agent-team/scratch/rd-eval/"
+    save_bitstreams: false     // Keep encoded bitstream files
+    save_reconstructed: false  // Keep reconstructed YUV files
+  }
+}
