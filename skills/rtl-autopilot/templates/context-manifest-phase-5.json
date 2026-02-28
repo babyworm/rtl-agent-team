@@ -30,6 +30,12 @@
     "docs/phase-5-verify/ref-rtl-model-consistency.md",
     "docs/phase-5-verify/lint-report.md",
     "docs/phase-5-verify/synthesis-estimate.md",
-    "docs/phase-5-verify/phase-5-summary.md"
+    "docs/phase-5-verify/phase-5-summary.md",
+    "reviews/phase-5-verify/formal-review.md",
+    "reviews/phase-5-verify/cdc-report.md",
+    "reviews/phase-5-verify/requirement-traceability.md",
+    "reviews/phase-5-verify/coverage-report.md",
+    "reviews/phase-5-verify/final-compliance.md",
+    "reviews/phase-5-verify/e2e-traceability.md"
   ]
 }

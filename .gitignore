@@ -18,4 +18,14 @@ architecture.md
 *.vcd
 *.fst
 *.o
+*.so
 sim/
+bfm/
+syn/
+lint/
+
+# Legacy directories (pre-convention)
+ref_model/
+
+# Python cache
+__pycache__/

@@ -6,12 +6,12 @@ description: "This skill should be used when conducting architecture review with
 <Purpose>
 Review RTL architecture for consistency with the microarchitecture spec, timing feasibility,
 and code quality. All agents operate READ-ONLY — no modifications are made.
-Outputs: arch/arch_review_report.md with findings per reviewer.
+Outputs: reviews/phase-2-architecture/architecture-review.md with findings per reviewer.
 </Purpose>
 
 <Use_When>
 - RTL implementation is complete and needs architecture sign-off
-- Microarchitecture spec (docs/uarch_spec.md) exists for comparison
+- Microarchitecture spec (docs/phase-3-uarch/*.md) exists for comparison
 - Pre-tapeout architecture review gate
 - Suspecting architectural mismatch after late RTL changes
 </Use_When>
@@ -37,7 +37,7 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
 </Execution_Policy>
 
 <Steps>
-1. Read requirements.json, docs/uarch_spec.md, and rtl/*/*.sv to pass context
+1. Read requirements.json, docs/phase-3-uarch/*.md, and rtl/*/*.sv to pass context
 2. `mkdir -p reviews/phase-2-architecture`
 3. Run three agents in parallel (all READ-ONLY):
    a. rtl-architect: spec vs RTL structure review **+ requirements.json full coverage check**
@@ -62,15 +62,15 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
        MISSING: REQ-005, REQ-012
        PARTIAL: REQ-008
      ```
-5. Aggregate findings into arch/arch_review_report.md
-6. **Save review result to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format:
+5. Aggregate findings into `reviews/phase-2-architecture/architecture-review.md`
+6. **Ensure review result is saved in standard review Markdown format:**
    - If the file already exists (from Phase 2 Quality Gate), update it with the latest review results
    - Format:
      ```markdown
      # Phase 2 Review: Architecture Review
      - Date: YYYY-MM-DD
      - Reviewer: rtl-architect, timing-advisor, rtl-critic
-     - Upper Spec: requirements.json, docs/uarch_spec.md
+     - Upper Spec: requirements.json, docs/phase-3-uarch/*.md
      - Verdict: PASS | FAIL
 
      ## Feature Coverage Checklist
@@ -93,7 +93,7 @@ focus areas (structure, timing, quality) provide broader coverage than a single 
 Bash("mkdir -p reviews/phase-2-architecture")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/uarch_spec.md against rtl/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Save the review result to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format with Date, Reviewer (rtl-architect, timing-advisor, rtl-critic), Upper Spec (requirements.json, docs/uarch_spec.md), Verdict, Feature Coverage Checklist table, Findings, and Verdict sections. If the file already exists, update it with the latest review results. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
+     prompt="READ-ONLY review. (1) Read requirements.json and check every REQ-NNN item for implementation in rtl/. Produce a Feature Coverage Checklist with per-REQ status: COVERED, PARTIAL, or MISSING. (2) Compare docs/phase-3-uarch/*.md against rtl/. List any spec-RTL mismatches, missing modules, or unspecified additions. Verify port naming follows project convention: i_ prefix for inputs, o_ prefix for outputs, io_ prefix for bidirectional. Save the review result to reviews/phase-2-architecture/architecture-review.md in standard review Markdown format with Date, Reviewer (rtl-architect, timing-advisor, rtl-critic), Upper Spec (requirements.json, docs/phase-3-uarch/*.md), Verdict, Feature Coverage Checklist table, Findings, and Verdict sections. If the file already exists, update it with the latest review results. Output final verdict: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
      prompt="READ-ONLY review. Analyze rtl/ pipeline depth, clock domains ({domain}_clk naming, e.g. sys_clk), and reset strategy ({domain}_rst_n naming, e.g. sys_rst_n). Flag timing feasibility concerns and any clock/reset naming violations.")
@@ -117,7 +117,7 @@ Reviewers must verify these project-specific conventions (overrides lowRISC defa
 <Good>
 Three parallel reviews complete; rtl-architect finds missing error-handling state in FSM (BLOCKER);
 timing-advisor flags 7-stage pipeline exceeding timing budget (WARN); rtl-critic notes inconsistent
-reset polarity (WARN). All reported in arch_review_report.md, no RTL touched.
+reset polarity (WARN). All reported in reviews/phase-2-architecture/architecture-review.md, no RTL touched.
 </Good>
 <Bad>
 Having rtl-architect also fix the issues it finds — mixing review with implementation defeats
@@ -127,13 +127,13 @@ the READ-ONLY audit purpose.
 
 <Escalation_And_Stop_Conditions>
 - BLOCKER found → surface immediately to user before completing report
-- Spec document missing → halt, inform user that uarch_spec.md is required
+- Spec document missing → halt, inform user that docs/phase-3-uarch/*.md is required
 - Conflicting findings between reviewers → include both perspectives in report
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
 - [ ] All three agents ran READ-ONLY with no file modifications
-- [ ] arch/arch_review_report.md written with findings per reviewer
+- [ ] reviews/phase-2-architecture/architecture-review.md written with findings per reviewer
 - [ ] **Feature Coverage Checklist included with per-REQ-NNN status**
 - [ ] **rtl-architect verdict output: VERDICT: PASS or VERDICT: FAIL — [N] spec violations found**
 - [ ] Any MISSING requirement categorized as BLOCKER

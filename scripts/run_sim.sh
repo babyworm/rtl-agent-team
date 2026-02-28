@@ -34,6 +34,7 @@ Options:
   --sim <name>       Simulator: iverilog|verilator|vcs|xrun|questa (default: iverilog)
   --top <module>     Top-level module name (required)
   --filelist <file>  Source filelist (.f file)
+  -f <file>          Alias for --filelist
   --outdir <dir>     Output directory (default: sim/build)
   --define KEY=VAL   Preprocessor define (repeatable, -D alias)
   -D KEY=VAL         Alias for --define

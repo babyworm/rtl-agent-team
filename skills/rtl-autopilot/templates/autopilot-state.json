@@ -77,14 +77,20 @@
       "review_rounds_completed": 0,
       "artifacts": {
         "rtl_src_sv": false,
-        "lint_clean": false
+        "lint_clean": false,
+        "unit_tests": false,
+        "functional_completeness": false,
+        "design_review": false,
+        "stream_b_sva_skeletons": false,
+        "stream_b_cdc_preliminary": false,
+        "stream_b_tb_skeletons": false
       },
       "artifact_gate": null,
       "quality_gate": null,
       "quality_gate_retries": 0,
       "partial_work": {
         "completed_items": [],
-        "pending_items": ["rtl_src_sv", "lint_clean"],
+        "pending_items": ["rtl_src_sv", "lint_clean", "unit_tests", "functional_completeness", "design_review", "stream_b_sva_skeletons", "stream_b_cdc_preliminary", "stream_b_tb_skeletons"],
         "current_action": null,
         "last_agent": null
       },
@@ -103,14 +109,17 @@
         "unit_tests": false,
         "func_tests": false,
         "sva_formal": false,
-        "traceability_matrix": false
+        "cdc_report": false,
+        "traceability_matrix": false,
+        "coverage_report": false,
+        "final_compliance": false
       },
       "artifact_gate": null,
       "quality_gate": null,
       "quality_gate_retries": 0,
       "partial_work": {
         "completed_items": [],
-        "pending_items": ["unit_tests", "func_tests", "sva_formal", "traceability_matrix"],
+        "pending_items": ["unit_tests", "func_tests", "sva_formal", "cdc_report", "traceability_matrix", "coverage_report", "final_compliance"],
         "current_action": null,
         "last_agent": null
       },

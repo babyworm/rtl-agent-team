@@ -35,7 +35,7 @@ Parallelizing per-module coding maximizes throughput.
   - Wave 4 (Unit TB + Sim): All lint-clean modules proceed to TB generation simultaneously
 - Key principle: "Lint all at once, fix only failures, re-lint only fixes"
 - Modules that pass lint early in Wave 3 can start Wave 4 while others are still fixing
-- Gate: all modules lint-clean AND unit test PASS AND basic integration PASS before Phase 5 begins
+- Gate: all modules lint-clean AND unit test PASS AND basic integration PASS AND Stream B artifacts ready (SVA skeletons, CDC topology, TB skeletons) before Phase 5 begins
 </Execution_Policy>
 
 <Steps>
@@ -102,7 +102,7 @@ Parallelizing per-module coding maximizes throughput.
    - Verdict: `VERDICT: PASS` or `VERDICT: FAIL — [N] functional gaps found`
    - On FAIL: rtl-coder receives the gap list and implements missing functionality
    - Re-run lint after any functional additions
-10. Collect lint status per module; gate passes when all are lint-clean AND functional coverage is PASS AND unit tests PASS AND basic integration PASS
+10. Collect lint status per module; gate passes when all are lint-clean AND functional coverage is PASS AND unit tests PASS AND basic integration PASS AND Stream B artifacts ready (docs/phase-4-rtl/stream-b-sva-skeletons.md, stream-b-cdc-preliminary.md, stream-b-tb-skeletons.md)
 </Steps>
 
 <Tool_Usage>

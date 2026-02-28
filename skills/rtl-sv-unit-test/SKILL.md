@@ -172,7 +172,7 @@ Running iverilog directly instead of using run_sim.sh — loses simulator portab
 - Module fails unit test and waveform analysis cannot identify root cause → escalate to rtl-architect
 - Simulator not available → report to user, suggest installation or Docker EDA image
 - Testbench uses wrong naming convention → testbench-dev must rewrite before simulation
-- Reference model not available → fall back to self-checking TB (reduced confidence), flag to user
+- Reference model not available → escalate to user; build ref model first (Absolute Rule 2: no TB without ref model)
 - Reference mismatches persist after RTL fix → escalate to ref-model-dev for model review
 </Escalation_And_Stop_Conditions>
 
