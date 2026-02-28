@@ -6,7 +6,7 @@ description: "This skill should be used when creating minimal reproduction testb
 <Purpose>
 Reproduce a reported RTL bug with the minimal stimulus, isolate the root cause,
 and produce a minimal reproduction test case.
-Outputs: bugs/{bug_id}/repro_tb.sv + bugs/{bug_id}/root_cause.md.
+Outputs: sim/bugs/{bug_id}/repro_tb.sv + sim/bugs/{bug_id}/root_cause.md.
 </Purpose>
 
 <Use_When>
@@ -30,7 +30,7 @@ root_cause.md documents the finding for the RTL engineer making the fix.
 <Execution_Policy>
 - waveform-analyzer reads existing failing simulation waveforms first
 - func-verifier creates and runs a minimal reproduction TB
-- Root cause documented in bugs/{bug_id}/root_cause.md
+- Root cause documented in sim/bugs/{bug_id}/root_cause.md
 - Do NOT fix RTL — reproduce and document only
 </Execution_Policy>
 
@@ -40,7 +40,7 @@ root_cause.md documents the finding for the RTL engineer making the fix.
    - Identifies first divergence cycle
    - Traces signal path to originating module (signals use i_/o_ prefixes)
    - Notes clock domain ({domain}_clk) and reset ({domain}_rst_n) context
-3. func-verifier creates bugs/{bug_id}/repro_tb.sv:
+3. func-verifier creates sim/bugs/{bug_id}/repro_tb.sv:
    - Minimal stimulus that reproduces failure
    - Targeted to the identified module only
    - Uses project conventions: i_/o_ port prefixes, {domain}_clk, {domain}_rst_n
@@ -48,10 +48,10 @@ root_cause.md documents the finding for the RTL engineer making the fix.
 4. func-verifier runs repro_tb.sv via run_sim.sh and confirms reproduction:
    ```bash
    scripts/run_sim.sh --sim iverilog --top repro_tb --outdir bugs/{bug_id} --trace \
-     rtl/{module}/{module}.sv bugs/{bug_id}/repro_tb.sv
+     rtl/{module}/{module}.sv sim/bugs/{bug_id}/repro_tb.sv
    ```
 5. waveform-analyzer performs deep analysis on repro waveform
-6. Write bugs/{bug_id}/root_cause.md:
+6. Write sim/bugs/{bug_id}/root_cause.md:
    - Symptom, first failure cycle, signal trace (with full hierarchical names)
    - Suspected root cause, RTL file and line location
    - Clock domain and reset context if relevant
@@ -63,7 +63,7 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze sim/regression/test_cabac_fail.vcd. Find first divergence between actual and expected output. Identify originating module and signal. Note: port signals use i_/o_ prefixes, clocks are {domain}_clk, resets are {domain}_rst_n.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Write bugs/BUG-042/repro_tb.sv that reproduces the CABAC bypass mode failure at cycle ~250. Minimize stimulus to the essential sequence. Use project conventions: i_/o_ port prefixes, sys_clk for clock, sys_rst_n for reset, u_dut for DUT instance, logic types only. Run via: scripts/run_sim.sh --sim iverilog --top repro_tb --outdir bugs/BUG-042 --trace rtl/cabac_encoder/cabac_encoder.sv bugs/BUG-042/repro_tb.sv. Confirm reproduction.")
+     prompt="Write sim/bugs/BUG-042/repro_tb.sv that reproduces the CABAC bypass mode failure at cycle ~250. Minimize stimulus to the essential sequence. Use project conventions: i_/o_ port prefixes, sys_clk for clock, sys_rst_n for reset, u_dut for DUT instance, logic types only. Run via: scripts/run_sim.sh --sim iverilog --top repro_tb --outdir bugs/BUG-042 --trace rtl/cabac_encoder/cabac_encoder.sv sim/bugs/BUG-042/repro_tb.sv. Confirm reproduction.")
 ```
 </Tool_Usage>
 
@@ -88,7 +88,7 @@ the underlying issue, and no test case documents the failure.
 <Final_Checklist>
 - [ ] Existing waveform analyzed for first divergence point
 - [ ] Minimal repro TB written and confirmed to reproduce
-- [ ] bugs/{bug_id}/root_cause.md written with signal trace
+- [ ] sim/bugs/{bug_id}/root_cause.md written with signal trace
 - [ ] RTL not modified
 - [ ] Repro test case can be added to regression suite
 </Final_Checklist>

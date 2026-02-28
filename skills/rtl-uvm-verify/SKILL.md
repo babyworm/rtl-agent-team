@@ -5,7 +5,7 @@ description: "This skill should be used when running UVM-based verification requ
 
 <Purpose>
 Run a UVM-based verification environment on the target RTL using a commercial simulator
-(VCS, Questa, or Xcelium). Outputs: uvm/results/run_summary.log + coverage/uvm_coverage.xml.
+(VCS, Questa, or Xcelium). Outputs: sim/uvm/results/run_summary.log + sim/uvm/coverage/uvm_coverage.xml.
 
 See `references/uvm-architecture.md` for UVM component hierarchy, phase order,
 simulator compile commands, and agent template with project naming conventions.
@@ -51,19 +51,19 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 <Steps>
 1. eda-runner checks simulator availability via Bash CLI: `which vcs || which vsim || which xrun`
 2. If not found: halt with error message listing required simulator
-3. testbench-dev writes uvm/{module}_env.sv (agent, sequences, scoreboard)
+3. testbench-dev writes sim/uvm/{module}_env.sv (agent, sequences, scoreboard)
    - Use `templates/uvm-agent-template.sv` for agent/driver/monitor scaffold
-   - Use `templates/uvm-test-template.sv` for test/env/top-level scaffold
+   - Use `templates/uvm-test-template.sv` for env/top-level scaffold
    - See `examples/uvm-scoreboard-example.sv` for scoreboard with reference model comparison
    - Driver uses `i_`/`o_` port prefixes, `sys_clk`/`sys_rst_n`
    - DUT wrapped with `u_dut` instance name
    - Interface signals match RTL port names exactly
 4. eda-runner compiles via Bash CLI:
-   `vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv uvm/*.sv -o simv`
+   `vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv sim/uvm/*.sv -o simv`
 5. eda-runner runs via Bash CLI:
    `./simv +UVM_TESTNAME={test} +ntb_random_seed={seed}`
-6. Capture results to uvm/results/run_summary.log
-7. Extract coverage to coverage/uvm_coverage.xml
+6. Capture results to sim/uvm/results/run_summary.log
+7. Extract coverage to sim/uvm/coverage/uvm_coverage.xml
 </Steps>
 
 <Tool_Usage>
@@ -72,10 +72,10 @@ Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Check commercial simulator availability via Bash CLI: which vcs || which vsim || which xrun. Report which simulator is available or HALT if none found.")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Write UVM verification environment for dma_controller in uvm/. Use i_/o_ port prefixes, sys_clk/sys_rst_n, u_dut instance name per CLAUDE.md conventions. Include: UVM agent with driver/monitor, scoreboard comparing DMA transfers, base_test and directed_test sequences.")
+     prompt="Write UVM verification environment for dma_controller in sim/uvm/. Use i_/o_ port prefixes, sys_clk/sys_rst_n, u_dut instance name per CLAUDE.md conventions. Include: UVM agent with driver/monitor, scoreboard comparing DMA transfers, base_test and directed_test sequences.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Compile and run UVM environment via Bash CLI with VCS: vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv uvm/*.sv -o simv && ./simv +UVM_TESTNAME=directed_test. Report pass/fail and capture results to uvm/results/run_summary.log.")
+     prompt="Compile and run UVM environment via Bash CLI with VCS: vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv sim/uvm/*.sv -o simv && ./simv +UVM_TESTNAME=directed_test. Report pass/fail and capture results to sim/uvm/results/run_summary.log.")
 
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze UVM scoreboard mismatch waveform. Identify divergence between DUT o_data and expected value from reference model.")
@@ -107,8 +107,8 @@ Using `clk_i`, `data_o` in UVM driver — violates project conventions and cause
 - [ ] UVM environment uses correct naming (`i_`/`o_` prefix, `sys_clk`/`sys_rst_n`, `m_` UVM member prefix, `u_` RTL instance prefix)
 - [ ] UVM environment compiles without errors
 - [ ] All tests run to completion (no crashes)
-- [ ] uvm/results/run_summary.log written
-- [ ] coverage/uvm_coverage.xml generated
+- [ ] sim/uvm/results/run_summary.log written
+- [ ] sim/uvm/coverage/uvm_coverage.xml generated
 - [ ] Pass/fail reported per test
 </Final_Checklist>
 
@@ -122,15 +122,15 @@ UVM component naming conventions (aligned with project style):
 Simulator-specific flags:
 ```bash
 # VCS with coverage
-vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/*/*.sv uvm/*.sv -o simv
+vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/*/*.sv sim/uvm/*.sv -o simv
 ./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} -cm line+cond+fsm+tgl
 
 # Questa with coverage
-vlog -sv +incdir+uvm rtl/*/*.sv uvm/*.sv
+vlog -sv +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv
 vsim -c -coverage opt_tb +UVM_TESTNAME={test} -do "coverage save -onexit cov.ucdb; run -all"
 
 # Xcelium with coverage
-xrun -sv -uvm -coverage all rtl/*/*.sv uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
+xrun -sv -uvm -coverage all rtl/*/*.sv sim/uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
 ```
 
 See `references/uvm-architecture.md` for complete UVM class hierarchy, phase order,

@@ -53,7 +53,7 @@ Performance monitor instrumentation and testbenches MUST follow project conventi
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:perf-verifier",
-     prompt="Run RTL performance simulation for rtl/cabac_encoder/cabac_encoder.sv with perf monitors. Use sys_clk, i_/o_ signal names. Measure throughput (o_valid/i_ready cycles), latency, stall rate on test/perf_vectors/.")
+     prompt="Run RTL performance simulation for rtl/cabac_encoder/cabac_encoder.sv with perf monitors. Use sys_clk, i_/o_ signal names. Measure throughput (o_valid/i_ready cycles), latency, stall rate on refc/vectors/perf/.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Compile and run performance simulation via Bash CLI: scripts/run_sim.sh --sim iverilog --top tb_cabac_encoder_perf --outdir sim/cabac_encoder --trace rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder_perf.sv.")

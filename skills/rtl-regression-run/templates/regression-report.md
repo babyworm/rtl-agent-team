@@ -34,8 +34,8 @@
 ### Seed {{SEED}}: {{TEST_NAME}}
 
 - **Error**: {{ERROR_MESSAGE}}
-- **Waveform**: regression/seed_{{SEED}}_waveform.vcd
-- **Log**: regression/seed_{{SEED}}.log
+- **Waveform**: sim/regression/seed_{{SEED}}_waveform.vcd
+- **Log**: sim/regression/seed_{{SEED}}.log
 
 ## Verdict
 

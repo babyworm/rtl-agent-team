@@ -66,10 +66,10 @@ verilator_coverage --annotate merged_report merged.dat
 verilator_coverage --write-info coverage.info cov_seed*.dat
 
 # Generate report with lcov
-genhtml coverage.info --output-directory coverage_html
+genhtml coverage.info --output-directory sim/coverage/html
 
 # View in browser
-# open coverage_html/index.html
+# open sim/coverage/html/index.html
 ```
 
 ### 2.3 lcov Filtering
@@ -79,10 +79,10 @@ genhtml coverage.info --output-directory coverage_html
 lcov --extract coverage.info '*/rtl/*/*' -o rtl_coverage.info
 
 # Exclude testbench
-lcov --remove coverage.info '*/sim/*' '*/test/*' -o rtl_only.info
+lcov --remove coverage.info '*/sim/*' '*/refc/*' -o rtl_only.info
 
 # HTML report
-genhtml rtl_only.info -o coverage_html
+genhtml rtl_only.info -o sim/coverage/html
 ```
 
 ## 3. cocotb-coverage (Functional Coverage)
@@ -192,7 +192,7 @@ async def test_random(dut):
 
 ## 6. Coverage Report Format
 
-See `skills/rtl-regression-run/templates/regression-report.md`.
+See `skills/rtl-regression-run/templates/regression-report.md` (note: `rtl-regression-run` is deprecated; use `rtl-func-verify` for Tier 3 regression).
 
 ### Key Metrics
 

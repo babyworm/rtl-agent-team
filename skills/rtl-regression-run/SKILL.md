@@ -9,7 +9,7 @@ description: "DEPRECATED — Use rtl-func-verify (Tier 3) for module-level regre
 
 <Purpose>
 Run the full test suite with multiple random seeds to maximize functional coverage.
-Outputs: regression/results_{timestamp}.json (per-test pass/fail) + coverage/coverage.xml.
+Outputs: sim/regression/results_{timestamp}.json (per-test pass/fail) + sim/coverage/coverage.xml.
 </Purpose>
 
 <Use_When>
@@ -39,7 +39,7 @@ in a single automated flow.
 </Execution_Policy>
 
 <Steps>
-1. Read regression/seed_list.txt (or use default seeds: 1, 42, 123, 1337, 65536)
+1. Read sim/regression/seed_list.txt (or use default seeds: 1, 42, 123, 1337, 65536)
 2. eda-runner runs full test suite per seed via Bash CLI.
    Use `skills/rtl-regression-run/scripts/run_regression.sh` for automated multi-seed execution:
    ```bash
@@ -49,23 +49,23 @@ in a single automated flow.
    ```bash
    make -C sim/top SIM=icarus SEED={seed} COVERAGE=1
    ```
-3. Capture per-seed results to regression/seed_{seed}_results.json
+3. Capture per-seed results to sim/regression/seed_{seed}_results.json
 4. On failure: capture .vcd waveform for failing test (signals use i_/o_ prefixes, {domain}_clk/{domain}_rst_n)
 5. coverage-analyst merges coverage via `skills/rtl-regression-run/scripts/merge_coverage.sh`:
    ```bash
-   bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output coverage/merged.info
+   bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output sim/coverage/merged.info
    ```
-6. Write coverage/coverage.xml (merged) and regression/results_{timestamp}.json
+6. Write sim/coverage/coverage.xml (merged) and sim/regression/results_{timestamp}.json
 7. Report using `templates/regression-report.md` format: seeds run, pass rate, total failures, coverage percentage, failing seed list
 </Steps>
 
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 123, 1337, 65536]. For each seed: make -C sim/top SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to regression/seed_{seed}_results.json.")
+     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 123, 1337, 65536]. For each seed: make -C sim/top SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to sim/regression/seed_{seed}_results.json.")
 
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge coverage data from regression/seed_*_results.json via Bash CLI (lcov --add-tracefile or equivalent). Produce coverage/coverage.xml with line, branch, and toggle coverage. Report overall coverage percentage.")
+     prompt="Merge coverage data from sim/regression/seed_*_results.json via Bash CLI (lcov --add-tracefile or equivalent). Produce sim/coverage/coverage.xml with line, branch, and toggle coverage. Report overall coverage percentage.")
 ```
 </Tool_Usage>
 
@@ -88,8 +88,8 @@ time on a task that is embarrassingly parallel.
 
 <Final_Checklist>
 - [ ] All requested seeds executed
-- [ ] regression/results_{timestamp}.json written with per-test status
-- [ ] coverage/coverage.xml merged from all seeds
+- [ ] sim/regression/results_{timestamp}.json written with per-test status
+- [ ] sim/coverage/coverage.xml merged from all seeds
 - [ ] Failing tests identified with seed numbers
 - [ ] Pass rate and coverage % reported to user
 </Final_Checklist>
@@ -104,7 +104,7 @@ make -C sim/top SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut M
 verilator_coverage --write-info merged.info seed_*/coverage.dat
 
 # Generate HTML report
-genhtml merged.info -o coverage_html/ --title "Regression Coverage"
+genhtml merged.info -o sim/coverage/html/ --title "Regression Coverage"
 ```
 
 Multi-seed strategy: use at least 5 deterministic seeds (1, 42, 123, 1337, 65536) plus

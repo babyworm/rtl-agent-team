@@ -86,7 +86,7 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 <Examples>
 <Good>
 lint-checker runs both tools via Bash CLI, finds 3 Verible style violations, 1 slang unused-variable warning,
-and 2 convention violations (port `data_i` should be `i_data`, `clk` should be `sys_clk`);
+and 2 convention violations (port `data_i` should be `i_data`, `clk` should be `sys_clk` in multi-domain context);
 returns FAIL with exact line numbers and rule names.
 </Good>
 <Bad>

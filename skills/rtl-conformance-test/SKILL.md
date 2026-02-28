@@ -47,7 +47,7 @@ Conformance testbenches and simulation wrappers MUST follow project conventions 
 3. eda-runner runs RTL simulation on each vector via Bash CLI, captures encoded bitstream
    - Simulation uses correct `i_`/`o_` port naming and `sys_clk`/`sys_rst_n`
 4. Compare RTL bitstream vs JM/HM output via Bash CLI: `cmp -l rtl_output.bin jm_output.bin`
-5. Record PASS/FAIL per vector in conformance/results.json
+5. Record PASS/FAIL per vector in sim/conformance/results.json
 6. Any FAIL: capture divergence byte offset, attach to result entry
 </Steps>
 
@@ -57,10 +57,10 @@ Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Select H.264 conformance test vectors applicable to CABAC encoder. List vector files and JM version to use.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run RTL conformance simulation via Bash CLI for each vector in conformance/vectors/*.yuv. Compile and run: scripts/run_sim.sh --sim iverilog --top tb_cabac_conformance --outdir sim/conformance --trace rtl/cabac_encoder/cabac_encoder.sv sim/top/tb_cabac_conformance.sv. Compare output bitstreams with JM 19.0 reference: cmp -l sim/conformance/rtl_output.bin conformance/ref/jm_output.bin. Report PASS/FAIL per vector.")
+     prompt="Run RTL conformance simulation via Bash CLI for each vector in sim/conformance/vectors/*.yuv. Compile and run: scripts/run_sim.sh --sim iverilog --top tb_cabac_conformance --outdir sim/conformance --trace rtl/cabac_encoder/cabac_encoder.sv sim/top/tb_cabac_conformance.sv. Compare output bitstreams with JM 19.0 reference: cmp -l sim/conformance/rtl_output.bin sim/conformance/ref/jm_output.bin. Report PASS/FAIL per vector.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Validate conformance/results.json: verify all vectors ran, all have status, any FAIL has byte offset and divergence details.")
+     prompt="Validate sim/conformance/results.json: verify all vectors ran, all have status, any FAIL has byte offset and divergence details.")
 ```
 </Tool_Usage>
 
@@ -87,7 +87,7 @@ Using `data_i` (suffix convention) in conformance testbench — violates project
 - [ ] All conformance testbenches use correct naming (`i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`)
 - [ ] All ITU-T conformance vectors run
 - [ ] 100% bitexact match achieved
-- [ ] conformance/results.json written with per-vector status
+- [ ] sim/conformance/results.json written with per-vector status
 - [ ] JM/HM version recorded in results
 </Final_Checklist>
 

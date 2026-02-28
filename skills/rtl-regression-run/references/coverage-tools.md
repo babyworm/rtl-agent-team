@@ -1,3 +1,7 @@
+> **DEPRECATED**: This file is under the deprecated `rtl-regression-run` skill.
+> Use `rtl-func-verify` (Tier 3) for module-level regression with coverage.
+> See also `references/coverage-tools.md` for the canonical coverage reference.
+
 # RTL Coverage Tools Reference
 
 ## Verilator Coverage
@@ -57,7 +61,7 @@ def sample(data):
 
 # At end: generate report
 coverage_db.report_coverage(cocotb.log.info, bins=True)
-coverage_db.export_to_xml("coverage/functional_coverage.xml")
+coverage_db.export_to_xml("sim/coverage/functional_coverage.xml")
 ```
 
 ## lcov Integration
@@ -101,7 +105,7 @@ for SEED in "${SEEDS[@]}"; do
   echo "=== Running seed $SEED ==="
   make -C sim/ SIM=verilator RANDOM_SEED=$SEED \
     EXTRA_ARGS="--coverage" TOPLEVEL=dut MODULE=test_dut 2>&1 \
-    | tee regression/seed_${SEED}.log
+    | tee sim/regression/seed_${SEED}.log
 
   if [ $? -eq 0 ]; then
     ((PASS++))
@@ -118,8 +122,8 @@ for SEED in "${SEEDS[@]}"; do
 done
 
 # Merge coverage
-verilator_coverage --write-info merged.info regression/*/coverage.dat
-genhtml merged.info -o coverage_html/
+verilator_coverage --write-info merged.info sim/regression/*/coverage.dat
+genhtml merged.info -o sim/coverage/html/
 
 echo "=== REGRESSION SUMMARY ==="
 echo "Seeds: ${#SEEDS[@]}, Pass: $PASS, Fail: $FAIL"

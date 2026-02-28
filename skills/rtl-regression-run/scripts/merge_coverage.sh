@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Coverage Merge Script
 # Merges per-seed coverage data into a single report.
-# Usage: bash merge_coverage.sh [--format verilator|lcov] [--output coverage/merged.info]
+# Usage: bash merge_coverage.sh [--format verilator|lcov] [--output sim/coverage/merged.info]
 
 set -euo pipefail
 
 FORMAT="${FORMAT:-verilator}"
-OUTPUT="${OUTPUT:-coverage/merged.info}"
-COVERAGE_DIR="coverage"
-HTML_DIR="coverage_html"
+OUTPUT="${OUTPUT:-sim/coverage/merged.info}"
+COVERAGE_DIR="sim/coverage"
+HTML_DIR="sim/coverage/html"
 
 mkdir -p "$COVERAGE_DIR" "$HTML_DIR"
 
@@ -16,9 +16,9 @@ case "$FORMAT" in
   verilator)
     echo "Merging Verilator coverage data..."
     # Find all coverage.dat files from regression seeds
-    DAT_FILES=$(find regression/ -name "coverage.dat" 2>/dev/null | sort)
+    DAT_FILES=$(find sim/regression/ -name "coverage.dat" 2>/dev/null | sort)
     if [[ -z "$DAT_FILES" ]]; then
-      echo "No coverage.dat files found in regression/"
+      echo "No coverage.dat files found in sim/regression/"
       exit 1
     fi
 
@@ -37,9 +37,9 @@ case "$FORMAT" in
 
   lcov)
     echo "Merging lcov coverage data..."
-    INFO_FILES=$(find regression/ -name "*.info" 2>/dev/null | sort)
+    INFO_FILES=$(find sim/regression/ -name "*.info" 2>/dev/null | sort)
     if [[ -z "$INFO_FILES" ]]; then
-      echo "No .info files found in regression/"
+      echo "No .info files found in sim/regression/"
       exit 1
     fi
 

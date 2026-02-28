@@ -6,7 +6,7 @@ description: "This skill should be used when performing 3-way consistency checks
 <Purpose>
 Verify that all three models of the design — reference C model, SystemC TLM BFM, and RTL —
 produce bitexact identical outputs on a shared test vector set.
-Outputs: consistency/consistency_report.md with per-vector comparison matrix.
+Outputs: sim/consistency/consistency_report.md with per-vector comparison matrix.
 </Purpose>
 
 <Use_When>
@@ -37,15 +37,15 @@ if ref != BFM == RTL, ref model diverged; if ref == RTL != BFM, BFM has an issue
 </Execution_Policy>
 
 <Steps>
-1. Select shared test vector set (use consistency/test_vectors.bin or generate 50 vectors)
+1. Select shared test vector set (use sim/consistency/test_vectors.bin or generate 50 vectors)
 2. Run all three models in parallel on identical input via Bash CLI:
-   a. ref-model-dev: `./refc/build/ref_model < consistency/test_vectors.bin > consistency/ref_output.bin`
-   b. bfm-dev: `./bfm/build/bfm_smoke < consistency/test_vectors.bin > consistency/bfm_output.bin`
-   c. func-verifier: simulate RTL with vectors using iverilog/cocotb, capture output to consistency/rtl_output.bin
+   a. ref-model-dev: `./refc/build/ref_model < sim/consistency/test_vectors.bin > sim/consistency/ref_output.bin`
+   b. bfm-dev: `./bfm/build/bfm_smoke < sim/consistency/test_vectors.bin > sim/consistency/bfm_output.bin`
+   c. func-verifier: simulate RTL with vectors using iverilog/cocotb, capture output to sim/consistency/rtl_output.bin
       - RTL ports use project convention: i_/o_ prefixes, {domain}_clk, {domain}_rst_n
 3. Compare outputs pairwise via Bash CLI (diff, cmp, or Python script):
    ref==BFM? ref==RTL? BFM==RTL?
-4. Write consistency/consistency_report.md:
+4. Write sim/consistency/consistency_report.md:
    - Per-vector comparison matrix (PASS/FAIL per pair)
    - First divergence for each mismatch (byte offset, value expected vs actual)
    - Diagnosis: which model is the likely source of error
@@ -55,13 +55,13 @@ if ref != BFM == RTL, ref model diverged; if ref == RTL != BFM, BFM has an issue
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Run refc/build/ref_model on consistency/test_vectors.bin via Bash CLI. Capture output to consistency/ref_output.bin. Build first if needed: make -C refc/.")
+     prompt="Run refc/build/ref_model on sim/consistency/test_vectors.bin via Bash CLI. Capture output to sim/consistency/ref_output.bin. Build first if needed: make -C refc/.")
 
 Task(subagent_type="rtl-agent-team:bfm-dev",
-     prompt="Run bfm/build/bfm_smoke on consistency/test_vectors.bin via Bash CLI. Capture output to consistency/bfm_output.bin. Build first if needed: make -C bfm/.")
+     prompt="Run bfm/build/bfm_smoke on sim/consistency/test_vectors.bin via Bash CLI. Capture output to sim/consistency/bfm_output.bin. Build first if needed: make -C bfm/.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Simulate RTL with consistency/test_vectors.bin as input via Bash CLI (iverilog/cocotb). RTL ports use i_/o_ prefixes, clocks are {domain}_clk, resets are {domain}_rst_n. Capture output to consistency/rtl_output.bin.")
+     prompt="Simulate RTL with sim/consistency/test_vectors.bin as input via Bash CLI (iverilog/cocotb). RTL ports use i_/o_ prefixes, clocks are {domain}_clk, resets are {domain}_rst_n. Capture output to sim/consistency/rtl_output.bin.")
 ```
 </Tool_Usage>
 
@@ -86,7 +86,7 @@ cause rtl-perf-verify to produce wrong baseline comparisons.
 <Final_Checklist>
 - [ ] All three models run on identical input vectors
 - [ ] Pairwise comparison done for all three pairs
-- [ ] consistency/consistency_report.md written with comparison matrix
+- [ ] sim/consistency/consistency_report.md written with comparison matrix
 - [ ] Diverging model identified where possible
 - [ ] First divergence byte offset reported for each mismatch
 </Final_Checklist>

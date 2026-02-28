@@ -6,7 +6,7 @@ description: "This skill should be used when analyzing functional coverage repor
 <Purpose>
 Analyze simulation coverage data to identify uncovered lines, branches, and FSM states.
 Generate a prioritized list of coverage gaps and new test cases to close them.
-Outputs: coverage/coverage_gaps.md + sim/test_coverage_fill.py.
+Outputs: sim/coverage/coverage_gaps.md + sim/test_coverage_fill.py.
 </Purpose>
 
 <Use_When>
@@ -35,13 +35,13 @@ targeted tests for the high-value gaps, making coverage closure systematic.
 </Execution_Policy>
 
 <Steps>
-1. coverage-analyst reads coverage/coverage.xml (or .dat) via Bash CLI tools:
+1. coverage-analyst reads sim/coverage/coverage.xml (or .dat) via Bash CLI tools:
    - Lists uncovered lines with file:line
    - Lists uncovered branches with condition
    - Lists uncovered FSM states and transitions
    - Notes signal names using project convention (i_/o_ prefixes, {domain}_clk/{domain}_rst_n)
 2. coverage-analyst prioritizes gaps: HIGH (functional path), MED (error path), LOW (unreachable)
-3. coverage-analyst writes coverage/coverage_gaps.md with prioritized gap list
+3. coverage-analyst writes sim/coverage/coverage_gaps.md with prioritized gap list
 4. testbench-dev writes sim/test_coverage_fill.py targeting HIGH gaps
    - Test signals reference RTL ports with correct i_/o_ prefixes
    - Clock driven as {domain}_clk, reset as {domain}_rst_n
@@ -51,10 +51,10 @@ targeted tests for the high-value gaps, making coverage closure systematic.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Analyze coverage/coverage.xml. List uncovered lines, branches, and FSM states. Prioritize gaps as HIGH/MED/LOW. Write coverage/coverage_gaps.md.")
+     prompt="Analyze sim/coverage/coverage.xml. List uncovered lines, branches, and FSM states. Prioritize gaps as HIGH/MED/LOW. Write sim/coverage/coverage_gaps.md.")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read coverage/coverage_gaps.md. Write sim/test_coverage_fill.py targeting all HIGH priority gaps. Each test must exercise the specific uncovered condition.")
+     prompt="Read sim/coverage/coverage_gaps.md. Write sim/test_coverage_fill.py targeting all HIGH priority gaps. Each test must exercise the specific uncovered condition.")
 ```
 </Tool_Usage>
 
@@ -76,7 +76,7 @@ reach unreachable code that should be removed instead.
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] coverage/coverage_gaps.md written with all gaps prioritized
+- [ ] sim/coverage/coverage_gaps.md written with all gaps prioritized
 - [ ] New tests written for all HIGH priority gaps
 - [ ] Coverage improvement measured and reported
 - [ ] Unreachable code gaps flagged separately
@@ -90,7 +90,7 @@ verilator_coverage --annotate coverage_annotated/ coverage.dat
 
 # Convert to lcov for HTML reports
 verilator_coverage --write-info coverage.info coverage.dat
-genhtml coverage.info -o coverage_html/
+genhtml coverage.info -o sim/coverage/html/
 ```
 
 Gap prioritization heuristics:

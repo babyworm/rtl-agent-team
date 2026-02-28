@@ -19,7 +19,7 @@ Tier 4: Integration    — cross-module, end-to-end (rtl-integration-test)
 **Note:** This skill absorbs the former `rtl-regression-run` skill. Multi-seed regression,
 coverage collection, and failure tracking are now unified here.
 
-Outputs: sim/regression/{test}_result.json per test + coverage/coverage.xml.
+Outputs: sim/regression/{test}_result.json per test + sim/coverage/coverage.xml.
 On failure: invoke waveform-analyzer for debug.
 
 Leverages the cocotb ecosystem: cocotb-bus (Driver/Monitor), cocotbext-axi (AXI BFMs),
@@ -121,16 +121,16 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
 3.7. **Coverage Merge (absorbed from rtl-regression-run)**:
    - Merge multi-seed coverage data:
      ```bash
-     bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output coverage/merged.info
+     bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output sim/coverage/merged.info
      ```
    - coverage-analyst checks targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
    - Below target: testbench-dev generates additional tests → re-run regression
-   - Generate HTML report: `genhtml coverage/merged.info -o coverage_html/`
+   - Generate HTML report: `genhtml sim/coverage/merged.info -o sim/coverage/html/`
 
 4. For each test: compare RTL output with ref_model output byte-by-byte
 5. On mismatch: waveform-analyzer reads .vcd, identifies divergence point
 6. Write sim/regression/{test}_result.json: {status, vectors_run, mismatches, divergence_cycle}
-7. Generate coverage/coverage.xml via cocotb coverage plugin
+7. Generate sim/coverage/coverage.xml via cocotb coverage plugin
 8. **Requirement Traceability Matrix** (use `templates/requirement-traceability.md` as format template) **— verify all REQ items have test coverage:**
    - Read requirements.json and all test results
    - Map each REQ-NNN to the test(s) that exercise it
@@ -221,7 +221,7 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 # Coverage Merge (absorbed from rtl-regression-run)
 # ============================================================
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge coverage from multi-seed regression: bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output coverage/merged.info. Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%. Report gaps and suggest additional test vectors.")
+     prompt="Merge coverage from multi-seed regression: bash skills/rtl-regression-run/scripts/merge_coverage.sh --format verilator --output sim/coverage/merged.info. Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%. Report gaps and suggest additional test vectors.")
 
 # ============================================================
 # Incremental Coverage Analysis (starts as modules complete)
@@ -271,7 +271,7 @@ Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes Attr
 - [ ] All test vectors run to completion
 - [ ] RTL vs ref model comparison done per vector
 - [ ] Waveform analysis done for all failures
-- [ ] coverage/coverage.xml generated
+- [ ] sim/coverage/coverage.xml generated
 - [ ] sim/regression/*_result.json written per test
 - [ ] **Requirement Traceability Matrix produced with per-REQ-NNN mapping**
 - [ ] **Every REQ-NNN in requirements.json covered by at least one test**
@@ -280,7 +280,7 @@ Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes Attr
 - [ ] **reviews/phase-5-verify/requirement-traceability.md saved with Requirement Traceability Matrix**
 - [ ] Multi-seed regression passed (5 seeds per module: 1, 42, 123, 1337, 65536)
 - [ ] Per-module pipelined execution used (TB → sim without waiting for all TBs)
-- [ ] Coverage merged across seeds (coverage/merged.info or coverage/coverage.xml)
+- [ ] Coverage merged across seeds (sim/coverage/merged.info or sim/coverage/coverage.xml)
 - [ ] Coverage targets met: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
 - [ ] regression/seed_{seed}_results.json written per seed
 - [ ] Early termination applied if failure rate >5%
@@ -300,10 +300,10 @@ bash skills/rtl-regression-run/scripts/run_regression.sh \
 
 # Coverage merge
 bash skills/rtl-regression-run/scripts/merge_coverage.sh \
-  --format verilator --output coverage/merged.info
+  --format verilator --output sim/coverage/merged.info
 
 # Coverage HTML report
-genhtml coverage/merged.info -o coverage_html/ --title "Regression Coverage"
+genhtml sim/coverage/merged.info -o sim/coverage/html/ --title "Regression Coverage"
 ```
 
 **Verilator coverage collection:**

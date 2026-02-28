@@ -28,7 +28,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "decoder conformance", "conformance stream", "conformance test", "decoder verify", "bitexact decoder" | `/rtl-agent-team:codec-conformance-eval` |
 | **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
 | `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
-| `.sva`, SVA bind files, formal assertion | `/rtl-agent-team:systemverilog-assertion` |
+| `.sv`, `.sva` (SVA, assertion, bind), formal assertion | `/rtl-agent-team:systemverilog-assertion` |
 | UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
 | **--- Phase 4: RTL ---** | |
@@ -499,7 +499,9 @@ reviews/
 refc/                                    # C reference model (Phase 2)
 ├── {module}/                            # Per-module ref model source
 ├── include/                             # Common headers
-└── build/                               # Build output (.so for DPI-C)
+├── build/                               # Build output (.so for DPI-C)
+├── test/                                # Ref model unit tests
+└── vectors/                             # Test vectors (perf/, conformance/)
 bfm/                                     # Bus Functional Models (Phase 2-3)
 ├── {module}/                            # Per-module BFM
 └── include/                             # Common BFM headers
@@ -524,7 +526,19 @@ sim/                                     # Simulation & testbenches (Phase 4-5)
 │   └── test_top_integration.py          # cocotb integration TB
 ├── cdc/                                 # CDC analysis reports
 │   └── cdc_report.md                   # CDC analysis report
-└── formal/                              # SVA formal verification
+├── formal/                              # SVA formal verification
+├── uvm/                                 # UVM testbenches (Phase 5, requires commercial sim)
+│   ├── {module}_env.sv                  # UVM environment per module
+│   └── results/                         # UVM run logs and reports
+├── bugs/                                # Bug reproduction testbenches
+│   └── {bug_id}/                        # Per-bug repro TB + root_cause.md
+├── regression/                          # Multi-seed regression outputs
+│   └── seed_{seed}_results.json         # Per-seed results
+├── coverage/                            # Coverage collection and reports
+│   ├── merged.info                      # Merged coverage data
+│   └── html/                            # Coverage HTML reports
+├── conformance/                         # Conformance test outputs (RTL vs golden)
+└── consistency/                         # 3-way model consistency check outputs
 lint/                                    # Lint flow
 ├── scripts/                             # Lint scripts (run_lint.sh)
 └── reports/                              # Per-module lint results ({module}_lint.txt)
