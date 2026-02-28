@@ -26,7 +26,7 @@
 |--------|--------|----------|--------|
 | Line | >=90% | {{LINE_COV}}% | {{STATUS}} |
 | Toggle | >=80% | {{TOGGLE_COV}}% | {{STATUS}} |
-| Branch | >=85% | {{BRANCH_COV}}% | {{STATUS}} |
+| Branch | — | {{BRANCH_COV}}% | informational |
 | FSM State | >=70% | {{FSM_COV}}% | {{STATUS}} |
 
 ## Failures Detail

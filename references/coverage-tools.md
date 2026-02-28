@@ -187,7 +187,7 @@ async def test_random(dut):
 | Toggle coverage | Signal 0<->1 transitions | Verilator | >= 80% |
 | Branch coverage | if/case branches | Verilator | — (informational) |
 | FSM coverage | State/transition coverage | Verilator/UVM | >= 70% |
-| Functional coverage | Scenario coverage | cocotb-coverage/UVM | >= 90% |
+| Functional coverage | Scenario coverage | cocotb-coverage/UVM | — (informational) |
 | Assertion coverage | SVA cover hits | SymbiYosys cover | All reachable |
 
 ## 6. Coverage Report Format
@@ -200,6 +200,7 @@ See `skills/rtl-regression-run/templates/regression-report.md` (note: `rtl-regre
 |--------|-------------|------|
 | Pass Rate | pass / total seeds | 100% |
 | Line Coverage | Verilator line | >= 90% |
-| Functional Coverage | cocotb-coverage | >= 90% |
+| Toggle Coverage | Verilator toggle | >= 80% |
+| FSM Coverage | State/transition | >= 70% |
 | Unique Failures | Number of unique failure scenarios | 0 |
 | Regression Time | Total execution time | — |

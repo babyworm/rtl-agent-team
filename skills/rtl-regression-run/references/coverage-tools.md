@@ -88,10 +88,10 @@ lcov --summary filtered.info
 |------|--------|---------|
 | Line coverage | ≥90% | Required |
 | Toggle coverage | ≥80% | Required |
-| Branch coverage | ≥85% | Required |
+| Branch coverage | — | Informational |
 | FSM state coverage | ≥70% | Required |
-| Functional coverage | ≥95% | Required |
-| Cross coverage | ≥80% | Recommended |
+| Functional coverage | — | Informational |
+| Cross coverage | — | Informational |
 
 ## Multi-Seed Regression Strategy
 

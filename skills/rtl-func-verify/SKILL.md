@@ -110,7 +110,7 @@ cocotb test files MUST use correct signal names matching RTL port conventions (C
    - A module passes multi-seed regression only when ALL seeds pass
    - **Early termination**: >5% failure rate → halt, report immediately
    - On any seed failure: capture waveform, waveform-analyzer identifies divergence point
-   - Seed-specific results: regression/seed_{seed}_results.json
+   - Seed-specific results: sim/regression/seed_{seed}_results.json
 
 3.5. **Incremental Coverage Analysis**:
    - As modules complete their multi-seed regression, coverage-analyst begins partial analysis
@@ -202,7 +202,7 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 # ============================================================
 # Option A: Automated script (preferred for 5+ seeds)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full multi-seed regression via Bash CLI: bash skills/rtl-regression-run/scripts/run_regression.sh --seeds '1 42 123 1337 65536' --sim icarus --parallel 4. Report per-seed pass/fail, capture .vcd on failure. Save results to regression/seed_{seed}_results.json.",
+     prompt="Run full multi-seed regression via Bash CLI: bash skills/rtl-regression-run/scripts/run_regression.sh --seeds '1 42 123 1337 65536' --sim icarus --parallel 4. Report per-seed pass/fail, capture .vcd on failure. Save results to sim/regression/seed_{seed}_results.json.",
      run_in_background=true)
 
 # Option B: Manual per-seed launch (for fine-grained control)
@@ -282,13 +282,13 @@ Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes Attr
 - [ ] Per-module pipelined execution used (TB → sim without waiting for all TBs)
 - [ ] Coverage merged across seeds (sim/coverage/merged.info or sim/coverage/coverage.xml)
 - [ ] Coverage targets met: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
-- [ ] regression/seed_{seed}_results.json written per seed
+- [ ] sim/regression/seed_{seed}_results.json written per seed
 - [ ] Early termination applied if failure rate >5%
 </Final_Checklist>
 
 <Advanced>
 Multi-seed regression is now mandatory: default seeds 1, 42, 123, 1337, 65536 per module.
-For even broader coverage, add random seeds or use `regression/seed_list.txt`.
+For even broader coverage, add random seeds or use `sim/regression/seed_list.txt`.
 Coverage targets: ≥90% line, ≥80% toggle, ≥70% FSM state.
 Use `COCOTB_RESOLVE_X=RANDOM` to handle X propagation in simulation.
 
