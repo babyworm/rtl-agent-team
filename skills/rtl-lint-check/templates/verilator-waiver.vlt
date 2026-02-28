@@ -9,7 +9,7 @@
 // lint_off -rule UNUSED -file "rtl/debug_port/debug_port.sv" -lines 10-15
 
 // Example: Width mismatch in datapath truncation (verified safe)
-// Justification: Upper bits guaranteed zero by upstream logic (see uarch/datapath.md)
+// Justification: Upper bits guaranteed zero by upstream logic (see docs/phase-3-uarch/datapath.md)
 // lint_off -rule WIDTH -file "rtl/datapath/datapath.sv" -match "Operator ASSIGNW*"
 
 // Example: Undriven signal in reserved register block

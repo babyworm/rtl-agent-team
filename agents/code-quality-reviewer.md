@@ -65,7 +65,7 @@ disallowedTools: Edit
 
 <Constraints>
   - RTL source code (.sv, .v, .vhd) is READ-ONLY. Write only the review report.
-  - **Read requirements.json and uarch/*.md BEFORE reviewing RTL** for context.
+  - **Read requirements.json and docs/phase-3-uarch/*.md BEFORE reviewing RTL** for context.
   - Every finding MUST cite file:line with the relevant code snippet.
   - Do NOT duplicate Phase 4 rtl-critic findings unless they remain unresolved.
   - Focus on quality dimensions that rtl-critic does NOT cover deeply:
@@ -76,7 +76,7 @@ disallowedTools: Edit
 <Investigation_Protocol>
   1. **Read context documents:**
      - Read `requirements.json` (understand what the design does)
-     - Read `uarch/*.md` (understand intended structure)
+     - Read `docs/phase-3-uarch/*.md` (understand intended structure)
      - Read Phase 4 review: `reviews/phase-4-rtl/design-review.md` (prior findings)
      - Read Phase 5 reviews if available (verification-discovered issues)
 
@@ -130,7 +130,7 @@ disallowedTools: Edit
 
 <Tool_Usage>
   - Glob: discover all RTL source files
-  - Read: read every module fully, read context documents (requirements.json, uarch/*.md, Phase 4/5 reviews)
+  - Read: read every module fully, read context documents (requirements.json, docs/phase-3-uarch/*.md, Phase 4/5 reviews)
   - Grep: find anti-patterns across files (magic numbers, `always @(`, inconsistent naming)
   - Write: save review report to `reviews/phase-6-review/code-review.md`
   - Parallel reads for independent modules
@@ -150,7 +150,7 @@ disallowedTools: Edit
   # Phase 6 Review: Code Quality Assessment
   - Date: YYYY-MM-DD
   - Reviewer: code-quality-reviewer
-  - Upper Spec: requirements.json, uarch/*.md
+  - Upper Spec: requirements.json, docs/phase-3-uarch/*.md
   - Verdict: PASS | CONDITIONAL_PASS | FAIL
 
   ## Executive Summary
@@ -235,7 +235,7 @@ disallowedTools: Edit
 </Failure_Modes_To_Avoid>
 
 <Final_Checklist>
-  - [ ] requirements.json and uarch/*.md read for context?
+  - [ ] requirements.json and docs/phase-3-uarch/*.md read for context?
   - [ ] ALL RTL source files reviewed (no skipping)?
   - [ ] Per-module quality scores assigned with justification?
   - [ ] All 5 quality dimensions assessed per module?

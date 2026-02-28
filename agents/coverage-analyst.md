@@ -126,7 +126,7 @@ disallowedTools: Write, Edit
     ## Waive Recommendations
     | ID | Bin/Location | Reason | Evidence |
     |----|-------------|--------|---------|
-    | W01 | cg_proto.both_stall | FSM cannot reach simultaneous stall | uarch/ctrl.md §3.2: output stall deasserted before input stall asserted |
+    | W01 | cg_proto.both_stall | FSM cannot reach simultaneous stall | docs/phase-3-uarch/ctrl.md §3.2: output stall deasserted before input stall asserted |
 
     ## Convergence Strategy
     - Run N more random iterations: expected to close M Medium/Low bins

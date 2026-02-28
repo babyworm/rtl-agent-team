@@ -45,7 +45,7 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 </Execution_Policy>
 
 <Steps>
-1. sva-extractor reads rtl/*/*.sv and uarch/*.md, writes sim/formal/*.sv with SVA properties
+1. sva-extractor reads rtl/*/*.sv and docs/phase-3-uarch/*.md, writes sim/formal/*.sv with SVA properties
    - All signal names must match RTL port conventions (`i_`/`o_` prefixes, `sys_clk`, `sys_rst_n`)
    - Use temporal operators appropriately: `|->` (overlapping), `|=>` (non-overlapping), `##[M:N]` (delay range)
    - Guard `$past()` with a `past_valid` register to avoid undefined first-cycle behavior
@@ -83,7 +83,7 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
 </Good>
 <Bad>
 Writing SVA properties so weak they are trivially true (e.g., assert(1)) — gives false confidence.
-Using `clk` or `data_i` in SVA instead of `sys_clk` or `i_data` — signal name mismatch causes binding errors.
+Using `data_i` in SVA instead of `i_data` -- signal name mismatch causes binding errors. (Note: bare `clk` is valid for single-domain designs.)
 </Bad>
 </Examples>
 

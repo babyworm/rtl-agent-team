@@ -4,19 +4,19 @@ description: "This skill should be used when implementing SystemVerilog RTL modu
 ---
 
 <Purpose>
-Generate synthesizable SystemVerilog RTL for every block defined in uarch/*.md.
+Generate synthesizable SystemVerilog RTL for every block defined in docs/phase-3-uarch/*.md.
 Each module goes through a write → lint → fix cycle before the phase gate passes.
 Output: rtl/*/*.sv, all lint-clean under Verible and slang.
 </Purpose>
 
 <Use_When>
-- Phase 3 artifacts (uarch/*.md, bfm/) are complete
+- Phase 3 artifacts (docs/phase-3-uarch/*.md, bfm/) are complete
 - RTL implementation is needed for a new or revised module
 - Lint errors need systematic resolution across the module set
 </Use_When>
 
 <Do_Not_Use_When>
-- uarch/*.md does not exist for the target module (run rtl-uarch-design first)
+- docs/phase-3-uarch/*.md does not exist for the target module (run rtl-uarch-design first)
 - Only structural refactoring needed (use rtl-refactor instead)
 - Only lint check needed (use rtl-lint-check instead)
 </Do_Not_Use_When>
@@ -39,7 +39,7 @@ Parallelizing per-module coding maximizes throughput.
 </Execution_Policy>
 
 <Steps>
-1. Read uarch/*.md to enumerate all modules
+1. Read docs/phase-3-uarch/*.md to enumerate all modules
 2. Read io_definition.json and CLAUDE.md to confirm naming conventions
 3. `mkdir -p reviews/phase-4-rtl`
 4. **Wave 1 — Write All (parallel)**: Launch N rtl-coder tasks simultaneously, one per module
@@ -86,15 +86,15 @@ Parallelizing per-module coding maximizes throughput.
    - testbench-dev generates `sim/top/tb_{top_module}_smoke.sv`
    - eda-runner executes: compile all modules + top-level sim
 9. **Hierarchical Spec Compliance Check — functional coverage review:**
-   - rtl-critic reads requirements.json, uarch/*.md, and all rtl/*/*.sv files
+   - rtl-critic reads requirements.json, docs/phase-3-uarch/*.md, and all rtl/*/*.sv files
    - Verify every functional requirement (REQ-NNN) from requirements.json is implemented in RTL
-   - Verify every uarch/*.md behavioral specification is reflected in the corresponding module
+   - Verify every docs/phase-3-uarch/*.md behavioral specification is reflected in the corresponding module
    - Output a Functional Completeness Report:
      ```
      REQ-001: implemented in cabac_encoder.sv (OK)
      REQ-003: implemented in input_buffer.sv (OK)
      REQ-007: NOT FOUND in any RTL module — missing implementation
-     uarch/transform.md FSM state FLUSH: NOT FOUND in transform.sv — missing state
+     docs/phase-3-uarch/transform.md FSM state FLUSH: NOT FOUND in transform.sv — missing state
      ```
    - **Save Functional Completeness Report to `reviews/phase-4-rtl/functional-completeness.md`** in standard review Markdown format
    - **Save full design review to `reviews/phase-4-rtl/design-review.md`** in standard review Markdown format
@@ -112,9 +112,9 @@ Parallelizing per-module coding maximizes throughput.
 # ============================================================
 # Launch one rtl-coder task per module — ALL modules simultaneously
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement rtl/cabac_encoder/cabac_encoder.sv from uarch/cabac_encoder.md. Conventions: i_/o_/io_ port prefix (NOT _i/_o suffix), sys_clk/sys_rst_n (NOT clk_i/rst_ni), logic only (no reg/wire), always_ff/always_comb, u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params.")
+     prompt="Implement rtl/cabac_encoder/cabac_encoder.sv from docs/phase-3-uarch/cabac_encoder.md. Conventions: i_/o_/io_ port prefix (NOT _i/_o suffix), sys_clk/sys_rst_n (NOT clk_i/rst_ni), logic only (no reg/wire), always_ff/always_comb, u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params.")
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement rtl/transform/transform.sv from uarch/transform.md. [same conventions]")
+     prompt="Implement rtl/transform/transform.sv from docs/phase-3-uarch/transform.md. [same conventions]")
 # ... one Task per module, all launched in parallel
 
 # ============================================================
@@ -162,7 +162,7 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 # Functional Coverage Review (after all modules lint-clean + unit tested)
 # ============================================================
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY review. Read requirements.json, all uarch/*.md, and all rtl/*/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Save the Functional Completeness Report to reviews/phase-4-rtl/functional-completeness.md in standard review Markdown format. Save the full design review to reviews/phase-4-rtl/design-review.md. verdict: PASS or FAIL — [N] functional gaps found.")
+     prompt="READ-ONLY review. Read requirements.json, all docs/phase-3-uarch/*.md, and all rtl/*/*.sv. For each REQ-NNN in requirements.json, verify it is implemented in at least one RTL module. For each docs/phase-3-uarch/*.md behavioral spec (FSM states, pipeline stages, data paths), verify the corresponding RTL module implements it. Output a Functional Completeness Report with per-REQ and per-uarch-feature status. Save the Functional Completeness Report to reviews/phase-4-rtl/functional-completeness.md in standard review Markdown format. Save the full design review to reviews/phase-4-rtl/design-review.md. verdict: PASS or FAIL — [N] functional gaps found.")
 
 Task(subagent_type="rtl-agent-team:lint-checker",
      prompt="Run lint on all rtl/*/*.sv. Save the lint report to reviews/phase-4-rtl/lint-report.md in standard review Markdown format. verdict: PASS or FAIL + error list[]")
@@ -203,7 +203,7 @@ Only re-lint the modules that were actually fixed in Wave 3.
 - [ ] Basic integration smoke test PASS (sim/top/tb_{top_module}_smoke.sv)
 - [ ] **rtl-critic functional coverage verdict is PASS**
 - [ ] **Every REQ-NNN from requirements.json implemented in at least one RTL module**
-- [ ] **Every uarch/*.md behavioral spec reflected in corresponding RTL module**
+- [ ] **Every docs/phase-3-uarch/*.md behavioral spec reflected in corresponding RTL module**
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)
 - [ ] All clocks: `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`, `clk_sys` (bare `clk` is allowed for single-domain)
 - [ ] All resets: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni` (bare `rst_n` is allowed for single-domain)

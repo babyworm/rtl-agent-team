@@ -203,7 +203,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
 
    invoke rtl-uarch-design and bfm-develop skills concurrently
    - uarch-designer + bfm-dev produce initial artifacts concurrently
-   - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
+   - docs/phase-3-uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
    - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3`
    - **Cascading Quality: 3-round mandatory iterative review** coordinated by rtl-architect:
      - Parallel reviewers each round:
@@ -216,7 +216,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
      - After 3 rounds if not converged -> escalate to user via AskUserQuestion
      - User may request additional rounds beyond 3
 
-   **Phase 3 Artifact Gate**: uarch/*.md + bfm/ directory exist
+   **Phase 3 Artifact Gate**: docs/phase-3-uarch/*.md + bfm/ directory exist
 
    **Phase 3 Quality Gate (μArch Review)**:
    - 3-round iterative review converged (or gaps escalated and user-approved)
@@ -274,7 +274,7 @@ Before reporting completion, verify handoff readiness:
    **Completion Report** (presented to user):
    - Phase 1 artifacts: requirements.json, io_definition.json, domain-analysis.md
    - Phase 2 artifacts: architecture.md, refc/*/*.c, architecture-review.md (PASS)
-   - Phase 3 artifacts: uarch/*.md, bfm/, uarch-review.md (PASS)
+   - Phase 3 artifacts: docs/phase-3-uarch/*.md, bfm/, uarch-review.md (PASS)
    - ADR count and key decisions
    - Next step: "Run `/rtl-agent-team:rtl-uarch-to-verify` to begin RTL implementation + verification"
 

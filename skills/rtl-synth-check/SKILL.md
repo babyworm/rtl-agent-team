@@ -66,7 +66,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    Use `skills/rtl-synth-check/scripts/parse_yosys_stat.py` to automate parsing: `python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/reports/{module}_synth.txt`
 8. Flag any inferred latches as hard errors
 9. **SDC Generation** (when timing constraints are needed):
-   - constraint-writer reads requirements.json (clock frequencies), uarch/*.md (multicycle paths), RTL top-level (port list)
+   - constraint-writer reads requirements.json (clock frequencies), docs/phase-3-uarch/*.md (multicycle paths), RTL top-level (port list)
    - Use `templates/design-constraints.sdc` as the SDC scaffold
    - See `references/sdc-best-practices.md` for writing rules and common mistakes
    - Generates syn/constraints/design.sdc with: clock definitions, IO delays, false paths, multicycle paths, design rules
@@ -83,7 +83,7 @@ Task(subagent_type="rtl-agent-team:synthesis-reporter",
 
 # SDC Generation (optional — when timing constraints needed)
 Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Generate comprehensive SDC for design top module. Read requirements.json for clock frequencies, uarch/*.md for multicycle paths, RTL top-level for port list. Use templates/design-constraints.sdc as scaffold. Write syn/constraints/design.sdc with: create_clock for all clocks using {domain}_clk naming, set_input_delay/set_output_delay for all i_*/o_* ports, set_false_path for async resets with justification, set_multicycle_path (both -setup and -hold) from uarch pipeline specs, design rules (set_max_fanout, set_max_transition). Validate with tclsh. See references/sdc-best-practices.md for rules.")
+     prompt="Generate comprehensive SDC for design top module. Read requirements.json for clock frequencies, docs/phase-3-uarch/*.md for multicycle paths, RTL top-level for port list. Use templates/design-constraints.sdc as scaffold. Write syn/constraints/design.sdc with: create_clock for all clocks using {domain}_clk naming, set_input_delay/set_output_delay for all i_*/o_* ports, set_false_path for async resets with justification, set_multicycle_path (both -setup and -hold) from uarch pipeline specs, design rules (set_max_fanout, set_max_transition). Validate with tclsh. See references/sdc-best-practices.md for rules.")
 ```
 </Tool_Usage>
 

@@ -45,7 +45,7 @@ This eliminates direct agent-to-agent state coupling and enables resumability �
 restart by re-reading its input documents.
 
 Document flow:
-  requirements.json → arch-designer reads → architecture.md → uarch-designer reads → uarch/*.md → rtl-coder reads
+  requirements.json → arch-designer reads → architecture.md → uarch-designer reads → docs/phase-3-uarch/*.md → rtl-coder reads
   reviews/phase-N/ → Quality Gate reads → next phase proceeds or fails
 
 No agent needs to "remember" another agent's output — it reads the document.
@@ -221,7 +221,7 @@ This skill automates sequencing, gate checking, and recovery.
 
    invoke rtl-uarch-design and bfm-develop skills concurrently
    - uarch-designer + bfm-dev produce initial artifacts concurrently
-   - uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
+   - docs/phase-3-uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
    - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3`
    - **Cascading Quality: 3-round mandatory iterative review** coordinated by rtl-architect:
      - Parallel reviewers each round:
@@ -234,7 +234,7 @@ This skill automates sequencing, gate checking, and recovery.
      - After 3 rounds if not converged → escalate to user via AskUserQuestion
      - User may request additional rounds beyond 3
 
-   **Phase 3→4 Artifact Gate**: uarch/*.md + bfm/ directory exist
+   **Phase 3→4 Artifact Gate**: docs/phase-3-uarch/*.md + bfm/ directory exist
 
    **Phase 3→4 Quality Gate (μArch Review)**:
    - 3-round iterative review converged (or gaps escalated and user-approved)
@@ -286,11 +286,11 @@ This skill automates sequencing, gate checking, and recovery.
    - eda-runner runs unit sim (Wave 4)
 
    **Stream B — Early Verification Framework (starts simultaneously with Stream A):**
-   - B1. `sva-extractor`: Generate SVA property skeletons from uarch/*.md
+   - B1. `sva-extractor`: Generate SVA property skeletons from docs/phase-3-uarch/*.md
      (signal names, FSM states, protocol handshakes are known from μArch specs)
-   - B2. `cdc-checker`: Analyze clock domain topology from uarch/*.md
+   - B2. `cdc-checker`: Analyze clock domain topology from docs/phase-3-uarch/*.md
      (identify synchronizer requirements, crossing points, generate preliminary CDC report)
-   - B3. `testbench-dev`: Generate cocotb TB skeletons from uarch/*.md
+   - B3. `testbench-dev`: Generate cocotb TB skeletons from docs/phase-3-uarch/*.md
      (port connectivity, clock/reset structure, test vector scaffolds)
      Mark as "skeleton" — full execution deferred to Phase 5c
 
@@ -603,24 +603,24 @@ Skill(skill="rtl-agent-team:bfm-develop")    # SystemC TLM BFMs
 Bash("mkdir -p reviews/phase-4-rtl")
 
 Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement rtl/{module}/{module}.sv from uarch/{module}.md. Use logic only (no reg/wire), i_/o_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates. Run lint after writing.")
+     prompt="Implement rtl/{module}/{module}.sv from docs/phase-3-uarch/{module}.md. Use logic only (no reg/wire), i_/o_ port prefix, {domain}_clk/{domain}_rst_n, u_ instances, gen_ generates. Run lint after writing.")
 
 # --- Stream B: Early Verification Framework (parallel with Stream A) ---
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Generate SVA property skeletons from uarch/*.md. Extract: FSM state assertions, protocol handshake properties, signal range constraints. Write skeleton bind files to sim/formal/. These are structural skeletons — actual RTL signal bindings will be completed in Phase 5a.",
+     prompt="Generate SVA property skeletons from docs/phase-3-uarch/*.md. Extract: FSM state assertions, protocol handshake properties, signal range constraints. Write skeleton bind files to sim/formal/. These are structural skeletons — actual RTL signal bindings will be completed in Phase 5a.",
      run_in_background=true)
 
 Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Analyze clock domain topology from uarch/*.md. Identify: clock domain boundaries, synchronizer requirements, crossing points. Generate preliminary CDC report. This will be updated with actual RTL in Phase 5b.",
+     prompt="Analyze clock domain topology from docs/phase-3-uarch/*.md. Identify: clock domain boundaries, synchronizer requirements, crossing points. Generate preliminary CDC report. This will be updated with actual RTL in Phase 5b.",
      run_in_background=true)
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Generate cocotb TB skeletons from uarch/*.md at sim/. Include: port connectivity structure, clock/reset generation, test vector scaffolds. Mark as SKELETON — full test logic deferred to Phase 5c. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.",
+     prompt="Generate cocotb TB skeletons from docs/phase-3-uarch/*.md at sim/. Include: port connectivity structure, clock/reset generation, test vector scaffolds. Mark as SKELETON — full test logic deferred to Phase 5c. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.",
      run_in_background=true)
 
 # --- Phase 4→5 Quality Gate ---
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY RTL design review. Read requirements.json, then read uarch/*.md, then read rtl/*/*.sv.
+     prompt="READ-ONLY RTL design review. Read requirements.json, then read docs/phase-3-uarch/*.md, then read rtl/*/*.sv.
 Perform the following checks:
 1. **Functional Coverage Matrix**: For EVERY requirement in requirements.json, trace:
    requirement → uarch section → RTL module and approximate line range.
@@ -629,7 +629,7 @@ Perform the following checks:
      # Phase 4 Review: Functional Completeness
      - Date: (today)
      - Reviewer: rtl-critic
-     - Upper Spec: requirements.json, uarch/*.md
+     - Upper Spec: requirements.json, docs/phase-3-uarch/*.md
      - Verdict: PASS | FAIL
      ## Feature Coverage Checklist
      | REQ ID | uarch Section | RTL Module | Lines | Status |
@@ -643,7 +643,7 @@ Perform the following checks:
    u_ instance prefix, gen_ generate prefix, logic only (no reg/wire),
    always_ff/always_comb (no always @*), ANSI port style.
 5. **Hierarchical compliance**: Does RTL add, remove, or alter any functionality
-   compared to uarch/*.md? Unauthorized deviation → FAIL.
+   compared to docs/phase-3-uarch/*.md? Unauthorized deviation → FAIL.
 Save the full design review to reviews/phase-4-rtl/design-review.md in standard review Markdown format.
 Output the Functional Coverage Matrix table, then:
 verdict: PASS or FAIL + findings[]")
@@ -766,7 +766,7 @@ Read("reviews/phase-5-verify/final-compliance.md")
 Task(subagent_type="rtl-agent-team:code-quality-reviewer",
      model="opus",
      prompt="Perform intensive per-module code quality review for Phase 6.
-Read requirements.json, uarch/*.md for context. Read ALL rtl/*/*.sv.
+Read requirements.json, docs/phase-3-uarch/*.md for context. Read ALL rtl/*/*.sv.
 Read reviews/phase-4-rtl/design-review.md for prior findings.
 Score each module on 5 dimensions (1-10). Detect anti-patterns. Assess cross-module consistency.
 Save to reviews/phase-6-review/code-review.md.")
@@ -774,7 +774,7 @@ Save to reviews/phase-6-review/code-review.md.")
 Task(subagent_type="rtl-agent-team:design-quality-reviewer",
      model="opus",
      prompt="Perform cross-phase design quality review for Phase 6.
-Read ALL artifacts: requirements.json → architecture.md → uarch/*.md → rtl/*/*.sv.
+Read ALL artifacts: requirements.json → architecture.md → docs/phase-3-uarch/*.md → rtl/*/*.sv.
 Build hierarchical consistency matrix. Document design decisions. Assess interface quality.
 Evaluate scalability. Inventory design debt. Classify Phase 5 bugs.
 Save to reviews/phase-6-review/design-review.md.")
@@ -818,7 +818,7 @@ User: "autopilot: implement H.264 CABAC encoder from spec"
 </Good>
 <Good>
 Quality Gate detects upper-spec violation:
-→ Phase 3→4 Quality Gate: rtl-architect finds uarch/entropy_coder.md changed the context table
+→ Phase 3→4 Quality Gate: rtl-architect finds docs/phase-3-uarch/entropy_coder.md changed the context table
   size from 460 (architecture.md) to 256 for "area savings". This is an upper-spec violation.
   IMMEDIATE STOP. Reports: "μArch altered Architecture decision: context table size 460→256.
   This violates Hierarchical Spec Compliance." Waits for user approval before proceeding.
@@ -909,7 +909,7 @@ Phase 4-5 use dependency-aware parallel execution patterns:
 - [ ] Naming conventions enforced at every phase gate:
   - io_definition.json: `i_`/`o_`/`io_` prefix, `{domain}_clk`/`{domain}_rst_n`
   - architecture.md: data path names, clock/reset domain naming
-  - uarch/*.md: all signal names, FSM states, instance prefixes
+  - docs/phase-3-uarch/*.md: all signal names, FSM states, instance prefixes
   - rtl/*/*.sv: lint-clean, naming compliant
 - [ ] All 6 phases completed
 - [ ] State file removed on clean completion

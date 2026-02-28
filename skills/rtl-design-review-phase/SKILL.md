@@ -114,7 +114,7 @@ Bash("mkdir -p reviews/phase-6-review")
 Task(subagent_type="rtl-agent-team:code-quality-reviewer",
      model="opus",
      prompt="Perform intensive per-module code quality review for Phase 6.
-Read requirements.json, uarch/*.md for context.
+Read requirements.json, docs/phase-3-uarch/*.md for context.
 Read ALL rtl/*/*.sv files for full code review.
 Read reviews/phase-4-rtl/design-review.md for prior findings to track.
 Read reviews/phase-5-verify/*.md for verification-discovered issues.
@@ -127,7 +127,7 @@ Save comprehensive review to reviews/phase-6-review/code-review.md.")
 Task(subagent_type="rtl-agent-team:design-quality-reviewer",
      model="opus",
      prompt="Perform cross-phase design quality review for Phase 6.
-Read ALL design artifacts in order: requirements.json → architecture.md → uarch/*.md → rtl/*/*.sv.
+Read ALL design artifacts in order: requirements.json → architecture.md → docs/phase-3-uarch/*.md → rtl/*/*.sv.
 Read Phase 4/5 review results for context.
 Build hierarchical consistency matrix: trace every REQ through Spec→Arch→μArch→RTL.
 Document major design decisions with rationale and trade-off assessment.
@@ -147,7 +147,7 @@ Save comprehensive review to reviews/phase-6-review/design-review.md.")
 Task(subagent_type="rtl-agent-team:design-note-writer",
      model="opus",
      prompt="Write comprehensive design note for Phase 6.
-Read ALL artifacts: requirements.json, architecture.md, uarch/*.md, rtl/*/*.sv.
+Read ALL artifacts: requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv.
 Read Phase 4/5/6 reviews for context: reviews/phase-4-rtl/*.md, reviews/phase-5-verify/*.md, reviews/phase-6-review/code-review.md, reviews/phase-6-review/design-review.md.
 For each RTL module: document purpose, I/O table (verified against actual ports), internal structure (Mermaid), algorithm, FSM diagrams, timing, edge cases.
 Document system-level integration: data flow, control flow, mode operations, reset sequence.

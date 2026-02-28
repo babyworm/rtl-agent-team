@@ -66,7 +66,7 @@ disallowedTools: Edit
 
   <Investigation_Protocol>
     1. Read the cdc-checker report to get the list of all crossings and their classifications.
-    2. Read the architecture spec (`uarch/*.md`) for clock domain requirements and frequency targets.
+    2. Read the architecture spec (`docs/phase-3-uarch/*.md`) for clock domain requirements and frequency targets.
     3. For each crossing marked SAFE by cdc-checker, review the synchronizer choice:
        a. Single-bit control: 2FF is correct. Verify flip-flop chain is genuine (not optimized away).
        b. Multi-bit data: Verify async FIFO or handshake protocol with data stability guarantee.
@@ -140,7 +140,7 @@ disallowedTools: Edit
     - Date: YYYY-MM-DD
     - Reviewer: cdc-reviewer
     - Input: cdc-checker analysis report
-    - Upper Spec: uarch/*.md, architecture spec
+    - Upper Spec: docs/phase-3-uarch/*.md, architecture spec
     - Verdict: PASS | FAIL
 
     ## Summary

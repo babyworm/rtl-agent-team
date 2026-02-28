@@ -60,7 +60,7 @@ Testbenches MUST follow the project coding conventions (CLAUDE.md):
 </Execution_Policy>
 
 <Steps>
-1. Read uarch/{module}.md to extract key features to test:
+1. Read docs/phase-3-uarch/{module}.md to extract key features to test:
    - FSM states and transitions
    - Pipeline stage behavior (latency, throughput)
    - Data transformation correctness (arithmetic, encoding, etc.)
@@ -130,7 +130,7 @@ Testbenches MUST follow the project coding conventions (CLAUDE.md):
 # Step 2: Write Tier 2 testbenches (parallel, one per module)
 # ============================================================
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Write Tier 2 SV unit testbench sim/cabac_encoder/tb_cabac_encoder.sv for rtl/cabac_encoder/cabac_encoder.sv. Use templates/sv-testbench-template.sv as scaffold. Read uarch/cabac_encoder.md to identify key features: FSM states, pipeline stages, data transforms. Write at least 1 test case per uarch feature. Use sys_clk/sys_rst_n, i_/o_ port prefixes, u_dut instance name.")
+     prompt="Write Tier 2 SV unit testbench sim/cabac_encoder/tb_cabac_encoder.sv for rtl/cabac_encoder/cabac_encoder.sv. Use templates/sv-testbench-template.sv as scaffold. Read docs/phase-3-uarch/cabac_encoder.md to identify key features: FSM states, pipeline stages, data transforms. Write at least 1 test case per uarch feature. Use sys_clk/sys_rst_n, i_/o_ port prefixes, u_dut instance name.")
 
 # ============================================================
 # Step 3A: DPI-C reference comparison (verilator)
@@ -154,7 +154,7 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
 
 <Examples>
 <Good>
-6 modules, 6 testbenches written in parallel; each targets 3-5 uarch features from uarch/*.md;
+6 modules, 6 testbenches written in parallel; each targets 3-5 uarch features from docs/phase-3-uarch/*.md;
 all use `sys_clk`/`sys_rst_n` and `i_`/`o_` port naming; reference comparison via DPI-C (Mode A);
 5 modules pass all features; 1 module fails FSM transition test (missing FLUSH state);
 waveform shows state register not updated on bypass path; RTL fix applied; retest passes;
@@ -162,7 +162,7 @@ sim/{module}/*_unit_results.json produced for all modules with per-feature statu
 </Good>
 <Bad>
 Writing a single monolithic testbench for the entire design — hard to isolate failures and debug.
-Using `clk`, `rst_n`, `data_i` instead of `sys_clk`, `sys_rst_n`, `i_data` — violates project conventions.
+Using `data_i` instead of `i_data` -- violates project conventions. (Note: bare `clk`/`rst_n` are valid for single-domain designs.)
 Only testing connectivity (reset + basic I/O) without targeting uarch features — that's Tier 1, not Tier 2.
 Running iverilog directly instead of using run_sim.sh — loses simulator portability.
 </Bad>

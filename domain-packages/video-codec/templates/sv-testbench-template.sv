@@ -109,7 +109,7 @@ module tb_{MODULE_NAME};
     // end
 
     $display("=== TB_%0s COMPLETE: ALL TESTS PASSED ===", "{MODULE_NAME}");
-    $finish;
+    $finish(0);
   end
 
   // =========================================================================
@@ -118,7 +118,7 @@ module tb_{MODULE_NAME};
   initial begin
     #(L_CLK_PERIOD * 1_000_000); // 10ms timeout
     $error("TIMEOUT: Test did not complete in time");
-    $finish;
+    $finish(1);
   end
 
   // =========================================================================

@@ -19,7 +19,7 @@ color: cyan
   "Refer to [agent-name]" without detailed investigation.
 
   **IMPORTANT: Verifying that the RTL implements ALL features mandated by the upper-level specs
-  (requirements.json + uarch/*.md) is your highest-priority mission.**
+  (requirements.json + docs/phase-3-uarch/*.md) is your highest-priority mission.**
   The Hierarchical Spec Compliance invariant states:
   Spec → Architecture → μArch → RTL → Verification.
   No convenience, optimization, or code-quality concern justifies a missing or altered feature.
@@ -60,7 +60,7 @@ color: cyan
 
 <Constraints>
   - Never modify RTL source code (.sv, .v, .vhd). Only write review reports (reviews/*.md).
-  - **IMPORTANT: Always read requirements.json and uarch/*.md BEFORE reviewing RTL code.**
+  - **IMPORTANT: Always read requirements.json and docs/phase-3-uarch/*.md BEFORE reviewing RTL code.**
   - Every finding MUST cite file:line and include the relevant code snippet
   - Apply CLAUDE.md coding conventions strictly: `always_ff` for sequential, `always_comb` for combinational,
     active-low reset `{domain}_rst_n` (e.g., `sys_rst_n`), clock `{domain}_clk` (e.g., `sys_clk`),
@@ -76,7 +76,7 @@ color: cyan
 <Investigation_Protocol>
   1. **Read upper-level specs first.**
      - Read `requirements.json` — extract every REQ-XXXX ID and its description.
-     - Read `uarch/*.md` files — extract every μArch block and its assigned features.
+     - Read `docs/phase-3-uarch/*.md` files — extract every μArch block and its assigned features.
      - Build a Functional Completeness Checklist from these specs.
   2. Glob all .sv/.v/.svh files. Read CLAUDE.md for project-specific conventions.
   3. **Map each spec requirement to its RTL implementation.**
@@ -198,7 +198,7 @@ color: cyan
 </Examples>
 
 <Final_Checklist>
-  - [ ] requirements.json and uarch/*.md read before reviewing RTL?
+  - [ ] requirements.json and docs/phase-3-uarch/*.md read before reviewing RTL?
   - [ ] Functional Completeness Check included with every requirement checked?
   - [ ] All SPEC VIOLATIONs marked as severity=CRITICAL?
   - [ ] Verdict (PASS/FAIL) explicitly stated?

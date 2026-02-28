@@ -1,6 +1,6 @@
 ---
 name: rtl-uarch-design
-description: "This skill should be used when creating microarchitecture specs (FSM, pipeline, register maps) in Phase 3. Produces uarch/*.md with pipeline diagrams."
+description: "This skill should be used when creating microarchitecture specs (FSM, pipeline, register maps) in Phase 3. Produces docs/phase-3-uarch/*.md with pipeline diagrams."
 ---
 
 <Purpose>
@@ -15,7 +15,7 @@ Phase 3 has three key responsibilities:
 3. **Signal interface concretization**: Define concrete signal names (`i_`/`o_` prefix), exact bit widths,
    FSM states, register maps — these flow directly to RTL in Phase 4
 
-Outputs: uarch/*.md files covering module decomposition, pipeline diagrams (inter/intra),
+Outputs: docs/phase-3-uarch/*.md files covering module decomposition, pipeline diagrams (inter/intra),
 FSM specifications, register maps, memory organization.
 Runs in parallel with bfm-develop during Phase 3.
 </Purpose>
@@ -58,7 +58,7 @@ timing-advisor ensures designs are achievable at the target frequency.
 <Steps>
 1. Read architecture.md and block_diagram
 2. `mkdir -p reviews/phase-3-uarch`
-3. uarch-designer produces per-block uarch/*.md with the following structure:
+3. uarch-designer produces per-block docs/phase-3-uarch/*.md with the following structure:
    - **Module decomposition**: Identify which architecture blocks need sub-module decomposition
      - e.g., `prediction` → `intra_pred` + `inter_pred` + `mv_predictor`
      - Blocks that are small enough remain as single modules
@@ -110,7 +110,7 @@ timing-advisor ensures designs are achievable at the target frequency.
    - **Save to `reviews/phase-3-uarch/uarch-review-r1.md`** in standard review Markdown format
    - On FAIL with boundary change: **escalate — may require Phase 2 (arch-design) revision**
 6. **Targeted revision Round 1→2** — re-delegate ONLY to experts/modules with feedback:
-   - uarch-designer revises specific uarch/*.md files for feature/structure issues
+   - uarch-designer revises specific docs/phase-3-uarch/*.md files for feature/structure issues
    - Experts without findings are NOT re-invoked
 7. **Review Round 2** — same 4 reviewers in parallel, coordinator assesses convergence:
    - Focus on: were Round 1 issues resolved? Any new issues introduced by revisions?
@@ -132,7 +132,7 @@ timing-advisor ensures designs are achievable at the target frequency.
         graph LR
             IF[Fetch] --> ID[Decode] --> EX[Execute] --> WB[Writeback]
         ```
-    - Verify all signal names in uarch/*.md comply with naming conventions
+    - Verify all signal names in docs/phase-3-uarch/*.md comply with naming conventions
 </Steps>
 
 <Tool_Usage>
@@ -141,20 +141,20 @@ Bash("mkdir -p reviews/phase-3-uarch")
 
 # --- Step 3: uarch-designer draft ---
 Task(subagent_type="rtl-agent-team:uarch-designer",
-     prompt="Produce microarchitecture docs at uarch/ from architecture.md. Include FSM, pipeline, register map per block. All signal names MUST use: i_/o_/io_ prefix (NOT _i/_o suffix), {domain}_clk (e.g. sys_clk), {domain}_rst_n (e.g. sys_rst_n), u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params, typedef enum for FSM states.")
+     prompt="Produce microarchitecture docs at docs/phase-3-uarch/ from architecture.md. Include FSM, pipeline, register map per block. All signal names MUST use: i_/o_/io_ prefix (NOT _i/_o suffix), {domain}_clk (e.g. sys_clk), {domain}_rst_n (e.g. sys_rst_n), u_ instance prefix, gen_ generate prefix, UPPER_SNAKE_CASE params, typedef enum for FSM states.")
 
 # --- Step 4: Parallel initial review (4 reviewers) ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review Round 1: Read architecture.md and all uarch/*.md. Verify block boundary alignment (1:1 correspondence), feature preservation (all architecture features present), interface correctness. Save Feature Preservation Checklist to reviews/phase-3-uarch/feature-preservation.md in standard review Markdown format.")
+     prompt="Review Round 1: Read architecture.md and all docs/phase-3-uarch/*.md. Verify block boundary alignment (1:1 correspondence), feature preservation (all architecture features present), interface correctness. Save Feature Preservation Checklist to reviews/phase-3-uarch/feature-preservation.md in standard review Markdown format.")
 
 Task(subagent_type="rtl-agent-team:timing-advisor",
-     prompt="Review Round 1: Review uarch/*.md for critical path issues at target frequency. Flag pipeline imbalance, register placement feasibility, combinational paths that violate timing.")
+     prompt="Review Round 1: Review docs/phase-3-uarch/*.md for critical path issues at target frequency. Flag pipeline imbalance, register placement feasibility, combinational paths that violate timing.")
 
 Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
-     prompt="Review Round 1: Read uarch/*.md. Verify algorithm ↔ μArch consistency. Analyze memory access optimization: SRAM banking, port conflicts, access scheduling. Review interface optimization: handshake protocols, backpressure mechanisms.")
+     prompt="Review Round 1: Read docs/phase-3-uarch/*.md. Verify algorithm ↔ μArch consistency. Analyze memory access optimization: SRAM banking, port conflicts, access scheduling. Review interface optimization: handshake protocols, backpressure mechanisms.")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Read uarch/*.md and refc/. Check model consistency: behavioral match between uarch specs and C ref model, data widths, fixed-point formats, rounding modes.")
+     prompt="Review Round 1: Read docs/phase-3-uarch/*.md and refc/. Check model consistency: behavioral match between uarch specs and C ref model, data widths, fixed-point formats, rounding modes.")
 
 # --- Step 5: Coordinator aggregates Round 1 findings ---
 Task(subagent_type="rtl-agent-team:rtl-architect",
@@ -162,7 +162,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 # --- Step 6: Targeted revision Round 1→2 ---
 Task(subagent_type="rtl-agent-team:uarch-designer",
-     prompt="Revise specific uarch/*.md files to address Round 1 findings: [paste targeted feedback]. Only modify files with identified issues.")
+     prompt="Revise specific docs/phase-3-uarch/*.md files to address Round 1 findings: [paste targeted feedback]. Only modify files with identified issues.")
 
 # --- Step 7: Review Round 2 (4 reviewers in parallel) ---
 # Same pattern as Round 1 — save to reviews/phase-3-uarch/uarch-review-r2.md
@@ -206,7 +206,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 → Final verdict: PASS. All 3 round artifacts saved (r1, r2, r3).
 </Good>
 <Good>
-uarch-designer produces 8 uarch/*.md files; timing-advisor flags 3-cycle combinational path in entropy coder;
+uarch-designer produces 8 docs/phase-3-uarch/*.md files; timing-advisor flags 3-cycle combinational path in entropy coder;
 uarch-designer adds pipeline register, updates FSM accordingly.
 </Good>
 <Bad>
@@ -226,7 +226,7 @@ requiring μArch redesign and full RTL rewrite. Cascading Quality Principle viol
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] uarch/*.md exists for each block in architecture.md
+- [ ] docs/phase-3-uarch/*.md exists for each block in architecture.md
 - [ ] **Module decomposition documented** for every block (sub-modules defined or single-module rationale)
 - [ ] **Inter-module pipelines defined** (data flow, handshake, backpressure between sub-modules)
 - [ ] **Intra-module pipelines defined** (stages, register cuts, hazard analysis per sub-module)
@@ -256,10 +256,10 @@ requiring μArch redesign and full RTL rewrite. Cascading Quality Principle viol
 </Final_Checklist>
 
 <Advanced>
-Register maps in uarch/*.md become the ground truth for rtl-ipxact-gen and rtl-document.
+Register maps in docs/phase-3-uarch/*.md become the ground truth for rtl-ipxact-gen and rtl-document.
 FSMs must be deterministic with explicit reset states and no deadlock conditions.
 
-**Convention enforcement is critical here** — uarch/*.md signal names are directly copied by rtl-coder.
+**Convention enforcement is critical here** — docs/phase-3-uarch/*.md signal names are directly copied by rtl-coder.
 Wrong naming in uarch (e.g., `clk_i` instead of `clk`/`sys_clk`, or suffix `data_i` instead of prefix `i_data`)
 will propagate to RTL and require expensive refactoring across all modules.
 </Advanced>

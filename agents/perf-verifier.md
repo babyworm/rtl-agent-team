@@ -215,7 +215,7 @@ async def backpressure_driver(dut, ready_prob: float = 0.7):
   </Execution_Policy>
 
   <Investigation_Protocol>
-    1. Read uarch/*.md for target latency and throughput specifications
+    1. Read docs/phase-3-uarch/*.md for target latency and throughput specifications
     2. Read io_definition.json for port names and handshake signals (i_valid/o_ready)
     3. Run cold-start test: single transaction, measure issue-to-result latency
     4. Run warm-pipeline test: 100 back-to-back transactions, use steady-state latency

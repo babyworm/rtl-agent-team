@@ -23,7 +23,7 @@ color: cyan
     - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
 
     In SDC/XDC constraints, use the project clock/port naming: `[get_ports sys_clk]`,
-    `[get_ports i_data*]`, `[get_ports o_result*]`. Never use bare `clk` or suffixed `clk_i`.
+    `[get_ports i_data*]`, `[get_ports o_result*]`. Never use suffixed `clk_i`. Use `clk` (single-domain) or `{domain}_clk` (multi-domain).
   </Role>
 
   <Why_This_Matters>
@@ -61,7 +61,7 @@ color: cyan
   <Investigation_Protocol>
     1. Read timing_constraints.json or requirements.json for clock frequencies and I/O timing specs.
     2. Read the CDC analysis report (from cdc-checker) for all inter-domain paths.
-    3. Read uarch/*.md for all multicycle operations (N-cycle pipelines, multi-cycle computations).
+    3. Read docs/phase-3-uarch/*.md for all multicycle operations (N-cycle pipelines, multi-cycle computations).
     4. Run rtl-explorer (or self-explore) to build the complete clock domain map.
     5. Read RTL top-level file to find all clock input ports.
     6. Trace each clock: is it directly used, divided, or fed to a PLL/MMCM?
@@ -75,7 +75,7 @@ color: cyan
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read timing_constraints.json, requirements.json, uarch/*.md, top-level RTL
+    - Read: read timing_constraints.json, requirements.json, docs/phase-3-uarch/*.md, top-level RTL
     - Glob: find RTL files, find existing .sdc/.xdc files for conventions
     - Grep: find clock port names in RTL, find set_multicycle_path patterns in existing constraints
     - Write: create syn/constraints/design.sdc or syn/constraints/design.xdc
@@ -104,14 +104,14 @@ color: cyan
     # False Paths
     ##############################################################
     # Static config registers: written only during initialization, never during operation
-    # Source: uarch/ctrl.md section 4.2 — config registers are static during operation
+    # Source: docs/phase-3-uarch/ctrl.md section 4.2 — config registers are static during operation
     set_false_path -from [get_cells config_reg*] -to [get_cells *]
 
     ##############################################################
     # Multicycle Paths
     ##############################################################
     # MAC unit takes 4 cycles: setup MCP=4, hold MCP=3
-    # Source: uarch/mac_unit.md pipeline stage table
+    # Source: docs/phase-3-uarch/mac_unit.md pipeline stage table
     set_multicycle_path 4 -setup -from [get_cells mac_u/*] -to [get_cells mac_u/result_reg*]
     set_multicycle_path 3 -hold  -from [get_cells mac_u/*] -to [get_cells mac_u/result_reg*]
 
@@ -148,8 +148,8 @@ color: cyan
     ## Constraint Rationale
     | Constraint | Source | Justification |
     |-----------|--------|--------------|
-    | set_false_path config_reg | uarch/ctrl.md §4.2 | Config written only at init |
-    | set_multicycle_path 4 mac_u | uarch/mac_unit.md pipeline table | 4-stage MAC pipeline |
+    | set_false_path config_reg | docs/phase-3-uarch/ctrl.md §4.2 | Config written only at init |
+    | set_multicycle_path 4 mac_u | docs/phase-3-uarch/mac_unit.md pipeline table | 4-stage MAC pipeline |
   </Output_Format>
 
   <Failure_Modes_To_Avoid>
@@ -164,7 +164,7 @@ color: cyan
     <Good>
       "set_multicycle_path 4 -setup -from [get_cells u_mac/*] -to [get_cells u_mac/result_reg*]
       set_multicycle_path 3 -hold  -from [get_cells u_mac/*] -to [get_cells u_mac/result_reg*]
-      # Source: uarch/mac_unit.md Table 2: MAC pipeline is 4 stages. setup=4, hold=3 per SDC convention."
+      # Source: docs/phase-3-uarch/mac_unit.md Table 2: MAC pipeline is 4 stages. setup=4, hold=3 per SDC convention."
     </Good>
     <Bad>
       "set_multicycle_path 4 -from [get_cells u_mac/*] -to [get_cells *]" —

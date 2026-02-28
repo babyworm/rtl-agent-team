@@ -96,11 +96,11 @@ disallowedTools: Write, Edit
 
     Hierarchy notation:
     ```
-    top_module (rtl/top.sv:1)
-    ├── u_ctrl: ctrl_fsm (rtl/ctrl_fsm.sv:1) [sys_clk, sys_rst_n]
-    │   └── u_timer: timer_cnt (rtl/timer_cnt.sv:1) [sys_clk]
-    └── u_data: datapath (rtl/datapath.sv:1) [pixel_clk, pixel_rst_n]
-        └── u_mac: mac_unit (rtl/mac_unit.sv:1) [pixel_clk]
+    top_module (rtl/top/top.sv:1)
+    ├── u_ctrl: ctrl_fsm (rtl/ctrl_fsm/ctrl_fsm.sv:1) [sys_clk, sys_rst_n]
+    │   └── u_timer: timer_cnt (rtl/timer_cnt/timer_cnt.sv:1) [sys_clk]
+    └── u_data: datapath (rtl/datapath/datapath.sv:1) [pixel_clk, pixel_rst_n]
+        └── u_mac: mac_unit (rtl/mac_unit/mac_unit.sv:1) [pixel_clk]
     ```
   </Tool_Usage>
 
@@ -122,7 +122,7 @@ disallowedTools: Write, Edit
     ## Module Inventory
     | Module Name     | File                  | Lines | Instantiated By       |
     |-----------------|-----------------------|-------|-----------------------|
-    | top_module      | rtl/top.sv            | 234   | (top level)           |
+    | top_module      | rtl/top/top.sv        | 234   | (top level)           |
     | ctrl_fsm        | rtl/ctrl/ctrl_fsm.sv  | 89    | top_module:u_ctrl     |
 
     ## Instantiation Hierarchy

@@ -62,7 +62,7 @@ color: yellow
 
   <Investigation_Protocol>
     1. Read io_definition.json to identify which protocol interface is present (AXI4/AHB/APB).
-    2. Read uarch/*.md to determine if the DUT is a master or slave for each interface.
+    2. Read docs/phase-3-uarch/*.md to determine if the DUT is a master or slave for each interface.
     3. Identify the exact protocol variant: AXI4 full, AXI4-Lite, AHB-5, APB4.
     4. For AXI4: enumerate all channels (AW, W, B, AR, R) with their signals from io_def.
     5. Enumerate mandatory protocol rules from memory (AMBA spec knowledge):
@@ -79,7 +79,7 @@ color: yellow
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read io_definition.json, uarch/*.md for interface details
+    - Read: read io_definition.json, docs/phase-3-uarch/*.md for interface details
     - Write: create sim/formal/module_name_axi4.sva, sim/formal/module_name_proto.sby
     - Bash: run simulation with protocol assertions: `make sim ASSERT=1`
            run formal: `sby -f module_name_proto.sby`

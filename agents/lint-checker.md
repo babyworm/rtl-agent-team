@@ -142,7 +142,7 @@ color: yellow
 <Examples>
   <Good>
     Input: 8 files, all using `always @(posedge clk)` instead of `always_ff @(posedge sys_clk)`.
-    Output: Groups all 8 as one root cause "Non-SystemVerilog sequential block syntax", lists all 8 file:line refs, shows one fix example applicable to all, notes this is a synthesizability risk because `always` does not enforce non-blocking assignment. Also flags bare `clk` as violating the `{domain}_clk` naming convention.
+    Output: Groups all 8 as one root cause "Non-SystemVerilog sequential block syntax", lists all 8 file:line refs, shows one fix example applicable to all, notes this is a synthesizability risk because `always` does not enforce non-blocking assignment. Notes that bare `clk` is valid for single-domain designs per project convention; only flags it if the design has multiple clock domains (should use `{domain}_clk`).
   </Good>
   <Bad>
     Input: same 8 files.

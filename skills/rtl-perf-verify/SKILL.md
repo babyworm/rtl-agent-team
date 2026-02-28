@@ -72,7 +72,7 @@ Performance counters use `sys_clk` and track `o_valid`/`i_ready` handshakes.
 <Bad>
 Using random test vectors for performance measurement — non-deterministic results make
 regression comparison meaningless.
-Using `clk` instead of `sys_clk` in performance counters — breaks consistency with RTL.
+Using `clk_i` or `data_i` in performance counters instead of `clk`/`{domain}_clk` or `i_data` -- breaks consistency with RTL conventions.
 </Bad>
 </Examples>
 

@@ -120,7 +120,7 @@ Separating design from implementation also enables:
    - `optional_on_demand` files: skip validation, load lazily during execution
 
    Context loading:
-   - Read required_full_read files (uarch/*.md, io_definition.json)
+   - Read required_full_read files (docs/phase-3-uarch/*.md, io_definition.json)
    - Read required_summary_only files (phase-1-summary.md, phase-2-summary.md)
 
 ---
@@ -148,11 +148,11 @@ Separating design from implementation also enables:
    - eda-runner runs unit sim (Wave 4)
 
    **Stream B — Early Verification Framework (starts simultaneously with Stream A):**
-   - B1. `sva-extractor`: Generate SVA property skeletons from uarch/*.md
+   - B1. `sva-extractor`: Generate SVA property skeletons from docs/phase-3-uarch/*.md
      (signal names, FSM states, protocol handshakes are known from μArch specs)
-   - B2. `cdc-checker`: Analyze clock domain topology from uarch/*.md
+   - B2. `cdc-checker`: Analyze clock domain topology from docs/phase-3-uarch/*.md
      (identify synchronizer requirements, crossing points, generate preliminary CDC report)
-   - B3. `testbench-dev`: Generate cocotb TB skeletons from uarch/*.md
+   - B3. `testbench-dev`: Generate cocotb TB skeletons from docs/phase-3-uarch/*.md
      (port connectivity, clock/reset structure, test vector scaffolds)
      Mark as "skeleton" — full execution deferred to Phase 5c
 
@@ -384,11 +384,11 @@ Skill(skill="rtl-agent-team:rtl-code")
 
 # Stream B: Early verification framework (parallel with Stream A)
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Generate SVA property skeletons from uarch/*.md. Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and sim/formal/.")
+     prompt="Generate SVA property skeletons from docs/phase-3-uarch/*.md. Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and sim/formal/.")
 Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Analyze clock domain topology from uarch/*.md. Save preliminary CDC report to docs/phase-4-rtl/stream-b-cdc-preliminary.md.")
+     prompt="Analyze clock domain topology from docs/phase-3-uarch/*.md. Save preliminary CDC report to docs/phase-4-rtl/stream-b-cdc-preliminary.md.")
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Generate cocotb TB skeletons from uarch/*.md. Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and sim/.")
+     prompt="Generate cocotb TB skeletons from docs/phase-3-uarch/*.md. Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and sim/.")
 
 # Phase 4→5 Quality Gate
 Task(subagent_type="rtl-agent-team:rtl-critic",

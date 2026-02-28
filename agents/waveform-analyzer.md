@@ -59,7 +59,7 @@ disallowedTools: Write, Edit
 
   <Investigation_Protocol>
     1. Read the failure report: which test failed, which assertion fired, what output was wrong.
-    2. Read uarch/*.md for the block under analysis: understand expected behavior, FSM states, latency.
+    2. Read docs/phase-3-uarch/*.md for the block under analysis: understand expected behavior, FSM states, latency.
     3. Read the RTL file for the failing module to understand signal relationships.
     4. Open the VCD/FST with a waveform viewer command to extract signal values.
     5. Locate the failure point: the exact cycle where the wrong output was observed.
@@ -73,7 +73,7 @@ disallowedTools: Write, Edit
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read failure report, uarch/*.md, RTL source files
+    - Read: read failure report, docs/phase-3-uarch/*.md, RTL source files
     - Bash: extract waveform data using vcd2csv, gtkwave TCL scripts, or python-vcd
       Example: `python3 -c "import vcd; ..."` to parse VCD and extract signal values at specific cycles
       Example: `gtkwave --script extract.tcl waveform.fst` to dump signal values to text
@@ -143,14 +143,14 @@ disallowedTools: Write, Edit
     | 3    | N     | o_valid| 0     | 1        | Output never driven  |
 
     ## Root Cause
-    **File**: rtl/module.sv line 87
+    **File**: rtl/{module}/{module}.sv line 87
     **Signal**: next_state_d
     **Finding**: Transition from IDLE to PROC requires `i_valid && !stall`, but stall signal
-    is uninitialized at reset (X) and never transitions to 0 because i_stall_src.sv:34
+    is uninitialized at reset (X) and never transitions to 0 because stall_src.sv:34
     drives it without a default in its always_comb block.
 
     ## Fix Recommendation
-    In rtl/i_stall_src.sv line 34: add `stall = 1'b0;` as default assignment
+    In rtl/stall_src/stall_src.sv line 34: add `stall = 1'b0;` as default assignment
     before the conditional that sets stall = 1 on overflow.
 
     ## Clock Domain Analysis

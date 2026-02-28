@@ -87,7 +87,7 @@ disallowedTools: Write, Edit
 
   <Tool_Usage>
     - Read: read codec spec, requirements.json, architecture.md
-    - Grep: search uarch/*.md for areas needing codec-specific guidance
+    - Grep: search docs/phase-3-uarch/*.md for areas needing codec-specific guidance
     - Glob: find existing codec-related RTL or spec files
     - NO Write, NO Edit
 

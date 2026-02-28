@@ -9,16 +9,16 @@
 
 ```bash
 # Line coverage
-verilator --cc --coverage-line -f filelist.f
+verilator --cc --coverage-line -f rtl/filelist_top.f
 
 # Toggle coverage (signal toggling)
-verilator --cc --coverage-toggle -f filelist.f
+verilator --cc --coverage-toggle -f rtl/filelist_top.f
 
 # User-inserted coverage points
-verilator --cc --coverage-user -f filelist.f
+verilator --cc --coverage-user -f rtl/filelist_top.f
 
 # All coverage types
-verilator --cc --coverage -f filelist.f
+verilator --cc --coverage -f rtl/filelist_top.f
 ```
 
 ### 1.2 Coverage Data Collection

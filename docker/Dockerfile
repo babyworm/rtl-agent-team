@@ -1,6 +1,6 @@
 # =============================================================================
 # RTL Agent Team — Open-Source EDA Toolchain Docker Image
-# All tools needed for the 5-Phase RTL design pipeline
+# All tools needed for the 6-Phase RTL design pipeline
 # =============================================================================
 #
 # Build:

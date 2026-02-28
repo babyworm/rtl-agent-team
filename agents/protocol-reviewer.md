@@ -61,7 +61,7 @@ disallowedTools: Edit
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read architecture spec (`uarch/*.md`) for throughput/latency requirements.
+    1. Read architecture spec (`docs/phase-3-uarch/*.md`) for throughput/latency requirements.
     2. Read `requirements.json` for bandwidth targets and interface requirements.
     3. Identify all AXI/AHB/APB interfaces in the design:
        - Grep for AXI signal patterns (AWVALID, ARVALID, RVALID, etc.)
@@ -142,7 +142,7 @@ disallowedTools: Edit
     # Protocol Design Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: protocol-reviewer
-    - Upper Spec: requirements.json, uarch/*.md
+    - Upper Spec: requirements.json, docs/phase-3-uarch/*.md
     - Verdict: PASS | FAIL
 
     ## Interface Inventory

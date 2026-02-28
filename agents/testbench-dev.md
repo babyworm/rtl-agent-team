@@ -60,7 +60,7 @@ color: magenta
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read uarch/*.md for DUT interface, latency, and FSM states to cover.
+    1. Read docs/phase-3-uarch/*.md for DUT interface, latency, and FSM states to cover.
     2. Read io_definition.json for all port names, directions, and widths.
     3. Read requirements.json for functional coverage requirements.
     4. Read the test plan to identify: directed tests, random tests, corner cases, error scenarios.

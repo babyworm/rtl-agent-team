@@ -227,7 +227,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > No agent needs to "remember" another agent's output — it reads the document.
 >
 > ```
-> requirements.json → arch-designer → architecture.md → uarch-designer → uarch/*.md → rtl-coder
+> requirements.json → arch-designer → architecture.md → uarch-designer → docs/phase-3-uarch/*.md → rtl-coder
 > reviews/phase-N/ → Quality Gate → next phase proceeds or fails
 > ```
 >
@@ -527,13 +527,13 @@ sim/                                     # Simulation & testbenches (Phase 4-5)
 └── formal/                              # SVA formal verification
 lint/                                    # Lint flow
 ├── scripts/                             # Lint scripts (run_lint.sh)
-└── reports/{module}/                    # Per-module lint results
+└── reports/                              # Per-module lint results ({module}_lint.txt)
 syn/                                     # Synthesis flow
 ├── scripts/                             # Synthesis scripts (run_syn.sh)
 ├── constraints/                         # SDC constraint files
 │   ├── design.sdc                      # Design timing constraints
 │   └── cdc_constraints.sdc             # CDC clock group constraints
-└── reports/{module}/                    # Per-module synthesis results
+└── reports/                              # Per-module synthesis results ({module}_synth.txt)
 ```
 
 **Filelist convention (3 types):**
@@ -581,6 +581,7 @@ Design flow state is stored under `.rtl-agent-team/`:
 - `.rtl-agent-team/state/rtl-verify-done` — RTL modification verification completion gate marker
 - `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver for non-functional changes (e.g., comment-only)
 - `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase completion gate
+- `.rtl-agent-team/state/rtl-modified-files.txt` — Hook-tracked list of modified RTL files (for verification gate enforcement)
 - `.rtl-agent-team/scratch/phase-{N}/` — Temporary working files for iterative review rounds (cleaned on phase completion)
 
 <!-- RTL-AGENT-TEAM:END -->

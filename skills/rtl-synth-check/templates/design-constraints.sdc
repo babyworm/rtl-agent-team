@@ -78,7 +78,7 @@ set_output_delay -clock sys_clk -min {{OUTPUT_MIN_NS}} [get_ports o_valid]
 set_false_path -from [get_ports *_rst_n]
 
 # Static configuration registers — written only during init, never during operation
-# Source: uarch/ctrl.md — config registers are quasi-static
+# Source: docs/phase-3-uarch/ctrl.md — config registers are quasi-static
 # set_false_path -from [get_cells u_ctrl/config_reg*]
 
 # Test/debug paths — not active during normal operation
@@ -90,7 +90,7 @@ set_false_path -from [get_ports *_rst_n]
 # ALWAYS set both -setup and -hold for each MCP
 
 # N-cycle pipeline stage — data valid every N clocks
-# Source: uarch/{{MODULE}}.md — N-stage pipeline
+# Source: docs/phase-3-uarch/{{MODULE}}.md — N-stage pipeline
 # set_multicycle_path {{N}} -setup \
 #   -from [get_cells u_pipe/stage1_reg*] \
 #   -to   [get_cells u_pipe/stage{{N}}_reg*]
@@ -99,7 +99,7 @@ set_false_path -from [get_ports *_rst_n]
 #   -to   [get_cells u_pipe/stage{{N}}_reg*]
 
 # Multi-cycle computation (e.g., MAC unit takes 4 cycles)
-# Source: uarch/mac_unit.md pipeline table
+# Source: docs/phase-3-uarch/mac_unit.md pipeline table
 # set_multicycle_path 4 -setup -from [get_cells u_mac/*] -to [get_cells u_mac/o_result_reg*]
 # set_multicycle_path 3 -hold  -from [get_cells u_mac/*] -to [get_cells u_mac/o_result_reg*]
 
