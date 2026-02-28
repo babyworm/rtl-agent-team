@@ -9,6 +9,12 @@
     standard: "h264"               // "h264" | "h265"
     profile: "Baseline"            // Profile name (for filtering/reporting)
     level: ""                      // Optional level filter (e.g., "4.1"). Empty = all levels
+    // Resolution fields — required for psnr-threshold and SSIM/VMAF comparison modes.
+    // Not needed for md5 or bitexact modes.
+    // width: 1920
+    // height: 1080
+    // bit_depth: 8                // 8 or 10
+    // chroma_format: "420"        // "420" | "422" | "444"
   }
 
   // Decoder configuration
@@ -21,7 +27,9 @@
   }
 
   // Conformance stream sources (ordered by priority)
-  // Auto-discovers *.264, *.265, *.bin files recursively from path
+  // Auto-discovers *.264, *.h264, *.avc, *.265, *.h265, *.hevc files recursively from path.
+  // Note: *.bin is excluded from auto-discovery to avoid false matches.
+  // If conformance streams use .bin extension, list them explicitly in streams[].
   conformance_sources: [
     {
       id: "JVET"

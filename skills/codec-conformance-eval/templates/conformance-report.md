@@ -9,7 +9,7 @@
 
 ## Summary
 
-<!-- JSON source: metrics.summary.mandatory / metrics.summary.optional -->
+<!-- JSON source: summary.mandatory / summary.optional (from conformance-metrics.json) -->
 
 | Category | Pass | Fail | Total | Pass Rate |
 |----------|------|------|-------|-----------|
@@ -19,7 +19,7 @@
 
 ## Source Breakdown
 
-<!-- JSON source: metrics.source_breakdown (dict keyed by source_id) -->
+<!-- JSON source: source_breakdown (dict keyed by source_id, from conformance-metrics.json) -->
 
 | Source ID | Pass | Fail | Skip | Total |
 |-----------|------|------|------|-------|
@@ -29,7 +29,7 @@
 
 ## Per-Stream Results
 
-<!-- JSON source: metrics.mandatory_streams[], metrics.optional_streams[] (pre-filtered by compare_output.py) -->
+<!-- JSON source: mandatory_streams[], optional_streams[] (pre-filtered by compare_output.py, from conformance-metrics.json) -->
 
 ### Mandatory Streams
 
@@ -67,7 +67,7 @@
 {{/if}}
 
 {{#if ssim_enabled}}
-<!-- Condition: ssim_enabled = "ssim" in quality_metrics (from HJSON config). JSON source: metrics.ssim_streams[] -->
+<!-- Condition: ssim_enabled = "ssim" in quality_metrics (from HJSON config). JSON source: ssim_streams[] (from conformance-metrics.json) -->
 
 | Stream | SSIM | Status |
 |--------|------|--------|

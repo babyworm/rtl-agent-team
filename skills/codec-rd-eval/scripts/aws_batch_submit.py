@@ -23,7 +23,6 @@ import json
 import os
 import sys
 import time
-from typing import Optional
 
 
 def check_boto3():
@@ -51,11 +50,16 @@ def submit_jobs(config: dict, output_dir: str):
     job_queue = aws_cfg.get("job_queue", "codec-eval-spot-queue")
     job_definition = aws_cfg.get("job_definition", "codec-eval-job")
 
+    s3_bucket = aws_cfg.get("s3_bucket", "codec-eval-results")
+
     batch_client = boto3.client("batch", region_name=region)
     s3_client = boto3.client("s3", region_name=region)
 
-    sequences = config["sequences"]
-    qp_points = config["qp_points"]
+    sequences = config.get("sequences", [])
+    qp_points = config.get("qp_points", [])
+    if not sequences or not qp_points:
+        print("ERROR: sequences and qp_points are required in config.", file=sys.stderr)
+        return
     timeout = config.get("execution", {}).get("timeout_per_job", 3600)
 
     # Resolve configs: support both candidates[] and anchor/test modes
@@ -83,8 +87,8 @@ def submit_jobs(config: dict, output_dir: str):
             for qp in qp_points:
                 safe_label = "".join(c if c.isalnum() or c == "-" else "-" for c in label)[:32]
                 job_name = f"rd-eval-{safe_label}-{seq['name']}-qp{qp}"
-                # Sanitize job name (AWS Batch requires alphanumeric + hyphens)
-                job_name = "".join(c if c.isalnum() or c == "-" else "-" for c in job_name)
+                # Sanitize job name (AWS Batch: alphanumeric + hyphens, max 128 chars)
+                job_name = "".join(c if c.isalnum() or c == "-" else "-" for c in job_name)[:128]
 
                 try:
                     response = batch_client.submit_job(
@@ -101,7 +105,7 @@ def submit_jobs(config: dict, output_dir: str):
                                 "--fps", str(seq.get("fps", 30)),
                                 "--frames", str(seq.get("frames", 100)),
                                 "--qp", str(qp),
-                                "--output-s3", f"s3://codec-eval-results/{config.get('eval_name', 'eval')}/",
+                                "--output-s3", f"s3://{s3_bucket}/{config.get('eval_name', 'eval')}/",
                             ],
                             "environment": [
                                 {"name": "EVAL_NAME", "value": config.get("eval_name", "eval")},
@@ -126,13 +130,39 @@ def submit_jobs(config: dict, output_dir: str):
 
                 except Exception as e:
                     print(f"  FAILED to submit {job_name}: {e}", file=sys.stderr)
+                    # Track failed submissions in results
+                    job_map[f"submit-fail-{len(job_map)}"] = {
+                        "sequence": seq["name"],
+                        "qp": qp,
+                        "config_label": label,
+                        "is_anchor": is_anchor,
+                        "submit_error": str(e),
+                    }
+
+    # Include submission failures in results immediately
+    submit_failures = []
+    for key, meta in job_map.items():
+        if "submit_error" in meta:
+            submit_failures.append({
+                "sequence": meta["sequence"],
+                "qp": meta["qp"],
+                "config_label": meta["config_label"],
+                "bitrate_kbps": 0, "psnr_y": 0, "psnr_u": 0,
+                "psnr_v": 0, "psnr_yuv": 0, "encode_time_s": 0,
+                "status": "failed",
+                "error": f"Submit failed: {meta['submit_error']}",
+                "is_anchor": meta.get("is_anchor", False),
+            })
 
     print(f"\nSubmitted {len(job_ids)} jobs to AWS Batch ({region})")
+    if submit_failures:
+        print(f"  ({len(submit_failures)} jobs failed to submit)")
     print(f"Job queue: {job_queue}")
 
     # Poll for completion
     print("\nWaiting for jobs to complete...")
     results = wait_for_jobs(batch_client, s3_client, job_ids, job_map, config, output_dir)
+    results.extend(submit_failures)
 
     # Save results
     results_path = os.path.join(output_dir, "results.json")
@@ -143,7 +173,8 @@ def submit_jobs(config: dict, output_dir: str):
 
 
 def wait_for_jobs(batch_client, s3_client, job_ids: list, job_map: dict,
-                  config: dict, output_dir: str, poll_interval: int = 30) -> list:
+                  config: dict, output_dir: str, poll_interval: int = 30,
+                  max_wait: int = 14400) -> list:
     """Poll AWS Batch jobs until all complete or fail.
 
     Args:
@@ -154,14 +185,33 @@ def wait_for_jobs(batch_client, s3_client, job_ids: list, job_map: dict,
         config: Evaluation configuration
         output_dir: Local output directory
         poll_interval: Seconds between status checks
+        max_wait: Maximum total wait time in seconds (default: 4 hours)
 
     Returns:
         List of result dictionaries
     """
     pending = set(job_ids)
     results = []
+    start_time = time.time()
 
     while pending:
+        if time.time() - start_time > max_wait:
+            print(f"  WARNING: Polling timeout after {max_wait}s. "
+                  f"{len(pending)} jobs still pending.", file=sys.stderr)
+            for job_id in list(pending):
+                meta = job_map[job_id]
+                results.append({
+                    "sequence": meta["sequence"],
+                    "qp": meta["qp"],
+                    "config_label": meta["config_label"],
+                    "bitrate_kbps": 0, "psnr_y": 0, "psnr_u": 0,
+                    "psnr_v": 0, "psnr_yuv": 0, "encode_time_s": 0,
+                    "status": "failed",
+                    "error": f"Polling timeout after {max_wait}s",
+                    "is_anchor": meta.get("is_anchor", False),
+                })
+                pending.discard(job_id)
+            break
         # AWS Batch describe_jobs supports up to 100 IDs per call
         pending_list = list(pending)
         for i in range(0, len(pending_list), 100):
@@ -216,7 +266,8 @@ def fetch_job_result(batch_client, s3_client, job: dict, meta: dict,
     label = meta["config_label"]
 
     result_key = f"{eval_name}/{label}_{seq}_qp{qp}_result.json"
-    bucket = "codec-eval-results"
+    bucket = config.get("execution", {}).get("aws_batch", {}).get(
+        "s3_bucket", "codec-eval-results")
 
     try:
         obj = s3_client.get_object(Bucket=bucket, Key=result_key)

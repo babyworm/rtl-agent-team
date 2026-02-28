@@ -31,32 +31,41 @@
 {{/each}}
 | **Average** | **{{aggregate.avg_bd_rate_y}}** | **{{aggregate.avg_bd_psnr_y}}** | **{{aggregate.avg_bd_rate_yuv}}** | **{{aggregate.avg_bd_psnr_yuv}}** |
 
-### RD Data — Anchor ({{anchor_label}})
+### RD Data per Config
 
-<!-- JSON source: results.json (from run_eval.py). Agent must split by is_anchor=true → anchor_results[], is_anchor=false → test_results[]. Each entry has: sequence, qp, bitrate_kbps, psnr_y, psnr_yuv, encode_time_s -->
+<!--
+  JSON source: results.json (from run_eval.py)
+  Fields per entry: sequence, qp, config_label, bitrate_kbps, psnr_y, psnr_yuv, encode_time_s, is_anchor, status
+
+  Agent instructions:
+  - Group results by config_label
+  - For 2-config mode: show Anchor table then Test table
+  - For N-candidate mode: show one table per config_label
+  - Filter to status="success" entries only
+-->
+
+{{#each config_labels}}
+#### {{label}} {{#if is_anchor}}(Anchor){{/if}}
 
 | Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
 |----------|----|----------------|-------------|----------------|-----------------|
-{{#each anchor_results}}
+{{#each results}}
 | {{sequence}} | {{qp}} | {{bitrate_kbps}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time_s}} |
 {{/each}}
-
-### RD Data — Test ({{test_label}})
-
-| Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
-|----------|----|----------------|-------------|----------------|-----------------|
-{{#each test_results}}
-| {{sequence}} | {{qp}} | {{bitrate_kbps}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time_s}} |
 {{/each}}
 
 ## Encoding Time Comparison
 
-<!-- JSON source: bd-metrics.json → aggregate.avg_anchor_encode_time_s / avg_test_encode_time_s -->
+<!-- JSON source: bd-metrics.json → aggregate.avg_anchor_encode_time_s / avg_test_encode_time_s / computed_speedup
+     Note: computed_speedup is only present when both anchor and test have non-zero encode times.
+     For N-candidate mode: one row per test candidate. -->
 
 | Config | Avg Encode Time (s) | Speedup vs Anchor |
 |--------|---------------------|-------------------|
 | {{anchor_label}} (Anchor) | {{aggregate.avg_anchor_encode_time_s}} | 1.00x |
-| {{test_label}} (Test) | {{aggregate.avg_test_encode_time_s}} | {{aggregate.computed_speedup}}x |
+{{#each comparisons_or_single}}
+| {{test_label}} | {{aggregate.avg_test_encode_time_s}} | {{#if aggregate.computed_speedup}}{{aggregate.computed_speedup}}x{{else}}N/A{{/if}} |
+{{/each}}
 
 {{#if ssim_enabled}}
 <!-- Condition: ssim_enabled = "ssim" in quality_metrics (from HJSON config) -->
@@ -116,20 +125,24 @@ BD-rate Y (%) vs Anchor ({{anchor_label}}):
 
 ## Configuration
 
-<!-- JSON source: Original HJSON config (anchor/test/candidates blocks). Agent must read the HJSON config directly — bd-metrics.json does not include config passthrough. -->
+<!--
+  JSON source: Agent reads HJSON config directly for this section.
+  bd-metrics.json only has anchor_label/test_label — not full encoder_src/cfg.
+
+  For 2-config mode: show anchor + test.
+  For N-candidate mode: list all candidates with is_anchor flag.
+-->
 
 ```
-Anchor: {{anchor_label}}
-  Source: {{anchor.encoder_src}}
-  Config: {{anchor.encoder_cfg}}
-
-Test: {{test_label}}
-  Source: {{test.encoder_src}}
-  Config: {{test.encoder_cfg}}
+{{#each config_labels}}
+{{label}}{{#if is_anchor}} (Anchor){{/if}}:
+  Source: {{encoder_src}}
+  Config: {{encoder_cfg}}
+{{/each}}
 
 Sequences: {{aggregate.num_sequences}}
 QP points: {{qp_points}}
-Execution: {{execution.mode}}
+Execution: {{execution_mode}}
 Quality metrics: {{quality_metrics}}
 ```
 

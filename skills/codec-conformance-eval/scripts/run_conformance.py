@@ -31,9 +31,11 @@ from typing import Optional
 DEFAULT_DECODER_CMD_TEMPLATE = "{decoder} -b {bitstream} -o {output} {extra_args}"
 
 # Conformance bitstream file extensions by standard
+# Note: *.bin is excluded from auto-discovery to avoid false matches.
+# If conformance streams use .bin extension, list them explicitly in config streams[].
 STREAM_EXTENSIONS = {
-    "h264": ["*.264", "*.h264", "*.avc", "*.bin"],
-    "h265": ["*.265", "*.h265", "*.hevc", "*.bin"],
+    "h264": ["*.264", "*.h264", "*.avc"],
+    "h265": ["*.265", "*.h265", "*.hevc"],
 }
 
 
@@ -132,7 +134,10 @@ def run_single_decode(
     source_id = stream["source_id"]
     priority = stream["priority"]
 
-    safe_name = re.sub(r'[^\w\-.]', '_', stream_name)[:64]
+    safe_name = re.sub(r'[^\w\-.]', '_', stream_name)
+    if len(safe_name) > 64:
+        h = hashlib.md5(stream_name.encode()).hexdigest()[:6]
+        safe_name = f"{safe_name[:57]}_{h}"
     output_yuv = os.path.join(output_dir, f"{safe_name}_decoded.yuv")
 
     try:
@@ -217,9 +222,11 @@ def run_local(config: dict, output_dir: str) -> list:
     for source in config.get("conformance_sources", []):
         streams = discover_streams(source, standard)
         # Filter by profile/level if specified (filename convention based)
+        # Uses word-boundary regex to avoid false matches (e.g., "main" in "domain")
         if target_profile:
             before = len(streams)
-            streams = [s for s in streams if target_profile in s["name"].lower()]
+            profile_re = re.compile(r'(?:^|[\W_])' + re.escape(target_profile) + r'(?:[\W_]|$)', re.I)
+            streams = [s for s in streams if profile_re.search(s["name"])]
             if len(streams) < before:
                 print(f"  Profile filter '{target_profile}': {before} → {len(streams)} streams")
         all_streams.extend(streams)
@@ -301,11 +308,16 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    proc = subprocess.run(
-        [sys.executable, aws_script, config_path, "--output-dir", output_dir],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, aws_script, config_path, "--output-dir", output_dir],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 min for submission + polling
+        )
+    except subprocess.TimeoutExpired:
+        print("ERROR: AWS Batch script timed out after 600s", file=sys.stderr)
+        sys.exit(1)
 
     if proc.returncode != 0:
         print(f"ERROR: AWS Batch submission failed: {proc.stderr}", file=sys.stderr)

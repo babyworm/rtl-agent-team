@@ -116,6 +116,19 @@ def bd_rate(anchor_rates: list, anchor_psnrs: list,
     deg_a = _poly_degree(len(anchor_rates))
     deg_t = _poly_degree(len(test_rates))
 
+    # Guard: near-identical points produce ill-conditioned polyfit
+    for label, psnrs_arr, rates_arr in [
+        ("anchor PSNR", anchor_psnrs_arr, log_anchor_rates),
+        ("test PSNR", test_psnrs_arr, log_test_rates),
+    ]:
+        if (psnrs_arr.max() - psnrs_arr.min()) < 1e-6:
+            warnings.warn(
+                f"Near-identical {label} values (range={(psnrs_arr.max() - psnrs_arr.min()):.2e}). "
+                f"Polynomial fit may be unstable. Returning NaN.",
+                stacklevel=2,
+            )
+            return float('nan')
+
     # Fit polynomial: PSNR → log_rate
     poly_anchor = np.polyfit(anchor_psnrs_arr, log_anchor_rates, deg_a)
     poly_test = np.polyfit(test_psnrs_arr, log_test_rates, deg_t)
@@ -171,6 +184,19 @@ def bd_psnr(anchor_rates: list, anchor_psnrs: list,
 
     deg_a = _poly_degree(len(anchor_rates))
     deg_t = _poly_degree(len(test_rates))
+
+    # Guard: near-identical points produce ill-conditioned polyfit
+    for label, rates_arr in [
+        ("anchor log-rate", log_anchor_rates),
+        ("test log-rate", log_test_rates),
+    ]:
+        if (rates_arr.max() - rates_arr.min()) < 1e-6:
+            warnings.warn(
+                f"Near-identical {label} values (range={(rates_arr.max() - rates_arr.min()):.2e}). "
+                f"Polynomial fit may be unstable. Returning NaN.",
+                stacklevel=2,
+            )
+            return float('nan')
 
     # Fit polynomial: log_rate → PSNR
     poly_anchor = np.polyfit(log_anchor_rates, anchor_psnrs_arr, deg_a)
@@ -513,6 +539,17 @@ def run_tests():
             print("  [PASS] Test 9: <3 points raises ValueError")
             passed += 1
 
+        # Test 10: Near-identical PSNR values → should return NaN (guard from M4)
+        near_rates = [100, 200, 400, 800]
+        near_psnrs = [36.0, 36.0, 36.0, 36.0]  # all identical
+        br10 = bd_rate(near_rates, near_psnrs, near_rates, [36.1, 36.1, 36.1, 36.1])
+        if math.isnan(br10):
+            print("  [PASS] Test 10: Near-identical PSNR returns NaN")
+            passed += 1
+        else:
+            print(f"  [FAIL] Test 10: Expected NaN for near-identical PSNR, got {br10}")
+            failed += 1
+
     print(f"\n=== Results: {passed} passed, {failed} failed ===")
     return failed == 0
 
@@ -552,8 +589,21 @@ def main():
     )
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     with open(output_path, "w") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(_sanitize_for_json(metrics), f, indent=2)
     print(f"\nMetrics saved to: {output_path}")
+
+
+def _sanitize_for_json(obj):
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
 
 
 def _print_comparison(comp: dict):

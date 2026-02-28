@@ -20,6 +20,7 @@ Dependencies: hjson, numpy (for result aggregation)
 
 import argparse
 import json
+import math
 import os
 import re
 import shlex
@@ -69,9 +70,30 @@ class EncodingResult:
     is_anchor: bool = False
 
 
+def _sanitize_for_json(obj):
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
+
+
 def sanitize_label(label: str) -> str:
-    """Sanitize config label for safe filename usage."""
-    sanitized = re.sub(r'[^\w\-.]', '_', label)[:64]
+    """Sanitize config label for safe filename usage.
+
+    Appends a short hash suffix when the label is truncated to avoid
+    collisions between different labels that share the same prefix.
+    """
+    sanitized = re.sub(r'[^\w\-.]', '_', label)
+    if len(sanitized) > 64:
+        import hashlib
+        h = hashlib.md5(label.encode()).hexdigest()[:6]
+        sanitized = f"{sanitized[:57]}_{h}"
     return sanitized or "unnamed"
 
 
@@ -112,33 +134,46 @@ def parse_encoder_output(stdout: str, stderr: str,
     combined = stdout + "\n" + stderr
     cfg = parsing_config or {}
 
+    def _safe_search(pattern, text):
+        """Search with protection against invalid user-provided regex patterns."""
+        try:
+            if len(pattern) > 500:
+                print(f"  WARNING: Regex pattern too long ({len(pattern)} chars), skipped",
+                      file=sys.stderr)
+                return None
+            return re.search(pattern, text)
+        except re.error as e:
+            print(f"  WARNING: Invalid regex pattern '{pattern[:80]}': {e}",
+                  file=sys.stderr)
+            return None
+
     # --- Bitrate ---
     pat = cfg.get("bitrate_pattern", r'[Bb]itrate[:\s=]+([0-9.]+)\s*(?:kbps|kb/s)?')
-    m = re.search(pat, combined)
+    m = _safe_search(pat, combined)
     if m:
         result["bitrate_kbps"] = float(m.group(1))
 
     # --- PSNR Y ---
     pat = cfg.get("psnr_y_pattern", r'PSNR[\s-]*Y[:\s=]+([0-9.]+)')
-    m = re.search(pat, combined)
+    m = _safe_search(pat, combined)
     if m:
         result["psnr_y"] = float(m.group(1))
 
     # --- PSNR U ---
     pat = cfg.get("psnr_u_pattern", r'PSNR[\s-]*U[:\s=]+([0-9.]+)')
-    m = re.search(pat, combined)
+    m = _safe_search(pat, combined)
     if m:
         result["psnr_u"] = float(m.group(1))
 
     # --- PSNR V ---
     pat = cfg.get("psnr_v_pattern", r'PSNR[\s-]*V[:\s=]+([0-9.]+)')
-    m = re.search(pat, combined)
+    m = _safe_search(pat, combined)
     if m:
         result["psnr_v"] = float(m.group(1))
 
     # --- PSNR YUV (explicit or weighted) ---
     pat = cfg.get("psnr_yuv_pattern", r'PSNR[\s-]*(?:YUV|All)[:\s=]+([0-9.]+)')
-    m = re.search(pat, combined)
+    m = _safe_search(pat, combined)
     if m:
         result["psnr_yuv"] = float(m.group(1))
     elif result["psnr_y"] > 0:
@@ -150,7 +185,7 @@ def parse_encoder_output(stdout: str, stderr: str,
 
     # --- SSIM (optional, parsed from encoder output) ---
     pat = cfg.get("ssim_pattern", r'SSIM[\s:-]*(?:Y[\s:=]*)?([0-9.]+)')
-    m = re.search(pat, combined)
+    m = _safe_search(pat, combined)
     if m:
         result["ssim"] = float(m.group(1))
 
@@ -226,13 +261,17 @@ def run_single_encode(
     chroma_format = str(sequence.get("chroma_format", "420"))
     quality_metrics = quality_metrics or ["psnr"]
 
-    # Build command from template
+    # Build command from template (quote paths for space safety)
     try:
         cmd_str = cmd_template.format(
-            encoder=encoder_binary, cfg=encoder_cfg, input=sequence["path"],
+            encoder=shlex.quote(encoder_binary),
+            cfg=shlex.quote(encoder_cfg),
+            input=shlex.quote(sequence["path"]),
             width=sequence["width"], height=sequence["height"],
             fps=sequence.get("fps", 30), frames=sequence.get("frames", 100),
-            qp=qp, bitstream=output_bitstream, recon=output_recon,
+            qp=qp,
+            bitstream=shlex.quote(output_bitstream),
+            recon=shlex.quote(output_recon),
             bit_depth=bit_depth, chroma_format=chroma_format,
         )
         cmd = shlex.split(cmd_str)
@@ -364,8 +403,14 @@ def run_local(config: dict, output_dir: str) -> list:
     """Run all encoding jobs locally in parallel."""
     max_parallel = config.get("execution", {}).get("max_parallel", os.cpu_count() or 4)
     timeout = config.get("execution", {}).get("timeout_per_job", 3600)
-    sequences = config["sequences"]
-    qp_points = config["qp_points"]
+    sequences = config.get("sequences", [])
+    qp_points = config.get("qp_points", [])
+    if not sequences:
+        print("ERROR: No sequences defined in configuration.", file=sys.stderr)
+        return []
+    if not qp_points:
+        print("ERROR: No QP points defined in configuration.", file=sys.stderr)
+        return []
     global_cmd_template = config.get("encoder_cmd_template", DEFAULT_CMD_TEMPLATE)
     parsing_config = config.get("output_parsing")
     quality_metrics = config.get("quality_metrics", ["psnr"])
@@ -382,6 +427,8 @@ def run_local(config: dict, output_dir: str) -> list:
 
         for seq in sequences:
             for qp in qp_points:
+                # Last element (is_anchor) is metadata — stripped via [:-1]
+                # before passing to run_single_encode()
                 jobs.append((
                     encoder_binary, encoder_cfg, seq, qp, label, output_dir, timeout,
                     cmd_template, parsing_config, quality_metrics, is_anchor,
@@ -440,11 +487,16 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    proc = subprocess.run(
-        [sys.executable, aws_script, config_path, "--output-dir", output_dir],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, aws_script, config_path, "--output-dir", output_dir],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 min for submission + polling
+        )
+    except subprocess.TimeoutExpired:
+        print("ERROR: AWS Batch script timed out after 600s", file=sys.stderr)
+        sys.exit(1)
 
     if proc.returncode != 0:
         print(f"ERROR: AWS Batch submission failed: {proc.stderr}", file=sys.stderr)
@@ -497,10 +549,10 @@ def main():
             if r.status == "failed":
                 print(f"  {r.config_label} / {r.sequence} / QP={r.qp}: {r.error}")
 
-    # Save results
+    # Save results (sanitize NaN/Inf for valid JSON per RFC 8259)
     results_path = os.path.join(output_dir, "results.json")
     with open(results_path, "w") as f:
-        json.dump([asdict(r) for r in results], f, indent=2)
+        json.dump(_sanitize_for_json([asdict(r) for r in results]), f, indent=2)
 
     print(f"\nResults saved to: {results_path}")
 

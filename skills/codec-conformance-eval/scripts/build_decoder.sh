@@ -84,7 +84,7 @@ else
     echo "Files:   ${C_FILES[*]}"
 
     # shellcheck disable=SC2086
-    $CC $CFLAGS ${EXTRA_CFLAGS[*]:-} ${INCLUDE_DIR:+"$INCLUDE_DIR"} \
+    $CC $CFLAGS ${EXTRA_CFLAGS[@]+"${EXTRA_CFLAGS[@]}"} ${INCLUDE_DIR:+"$INCLUDE_DIR"} \
         "${C_FILES[@]}" \
         -o "$OUTPUT_BINARY" \
         $LDFLAGS

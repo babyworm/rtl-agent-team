@@ -110,21 +110,33 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
     return submitted_jobs
 
 
-def wait_for_jobs(batch_client, jobs: list, poll_interval: int = 30) -> list:
+def wait_for_jobs(batch_client, jobs: list, poll_interval: int = 30,
+                  max_wait: int = 14400) -> list:
     """Wait for all AWS Batch jobs to complete.
 
     Args:
         batch_client: boto3 Batch client
         jobs: List of submitted job dicts with 'job_id'
         poll_interval: Seconds between status checks
+        max_wait: Maximum total wait time in seconds (default: 4 hours)
 
     Returns:
         List of completed job info dicts.
     """
     pending_jobs = {j["job_id"]: j for j in jobs if j.get("job_id")}
     completed = []
+    start_time = time.time()
 
     while pending_jobs:
+        if time.time() - start_time > max_wait:
+            print(f"  WARNING: Polling timeout after {max_wait}s. "
+                  f"{len(pending_jobs)} jobs still pending.", file=sys.stderr)
+            for jid, info in pending_jobs.items():
+                info["status"] = "failed"
+                info["error"] = f"Polling timeout after {max_wait}s"
+                completed.append(info)
+            pending_jobs.clear()
+            break
         job_ids = list(pending_jobs.keys())
 
         # AWS Batch allows max 100 IDs per describe call
@@ -169,7 +181,7 @@ def fetch_job_result(s3_client, eval_name: str, stream_name: str) -> Optional[di
     """
     safe_name = re.sub(r'[^a-zA-Z0-9_-]', '-', stream_name)[:64]
     s3_key = f"{eval_name}/{safe_name}_result.json"
-    bucket = "codec-eval-results"
+    bucket = "codec-eval-results"  # TODO: make configurable via execution.aws_batch.s3_bucket
 
     try:
         response = s3_client.get_object(Bucket=bucket, Key=s3_key)
@@ -232,6 +244,8 @@ def main():
                     "source_id": job["source_id"],
                     "source_priority": job.get("priority", "optional"),
                     "status": "failed",
+                    "md5_decoded": None,
+                    "decode_time_s": 0,
                     "error": "S3 result not found",
                 })
         else:
@@ -240,6 +254,8 @@ def main():
                 "source_id": job["source_id"],
                 "source_priority": job.get("priority", "optional"),
                 "status": "failed",
+                "md5_decoded": None,
+                "decode_time_s": 0,
                 "error": job.get("error", "Job failed"),
             })
 

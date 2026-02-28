@@ -22,6 +22,19 @@ import sys
 from typing import Optional
 
 
+def _sanitize_for_json(obj):
+    """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
+
+
 def compute_md5(filepath: str) -> Optional[str]:
     """Compute MD5 checksum of a file."""
     if not os.path.isfile(filepath):
@@ -94,8 +107,11 @@ def compute_psnr_from_files(file_a: str, file_b: str,
                             width: int, height: int, bit_depth: int = 8) -> Optional[float]:
     """Compute Y-PSNR between two raw YUV files.
 
-    Uses simple MSE calculation on Y plane only.
-    Returns None if files cannot be read.
+    Uses simple MSE calculation on Y (luma) plane only — chroma planes (U/V) are
+    not included. This is intentional for conformance divergence measurement where
+    luma fidelity is the primary indicator.
+
+    Returns None if files cannot be read or arrays are empty.
     """
     try:
         import numpy as np
@@ -119,6 +135,9 @@ def compute_psnr_from_files(file_a: str, file_b: str,
 
     arr_a = np.frombuffer(y_a, dtype=dtype).astype(np.float64)
     arr_b = np.frombuffer(y_b, dtype=dtype).astype(np.float64)
+
+    if arr_a.size == 0:
+        return None
 
     mse = np.mean((arr_a - arr_b) ** 2)
     if mse == 0:
@@ -397,20 +416,18 @@ def compare_results(results_path: str, config: dict) -> dict:
         w = target.get("width")
         h = target.get("height")
         bd = target.get("bit_depth", 8)
+        results_by_name = {r["stream_name"]: r for r in results}
         for entry in stream_results:
             if entry.get("conformance") == "PASS" and w and h:
                 # Try to compute SSIM if decoded and golden files are available
-                r_match = next(
-                    (r for r in results if r["stream_name"] == entry["stream_name"]),
-                    None,
-                )
+                r_match = results_by_name.get(entry["stream_name"])
                 if r_match and r_match.get("output_path"):
                     golden_yuv = os.path.join(golden_path, f"{entry['stream_name']}.yuv")
                     ssim_val = run_ffmpeg_ssim(golden_yuv, r_match["output_path"], w, h, bd)
                     ssim_streams.append({
                         "stream_name": entry["stream_name"],
-                        "ssim": ssim_val if ssim_val is not None else "N/A",
-                        "status": "PASS" if ssim_val and ssim_val > 0.99 else "CHECK",
+                        "ssim": ssim_val,
+                        "status": "PASS" if ssim_val is not None and ssim_val > 0.99 else "CHECK",
                     })
 
     metrics = {
@@ -597,7 +614,7 @@ def main():
     )
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     with open(output_path, "w") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(_sanitize_for_json(metrics), f, indent=2)
     print(f"\nMetrics saved to: {output_path}")
 
 

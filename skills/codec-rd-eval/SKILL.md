@@ -78,7 +78,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - On metric parsing failure (bitrate=0 or PSNR=0): mark job as failed with guidance to check output_parsing
 - timeout_per_job is in seconds (default: 3600s = 1 hour per encoding job)
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
-- Dependencies: gcc (C11), Python 3.8+, numpy, hjson
+- Dependencies: gcc (C11), Python 3.8+, numpy, hjson. Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf")
 - Self-test: `python3 skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests
 </Execution_Policy>
 
@@ -104,7 +104,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
    - Execute in configured mode:
      - **local**: `python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode local`
      - **aws-batch**: `python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode aws-batch`
-   - Each job produces: bitrate (kbps), PSNR-Y/U/V/YUV (dB), encode_time (s)
+   - Each job produces: bitrate_kbps, psnr_y/u/v/yuv (dB), encode_time_s
    - Optional: SSIM, VMAF (when quality_metrics includes them)
    - Results saved to: `.rtl-agent-team/scratch/rd-eval/results.json`
 
@@ -112,8 +112,8 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
    - `python3 skills/codec-rd-eval/scripts/bd_rate.py .rtl-agent-team/scratch/rd-eval/results.json`
    - VCEG-M33 algorithm with N-point support:
      1. Transform rates to log10 domain
-     2. Fit polynomial (degree = min(3, N-1)) for anchor and test
-     3. Integrate over common range
+     2. Fit polynomial (degree = min(3, N-1)) — exact interpolation for 4 points, least-squares fitting for 5+
+     3. Integrate over common PSNR range
      4. BD-rate (%) and BD-PSNR (dB)
    - N-candidate mode: compute metrics for each test vs anchor
    - Per-sequence results + aggregate average + encoding time summary
