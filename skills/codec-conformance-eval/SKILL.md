@@ -81,7 +81,7 @@ comparing outputs, and tracking which profile features are covered.
 - Optional streams (3rd party) failures are reported but do not affect overall verdict
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - timeout_per_job is in seconds (default: 300s = 5 min per decoding job)
-- Dependencies: gcc (C11), Python 3.8+, hjson, numpy (optional, for PSNR computation). Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
+- Dependencies: gcc (C11), Python 3.9+, hjson, numpy (optional, for PSNR computation). Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
 - Self-test: `python3 skills/codec-conformance-eval/scripts/compare_output.py --test` runs built-in unit tests
 </Execution_Policy>
 

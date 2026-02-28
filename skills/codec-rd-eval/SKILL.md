@@ -78,7 +78,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - On metric parsing failure (bitrate=0 or PSNR=0): mark job as failed with guidance to check output_parsing
 - timeout_per_job is in seconds (default: 3600s = 1 hour per encoding job)
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
-- Dependencies: gcc (C11), Python 3.8+, numpy, hjson. Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
+- Dependencies: gcc (C11), Python 3.9+, numpy, hjson. Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
 - Self-test: `python3 skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests
 </Execution_Policy>
 
