@@ -1,9 +1,16 @@
 {
   // codec-rd-eval test configuration
   // Copy this template and customize for your evaluation.
+  //
+  // Two modes are supported:
+  //   Mode 1 (anchor/test): Compare two configurations (backward compatible)
+  //   Mode 2 (candidates[]): Compare N configurations (candidates takes priority)
+
   eval_name: "algorithm_comparison"
 
-  // Anchor configuration (baseline)
+  // =====================================================================
+  // Mode 1: Anchor/Test pair (classic 2-config comparison)
+  // =====================================================================
   anchor: {
     encoder_src: "ref_model/src"       // C source directory
     encoder_binary: ".rtl-agent-team/scratch/rd-eval/anchor_encoder"
@@ -11,7 +18,6 @@
     label: "Anchor (baseline)"
   }
 
-  // Test configuration (modified algorithm)
   test: {
     encoder_src: "ref_model/src"       // Same source or different branch
     encoder_binary: ".rtl-agent-team/scratch/rd-eval/test_encoder"
@@ -19,8 +25,63 @@
     label: "Test (improved)"
   }
 
+  // =====================================================================
+  // Mode 2: N-candidate comparison (overrides anchor/test when present)
+  // First candidate with is_anchor:true (or first entry) is the anchor.
+  // =====================================================================
+  // candidates: [
+  //   {
+  //     label: "SAD baseline"
+  //     encoder_src: "ref_model/src"
+  //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/sad_encoder"
+  //     encoder_cfg: "configs/sad.cfg"
+  //     is_anchor: true
+  //   }
+  //   {
+  //     label: "Hadamard"
+  //     encoder_src: "ref_model/src_hadamard"
+  //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/hadamard_encoder"
+  //     encoder_cfg: "configs/hadamard.cfg"
+  //   }
+  //   {
+  //     label: "SATD+RDOQ"
+  //     encoder_src: "ref_model/src_satd_rdoq"
+  //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/satd_rdoq_encoder"
+  //     encoder_cfg: "configs/satd_rdoq.cfg"
+  //   }
+  // ]
+
+  // =====================================================================
+  // Encoder command template (optional — default is HM-style)
+  // Available variables: {encoder} {cfg} {input} {width} {height}
+  //   {fps} {frames} {qp} {bitstream} {recon} {bit_depth} {chroma_format}
+  // =====================================================================
+  // encoder_cmd_template: "{encoder} -c {cfg} -i {input} -wdt {width} -hgt {height} -fr {fps} -f {frames} -q {qp} -b {bitstream} -o {recon}"
+
+  // =====================================================================
+  // Output parsing patterns (optional — default patterns support HM/VTM)
+  // Each value is a regex with one capture group for the numeric value.
+  // =====================================================================
+  // output_parsing: {
+  //   bitrate_pattern: "Bitrate[:\\s=]+([0-9.]+)\\s*(?:kbps)?"
+  //   psnr_y_pattern: "PSNR[\\s-]*Y[:\\s=]+([0-9.]+)"
+  //   psnr_u_pattern: "PSNR[\\s-]*U[:\\s=]+([0-9.]+)"
+  //   psnr_v_pattern: "PSNR[\\s-]*V[:\\s=]+([0-9.]+)"
+  //   psnr_yuv_pattern: "PSNR[\\s-]*(?:YUV|All)[:\\s=]+([0-9.]+)"
+  //   ssim_pattern: "SSIM[\\s:-]*(?:Y[\\s:=]*)?([0-9.]+)"
+  // }
+
+  // =====================================================================
+  // Quality metrics (default: PSNR only)
+  // Add "ssim" and/or "vmaf" to enable opt-in metrics.
+  // SSIM: parsed from encoder output first, falls back to ffmpeg -lavfi ssim
+  // VMAF: always computed via ffmpeg -lavfi libvmaf (requires libvmaf model)
+  // =====================================================================
+  quality_metrics: ["psnr"]
+
+  // =====================================================================
   // Test sequences (JVET Common Test Conditions recommended)
-  // Adjust paths to match your local sequence storage
+  // =====================================================================
   sequences: [
     {
       name: "BasketballDrill"
@@ -29,6 +90,8 @@
       height: 480
       fps: 50
       frames: 500
+      bit_depth: 8         // 8 | 10 (default: 8)
+      chroma_format: "420" // "420" | "422" | "444" (default: "420")
     }
     {
       name: "BQTerrace"
@@ -49,6 +112,7 @@
   ]
 
   // QP points — standard 4-point for VCEG-M33 BD calculation
+  // 3+ points supported (4 is standard, 5+ uses least-squares fitting)
   // JVET CTC: {22, 27, 32, 37}  |  JCT-VC CTC: {22, 27, 32, 37}
   qp_points: [22, 27, 32, 37]
 

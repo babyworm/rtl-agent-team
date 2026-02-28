@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 50 specialized AI agents + 38 skills automate the 6-Phase pipeline:
+> 50 specialized AI agents + 39 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-50개 전문 AI 에이전트 + 38개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+50개 전문 AI 에이전트 + 39개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ## Marketplace
 
@@ -80,6 +80,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 /rtl-agent-team:rtl-dse              # Phase 1→2: 심층 알고리즘 + 아키텍처 탐색 (DSE)
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate 평가 (알고리즘 비교)
+/rtl-agent-team:codec-conformance-eval  # 디코더 conformance 평가 (JVET/JCTVC/3rd party)
 /rtl-agent-team:rtl-spec-to-uarch    # Phase 1→3: Spec → μArch 설계 문서 완성
 /rtl-agent-team:rtl-uarch-to-verify  # Phase 4→5: μArch → RTL 구현 + 검증
 ```
@@ -112,7 +113,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 38개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 39개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -144,7 +145,7 @@ rtl-agent-team/
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
 ├── agents/                     # 50개 에이전트 (설계/검증/리뷰/EDA/도메인)
-├── skills/                     # 38개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 39개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
 │   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
@@ -256,7 +257,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
 ├── agents/                              # rtl-agent-team 에이전트 (50개)
-├── skills/                              # rtl-agent-team 스킬 (38개)
+├── skills/                              # rtl-agent-team 스킬 (39개)
 ├── references/                          # 레퍼런스 문서 (11개)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)

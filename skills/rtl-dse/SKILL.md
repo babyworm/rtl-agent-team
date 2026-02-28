@@ -130,6 +130,11 @@ golden baseline for RTL verification.
    > If ref C model encoder is buildable and test sequences are available,
    > invoke `/rtl-agent-team:codec-rd-eval` to measure BD-PSNR between algorithm candidates.
    > This provides objective quality metrics beyond theoretical analysis.
+   >
+   > **Decoder conformance evaluation (optional):**
+   > If ref C model decoder exists and conformance bitstreams are available,
+   > invoke `/rtl-agent-team:codec-conformance-eval` to verify decoder correctness
+   > against JVET/JCTVC official conformance streams before committing to architecture.
 
    **Step 3c: Algorithm selection** (user decision point):
    - Present algorithm candidates with quantitative trade-off matrix to user via AskUserQuestion

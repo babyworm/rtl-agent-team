@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 50 specialized AI agents + 38 skills automate the 6-Phase pipeline:
+> 50 specialized AI agents + 39 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 38 skills + 11 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 39 skills + 11 reference documents.
 
 ## Marketplace
 
@@ -80,6 +80,7 @@ Runs the entire 6-Phase pipeline automatically. You can also use natural languag
 ```
 /rtl-agent-team:rtl-dse              # Phase 1→2: Deep algorithm + architecture exploration (DSE)
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate evaluation for algorithm comparison
+/rtl-agent-team:codec-conformance-eval  # Decoder conformance evaluation (JVET/JCTVC/3rd party)
 /rtl-agent-team:rtl-spec-to-uarch    # Phase 1→3: Spec → μArch design documents
 /rtl-agent-team:rtl-uarch-to-verify  # Phase 4→5: μArch → RTL implementation + verification
 ```
@@ -112,7 +113,7 @@ Creates the project directory structure and verifies EDA tool installation.
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 38 skills.
+See the `skills/` directory for the full list of 39 skills.
 
 ## Project Artifact Structure
 
@@ -144,7 +145,7 @@ rtl-agent-team/
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
 ├── agents/                     # 50 agents (design/verification/review/EDA/domain)
-├── skills/                     # 38 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 39 skills (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
@@ -256,7 +257,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
 ├── agents/                              # rtl-agent-team agents (50)
-├── skills/                              # rtl-agent-team skills (38)
+├── skills/                              # rtl-agent-team skills (39)
 ├── references/                          # Reference documents (11)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)

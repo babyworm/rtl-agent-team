@@ -1,0 +1,90 @@
+{
+  // codec-conformance-eval configuration
+  // Decoder conformance evaluation against official bitstreams.
+
+  eval_name: "h264_baseline_decoder_conformance"
+
+  // Target profile to test
+  target: {
+    standard: "h264"               // "h264" | "h265"
+    profile: "Baseline"            // Profile name (for filtering/reporting)
+    level: ""                      // Optional level filter (e.g., "4.1"). Empty = all levels
+  }
+
+  // Decoder configuration
+  decoder: {
+    decoder_src: "ref_model/src"
+    decoder_binary: ".rtl-agent-team/scratch/conformance-eval/decoder"
+    // Command template — variables: {decoder} {bitstream} {output} {extra_args}
+    decoder_cmd_template: "{decoder} -b {bitstream} -o {output} {extra_args}"
+    extra_args: ""
+  }
+
+  // Conformance stream sources (ordered by priority)
+  // Auto-discovers *.264, *.265, *.bin files recursively from path
+  conformance_sources: [
+    {
+      id: "JVET"
+      label: "ITU-T JVET Official"
+      path: "conformance/jvet/"
+      // url: "https://www.itu.int/..."     // Download reference (informational)
+      priority: "mandatory"
+      // streams: []                         // Auto-discover from path if empty/absent
+    }
+    {
+      id: "JCTVC"
+      label: "JCT-VC Official"
+      path: "conformance/jctvc/"
+      priority: "mandatory"
+    }
+    {
+      id: "allegro"
+      label: "Allegro DVT"
+      path: "conformance/3rd-party/allegro/"
+      priority: "optional"
+    }
+    {
+      id: "elecard"
+      label: "Elecard StreamEye"
+      path: "conformance/3rd-party/elecard/"
+      priority: "optional"
+    }
+  ]
+
+  // Golden output references (MD5 checksums or reference YUV files)
+  golden: {
+    path: "conformance/golden-outputs/"   // Directory or JSON file
+    // Comparison mode:
+    //   "md5"            — MD5 checksum comparison (fastest, default)
+    //   "bitexact"       — Byte-by-byte comparison (reports mismatch offset)
+    //   "psnr-threshold" — PSNR threshold (for approximate matching)
+    comparison_mode: "md5"
+    psnr_threshold: 100.0   // dB (only for psnr-threshold mode; inf = bitexact)
+  }
+
+  // Quality metrics (opt-in only — add "ssim" / "vmaf" if needed)
+  quality_metrics: ["psnr"]
+
+  // Execution settings (same pattern as codec-rd-eval)
+  execution: {
+    mode: "local"              // "local" | "aws-batch"
+    max_parallel: 8            // Concurrent decode processes
+    timeout_per_job: 300       // Seconds per stream (decoding is faster than encoding)
+
+    // AWS Batch settings (used only when mode="aws-batch")
+    aws_batch: {
+      region: "ap-northeast-2"
+      job_queue: "codec-conformance-spot-queue"
+      job_definition: "codec-conformance-job"
+      spot: true
+      max_vcpus: 32
+    }
+  }
+
+  // Output settings
+  output: {
+    report_path: "docs/phase-1-research/conformance-eval-report.md"
+    raw_data_path: ".rtl-agent-team/scratch/conformance-eval/"
+    save_decoded: false   // Keep decoded YUV files (can be large)
+  }
+}

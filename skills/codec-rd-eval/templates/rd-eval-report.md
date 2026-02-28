@@ -5,6 +5,7 @@
 - **Test**: {{test_label}}
 - **Methodology**: VCEG-M33 (Bjontegaard Delta)
 - **QP Points**: {{qp_points}}
+- **Quality Metrics**: {{quality_metrics}}
 
 ## Summary
 
@@ -28,19 +29,58 @@
 
 ### RD Data — Anchor ({{anchor_label}})
 
-| Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) |
-|----------|----|----------------|-------------|----------------|
+| Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
+|----------|----|----------------|-------------|----------------|-----------------|
 {{#each anchor_rd_data}}
-| {{sequence}} | {{qp}} | {{bitrate}} | {{psnr_y}} | {{psnr_yuv}} |
+| {{sequence}} | {{qp}} | {{bitrate}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time}} |
 {{/each}}
 
 ### RD Data — Test ({{test_label}})
 
-| Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) |
-|----------|----|----------------|-------------|----------------|
+| Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
+|----------|----|----------------|-------------|----------------|-----------------|
 {{#each test_rd_data}}
-| {{sequence}} | {{qp}} | {{bitrate}} | {{psnr_y}} | {{psnr_yuv}} |
+| {{sequence}} | {{qp}} | {{bitrate}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time}} |
 {{/each}}
+
+## Encoding Time Comparison
+
+| Config | Avg Encode Time (s) | Speedup vs Anchor |
+|--------|---------------------|-------------------|
+| {{anchor_label}} (Anchor) | {{anchor_avg_time}} | 1.00x |
+| {{test_label}} (Test) | {{test_avg_time}} | {{speedup}}x |
+
+{{#if ssim_enabled}}
+## SSIM Comparison (opt-in)
+
+| Sequence | Anchor Avg SSIM | Test Avg SSIM | Delta |
+|----------|-----------------|---------------|-------|
+{{#each sequences}}
+| {{name}} | {{anchor_ssim}} | {{test_ssim}} | {{ssim_delta}} |
+{{/each}}
+{{/if}}
+
+{{#if vmaf_enabled}}
+## VMAF Comparison (opt-in)
+
+| Sequence | Anchor Avg VMAF | Test Avg VMAF | Delta |
+|----------|-----------------|---------------|-------|
+{{#each sequences}}
+| {{name}} | {{anchor_vmaf}} | {{test_vmaf}} | {{vmaf_delta}} |
+{{/each}}
+{{/if}}
+
+{{#if n_candidate}}
+## N-Candidate Comparison Matrix
+
+BD-rate Y (%) vs Anchor ({{anchor_label}}):
+
+| Candidate | Avg BD-rate Y (%) | Avg BD-PSNR Y (dB) | Avg Encode Time (s) |
+|-----------|-------------------|---------------------|---------------------|
+{{#each candidates}}
+| {{label}} | {{avg_bd_rate_y}} | {{avg_bd_psnr_y}} | {{avg_time}} |
+{{/each}}
+{{/if}}
 
 ## Interpretation Guide
 
@@ -53,8 +93,11 @@
   - Positive BD-PSNR → test encoder produces **better quality** at same bitrate
   - Negative BD-PSNR → test encoder produces **worse quality** at same bitrate
 
-- **Methodology**: VCEG-M33 fits 3rd-order polynomials through 4 RD points in the log-rate
+- **Methodology**: VCEG-M33 fits 3rd-order polynomials through RD points in the log-rate
   domain, then computes the integral difference over the common range.
+  Standard uses 4 QP points. 3-point (quadratic fallback) and 5+ point (least-squares) are supported.
+
+- **YUV Weighting**: 4:2:0 uses 6:1:1, 4:2:2 uses 4:1:1, 4:4:4 uses 1:1:1 (equal).
 
 ## Configuration
 
@@ -70,6 +113,7 @@ Test: {{test_label}}
 Sequences: {{num_sequences}}
 QP points: {{qp_points}}
 Execution: {{execution_mode}}
+Quality metrics: {{quality_metrics}}
 ```
 
 ---
