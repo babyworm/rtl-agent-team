@@ -41,7 +41,7 @@ if [[ ! -d "$SRC_DIR" ]]; then
     exit 1
 fi
 
-# Check for C source files
+# Check for C source files (flat directory only — subdirectories require a Makefile)
 C_FILES=("$SRC_DIR"/*.c)
 if [[ ! -e "${C_FILES[0]}" ]]; then
     echo "ERROR: No .c files found in $SRC_DIR"
@@ -76,7 +76,7 @@ if [[ -f "$SRC_DIR/Makefile" || -f "$SRC_DIR/makefile" ]]; then
     echo "Strategy: make (Makefile found)"
     make -C "$SRC_DIR" \
         CC="$CC" \
-        CFLAGS="$CFLAGS ${EXTRA_CFLAGS[*]:-}" \
+        CFLAGS="$CFLAGS ${EXTRA_CFLAGS[*]:-} $INCLUDE_DIR" \
         OUTPUT="$OUTPUT_BINARY" \
         -j"$(nproc 2>/dev/null || echo 4)"
 else
@@ -84,7 +84,7 @@ else
     echo "Files:   ${C_FILES[*]}"
 
     # shellcheck disable=SC2086
-    $CC $CFLAGS ${EXTRA_CFLAGS[*]:-} $INCLUDE_DIR \
+    $CC $CFLAGS ${EXTRA_CFLAGS[*]:-} ${INCLUDE_DIR:+"$INCLUDE_DIR"} \
         "${C_FILES[@]}" \
         -o "$OUTPUT_BINARY" \
         $LDFLAGS

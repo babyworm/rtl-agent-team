@@ -80,7 +80,8 @@ comparing outputs, and tracking which profile features are covered.
 - Mandatory streams (JVET, JCTVC) must all PASS for overall conformance PASS
 - Optional streams (3rd party) failures are reported but do not affect overall verdict
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
-- Dependencies: gcc (C11), Python 3.8+, hjson
+- timeout_per_job is in seconds (default: 300s = 5 min per decoding job)
+- Dependencies: gcc (C11), Python 3.8+, hjson, numpy (optional, for PSNR computation)
 - Self-test: `python3 skills/codec-conformance-eval/scripts/compare_output.py --test` runs built-in unit tests
 </Execution_Policy>
 
@@ -94,8 +95,9 @@ comparing outputs, and tracking which profile features are covered.
    - Check Python dependencies: `python3 -c "import hjson; print('OK')"`
 
 2. **Decoder build** (build_decoder.sh)
-   - `bash skills/codec-conformance-eval/scripts/build_decoder.sh <decoder_src> <decoder_binary>`
+   - `bash skills/codec-conformance-eval/scripts/build_decoder.sh <decoder_src> <decoder_binary> [extra_cflags...]`
    - Build flags: `gcc -std=c11 -O2 -Wall -Wextra -lm` (C11 standard per CLAUDE.md)
+   - Optional extra_cflags: e.g., `-DDECODER_ONLY`, `-DMAX_DPB_SIZE=16`
    - On build failure: capture stderr, report to user, STOP
 
 3. **Conformance test execution** (run_conformance.py)
@@ -138,6 +140,8 @@ comparing outputs, and tracking which profile features are covered.
 Glob("ref_model/src/*.c")              # Verify decoder source exists
 Read("<conformance-config.hjson>")     # Read conformance configuration
 Bash("python3 -c 'import hjson; print(\"OK\")'")  # Check dependencies
+Bash("ls conformance/")               # Verify conformance bitstream dirs exist
+Bash("ls conformance/golden-outputs/") # Verify golden output references exist
 
 # ============================================================
 # Step 2: Decoder build

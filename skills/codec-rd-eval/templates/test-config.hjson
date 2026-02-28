@@ -112,7 +112,9 @@
   ]
 
   // QP points — standard 4-point for VCEG-M33 BD calculation
-  // 3+ points supported (4 is standard, 5+ uses least-squares fitting)
+  // 3 points: quadratic (degree-2) fallback
+  // 4 points: standard cubic (exact fit)
+  // 5+ points: cubic least-squares fitting
   // JVET CTC: {22, 27, 32, 37}  |  JCT-VC CTC: {22, 27, 32, 37}
   qp_points: [22, 27, 32, 37]
 
@@ -138,7 +140,6 @@
   output: {
     report_path: "docs/phase-1-research/rd-eval-report.md"
     raw_data_path: ".rtl-agent-team/scratch/rd-eval/"
-    save_bitstreams: false     // Keep encoded bitstream files
-    save_reconstructed: false  // Keep reconstructed YUV files
+    // Bitstreams and reconstructed YUV files are always preserved in raw_data_path
   }
 }

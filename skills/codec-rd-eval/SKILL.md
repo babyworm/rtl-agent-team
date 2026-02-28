@@ -29,7 +29,7 @@ precision impact), or standalone evaluation outside the pipeline.
 
 **Key features**:
 - **N-candidate comparison**: Compare 2+ configurations via candidates[] array (anchor + N tests)
-- **Configurable encoder CLI**: encoder_cmd_template supports any encoder (HM, VTM, custom)
+- **Configurable encoder CLI**: encoder_cmd_template supports any encoder (HM, VTM, custom). Available variables: `{encoder}`, `{cfg}`, `{input}`, `{width}`, `{height}`, `{fps}`, `{frames}`, `{qp}`, `{bitstream}`, `{recon}`, `{bit_depth}`, `{chroma_format}`
 - **Configurable output parsing**: Custom regex patterns for bitrate/PSNR extraction
 - **SSIM/VMAF opt-in**: Additional quality metrics on explicit user request only
 - **bit_depth/chroma_format aware**: YUV weighting adjusts per chroma format (420/422/444)
@@ -76,6 +76,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - On build failure: report error details and stop (do not proceed with stale binaries)
 - On simulation failure: report failed jobs, compute BD metrics from successful jobs with warnings
 - On metric parsing failure (bitrate=0 or PSNR=0): mark job as failed with guidance to check output_parsing
+- timeout_per_job is in seconds (default: 3600s = 1 hour per encoding job)
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - Dependencies: gcc (C11), Python 3.8+, numpy, hjson
 - Self-test: `python3 skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests

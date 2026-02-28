@@ -16,6 +16,7 @@ Dependencies: numpy
 
 import argparse
 import json
+import math
 import os
 import sys
 import warnings
@@ -127,10 +128,10 @@ def bd_rate(anchor_rates: list, anchor_psnrs: list,
         warnings.warn(
             f"No overlapping PSNR range between anchor [{anchor_psnrs_arr.min():.2f}, "
             f"{anchor_psnrs_arr.max():.2f}] and test [{test_psnrs_arr.min():.2f}, "
-            f"{test_psnrs_arr.max():.2f}]. Returning 0.0 (incomparable, not identical).",
+            f"{test_psnrs_arr.max():.2f}]. Returning NaN (incomparable).",
             stacklevel=2,
         )
-        return 0.0
+        return float('nan')
 
     int_anchor = _integrate_poly(poly_anchor, psnr_min, psnr_max)
     int_test = _integrate_poly(poly_test, psnr_min, psnr_max)
@@ -182,10 +183,10 @@ def bd_psnr(anchor_rates: list, anchor_psnrs: list,
     if rate_min >= rate_max:
         warnings.warn(
             f"No overlapping log-rate range between anchor and test. "
-            f"Returning 0.0 (incomparable, not identical).",
+            f"Returning NaN (incomparable).",
             stacklevel=2,
         )
-        return 0.0
+        return float('nan')
 
     int_anchor = _integrate_poly(poly_anchor, rate_min, rate_max)
     int_test = _integrate_poly(poly_test, rate_min, rate_max)
@@ -323,13 +324,16 @@ def _compute_one_comparison(anchor_label, anchor_data, test_label, test_data) ->
             "num_test_points": len(test_pts),
         }
 
-        # Add SSIM/VMAF data if available
+        # Add SSIM/VMAF data if available (with delta computation)
         a_ssim = [p[4] for p in anchor_pts if p[4] is not None]
         t_ssim = [p[4] for p in test_pts if p[4] is not None]
         if a_ssim:
             seq_metrics["anchor_avg_ssim"] = round(sum(a_ssim) / len(a_ssim), 6)
         if t_ssim:
             seq_metrics["test_avg_ssim"] = round(sum(t_ssim) / len(t_ssim), 6)
+        if a_ssim and t_ssim:
+            seq_metrics["ssim_delta"] = round(
+                seq_metrics["test_avg_ssim"] - seq_metrics["anchor_avg_ssim"], 6)
 
         a_vmaf = [p[5] for p in anchor_pts if p[5] is not None]
         t_vmaf = [p[5] for p in test_pts if p[5] is not None]
@@ -337,6 +341,9 @@ def _compute_one_comparison(anchor_label, anchor_data, test_label, test_data) ->
             seq_metrics["anchor_avg_vmaf"] = round(sum(a_vmaf) / len(a_vmaf), 2)
         if t_vmaf:
             seq_metrics["test_avg_vmaf"] = round(sum(t_vmaf) / len(t_vmaf), 2)
+        if a_vmaf and t_vmaf:
+            seq_metrics["vmaf_delta"] = round(
+                seq_metrics["test_avg_vmaf"] - seq_metrics["anchor_avg_vmaf"], 2)
 
         try:
             seq_metrics["bd_rate_y"] = round(bd_rate(a_rates, a_psnr_y, t_rates, t_psnr_y), 4)
@@ -353,23 +360,35 @@ def _compute_one_comparison(anchor_label, anchor_data, test_label, test_data) ->
 
         metrics["sequences"][seq] = seq_metrics
 
-    # Aggregate (simple average)
+    # Aggregate (simple average, filtering NaN from non-overlapping ranges)
+    def _avg_finite(vals):
+        finite = [v for v in vals if not math.isnan(v)]
+        return round(sum(finite) / len(finite), 4) if finite else float('nan')
+
     if bd_rates_y:
+        num_finite = sum(1 for v in bd_rates_y if not math.isnan(v))
         metrics["aggregate"] = {
-            "avg_bd_rate_y": round(sum(bd_rates_y) / len(bd_rates_y), 4),
-            "avg_bd_psnr_y": round(sum(bd_psnrs_y) / len(bd_psnrs_y), 4),
-            "avg_bd_rate_yuv": round(sum(bd_rates_yuv) / len(bd_rates_yuv), 4),
-            "avg_bd_psnr_yuv": round(sum(bd_psnrs_yuv) / len(bd_psnrs_yuv), 4),
+            "avg_bd_rate_y": _avg_finite(bd_rates_y),
+            "avg_bd_psnr_y": _avg_finite(bd_psnrs_y),
+            "avg_bd_rate_yuv": _avg_finite(bd_rates_yuv),
+            "avg_bd_psnr_yuv": _avg_finite(bd_psnrs_yuv),
             "num_sequences": len(bd_rates_y),
+            "num_sequences_valid": num_finite,
         }
 
-        # Add encoding time summary
+        # Add encoding time summary with speedup
         if avg_encode_times["anchor"]:
-            metrics["aggregate"]["avg_anchor_encode_time_s"] = round(
-                sum(avg_encode_times["anchor"]) / len(avg_encode_times["anchor"]), 2)
+            avg_a = sum(avg_encode_times["anchor"]) / len(avg_encode_times["anchor"])
+            metrics["aggregate"]["avg_anchor_encode_time_s"] = round(avg_a, 2)
+        else:
+            avg_a = 0
         if avg_encode_times["test"]:
-            metrics["aggregate"]["avg_test_encode_time_s"] = round(
-                sum(avg_encode_times["test"]) / len(avg_encode_times["test"]), 2)
+            avg_t = sum(avg_encode_times["test"]) / len(avg_encode_times["test"])
+            metrics["aggregate"]["avg_test_encode_time_s"] = round(avg_t, 2)
+        else:
+            avg_t = 0
+        if avg_a > 0 and avg_t > 0:
+            metrics["aggregate"]["computed_speedup"] = round(avg_a / avg_t, 2)
 
     return metrics
 

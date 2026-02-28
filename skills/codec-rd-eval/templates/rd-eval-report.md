@@ -33,7 +33,7 @@
 
 ### RD Data — Anchor ({{anchor_label}})
 
-<!-- JSON source: results.json (from run_eval.py), filter by config_label=anchor and is_anchor=true -->
+<!-- JSON source: results.json (from run_eval.py). Agent must split by is_anchor=true → anchor_results[], is_anchor=false → test_results[]. Each entry has: sequence, qp, bitrate_kbps, psnr_y, psnr_yuv, encode_time_s -->
 
 | Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
 |----------|----|----------------|-------------|----------------|-----------------|
@@ -56,12 +56,13 @@
 | Config | Avg Encode Time (s) | Speedup vs Anchor |
 |--------|---------------------|-------------------|
 | {{anchor_label}} (Anchor) | {{aggregate.avg_anchor_encode_time_s}} | 1.00x |
-| {{test_label}} (Test) | {{aggregate.avg_test_encode_time_s}} | {{computed_speedup}}x |
+| {{test_label}} (Test) | {{aggregate.avg_test_encode_time_s}} | {{aggregate.computed_speedup}}x |
 
 {{#if ssim_enabled}}
+<!-- Condition: ssim_enabled = "ssim" in quality_metrics (from HJSON config) -->
 ## SSIM Comparison (opt-in)
 
-<!-- JSON source: bd-metrics.json → sequences[].anchor_avg_ssim / test_avg_ssim -->
+<!-- JSON source: bd-metrics.json → sequences[].anchor_avg_ssim / test_avg_ssim / ssim_delta -->
 
 | Sequence | Anchor Avg SSIM | Test Avg SSIM | Delta |
 |----------|-----------------|---------------|-------|
@@ -71,6 +72,7 @@
 {{/if}}
 
 {{#if vmaf_enabled}}
+<!-- Condition: vmaf_enabled = "vmaf" in quality_metrics (from HJSON config) -->
 ## VMAF Comparison (opt-in)
 
 | Sequence | Anchor Avg VMAF | Test Avg VMAF | Delta |
@@ -81,9 +83,10 @@
 {{/if}}
 
 {{#if n_candidate}}
+<!-- Condition: n_candidate = "comparisons" key exists in bd-metrics.json (N-config mode with 3+ candidates) -->
 ## N-Candidate Comparison Matrix
 
-<!-- JSON source: bd-metrics.json (N-config mode) → comparisons[] array -->
+<!-- JSON source: bd-metrics.json → comparisons[] array -->
 
 BD-rate Y (%) vs Anchor ({{anchor_label}}):
 
@@ -113,18 +116,20 @@ BD-rate Y (%) vs Anchor ({{anchor_label}}):
 
 ## Configuration
 
+<!-- JSON source: Original HJSON config (anchor/test/candidates blocks). Agent must read the HJSON config directly — bd-metrics.json does not include config passthrough. -->
+
 ```
 Anchor: {{anchor_label}}
-  Source: {{anchor_src}}
-  Config: {{anchor_cfg}}
+  Source: {{anchor.encoder_src}}
+  Config: {{anchor.encoder_cfg}}
 
 Test: {{test_label}}
-  Source: {{test_src}}
-  Config: {{test_cfg}}
+  Source: {{test.encoder_src}}
+  Config: {{test.encoder_cfg}}
 
 Sequences: {{aggregate.num_sequences}}
 QP points: {{qp_points}}
-Execution: {{execution_mode}}
+Execution: {{execution.mode}}
 Quality metrics: {{quality_metrics}}
 ```
 

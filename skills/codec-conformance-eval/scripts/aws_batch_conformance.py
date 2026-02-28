@@ -23,12 +23,13 @@ import time
 from typing import Optional
 
 
-def submit_jobs(config: dict, output_dir: str) -> list:
+def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
     """Submit conformance decoding jobs to AWS Batch.
 
     Args:
         config: Conformance configuration dict (JSON, not HJSON)
         output_dir: Local directory for results
+        batch_client: Optional pre-created boto3 Batch client
 
     Returns:
         List of submitted job info dicts.
@@ -45,7 +46,8 @@ def submit_jobs(config: dict, output_dir: str) -> list:
     job_definition = aws_cfg.get("job_definition", "codec-conformance-job")
     timeout = config.get("execution", {}).get("timeout_per_job", 300)
 
-    batch_client = boto3.client("batch", region_name=region)
+    if batch_client is None:
+        batch_client = boto3.client("batch", region_name=region)
 
     decoder_cfg = config.get("decoder", {})
     eval_name = config.get("eval_name", "conformance-eval")
@@ -199,8 +201,8 @@ def main():
     batch_client = boto3.client("batch", region_name=region)
     s3_client = boto3.client("s3", region_name=region)
 
-    # Submit jobs
-    submitted = submit_jobs(config, args.output_dir)
+    # Submit jobs (reuse batch_client created above)
+    submitted = submit_jobs(config, args.output_dir, batch_client=batch_client)
 
     # Wait for completion
     completed = wait_for_jobs(batch_client, submitted)

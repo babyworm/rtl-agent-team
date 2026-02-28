@@ -22,7 +22,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 from typing import Optional
 
@@ -95,7 +95,8 @@ def discover_streams(source: dict, standard: str) -> list:
     for ext in extensions:
         for filepath in sorted(glob.glob(os.path.join(base_path, "**", ext), recursive=True)):
             name = Path(filepath).stem
-            # Avoid duplicates (same stem from different extensions)
+            # Avoid duplicates (same stem from different extensions, e.g. foo.264 vs foo.bin)
+            # Keeps whichever extension is discovered first
             if not any(f["name"] == name for f in found):
                 found.append({
                     "name": name,
@@ -245,7 +246,17 @@ def run_local(config: dict, output_dir: str) -> list:
         }
 
         for future in as_completed(futures):
-            result = future.result()
+            stream = futures[future]
+            try:
+                result = future.result()
+            except Exception as e:
+                # BrokenProcessPool or other executor-level failure
+                result = DecodingResult(
+                    stream_name=stream["name"], source_id=stream["source_id"],
+                    source_priority=stream.get("priority", "optional"),
+                    status="failed",
+                    error=f"Executor error: {e}",
+                )
             results.append(result)
             completed += 1
 
@@ -260,6 +271,31 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     """Submit conformance decoding jobs to AWS Batch."""
     print("AWS Batch mode: delegating to aws_batch_conformance.py...")
     aws_script = os.path.join(os.path.dirname(__file__), "aws_batch_conformance.py")
+
+    # Pre-resolve streams so aws_batch_conformance.py can find them
+    target = config.get("target", {})
+    standard = target.get("standard", "h264")
+    target_profile = target.get("profile", "").lower()
+    s3_bucket = config.get("execution", {}).get("aws_batch", {}).get(
+        "s3_bucket", "codec-eval-results")
+
+    all_streams = []
+    for source in config.get("conformance_sources", []):
+        streams = discover_streams(source, standard)
+        if target_profile:
+            streams = [s for s in streams if target_profile in s["name"].lower()]
+        for s in streams:
+            # Add s3_path: use explicit s3_path if present, else derive from local path
+            if "s3_path" not in s:
+                s["s3_path"] = f"s3://{s3_bucket}/conformance/{s['path'].lstrip('/')}"
+        all_streams.extend(streams)
+
+    if not all_streams:
+        print("ERROR: No conformance bitstreams found for AWS Batch.", file=sys.stderr)
+        return []
+
+    config["_resolved_streams"] = all_streams
+    print(f"  Resolved {len(all_streams)} streams for AWS Batch submission")
 
     config_path = os.path.join(output_dir, "conformance_config.json")
     with open(config_path, "w") as f:
@@ -278,7 +314,8 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     results_path = os.path.join(output_dir, "results.json")
     with open(results_path, "r") as f:
         raw = json.load(f)
-    return [DecodingResult(**r) for r in raw]
+    known = {f.name for f in fields(DecodingResult)}
+    return [DecodingResult(**{k: v for k, v in r.items() if k in known}) for r in raw]
 
 
 def main():

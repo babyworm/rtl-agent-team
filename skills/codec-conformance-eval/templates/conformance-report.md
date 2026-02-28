@@ -29,13 +29,13 @@
 
 ## Per-Stream Results
 
-<!-- JSON source: metrics.streams[] — filter by priority field -->
+<!-- JSON source: metrics.mandatory_streams[], metrics.optional_streams[] (pre-filtered by compare_output.py) -->
 
 ### Mandatory Streams
 
 | Stream | Source | Result | Decode Time (s) | Detail |
 |--------|--------|--------|-----------------|--------|
-{{#each streams where priority="mandatory"}}
+{{#each mandatory_streams}}
 | {{stream_name}} | {{source_id}} | {{conformance}} | {{decode_time_s}} | {{error}} |
 {{/each}}
 
@@ -43,7 +43,7 @@
 
 | Stream | Source | Result | Decode Time (s) | Detail |
 |--------|--------|--------|-----------------|--------|
-{{#each streams where priority="optional"}}
+{{#each optional_streams}}
 | {{stream_name}} | {{source_id}} | {{conformance}} | {{decode_time_s}} | {{error}} |
 {{/each}}
 
@@ -67,7 +67,7 @@
 {{/if}}
 
 {{#if ssim_enabled}}
-## SSIM Metrics (opt-in)
+<!-- Condition: ssim_enabled = "ssim" in quality_metrics (from HJSON config). JSON source: metrics.ssim_streams[] -->
 
 | Stream | SSIM | Status |
 |--------|------|--------|
@@ -86,14 +86,16 @@
 
 ## Configuration
 
+<!-- JSON source: Original HJSON config (decoder, golden, execution blocks) -->
+
 ```
 Standard:  {{target.standard}}
 Profile:   {{target.profile}}
 Level:     {{target.level}}
-Decoder:   {{decoder_src}}
-Golden:    {{golden_path}} ({{comparison_mode}})
-Execution: {{execution_mode}} (max_parallel={{max_parallel}})
-Sources:   {{num_sources}} ({{mandatory_sources}} mandatory, {{optional_sources}} optional)
+Decoder:   {{decoder.decoder_src}}
+Golden:    {{golden.path}} ({{golden.comparison_mode}})
+Execution: {{execution.mode}} (max_parallel={{execution.max_parallel}})
+Sources:   {{summary.num_sources}} ({{summary.mandatory_sources}} mandatory, {{summary.optional_sources}} optional)
 ```
 
 ## Interpretation

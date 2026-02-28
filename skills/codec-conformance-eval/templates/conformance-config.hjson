@@ -59,7 +59,7 @@
     //   "bitexact"       — Byte-by-byte comparison (reports mismatch offset)
     //   "psnr-threshold" — PSNR threshold (for approximate matching)
     comparison_mode: "md5"
-    psnr_threshold: 100.0   // dB (only for psnr-threshold mode; inf = bitexact)
+    psnr_threshold: 100.0   // dB (only for psnr-threshold mode). Use very high value (e.g. 100) for near-bitexact. Lower values (e.g. 50) allow rounding tolerance.
   }
 
   // Quality metrics (opt-in only — add "ssim" / "vmaf" if needed)
@@ -78,6 +78,9 @@
       job_definition: "codec-conformance-job"
       spot: true
       max_vcpus: 32
+      s3_bucket: "codec-eval-results"   // S3 bucket for conformance streams and results
+      compute_env: "codec-conformance-spot-ce"
+      instance_types: ["c5.xlarge", "c5.2xlarge"]
     }
   }
 
@@ -85,6 +88,6 @@
   output: {
     report_path: "docs/phase-1-research/conformance-eval-report.md"
     raw_data_path: ".rtl-agent-team/scratch/conformance-eval/"
-    save_decoded: false   // Keep decoded YUV files (can be large)
+    // Decoded YUV files are always preserved in raw_data_path (needed for PSNR/SSIM comparison)
   }
 }

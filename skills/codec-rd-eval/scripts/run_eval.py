@@ -27,7 +27,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 from typing import Optional
 
@@ -157,10 +157,15 @@ def parse_encoder_output(stdout: str, stderr: str,
     return result
 
 
+PIX_FMT_MAP = {"420": "yuv420p", "422": "yuv422p", "444": "yuv444p"}
+
+
 def _run_ffmpeg_ssim(original_yuv: str, recon_yuv: str,
-                     width: int, height: int, bit_depth: int = 8) -> Optional[float]:
+                     width: int, height: int, bit_depth: int = 8,
+                     chroma_format: str = "420") -> Optional[float]:
     """Compute SSIM using ffmpeg (fallback when encoder doesn't output SSIM)."""
-    pix_fmt = f"yuv420p{'10le' if bit_depth > 8 else ''}"
+    base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
+    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", original_yuv,
@@ -178,9 +183,11 @@ def _run_ffmpeg_ssim(original_yuv: str, recon_yuv: str,
 
 
 def _run_ffmpeg_vmaf(original_yuv: str, recon_yuv: str,
-                     width: int, height: int, bit_depth: int = 8) -> Optional[float]:
+                     width: int, height: int, bit_depth: int = 8,
+                     chroma_format: str = "420") -> Optional[float]:
     """Compute VMAF using ffmpeg (opt-in quality metric)."""
-    pix_fmt = f"yuv420p{'10le' if bit_depth > 8 else ''}"
+    base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
+    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", recon_yuv,
@@ -279,14 +286,14 @@ def run_single_encode(
         if "ssim" in quality_metrics and ssim_val is None:
             ssim_val = _run_ffmpeg_ssim(
                 sequence["path"], output_recon,
-                sequence["width"], sequence["height"], bit_depth,
+                sequence["width"], sequence["height"], bit_depth, chroma_format,
             )
 
         # VMAF: opt-in (always via ffmpeg)
         if "vmaf" in quality_metrics:
             vmaf_val = _run_ffmpeg_vmaf(
                 sequence["path"], output_recon,
-                sequence["width"], sequence["height"], bit_depth,
+                sequence["width"], sequence["height"], bit_depth, chroma_format,
             )
 
         return EncodingResult(
@@ -324,6 +331,13 @@ def _resolve_configs(config: dict) -> list:
     """
     # candidates[] takes priority over anchor/test
     candidates = config.get("candidates")
+    if candidates and len(candidates) == 1:
+        import warnings
+        warnings.warn(
+            "candidates[] has only 1 entry. BD-rate requires at least "
+            "anchor + test (2 configs). Treating single entry as anchor.",
+            stacklevel=2,
+        )
     if candidates and len(candidates) >= 2:
         resolved = []
         has_anchor = False
@@ -389,7 +403,16 @@ def run_local(config: dict, output_dir: str) -> list:
         for future in as_completed(futures):
             job = futures[future]
             is_anchor = job[-1]  # last element is is_anchor flag
-            result = future.result()
+            try:
+                result = future.result()
+            except Exception as e:
+                # BrokenProcessPool or other executor-level failure
+                result = EncodingResult(
+                    sequence=job[2]["name"], qp=job[3], config_label=job[4],
+                    bitrate_kbps=0, psnr_y=0, psnr_u=0, psnr_v=0, psnr_yuv=0,
+                    encode_time_s=0, status="failed",
+                    error=f"Executor error: {e}",
+                )
             result.is_anchor = is_anchor
             results.append(result)
             completed += 1
@@ -427,11 +450,12 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
         print(f"ERROR: AWS Batch submission failed: {proc.stderr}", file=sys.stderr)
         sys.exit(1)
 
-    # Load results from AWS batch output
+    # Load results from AWS batch output (filter to known fields only)
     results_path = os.path.join(output_dir, "results.json")
     with open(results_path, "r") as f:
         raw = json.load(f)
-    return [EncodingResult(**r) for r in raw]
+    known = {f.name for f in fields(EncodingResult)}
+    return [EncodingResult(**{k: v for k, v in r.items() if k in known}) for r in raw]
 
 
 def main():
@@ -453,8 +477,8 @@ def main():
     )
     os.makedirs(output_dir, exist_ok=True)
 
-    if args.max_parallel and "execution" in config:
-        config["execution"]["max_parallel"] = args.max_parallel
+    if args.max_parallel:
+        config.setdefault("execution", {})["max_parallel"] = args.max_parallel
 
     # Run encoding
     if args.mode == "local":

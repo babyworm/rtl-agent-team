@@ -8,7 +8,7 @@ Usage:
     python3 compare_output.py <results.json> <config.hjson> [--output <metrics.json>]
     python3 compare_output.py --test  # Run built-in unit tests
 
-Dependencies: hjson (optional, for config loading)
+Dependencies: hjson (for HJSON config loading; falls back to JSON), numpy (optional, for PSNR computation)
 """
 
 import argparse
@@ -122,15 +122,20 @@ def compute_psnr_from_files(file_a: str, file_b: str,
 
     mse = np.mean((arr_a - arr_b) ** 2)
     if mse == 0:
-        return float("inf")
+        return 999.99  # Identical frames — sentinel value (JSON does not support Infinity)
     psnr = 10.0 * math.log10(max_val ** 2 / mse)
     return round(psnr, 4)
 
 
+PIX_FMT_MAP = {"420": "yuv420p", "422": "yuv422p", "444": "yuv444p"}
+
+
 def run_ffmpeg_ssim(original: str, decoded: str,
-                    width: int, height: int, bit_depth: int = 8) -> Optional[float]:
+                    width: int, height: int, bit_depth: int = 8,
+                    chroma_format: str = "420") -> Optional[float]:
     """Compute SSIM using ffmpeg."""
-    pix_fmt = f"yuv420p{'10le' if bit_depth > 8 else ''}"
+    base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
+    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", original,
@@ -148,9 +153,11 @@ def run_ffmpeg_ssim(original: str, decoded: str,
 
 
 def run_ffmpeg_vmaf(original: str, decoded: str,
-                    width: int, height: int, bit_depth: int = 8) -> Optional[float]:
+                    width: int, height: int, bit_depth: int = 8,
+                    chroma_format: str = "420") -> Optional[float]:
     """Compute VMAF using ffmpeg."""
-    pix_fmt = f"yuv420p{'10le' if bit_depth > 8 else ''}"
+    base_fmt = PIX_FMT_MAP.get(chroma_format, "yuv420p")
+    pix_fmt = f"{base_fmt}{'10le' if bit_depth > 8 else ''}"
     vsize = f"{width}x{height}"
     cmd = [
         "ffmpeg", "-f", "rawvideo", "-pix_fmt", pix_fmt, "-s", vsize, "-i", decoded,
@@ -272,14 +279,19 @@ def compare_results(results_path: str, config: dict) -> dict:
             elif comparison_mode == "psnr-threshold" and golden_path:
                 golden_yuv = os.path.join(golden_path, f"{stream_name}.yuv")
                 if os.path.isfile(golden_yuv) and r.get("output_path"):
-                    # Use target dimensions if available, default 1920x1080
+                    # Require explicit dimensions for PSNR computation
                     target = config.get("target", {})
-                    w = target.get("width", 1920)
-                    h = target.get("height", 1080)
+                    w = target.get("width")
+                    h = target.get("height")
                     bd = target.get("bit_depth", 8)
+                    if not w or not h:
+                        entry["conformance"] = "SKIP"
+                        entry["error"] = "target.width/height required for psnr-threshold mode"
+                        stream_results.append(entry)
+                        continue
                     psnr_val = compute_psnr_from_files(r["output_path"], golden_yuv, w, h, bd)
                     if psnr_val is not None:
-                        passed = psnr_val >= psnr_threshold or psnr_val == float("inf")
+                        passed = psnr_val >= psnr_threshold
                         entry["conformance"] = "PASS" if passed else "FAIL"
                         entry["comparison"] = {"psnr_y": psnr_val, "threshold": psnr_threshold}
                     else:
@@ -321,10 +333,85 @@ def compare_results(results_path: str, config: dict) -> dict:
 
         stream_results.append(entry)
 
-    # Overall verdict: PASS only if all mandatory streams pass
-    overall_verdict = "PASS" if mandatory_fail == 0 and mandatory_total > 0 else "FAIL"
-    if mandatory_total == 0 and optional_fail == 0:
+    # Overall verdict logic:
+    #   - mandatory streams exist and all pass → "PASS"
+    #   - mandatory streams exist and any fail → "FAIL"
+    #   - no mandatory streams, all optional pass → "PASS (no mandatory streams)"
+    #   - no mandatory streams, any optional fail → "FAIL (optional only)"
+    if mandatory_total > 0:
+        overall_verdict = "PASS" if mandatory_fail == 0 else "FAIL"
+    elif optional_fail == 0:
         overall_verdict = "PASS (no mandatory streams)"
+    else:
+        overall_verdict = "FAIL (optional only)"
+
+    # Compute derived rate fields (M1)
+    total_pass = mandatory_pass + optional_pass
+    total_fail = mandatory_fail + optional_fail
+    mandatory_rate = round(mandatory_pass / mandatory_total * 100, 1) if mandatory_total > 0 else 0
+    optional_rate = round(optional_pass / optional_total * 100, 1) if optional_total > 0 else 0
+    total_rate = round(total_pass / len(stream_results) * 100, 1) if stream_results else 0
+
+    # Pre-filter streams by priority (M2)
+    mandatory_streams = [s for s in stream_results if s.get("priority") == "mandatory"]
+    optional_streams = [s for s in stream_results if s.get("priority") != "mandatory"]
+    failures = [s for s in stream_results if s.get("conformance") == "FAIL"]
+
+    # Count sources (for config section)
+    all_sources = config.get("conformance_sources", [])
+    num_sources = len(all_sources)
+    mandatory_sources = sum(1 for s in all_sources if s.get("priority") == "mandatory")
+    optional_sources = num_sources - mandatory_sources
+
+    # Build coverage matrix (M5) — track profile features from stream names
+    coverage = []
+    feature_keywords = {
+        "intra": "Intra prediction",
+        "inter": "Inter prediction",
+        "deblock": "Deblocking filter",
+        "sao": "Sample Adaptive Offset",
+        "transform": "Transform",
+        "entropy": "Entropy coding",
+        "mv": "Motion vector",
+        "merge": "Merge mode",
+        "pcm": "PCM mode",
+        "sei": "SEI messages",
+        "slice": "Slice types",
+        "tile": "Tiles",
+        "wpp": "WPP",
+    }
+    for keyword, feature_name in feature_keywords.items():
+        matching = [s for s in stream_results if keyword in s.get("stream_name", "").lower()]
+        if matching:
+            coverage.append({
+                "feature": feature_name,
+                "tested": True,
+                "stream_count": len(matching),
+            })
+
+    # Build SSIM streams list when opt-in (H4: wire up existing SSIM/VMAF functions)
+    ssim_enabled = "ssim" in quality_metrics
+    ssim_streams = []
+    if ssim_enabled:
+        target = config.get("target", {})
+        w = target.get("width")
+        h = target.get("height")
+        bd = target.get("bit_depth", 8)
+        for entry in stream_results:
+            if entry.get("conformance") == "PASS" and w and h:
+                # Try to compute SSIM if decoded and golden files are available
+                r_match = next(
+                    (r for r in results if r["stream_name"] == entry["stream_name"]),
+                    None,
+                )
+                if r_match and r_match.get("output_path"):
+                    golden_yuv = os.path.join(golden_path, f"{entry['stream_name']}.yuv")
+                    ssim_val = run_ffmpeg_ssim(golden_yuv, r_match["output_path"], w, h, bd)
+                    ssim_streams.append({
+                        "stream_name": entry["stream_name"],
+                        "ssim": ssim_val if ssim_val is not None else "N/A",
+                        "status": "PASS" if ssim_val and ssim_val > 0.99 else "CHECK",
+                    })
 
     metrics = {
         "overall_verdict": overall_verdict,
@@ -332,11 +419,28 @@ def compare_results(results_path: str, config: dict) -> dict:
             "mandatory": {"pass": mandatory_pass, "fail": mandatory_fail, "total": mandatory_total},
             "optional": {"pass": optional_pass, "fail": optional_fail, "total": optional_total},
             "total_streams": len(stream_results),
+            "num_sources": num_sources,
+            "mandatory_sources": mandatory_sources,
+            "optional_sources": optional_sources,
         },
+        "mandatory_rate": mandatory_rate,
+        "optional_rate": optional_rate,
+        "total_pass": total_pass,
+        "total_fail": total_fail,
+        "total_rate": total_rate,
         "source_breakdown": source_breakdown,
         "streams": stream_results,
+        "mandatory_streams": mandatory_streams,
+        "optional_streams": optional_streams,
+        "failures": failures,
+        "coverage": coverage,
+        "ssim_enabled": ssim_enabled,
+        "ssim_streams": ssim_streams,
         "target": config.get("target", {}),
         "comparison_mode": comparison_mode,
+        "decoder": config.get("decoder", {}),
+        "golden": config.get("golden", {}),
+        "execution": config.get("execution", {}),
     }
 
     return metrics

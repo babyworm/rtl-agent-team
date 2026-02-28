@@ -120,6 +120,7 @@ def submit_jobs(config: dict, output_dir: str):
                         "sequence": seq["name"],
                         "qp": qp,
                         "config_label": label,
+                        "is_anchor": is_anchor,
                     }
                     print(f"  Submitted: {job_name} → {job_id}")
 
@@ -189,6 +190,7 @@ def wait_for_jobs(batch_client, s3_client, job_ids: list, job_map: dict,
                             "psnr_v": 0, "psnr_yuv": 0, "encode_time_s": 0,
                             "status": "failed",
                             "error": f"AWS Batch FAILED: {reason}",
+                            "is_anchor": meta.get("is_anchor", False),
                         })
                     pending.discard(job_id)
 
@@ -232,7 +234,7 @@ def fetch_job_result(batch_client, s3_client, job: dict, meta: dict,
             "status": "success",
             "ssim": data.get("ssim"),
             "vmaf": data.get("vmaf"),
-            "is_anchor": data.get("is_anchor", False),
+            "is_anchor": meta.get("is_anchor", False),
         }
     except Exception as e:
         return {
@@ -243,6 +245,7 @@ def fetch_job_result(batch_client, s3_client, job: dict, meta: dict,
             "psnr_v": 0, "psnr_yuv": 0, "encode_time_s": 0,
             "status": "failed",
             "error": f"Failed to fetch result from S3: {e}",
+            "is_anchor": meta.get("is_anchor", False),
         }
 
 
