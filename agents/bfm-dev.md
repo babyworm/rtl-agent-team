@@ -51,7 +51,7 @@ color: magenta
   </Why_This_Matters>
 
   <Success_Criteria>
-    - BFM compiles against SystemC 2.3.3+ and TLM-2.0 with zero warnings
+    - BFM compiles against SystemC 3.0+ and TLM-2.0 with zero warnings
     - TLM initiator and target models use AT (non-blocking) transport by default
     - Proper 4-phase handshake: BEGIN_REQ -> END_REQ -> BEGIN_RESP -> END_RESP
     - AMBA protocol extensions set correctly (AXI burst/cache/prot attributes)

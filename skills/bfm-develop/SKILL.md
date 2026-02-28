@@ -87,7 +87,7 @@ No Memory Manager — payload leaks accumulate during simulation.
 </Examples>
 
 <Escalation_And_Stop_Conditions>
-- SystemC not available in build environment → halt, instruct user to install SystemC 2.3.4+
+- SystemC not available in build environment → halt, instruct user to install SystemC 3.0+
 - AMBA-PV headers not available → instruct user to install ARM AMBA-PV library
 - Smoke test fails after 2 fix iterations → report failure, provide compile/runtime log
 - AT 4-phase protocol deadlock → check PEQ callbacks for missing phase transitions

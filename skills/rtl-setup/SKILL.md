@@ -322,7 +322,7 @@ docker build -t rtl-eda-tools docker/
 - Required tool not found (verilator, verible, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
 - Directory creation permission denied → report error, suggest user fix permissions
 - Existing project detected (rtl/ has .sv files in subdirectories) → warn user, ask whether to skip template generation
-- Python version < 3.8 → cocotb 2.0 requires Python 3.8+; report incompatibility
+- Python version < 3.9 → Project requires Python 3.9+ (hashlib usedforsecurity); report incompatibility
 - No write access to project directory → halt, cannot create structure
 </Escalation_And_Stop_Conditions>
 
