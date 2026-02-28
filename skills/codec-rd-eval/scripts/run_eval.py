@@ -78,6 +78,9 @@ def _sanitize_for_json(obj):
         if math.isnan(obj) or math.isinf(obj):
             return None
         return obj
+    # Handle numpy scalar types (numpy.float64, numpy.int64, etc.)
+    if hasattr(obj, 'item') and hasattr(obj, 'dtype'):
+        return _sanitize_for_json(obj.item())
     if isinstance(obj, dict):
         return {k: _sanitize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -94,7 +97,7 @@ def sanitize_label(label: str) -> str:
     sanitized = re.sub(r'[^\w\-.]', '_', label)
     if len(sanitized) > 64:
         import hashlib
-        h = hashlib.md5(label.encode()).hexdigest()[:6]
+        h = hashlib.md5(label.encode(), usedforsecurity=False).hexdigest()[:6]
         sanitized = f"{sanitized[:57]}_{h}"
     return sanitized or "unnamed"
 
@@ -418,6 +421,10 @@ def run_local(config: dict, output_dir: str) -> list:
     quality_metrics = config.get("quality_metrics", ["psnr"])
 
     configs = _resolve_configs(config)
+    if len(configs) < 2:
+        print("ERROR: Need at least 2 configurations (anchor + test) for BD-rate comparison. "
+              f"Got {len(configs)} config(s).", file=sys.stderr)
+        return []
 
     # Build job list for all configs
     jobs = []
@@ -437,6 +444,11 @@ def run_local(config: dict, output_dir: str) -> list:
                 ))
 
     total = len(jobs)
+    if total == 0:
+        print("WARNING: No encoding jobs generated. Check sequences, QP points, and configs.",
+              file=sys.stderr)
+        return []
+
     results = []
     completed = 0
 
@@ -486,7 +498,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
 
     # Save config for AWS batch script
     config_path = os.path.join(output_dir, "eval_config.json")
-    with open(config_path, "w") as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
 
     try:
@@ -506,7 +518,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
 
     # Load results from AWS batch output (filter to known fields only)
     results_path = os.path.join(output_dir, "results.json")
-    with open(results_path, "r") as f:
+    with open(results_path, "r", encoding="utf-8") as f:
         raw = json.load(f)
     known = {f.name for f in fields(EncodingResult)}
     return [EncodingResult(**{k: v for k, v in r.items() if k in known}) for r in raw]
@@ -553,7 +565,7 @@ def main():
 
     # Save results (sanitize NaN/Inf for valid JSON per RFC 8259)
     results_path = os.path.join(output_dir, "results.json")
-    with open(results_path, "w") as f:
+    with open(results_path, "w", encoding="utf-8") as f:
         json.dump(_sanitize_for_json([asdict(r) for r in results]), f, indent=2)
 
     print(f"\nResults saved to: {results_path}")

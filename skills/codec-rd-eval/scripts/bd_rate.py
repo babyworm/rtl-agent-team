@@ -53,21 +53,30 @@ def _validate_inputs(anchor_rates, anchor_psnrs, test_rates, test_psnrs):
             f"Anchor PSNR: {list(anchor_psnrs)}, Test PSNR: {list(test_psnrs)}")
 
 
-def _poly_degree(n_points: int) -> int:
-    """Determine polynomial degree for fitting.
+def _poly_degrees(n_anchor: int, n_test: int) -> tuple:
+    """Determine polynomial degrees for fitting, warning once if non-standard.
 
     Standard VCEG-M33 uses degree 3 with 4 points (exact fit).
     For N>4 points: degree 3 (least-squares fit).
     For 3 points: degree 2 (quadratic fallback).
+
+    Returns (deg_anchor, deg_test) tuple.
     """
-    deg = min(3, n_points - 1)
-    if n_points != 4:
+    deg_a = min(3, n_anchor - 1)
+    deg_t = min(3, n_test - 1)
+    non_standard = []
+    if n_anchor != 4:
+        non_standard.append(f"anchor={n_anchor}")
+    if n_test != 4:
+        non_standard.append(f"test={n_test}")
+    if non_standard:
         warnings.warn(
             f"BD-rate standard (VCEG-M33) uses exactly 4 points. "
-            f"Got {n_points} points, using degree-{deg} polynomial fit.",
+            f"Non-standard point counts: {', '.join(non_standard)}. "
+            f"Using degree-{deg_a}/{deg_t} polynomial fit.",
             stacklevel=3,
         )
-    return deg
+    return deg_a, deg_t
 
 
 def _integrate_poly(poly_coeffs, lo, hi):
@@ -113,8 +122,7 @@ def bd_rate(anchor_rates: list, anchor_psnrs: list,
     anchor_psnrs_arr = np.array(anchor_psnrs, dtype=np.float64)
     test_psnrs_arr = np.array(test_psnrs, dtype=np.float64)
 
-    deg_a = _poly_degree(len(anchor_rates))
-    deg_t = _poly_degree(len(test_rates))
+    deg_a, deg_t = _poly_degrees(len(anchor_rates), len(test_rates))
 
     # Guard: near-identical points produce ill-conditioned polyfit
     for label, psnrs_arr, rates_arr in [
@@ -182,8 +190,7 @@ def bd_psnr(anchor_rates: list, anchor_psnrs: list,
     anchor_psnrs_arr = np.array(anchor_psnrs, dtype=np.float64)
     test_psnrs_arr = np.array(test_psnrs, dtype=np.float64)
 
-    deg_a = _poly_degree(len(anchor_rates))
-    deg_t = _poly_degree(len(test_rates))
+    deg_a, deg_t = _poly_degrees(len(anchor_rates), len(test_rates))
 
     # Guard: near-identical points produce ill-conditioned polyfit
     for label, rates_arr in [
@@ -236,7 +243,7 @@ def compute_metrics_from_results(results_path: str) -> dict:
         Dictionary with per-sequence and aggregate BD metrics.
         In N-config mode, returns per-comparison results.
     """
-    with open(results_path, "r") as f:
+    with open(results_path, "r", encoding="utf-8") as f:
         results = json.load(f)
 
     # Collect all labels from successful results
@@ -383,29 +390,31 @@ def _compute_one_comparison(anchor_label, anchor_data, test_label, test_data) ->
                 seq_metrics["warning"] = (
                     "BD metrics returned NaN (near-identical RD curves or no overlap range)")
 
-            bd_rates_y.append(seq_metrics["bd_rate_y"])
-            bd_psnrs_y.append(seq_metrics["bd_psnr_y"])
-            bd_rates_yuv.append(seq_metrics["bd_rate_yuv"])
-            bd_psnrs_yuv.append(seq_metrics["bd_psnr_yuv"])
+            # Only append finite values to aggregate lists (NaN inflates num_sequences)
+            if not math.isnan(seq_metrics["bd_rate_y"]):
+                bd_rates_y.append(seq_metrics["bd_rate_y"])
+            if not math.isnan(seq_metrics["bd_psnr_y"]):
+                bd_psnrs_y.append(seq_metrics["bd_psnr_y"])
+            if not math.isnan(seq_metrics["bd_rate_yuv"]):
+                bd_rates_yuv.append(seq_metrics["bd_rate_yuv"])
+            if not math.isnan(seq_metrics["bd_psnr_yuv"]):
+                bd_psnrs_yuv.append(seq_metrics["bd_psnr_yuv"])
         except (ValueError, np.linalg.LinAlgError) as e:
             seq_metrics["error"] = str(e)
 
         metrics["sequences"][seq] = seq_metrics
 
-    # Aggregate (simple average, filtering NaN from non-overlapping ranges)
-    def _avg_finite(vals):
-        finite = [v for v in vals if not math.isnan(v)]
-        return round(sum(finite) / len(finite), 4) if finite else float('nan')
+    # Aggregate (NaN values already excluded from lists)
+    def _safe_avg(vals):
+        return round(sum(vals) / len(vals), 4) if vals else float('nan')
 
     if bd_rates_y:
-        num_finite = sum(1 for v in bd_rates_y if not math.isnan(v))
         metrics["aggregate"] = {
-            "avg_bd_rate_y": _avg_finite(bd_rates_y),
-            "avg_bd_psnr_y": _avg_finite(bd_psnrs_y),
-            "avg_bd_rate_yuv": _avg_finite(bd_rates_yuv),
-            "avg_bd_psnr_yuv": _avg_finite(bd_psnrs_yuv),
+            "avg_bd_rate_y": _safe_avg(bd_rates_y),
+            "avg_bd_psnr_y": _safe_avg(bd_psnrs_y),
+            "avg_bd_rate_yuv": _safe_avg(bd_rates_yuv),
+            "avg_bd_psnr_yuv": _safe_avg(bd_psnrs_yuv),
             "num_sequences": len(bd_rates_y),
-            "num_sequences_valid": num_finite,
         }
 
         # Add encoding time summary with speedup
@@ -594,7 +603,7 @@ def main():
         if args.results else "bd-metrics.json"
     )
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(_sanitize_for_json(metrics), f, indent=2)
     print(f"\nMetrics saved to: {output_path}")
 
@@ -602,12 +611,16 @@ def main():
 def _sanitize_for_json(obj):
     """Replace float NaN/Inf with None for valid RFC 8259 JSON serialization.
 
+    Also converts numpy scalar types (e.g. numpy.float64) to Python natives.
     Note: Duplicated in run_eval.py and compare_output.py for standalone script usage.
     """
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
             return None
         return obj
+    # Handle numpy scalar types (numpy.float64, numpy.int64, etc.)
+    if hasattr(obj, 'item') and hasattr(obj, 'dtype'):
+        return _sanitize_for_json(obj.item())
     if isinstance(obj, dict):
         return {k: _sanitize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):

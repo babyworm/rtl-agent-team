@@ -37,11 +37,12 @@
     {
       id: "JVET"
       label: "ITU-T JVET Official"
-      // Note: JVET applies to H.265 (HEVC) and H.266 (VVC).
-      // For H.264 (AVC), use JVT/JCTVC sources instead.
+      // Note: JVET applies to H.265 (HEVC) and H.266 (VVC), not H.264 (AVC).
+      // For H.264 templates, this source is optional. Change to "mandatory"
+      // when configuring H.265/H.266 conformance.
       path: "conformance/jvet/"
       // url: "https://www.itu.int/..."     // Download reference (informational)
-      priority: "mandatory"
+      priority: "optional"
       // streams: []                         // Auto-discover from path if empty/absent
     }
     {

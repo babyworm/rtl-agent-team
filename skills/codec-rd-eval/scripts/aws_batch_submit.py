@@ -60,7 +60,7 @@ def submit_jobs(config: dict, output_dir: str):
     qp_points = config.get("qp_points", [])
     if not sequences or not qp_points:
         print("ERROR: sequences and qp_points are required in config.", file=sys.stderr)
-        return
+        sys.exit(1)
     timeout = config.get("execution", {}).get("timeout_per_job", 3600)
 
     # Resolve configs: support both candidates[] and anchor/test modes
@@ -169,7 +169,7 @@ def submit_jobs(config: dict, output_dir: str):
 
     # Save results
     results_path = os.path.join(output_dir, "results.json")
-    with open(results_path, "w") as f:
+    with open(results_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
     print(f"\nResults saved to: {results_path}")
@@ -309,11 +309,20 @@ def main():
     parser.add_argument("--output-dir", required=True, help="Output directory for results")
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
+    with open(args.config, "r", encoding="utf-8") as f:
         config = json.load(f)
 
     os.makedirs(args.output_dir, exist_ok=True)
     submit_jobs(config, args.output_dir)
+
+    # L1: Exit non-zero if all jobs failed
+    results_path = os.path.join(args.output_dir, "results.json")
+    if os.path.isfile(results_path):
+        with open(results_path, "r", encoding="utf-8") as f:
+            results = json.load(f)
+        if results and all(r.get("status") == "failed" for r in results):
+            print("ERROR: All jobs failed.", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -131,7 +131,7 @@ def compute_md5(filepath: str) -> Optional[str]:
     """Compute MD5 checksum of a file."""
     if not os.path.isfile(filepath):
         return None
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)  # FIPS compliance (Python 3.9+)
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
@@ -153,7 +153,7 @@ def run_single_decode(
 
     safe_name = re.sub(r'[^\w\-.]', '_', stream_name)
     if len(safe_name) > 64:
-        h = hashlib.md5(stream_name.encode()).hexdigest()[:6]
+        h = hashlib.md5(stream_name.encode(), usedforsecurity=False).hexdigest()[:6]
         safe_name = f"{safe_name[:57]}_{h}"
     output_yuv = os.path.join(output_dir, f"{safe_name}_decoded.yuv")
 
@@ -332,7 +332,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     print(f"  Resolved {len(all_streams)} streams for AWS Batch submission")
 
     config_path = os.path.join(output_dir, "conformance_config.json")
-    with open(config_path, "w") as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
 
     try:
@@ -351,7 +351,7 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
         sys.exit(1)
 
     results_path = os.path.join(output_dir, "results.json")
-    with open(results_path, "r") as f:
+    with open(results_path, "r", encoding="utf-8") as f:
         raw = json.load(f)
     known = {f.name for f in fields(DecodingResult)}
     return [DecodingResult(**{k: v for k, v in r.items() if k in known}) for r in raw]
@@ -403,7 +403,7 @@ def main():
 
     # Save results (sanitize NaN/Inf for valid JSON per RFC 8259)
     results_path = os.path.join(output_dir, "results.json")
-    with open(results_path, "w") as f:
+    with open(results_path, "w", encoding="utf-8") as f:
         json.dump(_sanitize_for_json([asdict(r) for r in results]), f, indent=2)
 
     print(f"\nResults saved to: {results_path}")

@@ -202,7 +202,7 @@ def main():
     parser.add_argument("--output-dir", required=True, help="Output directory for results")
     args = parser.parse_args()
 
-    with open(args.config, "r") as f:
+    with open(args.config, "r", encoding="utf-8") as f:
         config = json.load(f)
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -220,6 +220,11 @@ def main():
 
     # Submit jobs (reuse batch_client created above)
     submitted = submit_jobs(config, args.output_dir, batch_client=batch_client)
+
+    if not submitted:
+        print("ERROR: No jobs were submitted. Check _resolved_streams in config.",
+              file=sys.stderr)
+        sys.exit(1)
 
     # Wait for completion
     completed = wait_for_jobs(batch_client, submitted)
@@ -280,7 +285,7 @@ def main():
 
     # Save results
     results_path = os.path.join(args.output_dir, "results.json")
-    with open(results_path, "w") as f:
+    with open(results_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
     success = sum(1 for r in results if r["status"] == "success")

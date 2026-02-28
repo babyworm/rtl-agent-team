@@ -31,6 +31,9 @@ def _sanitize_for_json(obj):
         if math.isnan(obj) or math.isinf(obj):
             return None
         return obj
+    # Handle numpy scalar types (numpy.float64, numpy.int64, etc.)
+    if hasattr(obj, 'item') and hasattr(obj, 'dtype'):
+        return _sanitize_for_json(obj.item())
     if isinstance(obj, dict):
         return {k: _sanitize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -42,7 +45,7 @@ def compute_md5(filepath: str) -> Optional[str]:
     """Compute MD5 checksum of a file."""
     if not os.path.isfile(filepath):
         return None
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)  # FIPS compliance (Python 3.9+)
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
@@ -216,7 +219,7 @@ def load_golden_md5s(golden_path: str) -> dict:
         return {}
 
     if os.path.isfile(golden_path) and golden_path.endswith(".json"):
-        with open(golden_path, "r") as f:
+        with open(golden_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     md5s = {}
@@ -224,7 +227,7 @@ def load_golden_md5s(golden_path: str) -> dict:
         for md5_file in sorted(os.listdir(golden_path)):
             if md5_file.endswith((".md5", ".md5sum")):
                 filepath = os.path.join(golden_path, md5_file)
-                with open(filepath, "r") as f:
+                with open(filepath, "r", encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line:
@@ -249,7 +252,7 @@ def compare_results(results_path: str, config: dict) -> dict:
     Returns:
         Conformance metrics dict with per-stream and aggregate results.
     """
-    with open(results_path, "r") as f:
+    with open(results_path, "r", encoding="utf-8") as f:
         results = json.load(f)
 
     golden_cfg = config.get("golden", {})
@@ -413,7 +416,8 @@ def compare_results(results_path: str, config: dict) -> dict:
         "wpp": "WPP",
     }
     for keyword, feature_name in feature_keywords.items():
-        matching = [s for s in stream_results if keyword in s.get("stream_name", "").lower()]
+        kw_re = re.compile(r'(?:^|[\W_])' + re.escape(keyword) + r'(?:[\W_]|$)', re.I)
+        matching = [s for s in stream_results if kw_re.search(s.get("stream_name", ""))]
         if matching:
             coverage.append({
                 "feature": feature_name,
@@ -438,6 +442,8 @@ def compare_results(results_path: str, config: dict) -> dict:
                 r_match = results_by_name.get(entry["stream_name"])
                 if r_match and r_match.get("output_path"):
                     golden_yuv = os.path.join(golden_path, f"{entry['stream_name']}.yuv")
+                    if not os.path.isfile(golden_yuv):
+                        continue  # Skip SSIM/VMAF if golden YUV not available
                     if ssim_enabled:
                         ssim_val = run_ffmpeg_ssim(golden_yuv, r_match["output_path"], w, h, bd, cf)
                         ssim_streams.append({
@@ -608,10 +614,10 @@ def main():
 
     try:
         import hjson
-        with open(args.config, "r") as f:
+        with open(args.config, "r", encoding="utf-8") as f:
             config = hjson.load(f)
     except ImportError:
-        with open(args.config, "r") as f:
+        with open(args.config, "r", encoding="utf-8") as f:
             config = json.load(f)
 
     metrics = compare_results(args.results, config)
@@ -640,7 +646,7 @@ def main():
         os.path.dirname(args.results), "conformance-metrics.json"
     )
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(_sanitize_for_json(metrics), f, indent=2)
     print(f"\nMetrics saved to: {output_path}")
 
