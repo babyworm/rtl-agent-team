@@ -80,7 +80,7 @@ color: yellow
 
   <Tool_Usage>
     - Read: read io_definition.json, uarch/*.md for interface details
-    - Write: create formal/protocol/module_name_axi4.sva, formal/protocol/module_name_proto.sby
+    - Write: create sim/formal/module_name_axi4.sva, sim/formal/module_name_proto.sby
     - Bash: run simulation with protocol assertions: `make sim ASSERT=1`
            run formal: `sby -f module_name_proto.sby`
     - Grep: find port names for AXI channels in io_definition.json

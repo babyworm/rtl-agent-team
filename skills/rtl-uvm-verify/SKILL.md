@@ -36,7 +36,7 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 - Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
 - Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
 - DUT instance in top-level wrapper: `u_dut` with `u_` prefix
-- UVM agent instances: `u_` prefix (e.g., `u_axi_agent`, `u_scoreboard`)
+- UVM class member handles: `m_` prefix (e.g., `m_agent`, `m_scoreboard`, `m_driver`, `m_monitor`)
 - Use `logic` in all SV declarations (NOT `reg`/`wire`)
 - Interface signal names must match RTL ports exactly (e.g., `i_data`, `o_valid`)
 </Coding_Convention_Requirements>
@@ -104,7 +104,7 @@ Using `clk_i`, `data_o` in UVM driver — violates project conventions and cause
 
 <Final_Checklist>
 - [ ] Commercial simulator availability verified via Bash CLI before any work
-- [ ] UVM environment uses correct naming (`i_`/`o_` prefix, `sys_clk`/`sys_rst_n`, `u_` instance prefix)
+- [ ] UVM environment uses correct naming (`i_`/`o_` prefix, `sys_clk`/`sys_rst_n`, `m_` UVM member prefix, `u_` RTL instance prefix)
 - [ ] UVM environment compiles without errors
 - [ ] All tests run to completion (no crashes)
 - [ ] uvm/results/run_summary.log written
@@ -114,9 +114,9 @@ Using `clk_i`, `data_o` in UVM driver — violates project conventions and cause
 
 <Advanced>
 UVM component naming conventions (aligned with project style):
-- Agent instances: `u_axi_agent`, `u_apb_agent` (u_ prefix)
-- Driver/monitor inside agent: `u_driver`, `u_monitor` (u_ prefix)
-- DUT wrapper instance: `u_dut`
+- Agent member handles: `m_agent`, `m_axi_agent`, `m_apb_agent` (m_ prefix for UVM class members)
+- Driver/monitor inside agent: `m_driver`, `m_monitor` (m_ prefix for UVM class members)
+- DUT wrapper instance: `u_dut` (u_ prefix for RTL instances only)
 - All SV code uses `logic` (never `reg`/`wire`)
 
 Simulator-specific flags:

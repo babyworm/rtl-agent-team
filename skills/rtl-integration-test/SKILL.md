@@ -95,7 +95,7 @@ Integration testbenches MUST follow project conventions (CLAUDE.md):
    - SV TB:
      ```bash
      scripts/run_sim.sh --sim {sim} --top tb_{top}_integration \
-       --filelist rtl/filelist_top.f --outdir sim/integration --trace \
+       --filelist rtl/filelist_top.f --outdir sim/top --trace \
        sim/top/tb_{top}_integration.sv
      ```
    - cocotb:
@@ -152,7 +152,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
 # ============================================================
 # SV TB path
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run integration test: scripts/run_sim.sh --sim iverilog --top tb_{top}_integration --filelist rtl/filelist_top.f --outdir sim/integration --trace sim/top/tb_{top}_integration.sv. Report pass/fail per test category.")
+     prompt="Run integration test: scripts/run_sim.sh --sim iverilog --top tb_{top}_integration --filelist rtl/filelist_top.f --outdir sim/top --trace sim/top/tb_{top}_integration.sv. Report pass/fail per test category.")
 
 # cocotb path
 Task(subagent_type="rtl-agent-team:eda-runner",

@@ -44,7 +44,7 @@ a signal connection. Combining rtl-architect analysis with lint-checker verifica
 3. lint-checker validates lint-clean via Bash CLI: `verilator --lint-only -Wall` and `slang --lint-only`
 4. Run smoke simulation or formal equivalence check to confirm no behavioral change
    - Bash CLI: `verilator --cc rtl/{module}/{module}.sv --exe sim/{module}/tb_{module}.cpp && make -C obj_dir`
-   - Or: `cd formal/ && sby -f {module}.sby`
+   - Or: `cd sim/formal/ && sby -f {module}.sby`
 5. Report: what changed, naming convention fixes applied, equivalence evidence
 </Steps>
 

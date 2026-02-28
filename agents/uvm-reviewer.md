@@ -71,7 +71,7 @@ disallowedTools: Edit
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read the UVM environment top-level (`tb/uvm/env/` or equivalent):
+    1. Read the UVM environment top-level (`sim/uvm/env/` or equivalent):
        a. Identify all agents: passive (monitor-only) vs active (driver + sequencer + monitor).
        b. Map the component hierarchy: env → agent → driver/monitor/sequencer.
        c. Verify TLM connections: analysis ports from monitors to scoreboards/coverage.
@@ -129,23 +129,23 @@ disallowedTools: Edit
     Factory usage audit:
     ```bash
     # Find proper factory creates
-    grep -rn "type_id::create" tb/ --include="*.sv" | wc -l
+    grep -rn "type_id::create" sim/ --include="*.sv" | wc -l
     # Find factory violations (direct new)
-    grep -rn "= new(" tb/ --include="*.sv" | grep -v "function new" | grep -v "uvm_config"
+    grep -rn "= new(" sim/ --include="*.sv" | grep -v "function new" | grep -v "uvm_config"
     ```
 
     TLM connectivity check:
     ```bash
     # Find analysis port declarations
-    grep -rn "uvm_analysis_port\|uvm_analysis_imp\|uvm_analysis_export" tb/ --include="*.sv"
+    grep -rn "uvm_analysis_port\|uvm_analysis_imp\|uvm_analysis_export" sim/ --include="*.sv"
     # Find connect() calls
-    grep -rn "\.connect(" tb/ --include="*.sv"
+    grep -rn "\.connect(" sim/ --include="*.sv"
     ```
 
     Coverage completeness:
     ```bash
     # Find covergroups
-    grep -rn "covergroup\|coverpoint\|cross" tb/ --include="*.sv"
+    grep -rn "covergroup\|coverpoint\|cross" sim/ --include="*.sv"
     ```
   </Tool_Usage>
 

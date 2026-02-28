@@ -85,7 +85,7 @@ disallowedTools: Edit
     3. **Inventory all verification artifacts**:
        a. Glob all cocotb test files: `sim/*/test_*.py`
        b. Glob all SV unit tests: `sim/*/*.sv`
-       c. Glob all UVM tests: `sim/uvm/tests/test_*.sv`
+       c. Glob all UVM tests: `sim/*/test_*.sv`
        d. Glob all formal assertions: `sim/formal/*.sva`
        e. Read test plan document if available.
 

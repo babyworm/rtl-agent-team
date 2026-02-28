@@ -6,7 +6,7 @@ description: "This skill should be used when verifying bus protocol compliance (
 <Purpose>
 Verify that RTL bus interfaces comply with AXI, AHB, or APB protocol specifications
 using formal SVA assertions and simulation-based protocol checking.
-Outputs: protocol/protocol_report.md + sim/formal/{bus}_assertions.sv.
+Outputs: reviews/phase-5-verify/protocol-report.md + sim/formal/{bus}_assertions.sv.
 </Purpose>
 
 <Use_When>
@@ -72,7 +72,7 @@ Note: For master-perspective modules, `i_`/`o_` directions are reversed.
    - Clock: `@(posedge sys_clk) disable iff (!sys_rst_n)` (or appropriate domain clock)
 3. eda-runner binds assertions and runs cocotb regression via Bash CLI
 4. Capture assertion violations with cycle number and waveform region
-5. Write protocol/protocol_report.md (use `templates/protocol-report.md` as format template): violations, assertion coverage, PASS/FAIL
+5. Write reviews/phase-5-verify/protocol-report.md (use `templates/protocol-report.md` as format template): violations, assertion coverage, PASS/FAIL
 </Steps>
 
 <Tool_Usage>
@@ -115,7 +115,7 @@ Using `AWVALID`, `WDATA`, `ACLK` in SVA — violates project conventions and cau
 - [ ] SVA assertions use correct signal names (`i_awvalid`, `o_awready`, `sys_clk`, etc.)
 - [ ] SVA assertions written covering all mandatory protocol rules
 - [ ] Assertions bound and simulation run via Bash CLI
-- [ ] protocol/protocol_report.md written with PASS/FAIL
+- [ ] reviews/phase-5-verify/protocol-report.md written with PASS/FAIL
 - [ ] Violations reported with cycle numbers
 - [ ] RTL not modified
 </Final_Checklist>

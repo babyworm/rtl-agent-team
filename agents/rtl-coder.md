@@ -93,8 +93,8 @@ color: magenta
     Lint command (adapt to project):
     ```bash
     make lint MODULE=module_name
-    # or: slang --error-limit=0 rtl/module_name.sv
-    # or: verilator --lint-only -Wall rtl/module_name.sv
+    # or: slang --error-limit=0 rtl/{module}/module_name.sv
+    # or: verilator --lint-only -Wall rtl/{module}/module_name.sv
     ```
 
     Module template:

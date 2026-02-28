@@ -1,5 +1,5 @@
 // UVM Agent Template for {{MODULE}}
-// Convention: i_/o_ port prefix, {domain}_clk/{domain}_rst_n, u_ instance prefix, logic only
+// Convention: i_/o_ port prefix, {domain}_clk/{domain}_rst_n, m_ UVM member prefix, u_ RTL instance prefix, logic only
 
 // ============================================================
 // Interface (connects to DUT ports)
@@ -116,9 +116,9 @@ endclass
 class {{MODULE}}_agent extends uvm_agent;
   `uvm_component_utils({{MODULE}}_agent)
 
-  {{MODULE}}_driver  u_driver;
-  {{MODULE}}_monitor u_monitor;
-  uvm_sequencer #({{MODULE}}_seq_item) u_sequencer;
+  {{MODULE}}_driver  m_driver;
+  {{MODULE}}_monitor m_monitor;
+  uvm_sequencer #({{MODULE}}_seq_item) m_seqr;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -126,12 +126,12 @@ class {{MODULE}}_agent extends uvm_agent;
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    u_driver    = {{MODULE}}_driver::type_id::create("u_driver", this);
-    u_monitor   = {{MODULE}}_monitor::type_id::create("u_monitor", this);
-    u_sequencer = uvm_sequencer#({{MODULE}}_seq_item)::type_id::create("u_sequencer", this);
+    m_driver    = {{MODULE}}_driver::type_id::create("m_driver", this);
+    m_monitor   = {{MODULE}}_monitor::type_id::create("m_monitor", this);
+    m_seqr = uvm_sequencer#({{MODULE}}_seq_item)::type_id::create("m_seqr", this);
   endfunction
 
   function void connect_phase(uvm_phase phase);
-    u_driver.seq_item_port.connect(u_sequencer.seq_item_export);
+    m_driver.seq_item_port.connect(m_seqr.seq_item_export);
   endfunction
 endclass

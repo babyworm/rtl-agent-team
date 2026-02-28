@@ -94,7 +94,7 @@ lcov --summary filtered.info
 ```bash
 #!/bin/bash
 # run_regression.sh — Multi-seed regression with coverage merge
-SEEDS=(1 42 1337 65536 999999 $(shuf -i 1-99999 -n 5))
+SEEDS=(1 42 123 1337 65536)
 PASS=0; FAIL=0
 
 for SEED in "${SEEDS[@]}"; do

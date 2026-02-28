@@ -68,7 +68,7 @@ color: green
   </Constraints>
 
   <Tool_Usage>
-    - Use Glob to find existing cocotb test files (tests/**/*.py, tb/**/*.py)
+    - Use Glob to find existing cocotb test files (sim/**/*.py)
     - Use Grep to locate DUT port declarations in SystemVerilog (.sv, .v files)
     - Use Read to understand existing scoreboard patterns before writing new ones
     - Use Bash to run cocotb simulations:
@@ -107,7 +107,7 @@ color: green
 
   <Output_Format>
     Testbench file header:
-      # tests/test_{module}.py
+      # sim/{module}/test_{module}.py
       import cocotb
       from cocotb.clock import Clock
       from cocotb.triggers import RisingEdge

@@ -50,9 +50,9 @@ report_phase     → Print coverage/results
 class my_agent extends uvm_agent;
   `uvm_component_utils(my_agent)
 
-  my_driver    u_driver;     // u_ prefix per project convention
-  my_monitor   u_monitor;
-  my_sequencer u_sequencer;
+  my_driver    m_driver;     // m_ prefix per project convention (UVM class members)
+  my_monitor   m_monitor;
+  my_sequencer m_seqr;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
@@ -60,16 +60,16 @@ class my_agent extends uvm_agent;
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    u_monitor = my_monitor::type_id::create("u_monitor", this);
+    m_monitor = my_monitor::type_id::create("m_monitor", this);
     if (get_is_active() == UVM_ACTIVE) begin
-      u_driver    = my_driver::type_id::create("u_driver", this);
-      u_sequencer = my_sequencer::type_id::create("u_sequencer", this);
+      m_driver    = my_driver::type_id::create("m_driver", this);
+      m_seqr = my_sequencer::type_id::create("m_seqr", this);
     end
   endfunction
 
   function void connect_phase(uvm_phase phase);
     if (get_is_active() == UVM_ACTIVE)
-      u_driver.seq_item_port.connect(u_sequencer.seq_item_export);
+      m_driver.seq_item_port.connect(m_seqr.seq_item_export);
   endfunction
 endclass
 ```

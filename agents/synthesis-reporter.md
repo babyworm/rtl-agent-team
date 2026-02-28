@@ -83,8 +83,8 @@ color: green
     Yosys script template:
     ```
     # synth_block.ys — Synthesis script for [module_name]
-    read_verilog -sv rtl/module_name.sv
-    read_verilog -sv rtl/submodule_a.sv
+    read_verilog -sv rtl/{module}/module_name.sv
+    read_verilog -sv rtl/{module}/submodule_a.sv
     hierarchy -check -top module_name
     proc
     opt

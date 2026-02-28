@@ -78,8 +78,8 @@ color: cyan
     - Read: read timing_constraints.json, requirements.json, uarch/*.md, top-level RTL
     - Glob: find RTL files, find existing .sdc/.xdc files for conventions
     - Grep: find clock port names in RTL, find set_multicycle_path patterns in existing constraints
-    - Write: create constraints/design.sdc or constraints/design.xdc
-    - Bash: validate SDC syntax with `tclsh constraints/design.sdc` (basic Tcl parse check)
+    - Write: create syn/constraints/design.sdc or syn/constraints/design.xdc
+    - Bash: validate SDC syntax with `tclsh syn/constraints/design.sdc` (basic Tcl parse check)
 
     SDC template structure:
     ```tcl
@@ -134,7 +134,7 @@ color: cyan
   <Output_Format>
     ## Constraint Generation Summary
     - Design: [top module name]
-    - Output file: constraints/[design].sdc
+    - Output file: syn/constraints/[design].sdc
     - Clocks defined: N (primary: N, generated: N)
     - Clock domain pairs: N (asynchronous: N, synchronous: N)
     - False paths: N

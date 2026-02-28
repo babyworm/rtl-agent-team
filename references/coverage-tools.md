@@ -1,7 +1,7 @@
 # Coverage Tools Reference
 
-> This document is the detailed reference for the `rtl-regression-run` skill.
-> For core rules, see `<Steps>` in `skills/rtl-regression-run/SKILL.md`.
+> This document is the detailed reference for the `rtl-func-verify` skill (Tier 3 regression).
+> For core rules, see `<Steps>` in `skills/rtl-func-verify/SKILL.md`.
 
 ## 1. Verilator Coverage
 
@@ -134,7 +134,7 @@ def check_coverage_goals(min_pct=90.0):
 #!/bin/bash
 # run_regression.sh
 
-SEEDS="1 42 100 255 1000 9999 12345 54321 99999 777"
+SEEDS="1 42 123 1337 65536"  # Canonical 5-seed set; expand as needed
 PASS=0
 FAIL=0
 COV_FILES=""

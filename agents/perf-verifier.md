@@ -66,7 +66,7 @@ color: green
   </Constraints>
 
   <Tool_Usage>
-    - Use Glob to find existing BFM and testbench files (bfm/**/*.sv, tb/**/*.py)
+    - Use Glob to find existing BFM and testbench files (bfm/**/*.sv, sim/**/*.py)
     - Use Grep to find ready/valid signal names in RTL port lists
     - Use Read to understand existing timing measurement infrastructure
     - Use Bash to run simulations and extract timing CSV: make SIM=icarus | tee timing.log

@@ -15,7 +15,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` |
 | **--- Phase 2: Architecture ---** | |
 | "architecture design" (RTL context) | `/rtl-agent-team:arch-design` |
-| "architecture review", "design review" | `/rtl-agent-team:arch-review` |
+| "architecture review", "arch review" | `/rtl-agent-team:arch-review` |
 | "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
 | "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
 | **--- Phase 3: μArch ---** | |
@@ -111,7 +111,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 3. Do not run synthesis without RTL code
 4. Do not run Formal verification without passing Lint
 5. **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient)
-6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (sim/{module}/tb_{module}.sv required) + Stream B early verification artifacts (SVA skeletons, CDC report, TB skeletons)
+6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** (sim/{module}/tb_{module}.sv required) + Stream B early verification artifacts (SVA skeletons, preliminary CDC report, TB skeletons)
 7. **When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded**
 8. **Do not proceed to Phase 6 without Phase 5 PASS** (final-compliance.md verdict=PASS required)
 9. **Phase 7 is exempt from absolute rules** — free exploration allowed without pipeline Gate
@@ -367,7 +367,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | File Extension / Context | Design Phase | Applied Skill |
 |----------------------|-----------|----------|
 | `.sv`, `.svh`, `.v`, `.vh` (RTL) | Phase 4 (RTL) | `/rtl-agent-team:systemverilog` |
-| `.sv` (SVA, assertion, bind) | Phase 5 (Formal) | `/rtl-agent-team:systemverilog-assertion` |
+| `.sv`, `.sva` (SVA, assertion, bind) | Phase 5 (Formal) | `/rtl-agent-team:systemverilog-assertion` |
 | `.sv` (UVM testbench) | Phase 5 (UVM) | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `/rtl-agent-team:systemc` |
 
@@ -398,7 +398,7 @@ Testing is organized into 4 tiers with clear boundaries. Each tier has a dedicat
 The `eda-runner` agent directly executes EDA CLI tools via Bash:
 - **Simulator-agnostic script**: `scripts/run_sim.sh` (preferred for SV testbenches)
   - Supports: `iverilog`, `verilator`, `vcs`, `xrun`, `questa`
-  - Usage: `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/out --trace files...`
+  - Usage: `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/{module} --trace files...`
   - Full options: `scripts/run_sim.sh --help`
 - Simulation (direct): `verilator`, `iverilog` (Icarus Verilog)
 - Synthesis: `yosys`

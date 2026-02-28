@@ -39,11 +39,11 @@ in a single automated flow.
 </Execution_Policy>
 
 <Steps>
-1. Read regression/seed_list.txt (or use default seeds: 1, 42, 1337, 65536, 999999)
+1. Read regression/seed_list.txt (or use default seeds: 1, 42, 123, 1337, 65536)
 2. eda-runner runs full test suite per seed via Bash CLI.
    Use `skills/rtl-regression-run/scripts/run_regression.sh` for automated multi-seed execution:
    ```bash
-   bash skills/rtl-regression-run/scripts/run_regression.sh --seeds "1 42 1337 65536 999999" --sim icarus
+   bash skills/rtl-regression-run/scripts/run_regression.sh --seeds "1 42 123 1337 65536" --sim icarus
    ```
    Or run individually:
    ```bash
@@ -62,7 +62,7 @@ in a single automated flow.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 1337, 65536, 999999]. For each seed: make -C sim/top SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to regression/seed_{seed}_results.json.")
+     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 123, 1337, 65536]. For each seed: make -C sim/top SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to regression/seed_{seed}_results.json.")
 
 Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Merge coverage data from regression/seed_*_results.json via Bash CLI (lcov --add-tracefile or equivalent). Produce coverage/coverage.xml with line, branch, and toggle coverage. Report overall coverage percentage.")
@@ -107,7 +107,7 @@ verilator_coverage --write-info merged.info seed_*/coverage.dat
 genhtml merged.info -o coverage_html/ --title "Regression Coverage"
 ```
 
-Multi-seed strategy: use at least 5 deterministic seeds (1, 42, 1337, 65536, 999999) plus
+Multi-seed strategy: use at least 5 deterministic seeds (1, 42, 123, 1337, 65536) plus
 5 random seeds per run. Stop early if failure rate exceeds 5%.
 
 Coverage targets: ≥90% line, ≥80% toggle, ≥85% branch, ≥70% FSM state.

@@ -1,24 +1,24 @@
 === Verilator Lint Output ===
-%Warning-LATCH: rtl/src/cabac_fsm.sv:45:5: Latch inferred for signal 'cabac_fsm.next_state'
+%Warning-LATCH: rtl/cabac_fsm/cabac_fsm.sv:45:5: Latch inferred for signal 'cabac_fsm.next_state'
                                           : ... Suggest using always_comb with full case/default
-%Warning-WIDTH: rtl/src/datapath.sv:78:12: Operator ASSIGNW expects 32 bits but got 16 bits
-%Warning-BLKANDNBLK: rtl/src/pipeline.sv:23:8: Signal 'stage2_data' driven in both blocking and non-blocking
-%Error-MULTIDRIVEN: rtl/src/arbiter.sv:56:3: Signal 'grant' is driven from multiple always blocks
+%Warning-WIDTH: rtl/datapath/datapath.sv:78:12: Operator ASSIGNW expects 32 bits but got 16 bits
+%Warning-BLKANDNBLK: rtl/pipeline/pipeline.sv:23:8: Signal 'stage2_data' driven in both blocking and non-blocking
+%Error-MULTIDRIVEN: rtl/arbiter/arbiter.sv:56:3: Signal 'grant' is driven from multiple always blocks
 
 === Verible Lint Output ===
-rtl/src/cabac_fsm.sv:12:1: module-filename: Filename doesn't match module name [Style: module-filename]
-rtl/src/datapath.sv:5:3: explicit-parameter-storage-type: Parameter 'WIDTH' missing explicit type [Style: explicit-parameter-storage-type]
+rtl/cabac_fsm/cabac_fsm.sv:12:1: module-filename: Filename doesn't match module name [Style: module-filename]
+rtl/datapath/datapath.sv:5:3: explicit-parameter-storage-type: Parameter 'WIDTH' missing explicit type [Style: explicit-parameter-storage-type]
 
 === slang Lint Output ===
-rtl/src/pipeline.sv:34: warning: unused variable 'debug_cnt' [-Wunused-variable]
-rtl/src/arbiter.sv:12: error: port 'data_i' not found in module 'fifo_ctrl' (did you mean 'i_data'?)
+rtl/pipeline/pipeline.sv:34: warning: unused variable 'debug_cnt' [-Wunused-variable]
+rtl/arbiter/arbiter.sv:12: error: port 'data_i' not found in module 'fifo_ctrl' (did you mean 'i_data'?)
 
 === Convention Check Output ===
-  CONVENTION  rtl/src/cabac_fsm.sv:8   PORT_SUFFIX    Use i_/o_ prefix instead of _i/_o suffix: input logic data_i,
-  CONVENTION  rtl/src/pipeline.sv:3    CLOCK_NAME     Use {domain}_clk format (e.g., sys_clk): input logic clk,
-  CONVENTION  rtl/src/pipeline.sv:4    RESET_NAME     Use {domain}_rst_n format (e.g., sys_rst_n): input logic rst_ni,
-  CONVENTION  rtl/src/arbiter.sv:22    NO_REG_WIRE    Use 'logic' instead: reg [7:0] grant_reg;
-  CONVENTION  rtl/src/datapath.sv:45   INSTANCE_PREFIX Instance 'fifo0' missing u_ prefix
+  CONVENTION  rtl/cabac_fsm/cabac_fsm.sv:8   PORT_SUFFIX    Use i_/o_ prefix instead of _i/_o suffix: input logic data_i,
+  CONVENTION  rtl/pipeline/pipeline.sv:3    CLOCK_NAME     Use {domain}_clk format (e.g., sys_clk): input logic clk,
+  CONVENTION  rtl/pipeline/pipeline.sv:4    RESET_NAME     Use {domain}_rst_n format (e.g., sys_rst_n): input logic rst_ni,
+  CONVENTION  rtl/arbiter/arbiter.sv:22    NO_REG_WIRE    Use 'logic' instead: reg [7:0] grant_reg;
+  CONVENTION  rtl/datapath/datapath.sv:45   INSTANCE_PREFIX Instance 'fifo0' missing u_ prefix
 
 === Merged Report ===
 Files checked: 4

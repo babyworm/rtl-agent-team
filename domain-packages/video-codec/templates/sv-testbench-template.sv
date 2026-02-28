@@ -13,8 +13,8 @@ module tb_{MODULE_NAME};
   // =========================================================================
   // Parameters
   // =========================================================================
-  parameter int DATA_WIDTH = {DATA_WIDTH};
-  parameter int CLK_PERIOD = 10; // ns (100 MHz)
+  parameter int unsigned DATA_WIDTH = {DATA_WIDTH};
+  localparam int L_CLK_PERIOD = 10; // ns (100 MHz)
 
   // =========================================================================
   // DUT Signals
@@ -32,7 +32,7 @@ module tb_{MODULE_NAME};
   // Clock Generation
   // =========================================================================
   initial clk = 1'b0;
-  always #(CLK_PERIOD/2) clk = ~clk;
+  always #(L_CLK_PERIOD/2) clk = ~clk;
 
   // =========================================================================
   // DUT Instantiation
@@ -116,7 +116,7 @@ module tb_{MODULE_NAME};
   // Timeout Watchdog
   // =========================================================================
   initial begin
-    #(CLK_PERIOD * 1_000_000); // 10ms timeout
+    #(L_CLK_PERIOD * 1_000_000); // 10ms timeout
     $error("TIMEOUT: Test did not complete in time");
     $finish;
   end

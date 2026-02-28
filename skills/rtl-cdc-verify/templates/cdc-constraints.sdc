@@ -1,6 +1,6 @@
 # CDC SDC Constraints Template
 # Convention: {domain}_clk naming per CLAUDE.md
-# Generate from: cdc-checker analysis of rtl/src/*.sv
+# Generate from: cdc-checker analysis of rtl/*/*.sv
 
 # ============================================================
 # Clock Definitions

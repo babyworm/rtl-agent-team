@@ -97,7 +97,7 @@ color: red
 
   <Tool_Usage>
     - Read: read requirements.json, uarch/*.md, io_definition.json
-    - Write: create rtl/assertions/module_name.sva, formal/module_name.sby
+    - Write: create sim/formal/module_name.sva, sim/formal/module_name.sby
     - Bash: run `sby -f module_name.sby bmc`, `sby -f module_name.sby prove`
     - Grep: search RTL for signal names referenced in assertions
 
@@ -141,13 +141,13 @@ color: red
     smtbmc boolector
 
     [script]
-    read -formal rtl/module_name.sv
-    read -formal rtl/assertions/module_name.sva
+    read -formal rtl/{module}/module_name.sv
+    read -formal sim/formal/module_name.sva
     prep -top module_name
 
     [files]
-    rtl/module_name.sv
-    rtl/assertions/module_name.sva
+    rtl/{module}/module_name.sv
+    sim/formal/module_name.sva
     ```
 
     ```
@@ -162,13 +162,13 @@ color: red
     # abc pdr
 
     [script]
-    read -formal rtl/module_name.sv
-    read -formal rtl/assertions/module_name.sva
+    read -formal rtl/{module}/module_name.sv
+    read -formal sim/formal/module_name.sva
     prep -top module_name
 
     [files]
-    rtl/module_name.sv
-    rtl/assertions/module_name.sva
+    rtl/{module}/module_name.sv
+    sim/formal/module_name.sva
     ```
 
     ```
@@ -181,13 +181,13 @@ color: red
     smtbmc boolector
 
     [script]
-    read -formal rtl/module_name.sv
-    read -formal rtl/assertions/module_name.sva
+    read -formal rtl/{module}/module_name.sv
+    read -formal sim/formal/module_name.sva
     prep -top module_name
 
     [files]
-    rtl/module_name.sv
-    rtl/assertions/module_name.sva
+    rtl/{module}/module_name.sv
+    sim/formal/module_name.sva
     ```
   </Tool_Usage>
 
