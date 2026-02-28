@@ -63,7 +63,7 @@
   // Each value is a regex with one capture group for the numeric value.
   // =====================================================================
   // output_parsing: {
-  //   bitrate_pattern: "Bitrate[:\\s=]+([0-9.]+)\\s*(?:kbps)?"
+  //   bitrate_pattern: "[Bb]itrate[:\\s=]+([0-9.]+)\\s*(?:kbps|kb/s)?"
   //   psnr_y_pattern: "PSNR[\\s-]*Y[:\\s=]+([0-9.]+)"
   //   psnr_u_pattern: "PSNR[\\s-]*U[:\\s=]+([0-9.]+)"
   //   psnr_v_pattern: "PSNR[\\s-]*V[:\\s=]+([0-9.]+)"

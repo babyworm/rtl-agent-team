@@ -9,54 +9,64 @@
 
 ## Summary
 
+<!-- JSON source: bd-metrics.json → aggregate (single comparison) or comparisons[0].aggregate -->
+
 | Metric | Value | Interpretation |
 |--------|-------|----------------|
-| **Avg BD-rate (Y)** | {{avg_bd_rate_y}}% | Negative = test uses fewer bits at same quality |
-| **Avg BD-PSNR (Y)** | {{avg_bd_psnr_y}} dB | Positive = test has better quality at same bitrate |
-| **Avg BD-rate (YUV)** | {{avg_bd_rate_yuv}}% | Combined luma+chroma metric |
-| **Avg BD-PSNR (YUV)** | {{avg_bd_psnr_yuv}} dB | Combined luma+chroma metric |
+| **Avg BD-rate (Y)** | {{aggregate.avg_bd_rate_y}}% | Negative = test uses fewer bits at same quality |
+| **Avg BD-PSNR (Y)** | {{aggregate.avg_bd_psnr_y}} dB | Positive = test has better quality at same bitrate |
+| **Avg BD-rate (YUV)** | {{aggregate.avg_bd_rate_yuv}}% | Combined luma+chroma metric |
+| **Avg BD-PSNR (YUV)** | {{aggregate.avg_bd_psnr_yuv}} dB | Combined luma+chroma metric |
 
 ## Per-Sequence Results
 
 ### BD Metrics
 
+<!-- JSON source: bd-metrics.json → sequences (dict keyed by sequence name) -->
+
 | Sequence | BD-rate Y (%) | BD-PSNR Y (dB) | BD-rate YUV (%) | BD-PSNR YUV (dB) |
 |----------|---------------|-----------------|-----------------|-------------------|
 {{#each sequences}}
-| {{name}} | {{bd_rate_y}} | {{bd_psnr_y}} | {{bd_rate_yuv}} | {{bd_psnr_yuv}} |
+| {{@key}} | {{bd_rate_y}} | {{bd_psnr_y}} | {{bd_rate_yuv}} | {{bd_psnr_yuv}} |
 {{/each}}
-| **Average** | **{{avg_bd_rate_y}}** | **{{avg_bd_psnr_y}}** | **{{avg_bd_rate_yuv}}** | **{{avg_bd_psnr_yuv}}** |
+| **Average** | **{{aggregate.avg_bd_rate_y}}** | **{{aggregate.avg_bd_psnr_y}}** | **{{aggregate.avg_bd_rate_yuv}}** | **{{aggregate.avg_bd_psnr_yuv}}** |
 
 ### RD Data — Anchor ({{anchor_label}})
 
+<!-- JSON source: results.json (from run_eval.py), filter by config_label=anchor and is_anchor=true -->
+
 | Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
 |----------|----|----------------|-------------|----------------|-----------------|
-{{#each anchor_rd_data}}
-| {{sequence}} | {{qp}} | {{bitrate}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time}} |
+{{#each anchor_results}}
+| {{sequence}} | {{qp}} | {{bitrate_kbps}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time_s}} |
 {{/each}}
 
 ### RD Data — Test ({{test_label}})
 
 | Sequence | QP | Bitrate (kbps) | PSNR-Y (dB) | PSNR-YUV (dB) | Encode Time (s) |
 |----------|----|----------------|-------------|----------------|-----------------|
-{{#each test_rd_data}}
-| {{sequence}} | {{qp}} | {{bitrate}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time}} |
+{{#each test_results}}
+| {{sequence}} | {{qp}} | {{bitrate_kbps}} | {{psnr_y}} | {{psnr_yuv}} | {{encode_time_s}} |
 {{/each}}
 
 ## Encoding Time Comparison
 
+<!-- JSON source: bd-metrics.json → aggregate.avg_anchor_encode_time_s / avg_test_encode_time_s -->
+
 | Config | Avg Encode Time (s) | Speedup vs Anchor |
 |--------|---------------------|-------------------|
-| {{anchor_label}} (Anchor) | {{anchor_avg_time}} | 1.00x |
-| {{test_label}} (Test) | {{test_avg_time}} | {{speedup}}x |
+| {{anchor_label}} (Anchor) | {{aggregate.avg_anchor_encode_time_s}} | 1.00x |
+| {{test_label}} (Test) | {{aggregate.avg_test_encode_time_s}} | {{computed_speedup}}x |
 
 {{#if ssim_enabled}}
 ## SSIM Comparison (opt-in)
 
+<!-- JSON source: bd-metrics.json → sequences[].anchor_avg_ssim / test_avg_ssim -->
+
 | Sequence | Anchor Avg SSIM | Test Avg SSIM | Delta |
 |----------|-----------------|---------------|-------|
 {{#each sequences}}
-| {{name}} | {{anchor_ssim}} | {{test_ssim}} | {{ssim_delta}} |
+| {{@key}} | {{anchor_avg_ssim}} | {{test_avg_ssim}} | {{ssim_delta}} |
 {{/each}}
 {{/if}}
 
@@ -66,19 +76,21 @@
 | Sequence | Anchor Avg VMAF | Test Avg VMAF | Delta |
 |----------|-----------------|---------------|-------|
 {{#each sequences}}
-| {{name}} | {{anchor_vmaf}} | {{test_vmaf}} | {{vmaf_delta}} |
+| {{@key}} | {{anchor_avg_vmaf}} | {{test_avg_vmaf}} | {{vmaf_delta}} |
 {{/each}}
 {{/if}}
 
 {{#if n_candidate}}
 ## N-Candidate Comparison Matrix
 
+<!-- JSON source: bd-metrics.json (N-config mode) → comparisons[] array -->
+
 BD-rate Y (%) vs Anchor ({{anchor_label}}):
 
 | Candidate | Avg BD-rate Y (%) | Avg BD-PSNR Y (dB) | Avg Encode Time (s) |
 |-----------|-------------------|---------------------|---------------------|
-{{#each candidates}}
-| {{label}} | {{avg_bd_rate_y}} | {{avg_bd_psnr_y}} | {{avg_time}} |
+{{#each comparisons}}
+| {{test_label}} | {{aggregate.avg_bd_rate_y}} | {{aggregate.avg_bd_psnr_y}} | {{aggregate.avg_test_encode_time_s}} |
 {{/each}}
 {{/if}}
 
@@ -110,7 +122,7 @@ Test: {{test_label}}
   Source: {{test_src}}
   Config: {{test_cfg}}
 
-Sequences: {{num_sequences}}
+Sequences: {{aggregate.num_sequences}}
 QP points: {{qp_points}}
 Execution: {{execution_mode}}
 Quality metrics: {{quality_metrics}}

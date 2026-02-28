@@ -78,6 +78,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - On metric parsing failure (bitrate=0 or PSNR=0): mark job as failed with guidance to check output_parsing
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - Dependencies: gcc (C11), Python 3.8+, numpy, hjson
+- Self-test: `python3 skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests
 </Execution_Policy>
 
 <Steps>
@@ -93,7 +94,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 2. **Encoder build** (build_encoder.sh)
    - For each unique encoder_src in configurations (anchor/test or candidates[]):
      `bash skills/codec-rd-eval/scripts/build_encoder.sh <src> <binary> [extra_cflags]`
-   - Build flags: `gcc -std=c11 -O2 -Wall -lm` (C11 standard per CLAUDE.md)
+   - Build flags: `gcc -std=c11 -O2 -Wall -Wextra -lm` (C11 standard per CLAUDE.md)
    - On build failure: capture stderr, report to user, STOP
 
 3. **Simulation execution** (run_eval.py)

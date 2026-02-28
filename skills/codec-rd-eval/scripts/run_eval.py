@@ -66,11 +66,13 @@ class EncodingResult:
     error: Optional[str] = None
     ssim: Optional[float] = None
     vmaf: Optional[float] = None
+    is_anchor: bool = False
 
 
 def sanitize_label(label: str) -> str:
     """Sanitize config label for safe filename usage."""
-    return re.sub(r'[^\w\-.]', '_', label)[:64]
+    sanitized = re.sub(r'[^\w\-.]', '_', label)[:64]
+    return sanitized or "unnamed"
 
 
 def load_config(config_path: str) -> dict:
@@ -95,7 +97,7 @@ def parse_encoder_output(stdout: str, stderr: str,
         stderr: Encoder stderr text.
         parsing_config: Optional dict with custom regex patterns for output parsing.
             Keys: bitrate_pattern, psnr_y_pattern, psnr_u_pattern, psnr_v_pattern,
-                  psnr_yuv_pattern, ssim_pattern, encoding_time_pattern
+                  psnr_yuv_pattern, ssim_pattern
         chroma_format: Chroma format string ("420", "422", "444") for YUV weighting.
     """
     result = {
@@ -358,7 +360,7 @@ def run_local(config: dict, output_dir: str) -> list:
 
     # Build job list for all configs
     jobs = []
-    for cfg_entry, _is_anchor in configs:
+    for cfg_entry, is_anchor in configs:
         encoder_binary = cfg_entry.get("encoder_binary", "")
         encoder_cfg = cfg_entry.get("encoder_cfg", "")
         label = cfg_entry.get("label", "unknown")
@@ -368,7 +370,7 @@ def run_local(config: dict, output_dir: str) -> list:
             for qp in qp_points:
                 jobs.append((
                     encoder_binary, encoder_cfg, seq, qp, label, output_dir, timeout,
-                    cmd_template, parsing_config, quality_metrics,
+                    cmd_template, parsing_config, quality_metrics, is_anchor,
                 ))
 
     total = len(jobs)
@@ -380,12 +382,15 @@ def run_local(config: dict, output_dir: str) -> list:
 
     with ProcessPoolExecutor(max_workers=max_parallel) as executor:
         futures = {
-            executor.submit(run_single_encode, *job): job
+            executor.submit(run_single_encode, *job[:-1]): job
             for job in jobs
         }
 
         for future in as_completed(futures):
+            job = futures[future]
+            is_anchor = job[-1]  # last element is is_anchor flag
             result = future.result()
+            result.is_anchor = is_anchor
             results.append(result)
             completed += 1
 

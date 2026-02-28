@@ -72,7 +72,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-design-review-phase` (exploration mode) |
 | **--- Other Verification ---** | |
 | "regression", "regression", "multi-seed" | `/rtl-agent-team:rtl-regression-run` |
-| "conformance", "conformance test", "golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
+| "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
 | "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` |
 | "model consistency", "RTL-model comparison", "model consistency" | `/rtl-agent-team:rtl-model-consistency` |
 

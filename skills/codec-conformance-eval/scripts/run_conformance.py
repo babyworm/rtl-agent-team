@@ -207,10 +207,20 @@ def run_local(config: dict, output_dir: str) -> list:
     target = config.get("target", {})
     standard = target.get("standard", "h264")
 
+    # Profile/level filtering (optional)
+    target_profile = target.get("profile", "").lower()
+    target_level = target.get("level", "")
+
     # Discover all conformance streams
     all_streams = []
     for source in config.get("conformance_sources", []):
         streams = discover_streams(source, standard)
+        # Filter by profile/level if specified (filename convention based)
+        if target_profile:
+            before = len(streams)
+            streams = [s for s in streams if target_profile in s["name"].lower()]
+            if len(streams) < before:
+                print(f"  Profile filter '{target_profile}': {before} → {len(streams)} streams")
         all_streams.extend(streams)
         print(f"  Source '{source['id']}' ({source.get('priority', 'optional')}): "
               f"{len(streams)} streams found")

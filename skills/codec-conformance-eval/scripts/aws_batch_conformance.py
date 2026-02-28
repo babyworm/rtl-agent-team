@@ -222,6 +222,7 @@ def main():
                     "status": "success",
                     "md5_decoded": s3_result.get("md5_decoded"),
                     "decode_time_s": s3_result.get("decode_time_s", 0),
+                    "output_path": s3_result.get("output_path"),
                 })
             else:
                 results.append({

@@ -81,6 +81,7 @@ comparing outputs, and tracking which profile features are covered.
 - Optional streams (3rd party) failures are reported but do not affect overall verdict
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - Dependencies: gcc (C11), Python 3.8+, hjson
+- Self-test: `python3 skills/codec-conformance-eval/scripts/compare_output.py --test` runs built-in unit tests
 </Execution_Policy>
 
 <Steps>
@@ -94,7 +95,7 @@ comparing outputs, and tracking which profile features are covered.
 
 2. **Decoder build** (build_decoder.sh)
    - `bash skills/codec-conformance-eval/scripts/build_decoder.sh <decoder_src> <decoder_binary>`
-   - Build flags: `gcc -std=c11 -O2 -Wall -lm` (C11 standard per CLAUDE.md)
+   - Build flags: `gcc -std=c11 -O2 -Wall -Wextra -lm` (C11 standard per CLAUDE.md)
    - On build failure: capture stderr, report to user, STOP
 
 3. **Conformance test execution** (run_conformance.py)

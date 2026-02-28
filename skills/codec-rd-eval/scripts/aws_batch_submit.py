@@ -58,18 +58,31 @@ def submit_jobs(config: dict, output_dir: str):
     qp_points = config["qp_points"]
     timeout = config.get("execution", {}).get("timeout_per_job", 3600)
 
-    # Submit jobs for both anchor and test
+    # Resolve configs: support both candidates[] and anchor/test modes
+    resolved_configs = []
+    candidates = config.get("candidates")
+    if candidates and len(candidates) >= 2:
+        has_anchor = any(c.get("is_anchor") for c in candidates)
+        for i, c in enumerate(candidates):
+            is_anchor = c.get("is_anchor", False) or (i == 0 and not has_anchor)
+            resolved_configs.append((c, is_anchor))
+    else:
+        if "anchor" in config:
+            resolved_configs.append((config["anchor"], True))
+        if "test" in config:
+            resolved_configs.append((config["test"], False))
+
     job_ids = []
     job_map = {}  # job_id → metadata
 
-    for cfg_key in ["anchor", "test"]:
-        cfg = config[cfg_key]
-        label = cfg.get("label", cfg_key)
+    for cfg, is_anchor in resolved_configs:
+        label = cfg.get("label", "anchor" if is_anchor else "test")
         encoder_cfg = cfg.get("encoder_cfg", "")
 
         for seq in sequences:
             for qp in qp_points:
-                job_name = f"rd-eval-{cfg_key}-{seq['name']}-qp{qp}"
+                safe_label = "".join(c if c.isalnum() or c == "-" else "-" for c in label)[:32]
+                job_name = f"rd-eval-{safe_label}-{seq['name']}-qp{qp}"
                 # Sanitize job name (AWS Batch requires alphanumeric + hyphens)
                 job_name = "".join(c if c.isalnum() or c == "-" else "-" for c in job_name)
 
@@ -217,6 +230,9 @@ def fetch_job_result(batch_client, s3_client, job: dict, meta: dict,
             "psnr_yuv": data.get("psnr_yuv", 0),
             "encode_time_s": data.get("encode_time_s", 0),
             "status": "success",
+            "ssim": data.get("ssim"),
+            "vmaf": data.get("vmaf"),
+            "is_anchor": data.get("is_anchor", False),
         }
     except Exception as e:
         return {

@@ -124,7 +124,13 @@ def bd_rate(anchor_rates: list, anchor_psnrs: list,
     psnr_max = min(anchor_psnrs_arr.max(), test_psnrs_arr.max())
 
     if psnr_min >= psnr_max:
-        return 0.0  # No overlapping range
+        warnings.warn(
+            f"No overlapping PSNR range between anchor [{anchor_psnrs_arr.min():.2f}, "
+            f"{anchor_psnrs_arr.max():.2f}] and test [{test_psnrs_arr.min():.2f}, "
+            f"{test_psnrs_arr.max():.2f}]. Returning 0.0 (incomparable, not identical).",
+            stacklevel=2,
+        )
+        return 0.0
 
     int_anchor = _integrate_poly(poly_anchor, psnr_min, psnr_max)
     int_test = _integrate_poly(poly_test, psnr_min, psnr_max)
@@ -174,6 +180,11 @@ def bd_psnr(anchor_rates: list, anchor_psnrs: list,
     rate_max = min(log_anchor_rates.max(), log_test_rates.max())
 
     if rate_min >= rate_max:
+        warnings.warn(
+            f"No overlapping log-rate range between anchor and test. "
+            f"Returning 0.0 (incomparable, not identical).",
+            stacklevel=2,
+        )
         return 0.0
 
     int_anchor = _integrate_poly(poly_anchor, rate_min, rate_max)
@@ -209,12 +220,20 @@ def compute_metrics_from_results(results_path: str) -> dict:
     if len(labels) < 2:
         return {"error": "Need at least 2 configurations", "sequences": {}}
 
-    # Identify anchor label
+    # Identify anchor label: prefer is_anchor flag, fallback to keyword heuristic
     anchor_label = labels[0]
-    for label in labels:
-        if any(kw in label.lower() for kw in ["anchor", "baseline", "original", "reference"]):
-            anchor_label = label
+    anchor_from_flag = None
+    for r in results:
+        if r.get("is_anchor") and r["status"] == "success":
+            anchor_from_flag = r["config_label"]
             break
+    if anchor_from_flag and anchor_from_flag in labels:
+        anchor_label = anchor_from_flag
+    else:
+        for label in labels:
+            if any(kw in label.lower() for kw in ["anchor", "baseline", "original", "reference"]):
+                anchor_label = label
+                break
 
     test_labels = [l for l in labels if l != anchor_label]
 

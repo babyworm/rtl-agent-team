@@ -269,6 +269,25 @@ def compare_results(results_path: str, config: dict) -> dict:
                 else:
                     entry["conformance"] = "SKIP"
                     entry["error"] = "Golden YUV not found"
+            elif comparison_mode == "psnr-threshold" and golden_path:
+                golden_yuv = os.path.join(golden_path, f"{stream_name}.yuv")
+                if os.path.isfile(golden_yuv) and r.get("output_path"):
+                    # Use target dimensions if available, default 1920x1080
+                    target = config.get("target", {})
+                    w = target.get("width", 1920)
+                    h = target.get("height", 1080)
+                    bd = target.get("bit_depth", 8)
+                    psnr_val = compute_psnr_from_files(r["output_path"], golden_yuv, w, h, bd)
+                    if psnr_val is not None:
+                        passed = psnr_val >= psnr_threshold or psnr_val == float("inf")
+                        entry["conformance"] = "PASS" if passed else "FAIL"
+                        entry["comparison"] = {"psnr_y": psnr_val, "threshold": psnr_threshold}
+                    else:
+                        entry["conformance"] = "SKIP"
+                        entry["error"] = "PSNR computation failed (numpy required)"
+                else:
+                    entry["conformance"] = "SKIP"
+                    entry["error"] = "Golden YUV not found for PSNR comparison"
             elif golden_md5:
                 # Fallback to MD5 if golden available
                 cmp = compare_md5(r.get("md5_decoded"), golden_md5)
