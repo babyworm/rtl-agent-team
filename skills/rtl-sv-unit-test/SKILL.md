@@ -54,7 +54,7 @@ Testbenches MUST follow the project coding conventions (CLAUDE.md):
 <Execution_Policy>
 - testbench-dev writes SV testbenches per module (parallel), targeting uarch features
 - Reference model comparison: Mode A (DPI-C) or Mode B (file compare) — auto-selected
-- func-verifier runs simulations via simulate.sh and reports results
+- func-verifier runs simulations via run_sim.sh and reports results
 - Failing tests trigger waveform analysis before reporting
 - Gate: all unit tests pass AND reference comparison has zero mismatches
 </Execution_Policy>
@@ -81,7 +81,7 @@ Testbenches MUST follow the project coding conventions (CLAUDE.md):
    - SV TB directly calls reference functions for cycle-level comparison
    - Compile:
      ```bash
-     scripts/simulate.sh --sim verilator --top tb_{module} --outdir sim/{module} --trace \
+     scripts/run_sim.sh --sim verilator --top tb_{module} --outdir sim/{module} --trace \
        --dpi refc/build/lib{module}_ref.so \
        rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv
      ```
@@ -92,7 +92,7 @@ Testbenches MUST follow the project coding conventions (CLAUDE.md):
    - `diff` or byte-by-byte comparison
    - Compile:
      ```bash
-     scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
+     scripts/run_sim.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
        rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv
      ```
 
@@ -136,13 +136,13 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
 # Step 3A: DPI-C reference comparison (verilator)
 # ============================================================
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run Tier 2 unit test via simulate.sh: scripts/simulate.sh --sim verilator --top tb_cabac_encoder --outdir sim/cabac_encoder --trace --dpi refc/build/libcabac_encoder_ref.so rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder.sv. Report pass/fail per feature and reference mismatches.")
+     prompt="Run Tier 2 unit test via run_sim.sh: scripts/run_sim.sh --sim verilator --top tb_cabac_encoder --outdir sim/cabac_encoder --trace --dpi refc/build/libcabac_encoder_ref.so rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder.sv. Report pass/fail per feature and reference mismatches.")
 
 # ============================================================
 # Step 3B: File-based reference comparison (iverilog fallback)
 # ============================================================
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run Tier 2 unit test: (1) refc/build/cabac_encoder_ref --input test_vectors.txt --output sim/{module}/cabac_encoder_ref_out.txt (2) scripts/simulate.sh --sim iverilog --top tb_cabac_encoder --outdir sim/cabac_encoder --trace rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder.sv (3) diff sim/{module}/cabac_encoder_ref_out.txt sim/{module}/cabac_encoder_rtl_out.txt. Report per-feature pass/fail and mismatches.")
+     prompt="Run Tier 2 unit test: (1) refc/build/cabac_encoder_ref --input test_vectors.txt --output sim/{module}/cabac_encoder_ref_out.txt (2) scripts/run_sim.sh --sim iverilog --top tb_cabac_encoder --outdir sim/cabac_encoder --trace rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder.sv (3) diff sim/{module}/cabac_encoder_ref_out.txt sim/{module}/cabac_encoder_rtl_out.txt. Report per-feature pass/fail and mismatches.")
 
 # ============================================================
 # Waveform analysis on failure
@@ -164,7 +164,7 @@ sim/{module}/*_unit_results.json produced for all modules with per-feature statu
 Writing a single monolithic testbench for the entire design — hard to isolate failures and debug.
 Using `clk`, `rst_n`, `data_i` instead of `sys_clk`, `sys_rst_n`, `i_data` — violates project conventions.
 Only testing connectivity (reset + basic I/O) without targeting uarch features — that's Tier 1, not Tier 2.
-Running iverilog directly instead of using simulate.sh — loses simulator portability.
+Running iverilog directly instead of using run_sim.sh — loses simulator portability.
 </Bad>
 </Examples>
 
@@ -186,7 +186,7 @@ Running iverilog directly instead of using simulate.sh — loses simulator porta
 - [ ] All simulations compile and complete without crashes
 - [ ] All unit tests pass
 - [ ] Failure analysis done for any initial failures
-- [ ] simulate.sh used (not direct iverilog/verilator invocation)
+- [ ] run_sim.sh used (not direct iverilog/verilator invocation)
 </Final_Checklist>
 
 <Advanced>

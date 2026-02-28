@@ -115,7 +115,7 @@ This skill ensures everything is in place before design work begins.
 5. **Generate filelist templates** (if rtl/ has no .f files):
    - Copy `skills/rtl-setup/templates/filelist.f` to `rtl/filelist_top.f` as starting point.
    - Per-module filelists (`rtl/filelist_{module}.f`) are created during Phase 4 when modules are coded.
-   - Filelists support all simulators via simulate.sh (+incdir+ auto-converted for iverilog).
+   - Filelists support all simulators via run_sim.sh (+incdir+ auto-converted for iverilog).
    - **Filelist convention (3 types):**
      | Type | Location | Required |
      |------|----------|----------|
@@ -123,10 +123,10 @@ This skill ensures everything is in place before design work begins.
      | Top-level | `rtl/filelist_top.f` | MUST exist (includes module filelists) |
      | TB/test | in sim/ scope | Dynamic (scripts add at runtime) |
 
-5.5. **Install simulate.sh** (if scripts/simulate.sh does not exist):
-   Copy `scripts/simulate.sh` and make executable:
+5.5. **Install run_sim.sh** (if scripts/run_sim.sh does not exist):
+   Copy `scripts/run_sim.sh` and make executable:
    ```bash
-   chmod +x scripts/simulate.sh
+   chmod +x scripts/run_sim.sh
    ```
    This simulator-agnostic script supports iverilog, verilator, vcs, xrun, questa.
    All skill files reference this script instead of direct simulator invocations.
@@ -253,7 +253,7 @@ Bash: g++ --version 2>&1 || echo "NOT_FOUND"
 # Template generation (copy from plugin templates)
 Bash: cp skills/rtl-setup/templates/filelist.f rtl/filelist_top.f
 Bash: cp skills/rtl-setup/templates/cocotb-makefile sim/top/Makefile
-Bash: chmod +x scripts/simulate.sh
+Bash: chmod +x scripts/run_sim.sh
 Write: rtl/include/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
 ```
 

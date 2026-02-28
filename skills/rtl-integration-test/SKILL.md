@@ -57,7 +57,7 @@ Integration testbenches MUST follow project conventions (CLAUDE.md):
 <Execution_Policy>
 - integration-verifier validates structural connectivity first (static checks)
 - testbench-dev writes integration TBs (SV or cocotb, depending on complexity)
-- eda-runner runs simulation via simulate.sh (SV TB) or cocotb Makefile
+- eda-runner runs simulation via run_sim.sh (SV TB) or cocotb Makefile
 - End-to-end reference comparison: full-system ref_model output vs RTL output
 - waveform-analyzer debugs any cross-module failures
 - Gate: all connectivity checks PASS AND data flow tests PASS AND handshake tests PASS
@@ -94,7 +94,7 @@ Integration testbenches MUST follow project conventions (CLAUDE.md):
 6. **Simulation:**
    - SV TB:
      ```bash
-     scripts/simulate.sh --sim {sim} --top tb_{top}_integration \
+     scripts/run_sim.sh --sim {sim} --top tb_{top}_integration \
        --filelist rtl/filelist.f --outdir sim/integration --trace \
        sim/top/tb_{top}_integration.sv
      ```
@@ -152,7 +152,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
 # ============================================================
 # SV TB path
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run integration test: scripts/simulate.sh --sim iverilog --top tb_{top}_integration --filelist rtl/filelist.f --outdir sim/integration --trace sim/top/tb_{top}_integration.sv. Report pass/fail per test category.")
+     prompt="Run integration test: scripts/run_sim.sh --sim iverilog --top tb_{top}_integration --filelist rtl/filelist.f --outdir sim/integration --trace sim/top/tb_{top}_integration.sv. Report pass/fail per test category.")
 
 # cocotb path
 Task(subagent_type="rtl-agent-team:eda-runner",
@@ -206,7 +206,7 @@ common class of integration bugs.
 - [ ] End-to-end reference comparison done (byte-by-byte)
 - [ ] sim/integration/integration_results.json produced
 - [ ] All integration tests PASS
-- [ ] simulate.sh used for SV TB simulation
+- [ ] run_sim.sh used for SV TB simulation
 - [ ] Waveform analysis done for any failures
 </Final_Checklist>
 

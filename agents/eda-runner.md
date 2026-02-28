@@ -50,12 +50,12 @@ color: green
      - Use `--trace-depth N` to limit hierarchy depth and reduce dump size
 
      **Simulator-Agnostic Script (preferred for SV testbenches):**
-     - `scripts/simulate.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
-     - `scripts/simulate.sh --sim verilator --top tb_module -f rtl/filelist.f --dpi ref.so`
+     - `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
+     - `scripts/run_sim.sh --sim verilator --top tb_module -f rtl/filelist.f --dpi ref.so`
      - Supports: iverilog, verilator, vcs, xrun, questa
      - Use `--help` for full option list
 
-     **Icarus Verilog (direct invocation, when simulate.sh not available):**
+     **Icarus Verilog (direct invocation, when run_sim.sh not available):**
      - Compile: `iverilog -g2012 -o sim_out rtl/*/*.sv sim/*/*.sv`
      - Run: `vvp sim_out -fst` (prefer FST format over VCD)
 

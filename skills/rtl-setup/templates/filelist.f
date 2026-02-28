@@ -1,8 +1,8 @@
 // RTL Source Filelist
-// Usage: -f rtl/filelist.f (verilator/vcs/xrun/questa) or parsed by simulate.sh (iverilog)
+// Usage: -f rtl/filelist.f (verilator/vcs/xrun/questa) or parsed by run_sim.sh (iverilog)
 // Convention: packages first, then modules in dependency order
 //
-// simulate.sh handles simulator differences automatically:
+// run_sim.sh handles simulator differences automatically:
 //   - iverilog: +incdir+ converted to -I, files read inline
 //   - verilator/vcs/xrun/questa: passed as -f directly
 

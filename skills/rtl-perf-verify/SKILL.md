@@ -56,7 +56,7 @@ Task(subagent_type="rtl-agent-team:perf-verifier",
      prompt="Run RTL performance simulation for rtl/cabac_encoder/cabac_encoder.sv with perf monitors. Use sys_clk, i_/o_ signal names. Measure throughput (o_valid/i_ready cycles), latency, stall rate on test/perf_vectors/.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Compile and run performance simulation via Bash CLI: scripts/simulate.sh --sim iverilog --top tb_cabac_encoder_perf --outdir sim/perf --trace rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder_perf.sv.")
+     prompt="Compile and run performance simulation via Bash CLI: scripts/run_sim.sh --sim iverilog --top tb_cabac_encoder_perf --outdir sim/perf --trace rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder_perf.sv.")
 
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze sim/perf/cabac_encoder_perf.vcd. Extract throughput (bits/cycle on o_data), average latency (sys_clk cycles from i_valid to o_valid), stall cycles per 1000 cycles on i_ready.")

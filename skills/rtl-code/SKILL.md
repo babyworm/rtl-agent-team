@@ -73,9 +73,9 @@ Parallelizing per-module coding maximizes throughput.
    - Signal naming: follows `sys_clk`, `sys_rst_n`, `i_*/o_*` conventions
    - If TB already exists, update it (add new test cases)
 7. **Per-Module Unit Simulation (parallel)**
-   - eda-runner runs each unit test via simulate.sh:
+   - eda-runner runs each unit test via run_sim.sh:
      ```bash
-     scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
+     scripts/run_sim.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
        rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv
      ```
    - On failure: waveform-analyzer debug → rtl-coder fix → re-run (max 3 rounds)
@@ -147,7 +147,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Create SV unit test for rtl/{module}/{module}.sv at sim/{module}/tb_{module}.sv. Include: (1) clock/reset generation (sys_clk, sys_rst_n), (2) basic I/O stimulus, (3) FSM state coverage, (4) self-checking assertions. Use i_*/o_* signal naming.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run unit test via Bash CLI: 'scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv | tee sim/{module}/{module}_results.txt'. Report pass/fail.")
+     prompt="Run unit test via Bash CLI: 'scripts/run_sim.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv | tee sim/{module}/{module}_results.txt'. Report pass/fail.")
 
 # ============================================================
 # Integration Smoke Test (after all modules lint-clean and unit tested)
@@ -156,7 +156,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Create top-level integration smoke test at sim/top/tb_{top_module}_smoke.sv. Include: (1) reset propagation check, (2) clock connectivity, (3) basic data flow through all modules.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run integration smoke test via Bash CLI: scripts/simulate.sh --sim iverilog --top tb_{top_module}_smoke --filelist rtl/filelist.f --outdir sim/{module} --trace sim/top/tb_{top_module}_smoke.sv. Execute and report pass/fail.")
+     prompt="Run integration smoke test via Bash CLI: scripts/run_sim.sh --sim iverilog --top tb_{top_module}_smoke --filelist rtl/filelist.f --outdir sim/{module} --trace sim/top/tb_{top_module}_smoke.sv. Execute and report pass/fail.")
 
 # ============================================================
 # Functional Coverage Review (after all modules lint-clean + unit tested)

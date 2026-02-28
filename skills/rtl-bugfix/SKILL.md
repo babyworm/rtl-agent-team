@@ -92,8 +92,8 @@ Passing lint is merely "compilation success" — simulation is required to prove
      ```bash
      # cocotb (Python TB)
      make -C sim/{module} SIM=icarus TOPLEVEL={module} MODULE=test_{module}
-     # Or SV TB via simulate.sh
-     scripts/simulate.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
+     # Or SV TB via run_sim.sh
+     scripts/run_sim.sh --sim iverilog --top tb_{module} --outdir sim/{module} --trace \
        rtl/{module}/{module}.sv sim/{module}/tb_{module}.sv
      ```
    - On failure: debug waveforms with waveform-analyzer

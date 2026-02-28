@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# simulate.sh — Simulator-agnostic compile + run script for RTL Agent Team
-# Usage: scripts/simulate.sh [OPTIONS] [SV_FILES...]
+# run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
+# Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
 # Supported simulators: iverilog, verilator, vcs, xrun, questa
 # Default: iverilog
@@ -28,7 +28,7 @@ SV_FILES=()
 # ─── Usage ──────────────────────────────────────────────────────────────────
 usage() {
   cat <<'EOF'
-Usage: scripts/simulate.sh [OPTIONS] [SV_FILES...]
+Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 
 Options:
   --sim <name>       Simulator: iverilog|verilator|vcs|xrun|questa (default: iverilog)
@@ -52,15 +52,15 @@ Options:
 
 Examples:
   # Basic iverilog simulation
-  scripts/simulate.sh --sim iverilog --top tb_module --outdir sim/module \
+  scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/module \
     rtl/module/module.sv sim/module/tb_module.sv
 
   # Verilator with DPI-C reference model
-  scripts/simulate.sh --sim verilator --top tb_module --dpi refc/build/libref.so \
+  scripts/run_sim.sh --sim verilator --top tb_module --dpi refc/build/libref.so \
     --filelist rtl/filelist_top.f sim/module/tb_module.sv
 
   # Multi-seed regression with trace
-  scripts/simulate.sh --sim iverilog --top tb_module --seed 42 --trace \
+  scripts/run_sim.sh --sim iverilog --top tb_module --seed 42 --trace \
     rtl/module/module.sv sim/module/tb_module.sv
 EOF
   exit 0
@@ -105,7 +105,7 @@ fi
 # ─── Helpers ────────────────────────────────────────────────────────────────
 log() {
   if [[ $VERBOSE -eq 1 ]]; then
-    echo "[simulate.sh] $*"
+    echo "[run_sim.sh] $*"
   fi
 }
 
@@ -364,7 +364,7 @@ run_questa() {
 }
 
 # ─── Main Execution ─────────────────────────────────────────────────────────
-echo "=== simulate.sh: ${SIM} | top=${TOP} | outdir=${OUTDIR} ==="
+echo "=== run_sim.sh: ${SIM} | top=${TOP} | outdir=${OUTDIR} ==="
 
 EXIT_CODE=0
 

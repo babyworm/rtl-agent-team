@@ -396,10 +396,10 @@ Testing is organized into 4 tiers with clear boundaries. Each tier has a dedicat
 ## EDA Tool Usage
 
 The `eda-runner` agent directly executes EDA CLI tools via Bash:
-- **Simulator-agnostic script**: `scripts/simulate.sh` (preferred for SV testbenches)
+- **Simulator-agnostic script**: `scripts/run_sim.sh` (preferred for SV testbenches)
   - Supports: `iverilog`, `verilator`, `vcs`, `xrun`, `questa`
-  - Usage: `scripts/simulate.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
-  - Full options: `scripts/simulate.sh --help`
+  - Usage: `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
+  - Full options: `scripts/run_sim.sh --help`
 - Simulation (direct): `verilator`, `iverilog` (Icarus Verilog)
 - Synthesis: `yosys`
 - Formal verification: `sby` (SymbiYosys)
