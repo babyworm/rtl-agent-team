@@ -10,7 +10,7 @@ Outputs: coverage/coverage_gaps.md + sim/test_coverage_fill.py.
 </Purpose>
 
 <Use_When>
-- Coverage report exists from a rtl-func-verify or rtl-regression-run run
+- Coverage report exists from a rtl-func-verify run
 - Coverage is below target (90% line, 80% toggle, 70% FSM)
 - Preparing for verification closure milestone
 </Use_When>

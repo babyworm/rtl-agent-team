@@ -362,7 +362,7 @@ This skill automates sequencing, gate checking, and recovery.
    **Phase 5c: Integration TB + Ref Model Comparison (parallel with 5a/5b)**
    - `testbench-dev`: Complete cocotb TB skeletons from Stream B with actual test logic
    - `func-verifier`: extensive RTL vs ref_model comparison
-   - `eda-runner`: run cocotb regression — **per-module parallel + multi-seed (3 seeds × N modules)**
+   - `eda-runner`: run cocotb regression — **per-module parallel + multi-seed (5 seeds × N modules)**
    - Output: `reviews/phase-5-verify/requirement-traceability.md`
 
    **Phase 5d: Coverage Analysis (incremental, starts as modules complete 5a-5c)**
@@ -683,7 +683,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Complete cocotb TB skeletons from Stream B (docs/phase-4-rtl/stream-b-tb-skeletons.md) with actual test logic. Create integration testbench at sim/top/. Test end-to-end data flow through all modules. Include ref_model comparison for bitexact verification.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb integration tests with per-module parallelism and multi-seed (seeds: 42, 123, 456) against ref_model. Each module runs as an independent parallel task with run_in_background=true. 3 seeds × N modules = up to 3N parallel sim tasks.
+     prompt="Run cocotb integration tests with per-module parallelism and multi-seed (seeds: 1, 42, 123, 1337, 65536) against ref_model. Each module runs as an independent parallel task with run_in_background=true. 5 seeds × N modules = up to 5N parallel sim tasks.
 After regression completes, produce a Requirement Traceability Matrix and save it to
 reviews/phase-5-verify/requirement-traceability.md in this format:
   # Phase 5 Review: Requirement Traceability
@@ -900,7 +900,7 @@ Phase 4-5 use dependency-aware parallel execution patterns:
   - Phase 4→5: RTL implements 100% of requirements (Functional Coverage Matrix PASS) + lint-clean + all unit tests PASS + basic integration PASS
   - Phase 4 Stream B: SVA skeletons, preliminary CDC report, TB skeletons generated
   - Phase 4: phase-4-summary.md generated
-  - Phase 5 multi-seed regression: 3 seeds per module passed
+  - Phase 5 multi-seed regression: 5 seeds per module passed
   - Phase 5→4 feedback: UNIT_FIX failures in different modules fixed in parallel
   - Phase 5e: reviews/phase-5-verify/e2e-traceability.md exists (unified end-to-end traceability matrix)
   - Phase 5 final: every requirement is implemented, verified, and passing (Final Compliance Matrix PASS)

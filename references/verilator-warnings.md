@@ -100,7 +100,7 @@ verilator --lint-only -Wall --top-module my_module \
   .verilator.vlt rtl/my_module/my_module.sv
 
 # Use filelist
-verilator --lint-only -Wall --top-module top_module -f rtl/filelist.f
+verilator --lint-only -Wall --top-module top_module -f rtl/filelist_top.f
 
 # Enable specific warnings only
 verilator --lint-only -Wno-fatal -Wwarn-LATCH -Wwarn-WIDTH rtl/*/*.sv
@@ -110,7 +110,7 @@ verilator --lint-only -Wno-fatal -Wwarn-LATCH -Wwarn-WIDTH rtl/*/*.sv
 
 ```bash
 # Step 1: Verilator (semantic lint)
-verilator --lint-only -Wall -f rtl/filelist.f 2>&1 | tee lint_verilator.log
+verilator --lint-only -Wall -f rtl/filelist_top.f 2>&1 | tee lint_verilator.log
 
 # Step 2: Verible (style lint)
 verible-verilog-lint --rules_config .verible.rules rtl/*/*.sv 2>&1 | tee lint_verible.log

@@ -1,6 +1,6 @@
 # SymbiYosys Configuration Template
-# Usage: sby -f formal/props/{{MODULE}}.sby
-# Generates: formal/props/{{MODULE}}/{{ENGINE}}/
+# Usage: sby -f sim/formal/{{MODULE}}.sby
+# Generates: sim/formal/{{MODULE}}/{{ENGINE}}/
 
 [tasks]
 bmc       # Bounded Model Checking
@@ -26,9 +26,9 @@ cover: smtbmc boolector
 
 [script]
 read -formal -sv {{RTL_FILES}}
-read -formal -sv formal/props/{{MODULE}}_props.sv
+read -formal -sv sim/formal/{{MODULE}}_props.sv
 prep -top {{MODULE}}
 
 [files]
 {{RTL_SRC_DIR}}/*.sv
-formal/props/{{MODULE}}_props.sv
+sim/formal/{{MODULE}}_props.sv

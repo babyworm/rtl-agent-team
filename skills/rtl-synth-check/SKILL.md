@@ -6,7 +6,7 @@ description: "This skill should be used when running Yosys synthesis for area/ti
 <Purpose>
 Run Yosys synthesis on RTL and generate area, cell count, and critical path reports.
 Optionally generate SDC timing constraints for commercial synthesis (Design Compiler, Genus).
-Outputs: syn/reports/{module}_synth.txt, syn/summary.json, and constraints/design.sdc.
+Outputs: syn/reports/{module}_synth.txt, syn/summary.json, and syn/constraints/design.sdc.
 
 Supports both generic synthesis (no technology) and technology-mapped synthesis
 (sky130, nangate45) for more accurate area/timing estimates.
@@ -69,8 +69,8 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    - constraint-writer reads requirements.json (clock frequencies), uarch/*.md (multicycle paths), RTL top-level (port list)
    - Use `templates/design-constraints.sdc` as the SDC scaffold
    - See `references/sdc-best-practices.md` for writing rules and common mistakes
-   - Generates constraints/design.sdc with: clock definitions, IO delays, false paths, multicycle paths, design rules
-   - Validates Tcl syntax: `tclsh constraints/design.sdc`
+   - Generates syn/constraints/design.sdc with: clock definitions, IO delays, false paths, multicycle paths, design rules
+   - Validates Tcl syntax: `tclsh syn/constraints/design.sdc`
 </Steps>
 
 <Tool_Usage>
@@ -83,7 +83,7 @@ Task(subagent_type="rtl-agent-team:synthesis-reporter",
 
 # SDC Generation (optional — when timing constraints needed)
 Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Generate comprehensive SDC for design top module. Read requirements.json for clock frequencies, uarch/*.md for multicycle paths, RTL top-level for port list. Use templates/design-constraints.sdc as scaffold. Write constraints/design.sdc with: create_clock for all clocks using {domain}_clk naming, set_input_delay/set_output_delay for all i_*/o_* ports, set_false_path for async resets with justification, set_multicycle_path (both -setup and -hold) from uarch pipeline specs, design rules (set_max_fanout, set_max_transition). Validate with tclsh. See references/sdc-best-practices.md for rules.")
+     prompt="Generate comprehensive SDC for design top module. Read requirements.json for clock frequencies, uarch/*.md for multicycle paths, RTL top-level for port list. Use templates/design-constraints.sdc as scaffold. Write syn/constraints/design.sdc with: create_clock for all clocks using {domain}_clk naming, set_input_delay/set_output_delay for all i_*/o_* ports, set_false_path for async resets with justification, set_multicycle_path (both -setup and -hold) from uarch pipeline specs, design rules (set_max_fanout, set_max_transition). Validate with tclsh. See references/sdc-best-practices.md for rules.")
 ```
 </Tool_Usage>
 
@@ -107,7 +107,7 @@ Ignoring Yosys latch warnings — inferred latches cause hold-time violations in
 - [ ] No inferred latches
 - [ ] syn/summary.json written
 - [ ] Area estimate within target range (or deviation documented)
-- [ ] constraints/design.sdc written (if SDC requested):
+- [ ] syn/constraints/design.sdc written (if SDC requested):
   - [ ] Every clock has create_clock or create_generated_clock
   - [ ] All I/O ports have set_input_delay / set_output_delay
   - [ ] Every set_false_path has justification comment

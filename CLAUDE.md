@@ -53,7 +53,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "CDC review", "CDC design review", "synchronization strategy review" | Delegate directly to `cdc-reviewer` agent |
 | "protocol review", "AXI design review", "interface review" | Delegate directly to `protocol-reviewer` agent |
 | "formal review", "SVA review", "assertion quality" | Delegate directly to `formal-reviewer` agent |
-| "power analysis", "clock gating review" | Delegate directly to `power-analyzer` agent |
+| "power analysis", "power review", "power estimation" | Delegate directly to `power-analyzer` agent |
 | "synthesis review", "area/timing review" | Delegate directly to `synthesis-reviewer` agent |
 | "UVM review", "testbench review", "TB quality" | Delegate directly to `uvm-reviewer` agent |
 | "requirement tracing", "traceability", "feature coverage", "spec verification status" | Delegate directly to `requirement-tracer` agent |
@@ -273,7 +273,7 @@ Phase 7: Exploration → docs/phase-7-exploration/    (free exploration, pipelin
 
 ## Delegation Rules
 
-RTL tasks must be delegated to specialized agents. This applies to tasks that handle `.sv`, `.v`, `.vhd` files or use EDA tools.
+RTL tasks must be delegated to specialized agents. This applies to tasks that handle `.sv`, `.svh`, `.v`, `.vh` files or use EDA tools.
 
 | Task Type | Delegated Agent | Model |
 |----------|-----------------|------|
@@ -398,7 +398,7 @@ Testing is organized into 4 tiers with clear boundaries. Each tier has a dedicat
 The `eda-runner` agent directly executes EDA CLI tools via Bash:
 - **Simulator-agnostic script**: `scripts/run_sim.sh` (preferred for SV testbenches)
   - Supports: `iverilog`, `verilator`, `vcs`, `xrun`, `questa`
-  - Usage: `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/unit --trace files...`
+  - Usage: `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/out --trace files...`
   - Full options: `scripts/run_sim.sh --help`
 - Simulation (direct): `verilator`, `iverilog` (Icarus Verilog)
 - Synthesis: `yosys`
@@ -522,12 +522,17 @@ sim/                                     # Simulation & testbenches (Phase 4-5)
 ├── top/                                 # Tier 4: integration tests
 │   ├── tb_top_integration.sv            # SV integration TB
 │   └── test_top_integration.py          # cocotb integration TB
+├── cdc/                                 # CDC analysis reports
+│   └── cdc_report.md                   # CDC analysis report
 └── formal/                              # SVA formal verification
 lint/                                    # Lint flow
 ├── scripts/                             # Lint scripts (run_lint.sh)
 └── reports/{module}/                    # Per-module lint results
 syn/                                     # Synthesis flow
 ├── scripts/                             # Synthesis scripts (run_syn.sh)
+├── constraints/                         # SDC constraint files
+│   ├── design.sdc                      # Design timing constraints
+│   └── cdc_constraints.sdc             # CDC clock group constraints
 └── reports/{module}/                    # Per-module synthesis results
 ```
 

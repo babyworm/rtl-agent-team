@@ -118,7 +118,7 @@ set_multicycle_path 4 -from [get_cells u_mac/*] -to [get_cells u_mac/o_result_re
 ### Design Compiler (Synopsys)
 ```tcl
 read_file -format sverilog {rtl/*/*.sv}
-source constraints/design.sdc
+source syn/constraints/design.sdc
 compile_ultra
 report_timing -max_paths 10
 report_area
@@ -128,7 +128,7 @@ report_area
 ```tcl
 read_hdl -sv {rtl/*/*.sv}
 elaborate {{TOP_MODULE}}
-read_sdc constraints/design.sdc
+read_sdc syn/constraints/design.sdc
 syn_generic; syn_map; syn_opt
 report_timing -nworst 10
 report_area
@@ -139,7 +139,7 @@ report_area
 read_liberty {{LIB_FILE}}
 read_verilog syn/netlist/{{MODULE}}_netlist.v
 link_design {{TOP_MODULE}}
-read_sdc constraints/design.sdc
+read_sdc syn/constraints/design.sdc
 report_checks -path_delay max -format full
 ```
 
@@ -154,7 +154,7 @@ sta -exit <<EOF
 read_liberty sky130_fd_sc_hd__tt_025C_1v80.lib
 read_verilog syn/netlist.v
 link_design {{TOP}}
-read_sdc constraints/design.sdc
+read_sdc syn/constraints/design.sdc
 report_checks -path_delay max
 report_checks -path_delay min
 EOF

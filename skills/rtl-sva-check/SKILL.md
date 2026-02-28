@@ -5,7 +5,7 @@ description: "This skill should be used when proving or disproving formal proper
 
 <Purpose>
 Extract SystemVerilog Assertions from RTL and run formal verification.
-Outputs: formal/props/*.sv assertion files + formal_verify.json with prove/fail status per property.
+Outputs: sim/formal/*.sv assertion files + formal_verify.json with prove/fail status per property.
 
 See `references/sva-patterns.md` for SVA temporal operator reference, common assertion patterns,
 and SymbiYosys engine selection guide.
@@ -45,7 +45,7 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 </Execution_Policy>
 
 <Steps>
-1. sva-extractor reads rtl/*/*.sv and uarch/*.md, writes formal/props/*.sv with SVA properties
+1. sva-extractor reads rtl/*/*.sv and uarch/*.md, writes sim/formal/*.sv with SVA properties
    - All signal names must match RTL port conventions (`i_`/`o_` prefixes, `sys_clk`, `sys_rst_n`)
    - Use temporal operators appropriately: `|->` (overlapping), `|=>` (non-overlapping), `##[M:N]` (delay range)
    - Guard `$past()` with a `past_valid` register to avoid undefined first-cycle behavior
@@ -56,7 +56,7 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
    - Engine selection: `smtbmc boolector` (default), `smtbmc yices` (bitvector-heavy), `abc pdr` (unbounded proof)
    - Generate both BMC (`mode bmc`) and prove (`mode prove`) configurations
    - Optionally generate cover (`mode cover`) to validate reachability
-3. eda-runner runs BMC via Bash CLI: `sby -f formal/props/{module}.sby`
+3. eda-runner runs BMC via Bash CLI: `sby -f sim/formal/{module}.sby`
 4. eda-runner runs induction on BMC-passing properties (prove mode)
 5. Parse results into formal_verify.json: {property, status: proved|failed|timeout, depth, engine}
 6. For failed: waveform-analyzer extracts counterexample, attaches to formal_verify.json entry
@@ -65,10 +65,10 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Write SVA properties for rtl/cabac_encoder/cabac_encoder.sv at formal/props/cabac_encoder_props.sv. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md conventions. Cover: no overflow on o_data, valid handshake (i_valid/o_ready), FIFO no underflow.")
+     prompt="Write SVA properties for rtl/cabac_encoder/cabac_encoder.sv at sim/formal/cabac_encoder_props.sv. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md conventions. Cover: no overflow on o_data, valid handshake (i_valid/o_ready), FIFO no underflow.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run SymbiYosys formal verification via Bash CLI: sby -f formal/props/cabac_encoder.sby. Parse output and write results to formal_verify.json with status per property.")
+     prompt="Run SymbiYosys formal verification via Bash CLI: sby -f sim/formal/cabac_encoder.sby. Parse output and write results to formal_verify.json with status per property.")
 
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze SymbiYosys counterexample trace for failed property 'no_fifo_overflow'. Identify the input sequence that triggers the violation.")
@@ -95,7 +95,7 @@ Using `clk` or `data_i` in SVA instead of `sys_clk` or `i_data` — signal name 
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
-- [ ] formal/props/*.sv written with meaningful properties
+- [ ] sim/formal/*.sv written with meaningful properties
 - [ ] All SVA signal references match RTL port names (`i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`)
 - [ ] formal_verify.json produced with status per property
 - [ ] No "failed" status without counterexample attached

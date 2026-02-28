@@ -276,7 +276,7 @@ Parallel UNIT_FIX:
 
 **When an existing regression suite is available:**
 - Recommended to re-run the full regression after bug fix
-- Use the rtl-regression-run skill: `/rtl-agent-team:rtl-regression-run`
+- Use the rtl-func-verify skill: `/rtl-agent-team:rtl-func-verify`
 
 **For compound mode bugs like MODE_RECON:**
 - Test individual modes first (MODE_FWD_TQ, MODE_INV_TQ)

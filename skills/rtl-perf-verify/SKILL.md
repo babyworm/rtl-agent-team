@@ -5,7 +5,7 @@ description: "This skill should be used when measuring RTL throughput and latenc
 
 <Purpose>
 Measure RTL performance (throughput, latency, stall cycles) and compare against BFM predictions.
-Outputs: sim/perf/{module}_perf.json with measured vs expected metrics.
+Outputs: sim/{module}/{module}_perf.json with measured vs expected metrics.
 </Purpose>
 
 <Use_When>
@@ -47,7 +47,7 @@ Performance monitor instrumentation and testbenches MUST follow project conventi
 3. waveform-analyzer extracts: throughput (bits/cycle), latency (cycles), stall rate (%)
 4. Read BFM performance baseline from bfm/perf_baseline.json
 5. Compare RTL vs BFM per metric; flag deviations >10%
-6. Write sim/perf/{module}_perf.json: {metric, rtl_value, bfm_value, delta_pct, status}
+6. Write sim/{module}/{module}_perf.json: {metric, rtl_value, bfm_value, delta_pct, status}
 </Steps>
 
 <Tool_Usage>
@@ -59,7 +59,7 @@ Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Compile and run performance simulation via Bash CLI: scripts/run_sim.sh --sim iverilog --top tb_cabac_encoder_perf --outdir sim/perf --trace rtl/cabac_encoder/cabac_encoder.sv sim/cabac_encoder/tb_cabac_encoder_perf.sv.")
 
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
-     prompt="Analyze sim/perf/cabac_encoder_perf.vcd. Extract throughput (bits/cycle on o_data), average latency (sys_clk cycles from i_valid to o_valid), stall cycles per 1000 cycles on i_ready.")
+     prompt="Analyze sim/cabac_encoder/cabac_encoder_perf.vcd. Extract throughput (bits/cycle on o_data), average latency (sys_clk cycles from i_valid to o_valid), stall cycles per 1000 cycles on i_ready.")
 ```
 </Tool_Usage>
 
@@ -85,7 +85,7 @@ Using `clk` instead of `sys_clk` in performance counters — breaks consistency 
 <Final_Checklist>
 - [ ] Performance monitors use correct signal names (`i_`/`o_` prefix, `sys_clk`)
 - [ ] Deterministic performance vectors used
-- [ ] sim/perf/*_perf.json written for all modules
+- [ ] sim/{module}/*_perf.json written for all modules
 - [ ] RTL vs BFM comparison done per metric
 - [ ] All deviations >10% flagged with root cause analysis
 </Final_Checklist>

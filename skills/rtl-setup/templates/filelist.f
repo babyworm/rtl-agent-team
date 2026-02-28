@@ -1,5 +1,5 @@
 // RTL Source Filelist
-// Usage: -f rtl/filelist.f (verilator/vcs/xrun/questa) or parsed by run_sim.sh (iverilog)
+// Usage: -f rtl/filelist_top.f (verilator/vcs/xrun/questa) or parsed by run_sim.sh (iverilog)
 // Convention: packages first, then modules in dependency order
 //
 // run_sim.sh handles simulator differences automatically:

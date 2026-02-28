@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Parse Yosys 'stat' output and produce synth/summary.json.
-Usage: python parse_yosys_stat.py <yosys_output.txt> [--output synth/summary.json]
+Parse Yosys 'stat' output and produce syn/summary.json.
+Usage: python parse_yosys_stat.py <yosys_output.txt> [--output syn/summary.json]
 
 Detects:
 - Cell counts by type
@@ -102,7 +102,7 @@ def main():
         sys.exit(2)
 
     input_file = Path(sys.argv[1])
-    output_file = Path("synth/summary.json")
+    output_file = Path("syn/summary.json")
 
     if "--output" in sys.argv:
         idx = sys.argv.index("--output")

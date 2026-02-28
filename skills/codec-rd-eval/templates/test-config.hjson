@@ -12,14 +12,14 @@
   // Mode 1: Anchor/Test pair (classic 2-config comparison)
   // =====================================================================
   anchor: {
-    encoder_src: "ref_model/src"       // C source directory
+    encoder_src: "refc/src"       // C source directory
     encoder_binary: ".rtl-agent-team/scratch/rd-eval/anchor_encoder"
     encoder_cfg: "configs/anchor.cfg"  // Encoder configuration file
     label: "Anchor (baseline)"
   }
 
   test: {
-    encoder_src: "ref_model/src"       // Same source or different branch
+    encoder_src: "refc/src"       // Same source or different branch
     encoder_binary: ".rtl-agent-team/scratch/rd-eval/test_encoder"
     encoder_cfg: "configs/test.cfg"    // Modified encoder configuration
     label: "Test (improved)"
@@ -32,20 +32,20 @@
   // candidates: [
   //   {
   //     label: "SAD baseline"
-  //     encoder_src: "ref_model/src"
+  //     encoder_src: "refc/src"
   //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/sad_encoder"
   //     encoder_cfg: "configs/sad.cfg"
   //     is_anchor: true
   //   }
   //   {
   //     label: "Hadamard"
-  //     encoder_src: "ref_model/src_hadamard"
+  //     encoder_src: "refc/src_hadamard"
   //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/hadamard_encoder"
   //     encoder_cfg: "configs/hadamard.cfg"
   //   }
   //   {
   //     label: "SATD+RDOQ"
-  //     encoder_src: "ref_model/src_satd_rdoq"
+  //     encoder_src: "refc/src_satd_rdoq"
   //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/satd_rdoq_encoder"
   //     encoder_cfg: "configs/satd_rdoq.cfg"
   //   }

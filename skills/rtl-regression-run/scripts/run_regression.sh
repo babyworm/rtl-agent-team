@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Multi-Seed Regression Runner
-# Usage: bash run_regression.sh [--seeds "1 42 1337"] [--sim icarus|verilator] [--parallel N]
+# Usage: bash run_regression.sh [--seeds "1 42 123 1337 65536"] [--sim icarus|verilator] [--parallel N]
 #
 # Runs cocotb test suite with multiple seeds, captures results per seed,
 # and generates a merged regression report.
@@ -8,10 +8,10 @@
 set -euo pipefail
 
 # Defaults
-SEEDS="${SEEDS:-1 42 1337 65536 999999}"
+SEEDS="${SEEDS:-1 42 123 1337 65536}"
 SIM="${SIM:-icarus}"
 PARALLEL="${PARALLEL:-1}"
-TB_DIR="${TB_DIR:-tb/cocotb}"
+TB_DIR="${TB_DIR:-sim}"
 RESULTS_DIR="regression"
 COVERAGE_DIR="coverage"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

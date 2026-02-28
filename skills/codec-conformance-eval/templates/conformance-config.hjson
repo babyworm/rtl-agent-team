@@ -22,7 +22,7 @@
 
   // Decoder configuration
   decoder: {
-    decoder_src: "ref_model/src"
+    decoder_src: "refc/src"
     decoder_binary: ".rtl-agent-team/scratch/conformance-eval/decoder"
     // Command template — variables: {decoder} {bitstream} {output} {extra_args}
     decoder_cmd_template: "{decoder} -b {bitstream} -o {output} {extra_args}"

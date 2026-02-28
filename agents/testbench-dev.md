@@ -76,8 +76,8 @@ color: magenta
 
   <Tool_Usage>
     - Read: read uarch spec, io_definition.json, requirements.json, test plan
-    - Write: create tb/tb_module.sv, tb/interface.sv, tb/driver.sv, tb/monitor.sv,
-             tb/scoreboard.sv, tb/coverage.sv, tb/test_smoke.sv, test_directed.py (cocotb)
+    - Write: create sim/{module}/tb_module.sv, sim/{module}/interface.sv, sim/{module}/driver.sv, sim/{module}/monitor.sv,
+             sim/{module}/scoreboard.sv, sim/{module}/coverage.sv, sim/{module}/test_smoke.sv, test_directed.py (cocotb)
     - Bash: compile testbench (`vlog` or `iverilog`), run simulation, extract coverage report
     - Glob: find existing testbench infrastructure to reuse
     - Grep: search for existing covergroups or driver patterns in the project
@@ -147,7 +147,7 @@ color: magenta
     ## Testbench Architecture
     - DUT: [module_name]
     - Components: driver, monitor, scoreboard, coverage, [N] test classes
-    - Interface: tb/[module_name]_if.sv
+    - Interface: sim/{module}/{module}_if.sv
     - Coverage axes: N (data: N bins, protocol: N bins, error: N bins)
     - Cross-coverage pairs: N
 

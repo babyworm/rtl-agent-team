@@ -11,7 +11,7 @@ set -euo pipefail
 SIM="iverilog"
 TOP=""
 FILELIST=""
-OUTDIR="sim/unit"
+OUTDIR="sim/out"
 DEFINES=()
 PARAMS=()
 TRACE=0
@@ -34,7 +34,7 @@ Options:
   --sim <name>       Simulator: iverilog|verilator|vcs|xrun|questa (default: iverilog)
   --top <module>     Top-level module name (required)
   --filelist <file>  Source filelist (.f file)
-  --outdir <dir>     Output directory (default: sim/unit)
+  --outdir <dir>     Output directory (default: sim/out)
   --define KEY=VAL   Preprocessor define (repeatable, -D alias)
   -D KEY=VAL         Alias for --define
   --param KEY=VAL    Parameter override (repeatable, -P alias)

@@ -18,7 +18,7 @@ Tier 3: Module Regr.   — cocotb multi-seed (rtl-func-verify)
 Tier 4: Integration    — cross-module, end-to-end (THIS SKILL) ←
 ```
 
-Outputs: sim/integration/integration_results.json + sim/top/ test files.
+Outputs: sim/top/integration_results.json + sim/top/ test files.
 </Purpose>
 
 <Use_When>
@@ -95,7 +95,7 @@ Integration testbenches MUST follow project conventions (CLAUDE.md):
    - SV TB:
      ```bash
      scripts/run_sim.sh --sim {sim} --top tb_{top}_integration \
-       --filelist rtl/filelist.f --outdir sim/integration --trace \
+       --filelist rtl/filelist_top.f --outdir sim/integration --trace \
        sim/top/tb_{top}_integration.sv
      ```
    - cocotb:
@@ -109,7 +109,7 @@ Integration testbenches MUST follow project conventions (CLAUDE.md):
    - Byte-by-byte comparison: `diff` or custom comparator
    - On mismatch: waveform-analyzer identifies divergence point and pipeline stage
 
-8. Report: sim/integration/integration_results.json
+8. Report: sim/top/integration_results.json
    ```json
    {
      "top_module": "{top}",
@@ -152,7 +152,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
 # ============================================================
 # SV TB path
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run integration test: scripts/run_sim.sh --sim iverilog --top tb_{top}_integration --filelist rtl/filelist.f --outdir sim/integration --trace sim/top/tb_{top}_integration.sv. Report pass/fail per test category.")
+     prompt="Run integration test: scripts/run_sim.sh --sim iverilog --top tb_{top}_integration --filelist rtl/filelist_top.f --outdir sim/integration --trace sim/top/tb_{top}_integration.sv. Report pass/fail per test category.")
 
 # cocotb path
 Task(subagent_type="rtl-agent-team:eda-runner",
@@ -162,13 +162,13 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 # Step 7: End-to-end reference comparison
 # ============================================================
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run end-to-end reference comparison: (1) refc/build/{top}_ref --input test_vectors/ --output sim/integration/ref_out.bin (2) Compare with RTL output sim/integration/rtl_out.bin. Report byte-by-byte match status.")
+     prompt="Run end-to-end reference comparison: (1) refc/build/{top}_ref --input test_vectors/ --output sim/top/ref_out.bin (2) Compare with RTL output sim/top/rtl_out.bin. Report byte-by-byte match status.")
 
 # ============================================================
 # Waveform debug on failure
 # ============================================================
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
-     prompt="Analyze sim/integration/tb_{top}_integration.vcd. Identify cross-module failure: trace signal from output back through pipeline stages to find the originating module and divergence cycle.")
+     prompt="Analyze sim/top/tb_{top}_integration.vcd. Identify cross-module failure: trace signal from output back through pipeline stages to find the originating module and divergence cycle.")
 ```
 </Tool_Usage>
 
@@ -204,7 +204,7 @@ common class of integration bugs.
 - [ ] End-to-end data flow tests executed
 - [ ] Handshake/backpressure tests executed
 - [ ] End-to-end reference comparison done (byte-by-byte)
-- [ ] sim/integration/integration_results.json produced
+- [ ] sim/top/integration_results.json produced
 - [ ] All integration tests PASS
 - [ ] run_sim.sh used for SV TB simulation
 - [ ] Waveform analysis done for any failures

@@ -9,8 +9,7 @@ node_modules/
 # Pipeline execution artifacts (generated per-project, not part of plugin)
 reviews/
 rtl/
-tb/
-ref_model/
+refc/
 specs/
 uarch/
 docs/

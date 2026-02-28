@@ -156,7 +156,7 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Create top-level integration smoke test at sim/top/tb_{top_module}_smoke.sv. Include: (1) reset propagation check, (2) clock connectivity, (3) basic data flow through all modules.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run integration smoke test via Bash CLI: scripts/run_sim.sh --sim iverilog --top tb_{top_module}_smoke --filelist rtl/filelist.f --outdir sim/{module} --trace sim/top/tb_{top_module}_smoke.sv. Execute and report pass/fail.")
+     prompt="Run integration smoke test via Bash CLI: scripts/run_sim.sh --sim iverilog --top tb_{top_module}_smoke --filelist rtl/filelist_top.f --outdir sim/{module} --trace sim/top/tb_{top_module}_smoke.sv. Execute and report pass/fail.")
 
 # ============================================================
 # Functional Coverage Review (after all modules lint-clean + unit tested)

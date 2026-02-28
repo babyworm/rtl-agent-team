@@ -5,7 +5,7 @@ description: "This skill should be used when analyzing clock domain crossings fo
 
 <Purpose>
 Perform static CDC analysis on RTL to identify missing synchronizers, metastability risks,
-and CDC constraint gaps. Outputs: cdc/cdc_report.md + constraints/cdc_constraints.sdc.
+and CDC constraint gaps. Outputs: sim/cdc/cdc_report.md + syn/constraints/cdc_constraints.sdc.
 
 See `references/cdc-patterns.md` for synchronizer types, common violations, and SDC constraint templates.
 </Purpose>
@@ -58,10 +58,10 @@ in addition to any CDC violations.
    - Multi-bit bus crossings without gray code or handshake
    - Fanout from synchronized signal
    - Reset domain crossings (e.g., `sys_rst_n` used in `axi_clk` domain)
-3. constraint-writer writes constraints/cdc_constraints.sdc defining clock groups
+3. constraint-writer writes syn/constraints/cdc_constraints.sdc defining clock groups
    - Use `templates/cdc-constraints.sdc` as the SDC template
    - Uses `{domain}_clk` names consistent with RTL
-4. cdc-checker writes cdc/cdc_report.md (use `templates/cdc-report.md` as format template):
+4. cdc-checker writes sim/cdc/cdc_report.md (use `templates/cdc-report.md` as format template):
    - VIOLATION: unsynced crossing (file:line, source clock, dest clock)
    - CAUTION: complex multi-bit crossing needing review
    - CONVENTION: non-conformant clock/reset naming (file:line, found name, expected format)
@@ -72,10 +72,10 @@ in addition to any CDC violations.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Analyze rtl/*/*.sv for CDC violations. Identify all clock domains (expect {domain}_clk naming per CLAUDE.md). List all cross-domain signal paths, flag missing synchronizers. Also flag any non-conformant clock/reset names (clk_i, rst_ni, etc.). Write cdc/cdc_report.md.")
+     prompt="Analyze rtl/*/*.sv for CDC violations. Identify all clock domains (expect {domain}_clk naming per CLAUDE.md). List all cross-domain signal paths, flag missing synchronizers. Also flag any non-conformant clock/reset names (clk_i, rst_ni, etc.). Write sim/cdc/cdc_report.md.")
 
 Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Read cdc/cdc_report.md and rtl/*/*.sv. Write constraints/cdc_constraints.sdc defining clock groups for all identified clock domains. Use {domain}_clk names matching RTL (e.g., sys_clk, axi_clk, codec_clk).")
+     prompt="Read sim/cdc/cdc_report.md and rtl/*/*.sv. Write syn/constraints/cdc_constraints.sdc defining clock groups for all identified clock domains. Use {domain}_clk names matching RTL (e.g., sys_clk, axi_clk, codec_clk).")
 ```
 </Tool_Usage>
 
@@ -104,8 +104,8 @@ Not flagging `clk_i` or `rst_ni` in RTL — allows convention violations to pers
 - [ ] All clock domains identified in RTL (expect `{domain}_clk` format)
 - [ ] All cross-domain paths analyzed
 - [ ] Non-conformant clock/reset names flagged as CONVENTION violations
-- [ ] cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
-- [ ] constraints/cdc_constraints.sdc written with correct clock domain names
+- [ ] sim/cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
+- [ ] syn/constraints/cdc_constraints.sdc written with correct clock domain names
 - [ ] RTL not modified
 - [ ] Violation count reported to user
 </Final_Checklist>
