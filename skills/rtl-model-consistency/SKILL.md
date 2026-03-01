@@ -17,9 +17,9 @@ Outputs: sim/consistency/consistency_report.md with per-vector comparison matrix
 </Use_When>
 
 <Do_Not_Use_When>
-- Only two models exist (use rtl-func-verify for RTL vs ref, or rtl-perf-verify for RTL vs BFM)
+- Only two models exist (use rtl-p5s-func-verify for RTL vs ref, or rtl-p5s-perf-verify for RTL vs BFM)
 - Models are known to be out of sync (fix the diverging model first)
-- Only functional verification of RTL needed (use rtl-func-verify)
+- Only functional verification of RTL needed (use rtl-p5s-func-verify)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -73,7 +73,7 @@ diagnosis: RTL CABAC encoder has rounding difference vs ref and BFM.
 </Good>
 <Bad>
 Running only ref vs RTL and declaring consistency — misses BFM drift that would
-cause rtl-perf-verify to produce wrong baseline comparisons.
+cause rtl-p5s-perf-verify to produce wrong baseline comparisons.
 </Bad>
 </Examples>
 

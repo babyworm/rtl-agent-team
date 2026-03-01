@@ -20,8 +20,8 @@ See `references/verilator-warnings.md` for detailed Verilator warning categories
 </Use_When>
 
 <Do_Not_Use_When>
-- Lint fixing is also needed (use rtl-code or rtl-refactor which include fix cycles)
-- Full verification suite needed (use rtl-func-verify or rtl-sv-unit-test)
+- Lint fixing is also needed (use rtl-p4-implement or rtl-p4s-refactor which include fix cycles)
+- Full verification suite needed (use rtl-p5s-func-verify or rtl-p4s-unit-test)
 </Do_Not_Use_When>
 
 <Why_This_Exists>

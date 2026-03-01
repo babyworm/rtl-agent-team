@@ -6,6 +6,7 @@
 # Build:
 #   docker build -t rtl-eda-tools docker/
 #   docker build -t rtl-eda-tools --build-arg VERILATOR_VERSION=5.024 docker/
+#   docker build -t rtl-eda-tools --build-arg OSS_CAD_SUITE_TAG=2025-02-01 docker/
 #
 # Run (mount project):
 #   docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
@@ -21,6 +22,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG VERILATOR_VERSION=5.024
 ARG SLANG_VERSION=v6.0
 ARG SYSTEMC_VERSION=3.0.2
+ARG OSS_CAD_SUITE_TAG=2025-02-01
 
 LABEL maintainer="rtl-agent-team"
 LABEL description="Open-source EDA toolchain for RTL design and verification"
@@ -78,11 +80,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
-# Yosys (synthesis)
+# OSS CAD Suite (Yosys + SymbiYosys + SAT/SMT solvers)
+# Pre-built bundle from YosysHQ: no sudo needed, consistent tool versions
+# https://github.com/YosysHQ/oss-cad-suite-build
+# Provides: yosys, sby, boolector, z3, yices2, bitwuzla, abc, nextpnr
+# Replaces: apt yosys + source-built sby + apt boolector/z3
 # -----------------------------------------------------------------------------
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    yosys \
-    && rm -rf /var/lib/apt/lists/*
+RUN OSS_DATE=$(echo ${OSS_CAD_SUITE_TAG} | tr -d '-') && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then OSS_ARCH="linux-x64"; else OSS_ARCH="linux-arm64"; fi && \
+    cd /tmp && \
+    curl -fsSL "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_SUITE_TAG}/oss-cad-suite-${OSS_ARCH}-${OSS_DATE}.tgz" -o oss-cad-suite.tgz && \
+    tar xzf oss-cad-suite.tgz -C /opt && \
+    rm -f /tmp/oss-cad-suite.tgz
+
+# OSS CAD Suite PATH (appended AFTER /usr/local/bin so custom-built verilator/slang take priority)
+ENV PATH="${PATH}:/opt/oss-cad-suite/bin"
 
 # -----------------------------------------------------------------------------
 # Verible (style lint + formatting) — prebuilt binary from GitHub
@@ -146,18 +159,8 @@ RUN cd /tmp && \
 ENV SYSTEMC_HOME=/usr/local
 
 # -----------------------------------------------------------------------------
-# SymbiYosys (formal verification) + solvers
+# (Yosys + SymbiYosys + solvers are provided by OSS CAD Suite above)
 # -----------------------------------------------------------------------------
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    boolector \
-    z3 \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN cd /tmp && \
-    git clone --depth 1 https://github.com/YosysHQ/sby.git && \
-    cd sby && \
-    make install PREFIX=/usr/local && \
-    rm -rf /tmp/sby
 
 # -----------------------------------------------------------------------------
 # GTKWave (waveform viewer)
@@ -186,9 +189,10 @@ RUN echo "=== RTL EDA Toolchain ===" && \
     verible-verilog-lint --version 2>/dev/null || echo "verible: not available on this arch" && \
     iverilog -V 2>&1 | head -1 && \
     yosys --version && \
+    sby --help 2>&1 | head -1 || echo "sby: installed" && \
+    echo "OSS CAD Suite: $(ls /opt/oss-cad-suite/ 2>/dev/null && echo 'installed' || echo 'NOT FOUND')" && \
     slang --version 2>&1 | head -1 && \
     slang-server --version 2>&1 | head -1 && \
-    sby --help 2>&1 | head -1 || echo "sby: installed" && \
     python3 -c "import cocotb; print(f'cocotb {cocotb.__version__}')" && \
     python3 -c "import SystemC; print('SystemC: available')" 2>/dev/null || \
       (test -f /usr/local/include/systemc.h && echo "SystemC ${SYSTEMC_VERSION} (SYSTEMC_HOME=$SYSTEMC_HOME)" || echo "SystemC: NOT FOUND") && \

@@ -11,7 +11,7 @@ External memory access is abstracted through dedicated access functions for band
 
 Outputs: refc/*.c, refc/include/*.h, conformance_report.json.
 Must achieve bitexact match against JM (H.264) or HM (H.265) reference software.
-Runs in parallel with arch-design during Phase 2.
+Runs in parallel with p2-arch-design during Phase 2.
 </Purpose>
 
 <Use_When>

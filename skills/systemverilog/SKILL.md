@@ -28,7 +28,7 @@ Project overrides take precedence over default lowRISC rules.
 
 <Do_Not_Use_When>
 - When writing SystemC/C++ code → use `systemc` skill
-- When writing Python cocotb tests → refer to cocotb rules in `rtl-func-verify` skill
+- When writing Python cocotb tests → refer to cocotb rules in `rtl-p5s-func-verify` skill
 - When only writing documentation
 </Do_Not_Use_When>
 

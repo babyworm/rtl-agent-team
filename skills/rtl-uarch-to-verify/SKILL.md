@@ -10,7 +10,7 @@ Phase 1-3 design documents as input, then STOP before Phase 6 (Design Note).
 This skill is the "implementation half" of the pipeline, intended for workflows where:
 - Design documents (Phase 1-3) have been completed and reviewed (via rtl-spec-to-uarch or manually)
 - RTL implementation and verification should proceed from approved μArch specs
-- Design Note phase is handled separately (via rtl-design-review-phase)
+- Design Note phase is handled separately (via rtl-p6-design-review)
 
 **Prerequisites**: This skill REQUIRES completed Phase 1-3 artifacts. It will verify their existence
 and quality gate status before proceeding. If prerequisites are not met, the skill reports what is
@@ -45,8 +45,8 @@ State is persisted at .rtl-agent-team/state/rtl-uarch-to-verify-state.json for r
 <Do_Not_Use_When>
 - No μArch documents exist yet (use rtl-spec-to-uarch or rtl-autopilot first)
 - Full end-to-end automation from spec is needed (use rtl-autopilot instead)
-- Only a single phase-specific task is needed (use rtl-code, rtl-func-verify, etc.)
-- Design Note phase is needed (use rtl-design-review-phase after this skill completes)
+- Only a single phase-specific task is needed (use rtl-p4-implement, rtl-p5s-func-verify, etc.)
+- Design Note phase is needed (use rtl-p6-design-review after this skill completes)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -55,7 +55,7 @@ This skill enables the standard industry workflow:
 1. rtl-spec-to-uarch produces design documents (Phase 1-3)
 2. Human architect reviews and approves μArch
 3. rtl-uarch-to-verify implements and verifies RTL (Phase 4-5)
-4. rtl-design-review-phase produces design notes (Phase 6)
+4. rtl-p6-design-review produces design notes (Phase 6)
 
 Separating design from implementation also enables:
 - Different sessions/teams for design vs implementation
@@ -141,7 +141,7 @@ Separating design from implementation also enables:
    - Enforce: `logic` only (no `reg`/`wire`), `always_ff`/`always_comb`, ANSI port style
    - **Review artifacts setup**: `mkdir -p reviews/phase-4-rtl`
 
-   **Stream A — RTL Implementation (invoke rtl-code skill):**
+   **Stream A — RTL Implementation (invoke rtl-p4-implement skill):**
    - rtl-coder writes modules (wave-based parallel per module)
    - lint-checker validates (Wave 2: lint all at once)
    - testbench-dev generates unit TBs (Wave 4)
@@ -257,9 +257,9 @@ Separating design from implementation also enables:
      - **DESIGN_FIX**: requires architecture-level design change (-> user approval mandatory)
    - **Batch UNIT_FIX across sub-phases:**
      - Group all UNIT_FIX failures by module
-     - If failures are in DIFFERENT modules -> launch parallel rtl-bugfix tasks (one per module)
-     - If failures are in SAME module -> sequential fix within single rtl-bugfix task
-     - Each rtl-bugfix follows: analyze -> fix -> lint -> TB -> sim
+     - If failures are in DIFFERENT modules -> launch parallel rtl-p4s-bugfix tasks (one per module)
+     - If failures are in SAME module -> sequential fix within single rtl-p4s-bugfix task
+     - Each rtl-p4s-bugfix follows: analyze -> fix -> lint -> TB -> sim
      - All parallel fixes run concurrently with `run_in_background: true`
    - INTEGRATION_FIX: always sequential (cross-module dependencies)
    - After ALL fixes complete: re-run ONLY affected sub-phases in parallel
@@ -283,7 +283,7 @@ Separating design from implementation also enables:
 
    **Timeout Policy:**
    - Per feedback loop: max 30 min wall-clock (estimated, not enforced)
-   - Per rtl-bugfix task: inherits `execution.timeout_per_job` from config
+   - Per rtl-p4s-bugfix task: inherits `execution.timeout_per_job` from config
    - If loop 2 fails: STOP, report to user with full failure context
 
    **Feedback Loop State Tracking:**
@@ -333,7 +333,7 @@ Separating design from implementation also enables:
    - Phase 5 artifacts: formal-review.md, cdc-report.md, requirement-traceability.md, coverage-report.md
    - Final compliance: reviews/phase-5-verify/final-compliance.md verdict=PASS
    - Feedback loop count and lessons learned
-   - Next step: "Run `/rtl-agent-team:rtl-design-review-phase` to produce design notes and improvement recommendations"
+   - Next step: "Run `/rtl-agent-team:rtl-p6-design-review` to produce design notes and improvement recommendations"
 
    **Do NOT proceed to Phase 6.** The pipeline stops here.
 
@@ -380,7 +380,7 @@ Read("docs/phase-2-architecture/phase-2-summary.md")
 Bash("mkdir -p reviews/phase-4-rtl")
 
 # Stream A: RTL coding (wave-based)
-Skill(skill="rtl-agent-team:rtl-code")
+Skill(skill="rtl-agent-team:rtl-p4-implement")
 
 # Stream B: Early verification framework (parallel with Stream A)
 Task(subagent_type="rtl-agent-team:sva-extractor",
@@ -438,7 +438,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
 # STOP — Pipeline ends here
 # ============================================================
 # Report completion summary to user
-# Suggest: "Run /rtl-agent-team:rtl-design-review-phase to produce design notes"
+# Suggest: "Run /rtl-agent-team:rtl-p6-design-review to produce design notes"
 ```
 </Tool_Usage>
 
@@ -451,7 +451,7 @@ User: "μArch 문서가 완성됐어. RTL 구현하고 검증까지 진행해줘
 → Phase 4: RTL coding (Stream A) + SVA/CDC/TB skeletons (Stream B) in parallel
 → Phase 4→5 Gate: lint-clean, unit tests PASS, Stream B ready
 → Phase 5: Formal + CDC + cocotb + coverage + final compliance
-→ STOP: "Phase 4-5 완료. final-compliance.md PASS. /rtl-agent-team:rtl-design-review-phase로 Design Note를 생성하세요."
+→ STOP: "Phase 4-5 완료. final-compliance.md PASS. /rtl-agent-team:rtl-p6-design-review로 Design Note를 생성하세요."
 ```
 
 **Example 2: Missing prerequisites**
@@ -467,7 +467,7 @@ User: "RTL 구현 시작해줘."
 → Phase 5a: SVA formal finds counterexample in module_x
 → Phase 5c: cocotb finds mismatch in module_y
 → Classify: both are UNIT_FIX (different modules)
-→ Launch parallel rtl-bugfix: module_x + module_y simultaneously
+→ Launch parallel rtl-p4s-bugfix: module_x + module_y simultaneously
 → Re-run 5a + 5c in parallel after fixes
 → Both PASS → continue to 5d, 5e
 ```

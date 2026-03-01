@@ -268,7 +268,7 @@ Chief 에이전트의 역할:
 - [ ] README.md 에이전트 팀 테이블에 도메인 카테고리 추가
 - [ ] (3+ 에이전트) 도메인 패키지 `domain-packages/{domain}/manifest.json` 생성
 - [ ] (4+ 에이전트) Chief 에이전트 추가 권장
-- [ ] 기존 스킬(research-analyze, domain-consult 등)의 라우팅 테이블에 새 도메인 추가
+- [ ] 기존 스킬(p1-spec-research, domain-consult 등)의 라우팅 테이블에 새 도메인 추가
 - [ ] 에이전트/스킬 카운트 업데이트 (README.md, marketplace.json)
 
 ---

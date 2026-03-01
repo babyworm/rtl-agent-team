@@ -17,7 +17,7 @@ parameter settings, and tie-offs. Outputs: rtl/ip_wrappers/{ip_name}_wrapper.sv.
 <Do_Not_Use_When>
 - IP is already instantiated and only parameter changes needed (edit directly)
 - IP is first-party RTL developed in this project (no wrapper needed)
-- Full IP integration with verification needed (use rtl-func-verify after this skill)
+- Full IP integration with verification needed (use rtl-p5s-func-verify after this skill)
 </Do_Not_Use_When>
 
 <Why_This_Exists>

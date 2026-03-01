@@ -19,7 +19,7 @@ and verify that required EDA tools are installed and accessible.
 <Do_Not_Use_When>
 - Project directories already exist and tools are verified
 - Only need to run a specific EDA tool (use the tool-specific skill)
-- Designing architecture or writing RTL (use arch-design or rtl-code)
+- Designing architecture or writing RTL (use p2-arch-design or rtl-p4-implement)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -141,7 +141,7 @@ This skill ensures everything is in place before design work begins.
    Supports icarus, verilator, vcs, xcelium, questa with per-simulator compile args.
 
 6.5. **Generate SV testbench template** (inform user):
-   Reference `skills/rtl-sv-unit-test/templates/sv-testbench-template.sv` for Tier 2 unit tests.
+   Reference `skills/rtl-p4s-unit-test/templates/sv-testbench-template.sv` for Tier 2 unit tests.
    Replace `{{MODULE_NAME}}` and `{{DOMAIN}}` placeholders when creating per-module TBs.
    TB files go in `sim/{module}/tb_{module}.sv`.
 
@@ -221,10 +221,10 @@ docker run -it --rm \
 |------|---------|---------|
 | verilator | 5.024 (configurable) | Simulation + Lint |
 | verible | latest release | Style Lint + Formatting |
-| yosys | apt latest | Synthesis |
+| yosys | OSS CAD Suite | Synthesis |
 | iverilog | apt latest | Alternative simulator |
 | slang | v6.0 (configurable) | IEEE 1800 Semantic Lint |
-| sby (SymbiYosys) | latest + boolector, z3 | Formal verification |
+| sby (SymbiYosys) | OSS CAD Suite + boolector, z3, yices2 | Formal verification |
 | gtkwave | apt latest | Waveform viewer |
 | SystemC/TLM-2.0 | 3.0.2 (configurable) | Reference model + BFM |
 | cocotb + extensions | pip latest | Functional verification |
@@ -270,7 +270,7 @@ User: "setup" or "rtl-setup"
 </Good>
 <Bad>
 User: "Create an AXI slave module"
-→ Do NOT run rtl-setup. Use rtl-code skill directly.
+→ Do NOT run rtl-setup. Use rtl-p4-implement skill directly.
 </Bad>
 </Examples>
 
@@ -278,8 +278,16 @@ User: "Create an AXI slave module"
 When tools are missing, provide these installation commands:
 
 ```bash
-# Ubuntu/Debian
-sudo apt install verilator yosys iverilog gtkwave build-essential python3-pip
+# ===== Recommended: OSS CAD Suite (Yosys + SymbiYosys + solvers, no sudo) =====
+# https://github.com/YosysHQ/oss-cad-suite-build
+# Single tarball: yosys, sby, boolector, z3, yices2, bitwuzla, abc
+curl -fsSL "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2025-02-01/oss-cad-suite-linux-x64-20250201.tgz" -o oss-cad-suite.tgz
+tar xzf oss-cad-suite.tgz -C ~/tools  # or /opt
+export PATH="$PATH:$HOME/tools/oss-cad-suite/bin"
+# Add the export to ~/.bashrc for persistence
+
+# ===== Ubuntu/Debian =====
+sudo apt install verilator iverilog gtkwave build-essential python3-pip
 pip3 install cocotb
 
 # Verible (GitHub Releases)
@@ -287,12 +295,9 @@ pip3 install cocotb
 # Download prebuilt binary for your platform and add to PATH
 
 # macOS (Homebrew)
-brew install verilator yosys icarus-verilog gtkwave
+brew install verilator icarus-verilog gtkwave
 pip3 install cocotb
-# brew install verible  # or download from GitHub releases
-
-# SymbiYosys (from source)
-# See: https://symbiyosys.readthedocs.io/en/latest/install.html
+# Yosys + SymbiYosys: use OSS CAD Suite (recommended) or brew install yosys
 
 # slang (from source or package)
 # See: https://sv-lang.com
@@ -313,7 +318,7 @@ mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
 make -j$(nproc) && sudo make install
 
-# Option 3: Docker EDA image (includes SystemC 3.0.2)
+# Option 3: Docker EDA image (includes all tools via OSS CAD Suite)
 docker build -t rtl-eda-tools docker/
 ```
 </Install_Instructions>

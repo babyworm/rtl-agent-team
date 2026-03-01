@@ -106,10 +106,10 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 ```
 /rtl-agent-team:rtl-lint-check        # RTL lint 검사
-/rtl-agent-team:rtl-func-verify       # cocotb 기능 검증
+/rtl-agent-team:rtl-p5s-func-verify       # cocotb 기능 검증
 /rtl-agent-team:rtl-synth-check       # Yosys 합성
-/rtl-agent-team:rtl-sva-check         # SVA formal 검증
-/rtl-agent-team:arch-design       # 아키텍처 설계
+/rtl-agent-team:rtl-p5s-sva-check         # SVA formal 검증
+/rtl-agent-team:p2-arch-design    # 아키텍처 설계
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 

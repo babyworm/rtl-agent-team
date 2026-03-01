@@ -14,7 +14,7 @@ Target standard: **IEEE 1800-2012** for SVA and verification code.
 
 <Use_When>
 - When writing .sva files or SVA bind files
-- When preparing assertions for the rtl-sva-check skill
+- When preparing assertions for the rtl-p5s-sva-check skill
 - During Phase 5 (Verification) — formal verification work
 - When writing protocol assertions (AXI, APB, AHB, etc.)
 - Agents: sva-extractor, testbench-dev, protocol-checker
@@ -22,7 +22,7 @@ Target standard: **IEEE 1800-2012** for SVA and verification code.
 
 <Do_Not_Use_When>
 - When writing RTL synthesizable code → use `systemverilog` skill
-- When doing cocotb Python-based verification → refer to `rtl-func-verify` skill
+- When doing cocotb Python-based verification → refer to `rtl-p5s-func-verify` skill
 - When building UVM-based verification environments → use `uvm` skill
 </Do_Not_Use_When>
 
@@ -175,6 +175,16 @@ bind my_module sva_my_module_checker u_sva_checker (.*);
 See `templates/sva-bind-template.sv` for complete scaffold.
 
 ## 6. SymbiYosys Integration
+
+### 6.0 sv2v Conversion (Mandatory for SymbiYosys/Yosys)
+SymbiYosys uses Yosys internally, which has limited SystemVerilog support.
+**RTL `.sv` files must be converted to Verilog via sv2v before running sby:**
+```bash
+sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
+```
+- The `.sby` config `[files]` section must list the converted `_v2v.v` file, not `.sv`
+- SVA bind files / property files (`sva_*.sv`) do **NOT** need conversion — they are read with `-formal -sv` by SymbiYosys
+- The RTL that the SVA binds **to** needs sv2v conversion
 
 ### 6.1 Formal Verification Modes
 | Mode | Purpose | SBY Config |

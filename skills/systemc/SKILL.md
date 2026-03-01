@@ -25,7 +25,7 @@ Target standard: **C++17** (`-std=c++17`).
 <Do_Not_Use_When>
 - When writing SystemVerilog code → use `systemverilog` skill
 - When writing pure C/C++ (non-SystemC) utilities
-- When writing Python cocotb tests → refer to `rtl-func-verify` skill
+- When writing Python cocotb tests → refer to `rtl-p5s-func-verify` skill
 </Do_Not_Use_When>
 
 <Why_This_Exists>

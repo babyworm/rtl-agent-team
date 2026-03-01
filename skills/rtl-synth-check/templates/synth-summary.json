@@ -1,6 +1,7 @@
 {
   "module": "{{MODULE_NAME}}",
-  "library": "generic | sky130_fd_sc_hd | NangateOpenCellLibrary",
+  "technology": "ASIC TSMC 28nm (NanGate45 proxy)",
+  "library": "NangateOpenCellLibrary_typical",
   "cells": {
     "$_DFF_P_": 0,
     "$_DFF_N_": 0,
@@ -14,10 +15,14 @@
     "$mem": 0
   },
   "total_cells": 0,
-  "area_um2_est": null,
+  "area_um2": null,
+  "gate_count_nand2": null,
+  "nand2_area_um2": 0.798,
   "max_logic_depth": null,
   "latches_found": 0,
   "concerns": [],
+  "sdc_applied": true,
+  "sdc_path": "syn/constraints/design.sdc",
   "verdict": "PASS | FAIL: reason",
   "source_file": "syn/reports/{{MODULE_NAME}}_synth.txt"
 }

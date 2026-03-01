@@ -15,7 +15,7 @@ This skill is the "exploration front-end" of the pipeline, intended for workflow
 
 **What makes this different from standard Phase 1→2:**
 
-| Aspect | Standard (research-analyze + arch-design) | rtl-dse |
+| Aspect | Standard (p1-spec-research + p2-arch-design) | rtl-dse |
 |--------|------------------------------------------|---------|
 | Algorithm study | Select best algorithm, justify | Explore N candidates, quantitative comparison (complexity, memory BW, gate estimates, quality impact) |
 | Architecture | Single architecture from requirements | Multiple architecture candidates, trade-off matrix, user selects |
@@ -46,9 +46,9 @@ State is persisted at .rtl-agent-team/state/rtl-dse-state.json for resumability.
 
 <Do_Not_Use_When>
 - The algorithm is already decided and architecture is straightforward (use rtl-autopilot or rtl-spec-to-uarch)
-- Only Phase 1 research is needed (use research-analyze)
-- Only architecture design is needed with no algorithm exploration (use arch-design)
-- μArch or RTL implementation is needed (use rtl-uarch-design or rtl-uarch-to-verify)
+- Only Phase 1 research is needed (use p1-spec-research)
+- Only architecture design is needed with no algorithm exploration (use p2-arch-design)
+- μArch or RTL implementation is needed (use rtl-p3-uarch-design or rtl-uarch-to-verify)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -102,7 +102,7 @@ golden baseline for RTL verification.
    - **Review artifacts setup**: `mkdir -p reviews/phase-1-research`
 
    **Step 3a: Requirement extraction** (same as standard Phase 1):
-   - Invoke research-analyze skill OR delegate to spec-analyst
+   - Invoke p1-spec-research skill OR delegate to spec-analyst
    - Produce: requirements.json, io_definition.json
    - Port names must use `i_`/`o_`/`io_` prefix, `{domain}_clk`, `{domain}_rst_n`
 
@@ -164,7 +164,7 @@ golden baseline for RTL verification.
      2. **Candidate B**: Optimized for area (resource sharing, sequential processing)
      3. **Candidate C** (optional): Balanced trade-off
    - For each candidate, produce:
-     - Block diagram (Mermaid)
+     - Block diagram (D2)
      - Estimated area breakdown (LUT/FF for FPGA, gate count for ASIC)
      - Throughput/latency estimate
      - Memory bandwidth requirement (informed by ref C model bandwidth analysis)
@@ -179,7 +179,7 @@ golden baseline for RTL verification.
    **Step 4c: Architecture refinement**:
    - `arch-designer` refines the selected candidate into full architecture.md
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`
-   - Invoke arch-design skill logic for the selected candidate
+   - Invoke p2-arch-design skill logic for the selected candidate
 
    **Step 4d: Reference C model** (parallel with Step 4c):
    - **If input_mode == "transform"** (user-provided functional C model):
@@ -246,7 +246,7 @@ golden baseline for RTL verification.
    - Phase 2 artifacts: architecture.md, architecture-candidates.md, refc/*.c
    - Reviews: research-review.md PASS, architecture-review.md PASS
    - ADR count and key decisions
-   - Next step: "Run `/rtl-agent-team:rtl-uarch-design` for Phase 3 μArch, or `/rtl-agent-team:rtl-spec-to-uarch` (will skip completed Phase 1-2 and run Phase 3)"
+   - Next step: "Run `/rtl-agent-team:rtl-p3-uarch-design` for Phase 3 μArch, or `/rtl-agent-team:rtl-spec-to-uarch` (will skip completed Phase 1-2 and run Phase 3)"
 
    **Do NOT proceed to Phase 3.** The pipeline stops here for human review.
 
@@ -342,7 +342,7 @@ AskUserQuestion(questions=[{
 }])
 
 # Step 4c + 4d: Architecture refinement + Ref C model (parallel)
-Skill(skill="rtl-agent-team:arch-design")    # Refine selected candidate
+Skill(skill="rtl-agent-team:p2-arch-design")    # Refine selected candidate
 
 # If input_mode == "transform":
 Task(subagent_type="rtl-agent-team:ref-model-dev",
@@ -358,7 +358,7 @@ C11 standard, no clock/reset, DPI-C compatible.")
 # If input_mode == "create":
 Skill(skill="rtl-agent-team:ref-model")
 
-# Step 4e: 3-round iterative review (handled by arch-design skill internally)
+# Step 4e: 3-round iterative review (handled by p2-arch-design skill internally)
 # Phase 2→ Quality Gate
 # Check: reviews/phase-2-architecture/architecture-review.md verdict=PASS
 

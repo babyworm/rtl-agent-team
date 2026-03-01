@@ -1,5 +1,5 @@
 > **DEPRECATED**: This file is under the deprecated `rtl-regression-run` skill.
-> Use `rtl-func-verify` (Tier 3) for module-level regression with coverage.
+> Use `rtl-p5s-func-verify` (Tier 3) for module-level regression with coverage.
 > See also `references/coverage-tools.md` for the canonical coverage reference.
 
 # RTL Coverage Tools Reference

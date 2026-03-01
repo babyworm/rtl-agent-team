@@ -126,7 +126,7 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-2. **Phase 1 — Research**: invoke research-analyze skill
+2. **Phase 1 — Research**: invoke p1-spec-research skill
    - io_definition.json must use project naming conventions: `i_`/`o_`/`io_` port prefixes, `{domain}_clk`, `{domain}_rst_n`
    - **Review artifacts setup**: `mkdir -p reviews/phase-1-research`
 
@@ -163,7 +163,7 @@ This skill automates sequencing, gate checking, and recovery.
    - If ANY required file missing: STOP with clear error listing missing files
    - `optional_on_demand` files: skip validation, load lazily during execution
 
-   invoke arch-design and ref-model skills concurrently
+   invoke p2-arch-design and ref-model skills concurrently
    - arch-designer + ref-model-dev produce initial artifacts concurrently
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n` naming
    - **Review artifacts setup**: `mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2`
@@ -187,7 +187,7 @@ This skill automates sequencing, gate checking, and recovery.
    - Memory access review PASS: all large blocks have viable memory strategy
    - Architecture ↔ ref model consistency PASS: block mapping + data flow + interface alignment
    - Ref model code review: quality, bitexact correctness verified
-   - **Architecture Diagram**: Save Mermaid block diagram to `reviews/phase-2-architecture/architecture-diagram.md`
+   - **Architecture Diagram**: Save D2 block diagram to `reviews/phase-2-architecture/architecture-diagram.md`
    - Per-round review artifacts: architecture-review-r1.md, r2.md, r3.md
    - **Save consolidated review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
    - **Verdict**: PASS if Spec feature coverage is 100% AND no structural defects AND iterative review converged; FAIL + findings otherwise
@@ -219,7 +219,7 @@ This skill automates sequencing, gate checking, and recovery.
    - If ANY required file missing: STOP with clear error listing missing files
    - `optional_on_demand` files: skip validation, load lazily during execution
 
-   invoke rtl-uarch-design and bfm-develop skills concurrently
+   invoke rtl-p3-uarch-design and bfm-develop skills concurrently
    - uarch-designer + bfm-dev produce initial artifacts concurrently
    - docs/phase-3-uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
    - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3`
@@ -279,7 +279,7 @@ This skill automates sequencing, gate checking, and recovery.
    - Enforce: `logic` only (no `reg`/`wire`), `always_ff`/`always_comb`, ANSI port style
    - **Review artifacts setup**: `mkdir -p reviews/phase-4-rtl`
 
-   **Stream A — RTL Implementation (invoke rtl-code skill):**
+   **Stream A — RTL Implementation (invoke rtl-p4-implement skill):**
    - rtl-coder writes modules (wave-based parallel per module)
    - lint-checker validates (Wave 2: lint all at once)
    - testbench-dev generates unit TBs (Wave 4)
@@ -387,9 +387,9 @@ This skill automates sequencing, gate checking, and recovery.
      - **DESIGN_FIX**: requires architecture-level design change (→ user approval mandatory)
    - **Batch UNIT_FIX across sub-phases:**
      - Group all UNIT_FIX failures by module
-     - If failures are in DIFFERENT modules → launch parallel rtl-bugfix tasks (one per module)
-     - If failures are in SAME module → sequential fix within single rtl-bugfix task
-     - Each rtl-bugfix follows: analyze → fix → lint → TB → sim
+     - If failures are in DIFFERENT modules → launch parallel rtl-p4s-bugfix tasks (one per module)
+     - If failures are in SAME module → sequential fix within single rtl-p4s-bugfix task
+     - Each rtl-p4s-bugfix follows: analyze → fix → lint → TB → sim
      - All parallel fixes run concurrently with `run_in_background: true`
    - INTEGRATION_FIX: always sequential (cross-module dependencies)
    - After ALL fixes complete: re-run ONLY affected sub-phases in parallel
@@ -415,7 +415,7 @@ This skill automates sequencing, gate checking, and recovery.
 
    **Timeout Policy:**
    - Per feedback loop: max 30 min wall-clock (estimated, not enforced)
-   - Per rtl-bugfix task: inherits `execution.timeout_per_job` from config
+   - Per rtl-p4s-bugfix task: inherits `execution.timeout_per_job` from config
    - If loop 2 fails: STOP, report to user with full failure context
 
    **Feedback Loop State Tracking:**
@@ -459,7 +459,7 @@ This skill automates sequencing, gate checking, and recovery.
 
 ---
 
-7. **Phase 6 — Design Review & Documentation**: invoke rtl-design-review-phase skill
+7. **Phase 6 — Design Review & Documentation**: invoke rtl-p6-design-review skill
 
    **Phase 5→6 Artifact Gate**: `reviews/phase-5-verify/final-compliance.md` exists AND verdict=PASS
 
@@ -569,16 +569,16 @@ verdict: PASS or FAIL + findings[]")
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
 # Parallel: architecture design + reference model development
-Skill(skill="rtl-agent-team:arch-design")    # Handles 3-round iterative review internally
+Skill(skill="rtl-agent-team:p2-arch-design")    # Handles 3-round iterative review internally
 Skill(skill="rtl-agent-team:ref-model")      # C golden model (functional, no clock/reset)
 
-# Synthesizability pre-assessment (parallel with arch-design Round 1)
+# Synthesizability pre-assessment (parallel with p2-arch-design Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="READ-ONLY synthesizability pre-assessment. Read architecture.md.
 Evaluate: synthesis-difficult patterns, CDC strategy, memory sizing, combinational loop risks.
 verdict: PASS or FAIL + findings[]")
 
-# Phase 2→3 Quality Gate: verify arch-design produced PASS verdict
+# Phase 2→3 Quality Gate: verify p2-arch-design produced PASS verdict
 # Check: reviews/phase-2-architecture/architecture-review.md verdict=PASS
 # Check: reviews/phase-2-architecture/feature-coverage.md 100% coverage
 # Clean up scratch: rm -rf .rtl-agent-team/scratch/phase-2/
@@ -589,10 +589,10 @@ verdict: PASS or FAIL + findings[]")
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
 # Parallel: μArch design + BFM development
-Skill(skill="rtl-agent-team:rtl-uarch-design")   # Handles 3-round iterative review internally
+Skill(skill="rtl-agent-team:rtl-p3-uarch-design")   # Handles 3-round iterative review internally
 Skill(skill="rtl-agent-team:bfm-develop")    # SystemC TLM BFMs
 
-# Phase 3→4 Quality Gate: verify rtl-uarch-design produced PASS verdict
+# Phase 3→4 Quality Gate: verify rtl-p3-uarch-design produced PASS verdict
 # Check: reviews/phase-3-uarch/uarch-review.md verdict=PASS
 # Check: reviews/phase-3-uarch/feature-preservation.md 100% preserved
 # Clean up scratch: rm -rf .rtl-agent-team/scratch/phase-3/
@@ -734,7 +734,7 @@ verdict: PASS or FAIL + findings[]")
 # 1. Collect ALL FAIL results from 5a, 5b, 5c
 # 2. Classify each: UNIT_FIX | INTEGRATION_FIX | DESIGN_FIX
 # 3. Batch UNIT_FIX: group by module, launch parallel fixes for different modules
-# 4. INTEGRATION_FIX → sequential rtl-bugfix
+# 4. INTEGRATION_FIX → sequential rtl-p4s-bugfix
 # 5. DESIGN_FIX → STOP and escalate to user
 # 6. After all fixes: re-run affected sub-phases in parallel
 # 7. Max 2 feedback loops per sub-phase
@@ -743,10 +743,10 @@ verdict: PASS or FAIL + findings[]")
 # Phase 5a FAIL: SVA counterexample in module_a (UNIT_FIX)
 # Phase 5c FAIL: cocotb assertion error in module_b (UNIT_FIX)
 # → Different modules → parallel fix:
-# Skill(skill="rtl-agent-team:rtl-bugfix",
+# Skill(skill="rtl-agent-team:rtl-p4s-bugfix",
 #        args="Phase 5a formal FAIL in module_a. Counterexample: [details]. feedback_origin=5a-formal",
 #        run_in_background=true)
-# Skill(skill="rtl-agent-team:rtl-bugfix",
+# Skill(skill="rtl-agent-team:rtl-p4s-bugfix",
 #        args="Phase 5c cocotb FAIL in module_b. Assertion: [details]. feedback_origin=5c-integration",
 #        run_in_background=true)
 # → After both fix: re-run 5a + 5c in parallel
@@ -786,7 +786,7 @@ Task(subagent_type="rtl-agent-team:design-note-writer",
      model="opus",
      prompt="Write comprehensive design note for Phase 6.
 Read ALL artifacts and Phase 6 reviews (code-review.md, design-review.md).
-Document each module: purpose, I/O, structure (Mermaid), algorithm, FSM, timing, edge cases.
+Document each module: purpose, I/O, structure (D2 block diagram), algorithm, FSM (Mermaid), timing, edge cases.
 Document system integration: data flow, control flow, modes, reset.
 Save to reviews/phase-6-review/design-note.md.")
 
@@ -826,7 +826,7 @@ Quality Gate detects upper-spec violation:
 <Good>
 Phase 5→4 Feedback Loop:
 → Phase 5a formal verification finds SVA counterexample in cabac_encoder.sv.
-  Classified as UNIT_FIX (single module). Invokes rtl-bugfix with feedback_origin=5a-formal.
+  Classified as UNIT_FIX (single module). Invokes rtl-p4s-bugfix with feedback_origin=5a-formal.
   rtl-coder fixes the logic error. lint-checker verifies. testbench-dev updates unit TB.
   eda-runner re-runs unit sim (PASS). Returns to Phase 5a: re-run formal (PASS).
   feedback_loops incremented to 1. Pipeline continues to Phase 5b.
@@ -840,7 +840,7 @@ Phase 5→4 DESIGN_FIX escalation:
 </Good>
 <Bad>
 User: "quickly sketch a block diagram"
-→ Do NOT invoke rtl-autopilot. Use arch-design or domain-consult directly.
+→ Do NOT invoke rtl-autopilot. Use p2-arch-design or domain-consult directly.
 </Bad>
 <Bad>
 Quality Gate returns FAIL but pipeline proceeds anyway:

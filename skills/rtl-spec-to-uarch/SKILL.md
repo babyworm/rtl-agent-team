@@ -57,7 +57,7 @@ State is persisted at .rtl-agent-team/state/rtl-spec-to-uarch-state.json for res
 
 <Do_Not_Use_When>
 - Full end-to-end automation is needed (use rtl-autopilot instead)
-- Only a single phase needs to run (use the phase-specific skill: research-analyze, arch-design, rtl-uarch-design)
+- Only a single phase needs to run (use the phase-specific skill: p1-spec-research, p2-arch-design, rtl-p3-uarch-design)
 - RTL implementation is needed (use rtl-uarch-to-verify for Phase 4→5)
 - Design documents already exist and only RTL coding is needed
 </Do_Not_Use_When>
@@ -108,7 +108,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
 
 ---
 
-2. **Phase 1 — Research**: invoke research-analyze skill
+2. **Phase 1 — Research**: invoke p1-spec-research skill
    - io_definition.json must use project naming conventions: `i_`/`o_`/`io_` port prefixes, `{domain}_clk`, `{domain}_rst_n`
    - **Review artifacts setup**: `mkdir -p reviews/phase-1-research`
 
@@ -145,7 +145,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
    - If ANY required file missing: STOP with clear error listing missing files
    - `optional_on_demand` files: skip validation, load lazily during execution
 
-   invoke arch-design and ref-model skills concurrently
+   invoke p2-arch-design and ref-model skills concurrently
    - arch-designer + ref-model-dev produce initial artifacts concurrently
    - architecture.md interface tables must use `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n` naming
    - **Review artifacts setup**: `mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2`
@@ -169,7 +169,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
    - Memory access review PASS: all large blocks have viable memory strategy
    - Architecture <-> ref model consistency PASS: block mapping + data flow + interface alignment
    - Ref model code review: quality, bitexact correctness verified
-   - **Architecture Diagram**: Save Mermaid block diagram to `reviews/phase-2-architecture/architecture-diagram.md`
+   - **Architecture Diagram**: Save D2 block diagram to `reviews/phase-2-architecture/architecture-diagram.md`
    - Per-round review artifacts: architecture-review-r1.md, r2.md, r3.md
    - **Save consolidated review to `reviews/phase-2-architecture/architecture-review.md`** in standard review Markdown format
    - **Verdict**: PASS if Spec feature coverage is 100% AND no structural defects AND iterative review converged; FAIL + findings otherwise
@@ -201,7 +201,7 @@ for rtl-uarch-to-verify to begin RTL implementation.
    - If ANY required file missing: STOP with clear error listing missing files
    - `optional_on_demand` files: skip validation, load lazily during execution
 
-   invoke rtl-uarch-design and bfm-develop skills concurrently
+   invoke rtl-p3-uarch-design and bfm-develop skills concurrently
    - uarch-designer + bfm-dev produce initial artifacts concurrently
    - docs/phase-3-uarch/*.md register/signal names must follow: `i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`, `u_` instances, `gen_` generates
    - **Review artifacts setup**: `mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3`
@@ -352,7 +352,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
 # Parallel: architecture design + reference model development
-Skill(skill="rtl-agent-team:arch-design")    # 3-round iterative review internally
+Skill(skill="rtl-agent-team:p2-arch-design")    # 3-round iterative review internally
 Skill(skill="rtl-agent-team:ref-model")      # C golden model
 
 # Synthesizability pre-assessment (parallel with Round 1)
@@ -376,7 +376,7 @@ Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
 # Parallel: μArch design + BFM development
-Skill(skill="rtl-agent-team:rtl-uarch-design")   # 3-round iterative review internally
+Skill(skill="rtl-agent-team:rtl-p3-uarch-design")   # 3-round iterative review internally
 Skill(skill="rtl-agent-team:bfm-develop")         # SystemC TLM BFMs
 
 # Phase 3 Quality Gate

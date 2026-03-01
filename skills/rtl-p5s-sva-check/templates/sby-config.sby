@@ -1,0 +1,38 @@
+# SymbiYosys Configuration Template
+# Usage: sby -f sim/formal/{{MODULE}}.sby
+# Generates: sim/formal/{{MODULE}}/{{ENGINE}}/
+
+[tasks]
+bmc       # Bounded Model Checking
+prove     # Induction proof
+cover     # Reachability check
+
+[options]
+bmc: mode bmc
+bmc: depth 30
+prove: mode prove
+prove: depth 30
+cover: mode cover
+cover: depth 30
+
+[engines]
+bmc: smtbmc boolector
+prove: smtbmc boolector
+cover: smtbmc boolector
+# Alternatives:
+#   smtbmc yices    — often fastest for bitvector-heavy designs
+#   smtbmc z3       — best for arithmetic-heavy designs
+#   abc pdr         — unbounded proof (prove mode only)
+
+[script]
+# RTL files: use sv2v-converted .v (NOT .sv directly)
+# Convert before running sby: sv2v {{RTL_SRC_DIR}}/*.sv -o {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
+read -formal {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
+# SVA property files: read with -sv (formal constructs, no sv2v needed)
+read -formal -sv sim/formal/{{MODULE}}_props.sv
+prep -top {{MODULE}}
+
+[files]
+# sv2v-converted RTL (run: sv2v {{RTL_SRC_DIR}}/*.sv -o {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v)
+{{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
+sim/formal/{{MODULE}}_props.sv

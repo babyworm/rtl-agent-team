@@ -142,7 +142,7 @@ python -m pytest tests/unit/ -n auto
 | 에이전트 YAML frontmatter | 50개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
 | 에이전트 이름-파일명 일치 | `agents/rtl-coder.md`의 `name: rtl-coder` 일치 확인 |
 | 스킬 SKILL.md 존재 | 40개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
-| 스킬 이름-디렉토리 일치 | `skills/rtl-code/SKILL.md`의 `name: rtl-code` 일치 확인 |
+| 스킬 이름-디렉토리 일치 | `skills/rtl-p4-implement/SKILL.md`의 `name: rtl-p4-implement` 일치 확인 |
 | CLAUDE.md 교차 참조 | 핵심 에이전트/스킬이 실제로 존재하는지 확인 |
 | hooks.json 구조 | PostToolUse, Stop 이벤트 훅 설정 검증 |
 | plugin.json 구조 | 플러그인 이름, 버전, 설명 검증 |

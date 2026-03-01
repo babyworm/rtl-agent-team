@@ -1,39 +1,42 @@
-# Yosys Synthesis Script Template
+# Yosys ASIC Synthesis Estimation Script Template
+# Target: TSMC 28nm (approximated via NanGate45 / FreePDK45)
 # Usage: yosys -s synth_{{MODULE}}.ys | tee syn/reports/{{MODULE}}_synth.txt
+#
+# PREREQUISITE: SDC must be generated BEFORE running this script
+# PREREQUISITE: sv2v conversion must be done BEFORE running this script
+#   sv2v rtl/{{MODULE}}/*.sv -o rtl/{{MODULE}}/{{MODULE}}_v2v.v
 
 # ============================================================
-# Read RTL
+# Read RTL (sv2v-converted Verilog — NOT .sv)
 # ============================================================
-read_verilog -sv rtl/*/*.sv
+read_verilog rtl/{{MODULE}}/{{MODULE}}_v2v.v
 
 # ============================================================
-# Generic Synthesis (no technology mapping)
+# ASIC Synthesis Estimation (NanGate45 — TSMC 28nm proxy)
 # ============================================================
-# synth -top {{MODULE}} -flatten
-# stat
+# This is the DEFAULT and ONLY target for PPA estimation.
+# Do NOT use generic synthesis (no liberty) or FPGA synthesis.
+
+synth -top {{MODULE}}
+
+# Technology mapping with NanGate45 liberty
+dfflibmap -liberty NangateOpenCellLibrary_typical.lib
+abc -liberty NangateOpenCellLibrary_typical.lib
 
 # ============================================================
-# Technology-Mapped Synthesis (choose one)
+# Statistics — Area in NAND2-FO2 Gate Equivalents
 # ============================================================
-
-# --- Sky130 (open-source PDK) ---
-# synth -top {{MODULE}}
-# dfflibmap -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
-# abc -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
-# stat -liberty sky130_fd_sc_hd__tt_025C_1v80.lib
-
-# --- NanGate45 (academic PDK) ---
-# synth -top {{MODULE}}
-# dfflibmap -liberty NangateOpenCellLibrary_typical.lib
-# abc -liberty NangateOpenCellLibrary_typical.lib
-# stat -liberty NangateOpenCellLibrary_typical.lib
+# stat -liberty reports "Chip area" in um2
+# Gate count = Chip area / 0.798 (NAND2X1 area in NanGate45)
+stat -liberty NangateOpenCellLibrary_typical.lib
 
 # ============================================================
 # Post-Synthesis Checks
 # ============================================================
 
 # Check for combinational loops
-# scc -max_depth 10
+scc -max_depth 10
 
-# Export netlist (optional)
+# Export netlist (optional — only when user requests full synthesis)
 # write_verilog syn/netlist/{{MODULE}}_netlist.v
+# write_json syn/reports/{{MODULE}}_synth.json

@@ -106,10 +106,10 @@ Creates the project directory structure and verifies EDA tool installation.
 
 ```
 /rtl-agent-team:rtl-lint-check        # RTL lint check
-/rtl-agent-team:rtl-func-verify       # cocotb functional verification
+/rtl-agent-team:rtl-p5s-func-verify       # cocotb functional verification
 /rtl-agent-team:rtl-synth-check       # Yosys synthesis
-/rtl-agent-team:rtl-sva-check         # SVA formal verification
-/rtl-agent-team:arch-design       # Architecture design
+/rtl-agent-team:rtl-p5s-sva-check         # SVA formal verification
+/rtl-agent-team:p2-arch-design    # Architecture design
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 

@@ -107,6 +107,8 @@ def yosys_stat_output():
      $add                            4
      $mux                           12
      $not                            2
+
+   Chip area for module 'top_module': 33.516000
 """
 
 

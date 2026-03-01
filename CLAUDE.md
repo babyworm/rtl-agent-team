@@ -11,15 +11,15 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
 | "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` |
 | **--- Phase 1: Research ---** | |
-| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:research-analyze` |
+| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` |
 | "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` |
 | **--- Phase 2: Architecture ---** | |
-| "architecture design" (RTL context) | `/rtl-agent-team:arch-design` |
+| "architecture design" (RTL context) | `/rtl-agent-team:p2-arch-design` |
 | "architecture review", "arch review" | `/rtl-agent-team:arch-review` |
 | "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
 | "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
 | **--- Phase 3: μArch ---** | |
-| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-uarch-design` |
+| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` |
 | **--- Pipeline Composition ---** | |
 | "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` |
 | "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` |
@@ -32,23 +32,22 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` |
 | `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
 | **--- Phase 4: RTL ---** | |
-| "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-bugfix` |
-| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-code` |
-| "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-refactor` |
-| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
+| "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` |
+| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` |
+| "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
+| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
 | "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
-| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
 | "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` |
 | "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
 | **--- Phase 5: Verify ---** | |
-| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-func-verify` |
-| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-sv-unit-test` |
-| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-uvm-verify` |
-| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-perf-verify` |
-| "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-sva-check` |
-| "CDC", "clock domain" | `/rtl-agent-team:rtl-cdc-verify` |
-| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-protocol-verify` |
-| "coverage" | `/rtl-agent-team:rtl-coverage-analyze` |
+| "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` |
+| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` |
+| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` |
+| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` |
+| "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-p5s-sva-check` |
+| "CDC", "clock domain" | `/rtl-agent-team:rtl-p5s-cdc-verify` |
+| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-p5s-protocol-verify` |
+| "coverage" | `/rtl-agent-team:rtl-p5s-coverage-analyze` |
 | **--- Expert Reviews ---** | |
 | "CDC review", "CDC design review", "synchronization strategy review" | Delegate directly to `cdc-reviewer` agent |
 | "protocol review", "AXI design review", "interface review" | Delegate directly to `protocol-reviewer` agent |
@@ -67,12 +66,14 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "DFT", "scan chain", "BIST", "JTAG", "testability" | Delegate directly to `dft-designer` agent |
 | "clock architecture", "clock tree", "PLL", "clock gating review" | Delegate directly to `clock-architect` agent |
 | **--- Phase 6: Design Note ---** | |
-| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-design-review-phase` |
+| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` |
+| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
+| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
 | **--- Phase 7: Exploration (optional) ---** | |
-| "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-design-review-phase` (exploration mode) |
+| "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) |
 | **--- Other Verification ---** | |
-| "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-integration-test` |
-| "regression", "multi-seed" | `/rtl-agent-team:rtl-func-verify` (Tier 3, absorbs rtl-regression-run) |
+| "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` |
+| "regression", "multi-seed" | `/rtl-agent-team:rtl-p5s-func-verify` (Tier 3, absorbs rtl-regression-run) |
 | "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
 | "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` |
 | "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` |
@@ -154,9 +155,9 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > Merge: Phase 4→5 Gate (Stream A PASS + Stream B artifacts ready)
 > ```
 >
-> | 5. Phase 5 Integration | On Phase 5 FAIL, automatic feedback → rtl-bugfix → fix → re-verify (max 2 times) | Automatic |
+> | 5. Phase 5 Integration | On Phase 5 FAIL, automatic feedback → rtl-p4s-bugfix → fix → re-verify (max 2 times) | Automatic |
 >
-> This rule is structured as the `/rtl-agent-team:rtl-bugfix` skill.
+> This rule is structured as the `/rtl-agent-team:rtl-p4s-bugfix` skill.
 
 ## IMPORTANT — Hierarchical Spec Compliance
 
@@ -213,7 +214,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 > | Phase 1: Research | Highest | 3 rounds (chief-coordinated) |
 > | Phase 2: Architecture | High | 3 rounds (memory, performance, ref model) |
 > | Phase 3: μArch | Medium | 3 rounds (performance, interface, memory) |
-> | Phase 4: RTL | Low | Wave-based lint+sim |
+> | Phase 4: RTL | Low | 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) |
 > | Phase 5: Verify | Lowest | Sub-phase parallel |
 >
 > Iteration count may be increased beyond 3 if convergence is not achieved.
@@ -377,7 +378,7 @@ Domain expert agents MUST read their relevant knowledge files from `domain-packa
 
 ### Agent Coordination Workflows
 
-The manifest's `agent_coordination` section defines per-phase workflows (which agents are primary/support). Skills (`research-analyze`, `arch-design`, etc.) reference this for delegation order. Read `domain-packages/video-codec/manifest.json` for the full coordination map.
+The manifest's `agent_coordination` section defines per-phase workflows (which agents are primary/support). Skills (`p1-spec-research`, `p2-arch-design`, etc.) reference this for delegation order. Read `domain-packages/video-codec/manifest.json` for the full coordination map.
 
 ## Coding Conventions (Mandatory)
 
@@ -419,37 +420,121 @@ The manifest's `agent_coordination` section defines per-phase workflows (which a
 - `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
 - `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
 
+## Diagram Policy (Mandatory)
+
+> **All design documentation MUST follow this diagram type policy.**
+>
+> | Diagram Type | Tool | Use For |
+> |-------------|------|---------|
+> | **Block diagram** | **D2** | Architecture overview, module hierarchy, sub-module structure, hardware block decomposition |
+> | **Flow / Interaction** | **Mermaid** | Pipeline stages, FSM state diagrams, data flow, control flow, sequence diagrams, timing |
+> | **ASCII flow diagram** | **Prohibited** | Do NOT use ASCII art for any diagram — use D2 or Mermaid instead |
+>
+> **Rules:**
+> - `architecture-diagram.md` → D2 block diagram (`.d2` code blocks)
+> - `pipeline-diagram.md` → Mermaid flow diagram (` ```mermaid ` code blocks)
+> - Per-module internal structure → D2 block diagram
+> - FSM state diagrams → Mermaid (`stateDiagram-v2`)
+> - Data/control flow → Mermaid (`graph LR` / `flowchart`)
+> - Sequence interactions → Mermaid (`sequenceDiagram`)
+>
+> **D2 code block syntax:**
+> ````
+> ```d2
+> top_module -> sub_a: data [32]
+> top_module -> sub_b: ctrl
+> ```
+> ````
+>
+> **Tool installation:**
+> - D2: `curl -fsSL https://d2lang.com/install.sh | sh -s --` or `brew install d2`
+> - Mermaid CLI: `npm install -g @mermaid-js/mermaid-cli`
+
 ## 4-Tier Testing Hierarchy
 
 Testing is organized into 4 tiers with clear boundaries. Each tier has a dedicated skill:
 
 | Tier | Name | Skill | Scope | Prerequisite |
 |------|------|-------|-------|-------------|
-| 1 | Smoke Test | `rtl-code` Wave 4 | Connectivity, R/W, basic ops | Lint pass |
-| 2 | Unit Test | `rtl-sv-unit-test` | Reference model comparison, uarch features | Tier 1 pass |
-| 3 | Module Regression | `rtl-func-verify` | cocotb multi-seed, coverage closure | Tier 2 pass |
-| 4 | Integration | `rtl-integration-test` | Cross-module data flow, end-to-end | Tier 3 pass |
+| 1 | Smoke Test | `rtl-p4-implement` Wave 4 | Connectivity, R/W, basic ops | Lint pass |
+| 2 | Unit Test | `rtl-p4s-unit-test` | Reference model comparison, uarch features | Tier 1 pass |
+| 3 | Module Regression | `rtl-p5s-func-verify` | cocotb multi-seed, coverage closure | Tier 2 pass |
+| 4 | Integration | `rtl-p5s-integration-test` | Cross-module data flow, end-to-end | Tier 3 pass |
 
 **Tier progression rules:**
 - Each tier must PASS before proceeding to the next
-- On FAIL: fix via `rtl-bugfix`, re-verify at the failing tier
+- On FAIL: fix via `rtl-p4s-bugfix`, re-verify at the failing tier
 - Tier 3 absorbs the former `rtl-regression-run` skill (deprecated)
 - Coverage targets (Tier 3): line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
+- **SVA/Coverpoint 3+ iteration rule**: SVA property extraction and functional coverage coverpoint extraction must each iterate **minimum 3 rounds** of refinement (Draft → Strengthen → Harden). See `rtl-p5s-sva-check` and `rtl-p5s-coverage-analyze` skills for per-round details.
 
 ## EDA Tool Usage
 
 The `eda-runner` agent directly executes EDA CLI tools via Bash:
 - **Simulator-agnostic script**: `scripts/run_sim.sh` (preferred for SV testbenches)
-  - Supports: `iverilog`, `verilator`, `vcs`, `xrun`, `questa`
-  - Usage: `scripts/run_sim.sh --sim iverilog --top tb_module --outdir sim/{module} --trace files...`
+  - Supports: `verilator`, `iverilog`, `vcs`, `xrun`, `questa`
+  - Usage: `scripts/run_sim.sh --sim verilator --top tb_module --outdir sim/{module} --trace files...`
   - Full options: `scripts/run_sim.sh --help`
-- Simulation (direct): `verilator`, `iverilog` (Icarus Verilog)
-- Synthesis: `yosys`
-- Formal verification: `sby` (SymbiYosys)
-- Lint: `verilator --lint-only`, `verible-verilog-lint`, `slang`
-- cocotb tests: `make SIM=icarus TOPLEVEL=<mod> MODULE=<test>`
+- **Simulation (default: verilator)**: verilator is the primary simulator. Use iverilog only as fallback when verilator cannot handle the construct (e.g., 4-state X/Z simulation, delay-based modeling, certain SV constructs unsupported by verilator)
+- **sv2v conversion**: Before running Yosys or SymbiYosys, convert SystemVerilog to Verilog using `sv2v`:
+  ```bash
+  sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
+  ```
+  Yosys and SymbiYosys have incomplete SystemVerilog support — sv2v ensures compatibility
+- Synthesis: `yosys` (with sv2v-converted `.v` files)
+- Formal verification: `sby` (SymbiYosys, with sv2v-converted `.v` files)
+- Lint: `verilator --lint-only`, `verible-verilog-lint`, `slang` (these support `.sv` directly)
+- cocotb tests: `make SIM=verilator TOPLEVEL=<mod> MODULE=<test>` (default verilator; use `SIM=icarus` as fallback)
 - SystemC: `g++ -lsystemc` (local build)
 - Waveform viewer: `gtkwave` (VCD/FST waveform analysis)
+
+> **Simulator Selection Policy:**
+>
+> | Simulator | When to Use | Strengths |
+> |-----------|-------------|-----------|
+> | **verilator** (default) | All simulation unless fallback needed | Fast (compiled), good lint, coverage support |
+> | **iverilog** (fallback) | 4-state X/Z sim, delay-based, verilator-unsupported SV | Full 4-state, delay modeling, wider SV support |
+>
+> **sv2v Conversion Policy:**
+>
+> | Tool | Input | Why sv2v |
+> |------|-------|---------|
+> | Yosys (synthesis) | sv2v-converted `.v` | Yosys SV support is incomplete |
+> | SymbiYosys (formal) | sv2v-converted `.v` | Uses Yosys frontend internally |
+> | verilator (sim/lint) | `.sv` directly | Full SV support, no conversion needed |
+> | slang (lint) | `.sv` directly | Full SV support |
+>
+> **Synthesis Estimation Policy (ASIC TSMC 28nm):**
+>
+> Synthesis is always **estimation mode** by default. The target technology is **ASIC TSMC 28nm**,
+> approximated using NanGate45 (FreePDK45) liberty files as the closest open-source proxy.
+>
+> | Item | Policy |
+> |------|--------|
+> | **Target technology** | ASIC TSMC 28nm (NOT FPGA) |
+> | **Liberty file** | NanGate45 (`NangateOpenCellLibrary_typical.lib`) as 28nm proxy |
+> | **Area metric** | Gate count (NAND2 fanout-of-2 equivalent). NAND2X1 ≈ 0.798 μm² in NanGate45 |
+> | **Gate count formula** | `gate_count = total_area_um2 / 0.798` |
+> | **SDC requirement** | SDC constraints MUST be created BEFORE synthesis estimation |
+> | **Flow** | 1. constraint-writer generates SDC → 2. sv2v conversion → 3. Yosys synthesis with liberty + SDC → 4. Parse area → gate count |
+> | **Module-level** | Estimation only (no full synthesis) |
+> | **Top-level** | Full synthesis estimation with SDC; actual synthesis only on user request |
+>
+> ```bash
+> # Standard ASIC estimation flow:
+> # 1. Generate SDC (constraint-writer)
+> # 2. sv2v conversion
+> sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
+> # 3. Yosys synthesis estimation with NanGate45
+> yosys -p "read_verilog rtl/{module}/{module}_v2v.v; \
+>   synth -top {module}; \
+>   dfflibmap -liberty NangateOpenCellLibrary_typical.lib; \
+>   abc -liberty NangateOpenCellLibrary_typical.lib; \
+>   stat -liberty NangateOpenCellLibrary_typical.lib" \
+>   | tee syn/reports/{module}_synth.txt
+> # 4. Parse results → gate count (NAND2-FO2 equivalent)
+> python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/reports/{module}_synth.txt
+> ```
 
 When tools are not installed, `eda-runner` provides installation guidance.
 Environment checking and project initialization are available via the `/rtl-agent-team:rtl-setup` skill.
@@ -508,14 +593,14 @@ reviews/
 │   ├── architecture-review-r3.md        # Round 3 review (mandatory final pass)
 │   ├── architecture-review.md           # Consolidated verdict on whether Arch complies with Spec
 │   ├── feature-coverage.md              # Feature Coverage Checklist (100% REQ mapping)
-│   └── architecture-diagram.md          # Mermaid block diagram
+│   └── architecture-diagram.md          # D2 block diagram
 ├── phase-3-uarch/
 │   ├── uarch-review-r1.md              # Round 1 review (3-round iterative)
 │   ├── uarch-review-r2.md              # Round 2 review
 │   ├── uarch-review-r3.md              # Round 3 review (mandatory final pass)
 │   ├── uarch-review.md                  # Consolidated verdict on whether μArch complies with Arch
 │   ├── feature-preservation.md          # Feature Preservation Checklist (100% preserved)
-│   └── pipeline-diagram.md             # Mermaid pipeline diagram
+│   └── pipeline-diagram.md             # Mermaid pipeline/flow diagram
 ├── phase-4-rtl/
 │   ├── functional-completeness.md       # Requirement → uarch → RTL traceability
 │   ├── design-review.md                 # Verdict on whether RTL complies with μArch
@@ -628,6 +713,63 @@ All verdict reports (`reviews/`) follow this structure:
 PASS | FAIL: [Reason]
 ```
 
+## IMPORTANT — Skill Completion Loop (Ralph-Loop Pattern)
+
+> **All rtl-agent-team skills with defined completion criteria are enforced by a Stop hook.**
+>
+> When a skill is invoked via the Skill tool, a `PreToolUse:Skill` hook automatically:
+> 1. Detects `rtl-agent-team:*` skill invocations
+> 2. Reads completion criteria from `.rtl-agent-team/skill-completion-criteria.json`
+> 3. Creates `.rtl-agent-team/state/skill-active.json` with pending criteria
+> 4. Injects a reminder about the completion loop
+>
+> A `Stop` hook (`rtl-skill-completion-gate.sh`) then:
+> - Blocks session exit if `skill-active.json` exists with `all_complete: false`
+> - Increments iteration counter on each blocked stop attempt
+> - Enforces `max_iterations` (default 5) to prevent infinite loops
+> - Applies staleness timeout (2 hours) to prevent blocking new sessions
+>
+> **Signalling completion:**
+> When all completion criteria for a skill are met, update the state file:
+> ```
+> # In .rtl-agent-team/state/skill-active.json, set:
+> "all_complete": true
+> ```
+> The Stop hook will clean up the state file and allow exit.
+>
+> **Skills exempt from the loop:**
+> - Pipeline skills (`rtl-autopilot`, `rtl-dse`, `rtl-spec-to-uarch`, `rtl-uarch-to-verify`) — have their own state management
+> - Convention skills (`systemverilog`, `systemverilog-assertion`, `uvm`, `systemc`) — passively applied
+> - Setup skill (`rtl-setup`) — one-time operation
+>
+> **Completion criteria config:** `.rtl-agent-team/skill-completion-criteria.json`
+
+## IMPORTANT — Phase 6 Cascade Enforcement
+
+> **After Phase 6 is complete, any RTL modification automatically triggers cascade requirements.**
+>
+> When `.sv/.svh/.v/.vh` files are edited and `reviews/phase-6-review/` contains `.md` files:
+> 1. `PostToolUse:Edit/Write` hook (`rtl-edit-tracker.sh`) creates `.rtl-agent-team/state/phase6-stale` marker
+> 2. `Stop` hook (`rtl-p6-cascade-gate.sh`) blocks exit until cascade work is done
+>
+> **Required cascade actions:**
+> | Step | Action | Description |
+> |------|--------|-------------|
+> | 1 | Lint | `verilator --lint-only -Wall` on modified files |
+> | 2 | Code Review | Update `reviews/phase-6-review/code-review.md` |
+> | 3 | Design Note | Update `reviews/phase-6-review/design-note.md` |
+>
+> **Signalling cascade completion:**
+> ```
+> touch .rtl-agent-team/state/phase6-cascade-done
+> ```
+>
+> **Flow:**
+> ```
+> Phase 6 완료 → RTL 수정 → phase6-stale 마커 생성 → 세션 종료 차단
+> → lint + code review + design note 갱신 → phase6-cascade-done → 세션 종료 허용
+> ```
+
 ## State Files
 
 Design flow state is stored under `.rtl-agent-team/`:
@@ -640,6 +782,10 @@ Design flow state is stored under `.rtl-agent-team/`:
 - `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver for non-functional changes (e.g., comment-only)
 - `.rtl-agent-team/rtl/{module}/phase-{n}-complete.json` — Phase completion gate
 - `.rtl-agent-team/state/rtl-modified-files.txt` — Hook-tracked list of modified RTL files (for verification gate enforcement)
+- `.rtl-agent-team/state/skill-active.json` — Skill completion loop state (skill name, iteration, pending criteria, all_complete flag)
+- `.rtl-agent-team/state/phase6-stale` — Phase 6 cascade marker (RTL modified after Phase 6 completion)
+- `.rtl-agent-team/state/phase6-cascade-done` — Phase 6 cascade completion marker (lint + review + docs updated)
+- `.rtl-agent-team/skill-completion-criteria.json` — Per-skill completion criteria config (read by activation hook)
 - `.rtl-agent-team/scratch/phase-{N}/` — Temporary working files for iterative review rounds (cleaned on phase completion)
 
 <!-- RTL-AGENT-TEAM:END -->

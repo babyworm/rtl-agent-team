@@ -117,7 +117,7 @@ class TestSkillDefinitions:
 
     @pytest.fixture
     def skill_dirs(self):
-        return sorted([d for d in SKILLS_DIR.iterdir() if d.is_dir()])
+        return sorted([d for d in SKILLS_DIR.iterdir() if d.is_dir() and not d.name.startswith('.')])
 
     @pytest.fixture
     def skill_files(self, skill_dirs):
@@ -233,9 +233,9 @@ class TestCrossReferences:
     def test_key_skills_exist(self, skill_names):
         """Core skills listed in CLAUDE.md skill table must exist."""
         core_skills = [
-            "rtl-autopilot", "rtl-code", "rtl-bugfix",
-            "rtl-func-verify", "rtl-lint-check", "rtl-synth-check",
-            "research-analyze", "arch-design", "rtl-uarch-design",
+            "rtl-autopilot", "rtl-p4-implement", "rtl-p4s-bugfix",
+            "rtl-p5s-func-verify", "rtl-lint-check", "rtl-synth-check",
+            "p1-spec-research", "p2-arch-design", "rtl-p3-uarch-design",
             "systemverilog", "uvm",
         ]
         missing = [s for s in core_skills if s not in skill_names]

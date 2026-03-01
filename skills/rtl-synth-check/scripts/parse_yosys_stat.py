@@ -3,11 +3,14 @@
 Parse Yosys 'stat' output and produce syn/summary.json.
 Usage: python parse_yosys_stat.py <yosys_output.txt> [--output syn/summary.json]
 
+Target: ASIC TSMC 28nm (NanGate45 proxy)
+Area metric: NAND2-FO2 gate equivalents (NAND2X1 = 0.798 um2 in NanGate45)
+
 Detects:
 - Cell counts by type
 - Inferred latches ($_DLATCH_* → HARD FAIL)
-- Area estimate (if liberty file used)
-- Logic depth estimate
+- Area (um2) from liberty-mapped stat output
+- NAND2-FO2 gate count (area / 0.798)
 """
 
 import json
@@ -15,10 +18,15 @@ import re
 import sys
 from pathlib import Path
 
+# NanGate45 NAND2X1 area in um2 (TSMC 28nm proxy)
+NAND2_AREA_UM2 = 0.798
+
 
 def parse_stat_output(text: str) -> dict:
     """Parse Yosys stat command output."""
     result = {
+        "technology": "ASIC TSMC 28nm (NanGate45 proxy)",
+        "library": "NangateOpenCellLibrary_typical",
         "cells": {},
         "total_cells": 0,
         "wires": 0,
@@ -27,6 +35,8 @@ def parse_stat_output(text: str) -> dict:
         "memory_bits": 0,
         "latches_found": 0,
         "area_um2": None,
+        "gate_count_nand2": None,
+        "nand2_area_um2": NAND2_AREA_UM2,
         "concerns": [],
     }
 
@@ -84,6 +94,10 @@ def parse_stat_output(text: str) -> dict:
         if area_match:
             result["area_um2"] = float(area_match.group(1))
 
+    # Compute NAND2-FO2 gate count from area
+    if result["area_um2"] is not None:
+        result["gate_count_nand2"] = round(result["area_um2"] / NAND2_AREA_UM2)
+
     return result
 
 
@@ -93,6 +107,8 @@ def generate_verdict(result: dict) -> str:
         return f"FAIL: {result['latches_found']} inferred latch(es) detected"
     if result["total_cells"] == 0:
         return "FAIL: no cells synthesized (empty design or synthesis error)"
+    if result["area_um2"] is None:
+        return "WARN: no liberty-mapped area — ensure NanGate45 liberty was used"
     return "PASS"
 
 
@@ -116,10 +132,13 @@ def main():
     output_file.parent.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(result, indent=2))
 
+    print(f"Technology: {result['technology']}")
     print(f"Cells: {result['total_cells']}")
     print(f"Latches: {result['latches_found']}")
-    if result["area_um2"]:
-        print(f"Area: {result['area_um2']} um²")
+    if result["area_um2"] is not None:
+        print(f"Area: {result['area_um2']:.1f} um2")
+    if result["gate_count_nand2"] is not None:
+        print(f"Gate count (NAND2-FO2): {result['gate_count_nand2']:,}")
     for c in result["concerns"]:
         print(f"  {c}")
     print(f"Verdict: {result['verdict']}")

@@ -1,11 +1,11 @@
 ---
 name: rtl-regression-run
-description: "DEPRECATED — Use rtl-func-verify (Tier 3) for module-level regression with multi-seed support."
+description: "DEPRECATED — Use rtl-p5s-func-verify (Tier 3) for module-level regression with multi-seed support."
 ---
 
-> **DEPRECATED**: This skill's functionality has been absorbed into `rtl-func-verify` (Tier 3).
-> Use `/rtl-agent-team:rtl-func-verify` for module-level regression with multi-seed support.
-> The `scripts/run_regression.sh` script is still available and is invoked by rtl-func-verify.
+> **DEPRECATED**: This skill's functionality has been absorbed into `rtl-p5s-func-verify` (Tier 3).
+> Use `/rtl-agent-team:rtl-p5s-func-verify` for module-level regression with multi-seed support.
+> The `scripts/run_regression.sh` script is still available and is invoked by rtl-p5s-func-verify.
 
 <Purpose>
 Run the full test suite with multiple random seeds to maximize functional coverage.
@@ -21,8 +21,8 @@ Outputs: sim/regression/results_{timestamp}.json (per-test pass/fail) + sim/cove
 
 <Do_Not_Use_When>
 - RTL still has known failing tests (fix first with rtl-bug-repro)
-- Only a single specific test needs running (use rtl-func-verify)
-- UVM-based regression required (use rtl-uvm-verify)
+- Only a single specific test needs running (use rtl-p5s-func-verify)
+- UVM-based regression required (use rtl-p5s-uvm-verify)
 </Do_Not_Use_When>
 
 <Why_This_Exists>
@@ -82,7 +82,7 @@ time on a task that is embarrassingly parallel.
 
 <Escalation_And_Stop_Conditions>
 - Failure rate >5% → halt, do not continue other seeds, report immediately
-- Coverage below 80% after 5 seeds → invoke rtl-coverage-analyze skill
+- Coverage below 80% after 5 seeds → invoke rtl-p5s-coverage-analyze skill
 - Simulator crashes (not test failure) → report crash with seed and test name
 </Escalation_And_Stop_Conditions>
 
