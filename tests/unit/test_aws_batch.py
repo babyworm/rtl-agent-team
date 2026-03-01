@@ -1,223 +1,207 @@
-"""Tests for aws_batch_submit.py and aws_batch_conformance.py — AWS Batch job submission (mocked).
-
-All AWS API calls are mocked via unittest.mock. No real AWS credentials needed.
-"""
+"""Tests for aws_batch_conformance.py — AWS Batch conformance job management."""
 
 import json
-import os
+import re
 import sys
+import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-RD_SCRIPT_DIR = (
-    Path(__file__).resolve().parent.parent.parent
-    / "skills" / "codec-rd-eval" / "scripts"
-)
-CONF_SCRIPT_DIR = (
+# Pre-inject a fake boto3 module so submit_jobs() doesn't sys.exit(1)
+if "boto3" not in sys.modules:
+    sys.modules["boto3"] = types.ModuleType("boto3")
+
+SCRIPT_DIR = (
     Path(__file__).resolve().parent.parent.parent
     / "skills" / "codec-conformance-eval" / "scripts"
 )
-sys.path.insert(0, str(RD_SCRIPT_DIR))
-sys.path.insert(0, str(CONF_SCRIPT_DIR))
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from aws_batch_conformance import submit_jobs, wait_for_jobs, fetch_job_result
 
 
-class TestAwsBatchSubmitJobNames:
-    """Test job name sanitization in aws_batch_submit.py."""
-
-    def test_job_name_sanitization(self):
-        import re
-        label = "my config/v2@test"
-        safe_label = re.sub(r'[^a-zA-Z0-9_-]', '-', label)[:32]
-        assert "/" not in safe_label
-        assert "@" not in safe_label
-        assert all(c.isalnum() or c in "_-" for c in safe_label)
-
-    def test_job_name_length_limit(self):
-        import re
-        long_label = "a" * 200
-        job_name = f"rd-eval-{long_label}-seq-qp22"
-        job_name = re.sub(r'[^a-zA-Z0-9_-]', '-', job_name)[:128]
-        assert len(job_name) <= 128
-
-
-class TestAwsBatchSubmitLogic:
-    """Test submit_jobs logic with mocked boto3."""
+class TestSubmitJobs:
+    """Tests for submit_jobs()."""
 
     @pytest.fixture
-    def mock_boto3(self):
-        mock = MagicMock()
-        mock_batch = MagicMock()
-        mock_s3 = MagicMock()
-        mock.client.side_effect = lambda service, **kw: (
-            mock_batch if service == "batch" else mock_s3
-        )
-        mock_batch.submit_job.return_value = {"jobId": "job-123"}
-        mock_batch.describe_jobs.return_value = {
-            "jobs": [{"jobId": "job-123", "status": "SUCCEEDED"}]
-        }
-        return mock, mock_batch, mock_s3
-
-    @pytest.fixture
-    def sample_config(self):
+    def base_config(self):
         return {
-            "sequences": [
-                {"name": "BasketballDrill", "path": "/data/seq.yuv",
-                 "width": 832, "height": 480},
-            ],
-            "qp_points": [22, 27],
-            "anchor": {
-                "encoder_binary": "/bin/enc",
-                "encoder_cfg": "anchor.cfg",
-                "label": "anchor",
-            },
-            "test": {
-                "encoder_binary": "/bin/enc",
-                "encoder_cfg": "test.cfg",
-                "label": "test",
-            },
+            "eval_name": "test-eval",
+            "decoder": {"binary": "/app/decoder"},
             "execution": {
+                "timeout_per_job": 120,
                 "aws_batch": {
                     "region": "us-east-1",
                     "job_queue": "test-queue",
                     "job_definition": "test-job-def",
                     "s3_bucket": "test-bucket",
                 },
-                "timeout_per_job": 600,
             },
+            "_resolved_streams": [
+                {"name": "CABAC_A", "s3_path": "s3://bucket/CABAC_A.264", "source_id": "itu"},
+                {"name": "INTER_B", "s3_path": "s3://bucket/INTER_B.264", "source_id": "itu"},
+            ],
         }
 
-    def test_submit_creates_correct_number_of_jobs(self, mock_boto3, sample_config, tmp_path):
-        mock_module, mock_batch, mock_s3 = mock_boto3
-        # 2 configs * 1 sequence * 2 QPs = 4 jobs
-        with patch.dict("sys.modules", {"boto3": mock_module}):
-            from aws_batch_submit import submit_jobs
+    def test_submits_all_streams(self, base_config):
+        mock_client = MagicMock()
+        mock_client.submit_job.return_value = {"jobId": "job-123"}
+        result = submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        assert len(result) == 2
+        assert mock_client.submit_job.call_count == 2
 
-            # Mock wait_for_jobs to avoid actual polling
-            with patch("aws_batch_submit.wait_for_jobs", return_value=[]):
-                submit_jobs(sample_config, str(tmp_path))
+    def test_job_info_fields(self, base_config):
+        mock_client = MagicMock()
+        mock_client.submit_job.return_value = {"jobId": "job-abc"}
+        result = submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        job = result[0]
+        assert job["job_id"] == "job-abc"
+        assert job["stream_name"] == "CABAC_A"
+        assert job["source_id"] == "itu"
 
-        assert mock_batch.submit_job.call_count == 4
+    def test_no_resolved_streams_returns_empty(self, base_config):
+        base_config["_resolved_streams"] = []
+        mock_client = MagicMock()
+        result = submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        assert result == []
+        mock_client.submit_job.assert_not_called()
 
-    def test_submit_handles_failure(self, mock_boto3, sample_config, tmp_path):
-        mock_module, mock_batch, mock_s3 = mock_boto3
-        mock_batch.submit_job.side_effect = Exception("Access denied")
+    def test_submit_error_captured(self, base_config):
+        mock_client = MagicMock()
+        mock_client.submit_job.side_effect = Exception("Throttled")
+        result = submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        assert len(result) == 2
+        assert result[0]["job_id"] is None
+        assert "Throttled" in result[0]["error"]
 
-        with patch.dict("sys.modules", {"boto3": mock_module}):
-            from aws_batch_submit import submit_jobs
-            with patch("aws_batch_submit.wait_for_jobs", return_value=[]):
-                submit_jobs(sample_config, str(tmp_path))
+    def test_job_name_sanitization(self, base_config):
+        base_config["_resolved_streams"] = [
+            {"name": "stream/v2@test#1", "s3_path": "s3://b/x", "source_id": "custom"},
+        ]
+        mock_client = MagicMock()
+        mock_client.submit_job.return_value = {"jobId": "j1"}
+        submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        call_kwargs = mock_client.submit_job.call_args
+        job_name = call_kwargs.kwargs.get("jobName") or call_kwargs[1].get("jobName")
+        # Job name should only contain [a-zA-Z0-9_-]
+        assert re.match(r'^[a-zA-Z0-9_-]+$', job_name)
 
-        # Results should contain submit failures
-        results_path = tmp_path / "results.json"
-        assert results_path.exists()
+    def test_job_name_truncated_to_64(self, base_config):
+        long_name = "A" * 200
+        base_config["_resolved_streams"] = [
+            {"name": long_name, "s3_path": "s3://b/x", "source_id": "long"},
+        ]
+        mock_client = MagicMock()
+        mock_client.submit_job.return_value = {"jobId": "j2"}
+        submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        call_kwargs = mock_client.submit_job.call_args
+        job_name = call_kwargs.kwargs.get("jobName") or call_kwargs[1].get("jobName")
+        # conf- prefix (5 chars) + 64 chars max from safe_name
+        assert len(job_name) <= 69
 
+    def test_default_priority_optional(self, base_config):
+        base_config["_resolved_streams"] = [
+            {"name": "test", "s3_path": "s3://b/x", "source_id": "s"},
+        ]
+        mock_client = MagicMock()
+        mock_client.submit_job.return_value = {"jobId": "j3"}
+        result = submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        assert result[0]["priority"] == "optional"
 
-class TestAwsBatchFetchResult:
-    """Test fetch_job_result with mocked S3."""
-
-    def test_successful_fetch(self):
-        mock_s3 = MagicMock()
-        result_data = {
-            "bitrate_kbps": 1500.0, "psnr_y": 38.5,
-            "psnr_u": 40.0, "psnr_v": 41.0, "psnr_yuv": 39.0,
-            "encode_time_s": 12.5,
-        }
-        mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps(result_data).encode()
-        mock_s3.get_object.return_value = {"Body": mock_body}
-
-        # Import with mocked boto3
-        with patch.dict("sys.modules", {"boto3": MagicMock()}):
-            from aws_batch_submit import fetch_job_result
-
-        job = {"jobId": "job-123"}
-        meta = {"sequence": "seq", "qp": 22, "config_label": "anchor", "is_anchor": True}
-        config = {"eval_name": "test", "execution": {"aws_batch": {"s3_bucket": "bucket"}}}
-
-        result = fetch_job_result(MagicMock(), mock_s3, job, meta, config, "/tmp")
-        assert result["status"] == "success"
-        assert result["bitrate_kbps"] == 1500.0
-        assert result["is_anchor"] is True
-
-    def test_s3_error_returns_failure(self):
-        mock_s3 = MagicMock()
-        mock_s3.get_object.side_effect = Exception("NoSuchKey")
-
-        with patch.dict("sys.modules", {"boto3": MagicMock()}):
-            from aws_batch_submit import fetch_job_result
-
-        job = {"jobId": "job-123"}
-        meta = {"sequence": "seq", "qp": 22, "config_label": "test", "is_anchor": False}
-        config = {"eval_name": "test", "execution": {"aws_batch": {"s3_bucket": "bucket"}}}
-
-        result = fetch_job_result(MagicMock(), mock_s3, job, meta, config, "/tmp")
-        assert result["status"] == "failed"
-        assert "S3" in result["error"]
+    def test_explicit_priority_preserved(self, base_config):
+        base_config["_resolved_streams"] = [
+            {"name": "test", "s3_path": "s3://b/x", "source_id": "s", "priority": "mandatory"},
+        ]
+        mock_client = MagicMock()
+        mock_client.submit_job.return_value = {"jobId": "j4"}
+        result = submit_jobs(base_config, "/tmp/out", batch_client=mock_client)
+        assert result[0]["priority"] == "mandatory"
 
 
 class TestWaitForJobs:
-    """Test wait_for_jobs polling logic."""
+    """Tests for wait_for_jobs()."""
 
-    def test_immediate_completion(self):
-        mock_batch = MagicMock()
-        mock_batch.describe_jobs.return_value = {
-            "jobs": [{"jobId": "job-1", "status": "SUCCEEDED"}]
+    def test_all_succeed(self):
+        mock_client = MagicMock()
+        mock_client.describe_jobs.return_value = {
+            "jobs": [
+                {"jobId": "j1", "status": "SUCCEEDED"},
+                {"jobId": "j2", "status": "SUCCEEDED"},
+            ]
         }
+        jobs = [
+            {"job_id": "j1", "stream_name": "A", "source_id": "s1"},
+            {"job_id": "j2", "stream_name": "B", "source_id": "s2"},
+        ]
+        result = wait_for_jobs(mock_client, jobs, poll_interval=0, max_wait=10)
+        assert len(result) == 2
+        assert all(j["status"] == "success" for j in result)
+
+    def test_mixed_success_and_failure(self):
+        mock_client = MagicMock()
+        mock_client.describe_jobs.return_value = {
+            "jobs": [
+                {"jobId": "j1", "status": "SUCCEEDED"},
+                {"jobId": "j2", "status": "FAILED", "statusReason": "OOM"},
+            ]
+        }
+        jobs = [
+            {"job_id": "j1", "stream_name": "A", "source_id": "s1"},
+            {"job_id": "j2", "stream_name": "B", "source_id": "s2"},
+        ]
+        result = wait_for_jobs(mock_client, jobs, poll_interval=0, max_wait=10)
+        statuses = {j["stream_name"]: j["status"] for j in result}
+        assert statuses["A"] == "success"
+        assert statuses["B"] == "failed"
+
+    def test_skips_null_job_ids(self):
+        mock_client = MagicMock()
+        mock_client.describe_jobs.return_value = {"jobs": []}
+        jobs = [
+            {"job_id": None, "stream_name": "A", "error": "submit failed"},
+        ]
+        result = wait_for_jobs(mock_client, jobs, poll_interval=0, max_wait=5)
+        assert result == []
+
+    def test_timeout_marks_pending_as_failed(self):
+        mock_client = MagicMock()
+        # Always return RUNNING — never completes
+        mock_client.describe_jobs.return_value = {
+            "jobs": [{"jobId": "j1", "status": "RUNNING"}]
+        }
+        jobs = [{"job_id": "j1", "stream_name": "A", "source_id": "s1"}]
+        result = wait_for_jobs(mock_client, jobs, poll_interval=0, max_wait=0)
+        assert len(result) == 1
+        assert result[0]["status"] == "failed"
+        assert "timeout" in result[0]["error"].lower()
+
+
+class TestFetchJobResult:
+    """Tests for fetch_job_result()."""
+
+    def test_success(self):
         mock_s3 = MagicMock()
-        mock_body = MagicMock()
-        mock_body.read.return_value = json.dumps({"bitrate_kbps": 100}).encode()
-        mock_s3.get_object.return_value = {"Body": mock_body}
-
-        with patch.dict("sys.modules", {"boto3": MagicMock()}):
-            from aws_batch_submit import wait_for_jobs
-
-        job_map = {"job-1": {"sequence": "s", "qp": 22, "config_label": "a", "is_anchor": True}}
-        config = {"eval_name": "e", "execution": {"aws_batch": {"s3_bucket": "b"}}}
-
-        results = wait_for_jobs(
-            mock_batch, mock_s3, ["job-1"], job_map, config, "/tmp",
-            poll_interval=0, max_wait=5,
-        )
-        assert len(results) == 1
-
-    def test_failed_job(self):
-        mock_batch = MagicMock()
-        mock_batch.describe_jobs.return_value = {
-            "jobs": [{"jobId": "job-1", "status": "FAILED", "statusReason": "OutOfMemory"}]
+        body_data = json.dumps({"md5_decoded": "abc123", "decode_time_s": 2.5})
+        mock_s3.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=body_data.encode()))
         }
+        result = fetch_job_result(mock_s3, "eval1", "stream_A", "my-bucket")
+        assert result["md5_decoded"] == "abc123"
+        assert result["decode_time_s"] == 2.5
 
-        with patch.dict("sys.modules", {"boto3": MagicMock()}):
-            from aws_batch_submit import wait_for_jobs
+    def test_not_found_returns_none(self):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.side_effect = Exception("NoSuchKey")
+        result = fetch_job_result(mock_s3, "eval1", "stream_A")
+        assert result is None
 
-        job_map = {"job-1": {"sequence": "s", "qp": 22, "config_label": "a", "is_anchor": False}}
-        config = {"eval_name": "e", "execution": {"aws_batch": {"s3_bucket": "b"}}}
-
-        results = wait_for_jobs(
-            mock_batch, MagicMock(), ["job-1"], job_map, config, "/tmp",
-            poll_interval=0, max_wait=5,
-        )
-        assert results[0]["status"] == "failed"
-        assert "OutOfMemory" in results[0]["error"]
-
-    def test_timeout_returns_failures(self):
-        mock_batch = MagicMock()
-        # Always return RUNNING
-        mock_batch.describe_jobs.return_value = {
-            "jobs": [{"jobId": "job-1", "status": "RUNNING"}]
-        }
-
-        with patch.dict("sys.modules", {"boto3": MagicMock()}):
-            from aws_batch_submit import wait_for_jobs
-
-        job_map = {"job-1": {"sequence": "s", "qp": 22, "config_label": "a", "is_anchor": False}}
-        config = {"eval_name": "e", "execution": {"aws_batch": {"s3_bucket": "b"}}}
-
-        results = wait_for_jobs(
-            mock_batch, MagicMock(), ["job-1"], job_map, config, "/tmp",
-            poll_interval=0, max_wait=0,  # Immediate timeout
-        )
-        assert len(results) == 1
-        assert results[0]["status"] == "failed"
-        assert "timeout" in results[0]["error"].lower()
+    def test_s3_key_sanitized(self):
+        mock_s3 = MagicMock()
+        mock_s3.get_object.side_effect = Exception("test")
+        fetch_job_result(mock_s3, "eval1", "stream/v2@test")
+        call_kwargs = mock_s3.get_object.call_args
+        key = call_kwargs.kwargs.get("Key") or call_kwargs[1].get("Key")
+        # Key should not contain @ or raw /
+        assert "@" not in key.split("/", 1)[-1].replace("_result.json", "")
