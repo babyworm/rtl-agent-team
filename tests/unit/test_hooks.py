@@ -70,6 +70,25 @@ class TestRtlEditTracker:
         assert result["continue"] is True
         assert "hookSpecificOutput" not in result
 
+    def test_json_file_ignored(self, tmp_project):
+        stdin = {"cwd": str(tmp_project), "file_path": "config.json"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        assert "hookSpecificOutput" not in result
+
+    def test_count_increments(self, tmp_project):
+        """Verify count in message reflects actual tracked file count."""
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/a.sv"})
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/b.sv"})
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "2" in ctx  # Should show 2 tracked files
+
+    def test_empty_file_path(self, tmp_project):
+        """Empty file_path should not crash."""
+        stdin = {"cwd": str(tmp_project), "file_path": ""}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+
 
 class TestRtlVerifyStopGate:
     """Tests for hooks/rtl-verify-stop-gate.sh."""
@@ -115,6 +134,25 @@ class TestRtlVerifyStopGate:
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert not track.exists()
         assert not done.exists()
+
+    def test_cleanup_after_waiver(self, tmp_project):
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        track = state_dir / "rtl-modified-files.txt"
+        waiver = state_dir / "rtl-verify-waiver"
+        track.write_text("rtl/a.sv\nrtl/b.sv\n")
+        waiver.touch()
+        run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert not track.exists()
+        assert not waiver.exists()
+
+    def test_multiple_files_blocks(self, tmp_project):
+        """Multiple tracked files should all be mentioned in block message."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "3" in ctx  # 3 files
 
 
 class TestStopGate:

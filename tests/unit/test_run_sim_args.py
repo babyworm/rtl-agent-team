@@ -99,3 +99,53 @@ class TestRunSimFilelist:
         )
         # Should not error on comment lines
         assert "comment" not in result.stderr.lower()
+
+
+class TestRunSimDefinesAndParams:
+    """Tests for define and param flag generation."""
+
+    def test_multiple_defines(self, tmp_path):
+        sv = tmp_path / "dummy.sv"
+        sv.write_text("module dummy; endmodule")
+        result = run_script(
+            RUN_SIM, "--top", "dummy", "--compile-only", "--verbose",
+            "--define", "FOO=1", "--define", "BAR=2", str(sv),
+        )
+        # Both -DFOO=1 and -DBAR=2 should appear in the compile command
+        assert "-DFOO=1" in result.stdout
+        assert "-DBAR=2" in result.stdout
+
+    def test_param_flag_iverilog(self, tmp_path):
+        sv = tmp_path / "dummy.sv"
+        sv.write_text("module dummy; endmodule")
+        result = run_script(
+            RUN_SIM, "--sim", "iverilog", "--top", "dummy", "--compile-only",
+            "--verbose", "--param", "WIDTH=8", str(sv),
+        )
+        # iverilog param format: -Pdummy.WIDTH=8
+        assert "-Pdummy.WIDTH=8" in result.stdout
+
+    def test_header_shown(self, tmp_path):
+        sv = tmp_path / "dummy.sv"
+        sv.write_text("module dummy; endmodule")
+        result = run_script(
+            RUN_SIM, "--sim", "iverilog", "--top", "dummy",
+            "--compile-only", str(sv),
+        )
+        assert "run_sim.sh" in result.stdout
+        assert "iverilog" in result.stdout
+        assert "dummy" in result.stdout
+
+
+class TestRunSimCompileOnly:
+    """Tests for --compile-only mode."""
+
+    def test_compile_only_does_not_run(self, tmp_path):
+        sv = tmp_path / "dummy.sv"
+        sv.write_text("module dummy; endmodule")
+        result = run_script(
+            RUN_SIM, "--sim", "iverilog", "--top", "dummy",
+            "--compile-only", str(sv),
+        )
+        # Should NOT show "--- Run ---" section
+        assert "--- Run ---" not in result.stdout
