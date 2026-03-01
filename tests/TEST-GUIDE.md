@@ -10,8 +10,9 @@
 | 구분 | 테스트 수 | 상태 |
 |------|----------|------|
 | 유닛 테스트 | 219개 | 모두 PASS |
-| 통합 테스트 | 12개 | EDA 도구 없으면 SKIP |
-| **합계** | **231개** | **231 passed, 12 skipped** |
+| 통합 테스트 (EDA 도구) | 12개 | EDA 도구 없으면 SKIP |
+| 통합 테스트 (Docker 빌드) | 33개 | Docker daemon 없으면 SKIP |
+| **합계** | **264개** | **231 passed, 45 skipped** |
 
 ---
 
@@ -39,6 +40,7 @@ tests/
 │   └── test_run_sim_args.py           # run_sim.sh 인자 검증
 └── integration/                   # EDA 도구 필요 (Docker 환경)
     ├── conftest.py                # requires_iverilog, requires_verilator 등
+    ├── test_docker_build.py       # Docker 이미지 빌드 + EDA 도구 검증 (33개)
     ├── test_lint_live.py          # verilator/verible 실제 lint
     ├── test_sim_live.py           # iverilog/verilator 실제 시뮬레이션
     └── test_synth_live.py         # yosys 실제 합성
@@ -155,6 +157,43 @@ python -m pytest tests/unit/ -n auto
 | context-manifest | 각 Phase별 컨텍스트 매니페스트 구조 |
 | conformance-config.json | 적합성 테스트 설정 |
 | domain manifest | 도메인 패키지 매니페스트 |
+
+### 6. Docker 빌드 + EDA 도구 검증 (`test_docker_build.py`)
+
+`docker/Dockerfile`로 이미지를 빌드하고, 컨테이너 안에서 모든 EDA 도구가 사용 가능한지 검증합니다.
+
+| 클래스 | 테스트 수 | 검증 내용 |
+|--------|----------|----------|
+| `TestDockerBuild` | 2개 | 이미지 빌드 성공, `/workspace` 디렉토리 확인 |
+| `TestEDAToolsAvailable` | 25개 | 도구별 버전 확인 (아래 표) |
+| `TestDockerToolchain` | 6개 | 실제 컴파일/시뮬레이션 E2E 검증 |
+
+**검증하는 EDA 도구 목록:**
+
+| 카테고리 | 도구 | 검증 방법 |
+|---------|------|----------|
+| 시뮬레이터 | Verilator 5.x, Icarus Verilog | `--version`, 실제 SV 컴파일 |
+| 합성 | Yosys | `--version`, 실제 합성 실행 |
+| 린트 | Verilator lint, Verible, slang | `--version`, lint 모드 확인 |
+| 정형 검증 | SymbiYosys, Z3, Boolector | `--version` / `--help` |
+| SystemC | SystemC 3.x 헤더/라이브러리 | 헤더 존재 확인, 실제 컴파일+실행 |
+| Python | cocotb, cocotb-bus, cocotbext-axi, cocotb-coverage, numpy | `import` 확인 |
+| 빌드 도구 | gcc, g++, cmake, make | `--version` |
+| 파형 뷰어 | GTKWave | `which gtkwave` |
+| LSP | slang-server | `--version` |
+
+**실행 방법:**
+
+```bash
+# Docker daemon이 실행 중이어야 합니다
+python -m pytest tests/integration/test_docker_build.py -v --timeout=3600
+
+# 또는 Makefile 사용
+cd tests && make test-docker
+```
+
+> **참고:** 첫 빌드는 Verilator, slang 등을 소스 빌드하므로 10~30분 소요됩니다.
+> 이후 Docker 캐시 덕분에 재실행은 빠릅니다. Docker daemon이 없으면 33개 테스트 모두 SKIP됩니다.
 
 ---
 

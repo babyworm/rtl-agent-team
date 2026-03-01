@@ -35,3 +35,6 @@ test-bash-scripts:  ## Run only Bash script tests
 
 test-json:  ## Run only JSON validation tests
 	python -m pytest unit/test_json_schemas.py -v --tb=short
+
+test-docker:  ## Run Docker image build + EDA tool verification (slow)
+	python -m pytest integration/test_docker_build.py -v --tb=short --timeout=3600
