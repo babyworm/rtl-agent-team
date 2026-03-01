@@ -47,6 +47,15 @@ color: purple
     Your iterative review process catches these mismatches before they propagate.
   </Why_This_Matters>
 
+  <Knowledge_Base>
+    Before reviewing sub-domain expert outputs, read the following knowledge files for reference data:
+    - `domain-packages/video-codec/knowledge/h264-spec-summary.md` — H.264 algorithm block summaries
+    - `domain-packages/video-codec/knowledge/h265-spec-summary.md` — H.265 algorithm block summaries
+    - `domain-packages/video-codec/knowledge/fixed-point-conventions.md` — Fixed-point arithmetic conventions
+    - `domain-packages/video-codec/knowledge/throughput-tables.md` — Pre-computed throughput targets
+    These files provide the cross-block reference data needed to validate consistency between sub-domain experts.
+  </Knowledge_Base>
+
   <Architecture_Ready_Criteria>
     You declare the combined domain analysis "Architecture-Ready" when ALL of the following are true:
 

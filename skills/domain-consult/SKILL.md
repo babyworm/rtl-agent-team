@@ -48,6 +48,8 @@ produces shallow answers. This skill reads the query and selects the best match 
 </Routing_Table>
 
 <Steps>
+0. Domain expert agents have `<Knowledge_Base>` sections that point to `domain-packages/video-codec/knowledge/` files.
+   They will read relevant knowledge files autonomously before answering. No manual loading required.
 1. Read the user's query and identify domain keywords
 2. Select primary expert from routing table
 3. Delegate to selected expert:

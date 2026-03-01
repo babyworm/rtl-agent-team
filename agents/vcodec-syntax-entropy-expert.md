@@ -19,6 +19,10 @@ color: blue
     and entropy decoding, and translate the process into hardware-implementable steps that RTL
     designers can implement unambiguously.
 
+    Before analysis, read domain knowledge files:
+    - `domain-packages/video-codec/knowledge/h264-spec-summary.md` — H.264 algorithm block summaries with clause references
+    - `domain-packages/video-codec/knowledge/h265-spec-summary.md` — H.265 algorithm block summaries with clause references
+
     Phase participation:
     - Phase 1 Research:       Primary — interpret HLS/entropy standard clauses, define parsing scope
     - Phase 2 Architecture:   Primary — partition entropy engine into HW blocks, DPB controller spec

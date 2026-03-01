@@ -74,6 +74,16 @@ rounds by default). This ensures cross-block dependencies are identified and res
    - **Skip condition**: If the user already specified exact scope (e.g., "H.264 TQ block only"),
      skip tree exploration entirely and proceed directly to Step 2
 
+1.7. **Load domain knowledge base**: Before sub-domain analysis, ensure agents have access to domain knowledge:
+   - Read `domain-packages/video-codec/manifest.json` to identify the active domain package
+   - Key knowledge files (auto-loaded by agents via their `<Knowledge_Base>` sections):
+     - `domain-packages/video-codec/knowledge/h264-spec-summary.md` — H.264 algorithm summaries
+     - `domain-packages/video-codec/knowledge/h265-spec-summary.md` — H.265 algorithm summaries
+     - `domain-packages/video-codec/knowledge/fixed-point-conventions.md` — Fixed-point conventions
+     - `domain-packages/video-codec/knowledge/throughput-tables.md` — Throughput reference tables
+     - `domain-packages/video-codec/knowledge/jm-function-map.md` — JM function-to-spec mapping
+   - Agents will read their relevant knowledge files autonomously; no manual passing required
+
 2. **Parallel sub-domain analysis**: Delegate to 6 agents in parallel:
    - `vcodec-syntax-entropy-expert`: Entropy coding algorithm analysis (CABAC vs CAVLC trade-offs, context model complexity, HW-friendly binarization)
    - `vcodec-prediction-expert`: Prediction algorithm analysis (ME search algorithms comparison, sub-pel filter complexity, mode decision trade-offs)

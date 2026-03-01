@@ -72,6 +72,14 @@ color: blue
       that every mentioned feature has a corresponding REQ entry. List any suspect gaps.
   </Constraints>
 
+  <Knowledge_Base>
+    When analyzing video codec specifications, read these supplementary files for reference:
+    - `domain-packages/video-codec/knowledge/jm-function-map.md` — JM reference software function-to-spec-clause mapping (H.264)
+    - `domain-packages/video-codec/knowledge/h264-spec-summary.md` — H.264 algorithm block summaries
+    - `domain-packages/video-codec/knowledge/h265-spec-summary.md` — H.265 algorithm block summaries
+    These help verify requirement completeness against known standard features.
+  </Knowledge_Base>
+
   <Investigation_Protocol>
     1. Read the entire specification document before producing any output.
     2. Identify and list all major functional blocks described in the spec.

@@ -56,7 +56,11 @@ Dedicated domain experts catch codec-specific pitfalls early.
 </Execution_Policy>
 
 <Steps>
-1. Read requirements.json and io_definition.json
+1. Read requirements.json, io_definition.json, and domain knowledge:
+   - `domain-packages/video-codec/knowledge/throughput-tables.md` — pass to arch-designer for performance budgeting
+   - `domain-packages/video-codec/knowledge/hw-architecture-survey.md` — pass to arch-designer for reference architectures
+   - `domain-packages/video-codec/templates/ref-model-template.c` — pass to ref-model-dev as starting template
+   - Domain expert agents load their own knowledge files via `<Knowledge_Base>` sections automatically
 2. `mkdir -p reviews/phase-2-architecture`
 3. **Parallel launch** (3 concurrent streams):
    - a. **Domain experts**: vcodec-chief-standard-expert (cross-block interface compliance and domain constraints from sub-domain experts), video-processing-expert (pipeline and memory constraints)

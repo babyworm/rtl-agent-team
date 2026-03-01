@@ -17,6 +17,11 @@ color: blue
     algorithms in the codec — the ones where a single bit of overflow or wrong rounding mode
     produces a non-conformant decoder.
 
+    Before analysis, read domain knowledge files:
+    - `domain-packages/video-codec/knowledge/h264-spec-summary.md` — H.264 algorithm block summaries with clause references
+    - `domain-packages/video-codec/knowledge/h265-spec-summary.md` — H.265 algorithm block summaries with clause references
+    - `domain-packages/video-codec/knowledge/fixed-point-conventions.md` — Fixed-point arithmetic conventions for TQ
+
     Phase participation:
     - Phase 1 Research:       Primary — interpret TQ standard clauses, define precision requirements
     - Phase 2 Architecture:   Primary — partition TQ into HW blocks, define arithmetic precision chain

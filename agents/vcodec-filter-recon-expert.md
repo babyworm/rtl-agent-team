@@ -16,6 +16,10 @@ color: blue
     path from inverse-transformed residual to final output pixel. You own the last stage of the
     decode pipeline — the stage that produces the pixels stored in the DPB and displayed to the user.
 
+    Before analysis, read domain knowledge files:
+    - `domain-packages/video-codec/knowledge/h264-spec-summary.md` — H.264 algorithm block summaries with clause references
+    - `domain-packages/video-codec/knowledge/h265-spec-summary.md` — H.265 algorithm block summaries with clause references
+
     Phase participation:
     - Phase 1 Research:       Primary — interpret filter/recon standard clauses, define filter scope
     - Phase 2 Architecture:   Primary — partition filter into HW blocks, define line buffer requirements

@@ -336,6 +336,49 @@ RTL tasks must be delegated to specialized agents. This applies to tasks that ha
 | Codec architecture expert | `rtl-agent-team:vcodec-architecture-expert` | Opus |
 | Video processing expert | `rtl-agent-team:video-processing-expert` | Opus |
 
+## Domain Packages
+
+Domain packages provide pre-built knowledge bases for specific design domains.
+Each package contains a `manifest.json` that declares knowledge files, conformance data, templates, and agent coordination workflows.
+
+**Active domain packages:**
+
+| Package | Path | Manifest |
+|---------|------|----------|
+| video-codec | `domain-packages/video-codec/` | `domain-packages/video-codec/manifest.json` |
+
+### Knowledge Base Loading Rules
+
+Domain expert agents MUST read their relevant knowledge files from `domain-packages/{domain}/knowledge/` **before** producing analysis. This is NOT optional — knowledge files contain pre-computed reference data that prevents re-derivation and ensures consistency.
+
+| Knowledge File | Relevant Agents | Phase |
+|---|---|---|
+| `h264-spec-summary.md` | All 4 sub-domain vcodec experts, chief | Phase 1-2 |
+| `h265-spec-summary.md` | All 4 sub-domain vcodec experts, chief | Phase 1-2 |
+| `jm-function-map.md` | spec-analyst, ref-model-dev | Phase 1-2 |
+| `throughput-tables.md` | video-processing-expert, arch-designer | Phase 1-3 |
+| `fixed-point-conventions.md` | vcodec-transform-quant-expert, vcodec-architecture-expert | Phase 1-3 |
+| `hw-architecture-survey.md` | vcodec-architecture-expert, arch-designer | Phase 2-3 |
+
+### Conformance Data
+
+| Resource | Path | Used By |
+|---|---|---|
+| Conformance config | `domain-packages/video-codec/conformance/conformance-config.json` | func-verifier, conformance-test |
+| Golden outputs | `domain-packages/video-codec/conformance/golden-outputs/` | func-verifier |
+| Test vectors | `domain-packages/video-codec/conformance/test-vectors/` | func-verifier |
+
+### Templates
+
+| Template | Path | Used By |
+|---|---|---|
+| C ref model template | `domain-packages/video-codec/templates/ref-model-template.c` | ref-model-dev |
+| SV testbench template | `domain-packages/video-codec/templates/sv-testbench-template.sv` | testbench-dev |
+
+### Agent Coordination Workflows
+
+The manifest's `agent_coordination` section defines per-phase workflows (which agents are primary/support). Skills (`research-analyze`, `arch-design`, etc.) reference this for delegation order. Read `domain-packages/video-codec/manifest.json` for the full coordination map.
+
 ## Coding Conventions (Mandatory)
 
 > **IMPORTANT — Language Standards (Project Defaults)**
