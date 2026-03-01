@@ -144,6 +144,43 @@ skills/{skill-name}/
 | `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
 | `skills/rtl-autopilot/templates/context-manifest-phase-*.json` | Phase별 입출력 artifact 변경 시 manifest 업데이트 |
 
+### 플러그인 캐시 동기화 (필수)
+
+에이전트나 스킬을 추가/삭제/리네임한 후에는 **반드시 플러그인 캐시를 갱신**해야 합니다.
+캐시를 갱신하지 않으면 Claude Code 세션에서 변경 사항이 반영되지 않습니다.
+
+**배경**: Claude Code는 `~/.claude/plugins/cache/`에 캐시된 복사본에서 스킬을 로드합니다. 작업 디렉토리의 파일을 직접 읽지 않습니다.
+
+```
+작업 디렉토리 (~/works/rtl-agent-team/)
+  ↓  git push
+GitHub (babyworm/rtl-agent-team)
+  ↓  claude plugin marketplace update rtl-agent-marketplace
+Marketplace (~/.claude/plugins/marketplaces/rtl-agent-marketplace/)
+  ↓  claude plugin update rtl-agent-team
+Cache (~/.claude/plugins/cache/.../0.1.0/)
+  ↓  세션 재시작
+System skill list (런타임 로드)
+```
+
+**변경 후 실행할 명령**:
+
+```bash
+# 1. 변경 사항 commit & push
+git add -A && git commit -m "Add/rename skills" && git push
+
+# 2. marketplace 갱신 (GitHub에서 git pull)
+claude plugin marketplace update rtl-agent-marketplace
+
+# 3. cache 갱신 (marketplace → cache 복사)
+claude plugin update rtl-agent-team
+
+# 4. Claude Code 세션 재시작 (새 세션에서 변경 반영)
+```
+
+> **주의**: 3번 단계를 빠뜨리면 marketplace는 최신이지만 cache는 구버전인 상태가 되어,
+> CLAUDE.md의 skill 참조와 시스템 등록명이 불일치하는 문제가 발생합니다.
+
 ---
 
 ## 2. 도메인 에이전트 추가
