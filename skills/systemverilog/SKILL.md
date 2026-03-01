@@ -1,6 +1,7 @@
 ---
 name: systemverilog
 description: "SystemVerilog coding convention and design guideline skill. Enforces lowRISC style + project overrides for all .sv/.v file generation. Covers naming, module structure, power optimization, FPGA considerations, and pipelining for timing closure."
+user-invocable: false
 ---
 
 <Purpose>

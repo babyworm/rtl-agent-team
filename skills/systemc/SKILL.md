@@ -1,6 +1,7 @@
 ---
 name: systemc
 description: "SystemC/TLM-2.0 coding convention and design guideline skill. Enforces coding standards for BFM development (Phase 3) and Reference Model development (Phase 2). Covers TLM-2.0 AT/LT patterns, AMBA-PV extensions, naming conventions, and testbench integration."
+user-invocable: false
 ---
 
 <Purpose>

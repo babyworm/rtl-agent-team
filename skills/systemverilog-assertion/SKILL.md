@@ -1,6 +1,7 @@
 ---
 name: systemverilog-assertion
 description: "SVA (SystemVerilog Assertion) coding convention and formal verification guideline skill. Covers assertion styles, property/sequence patterns, bind files, coverage properties, and SymbiYosys integration. Applied when writing .sva files or SVA blocks in .sv files."
+user-invocable: false
 ---
 
 <Purpose>

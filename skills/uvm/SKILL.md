@@ -1,6 +1,7 @@
 ---
 name: uvm
 description: "UVM (Universal Verification Methodology) coding convention and methodology guideline skill. Covers class hierarchy, factory patterns, sequence/sequencer, TLM ports, coverage integration, and naming conventions for UVM testbenches."
+user-invocable: false
 ---
 
 <Purpose>
