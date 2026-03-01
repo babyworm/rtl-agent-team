@@ -1,0 +1,5 @@
+# Test dependencies for rtl-agent-team plugin
+pytest>=7.0
+pytest-xdist>=3.0     # parallel test execution
+numpy                  # required by bd_rate.py, compare_output.py
+hjson                  # required by run_eval.py, run_conformance.py
