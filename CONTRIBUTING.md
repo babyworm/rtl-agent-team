@@ -172,13 +172,16 @@ git add -A && git commit -m "Add/rename skills" && git push
 # 2. marketplace 갱신 (GitHub에서 git pull)
 claude plugin marketplace update rtl-agent-marketplace
 
-# 3. cache 갱신 (marketplace → cache 복사)
-claude plugin update rtl-agent-team
+# 3. 플러그인 재설치 (강제 cache 갱신)
+claude plugin uninstall rtl-agent-team@rtl-agent-marketplace
+claude plugin install rtl-agent-team@rtl-agent-marketplace
 
 # 4. Claude Code 세션 재시작 (새 세션에서 변경 반영)
 ```
 
-> **주의**: 3번 단계를 빠뜨리면 marketplace는 최신이지만 cache는 구버전인 상태가 되어,
+> **주의**: `claude plugin update`는 version이 동일하면 스킵합니다.
+> 개발 중에는 반드시 `uninstall` → `install` 조합을 사용해야 합니다.
+> 3번 단계를 빠뜨리면 marketplace는 최신이지만 cache는 구버전인 상태가 되어,
 > CLAUDE.md의 skill 참조와 시스템 등록명이 불일치하는 문제가 발생합니다.
 
 ---
