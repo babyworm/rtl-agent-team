@@ -61,6 +61,12 @@ make test-integration
 |------------|----------------|
 | `test_json_schemas.py` | `hooks.json` 구조, `plugin.json` 구조, `package.json` 필드, 도메인 manifest, 모든 JSON 파일 파싱 가능 여부 |
 
+### Unit 테스트 — Plugin 런타임 계약 검증
+
+| 테스트 파일 | 무엇을 검증하나 |
+|------------|----------------|
+| `test_plugin_runtime_contract.py` | `hooks/hooks.json` 이벤트/순서/스크립트 경로/timeout 계약, `.claude-plugin/plugin.json` ↔ `.claude-plugin/marketplace.json` 버전/경로 일관성, SessionStart 라우팅의 Action Skill/Convention/user-invocable 계약, 위임 에이전트 존재성 |
+
 ### Integration 테스트
 
 | 테스트 파일 | 필요 도구 | 무엇을 검증하나 |
@@ -85,9 +91,11 @@ make test-hooks           # hook 테스트만
 make test-python-scripts  # Python 스크립트만
 make test-bash-scripts    # Bash 스크립트만
 make test-json            # JSON 검증만
+make test-plugin-runtime  # plugin 런타임 계약 검증
 
 # 특정 테스트 파일만
 python -m pytest unit/test_bd_rate.py -v
+python -m pytest unit/test_plugin_runtime_contract.py -v
 
 # 특정 테스트 함수만
 python -m pytest unit/test_bd_rate.py::TestBdRate::test_identical_curves_zero -v
@@ -190,6 +198,7 @@ tests/
 │   ├── test_compare_output.py   # 적합성 비교
 │   ├── test_hooks.py            # Hook 스크립트 3종
 │   ├── test_json_schemas.py     # JSON 설정 검증
+│   ├── test_plugin_runtime_contract.py # Plugin 런타임 계약 검증
 │   ├── test_parse_yosys_stat.py # Yosys 파싱
 │   ├── test_regression_coverage.py # 리그레션/커버리지
 │   ├── test_run_conformance.py  # 적합성 테스트

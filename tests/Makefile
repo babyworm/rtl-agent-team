@@ -1,5 +1,5 @@
 # Makefile for rtl-agent-team plugin test suite
-.PHONY: test test-unit test-integration test-fast install-deps help
+.PHONY: test test-unit test-integration test-fast install-deps help test-all test-coverage test-hooks test-python-scripts test-bash-scripts test-json test-plugin-runtime test-docker
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
@@ -35,6 +35,9 @@ test-bash-scripts:  ## Run only Bash script tests
 
 test-json:  ## Run only JSON validation tests
 	python -m pytest unit/test_json_schemas.py -v --tb=short
+
+test-plugin-runtime:  ## Run plugin runtime contract tests
+	python -m pytest unit/test_plugin_runtime_contract.py -v --tb=short
 
 test-docker:  ## Run Docker image build + EDA tool verification (slow)
 	python -m pytest integration/test_docker_build.py -v --tb=short --timeout=3600

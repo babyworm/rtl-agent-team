@@ -186,7 +186,7 @@ rtl-agent-team/
 
 ```bash
 sh scripts/sync_orchestrator_inject.sh
-python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py
+python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
 ```
 
 ## 에이전트 팀

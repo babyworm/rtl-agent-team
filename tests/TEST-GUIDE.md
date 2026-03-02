@@ -33,6 +33,7 @@ tests/
 │   ├── test_compare_output.py         # MD5/bitexact 비교
 │   ├── test_hooks.py                  # 훅 스크립트 (edit-tracker, stop-gate)
 │   ├── test_json_schemas.py           # JSON 설정 파일 구조 검증
+│   ├── test_plugin_runtime_contract.py # 플러그인 런타임 계약 검증
 │   ├── test_parse_yosys_stat.py       # Yosys 합성 결과 파싱
 │   ├── test_regression_coverage.py    # regression/coverage 스크립트
 │   ├── test_run_conformance.py        # 적합성 테스트 스트림 탐색
@@ -88,6 +89,7 @@ cd tests && make integration
 
 ```bash
 python -m pytest tests/unit/test_hooks.py -v
+python -m pytest tests/unit/test_plugin_runtime_contract.py -v
 ```
 
 ### 병렬 실행 (빠른 테스트)
@@ -161,7 +163,19 @@ python -m pytest tests/unit/ -n auto
 | conformance-config.json | 적합성 테스트 설정 |
 | domain manifest | 도메인 패키지 매니페스트 |
 
-### 6. Docker 빌드 + EDA 도구 검증 (`test_docker_build.py`)
+### 6. 플러그인 런타임 계약 테스트 (`test_plugin_runtime_contract.py`)
+
+플러그인이 실제 Claude Code 런타임에서 기대대로 동작하는지 검증합니다.
+
+| 검증 항목 | 설명 |
+|----------|------|
+| Hook 이벤트 계약 | `SessionStart/PostToolUse/PreToolUse/Stop` 이벤트 키, matcher, 훅 순서, timeout 범위 확인 |
+| Hook 경로 계약 | 훅 명령이 `${CLAUDE_PLUGIN_ROOT}/hooks/*.sh` 패턴을 따르고 스크립트가 실제 존재하는지 확인 |
+| 매니페스트 일관성 | `plugin.json`과 `marketplace.json`의 버전/홈페이지/레포지토리/source/path 일치 확인 |
+| SessionStart 라우팅 계약 | Action Skill은 user-invocable, Convention Skill은 non-user-invocable, 내부 orchestrator route 비노출 확인 |
+| Agent 위임 계약 | SessionStart 위임 테이블에 선언된 agent가 `agents/*.md`로 모두 존재하고 skill 이름과 충돌하지 않는지 확인 |
+
+### 7. Docker 빌드 + EDA 도구 검증 (`test_docker_build.py`)
 
 `docker/Dockerfile`로 이미지를 빌드하고, 컨테이너 안에서 모든 EDA 도구가 사용 가능한지 검증합니다.
 
