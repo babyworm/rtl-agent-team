@@ -21,6 +21,8 @@ SKILLS_DIR = REPO_ROOT / "skills"
 AGENTS_DIR = REPO_ROOT / "agents"
 RTL_ORCHESTRATE_SKILL = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
 INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
+P5S_FUNC_VERIFY_ORCHESTRATOR = AGENTS_DIR / "p5s-func-verify-orchestrator.md"
+P5S_FUNC_VERIFY_POLICY = SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md"
 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
 SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
@@ -245,3 +247,35 @@ class TestSessionStartRoutingBlockContract:
             assert not (SKILLS_DIR / agent_name).exists(), (
                 f"Delegation entry resolves to skill dir, expected agent: {agent_name}"
             )
+
+
+class TestP5sFuncVerifyRuntimePolicyContract:
+    """Lock p5s functional verification runtime policy for plugin behavior."""
+
+    @pytest.fixture
+    def orchestrator_content(self):
+        return P5S_FUNC_VERIFY_ORCHESTRATOR.read_text()
+
+    @pytest.fixture
+    def policy_content(self):
+        return P5S_FUNC_VERIFY_POLICY.read_text()
+
+    def test_orchestrator_declares_local_first_runtime(self, orchestrator_content):
+        assert "Default execution mode is local (`--mode local`) on the current host." in orchestrator_content
+        assert "Default worker budget is `max(1, nproc-2)`." in orchestrator_content
+        assert "`aws-batch` is allowed only when the user explicitly asks to use AWS." in orchestrator_content
+
+    def test_policy_declares_local_first_runtime(self, policy_content):
+        assert "- **Local-first runtime**: default to local execution on current host (`--mode local`)" in policy_content
+        assert "- **Default parallel budget**: use `max(1, nproc-2)` unless user explicitly overrides `--parallel`" in policy_content
+        assert "- **AWS usage policy**: `aws-batch` is allowed only when the user explicitly asks to use AWS" in policy_content
+
+    def test_orchestrator_regression_command_uses_local_mode_without_fixed_parallel(
+        self, orchestrator_content
+    ):
+        assert "--mode local --seeds '1 42 123 1337 65536' --sim verilator." in orchestrator_content
+        assert "--parallel 4" not in orchestrator_content
+
+    def test_policy_examples_do_not_hardcode_parallel_4(self, policy_content):
+        assert "--mode local --seeds \"1 42 123 1337 65536\" --sim verilator" in policy_content
+        assert "--parallel 4" not in policy_content

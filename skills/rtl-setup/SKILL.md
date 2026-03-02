@@ -152,9 +152,15 @@ This skill ensures everything is in place before design work begins.
    This simulator-agnostic script supports iverilog, verilator, vcs, xrun, questa.
    All skill files reference this script instead of direct simulator invocations.
 
-5.7. **Install lint/syn scripts** (if lint/scripts/ or syn/scripts/ is empty):
-   Create `lint/scripts/run_lint.sh` and `syn/scripts/run_syn.sh`.
-   These scripts support both open-source (verilator, verible, yosys) and commercial tools (vcs, xrun, questa, dc_shell).
+5.7. **Install lint/syn/cdc scripts** (if script folders are empty):
+   Create `lint/scripts/run_lint.sh`, `syn/scripts/run_syn.sh`, and `sim/cdc/run_cdc.sh`.
+   These scripts support replayable execution (`outdir/replay/run_*_latest.sh`) and both open-source and commercial tools:
+   - Lint: verilator/verible/slang + spyglass
+   - Synthesis: yosys + design compiler (`dc_shell`)
+   - CDC: structural quick check + spyglass/vc_cdc/questa_cdc
+   - Runtime hook integration: `hooks/rtl-skill-activation.sh` runs
+     `skills/rtl-setup/scripts/install_project_templates.sh` automatically when `rtl-setup` starts.
+     This ensures script deployment happens even if the agent omits copy commands.
 
 6. **Generate cocotb Makefile template** (if sim/ has no Makefile):
    Copy `skills/rtl-setup/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
@@ -256,7 +262,7 @@ docker run -it --rm \
 <Tool_Usage>
 ```
 # Directory creation (Bash CLI)
-Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include rtl/top sim/top sim/formal sim/cdc sim/coverage lint/scripts lint/reports syn/scripts syn/reports syn/constraints docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-review,7-exploration} .rtl-agent-team/state .rtl-agent-team/scratch
+Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include rtl/top sim/top sim/formal sim/cdc sim/cdc/reports lint/scripts lint/reports syn/scripts syn/reports syn/constraints docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-review,7-exploration} .rtl-agent-team/state .rtl-agent-team/scratch
 
 # Rules deployment (non-destructive)
 Bash: mkdir -p .claude/rules
@@ -288,7 +294,13 @@ Bash: g++ --version 2>&1 || echo "NOT_FOUND"
 # Template generation (copy from plugin templates)
 Bash: cp skills/rtl-setup/templates/filelist.f rtl/filelist_top.f
 Bash: cp skills/rtl-setup/templates/cocotb-makefile sim/top/Makefile
+Bash: cp skills/rtl-setup/templates/run_lint.sh lint/scripts/run_lint.sh
+Bash: cp skills/rtl-setup/templates/run_syn.sh syn/scripts/run_syn.sh
+Bash: cp skills/rtl-setup/templates/run_cdc.sh sim/cdc/run_cdc.sh
+Bash: chmod +x lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh
 Bash: chmod +x scripts/run_sim.sh
+# Hook-safe bootstrap (non-destructive, idempotent)
+Bash: bash skills/rtl-setup/scripts/install_project_templates.sh "$PWD"
 Write: rtl/include/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
 ```
 

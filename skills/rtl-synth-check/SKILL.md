@@ -39,6 +39,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 <Execution_Policy>
 - **SDC-first**: constraint-writer generates SDC BEFORE synthesis (mandatory, not optional)
 - eda-runner executes Yosys synthesis estimation with NanGate45 liberty
+- For replayable execution, use `syn/scripts/run_syn.sh` (creates `syn/reports/replay/run_syn_*_latest.sh`)
 - synthesis-reporter parses output, computes NAND2-FO2 gate count, and produces structured summary
 - Target: ASIC TSMC 28nm estimation (NanGate45 as proxy)
 - Area metric: NAND2 gate equivalents (total_area_um2 / 0.798)
@@ -96,6 +97,12 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/reports/{module}_synth.txt
    ```
    Output includes: area_um2, gate_count_nand2, technology target
+
+9.5. If commercial synthesis is requested, run Design Compiler via replayable wrapper:
+   ```bash
+   syn/scripts/run_syn.sh --tool dc_shell --top {top} -f rtl/filelist_top.f --outdir syn/reports
+   ```
+   - Optional: `--liberty <tech.lib>` and `--script <dc.tcl>`
 
 10. Flag any inferred latches as hard errors
 </Steps>

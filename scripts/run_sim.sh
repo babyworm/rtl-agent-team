@@ -2,7 +2,7 @@
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
-# Supported simulators: iverilog, verilator, vcs, xrun, questa
+# Supported simulators: iverilog, verilator, vcs, xrun/xcelium, questa
 # Default: iverilog
 
 set -euo pipefail
@@ -24,6 +24,12 @@ RUN_ONLY=0
 DPI_LIB=""
 VERBOSE=0
 SV_FILES=()
+RUN_STAMP=$(date +%Y%m%d_%H%M%S)
+RUN_CWD="$(pwd)"
+REPLAY_DIR=""
+REPLAY_COMPILE=""
+REPLAY_RUN=""
+REPLAY_ALL=""
 
 # ─── Usage ──────────────────────────────────────────────────────────────────
 usage() {
@@ -31,7 +37,7 @@ usage() {
 Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 
 Options:
-  --sim <name>       Simulator: iverilog|verilator|vcs|xrun|questa (default: iverilog)
+  --sim <name>       Simulator: iverilog|verilator|vcs|xrun|xcelium|questa (default: iverilog)
   --top <module>     Top-level module name (required)
   --filelist <file>  Source filelist (.f file)
   -f <file>          Alias for --filelist
@@ -92,6 +98,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Alias normalization
+if [[ "$SIM" == "xcelium" ]]; then
+  SIM="xrun"
+fi
+
 # ─── Validation ─────────────────────────────────────────────────────────────
 if [[ -z "$TOP" ]]; then
   echo "ERROR: --top <module> is required" >&2
@@ -108,6 +119,68 @@ log() {
   if [[ $VERBOSE -eq 1 ]]; then
     echo "[run_sim.sh] $*"
   fi
+}
+
+init_replay() {
+  REPLAY_DIR="${OUTDIR}/replay"
+  mkdir -p "$REPLAY_DIR"
+  REPLAY_COMPILE="${REPLAY_DIR}/run_${SIM}_${TOP}_compile_${RUN_STAMP}.sh"
+  REPLAY_RUN="${REPLAY_DIR}/run_${SIM}_${TOP}_run_${RUN_STAMP}.sh"
+  REPLAY_ALL="${REPLAY_DIR}/run_${SIM}_${TOP}_replay_${RUN_STAMP}.sh"
+
+  cat > "$REPLAY_ALL" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$RUN_CWD"
+EOF
+  chmod +x "$REPLAY_ALL"
+}
+
+record_replay_step() {
+  local phase="$1"
+  local cmd="$2"
+  local out_script=""
+  case "$phase" in
+    compile) out_script="$REPLAY_COMPILE" ;;
+    run) out_script="$REPLAY_RUN" ;;
+    *) return ;;
+  esac
+
+  if [[ ! -f "$out_script" ]]; then
+    cat > "$out_script" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$RUN_CWD"
+EOF
+    chmod +x "$out_script"
+  fi
+  printf '%s\n' "$cmd" >> "$out_script"
+  printf '%s\n' "$cmd" >> "$REPLAY_ALL"
+}
+
+run_cmd() {
+  local phase="$1"
+  local cmd="$2"
+  log "${phase}: $cmd"
+  echo "$ $cmd"
+  record_replay_step "$phase" "$cmd"
+  eval "$cmd"
+}
+
+finalize_replay() {
+  local latest_compile="${REPLAY_DIR}/run_${SIM}_compile_latest.sh"
+  local latest_run="${REPLAY_DIR}/run_${SIM}_run_latest.sh"
+  local latest_all="${REPLAY_DIR}/run_${SIM}_replay_latest.sh"
+
+  [[ -f "$REPLAY_COMPILE" ]] && cp "$REPLAY_COMPILE" "$latest_compile"
+  [[ -f "$REPLAY_RUN" ]] && cp "$REPLAY_RUN" "$latest_run"
+  [[ -f "$REPLAY_ALL" ]] && cp "$REPLAY_ALL" "$latest_all"
+
+  echo ""
+  echo "Replay scripts:"
+  [[ -f "$REPLAY_COMPILE" ]] && echo "  compile: $REPLAY_COMPILE"
+  [[ -f "$REPLAY_RUN" ]] && echo "  run:     $REPLAY_RUN"
+  [[ -f "$REPLAY_ALL" ]] && echo "  all:     $REPLAY_ALL"
 }
 
 # Build define flags for the target simulator
@@ -207,6 +280,8 @@ build_plusargs() {
 
 # ─── Setup ──────────────────────────────────────────────────────────────────
 mkdir -p "$OUTDIR"
+init_replay
+trap 'finalize_replay' EXIT
 
 DEFINE_FLAGS=""
 if [[ ${#DEFINES[@]} -gt 0 ]]; then
@@ -237,8 +312,7 @@ compile_iverilog() {
   cmd+=" ${TOOL_ARGS} -o ${OUTDIR}/${TOP} ${FILES}"
 
   log "Compile: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "compile" "$cmd"
 }
 
 run_iverilog() {
@@ -249,8 +323,7 @@ run_iverilog() {
   cmd+=" ${PLUSARGS}"
 
   log "Run: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "run" "$cmd"
 }
 
 compile_verilator() {
@@ -266,8 +339,7 @@ compile_verilator() {
   cmd+=" ${TOOL_ARGS} ${FILES}"
 
   log "Compile: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "compile" "$cmd"
 }
 
 run_verilator() {
@@ -275,8 +347,7 @@ run_verilator() {
   cmd+=" ${PLUSARGS}"
 
   log "Run: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "run" "$cmd"
 }
 
 compile_vcs() {
@@ -291,8 +362,7 @@ compile_vcs() {
   cmd+=" ${TOOL_ARGS} -o ${OUTDIR}/${TOP} ${FILES}"
 
   log "Compile: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "compile" "$cmd"
 }
 
 run_vcs() {
@@ -300,8 +370,7 @@ run_vcs() {
   cmd+=" ${PLUSARGS}"
 
   log "Run: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "run" "$cmd"
 }
 
 compile_xrun() {
@@ -316,8 +385,7 @@ compile_xrun() {
   cmd+=" -xmlibdirname ${OUTDIR}/xlib ${TOOL_ARGS} ${FILES}"
 
   log "Compile: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "compile" "$cmd"
 }
 
 run_xrun() {
@@ -328,8 +396,7 @@ run_xrun() {
   cmd+=" ${PLUSARGS}"
 
   log "Run: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "run" "$cmd"
 }
 
 compile_questa() {
@@ -338,8 +405,7 @@ compile_questa() {
   cmd+=" ${TOOL_ARGS} ${FILES}"
 
   log "Compile: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "compile" "$cmd"
 
   # Optimize
   local opt_cmd="vopt +acc ${TOP} -o ${TOP}_opt"
@@ -347,8 +413,7 @@ compile_questa() {
     opt_cmd+=" -sv_lib ${DPI_LIB}"
   fi
   log "Optimize: $opt_cmd"
-  echo "$ $opt_cmd"
-  eval $opt_cmd
+  run_cmd "compile" "$opt_cmd"
 }
 
 run_questa() {
@@ -360,8 +425,7 @@ run_questa() {
   cmd+=" ${PLUSARGS}"
 
   log "Run: $cmd"
-  echo "$ $cmd"
-  eval $cmd
+  run_cmd "run" "$cmd"
 }
 
 # ─── Main Execution ─────────────────────────────────────────────────────────
@@ -379,7 +443,7 @@ if [[ $RUN_ONLY -eq 0 ]]; then
     questa)     compile_questa ;;
     *)
       echo "ERROR: Unsupported simulator: $SIM" >&2
-      echo "Supported: iverilog, verilator, vcs, xrun, questa" >&2
+      echo "Supported: iverilog, verilator, vcs, xrun (xcelium), questa" >&2
       exit 1
       ;;
   esac

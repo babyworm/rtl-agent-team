@@ -33,7 +33,11 @@ in a single automated flow.
 </Why_This_Exists>
 
 <Execution_Policy>
-- eda-runner executes the test suite with each seed in parallel (if resources allow)
+- local-first execution on a single host (`--mode local`) is the default
+- default parallel budget is `max(1, nproc-2)` unless user explicitly overrides
+- `aws-batch` is allowed only when the user explicitly asks to use AWS
+- AWS mode requires explicit env gate + runner wiring: `RTL_ALLOW_AWS=1`, `RTL_AWS_BATCH_RUNNER`
+- eda-runner executes the test suite with each seed in parallel (within local budget)
 - coverage-analyst aggregates coverage across seeds
 - Failing seeds trigger waveform capture for later analysis
 - Report: total vectors, pass rate, coverage %, failing seed list
@@ -44,11 +48,12 @@ in a single automated flow.
 2. eda-runner runs full test suite per seed via Bash CLI.
    Use `skills/rtl-regression-run/scripts/run_regression.sh` for automated multi-seed execution:
    ```bash
-   bash skills/rtl-regression-run/scripts/run_regression.sh --seeds "1 42 123 1337 65536" --sim icarus
+   bash skills/rtl-regression-run/scripts/run_regression.sh --mode local --seeds "1 42 123 1337 65536" --sim icarus
    ```
+   (Leave `--parallel` unset to use default `max(1, nproc-2)`)
    Or run individually:
    ```bash
-   make -C sim/top SIM=icarus SEED={seed} COVERAGE=1
+   make -C sim/top SIM=icarus RANDOM_SEED={seed} COVERAGE=1
    ```
 3. Capture per-seed results to sim/regression/seed_{seed}_results.json
 4. On failure: capture .vcd waveform for failing test (signals use i_/o_ prefixes, {domain}_clk/{domain}_rst_n)
@@ -63,7 +68,7 @@ in a single automated flow.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full cocotb regression via Bash CLI with seeds [1, 42, 123, 1337, 65536]. For each seed: make -C sim/top SIM=icarus SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to sim/regression/seed_{seed}_results.json.")
+     prompt="Run full cocotb regression via Bash CLI in local mode with seeds [1, 42, 123, 1337, 65536]. For each seed: make -C sim/top SIM=icarus RANDOM_SEED={seed} COVERAGE=1. Capture .vcd on failure. Save results to sim/regression/seed_{seed}_results.json.")
 
 Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Merge coverage data from sim/regression/seed_*_results.json via Bash CLI (lcov --add-tracefile or equivalent). Produce sim/coverage/coverage.xml with line, branch, and toggle coverage. Report overall coverage percentage.")

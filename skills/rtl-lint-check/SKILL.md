@@ -46,6 +46,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 
 <Execution_Policy>
 - lint-checker runs both tools in parallel on the target file(s) via Bash CLI
+- Prefer replayable wrapper: `lint/scripts/run_lint.sh` (creates `lint/reports/replay/run_lint_*_latest.sh`)
 - Additionally checks naming conventions not caught by standard tools
 - Results merged and de-duplicated
 - Zero-error gate: skill reports PASS or FAIL with full violation list
@@ -68,6 +69,11 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
    ```bash
    slang --lint-only {files}
    ```
+4.5. If commercial lint signoff is requested, run SpyGlass lint:
+   ```bash
+   lint/scripts/run_lint.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/reports
+   ```
+
 5. Run supplementary convention checks via Bash CLI:
    - Use `skills/rtl-lint-check/scripts/check_conventions.sh {files}` for automated convention checking
    - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes

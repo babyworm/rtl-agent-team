@@ -117,7 +117,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:rtl-setup
 ```
 
-프로젝트 디렉토리 구조 생성 + EDA 도구 설치 확인을 수행합니다.
+프로젝트 디렉토리 구조 생성, EDA 도구 설치 확인, 그리고 **EDA wrapper 스크립트 자동 배포**(`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`)를 수행합니다. Hook-driven bootstrap으로 기존 스크립트는 절대 덮어쓰지 않습니다 (non-destructive 정책).
 
 ### 개별 스킬
 
@@ -162,8 +162,17 @@ rtl-agent-team/
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
 ├── agents/                     # 64개 에이전트 (설계/검증/리뷰/EDA/도메인)
+├── scripts/
+│   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
 ├── skills/                     # 56개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
+│   ├── rtl-setup/
+│   │   ├── scripts/
+│   │   │   └── install_project_templates.sh  # Hook-driven 템플릿 자동 설치
+│   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + 기타 템플릿
+│   ├── rtl-regression-run/
+│   │   └── scripts/
+│   │       └── run_regression.sh  # Multi-seed 회귀 테스트 (local-first)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
 │   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
@@ -174,6 +183,9 @@ rtl-agent-team/
 │       ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리 (rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (rtl-p5s-func-verify/)
 │       └── ...                     # + 9개 (CDC, UVM, Yosys, SDC 등)
+├── hooks/                      # 이벤트 기반 품질 게이트 (8개 hook)
+│   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup 체크 + 템플릿 bootstrap
+│   └── ...                     # + 7개 (라우팅 주입, 검증 게이트, cascade 등)
 ├── docker/                     # EDA 도구 Docker 이미지
 │   └── Dockerfile              # 오픈소스 EDA 전체 번들
 └── domain-packages/            # 도메인 지식 패키지
@@ -252,8 +264,28 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | slang | IEEE 1800 시맨틱 Lint | 선택 |
 | sby (SymbiYosys) | Formal 검증 | 선택 |
 | gtkwave | 파형 뷰어 | 선택 |
+| vcs / xrun / questa | 상용 시뮬레이터 | 선택 |
+| spyglass | 상용 lint + CDC | 선택 |
+| dc_shell (Design Compiler) | 상용 합성 | 선택 |
+| vc_cdc / questa_cdc | 상용 CDC 분석 | 선택 |
 
 `/rtl-agent-team:rtl-setup`으로 도구 설치 상태를 확인할 수 있습니다.
+
+### EDA Wrapper 스크립트
+
+모든 EDA 작업은 재현 가능한 wrapper 스크립트를 사용하며, 매 실행마다 타임스탬프 + `_latest.sh` replay 스크립트를 자동 생성합니다.
+
+| 스크립트 | 위치 | 지원 도구 |
+|---------|------|----------|
+| `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
+| `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
+| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
+| `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
+| `run_regression.sh` | `sim/regression/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in) |
+
+스크립트는 `rtl-setup` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.
+
+Regression runner는 기본 `--mode local`에 `max(1, nproc-2)` 병렬로 동작합니다. AWS Batch는 명시적 opt-in이 필요합니다 (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
 ### Docker EDA 이미지 (권장)
 

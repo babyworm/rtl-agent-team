@@ -6,6 +6,21 @@
 INPUT=$(cat)
 CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -z "$CWD" ] && CWD="$(pwd)"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+emit_continue() {
+  MSG="$1"
+  if [ -n "$MSG" ]; then
+    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$MSG")"
+  else
+    printf '{"continue":true}'
+  fi
+  exit 0
+}
 
 # Extract skill name from tool input
 SKILL_NAME=$(printf '%s' "$INPUT" | sed -n 's/.*"skill"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
@@ -16,10 +31,30 @@ case "$SKILL_NAME" in
     SHORT_NAME="${SKILL_NAME#rtl-agent-team:}"
     ;;
   *)
-    printf '{"continue":true}'
-    exit 0
+    emit_continue ""
     ;;
 esac
+
+SETUP_EXTRA_CONTEXT=""
+if [ "$SHORT_NAME" = "rtl-setup" ]; then
+  BOOTSTRAP_SCRIPT="$PLUGIN_ROOT/skills/rtl-setup/scripts/install_project_templates.sh"
+  if [ -x "$BOOTSTRAP_SCRIPT" ]; then
+    BOOTSTRAP_OUTPUT=$("$BOOTSTRAP_SCRIPT" "$CWD" 2>&1)
+    BOOTSTRAP_STATUS=$?
+    if [ "$BOOTSTRAP_STATUS" -eq 0 ]; then
+      BOOTSTRAP_SUMMARY=$(printf '%s\n' "$BOOTSTRAP_OUTPUT" | tail -n 1)
+      if [ -n "$BOOTSTRAP_SUMMARY" ]; then
+        SETUP_EXTRA_CONTEXT="[rtl-setup bootstrap] $BOOTSTRAP_SUMMARY"
+      else
+        SETUP_EXTRA_CONTEXT="[rtl-setup bootstrap] template script installation completed."
+      fi
+    else
+      SETUP_EXTRA_CONTEXT="[rtl-setup bootstrap] template installation failed: $BOOTSTRAP_OUTPUT"
+    fi
+  else
+    SETUP_EXTRA_CONTEXT="[rtl-setup bootstrap] installer not found: $BOOTSTRAP_SCRIPT"
+  fi
+fi
 
 # Setup prerequisite check — exempt categories:
 # Category 1 — Self-reference: rtl-setup (cannot check setup before setup)
@@ -39,19 +74,16 @@ esac
 
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 CRITERIA_FILE="$PLUGIN_ROOT/.rtl-agent-team/skill-completion-criteria.json"
 
 # Don't override if already active (re-invocation within same session)
 if [ -f "$SKILL_STATE" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_continue "$SETUP_EXTRA_CONTEXT"
 fi
 
 # Read criteria for this skill from config
 if [ ! -f "$CRITERIA_FILE" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_continue "$SETUP_EXTRA_CONTEXT"
 fi
 
 # Extract criteria for this skill using grep+sed (no jq dependency)
@@ -59,8 +91,7 @@ CRITERIA=$(sed -n "s/.*\"${SHORT_NAME}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".
 
 if [ -z "$CRITERIA" ]; then
   # No criteria defined for this skill, allow without loop
-  printf '{"continue":true}'
-  exit 0
+  emit_continue "$SETUP_EXTRA_CONTEXT"
 fi
 
 # Create state file

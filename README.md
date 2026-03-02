@@ -117,7 +117,7 @@ If `rtl-autopilot` is interrupted, progress is saved automatically. Re-run the s
 /rtl-agent-team:rtl-setup
 ```
 
-Creates the project directory structure and verifies EDA tool installation.
+Creates the project directory structure, verifies EDA tool installation, and **auto-installs EDA wrapper scripts** (`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`) into the project via a hook-driven bootstrap. Existing scripts are never overwritten (non-destructive policy).
 
 ### Individual skills
 
@@ -162,8 +162,17 @@ rtl-agent-team/
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
 ├── agents/                     # 64 agents (design/verification/review/EDA/domain)
+├── scripts/
+│   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
 ├── skills/                     # 56 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
+│   ├── rtl-setup/
+│   │   ├── scripts/
+│   │   │   └── install_project_templates.sh  # Hook-driven template auto-installer
+│   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + other templates
+│   ├── rtl-regression-run/
+│   │   └── scripts/
+│   │       └── run_regression.sh  # Multi-seed regression runner (local-first)
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
@@ -174,6 +183,9 @@ rtl-agent-team/
 │       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
 │       └── ...                     # + 9 more (CDC, UVM, Yosys, SDC, etc.)
+├── hooks/                      # Event-driven enforcement (8 hooks)
+│   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup check + template bootstrap
+│   └── ...                     # + 7 more (routing inject, verify gate, cascade, etc.)
 ├── docker/                     # EDA tool Docker image
 │   └── Dockerfile              # Open-source EDA full bundle
 └── domain-packages/            # Domain knowledge packages
@@ -252,8 +264,28 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 | slang | IEEE 1800 semantic Lint | Optional |
 | sby (SymbiYosys) | Formal verification | Optional |
 | gtkwave | Waveform viewer | Optional |
+| vcs / xrun / questa | Commercial simulators | Optional |
+| spyglass | Commercial lint + CDC | Optional |
+| dc_shell (Design Compiler) | Commercial synthesis | Optional |
+| vc_cdc / questa_cdc | Commercial CDC analysis | Optional |
 
 Use `/rtl-agent-team:rtl-setup` to check tool installation status.
+
+### EDA Wrapper Scripts
+
+All EDA operations use replayable wrapper scripts that generate timestamped + `_latest.sh` replay scripts for reproducibility.
+
+| Script | Location | Supports |
+|--------|----------|----------|
+| `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
+| `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
+| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
+| `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
+| `run_regression.sh` | `sim/regression/` | Multi-seed cocotb regression (local-first, AWS opt-in) |
+
+Scripts are auto-installed by the `rtl-setup` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.
+
+Regression runner defaults to `--mode local` with `max(1, nproc-2)` parallel jobs. AWS Batch requires explicit opt-in (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
 ### Docker EDA Image (Recommended)
 

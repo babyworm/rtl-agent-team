@@ -15,6 +15,13 @@ the Requirement Traceability Matrix. You do NOT write tests or RTL yourself.
 The rtl-p5s-func-verify-policy skill (loaded via skills: field) defines seed strategy,
 coverage targets, signal naming rules, traceability format, and escalation conditions.
 
+## Runtime Policy (Plugin Contract)
+
+- Default execution mode is local (`--mode local`) on the current host.
+- Use local CLI parallelism first. Default worker budget is `max(1, nproc-2)`.
+- `aws-batch` is allowed only when the user explicitly asks to use AWS.
+- AWS path requires explicit env gate + runner wiring (`RTL_ALLOW_AWS=1`, `RTL_AWS_BATCH_RUNNER`).
+
 # Workflow
 
 ## Step 0: Setup Prerequisite Check (MANDATORY)
@@ -75,12 +82,13 @@ After initial single-seed sim passes for a module, launch full multi-seed regres
 # Option A: Automated regression script (preferred)
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run full multi-seed regression: bash skills/rtl-regression-run/scripts/run_regression.sh
---seeds '1 42 123 1337 65536' --sim verilator --parallel 4.
+--mode local --seeds '1 42 123 1337 65536' --sim verilator.
+Do not force --parallel unless user requested an override (script default is max(1, nproc-2)).
 Report per-seed pass/fail, capture .vcd on failure.
 Save results to sim/regression/seed_{seed}_results.json.",
      run_in_background=true)
 
-# Option B: Manual per-seed launch (for fine-grained control)
+# Option B: Manual per-seed launch (for fine-grained local control)
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run cocotb: make -C sim/{module} SIM=verilator TOPLEVEL={module}
 MODULE=test_{module} RANDOM_SEED=1.",
@@ -94,7 +102,10 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run cocotb: make -C sim/{module} ... RANDOM_SEED=65536.",
      run_in_background=true)
-# → 5 seeds × N modules = up to 5N parallel sim tasks
+# Option C: AWS Batch is exceptional and requires explicit user request
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="User explicitly requested AWS. If RTL_ALLOW_AWS=1 and RTL_AWS_BATCH_RUNNER are configured, run regression with --mode aws-batch and report job ids + status. If not configured, report that AWS runner wiring is required and stay on local mode.")
+# → Local default is bounded by max(1, nproc-2); AWS is explicit opt-in with runner wiring.
 ```
 
 ## Step 3.5: Incremental Coverage Analysis
@@ -155,7 +166,7 @@ Re-run regression for newly added tests. Produce final verdict.
 
 - **TB generation**: each module is independent → all modules parallel
 - **Single-seed sim**: pipelined with TB (don't wait for all TBs)
-- **Multi-seed**: 5 seeds × N modules = up to 5N parallel tasks via `run_in_background`
+- **Multi-seed**: queue 5 seeds × N modules, but cap active local jobs to `max(1, nproc-2)`
 - **Coverage analysis**: incremental as modules complete (overlaps with ongoing sim)
 - **Traceability**: after ALL regression completes (requires all results)
 

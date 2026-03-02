@@ -46,6 +46,7 @@ in addition to any CDC violations.
 
 <Execution_Policy>
 - cdc-checker runs static analysis on RTL (structural, not simulation-based)
+- Prefer replayable CLI wrappers: `sim/cdc/run_cdc.sh --tool spyglass|vc_cdc|questa_cdc|structural`
 - constraint-writer generates SDC constraints to properly define clock domains
 - Report categorizes findings: VIOLATION (missing sync), CAUTION (complex path), INFO, CONVENTION
 - No auto-fix of RTL — report violations only
@@ -62,6 +63,16 @@ in addition to any CDC violations.
 3. constraint-writer writes syn/constraints/cdc_constraints.sdc defining clock groups
    - Use `templates/cdc-constraints.sdc` as the SDC template
    - Uses `{domain}_clk` names consistent with RTL
+3.5. When commercial CDC tools are available, run replayable CDC script:
+   ```bash
+   sim/cdc/run_cdc.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir sim/cdc/reports
+   ```
+   - Replay artifact: `sim/cdc/reports/replay/run_cdc_spyglass_latest.sh`
+   - If SpyGlass is unavailable, fall back to:
+   ```bash
+   sim/cdc/run_cdc.sh --tool structural --top {top} -f rtl/filelist_top.f --outdir sim/cdc/reports
+   ```
+
 4. cdc-checker writes sim/cdc/cdc_report.md (use `templates/cdc-report.md` as format template):
    - VIOLATION: unsynced crossing (file:line, source clock, dest clock)
    - CAUTION: complex multi-bit crossing needing review
@@ -77,6 +88,8 @@ Task(subagent_type="rtl-agent-team:cdc-checker",
 
 Task(subagent_type="rtl-agent-team:constraint-writer",
      prompt="Read sim/cdc/cdc_report.md and rtl/*/*.sv. Write syn/constraints/cdc_constraints.sdc defining clock groups for all identified clock domains. Use {domain}_clk names matching RTL (e.g., sys_clk, axi_clk, codec_clk).")
+
+Bash("sim/cdc/run_cdc.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir sim/cdc/reports")
 ```
 </Tool_Usage>
 
@@ -107,6 +120,7 @@ Not flagging `clk_i` or `rst_ni` in RTL — allows convention violations to pers
 - [ ] Non-conformant clock/reset names flagged as CONVENTION violations
 - [ ] sim/cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
 - [ ] syn/constraints/cdc_constraints.sdc written with correct clock domain names
+- [ ] CDC replay script exists (sim/cdc/reports/replay/run_cdc_*_latest.sh)
 - [ ] RTL not modified
 - [ ] Violation count reported to user
 </Final_Checklist>

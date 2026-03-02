@@ -3,7 +3,7 @@
 # Usage: lint/scripts/run_lint.sh [OPTIONS] [SV_FILES...]
 #
 # Supports: verilator (default), verible, slang
-# Commercial: spyglass, hal (via --tool flag)
+# Commercial: spyglass (via --tool flag)
 #
 # Examples:
 #   lint/scripts/run_lint.sh --tool verilator -f rtl/filelist_top.f
@@ -18,6 +18,7 @@ TOP=""
 FILELIST=""
 OUTDIR="lint/reports"
 WAIVER=""
+SCRIPT_PATH=""
 FILES=()
 VERBOSE=0
 
@@ -27,11 +28,12 @@ usage() {
 Usage: lint/scripts/run_lint.sh [OPTIONS] [SV_FILES...]
 
 Options:
-  --tool <name>     verilator|verible|slang|spyglass|hal (default: verilator)
+  --tool <name>     verilator|verible|slang|spyglass (default: verilator)
   --top <module>    Top-level module name (for hierarchy-aware lint)
   -f <filelist>     Source filelist (.f file)
   --outdir <dir>    Report output directory (default: lint/reports)
   --waiver <file>   Waiver file (verilator .vlt, verible .rules)
+  --script <file>   Tool script/Tcl file (spyglass)
   -v, --verbose     Verbose output
   -h, --help        Show this help
 USAGE
@@ -46,6 +48,7 @@ while [[ $# -gt 0 ]]; do
     -f)        FILELIST="$2"; shift 2 ;;
     --outdir)  OUTDIR="$2"; shift 2 ;;
     --waiver)  WAIVER="$2"; shift 2 ;;
+    --script)  SCRIPT_PATH="$2"; shift 2 ;;
     -v|--verbose) VERBOSE=1; shift ;;
     -h|--help) usage ;;
     -*)        echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
@@ -73,6 +76,22 @@ if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
 fi
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+RUN_CWD="$(pwd)"
+REPLAY_DIR="$OUTDIR/replay"
+REPLAY_SCRIPT="$REPLAY_DIR/run_lint_${TOOL}_${TIMESTAMP}.sh"
+mkdir -p "$REPLAY_DIR"
+
+write_replay() {
+  local cmd="$1"
+  cat > "$REPLAY_SCRIPT" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$RUN_CWD"
+$cmd
+EOF
+  chmod +x "$REPLAY_SCRIPT"
+  cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_lint_${TOOL}_latest.sh"
+}
 
 # ─── Tool-specific lint ────────────────────────────────────────────────────
 case "$TOOL" in
@@ -84,6 +103,7 @@ case "$TOOL" in
     REPORT="$OUTDIR/verilator_lint_${TIMESTAMP}.log"
     echo "=== Verilator Lint ==="
     echo "CMD: $CMD"
+    write_replay "$CMD"
     eval "$CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
@@ -95,6 +115,7 @@ case "$TOOL" in
     REPORT="$OUTDIR/verible_lint_${TIMESTAMP}.log"
     echo "=== Verible Lint ==="
     echo "CMD: $CMD"
+    write_replay "$CMD"
     eval "$CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
@@ -106,19 +127,44 @@ case "$TOOL" in
     REPORT="$OUTDIR/slang_lint_${TIMESTAMP}.log"
     echo "=== slang Lint ==="
     echo "CMD: $CMD"
+    write_replay "$CMD"
     eval "$CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
-  spyglass|hal)
-    echo "ERROR: Commercial tool '$TOOL' requires project-specific configuration." >&2
-    echo "Please create lint/scripts/${TOOL}_lint.tcl with your license and rule setup." >&2
-    exit 1
+  spyglass)
+    REPORT="$OUTDIR/spyglass_lint_${TIMESTAMP}.log"
+    SPYGLASS_TCL="$SCRIPT_PATH"
+    if [[ -z "$SPYGLASS_TCL" ]]; then
+      SPYGLASS_TCL="${SPYGLASS_LINT_TCL:-$OUTDIR/spyglass_lint_${TIMESTAMP}.tcl}"
+    fi
+
+    if [[ ! -f "$SPYGLASS_TCL" ]]; then
+      {
+        echo "# Auto-generated SpyGlass lint script"
+        for src in "${SRC_FILES[@]}"; do
+          echo "read_file -type verilog \"$src\""
+        done
+        [[ -n "$TOP" ]] && echo "set_option top \"$TOP\""
+        [[ -n "$FILELIST" ]] && echo "read_file -type verilog \"$FILELIST\""
+        echo "current_goal lint/lint_rtl"
+        echo "run_goal"
+        echo "exit -save"
+      } > "$SPYGLASS_TCL"
+    fi
+
+    CMD="spyglass -shell -tcl \"$SPYGLASS_TCL\""
+    echo "=== SpyGlass Lint ==="
+    echo "TCL: $SPYGLASS_TCL"
+    echo "CMD: $CMD"
+    write_replay "$CMD"
+    eval "$CMD" 2>&1 | tee "$REPORT"
+    EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   *)
     echo "ERROR: Unknown lint tool: $TOOL" >&2
-    echo "Supported: verilator, verible, slang, spyglass, hal" >&2
+    echo "Supported: verilator, verible, slang, spyglass" >&2
     exit 1
     ;;
 esac
@@ -134,6 +180,7 @@ echo "Files:    ${#SRC_FILES[@]}"
 echo "Errors:   $ERRORS"
 echo "Warnings: $WARNINGS"
 echo "Report:   $REPORT"
+echo "Replay:   $REPLAY_SCRIPT"
 echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"

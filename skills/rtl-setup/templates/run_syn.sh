@@ -3,7 +3,7 @@
 # Usage: syn/scripts/run_syn.sh [OPTIONS]
 #
 # Supports: yosys (default)
-# Commercial: dc_shell, genus, vivado (via --tool flag)
+# Commercial: dc_shell/design_compiler, genus, vivado (via --tool flag)
 #
 # Examples:
 #   syn/scripts/run_syn.sh --tool yosys --top top_module -f rtl/filelist_top.f
@@ -17,6 +17,7 @@ TOP=""
 FILELIST=""
 OUTDIR="syn/reports"
 LIBERTY=""
+SCRIPT_PATH=""
 FILES=()
 VERBOSE=0
 FLATTEN=0
@@ -27,11 +28,12 @@ usage() {
 Usage: syn/scripts/run_syn.sh [OPTIONS] [SV_FILES...]
 
 Options:
-  --tool <name>     yosys|dc_shell|genus|vivado (default: yosys)
+  --tool <name>     yosys|dc_shell|design_compiler|genus|vivado (default: yosys)
   --top <module>    Top-level module name (required)
   -f <filelist>     Source filelist (.f file)
   --outdir <dir>    Report output directory (default: syn/reports)
   --liberty <file>  Liberty (.lib) file for technology mapping
+  --script <file>   Tool script/Tcl file (dc_shell/genus/vivado)
   --flatten         Flatten design before synthesis
   -v, --verbose     Verbose output
   -h, --help        Show this help
@@ -47,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     -f)        FILELIST="$2"; shift 2 ;;
     --outdir)  OUTDIR="$2"; shift 2 ;;
     --liberty) LIBERTY="$2"; shift 2 ;;
+    --script)  SCRIPT_PATH="$2"; shift 2 ;;
     --flatten) FLATTEN=1; shift ;;
     -v|--verbose) VERBOSE=1; shift ;;
     -h|--help) usage ;;
@@ -54,6 +57,10 @@ while [[ $# -gt 0 ]]; do
     *)         FILES+=("$1"); shift ;;
   esac
 done
+
+if [[ "$TOOL" == "design_compiler" ]]; then
+  TOOL="dc_shell"
+fi
 
 if [[ -z "$TOP" ]]; then
   echo "ERROR: --top <module> is required" >&2
@@ -80,6 +87,22 @@ if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
 fi
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+RUN_CWD="$(pwd)"
+REPLAY_DIR="$OUTDIR/replay"
+REPLAY_SCRIPT="$REPLAY_DIR/run_syn_${TOOL}_${TOP}_${TIMESTAMP}.sh"
+mkdir -p "$REPLAY_DIR"
+
+write_replay() {
+  local cmd="$1"
+  cat > "$REPLAY_SCRIPT" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$RUN_CWD"
+$cmd
+EOF
+  chmod +x "$REPLAY_SCRIPT"
+  cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_syn_${TOOL}_latest.sh"
+}
 
 # ─── Tool-specific synthesis ───────────────────────────────────────────────
 case "$TOOL" in
@@ -119,19 +142,64 @@ case "$TOOL" in
     echo "=== Yosys Synthesis ==="
     echo "Script: $SCRIPT"
     echo "CMD: yosys -s $SCRIPT"
+    write_replay "yosys -s \"$SCRIPT\""
     yosys -s "$SCRIPT" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
-  dc_shell|genus|vivado)
+  dc_shell)
+    REPORT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.log"
+    NETLIST="$OUTDIR/${TOP}_netlist.v"
+    AREA_RPT="$OUTDIR/${TOP}_area_${TIMESTAMP}.rpt"
+    TIMING_RPT="$OUTDIR/${TOP}_timing_${TIMESTAMP}.rpt"
+    SCRIPT="$SCRIPT_PATH"
+    if [[ -z "$SCRIPT" ]]; then
+      SCRIPT="${DC_SYN_TCL:-$OUTDIR/dc_syn_${TOP}_${TIMESTAMP}.tcl}"
+    fi
+
+    if [[ ! -f "$SCRIPT" ]]; then
+      {
+        echo "# Auto-generated Design Compiler script"
+        echo "set_app_var search_path [list .]"
+        if [[ -n "$LIBERTY" ]]; then
+          echo "set_app_var target_library [list \"$LIBERTY\"]"
+          echo "set_app_var link_library [list \"*\" \"$LIBERTY\"]"
+        fi
+        for f in "${SRC_FILES[@]}"; do
+          echo "analyze -format sverilog \"$f\""
+        done
+        echo "elaborate $TOP"
+        echo "link"
+        echo "check_design"
+        if [[ $FLATTEN -eq 1 ]]; then
+          echo "ungroup -all -flatten"
+        fi
+        echo "compile_ultra"
+        echo "report_area > \"$AREA_RPT\""
+        echo "report_timing -max_paths 10 > \"$TIMING_RPT\""
+        echo "write -hierarchy -format verilog -output \"$NETLIST\""
+        echo "quit"
+      } > "$SCRIPT"
+    fi
+
+    CMD="dc_shell -64bit -f \"$SCRIPT\""
+    echo "=== Design Compiler Synthesis ==="
+    echo "Script: $SCRIPT"
+    echo "CMD: $CMD"
+    write_replay "$CMD"
+    eval "$CMD" 2>&1 | tee "$REPORT"
+    EXIT_CODE=${PIPESTATUS[0]}
+    ;;
+
+  genus|vivado)
     echo "ERROR: Commercial tool '$TOOL' requires project-specific configuration." >&2
-    echo "Please create syn/scripts/${TOOL}_syn.tcl with your license and library setup." >&2
+    echo "Provide --script <tcl> and execute your project flow command manually." >&2
     exit 1
     ;;
 
   *)
     echo "ERROR: Unknown synthesis tool: $TOOL" >&2
-    echo "Supported: yosys, dc_shell, genus, vivado" >&2
+    echo "Supported: yosys, dc_shell, design_compiler, genus, vivado" >&2
     exit 1
     ;;
 esac
@@ -143,6 +211,7 @@ echo "Tool:     $TOOL"
 echo "Top:      $TOP"
 echo "Files:    ${#SRC_FILES[@]}"
 echo "Report:   $REPORT"
+echo "Replay:   $REPLAY_SCRIPT"
 
 if [[ "$TOOL" == "yosys" && -f "$REPORT" ]]; then
   echo ""

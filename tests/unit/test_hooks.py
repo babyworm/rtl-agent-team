@@ -687,3 +687,33 @@ class TestSkillActivation:
         result = run_hook(self.HOOK, stdin)
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "rtl-p4s-bugfix" in ctx
+
+    def test_rtl_setup_bootstrap_installs_template_scripts(self, tmp_project):
+        """rtl-setup activation should auto-install run_xxx.sh templates into project."""
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-setup"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+
+        run_sim = tmp_project / "scripts" / "run_sim.sh"
+        run_lint = tmp_project / "lint" / "scripts" / "run_lint.sh"
+        run_syn = tmp_project / "syn" / "scripts" / "run_syn.sh"
+        run_cdc = tmp_project / "sim" / "cdc" / "run_cdc.sh"
+
+        for path in [run_sim, run_lint, run_syn, run_cdc]:
+            assert path.exists(), f"Missing auto-installed script: {path}"
+            assert os.access(path, os.X_OK), f"Script should be executable: {path}"
+
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "SETUP_TEMPLATE_INSTALL" in ctx
+
+    def test_rtl_setup_bootstrap_is_non_destructive(self, tmp_project):
+        """Existing scripts should not be overwritten by rtl-setup bootstrap."""
+        run_sim = tmp_project / "scripts" / "run_sim.sh"
+        run_sim.parent.mkdir(parents=True, exist_ok=True)
+        run_sim.write_text("#!/usr/bin/env bash\necho custom\n")
+        run_sim.chmod(0o755)
+
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-setup"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        assert run_sim.read_text() == "#!/usr/bin/env bash\necho custom\n"

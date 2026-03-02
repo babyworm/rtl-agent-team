@@ -39,9 +39,13 @@ cocotb test files MUST use correct signal names matching RTL port conventions:
 
 ## Execution Strategy
 
+- **Local-first runtime**: default to local execution on current host (`--mode local`)
+- **Default parallel budget**: use `max(1, nproc-2)` unless user explicitly overrides `--parallel`
+- **AWS usage policy**: `aws-batch` is allowed only when the user explicitly asks to use AWS
+  and explicit gate/runner wiring exists (`RTL_ALLOW_AWS=1`, `RTL_AWS_BATCH_RUNNER`)
 - **Pipelined**: as each module's TB completes → immediately launch sim (don't wait for all TBs)
 - **Module-level parallelism**: each module's TB + sim runs as an independent parallel task
-- **Multi-seed parallelism**: 5 seeds × N modules = up to 5N parallel sim tasks
+- **Multi-seed parallelism**: queue 5 seeds × N modules; local active workers stay within `max(1, nproc-2)`
 - **Incremental coverage**: coverage-analyst starts partial analysis on completed modules
 - **Early termination**: >5% failure rate across seeds → halt and report immediately
 
@@ -73,7 +77,11 @@ genhtml sim/coverage/merged.info -o sim/coverage/html/ --title "Regression Cover
 ```bash
 # Automated multi-seed regression
 bash skills/rtl-regression-run/scripts/run_regression.sh \
-  --seeds "1 42 123 1337 65536" --sim verilator --parallel 4
+  --mode local --seeds "1 42 123 1337 65536" --sim verilator
+
+# Optional override when user explicitly asks
+bash skills/rtl-regression-run/scripts/run_regression.sh \
+  --mode local --parallel "$(($(nproc)-2))" --seeds "1 42 123 1337 65536" --sim verilator
 
 # Coverage merge
 bash skills/rtl-regression-run/scripts/merge_coverage.sh \
