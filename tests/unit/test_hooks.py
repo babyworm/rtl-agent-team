@@ -160,17 +160,114 @@ class TestStopGate:
 
     HOOK = HOOKS_DIR / "stop-gate.sh"
 
+    def _write_autopilot_state(self, tmp_project, payload):
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        state_file.write_text(json.dumps(payload, indent=2))
+        return state_file
+
     def test_no_state_file_allows_exit(self, tmp_project):
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_state_file_exists_blocks_exit(self, tmp_project):
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
-        state_file.parent.mkdir(parents=True, exist_ok=True)
-        state_file.write_text('{"phase": 3}')
+        self._write_autopilot_state(tmp_project, {"phase": 3})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
         assert "Autopilot" in result.get("hookSpecificOutput", {}).get("additionalContext", "")
+
+    def test_completed_state_allows_exit(self, tmp_project):
+        self._write_autopilot_state(tmp_project, {"status": "completed"})
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_primary_range_message(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "orchestration_control": {
+                    "active_gate_id": "p2-quality-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 1,
+                    "active_gate_fallback_attempts": 0,
+                    "active_gate_last_chance_attempts": 0,
+                    "active_gate_strategy": "primary",
+                    "needs_user_decision": False
+                }
+            },
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "primary strategy" in ctx
+        assert "p2-quality-gate" in ctx
+
+    def test_fallback_message_includes_dynamic_prompt(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "orchestration_control": {
+                    "active_gate_id": "p5-5c-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 3,
+                    "active_gate_fallback_attempts": 0,
+                    "active_gate_last_chance_attempts": 0,
+                    "active_gate_strategy": "fallback",
+                    "dynamic_prompt_text": "Switch to module-split bugfix strategy.",
+                    "needs_user_decision": False
+                }
+            },
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "fallback strategy" in ctx
+        assert "Switch to module-split bugfix strategy." in ctx
+
+    def test_last_chance_message(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "orchestration_control": {
+                    "active_gate_id": "p5-final-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 3,
+                    "active_gate_fallback_attempts": 2,
+                    "active_gate_last_chance_attempts": 0,
+                    "active_gate_strategy": "last_chance",
+                    "needs_user_decision": False
+                }
+            },
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "last-chance" in ctx.lower()
+
+    def test_user_decision_message(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "orchestration_control": {
+                    "active_gate_id": "p5-final-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 4,
+                    "active_gate_fallback_attempts": 2,
+                    "active_gate_last_chance_attempts": 1,
+                    "active_gate_strategy": "user_escalated",
+                    "needs_user_decision": True,
+                    "dynamic_prompt_text": "Ask user to approve rollback to phase 3."
+                }
+            },
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "Ask user" in ctx or "user" in ctx.lower()
 
 
 class TestRtlEditTrackerPhase6:
@@ -375,11 +472,67 @@ class TestSkillCompletionGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
+    def test_ladder_primary_stage_blocks(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["use_escalation_ladder"] = True
+        state["dynamic_prompt"] = "primary prompt"
+        state_file.write_text(json.dumps(state, indent=2))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "primary" in ctx.lower()
+
+    def test_ladder_fallback_stage_blocks(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=3, max_iterations=2)
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["use_escalation_ladder"] = True
+        state["dynamic_prompt"] = "fallback prompt"
+        state_file.write_text(json.dumps(state, indent=2))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "fallback" in ctx.lower()
+        assert "fallback prompt" in ctx
+
+    def test_ladder_last_chance_stage_blocks(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["use_escalation_ladder"] = True
+        state_file.write_text(json.dumps(state, indent=2))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "last_chance" in ctx or "last-chance" in ctx
+
+    def test_ladder_after_last_chance_requires_user(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["use_escalation_ladder"] = True
+        state_file.write_text(json.dumps(state, indent=2))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "사용자" in ctx or "user" in ctx.lower()
+
 
 class TestSkillActivation:
     """Tests for hooks/rtl-skill-activation.sh."""
 
     HOOK = HOOKS_DIR / "rtl-skill-activation.sh"
+
+    def _setup_marker(self, tmp_project):
+        rules_dir = tmp_project / ".claude" / "rules"
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
 
     def test_non_rtl_skill_ignored(self, tmp_project):
         """Non rtl-agent-team skills should be ignored."""
@@ -391,6 +544,7 @@ class TestSkillActivation:
 
     def test_rtl_skill_creates_state(self, tmp_project):
         """rtl-agent-team skill with criteria should create state file."""
+        self._setup_marker(tmp_project)
         # Create criteria config
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
@@ -406,9 +560,11 @@ class TestSkillActivation:
         assert state["skill"] == "rtl-p4s-bugfix"
         assert state["all_complete"] is False
         assert "lint_pass" in state["pending"]
+        assert state["use_escalation_ladder"] is False
 
     def test_rtl_skill_no_criteria_no_state(self, tmp_project):
         """rtl-agent-team skill without criteria in config should not create state."""
+        self._setup_marker(tmp_project)
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass"}
@@ -430,6 +586,7 @@ class TestSkillActivation:
 
     def test_existing_state_not_overridden(self, tmp_project):
         """If state already exists, should not be overridden."""
+        self._setup_marker(tmp_project)
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
@@ -449,6 +606,7 @@ class TestSkillActivation:
 
     def test_activation_message(self, tmp_project):
         """Activation should include skill name in additionalContext."""
+        self._setup_marker(tmp_project)
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}

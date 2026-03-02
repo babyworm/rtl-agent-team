@@ -356,7 +356,7 @@ Domain expert agents MUST read relevant knowledge files from `domain-packages/{d
 | `rtl-project-init-advisor.sh` | SessionStart | Advise rtl-setup if project not initialized |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track RTL file modifications |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop |
-| `stop-gate.sh` | Stop | Pipeline state gate |
+| `stop-gate.sh` | Stop | Autopilot state gate (blocks exit during rtl-autopilot) |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement |

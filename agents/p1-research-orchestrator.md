@@ -65,19 +65,19 @@ Task(subagent_type="rtl-agent-team:vcodec-chief-standard-expert",
 **Phase B — Parallel Deep Dive (maximum agent spawn)**:
 ```
 # Spawn one agent per leaf candidate, ALL in parallel with run_in_background=true
-Task(subagent_type="general-purpose", model="sonnet", run_in_background=true,
-     prompt="Deep-dive research for candidate: [Leaf N]. Study: algorithm complexity (O-notation), memory BW (bytes/pixel), gate count estimate, achievable throughput (pixels/cycle), power characteristics, implementation risk, quality impact. Use WebSearch for papers. Output structured JSON assessment.")
+Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet", run_in_background=true,
+     prompt="Deep-dive research for candidate: [Leaf N]. Study: algorithm complexity (O-notation), memory BW (bytes/pixel), gate count estimate, achievable throughput (pixels/cycle), power characteristics, implementation risk, quality impact. Use domain references and prior artifacts. Output structured JSON assessment.")
 # ... one Task per leaf node (8-20 agents in parallel)
 
 # Cross-cutting research agents (also parallel with leaf agents)
-Task(subagent_type="general-purpose", model="sonnet", run_in_background=true,
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="sonnet", run_in_background=true,
      prompt="Memory architecture survey: SRAM vs register file vs external DRAM trade-offs.")
-Task(subagent_type="general-purpose", model="sonnet", run_in_background=true,
+Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet", run_in_background=true,
      prompt="Interconnect topology survey: shared bus, crossbar, ring, NoC comparison.")
-Task(subagent_type="general-purpose", model="sonnet", run_in_background=true,
+Task(subagent_type="rtl-agent-team:power-analyzer", model="sonnet", run_in_background=true,
      prompt="Power optimization survey: clock gating, voltage scaling, operand isolation.")
-Task(subagent_type="general-purpose", model="sonnet", run_in_background=true,
-     prompt="Reference implementation deep-dive: open-source/published HW implementations.")
+Task(subagent_type="rtl-agent-team:rtl-explorer", model="sonnet", run_in_background=true,
+     prompt="Reference implementation deep-dive: open-source/published HW implementations and hardware architecture patterns.")
 ```
 
 **Phase C — Comparison Matrix Construction**:

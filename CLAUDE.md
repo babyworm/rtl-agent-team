@@ -7,7 +7,7 @@
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 60+ specialized agents, 45+ skills, 8 hooks,
+When installed as a plugin, it provides 64 specialized agents, 56 skills, 8 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -110,8 +110,8 @@ When modifying this plugin:
 rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
-├── agents/                              # 60+ specialized agent definitions (.md)
-├── skills/                              # 55+ skills: 11 orchestrator entry-points + 14 policies + 30+ action workflows
+├── agents/                              # 64 specialized agent definitions (.md)
+├── skills/                              # 56 skills: 14 orchestrator entry-points + 14 policies + 22 action workflows + 4 conventions + 2 other
 │   ├── rtl-orchestrate/SKILL.md         #   On-demand routing reference
 │   ├── rtl-setup/templates/             #   Rules + guides deployed to user projects
 │   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project
@@ -121,9 +121,9 @@ rtl-agent-team/                          # Plugin root
 │   ├── hooks.json                       #   Hook registration config
 │   ├── rtl-project-init-advisor.sh      #   SessionStart: setup advisor
 │   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
-│   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write: RTL modification tracking
+│   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write: RTL modification tracking + P6 stale detection
 │   ├── rtl-skill-activation.sh          #   PreToolUse:Skill: skill completion loop
-│   ├── stop-gate.sh                     #   Stop: pipeline state gate
+│   ├── stop-gate.sh                     #   Stop: autopilot state gate
 │   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
 │   └── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
@@ -188,10 +188,10 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 1. **Port prefix**: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
 2. **Clock**: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`). **Reset**: `rst_n` (single) or `{domain}_rst_n` (multiple). Active-low async
 3. **No CamelCase**: `snake_case` or `ALL_CAPS` only. Parameters `ALL_CAPS`, localparam `L_` prefix
-4. SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11
-5. Convention skills auto-applied by file extension (see Skill Invocation Rules)
+4. SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
+5. Convention skills auto-applied by file extension (systemverilog, systemverilog-assertion, uvm, systemc)
 
-Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`.
+Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `.claude/rules/diagram-rules.md`.
 
 ## Hook-Based Enforcement
 
@@ -199,9 +199,9 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 |-------------|-------|-------------|
 | `rtl-project-init-advisor.sh` | SessionStart | Advise `rtl-setup` if project not initialized |
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
-| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track .sv file modifications for verification gate |
+| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria |
-| `stop-gate.sh` | Stop | Pipeline state gate (blocks premature exit) |
+| `stop-gate.sh` | Stop | Autopilot state gate (blocks premature exit during rtl-autopilot) |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement (max iterations) |

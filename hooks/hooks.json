@@ -57,11 +57,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh\"",
-            "timeout": 3
-          },
-          {
-            "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-verify-stop-gate.sh\"",
             "timeout": 3
           },
@@ -73,6 +68,11 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-completion-gate.sh\"",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh\"",
             "timeout": 3
           }
         ]

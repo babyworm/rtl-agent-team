@@ -39,9 +39,17 @@ Read(".rtl-agent-team/state/rtl-autopilot-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
-1. **Migrate**: If `schema_version` missing or `"1.0"`, upgrade to v2.0:
-   - Add `schema_version: "2.0"`, `current_phase`, `current_phase_name`
+1. **Migrate**: If `schema_version` missing, `"1.0"`, or `"2.0"`, upgrade to v3.0:
+   - Add `schema_version: "3.0"`, `current_phase`, `current_phase_name`
    - Add `interrupted_reason`, `partial_work_summary`
+   - Add `upper_spec_blocking`
+   - Add `orchestration_control` block:
+     - `default_retry_limit`
+     - `active_gate_id`, `active_gate_retry_limit`
+     - `active_gate_primary_attempts`, `active_gate_fallback_attempts`, `active_gate_last_chance_attempts`
+     - `active_gate_strategy`, `needs_user_decision`
+     - `dynamic_prompt_text`, `dynamic_prompt`
+     - `gates.{gate_id}` entries
    - Add per-phase: `started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`
    - Add Phase 4: `completed_modules`, `pending_modules`, `stream_a_status`, `stream_b_status`
    - Add Phase 5: `completed_sub_phases`, `pending_sub_phases`, `fix_history`
@@ -60,8 +68,20 @@ Read(".rtl-agent-team/state/rtl-autopilot-state.json")
 **If no state file** — Fresh start:
 ```
 Write(".rtl-agent-team/state/rtl-autopilot-state.json",
-  { schema_version: "2.0", current_phase: 1, phases: { "1": { status: "pending" }, ... } })
+  { schema_version: "3.0", current_phase: 1, orchestration_control: { default_retry_limit: 2, active_gate_id: "p1-quality-gate", active_gate_retry_limit: 2, active_gate_primary_attempts: 0, active_gate_fallback_attempts: 0, active_gate_last_chance_attempts: 0, active_gate_strategy: "primary", needs_user_decision: false, dynamic_prompt_text: "" }, phases: { "1": { status: "pending" }, ... } })
 ```
+
+### Gate Loop Control (MANDATORY)
+For every active gate:
+1. Set `orchestration_control.active_gate_id` and retry limit (`N`)
+2. Increment attempts in state on each failed gate pass
+3. Apply ladder:
+   - `1..N`: primary strategy
+   - `N+1..2N`: fallback strategy (split failure scope + switch agent composition)
+   - `2N+1`: last-chance alternative (single auto attempt)
+   - after last-chance fail: set `needs_user_decision=true`, stop and ask user
+4. On fallback/last-chance, write `dynamic_prompt_text` (LLM-generated guidance).
+   If generation fails, load fallback from `skills/rtl-autopilot/templates/escalation-prompts.json`.
 
 ## Step 2: Phase 1 — Research
 
@@ -97,7 +117,8 @@ Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 # Parallel: architecture design + reference model development
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
-Skill(skill="rtl-agent-team:ref-model")          # C golden model (functional, no clock/reset)
+Task(subagent_type="rtl-agent-team:ref-model-dev",
+     prompt="Develop C golden reference model for Phase 2 in refc/. Functional model only, C11, no clock/reset.")
 
 # Synthesizability pre-assessment (parallel with p2-arch-design Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",
@@ -270,12 +291,12 @@ Collect ALL FAIL results from 5a, 5b, 5c. Classify per policy (UNIT_FIX / INTEGR
 **Parallel UNIT_FIX** (different modules):
 ```
 # Example: 5a FAIL in module_a, 5c FAIL in module_b → parallel fix
-Skill(skill="rtl-agent-team:rtl-p4s-bugfix",
-       args="Phase 5a formal FAIL in module_a. Counterexample: [details]. feedback_origin=5a-formal",
-       run_in_background=true)
-Skill(skill="rtl-agent-team:rtl-p4s-bugfix",
-       args="Phase 5c cocotb FAIL in module_b. Assertion: [details]. feedback_origin=5c-integration",
-       run_in_background=true)
+Task(subagent_type="rtl-agent-team:p4s-bugfix-orchestrator",
+     prompt="Phase 5a formal FAIL in module_a. Counterexample: [details]. feedback_origin=5a-formal",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:p4s-bugfix-orchestrator",
+     prompt="Phase 5c cocotb FAIL in module_b. Assertion: [details]. feedback_origin=5c-integration",
+     run_in_background=true)
 # After both fix: re-run ONLY affected sub-phases (5a + 5c) in parallel
 ```
 
@@ -342,7 +363,9 @@ On FAIL: iterate review → fix cycle (max 2 rounds).
 After each milestone:
 1. Read state file
 2. Update `partial_work.completed_items`, `current_action`
-3. Write state file
+3. Update `orchestration_control.active_gate_*` counters and strategy
+4. Update `orchestration_control.dynamic_prompt_text` when fallback/last-chance starts
+5. Write state file
 
 On phase completion: set `status="completed"`, `completed_at`, `gate_passed_at`.
 On interruption: set `interrupted_reason`, `partial_work_summary`, per-phase `partial_work`.

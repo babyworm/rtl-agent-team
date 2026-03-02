@@ -46,14 +46,17 @@ at interface handoff points. These bugs are invisible to per-module testing.
 </Why_This_Exists>
 
 <Delegation>
-Spawn the p5s-integration-orchestrator agent to manage Tier 4 integration testing.
 The orchestrator runs static connectivity checks first, then dynamic data flow and
 handshake tests, and performs end-to-end reference comparison.
 
 All coding conventions, test ordering, result schema, and escalation rules are defined
-in the rtl-p5s-integration-policy skill (loaded via the orchestrator's skills: field).
+in the rtl-p5s-integration-test-policy skill (loaded via the orchestrator's skills: field).
 
-Agent: p5s-integration-orchestrator
-Input: Top-level module, architecture.md, io_definition.json
-Output: sim/top/integration_results.json + sim/top/ test files
+## Execution
+
+Task(subagent_type="rtl-agent-team:p5s-integration-orchestrator",
+     prompt="Execute Tier 4 integration testing. User input: $ARGUMENTS")
+
+Do not perform any work directly.
+The orchestrator agent manages connectivity checks, data flow tests, and reference comparison.
 </Delegation>

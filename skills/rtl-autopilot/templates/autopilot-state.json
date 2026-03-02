@@ -1,11 +1,46 @@
 {
-  "schema_version": "2.0",
+  "schema_version": "3.0",
   "current_phase": 1,
   "current_phase_name": "research",
   "status": "in_progress",
   "started_at": "{{TIMESTAMP}}",
   "interrupted_reason": null,
   "partial_work_summary": null,
+  "upper_spec_blocking": false,
+  "orchestration_control": {
+    "default_retry_limit": 2,
+    "active_gate_id": "p1-quality-gate",
+    "active_gate_retry_limit": 2,
+    "active_gate_primary_attempts": 0,
+    "active_gate_fallback_attempts": 0,
+    "active_gate_last_chance_attempts": 0,
+    "active_gate_strategy": "primary",
+    "needs_user_decision": false,
+    "dynamic_prompt_text": "",
+    "dynamic_prompt": {
+      "source": "template",
+      "text": "",
+      "target_gate_id": "p1-quality-gate",
+      "strategy_tag": "primary",
+      "consume_once": true,
+      "used": false
+    },
+    "gates": {
+      "p1-quality-gate": {
+        "retry_limit": 2,
+        "primary_attempts": 0,
+        "fallback_attempts": 0,
+        "last_chance_attempts": 0,
+        "strategy": "primary",
+        "status": "pending",
+        "last_fail_reason": null,
+        "assigned_agents": [
+          "p1-research-orchestrator",
+          "spec-analyst"
+        ]
+      }
+    }
+  },
   "phases": {
     "1_research": {
       "status": "in_progress",

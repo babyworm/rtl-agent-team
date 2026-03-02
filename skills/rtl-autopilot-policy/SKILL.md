@@ -63,6 +63,29 @@ Quality Gate verdicts: `PASS` or `FAIL + findings[]`
   then re-run Quality Gate. Maximum 2 retry cycles per gate
 - On upper-spec violation: IMMEDIATE STOP (see Escalation)
 
+### Escalation Ladder (Per-Gate 2x)
+Every active gate uses a per-gate retry budget `N` (`retry_limit` in state):
+- **Primary range**: attempts `1..N` with normal strategy
+- **Fallback range**: attempts `N+1..2N` with immediate strategy switch
+  - split by module/requirement
+  - swap reviewer+solver agent pairing
+  - re-run only impacted checks
+- **Last chance**: one automatic alternative attempt after `2N`
+- **Post 2x+1 fail**: set `needs_user_decision=true` and stop for user direction
+
+State contract for hook enforcement lives in:
+- `orchestration_control.active_gate_*` (fast path for hooks)
+- `orchestration_control.gates.{gate_id}` (per-gate detailed counters)
+
+### Dynamic Prompt Injection
+When entering fallback or last-chance stages, orchestrator writes:
+- `orchestration_control.dynamic_prompt_text` (plain text, single-shot guidance)
+- `orchestration_control.dynamic_prompt` metadata (`source`, `strategy_tag`, `used`)
+
+Fallback templates are available in:
+`skills/rtl-autopilot/templates/escalation-prompts.json`
+Use templates only when LLM-generated prompt text is unavailable.
+
 ### Context Manifests
 Each phase has a manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`) declaring:
 - `required_full_read`: files that MUST be fully read before starting the phase
@@ -262,6 +285,9 @@ After each successful feedback fix:
 
 - **Artifact Gate fails twice** → pause and report missing artifacts to user
 - **Quality Gate fails after 2 fix-and-retry cycles** → pause, present all accumulated findings, request guidance
+- **Gate attempt exceeds N** → switch to fallback strategy immediately
+- **Gate attempt exceeds 2N** → run last-chance alternative once
+- **Last-chance fails** → set `needs_user_decision=true`, stop and ask user before any further retry
 - **Upper-Spec Violation detected at any Quality Gate** → IMMEDIATE STOP:
   1. Identify the violated upper phase and the specific violation
   2. Report to user with full context

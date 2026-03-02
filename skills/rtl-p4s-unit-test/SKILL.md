@@ -43,7 +43,6 @@ while remaining faster and more targeted than full regression (Tier 3).
 </Why_This_Exists>
 
 <Delegation>
-Spawn the p4s-unit-test-orchestrator agent to manage Tier 2 unit testing.
 The orchestrator writes testbenches per module (parallel via testbench-dev), selects
 reference comparison mode (DPI-C or file-based), runs simulations, and handles
 failure triage with waveform analysis.
@@ -51,7 +50,11 @@ failure triage with waveform analysis.
 All coding conventions, reference mode rules, escalation criteria, and result schemas
 are defined in the rtl-p4s-unit-test-policy skill (loaded via the orchestrator's skills: field).
 
-Agent: p4s-unit-test-orchestrator
-Input: Module list from docs/phase-3-uarch/*.md, reference model location (refc/)
-Output: sim/{module}/tb_{module}.sv + sim/{module}/{module}_unit_results.json per module
+## Execution
+
+Task(subagent_type="rtl-agent-team:p4s-unit-test-orchestrator",
+     prompt="Execute Tier 2 unit testing. User input: $ARGUMENTS")
+
+Do not perform any work directly.
+The orchestrator agent manages testbench generation, simulation, and failure triage.
 </Delegation>

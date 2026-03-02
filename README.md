@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 50 specialized AI agents + 42 skills automate the 6-Phase pipeline:
+> 64 specialized AI agents + 56 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 42 skills + 13 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 64 specialized AI agents + 56 skills + 13 reference documents.
 
 ## Marketplace
 
@@ -16,7 +16,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 50-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.1.0 |
+| **rtl-agent-team** | 64-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.2.0 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.0 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -113,7 +113,7 @@ Creates the project directory structure and verifies EDA tool installation.
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 42 skills.
+See the `skills/` directory for the full list of 56 skills.
 
 ## Project Artifact Structure
 
@@ -144,8 +144,8 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 50 agents (design/verification/review/EDA/domain)
-├── skills/                     # 42 skills (SKILL.md + templates/ + examples/)
+├── agents/                     # 64 agents (design/verification/review/EDA/domain)
+├── skills/                     # 56 skills (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
@@ -164,7 +164,7 @@ rtl-agent-team/
 
 ## Agent Team
 
-### Agent Composition (50 agents, all Opus)
+### Agent Composition (64 agents, all Opus)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
@@ -256,8 +256,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (50)
-├── skills/                              # rtl-agent-team skills (42, with 13 reference docs)
+├── agents/                              # rtl-agent-team agents (64)
+├── skills/                              # rtl-agent-team skills (56, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

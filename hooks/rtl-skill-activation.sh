@@ -72,6 +72,9 @@ cat > "$SKILL_STATE.tmp" << SKILLEOF
   "active": true,
   "iteration": 1,
   "max_iterations": 5,
+  "use_escalation_ladder": false,
+  "strategy": "primary",
+  "dynamic_prompt": "",
   "pending": "${CRITERIA}",
   "all_complete": false,
   "started_at": "${TIMESTAMP}"

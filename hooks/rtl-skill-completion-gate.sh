@@ -15,6 +15,10 @@ CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
 # If no active skill state, allow exit
 if [ ! -f "$SKILL_STATE" ]; then
   printf '{"continue":true}'
@@ -53,6 +57,46 @@ MAX_ITER=${MAX_ITER:-5}
 if [ "$COMPLETED" = "true" ]; then
   rm -f "$SKILL_STATE"
   printf '{"continue":true}'
+  exit 0
+fi
+
+LADDER_ENABLED=$(sed -n 's/.*"use_escalation_ladder"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$SKILL_STATE")
+LADDER_ENABLED=${LADDER_ENABLED:-false}
+DYNAMIC_PROMPT=$(sed -n 's/.*"dynamic_prompt"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SKILL_STATE")
+
+if [ "$LADDER_ENABLED" = "true" ]; then
+  TWO_X_LIMIT=$((MAX_ITER * 2))
+  LAST_CHANCE_INDEX=$((TWO_X_LIMIT + 1))
+  NEXT_ITER=$((ITERATION + 1))
+
+  if [ "$ITERATION" -le "$MAX_ITER" ]; then
+    STAGE="primary"
+    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary 전략 반복 중. 남은 조건: ${PENDING}."
+  elif [ "$ITERATION" -le "$TWO_X_LIMIT" ]; then
+    STAGE="fallback"
+    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${TWO_X_LIMIT}] ${SKILL_NAME} fallback 전략 반복 중. 실패 영역 분해 + 에이전트 조합 전환을 적용하세요. 남은 조건: ${PENDING}."
+    if [ -n "$DYNAMIC_PROMPT" ]; then
+      STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
+    fi
+  elif [ "$ITERATION" -eq "$LAST_CHANCE_INDEX" ]; then
+    STAGE="last_chance"
+    STAGE_MSG="[RTL Skill Completion Loop - last_chance] ${SKILL_NAME} 2x 반복 초과. 대안 전략 1회 자동 실행 단계입니다. 남은 조건: ${PENDING}."
+    if [ -n "$DYNAMIC_PROMPT" ]; then
+      STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
+    fi
+  else
+    STAGE="user_escalated"
+    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance 실패. 사용자 결정이 필요합니다. 남은 조건: ${PENDING}."
+  fi
+
+  sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEXT_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+
+  # Best-effort mark of current stage for external readers.
+  if grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
+    sed "s/\"strategy\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"strategy\": \"$STAGE\"/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+  fi
+
+  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$STAGE_MSG")"
   exit 0
 fi
 

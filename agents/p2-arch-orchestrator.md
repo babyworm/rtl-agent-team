@@ -47,8 +47,8 @@ Read("docs/phase-1-research/io_definition.json")
 ```
 # For each functional area with multiple candidates from P1's domain-analysis.md,
 # spawn parallel agents to evaluate HW feasibility:
-Task(subagent_type="general-purpose", model="sonnet", run_in_background=true,
-     prompt="HW evaluation for {block} candidate A ({algorithm}): gate count, critical path depth, SRAM requirements, external memory BW, throughput at {target_freq}. Use WebSearch. Output structured JSON.")
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="sonnet", run_in_background=true,
+     prompt="HW evaluation for {block} candidate A ({algorithm}): gate count, critical path depth, SRAM requirements, external memory BW, throughput at {target_freq}. Output structured JSON.")
 # ... one agent per candidate per functional area (all parallel)
 
 # Invoke domain-consult for missing HW data

@@ -110,8 +110,8 @@ For complete agent delegation table and design rules, invoke the rtl-orchestrate
 - Port prefix: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
 - Clock: `clk` (single) or `{domain}_clk` (multiple), Reset: `rst_n` (single) or `{domain}_rst_n` (multiple) (active-low async)
 - No CamelCase: `snake_case` or `ALL_CAPS` only. Params `ALL_CAPS`, localparam `L_` prefix
-- SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11
-- Full rules: `.claude/rules/rtl-coding-conventions.md`
+- SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
+- Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `.claude/rules/diagram-rules.md`
 
 ## Mandatory Verification After RTL Changes
 RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done

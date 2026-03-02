@@ -5,15 +5,15 @@
     "email": "babyworm@users.noreply.github.com"
   },
   "metadata": {
-    "description": "RTL design and verification automation plugins for Claude Code",
-    "version": "0.1.0"
+    "description": "RTL design and verification automation agents for Claude Code",
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "rtl-agent-team",
       "source": "./",
-      "description": "50-agent RTL design pipeline with 42 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
-      "version": "0.1.0",
+      "description": "64-agent RTL design pipeline with 56 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
+      "version": "0.2.0",
       "author": {
         "name": "babyworm"
       },

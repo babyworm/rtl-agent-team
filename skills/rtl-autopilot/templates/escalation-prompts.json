@@ -1,0 +1,7 @@
+{
+  "_description": "Fallback prompt templates for orchestration escalation. Used when LLM-generated dynamic prompt is unavailable.",
+  "primary": "Continue the current gate workflow and focus on closing pending criteria with existing agent assignment.",
+  "fallback": "Split failing scope by module or requirement, switch reviewer+solver agent pairing, and re-run only impacted checks.",
+  "last_chance": "Apply a non-overlapping alternative strategy once, record precise deltas, and prepare concise user escalation context if this attempt fails.",
+  "user_escalation": "Automatic retries are exhausted. Ask the user for explicit direction with failure summary, attempted strategies, and recommended options."
+}

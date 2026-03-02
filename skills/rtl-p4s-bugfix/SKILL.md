@@ -39,14 +39,17 @@ Passing lint is merely "compilation success" — simulation is required to prove
 </Why_This_Exists>
 
 <Delegation>
-Spawn the p4s-bugfix-orchestrator agent to manage the full bug fix cycle.
 The orchestrator handles analysis, fix+lint, TB creation/update, functional verification,
 Phase 5→4 feedback return, parallel UNIT_FIX across modules, and lesson-learned recording.
 
 All policies, checklists, escalation rules, and parallel fix decision logic are defined
 in the rtl-p4s-bugfix-policy skill (loaded via the orchestrator's skills: field).
 
-Agent: p4s-bugfix-orchestrator
-Input: Bug description, affected modules, feedback_origin (if Phase 5→4 feedback mode)
-Output: Verified fix with rtl-verify-done marker, updated TBs, lesson-learned entry
+## Execution
+
+Task(subagent_type="rtl-agent-team:p4s-bugfix-orchestrator",
+     prompt="Execute RTL bug fix cycle. Bug description: $ARGUMENTS")
+
+Do not perform any work directly.
+The orchestrator agent manages the full analyze → fix → lint → TB → simulation cycle.
 </Delegation>
