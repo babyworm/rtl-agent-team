@@ -83,8 +83,13 @@ When entering fallback or last-chance stages, orchestrator writes:
 - `orchestration_control.dynamic_prompt` metadata (`source`, `strategy_tag`, `used`)
 
 Fallback templates are available in:
-`skills/rtl-autopilot/templates/escalation-prompts.json`
+- `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/escalation-prompts.json` (plugin runtime)
+- `skills/rtl-autopilot/templates/escalation-prompts.json` (development repo context)
+
 Use templates only when LLM-generated prompt text is unavailable.
+If both paths are unreadable, orchestrator MUST use built-in defaults and still write
+the chosen text into `orchestration_control.dynamic_prompt_text` with
+`orchestration_control.dynamic_prompt.source = "builtin"`.
 
 ### Context Manifests
 Each phase has a manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`) declaring:

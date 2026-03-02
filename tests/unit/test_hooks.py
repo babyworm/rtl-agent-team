@@ -301,6 +301,31 @@ class TestStopGate:
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "Ask user" in ctx or "user" in ctx.lower()
 
+    def test_nested_orchestration_control_fields_take_precedence(self, tmp_project):
+        """Nested orchestration_control values must win over same-name top-level keys."""
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "active_gate_id": "top-level-incorrect",
+                "active_gate_primary_attempts": 99,
+                "orchestration_control": {
+                    "active_gate_id": "p3-quality-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 1,
+                    "active_gate_fallback_attempts": 0,
+                    "active_gate_last_chance_attempts": 0,
+                    "active_gate_strategy": "primary",
+                    "needs_user_decision": False
+                }
+            },
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "p3-quality-gate" in ctx
+        assert "primary=1" in ctx
+
 
 class TestRtlEditTrackerPhase6:
     """Tests for Phase 6 stale detection in hooks/rtl-edit-tracker.sh."""
@@ -449,18 +474,20 @@ class TestSkillCompletionGate:
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
         assert not state_file.exists()
 
-    def test_max_iterations_allows_exit(self, tmp_project):
-        """When iteration >= max_iterations → allow exit with warning."""
+    def test_max_iterations_still_blocks_under_ladder(self, tmp_project):
+        """At iteration == max_iterations, ladder remains active and blocks exit."""
         self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is True
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "primary" in ctx.lower()
 
-    def test_max_iterations_cleans_state(self, tmp_project):
-        """After max iterations, state file should be removed."""
+    def test_max_iterations_does_not_clean_state_under_ladder(self, tmp_project):
+        """Ladder mode should keep state for fallback/last-chance escalation."""
         self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
-        assert not state_file.exists()
+        assert state_file.exists()
 
     def test_iteration_increments_on_block(self, tmp_project):
         """Each block should increment the iteration counter."""
@@ -555,6 +582,18 @@ class TestSkillCompletionGate:
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "사용자" in ctx or "user" in ctx.lower()
 
+    def test_legacy_disabled_ladder_is_migrated_and_still_blocks(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["use_escalation_ladder"] = False
+        state_file.write_text(json.dumps(state, indent=2))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        migrated = json.loads(state_file.read_text())
+        assert migrated["use_escalation_ladder"] is True
+
 
 class TestSkillActivation:
     """Tests for hooks/rtl-skill-activation.sh."""
@@ -592,7 +631,7 @@ class TestSkillActivation:
         assert state["skill"] == "rtl-p4s-bugfix"
         assert state["all_complete"] is False
         assert "lint_pass" in state["pending"]
-        assert state["use_escalation_ladder"] is False
+        assert state["use_escalation_ladder"] is True
 
     def test_rtl_skill_no_criteria_no_state(self, tmp_project):
         """rtl-agent-team skill without criteria in config should not create state."""

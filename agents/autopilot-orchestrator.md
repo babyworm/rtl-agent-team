@@ -83,7 +83,15 @@ For every active gate:
    - `2N+1`: last-chance alternative (single auto attempt)
    - after last-chance fail: set `needs_user_decision=true`, stop and ask user
 4. On fallback/last-chance, write `dynamic_prompt_text` (LLM-generated guidance).
-   If generation fails, load fallback from `skills/rtl-autopilot/templates/escalation-prompts.json`.
+   If generation fails, resolve fallback templates in this order:
+   - `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/escalation-prompts.json` (plugin runtime)
+   - `skills/rtl-autopilot/templates/escalation-prompts.json` (development repo context)
+   If both are unavailable, use built-in defaults:
+   - `primary`: Continue current gate workflow, focus on pending criteria with existing agent assignment.
+   - `fallback`: Split failing scope by module/requirement, switch reviewer+solver pairing, rerun impacted checks only.
+   - `last_chance`: Apply one non-overlapping alternative strategy, record deltas, prepare escalation context.
+   - `user_escalation`: Retries exhausted; ask user with failure summary, attempted strategies, and recommended options.
+   Always persist the selected text to `orchestration_control.dynamic_prompt_text` and set `orchestration_control.dynamic_prompt.source` to `llm`, `template`, or `builtin`.
 
 ## Step 2: Phase 1 — Research
 

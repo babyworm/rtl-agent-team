@@ -212,7 +212,7 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 | `stop-gate.sh` | Stop | Autopilot gate ladder enforcement (`N→2N→last-chance→user escalation`) + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
-| `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement (legacy max-iteration mode + optional escalation ladder mode) |
+| `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 

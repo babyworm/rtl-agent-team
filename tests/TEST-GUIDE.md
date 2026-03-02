@@ -113,7 +113,7 @@ python -m pytest tests/unit/ -n auto
 | `stop-gate.sh` | autopilot 실행 중 세션 종료 차단 | 상태 파일 유무에 따른 차단 |
 | `rtl-p6-cascade-gate.sh` | Phase 6 이후 RTL 수정 시 cascade 재검토 강제 | stale 마커, cascade-done, 차단/허용 |
 | `rtl-skill-activation.sh` | 스킬 호출 시 완료 상태 자동 생성 (PreToolUse:Skill) | 상태 파일 생성, 재진입 방지, 기준 로딩 |
-| `rtl-skill-completion-gate.sh` | 스킬 완료 전 세션 종료 차단 (Stop) | 반복 카운트, 최대 반복, staleness, 정리 |
+| `rtl-skill-completion-gate.sh` | 스킬 완료 전 세션 종료 차단 (Stop) | escalation ladder(`N→2N→last-chance→user escalation`), 반복 카운트, staleness, 정리 |
 
 **동작 원리:** 훅은 stdin으로 JSON을 받고, stdout으로 `{"continue": true/false}` JSON을 출력합니다.
 테스트는 `run_hook()` helper로 실제 셸 스크립트를 실행하고 출력 JSON을 검증합니다.

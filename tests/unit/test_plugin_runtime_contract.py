@@ -19,6 +19,7 @@ PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_JSON = REPO_ROOT / ".claude-plugin" / "marketplace.json"
 SKILLS_DIR = REPO_ROOT / "skills"
 AGENTS_DIR = REPO_ROOT / "agents"
+RTL_ORCHESTRATE_SKILL = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
 INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
@@ -183,6 +184,15 @@ class TestSessionStartRoutingBlockContract:
         assert end_token in generated_block
         return generated_block.split(start_token, 1)[1].split(end_token, 1)[0]
 
+    @pytest.fixture
+    def orchestrate_skill_routing_section(self):
+        content = RTL_ORCHESTRATE_SKILL.read_text()
+        start_token = "## Skill Routing Table"
+        end_token = "### Action Skill → Orchestrator Agent Mapping (internal)"
+        assert start_token in content
+        assert end_token in content
+        return content.split(start_token, 1)[1].split(end_token, 1)[0]
+
     def test_action_skill_first_statement_present(self, routing_section):
         assert "Action Skills first" in routing_section
 
@@ -202,6 +212,19 @@ class TestSessionStartRoutingBlockContract:
             assert _skill_user_invocable(skill_name), (
                 f"Routed Action Skill must be user-invocable: {skill_name}"
             )
+
+    def test_sessionstart_routes_stay_synced_with_orchestrate_skill_table(
+        self, routing_section, orchestrate_skill_routing_section
+    ):
+        exported_routes = set(re.findall(r"/rtl-agent-team:([a-z0-9-]+)", routing_section))
+        skill_table_routes = set(re.findall(r"/rtl-agent-team:([a-z0-9-]+)", orchestrate_skill_routing_section))
+        # Internal reference route is intentionally not user-invocable.
+        assert "rtl-orchestrate" in orchestrate_skill_routing_section
+        assert "/rtl-agent-team:rtl-orchestrate" not in routing_section
+        assert exported_routes == skill_table_routes, (
+            "SessionStart routing block is out of sync with skills/rtl-orchestrate/SKILL.md "
+            "Skill Routing Table."
+        )
 
     def test_convention_routes_are_non_user_invocable(self, routing_section):
         conventions = set(re.findall(r"`(systemverilog(?:-assertion)?|uvm|systemc)` \(auto-applied\)", routing_section))

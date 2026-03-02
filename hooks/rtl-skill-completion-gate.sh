@@ -5,7 +5,7 @@
 # Contains: skill name, iteration count, pending criteria, all_complete flag
 #
 # If skill is active and not all_complete, session exit is BLOCKED and iteration incremented.
-# Max iterations prevents infinite loops (default 5).
+# max_iterations is treated as primary retry budget (N): N -> 2N -> last-chance -> user escalation.
 # Staleness check: state older than 2 hours is ignored (prevents blocking new sessions).
 
 INPUT=$(cat)
@@ -61,54 +61,46 @@ if [ "$COMPLETED" = "true" ]; then
 fi
 
 LADDER_ENABLED=$(sed -n 's/.*"use_escalation_ladder"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$SKILL_STATE")
-LADDER_ENABLED=${LADDER_ENABLED:-false}
+LADDER_ENABLED=${LADDER_ENABLED:-true}
 DYNAMIC_PROMPT=$(sed -n 's/.*"dynamic_prompt"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SKILL_STATE")
 
-if [ "$LADDER_ENABLED" = "true" ]; then
-  TWO_X_LIMIT=$((MAX_ITER * 2))
-  LAST_CHANCE_INDEX=$((TWO_X_LIMIT + 1))
-  NEXT_ITER=$((ITERATION + 1))
-
-  if [ "$ITERATION" -le "$MAX_ITER" ]; then
-    STAGE="primary"
-    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary 전략 반복 중. 남은 조건: ${PENDING}."
-  elif [ "$ITERATION" -le "$TWO_X_LIMIT" ]; then
-    STAGE="fallback"
-    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${TWO_X_LIMIT}] ${SKILL_NAME} fallback 전략 반복 중. 실패 영역 분해 + 에이전트 조합 전환을 적용하세요. 남은 조건: ${PENDING}."
-    if [ -n "$DYNAMIC_PROMPT" ]; then
-      STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
-    fi
-  elif [ "$ITERATION" -eq "$LAST_CHANCE_INDEX" ]; then
-    STAGE="last_chance"
-    STAGE_MSG="[RTL Skill Completion Loop - last_chance] ${SKILL_NAME} 2x 반복 초과. 대안 전략 1회 자동 실행 단계입니다. 남은 조건: ${PENDING}."
-    if [ -n "$DYNAMIC_PROMPT" ]; then
-      STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
-    fi
-  else
-    STAGE="user_escalated"
-    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance 실패. 사용자 결정이 필요합니다. 남은 조건: ${PENDING}."
-  fi
-
-  sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEXT_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
-
-  # Best-effort mark of current stage for external readers.
-  if grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
-    sed "s/\"strategy\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"strategy\": \"$STAGE\"/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
-  fi
-
-  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$STAGE_MSG")"
-  exit 0
+# One-time migration: legacy states with ladder disabled are forced to ladder mode.
+if [ "$LADDER_ENABLED" != "true" ] && grep -q '"use_escalation_ladder"' "$SKILL_STATE" 2>/dev/null; then
+  sed 's/"use_escalation_ladder"[[:space:]]*:[[:space:]]*false/"use_escalation_ladder": true/' "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 fi
 
-# Check max iterations
-if [ "$ITERATION" -ge "$MAX_ITER" ]; then
-  rm -f "$SKILL_STATE"
-  printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Skill Loop] %s 최대 반복(%s회) 도달. 완료되지 않았지만 루프를 종료합니다. 수동 확인이 필요합니다."}}' "$SKILL_NAME" "$MAX_ITER"
-  exit 0
+TWO_X_LIMIT=$((MAX_ITER * 2))
+LAST_CHANCE_INDEX=$((TWO_X_LIMIT + 1))
+NEXT_ITER=$((ITERATION + 1))
+
+if [ "$ITERATION" -le "$MAX_ITER" ]; then
+  STAGE="primary"
+  STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary 전략 반복 중. 남은 조건: ${PENDING}."
+elif [ "$ITERATION" -le "$TWO_X_LIMIT" ]; then
+  STAGE="fallback"
+  STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${TWO_X_LIMIT}] ${SKILL_NAME} fallback 전략 반복 중. 실패 영역 분해 + 에이전트 조합 전환을 적용하세요. 남은 조건: ${PENDING}."
+  if [ -n "$DYNAMIC_PROMPT" ]; then
+    STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
+  fi
+elif [ "$ITERATION" -eq "$LAST_CHANCE_INDEX" ]; then
+  STAGE="last_chance"
+  STAGE_MSG="[RTL Skill Completion Loop - last_chance] ${SKILL_NAME} 2x 반복 초과. 대안 전략 1회 자동 실행 단계입니다. 남은 조건: ${PENDING}."
+  if [ -n "$DYNAMIC_PROMPT" ]; then
+    STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
+  fi
+else
+  STAGE="user_escalated"
+  STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance 실패. 사용자 결정이 필요합니다. 남은 조건: ${PENDING}."
+  if [ -n "$DYNAMIC_PROMPT" ]; then
+    STAGE_MSG="${STAGE_MSG} Suggested context: ${DYNAMIC_PROMPT}"
+  fi
 fi
 
-# Skill not complete — BLOCK exit and increment iteration
-NEW_ITER=$((ITERATION + 1))
-sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEW_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEXT_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop - %s/%s] %s 스킬이 아직 완료되지 않았습니다. 남은 조건: %s. 작업을 계속 진행하세요. 모든 조건 충족 시 .rtl-agent-team/state/skill-active.json 의 all_complete 를 true 로 설정하세요."}}' "$NEW_ITER" "$MAX_ITER" "$SKILL_NAME" "$PENDING"
+# Best-effort mark of current stage for external readers.
+if grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
+  sed "s/\"strategy\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"strategy\": \"$STAGE\"/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+fi
+
+printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$STAGE_MSG")"

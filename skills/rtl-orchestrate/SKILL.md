@@ -382,7 +382,7 @@ Domain expert agents MUST read relevant knowledge files from `domain-packages/{d
 | `stop-gate.sh` | Stop | Autopilot escalation ladder enforcement + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement |
-| `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement (legacy max-iteration + optional ladder mode) |
+| `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
 
 Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → `rtl-skill-completion-gate` → `stop-gate`.
 
@@ -406,8 +406,8 @@ Agent-managed (orchestrator resumability):
 - `.rtl-agent-team/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker
 
 Templates:
-- `skills/rtl-autopilot/templates/autopilot-state.json` — v3.0 state schema with `orchestration_control`
-- `skills/rtl-autopilot/templates/escalation-prompts.json` — fallback prompt templates for ladder transitions
+- `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/autopilot-state.json` (or `skills/rtl-autopilot/templates/autopilot-state.json` in repo context) — v3.0 state schema with `orchestration_control`
+- `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/escalation-prompts.json` (or `skills/rtl-autopilot/templates/escalation-prompts.json` in repo context) — fallback prompt templates for ladder transitions
 
 ---
 
