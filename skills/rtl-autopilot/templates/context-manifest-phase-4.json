@@ -18,11 +18,13 @@
   "outputs": [
     "rtl/*/*.sv",
     "sim/*/tb_*.sv",
-    "docs/phase-4-rtl/module-descriptions.md",
-    "docs/phase-4-rtl/unit-test-design.md",
     "docs/phase-4-rtl/stream-b-sva-skeletons.md",
     "docs/phase-4-rtl/stream-b-cdc-preliminary.md",
     "docs/phase-4-rtl/stream-b-tb-skeletons.md",
     "docs/phase-4-rtl/phase-4-summary.md"
+  ],
+  "optional_outputs": [
+    "docs/phase-4-rtl/module-descriptions.md",
+    "docs/phase-4-rtl/unit-test-design.md"
   ]
 }

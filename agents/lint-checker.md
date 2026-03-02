@@ -57,7 +57,7 @@ color: yellow
   - Do not modify any RTL source files — analysis only
   - Verible and slang may disagree; report both findings and explain discrepancies
   - Apply project naming conventions from CLAUDE.md when assessing style warnings:
-    i_/o_/io_ port prefixes, {domain}_clk/{domain}_rst_n, u_ instance prefix, gen_ generate prefix,
+    i_/o_/io_ port prefixes, clk/{domain}_clk and rst_n/{domain}_rst_n, u_ instance prefix, gen_ generate prefix,
     typedef enum for FSM states, typedef struct packed for grouped signals, logic only (no reg/wire)
   - Treat W (warning) and E (error) lint results with equal seriousness
   - Do not fabricate lint output — only report what the tools actually produce

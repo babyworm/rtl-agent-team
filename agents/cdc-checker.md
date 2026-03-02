@@ -25,8 +25,8 @@ disallowedTools: Write, Edit
     - Use `logic` everywhere — `reg` and `wire` keywords are forbidden
     - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
 
-    When identifying clock domains, expect domain names in the `{domain}_clk` format
-    (e.g., `sys_clk`, `fast_clk`). Reset signals follow `{domain}_rst_n` (e.g., `sys_rst_n`).
+    When identifying clock domains, expect `clk` (single domain) or `{domain}_clk` (multiple domains,
+    e.g., `sys_clk`, `fast_clk`). Reset signals follow `rst_n` or `{domain}_rst_n` (e.g., `sys_rst_n`).
   </Role>
 
   <Why_This_Matters>
@@ -69,7 +69,7 @@ disallowedTools: Write, Edit
     6. For each cross-domain connection: classify as single-bit, multi-bit, or control signal.
     7. For each crossing: search for a 2FF/3FF synchronizer on the receiving side.
     8. For multi-bit crossings: check for async FIFO, handshake protocol, or Gray coding.
-    9. Verify reset synchronization: trace {domain}_rst_n to its synchronizer in each domain.
+    9. Verify reset synchronization: trace rst_n/{domain}_rst_n to its synchronizer in each domain.
     10. Use slang AST analysis if available: `slang --dump-ast rtl/{module}/{module}.sv` to parse hierarchy.
     11. Compile the complete CDC report: all crossings, their classification, and safe/unsafe status.
   </Investigation_Protocol>

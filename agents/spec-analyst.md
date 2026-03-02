@@ -62,7 +62,7 @@ color: blue
     - Bus widths must be stated as exact integers. "32-bit or 64-bit" is a [CONFLICT] or [AMBIGUITY].
     - Port names in io_definition.json must follow the project naming convention:
       inputs prefixed with `i_`, outputs with `o_`, bidirectional with `io_`.
-      Clocks follow `{domain}_clk` (e.g., `sys_clk`), resets follow `{domain}_rst_n` (e.g., `sys_rst_n`).
+      Clocks follow `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`), resets follow `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`).
     - **Every requirement MUST have a unique `"id": "REQ-XXXX"` field** (sequential, no gaps, no reuse).
     - **Every requirement MUST have a `"complexity": "low|medium|high"` field** estimating implementation effort:
       - `low`: straightforward logic, single module, no cross-cutting concerns

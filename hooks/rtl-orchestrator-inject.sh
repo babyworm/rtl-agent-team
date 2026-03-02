@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # SessionStart hook: RTL project orchestration rules injection
 # Fires when RTL project directories exist (rtl/ or docs/ or .rtl-agent-team/)
 # Injects critical design rules, delegation guidance, and pipeline context.
@@ -31,32 +31,34 @@ cat << 'RULES_EOF'
 ## Skill Routing (key patterns → skill)
 | Pattern | Skill |
 |---|---|
-| RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` |
+| RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` (command) |
 | setup, initialize, project start | `/rtl-agent-team:rtl-setup` |
-| spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` |
+| spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` (command) |
 | codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` |
-| architecture design (RTL context) | `/rtl-agent-team:p2-arch-design` |
+| architecture design (RTL context) | `/rtl-agent-team:p2-arch-design` (command) |
 | architecture review | `/rtl-agent-team:arch-review` |
 | reference model, C model | `/rtl-agent-team:ref-model` |
 | BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` |
-| microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` |
-| DSE, design space exploration | `/rtl-agent-team:rtl-dse` |
+| microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` (command) |
+| DSE, design space exploration | `/rtl-agent-team:rtl-dse` (command) |
+| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rtl-spec-to-uarch` (command) |
+| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` (command) |
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` |
-| RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` |
+| RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` (command) |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
 | unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
 | lint, lint check | `/rtl-agent-team:rtl-lint-check` |
 | synthesis, yosys, SDC | `/rtl-agent-team:rtl-synth-check` |
-| Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` |
-| simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` |
+| Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` (command) |
+| simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` (command) |
 | formal, SVA, assertion | `/rtl-agent-team:rtl-p5s-sva-check` |
 | CDC, clock domain | `/rtl-agent-team:rtl-p5s-cdc-verify` |
 | AXI, APB, AHB, protocol | `/rtl-agent-team:rtl-p5s-protocol-verify` |
 | coverage | `/rtl-agent-team:rtl-p5s-coverage-analyze` |
-| design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` |
+| design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` (command) |
 Full routing table: `/rtl-agent-team:rtl-orchestrate`
 
-## Expert Review → Agent Delegation (spawn directly, NOT through skills)
+## Expert Review → Agent Delegation (spawn directly or through skills)
 | Request Pattern | Delegate to Agent |
 |---|---|
 | CDC review, synchronization strategy | `cdc-reviewer` |
@@ -82,7 +84,7 @@ Full routing table: `/rtl-agent-team:rtl-orchestrate`
 
 ## Coding Conventions (Core Overrides — .sv/.svh/.v/.vh)
 - Port prefix: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
-- Clock: `{domain}_clk`, Reset: `{domain}_rst_n` (active-low async)
+- Clock: `clk` (single) or `{domain}_clk` (multiple), Reset: `rst_n` (single) or `{domain}_rst_n` (multiple) (active-low async)
 - No CamelCase: `snake_case` or `ALL_CAPS` only. Params `ALL_CAPS`, localparam `L_` prefix
 - SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11
 - Full rules: `.claude/rules/rtl-coding-conventions.md`
@@ -91,7 +93,7 @@ Full routing table: `/rtl-agent-team:rtl-orchestrate`
 RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
 Gate: `touch .rtl-agent-team/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
 
-## 6-Phase Design Pipeline
+## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)
 Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts)
 RULES_EOF

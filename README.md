@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 50 specialized AI agents + 39 skills automate the 6-Phase pipeline:
+> 50 specialized AI agents + 42 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 39 skills + 11 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 50 specialized AI agents + 42 skills + 13 reference documents.
 
 ## Marketplace
 
@@ -113,7 +113,7 @@ Creates the project directory structure and verifies EDA tool installation.
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 39 skills.
+See the `skills/` directory for the full list of 42 skills.
 
 ## Project Artifact Structure
 
@@ -145,17 +145,17 @@ rtl-agent-team/
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
 ├── agents/                     # 50 agents (design/verification/review/EDA/domain)
-├── skills/                     # 39 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 42 skills (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
-│   └── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-├── references/                 # 11 detailed reference documents
-│   ├── coding-style-guide.md   # SV naming conventions (detailed)
-│   ├── axi-protocol-rules.md   # AXI4 per-channel SVA templates
-│   ├── sva-patterns.md         # SVA temporal operators + pattern library
-│   ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage
-│   └── ...                     # + 7 more (CDC, UVM, Yosys, SDC, etc.)
+│   ├── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
+│   └── {skill}/references/     # 13 reference documents (distributed per skill)
+│       ├── coding-style-guide.md   # SV naming conventions (in systemverilog/)
+│       ├── axi-protocol-rules.md   # AXI4 per-channel SVA templates (in rtl-p5s-protocol-verify/)
+│       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
+│       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
+│       └── ...                     # + 9 more (CDC, UVM, Yosys, SDC, etc.)
 ├── docker/                     # EDA tool Docker image
 │   └── Dockerfile              # Open-source EDA full bundle
 └── domain-packages/            # Domain knowledge packages
@@ -205,7 +205,7 @@ rtl-agent-team/
 |-------|----------|------|
 | Core rules | `skills/*/SKILL.md` → `<Steps>` | Mandatory rules that agents always read |
 | Situational guides | `skills/*/SKILL.md` → `<Advanced>` | Referenced only in specific optimization/scenarios |
-| Detailed references | `references/*.md` | Command references, pattern libraries, protocol details |
+| Detailed references | `skills/*/references/*.md` | Command references, pattern libraries, protocol details |
 
 ## EDA Tools
 
@@ -257,8 +257,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
 ├── agents/                              # rtl-agent-team agents (50)
-├── skills/                              # rtl-agent-team skills (39)
-├── references/                          # Reference documents (11)
+├── skills/                              # rtl-agent-team skills (42, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

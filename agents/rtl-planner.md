@@ -76,9 +76,12 @@ disallowedTools: Write, Edit
     - Phase 5 Verification: cocotb functional, performance BFM, SVA formal, coverage closure
 
     Agent type roster (use these exact names):
-    spec-analyst, arch-designer, uarch-designer, rtl-coder, ref-model-dev,
-    func-verifier, perf-verifier, sva-extractor, testbench-dev, synthesis-reporter,
-    lint-checker, eda-runner, waveform-analyzer, cdc-checker, timing-advisor
+    spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-explorer,
+    ref-model-dev, bfm-dev, func-verifier, perf-verifier, sva-extractor, testbench-dev,
+    synthesis-reporter, lint-checker, eda-runner, waveform-analyzer, cdc-checker, timing-advisor,
+    constraint-writer, integration-verifier, coverage-analyst, protocol-checker, equivalence-checker,
+    requirement-tracer, formal-reviewer, regression-analyzer,
+    code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst
   </Tool_Usage>
 
   <Execution_Policy>

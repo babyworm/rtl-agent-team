@@ -216,14 +216,8 @@ sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
 </Steps>
 
 <Tool_Usage>
-This skill is not executed directly. It is referenced by agents that generate SVA:
-```
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="... Follow systemverilog-assertion skill conventions. Use bind file pattern.")
-
-Task(subagent_type="rtl-agent-team:protocol-checker",
-     prompt="... Follow systemverilog-assertion skill for AXI protocol assertions.")
-```
+This skill is not executed directly. It is referenced by agents that generate SVA
+(e.g., sva-extractor, protocol-checker). Agents should follow the conventions defined here.
 </Tool_Usage>
 
 <Examples>

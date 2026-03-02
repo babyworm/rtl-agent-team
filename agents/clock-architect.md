@@ -49,6 +49,7 @@ disallowedTools: Edit
 
   <Constraints>
     - Clock naming: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`, `pixel_clk`) — NOT `clk_i`.
+    - Reset naming: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`. Active-low async.
     - Every clock mux must be glitch-free (use ICG or mux-with-latch pattern).
     - Clock dividers must produce 50% duty cycle unless specifically justified.
     - All clock relationships must be explicitly defined (no implicit assumptions).

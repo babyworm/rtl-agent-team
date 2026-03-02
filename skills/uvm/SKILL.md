@@ -242,11 +242,8 @@ endclass
 </Steps>
 
 <Tool_Usage>
-This skill is not executed directly. It is referenced by agents that generate UVM environments:
-```
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="... Follow uvm skill conventions. Use factory registration for all components.")
-```
+This skill is not executed directly. It is referenced by agents that generate UVM environments
+(e.g., testbench-dev). Agents should follow the conventions defined here.
 </Tool_Usage>
 
 <Examples>

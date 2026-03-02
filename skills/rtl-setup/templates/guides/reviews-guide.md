@@ -65,7 +65,7 @@ PASS | FAIL: [Reason]
 
 ## Iterative Review Structure
 
-Phases 2 and 3 use 3-round iterative reviews:
+Phases 1, 2, and 3 use 3-round iterative reviews:
 - Round 1 (`*-review-r1.md`): Initial review
 - Round 2 (`*-review-r2.md`): Address R1 findings
 - Round 3 (`*-review-r3.md`): Final pass (mandatory)

@@ -259,14 +259,8 @@ assign o_result = func_a(func_b(stage1_q));
 </Advanced>
 
 <Tool_Usage>
-This skill is not executed directly. It is referenced by agents that generate SV code:
-```
-Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="... Follow systemverilog skill conventions. Use templates/module-template.sv as scaffold.")
-
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="... Follow systemverilog skill naming conventions for SVA bind files.")
-```
+This skill is not executed directly. It is referenced by agents that generate SV code
+(e.g., rtl-coder, sva-extractor). Agents should follow the conventions defined here.
 </Tool_Usage>
 
 <Examples>

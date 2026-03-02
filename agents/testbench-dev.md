@@ -132,7 +132,7 @@ color: magenta
       cx_data_x_proto: cross cp_data, cp_protocol;
     endgroup
     ```
-    Note: Clock name uses `{domain}_clk` convention (e.g., `sys_clk`). DUT instance uses `u_` prefix (e.g., `u_dut`).
+    Note: Clock name uses `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) convention. DUT instance uses `u_` prefix (e.g., `u_dut`).
   </Tool_Usage>
 
   <Execution_Policy>

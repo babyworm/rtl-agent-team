@@ -23,7 +23,8 @@ esac
 
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
-CRITERIA_FILE="$CWD/.rtl-agent-team/skill-completion-criteria.json"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+CRITERIA_FILE="$PLUGIN_ROOT/.rtl-agent-team/skill-completion-criteria.json"
 
 # Don't override if already active (re-invocation within same session)
 if [ -f "$SKILL_STATE" ]; then

@@ -87,7 +87,7 @@ disallowedTools: Edit
      b. **Synthesizability**: blocking/non-blocking discipline, latch risks, clock gating patterns
      c. **Style compliance**:
         - Port naming: `i_`/`o_`/`io_` prefix (clk/rst exempt)
-        - Clock: `{domain}_clk`, Reset: `{domain}_rst_n`
+        - Clock: `clk` (single) or `{domain}_clk` (multiple), Reset: `rst_n` (single) or `{domain}_rst_n` (multiple)
         - Instance: `u_` prefix, Generate: `gen_` prefix
         - Types: `typedef enum` for FSM, `typedef struct packed` for groups
         - No `reg`/`wire` — all `logic`

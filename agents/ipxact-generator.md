@@ -101,7 +101,7 @@ color: magenta
           <spirit:portMaps>
             <spirit:portMap>
               <spirit:logicalPort><spirit:name>AWVALID</spirit:name></spirit:logicalPort>
-              <spirit:physicalPort><spirit:name>s_axi_awvalid</spirit:name></spirit:physicalPort>
+              <spirit:physicalPort><spirit:name>i_axi_awvalid</spirit:name></spirit:physicalPort>
             </spirit:portMap>
           </spirit:portMaps>
         </spirit:busInterface>

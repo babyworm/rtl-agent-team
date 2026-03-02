@@ -23,22 +23,22 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, route to the appropriate skil
 | Pattern Detected | Skill to Invoke |
 |-----------|------------|
 | **--- Full Pipeline ---** | |
-| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
+| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` (command) |
 | "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` |
 | **--- Phase 1: Research ---** | |
-| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` |
+| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` (command) |
 | "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` |
 | **--- Phase 2: Architecture ---** | |
-| "architecture design" (RTL context) | `/rtl-agent-team:p2-arch-design` |
+| "architecture design" (RTL context) | `/rtl-agent-team:p2-arch-design` (command) |
 | "architecture review", "arch review" | `/rtl-agent-team:arch-review` |
 | "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
 | "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
 | **--- Phase 3: μArch ---** | |
-| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` |
+| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` (command) |
 | **--- Pipeline Composition ---** | |
-| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` |
-| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` |
-| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` |
+| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` (command) |
+| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` (command) |
+| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` (command) |
 | "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` |
 | "decoder conformance", "conformance stream", "conformance test", "decoder verify" | `/rtl-agent-team:codec-conformance-eval` |
 | **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
@@ -48,7 +48,7 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, route to the appropriate skil
 | `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
 | **--- Phase 4: RTL ---** | |
 | "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` |
-| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` |
+| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` (command) |
 | "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
 | "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
 | "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
@@ -57,8 +57,8 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, route to the appropriate skil
 | "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
 | "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
 | **--- Phase 5: Verify ---** | |
-| "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` |
-| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` |
+| "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` (command) |
+| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` (command) |
 | "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` |
 | "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` |
 | "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-p5s-sva-check` |
@@ -66,9 +66,9 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, route to the appropriate skil
 | "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-p5s-protocol-verify` |
 | "coverage" | `/rtl-agent-team:rtl-p5s-coverage-analyze` |
 | **--- Phase 6: Design Note ---** | |
-| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` |
+| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` (command) |
 | **--- Phase 7: Exploration (optional) ---** | |
-| "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) |
+| "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p6-design-review` (command, exploration mode) |
 | **--- Other Verification ---** | |
 | "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` |
 | "regression", "multi-seed" | `/rtl-agent-team:rtl-p5s-func-verify` (Tier 3) |
@@ -105,7 +105,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Coverage analysis | `coverage-analyst` | Opus |
 | Waveform analysis | `waveform-analyzer` | Opus |
 
-### Expert Review Agents (spawn directly, NOT through skills)
+### Expert Review Agents (spawn directly or through skills)
 | Task Type | Agent | Model |
 |----------|-------|-------|
 | CDC design review | `cdc-reviewer` | Opus |
@@ -266,7 +266,7 @@ This rule applies to ALL tasks that modify `.sv/.svh/.v/.vh` files.
 
 ---
 
-## 6-Phase Design Pipeline (+Phase 7 Optional)
+## 6+1 Phase Design Pipeline (+Phase 7 Optional)
 
 ```
 Phase 1: Research    → docs/phase-1-research/       (spec, domain knowledge)

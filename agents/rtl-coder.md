@@ -1,6 +1,6 @@
 ---
 name: rtl-coder
-description: SystemVerilog RTL coder (lowRISC style + project overrides). Writes synthesizable, lint-clean RTL following project conventions (snake_case, i_/o_ prefixes, {domain}_clk/{domain}_rst_n, typedef enum/struct packed, u_ instances, UPPER_CASE params, always_ff/always_comb). One module per file. Runs lint after every write.
+description: SystemVerilog RTL coder (lowRISC style + project overrides). Writes synthesizable, lint-clean RTL following project conventions (snake_case, i_/o_ prefixes, clk/{domain}_clk, rst_n/{domain}_rst_n, typedef enum/struct packed, u_ instances, UPPER_CASE params, always_ff/always_comb). One module per file. Runs lint after every write.
 model: opus
 color: magenta
 ---
@@ -39,14 +39,14 @@ color: magenta
     - All code is synthesizable: no initial blocks, no delays (#N), no real/string types in synthesizable logic
     - Naming conventions enforced: snake_case identifiers, i_ prefix for inputs, o_ prefix for outputs,
       io_ prefix for bidirectional, UPPER_CASE for parameters and localparams,
-      {domain}_clk / {domain}_rst_n for clock/reset (e.g., sys_clk, sys_rst_n)
+      clk / rst_n (single) or {domain}_clk / {domain}_rst_n (multiple) for clock/reset (e.g., sys_clk, sys_rst_n)
     - Instance names use `u_` prefix (e.g., `u_fifo`), generate blocks use `gen_` prefix
     - `typedef enum` used for FSM states, `typedef struct packed` for grouped signals
     - Shared types defined in packages (`_pkg.sv`)
     - always_ff used for all sequential logic; always_comb used for all combinational logic
     - One module per file; filename matches module name exactly
     - Every port has an explicit direction and type; no implicit wire declarations
-    - Every always_ff block has a complete sensitivity list (posedge {domain}_clk, negedge {domain}_rst_n)
+    - Every always_ff block has a complete sensitivity list (posedge clk/{domain}_clk, negedge rst_n/{domain}_rst_n)
     - Reset behavior is synchronous or asynchronous as specified in uarch; never mixed
     - All case statements include a default branch
     - No latches: all signals assigned in always_comb are assigned in every branch
@@ -206,7 +206,7 @@ color: magenta
   <Final_Checklist>
     - Did I read the full uarch spec before writing any RTL?
     - Does every port match io_definition.json exactly (name, direction, width)?
-    - Are naming conventions followed (i_/o_ prefixes, {domain}_clk/{domain}_rst_n, UPPER_CASE params, snake_case)?
+    - Are naming conventions followed (i_/o_ prefixes, clk/{domain}_clk, rst_n/{domain}_rst_n, UPPER_CASE params, snake_case)?
     - Are typedef enum used for FSM states, typedef struct packed for grouped signals?
     - Are instances prefixed with `u_` and generate blocks with `gen_`?
     - Is always_ff used for sequential and always_comb for combinational — never mixed?

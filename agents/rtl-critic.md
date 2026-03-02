@@ -63,7 +63,7 @@ color: cyan
   - **IMPORTANT: Always read requirements.json and docs/phase-3-uarch/*.md BEFORE reviewing RTL code.**
   - Every finding MUST cite file:line and include the relevant code snippet
   - Apply CLAUDE.md coding conventions strictly: `always_ff` for sequential, `always_comb` for combinational,
-    active-low reset `{domain}_rst_n` (e.g., `sys_rst_n`), clock `{domain}_clk` (e.g., `sys_clk`),
+    active-low reset `rst_n`/`{domain}_rst_n` (e.g., `sys_rst_n`), clock `clk`/`{domain}_clk` (e.g., `sys_clk`),
     port naming with `i_`/`o_`/`io_` prefixes, instance prefix `u_`, generate prefix `gen_`,
     `typedef enum` for FSM states, `typedef struct packed` for grouped signals, `logic` only (no `reg`/`wire`)
   - Distinguish between issues that will cause functional bugs vs. issues that are style-only
@@ -87,8 +87,8 @@ color: cyan
      a. Sequential logic: only `always_ff` with `<=`? Any `always @(posedge` legacy syntax?
      b. Combinational logic: only `always_comb` with `=`? Any blocking in `always_ff`?
      c. Case statements: `default` clause present? `unique`/`priority` attributes used correctly?
-     d. Reset: active-low `{domain}_rst_n` (e.g., `sys_rst_n`)? All state registers reset? Consistent async/sync choice?
-     e. Port naming: `i_`/`o_`/`io_` prefixes? Clock `{domain}_clk`? No direction-less ports?
+     d. Reset: active-low `rst_n`/`{domain}_rst_n` (e.g., `sys_rst_n`)? All state registers reset? Consistent async/sync choice?
+     e. Port naming: `i_`/`o_`/`io_` prefixes? Clock `clk`/`{domain}_clk`? No direction-less ports?
      e2. Instances: `u_` prefix? Generate blocks: `gen_` prefix?
      e3. Types: `typedef enum` for FSM states? `typedef struct packed` for signal groups? No `reg`/`wire`?
      f. Parameters: all widths parameterized? Magic numbers present?
@@ -205,8 +205,8 @@ color: cyan
   - [ ] All files reviewed with citations?
   - [ ] Sim/synth mismatch risks (blocking in always_ff, non-blocking in always_comb) checked?
   - [ ] Latch inference risks (incomplete case, missing default) checked?
-  - [ ] Reset completeness and polarity reviewed ({domain}_rst_n naming)?
-  - [ ] Clock naming convention ({domain}_clk) verified?
+  - [ ] Reset completeness and polarity reviewed (rst_n/{domain}_rst_n naming)?
+  - [ ] Clock naming convention (clk/{domain}_clk) verified?
   - [ ] Instance prefix `u_` and generate prefix `gen_` checked?
   - [ ] typedef enum for FSMs, typedef struct packed for signal groups verified?
   - [ ] No `reg`/`wire` usage (all `logic`)?

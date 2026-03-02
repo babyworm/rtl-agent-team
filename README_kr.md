@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 50 specialized AI agents + 39 skills automate the 6-Phase pipeline:
+> 50 specialized AI agents + 42 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-50개 전문 AI 에이전트 + 39개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+50개 전문 AI 에이전트 + 42개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ## Marketplace
 
@@ -113,7 +113,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 39개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 42개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -145,17 +145,17 @@ rtl-agent-team/
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
 ├── agents/                     # 50개 에이전트 (설계/검증/리뷰/EDA/도메인)
-├── skills/                     # 39개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 42개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
 │   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
-│   └── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-├── references/                 # 11개 상세 레퍼런스 문서
-│   ├── coding-style-guide.md   # SV 명명 규칙 상세
-│   ├── axi-protocol-rules.md   # AXI4 채널별 SVA 템플릿
-│   ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리
-│   ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage
-│   └── ...                     # + 7개 (CDC, UVM, Yosys, SDC 등)
+│   ├── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
+│   └── {skill}/references/     # 13개 레퍼런스 문서 (스킬별 분산)
+│       ├── coding-style-guide.md   # SV 명명 규칙 상세 (systemverilog/)
+│       ├── axi-protocol-rules.md   # AXI4 채널별 SVA 템플릿 (rtl-p5s-protocol-verify/)
+│       ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리 (rtl-p5s-sva-check/)
+│       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (rtl-p5s-func-verify/)
+│       └── ...                     # + 9개 (CDC, UVM, Yosys, SDC 등)
 ├── docker/                     # EDA 도구 Docker 이미지
 │   └── Dockerfile              # 오픈소스 EDA 전체 번들
 └── domain-packages/            # 도메인 지식 패키지
@@ -205,7 +205,7 @@ rtl-agent-team/
 |------|------|------|
 | 핵심 규칙 | `skills/*/SKILL.md` → `<Steps>` | 에이전트가 항상 읽는 필수 규칙 |
 | 상황별 가이드 | `skills/*/SKILL.md` → `<Advanced>` | 특정 최적화/상황에서만 참조 |
-| 상세 레퍼런스 | `references/*.md` | 명령 레퍼런스, 패턴 라이브러리, 프로토콜 상세 |
+| 상세 레퍼런스 | `skills/*/references/*.md` | 명령 레퍼런스, 패턴 라이브러리, 프로토콜 상세 |
 
 ## EDA 도구
 
@@ -257,8 +257,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
 ├── agents/                              # rtl-agent-team 에이전트 (50개)
-├── skills/                              # rtl-agent-team 스킬 (39개)
-├── references/                          # 레퍼런스 문서 (11개)
+├── skills/                              # rtl-agent-team 스킬 (42개, 13개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지

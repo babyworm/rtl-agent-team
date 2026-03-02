@@ -59,7 +59,7 @@ disallowedTools: Write, Edit
     2. For each file, grep for `module` declarations to build the module inventory.
     3. For each module, grep for instantiation patterns (`module_name u_name`) to build the hierarchy.
     4. Read each module's port list to map inter-module connections.
-    5. Trace clock signals: grep for `_clk` port connections across the hierarchy ({domain}_clk convention).
+    5. Trace clock signals: grep for `clk` port connections across the hierarchy (bare `clk` or `{domain}_clk` convention).
     6. Identify all unique clock signals (e.g., sys_clk, pixel_clk); trace each to its source (input port or clock generator).
     7. Map parameter flow: grep for `#(` parameter overrides at each instantiation.
     8. For any specifically requested signal: grep for all assignments and all reads across all files.
@@ -81,11 +81,11 @@ disallowedTools: Write, Edit
     # Find all instantiations of a specific module
     grep -rn "module_name\s\+u_" rtl/ --include="*.sv"
 
-    # Find all clock signal connections ({domain}_clk convention)
-    grep -rn "_clk\s*[,)]" rtl/ --include="*.sv"
+    # Find all clock signal connections (clk or {domain}_clk convention)
+    grep -rn "clk\s*[,)]" rtl/ --include="*.sv"
 
-    # Find all reset signal connections ({domain}_rst_n convention)
-    grep -rn "_rst_n\s*[,)]" rtl/ --include="*.sv"
+    # Find all reset signal connections (rst_n or {domain}_rst_n convention)
+    grep -rn "rst_n\s*[,)]" rtl/ --include="*.sv"
 
     # Find where a signal is driven (LHS assignment)
     grep -rn "signal_name\s*<=" rtl/ --include="*.sv"

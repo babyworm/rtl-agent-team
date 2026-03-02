@@ -242,14 +242,8 @@ expected = lib.encode_bin(ctx_addr, bin_val)
 </Steps>
 
 <Tool_Usage>
-This skill is not executed directly. It is referenced by agents that generate SystemC code:
-```
-Task(subagent_type="rtl-agent-team:bfm-dev",
-     prompt="... Follow systemc skill conventions. Use AT non-blocking transport.")
-
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="... Follow systemc skill conventions for bit-accurate reference model.")
-```
+This skill is not executed directly. It is referenced by agents that generate SystemC code
+(e.g., bfm-dev, ref-model-dev). Agents should follow the conventions defined here.
 </Tool_Usage>
 
 <Examples>

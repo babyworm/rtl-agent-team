@@ -7,7 +7,7 @@
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 50+ specialized agents, 40+ skills, 7 hooks,
+When installed as a plugin, it provides 50+ specialized agents, 40+ skills, 8 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -110,7 +110,7 @@ sync the condensed version in `hooks/rtl-orchestrator-inject.sh`.
 8. **Do not proceed to Phase 6 without Phase 5 PASS** (final-compliance.md verdict=PASS required)
 9. **Phase 7 is exempt from absolute rules** — free exploration allowed without pipeline Gate
 
-## 6-Phase Design Pipeline
+## 6+1 Phase Design Pipeline
 
 ```
 Phase 1: Research     → docs/phase-1-research/       (spec, domain knowledge)
@@ -135,7 +135,7 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 ## Coding Conventions (Core Overrides)
 
 1. **Port prefix**: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
-2. **Clock**: `{domain}_clk` (e.g., `sys_clk`). **Reset**: `{domain}_rst_n`. Active-low async
+2. **Clock**: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`). **Reset**: `rst_n` (single) or `{domain}_rst_n` (multiple). Active-low async
 3. **No CamelCase**: `snake_case` or `ALL_CAPS` only. Parameters `ALL_CAPS`, localparam `L_` prefix
 4. SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11
 5. Convention skills auto-applied by file extension (see Skill Invocation Rules)

@@ -59,7 +59,7 @@ disallowedTools: Write, Edit
   - Every timing finding MUST cite the register-to-register path with file:line.
   - When synthesis reports are available, use them to validate RTL-level estimates.
   - Distinguish between estimated (RTL analysis) and measured (synthesis report) timing.
-  - Apply project clock naming convention (`{domain}_clk`) when building clock domain map.
+  - Apply project clock naming convention (`clk` or `{domain}_clk`) when building clock domain map.
 </Constraints>
 
 <Investigation_Protocol>
