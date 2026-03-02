@@ -81,6 +81,26 @@ This skill ensures everything is in place before design work begins.
    during Phase 2 (architecture) when module decomposition is decided.
    Example: `rtl/entropy/`, `rtl/itq/`, `sim/entropy/`, `sim/itq/`, etc.
 
+2a. **Deploy rules** (if `.claude/rules/` does not exist or files are missing):
+   ```bash
+   mkdir -p .claude/rules
+   # Copy only if target does not exist (non-destructive)
+   [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rtl-setup/templates/rules/rtl-coding-conventions.md .claude/rules/
+   [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rtl-setup/templates/rules/rtl-verification-gate.md .claude/rules/
+   [ ! -f .claude/rules/diagram-rules.md ] && cp skills/rtl-setup/templates/rules/diagram-rules.md .claude/rules/
+   ```
+
+2b. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
+   ```bash
+   # Copy guide files as CLAUDE.md into each artifact directory (non-destructive)
+   [ ! -f rtl/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/rtl-guide.md rtl/CLAUDE.md
+   [ ! -f sim/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/sim-guide.md sim/CLAUDE.md
+   [ ! -f docs/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/docs-guide.md docs/CLAUDE.md
+   [ ! -f reviews/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/reviews-guide.md reviews/CLAUDE.md
+   [ ! -f refc/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/refc-guide.md refc/CLAUDE.md
+   [ ! -f syn/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/syn-guide.md syn/CLAUDE.md
+   ```
+
 3. **Check EDA tool availability** (via `which` or `--version`):
 
    | Tool | Check Command | Purpose | Required |
@@ -236,6 +256,20 @@ docker run -it --rm \
 ```
 # Directory creation (Bash CLI)
 Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include rtl/top sim/top sim/formal sim/cdc lint/scripts lint/reports syn/scripts syn/reports syn/constraints docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-review,7-exploration} .rtl-agent-team/state .rtl-agent-team/scratch
+
+# Rules deployment (non-destructive)
+Bash: mkdir -p .claude/rules
+Bash: [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rtl-setup/templates/rules/rtl-coding-conventions.md .claude/rules/ || true
+Bash: [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rtl-setup/templates/rules/rtl-verification-gate.md .claude/rules/ || true
+Bash: [ ! -f .claude/rules/diagram-rules.md ] && cp skills/rtl-setup/templates/rules/diagram-rules.md .claude/rules/ || true
+
+# Guide deployment (non-destructive, copy as CLAUDE.md)
+Bash: [ ! -f rtl/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/rtl-guide.md rtl/CLAUDE.md || true
+Bash: [ ! -f sim/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/sim-guide.md sim/CLAUDE.md || true
+Bash: [ ! -f docs/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/docs-guide.md docs/CLAUDE.md || true
+Bash: [ ! -f reviews/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/reviews-guide.md reviews/CLAUDE.md || true
+Bash: [ ! -f refc/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/refc-guide.md refc/CLAUDE.md || true
+Bash: [ ! -f syn/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/syn-guide.md syn/CLAUDE.md || true
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"
