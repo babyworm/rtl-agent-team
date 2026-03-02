@@ -120,14 +120,14 @@ On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 4 artifacts. Generate docs/phase-4-rtl/phase-4-summary.md
-using templates/phase-summary.md format.")
+using skills/rtl-autopilot/templates/phase-summary.md format.")
 ```
 
 On FAIL: pass findings to worker agent for correction, re-run gate (max 2 retries).
 
 ## Step 4: Phase 5 — Extensive Verification (Sub-Phases)
 
-**Context Manifest Preload** (Phase 5): Load `templates/context-manifest-phase-5.json`.
+**Context Manifest Preload** (Phase 5): Load `skills/rtl-autopilot/templates/context-manifest-phase-5.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
@@ -213,7 +213,7 @@ On Phase 5 gate PASS: generate Phase 5 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 5 artifacts. Generate docs/phase-5-verify/phase-5-summary.md
-using templates/phase-summary.md format.")
+using skills/rtl-autopilot/templates/phase-summary.md format.")
 ```
 
 ## Step 5: Completion

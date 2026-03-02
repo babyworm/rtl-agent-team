@@ -1,6 +1,7 @@
 ---
 name: rtl-lint-check
 description: "This skill should be used when checking RTL files for lint violations using Verilator, Verible, and slang. Quick utility for pre-commit or phase gate verification."
+user-invocable: true
 ---
 
 <Purpose>

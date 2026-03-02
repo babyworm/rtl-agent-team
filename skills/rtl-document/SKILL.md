@@ -1,6 +1,7 @@
 ---
 name: rtl-document
 description: "This skill should be used when generating RTL documentation from source and synthesis reports. Produces port tables and design summaries."
+user-invocable: true
 ---
 
 <Purpose>

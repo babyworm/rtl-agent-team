@@ -1,6 +1,7 @@
 ---
 name: rtl-p4s-bugfix
 description: "RTL bug fix workflow enforcing the full cycle: analyze → fix → lint → TB create/update → functional verification. Prevents RTL changes from being considered complete with lint-only validation."
+user-invocable: true
 ---
 
 <Purpose>

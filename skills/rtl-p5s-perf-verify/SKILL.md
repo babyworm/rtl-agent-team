@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-perf-verify
 description: "This skill should be used when measuring RTL throughput and latency against BFM baselines. Flags deviations exceeding 10%."
+user-invocable: true
 ---
 
 <Purpose>

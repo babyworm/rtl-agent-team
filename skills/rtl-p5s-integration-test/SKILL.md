@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-integration-test
 description: "Tier 4 integration testing: full system-level verification of cross-module data flow, reset propagation, clock connectivity, and end-to-end scenarios."
+user-invocable: true
 ---
 
 <Purpose>

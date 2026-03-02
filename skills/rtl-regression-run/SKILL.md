@@ -1,6 +1,7 @@
 ---
 name: rtl-regression-run
 description: "DEPRECATED — Use rtl-p5s-func-verify (Tier 3) for module-level regression with multi-seed support."
+user-invocable: false
 ---
 
 > **DEPRECATED**: This skill's functionality has been absorbed into `rtl-p5s-func-verify` (Tier 3).

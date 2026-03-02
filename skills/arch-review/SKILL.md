@@ -1,6 +1,7 @@
 ---
 name: arch-review
 description: "This skill should be used when conducting architecture review with area/performance/power tradeoff analysis. Saves review reports to reviews/ directory."
+user-invocable: true
 ---
 
 <Purpose>

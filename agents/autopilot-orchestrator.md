@@ -38,7 +38,7 @@ Read(".rtl-agent-team/state/rtl-autopilot-state.json")
    - Phase 4: check `completed_modules` vs `pending_modules`, `stream_a/b_status`
    - Phase 5: check `completed_sub_phases` vs `pending_sub_phases`, `fix_history`
    - Phase 6: check `completed_waves`, resume from `current_wave`
-4. **Context Load**: Read upstream docs per Context Manifest (`templates/context-manifest-phase-{N}.json`)
+4. **Context Load**: Read upstream docs per Context Manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`)
 5. Clear `interrupted_reason` and `partial_work_summary`
 
 **If no state file** — Fresh start:
@@ -49,59 +49,30 @@ Write(".rtl-agent-team/state/rtl-autopilot-state.json",
 
 ## Step 2: Phase 1 — Research
 
+Delegate Phase 1 to the dedicated orchestrator:
 ```
 Bash("mkdir -p reviews/phase-1-research")
 
-Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Port names in io_definition.json must use i_/o_/io_ prefix convention, clocks as {domain}_clk, resets as {domain}_rst_n.")
+Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
+     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
 ```
 
-**Phase 1→2 Quality Gate** (criteria in policy skill):
-```
-Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="READ-ONLY self-review. Read requirements.json you produced. Verify:
-1. Every functional requirement is traceable to a specific section in specs/.
-2. No contradictions or ambiguities exist between requirements.
-3. All interface constraints (protocols, timing) are explicitly stated.
-4. io_definition.json port naming follows i_/o_/io_ prefix, {domain}_clk/{domain}_rst_n.
-Produce a Feature Coverage Checklist mapping each spec section to its requirement(s).
-Save your review result to reviews/phase-1-research/research-review.md in this format:
-  # Phase 1 Review: Research Completeness
-  - Date: (today)
-  - Reviewer: spec-analyst
-  - Upper Spec: specs/
-  - Verdict: PASS | FAIL
-  ## Feature Coverage Checklist
-  (per spec section to REQ mapping)
-  ## Findings
-  ### [severity] Finding-N: ...
-  ## Verdict
-  PASS | FAIL: [reason]
-verdict: PASS or FAIL + findings[]")
-
-Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="READ-ONLY feasibility review. Read requirements.json and io_definition.json.
-Evaluate each requirement for RTL implementation feasibility:
-1. Can every functional requirement be realized in synthesizable RTL?
-2. Are clock frequency, area, and power constraints realistic?
-3. Are there missing constraints that would block architecture design?
-4. Flag any requirement that is ambiguous or under-specified for implementation.
-verdict: PASS or FAIL + findings[]")
-```
+The `p1-research-orchestrator` handles tree exploration, domain-consult, 3-round chief review,
+sub-domain expert parallel agents, and quality gate enforcement per `p1-spec-research-policy`.
 
 On PASS: generate Phase 1 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 1 artifacts and generate docs/phase-1-research/phase-1-summary.md using templates/phase-summary.md format.")
+     prompt="Read all Phase 1 artifacts and generate docs/phase-1-research/phase-1-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
 ```
 
-On FAIL: pass findings back to spec-analyst for correction, re-run gate (max 2 retries).
+On FAIL: pass findings back for correction, re-run gate (max 2 retries).
 Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`.
 
 ## Step 3: Phase 2 — Architecture + Reference Model
 
-**Context Manifest Preload**: Load `templates/context-manifest-phase-2.json`.
+**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-2.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
@@ -128,25 +99,24 @@ On PASS: generate Phase 2 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 2 artifacts and generate docs/phase-2-architecture/phase-2-summary.md using templates/phase-summary.md format.")
+     prompt="Read all Phase 2 artifacts and generate docs/phase-2-architecture/phase-2-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
 
 Task(subagent_type="rtl-agent-team:arch-designer",
      model="sonnet",
-     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md using templates/adr-template.md format. Link to REQ IDs and architecture.md sections.")
+     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md using skills/rtl-autopilot/templates/adr-template.md format. Link to REQ IDs and architecture.md sections.")
 ```
 
 ## Step 4: Phase 3 — μArch + BFM
 
-**Context Manifest Preload**: Load `templates/context-manifest-phase-3.json`.
+**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-3.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
-# Parallel: μArch design + BFM development
+# μArch design (includes BFM development internally via bfm-dev agent)
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")
-Skill(skill="rtl-agent-team:bfm-develop")            # SystemC TLM BFMs
 ```
 
 **Phase 3→4 Quality Gate** (criteria in policy skill):
@@ -158,96 +128,46 @@ On PASS: generate Phase 3 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 3 artifacts and generate docs/phase-3-uarch/phase-3-summary.md using templates/phase-summary.md format.")
+     prompt="Read all Phase 3 artifacts and generate docs/phase-3-uarch/phase-3-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
 
 Task(subagent_type="rtl-agent-team:uarch-designer",
      model="sonnet",
-     prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md using templates/adr-template.md format. Link to architecture.md sections and Phase 2 ADRs.")
+     prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md using skills/rtl-autopilot/templates/adr-template.md format. Link to architecture.md sections and Phase 2 ADRs.")
 ```
 
 ## Step 5: Phase 4 — RTL Implementation + Early Verification
 
-**Context Manifest Preload**: Load `templates/context-manifest-phase-4.json`.
+**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-4.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
-Two parallel streams run simultaneously:
+Delegate Phase 4 to the dedicated orchestrator which manages the 10-Wave pipeline:
 
 ```
 Bash("mkdir -p reviews/phase-4-rtl")
 
-# --- Stream A: RTL Implementation ---
-Task(subagent_type="rtl-agent-team:rtl-coder",
-     prompt="Implement rtl/{module}/{module}.sv from docs/phase-3-uarch/{module}.md. Use logic only (no reg/wire), i_/o_ port prefix, clk/{domain}_clk, rst_n/{domain}_rst_n, u_ instances, gen_ generates. Run lint after writing.")
-
-# --- Stream B: Early Verification Framework (parallel with Stream A) ---
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Generate SVA property skeletons from docs/phase-3-uarch/*.md. Extract: FSM state assertions, protocol handshake properties, signal range constraints. Write skeleton summary to docs/phase-4-rtl/stream-b-sva-skeletons.md. These are structural skeletons — actual RTL signal bindings will be completed in Phase 5a.",
-     run_in_background=true)
-
-Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Analyze clock domain topology from docs/phase-3-uarch/*.md. Identify: clock domain boundaries, synchronizer requirements, crossing points. Generate preliminary CDC report and save to docs/phase-4-rtl/stream-b-cdc-preliminary.md. This will be updated with actual RTL in Phase 5b.",
-     run_in_background=true)
-
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Generate cocotb TB skeletons from docs/phase-3-uarch/*.md. Include: port connectivity structure, clock/reset generation, test vector scaffolds. Write skeleton summary to docs/phase-4-rtl/stream-b-tb-skeletons.md. Mark as SKELETON — full test logic deferred to Phase 5c. Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.",
-     run_in_background=true)
+Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
+     prompt="Execute Phase 4 RTL implementation. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs. Implement all modules using the 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) with parallel Stream A (RTL coding) + Stream B (SVA/CDC/TB skeletons).")
 ```
 
-**Phase 4→5 Quality Gate** (criteria in policy skill):
-```
-Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY RTL design review. Read requirements.json, then read docs/phase-3-uarch/*.md, then read rtl/*/*.sv.
-Perform the following checks:
-1. **Functional Coverage Matrix**: For EVERY requirement in requirements.json, trace:
-   requirement → uarch section → RTL module and approximate line range.
-   Mark each requirement as IMPLEMENTED or MISSING. Any MISSING → FAIL.
-   Save the functional completeness report to reviews/phase-4-rtl/functional-completeness.md in this format:
-     # Phase 4 Review: Functional Completeness
-     - Date: (today)
-     - Reviewer: rtl-critic
-     - Upper Spec: requirements.json, docs/phase-3-uarch/*.md
-     - Verdict: PASS | FAIL
-     ## Feature Coverage Checklist
-     | REQ ID | uarch Section | RTL Module | Lines | Status |
-     |--------|--------------|------------|-------|--------|
-     ## Findings
-     ## Verdict
-2. **Code quality**: Proper FSM coding (enum states), no inferred latches, clean synchronous reset.
-3. **Synthesizability**: No non-synthesizable constructs (#delay, initial in synth code),
-   appropriate clock gating, no combinational loops.
-4. **Coding convention compliance**: i_/o_ port prefix, {domain}_clk/{domain}_rst_n,
-   u_ instance prefix, gen_ generate prefix, logic only (no reg/wire),
-   always_ff/always_comb (no always @*), ANSI port style.
-5. **Hierarchical compliance**: Does RTL add, remove, or alter any functionality
-   compared to docs/phase-3-uarch/*.md? Unauthorized deviation → FAIL.
-Save the full design review to reviews/phase-4-rtl/design-review.md in standard review Markdown format.
-verdict: PASS or FAIL + findings[]")
+The `p4-implement-orchestrator` handles the 10-Wave pipeline, Stream A/B parallelism,
+lint checks, unit TB creation, and per-module iteration per `rtl-p4-implement-policy`.
 
-Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run full lint on rtl/*/*.sv. Zero errors required. Review warnings for false positives. Report lint summary.
-Save the lint report to reviews/phase-4-rtl/lint-report.md in this format:
-  # Phase 4 Review: Lint Report
-  - Date: (today)
-  - Reviewer: lint-checker
-  - Upper Spec: rtl/*/*.sv
-  - Verdict: PASS | FAIL
-  ## Findings
-  ### [severity] Finding-N: ...
-  ## Verdict
-  PASS (0 errors, warnings reviewed) | FAIL: [error summary]
-verdict: PASS (0 errors, warnings reviewed) or FAIL + error list[]")
-```
+**Phase 4→5 Quality Gate** (verified by p4-implement-orchestrator internally):
+- Check: `reviews/phase-4-rtl/functional-completeness.md` verdict=PASS
+- Check: `reviews/phase-4-rtl/design-review.md` verdict=PASS
+- Check: `reviews/phase-4-rtl/lint-report.md` verdict=PASS (0 errors)
+- Check: Stream B artifacts exist (stream-b-sva-skeletons.md, stream-b-cdc-preliminary.md, stream-b-tb-skeletons.md)
 
 On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md using templates/phase-summary.md format.")
+     prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
 ```
 
 ## Step 6: Phase 5 — Extensive Verification
 
-**Context Manifest Preload**: Load `templates/context-manifest-phase-5.json`.
+**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-5.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
@@ -355,7 +275,7 @@ On Phase 5 gate PASS: generate Phase 5 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 5 artifacts and generate docs/phase-5-verify/phase-5-summary.md using templates/phase-summary.md format.")
+     prompt="Read all Phase 5 artifacts and generate docs/phase-5-verify/phase-5-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
 ```
 
 ## Step 7: Phase 6 — Design Review & Documentation
@@ -365,44 +285,16 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 ```
 Bash("mkdir -p reviews/phase-6-review")
 
-# --- Wave 1: Code Quality + Design Quality (parallel) ---
-Task(subagent_type="rtl-agent-team:code-quality-reviewer",
-     model="opus",
-     prompt="Perform intensive per-module code quality review for Phase 6.
-Read requirements.json, docs/phase-3-uarch/*.md for context. Read ALL rtl/*/*.sv.
-Read reviews/phase-4-rtl/design-review.md for prior findings.
-Score each module on 5 dimensions (1-10). Detect anti-patterns. Assess cross-module consistency.
-Save to reviews/phase-6-review/code-review.md.")
-
-Task(subagent_type="rtl-agent-team:design-quality-reviewer",
-     model="opus",
-     prompt="Perform cross-phase design quality review for Phase 6.
-Read ALL artifacts: requirements.json → architecture.md → docs/phase-3-uarch/*.md → rtl/*/*.sv.
-Build hierarchical consistency matrix. Document design decisions. Assess interface quality.
-Evaluate scalability. Inventory design debt. Classify Phase 5 bugs.
-Save to reviews/phase-6-review/design-review.md.")
-
-# Wait for Wave 1 completion
-
-# --- Wave 2: Design Note + Improvement Analysis (parallel, after Wave 1) ---
-Task(subagent_type="rtl-agent-team:design-note-writer",
-     model="opus",
-     prompt="Write comprehensive design note for Phase 6.
-Read ALL artifacts and Phase 6 reviews (code-review.md, design-review.md).
-Document each module: purpose, I/O, structure (D2 block diagram), algorithm, FSM (Mermaid), timing, edge cases.
-Document system integration: data flow, control flow, modes, reset.
-Save to reviews/phase-6-review/design-note.md.")
-
-Task(subagent_type="rtl-agent-team:improvement-analyst",
-     model="opus",
-     prompt="Produce prioritized improvement recommendations for Phase 6.
-Read Phase 6 reviews (code-review.md, design-review.md) and Phase 4/5 reviews.
-Build Impact×Effort matrix. Highlight Quick Wins. Specify WHERE/WHAT/HOW for each.
-Build long-term improvement roadmap.
-Save to reviews/phase-6-review/improvements.md.")
+Task(subagent_type="rtl-agent-team:p6-review-orchestrator",
+     prompt="Execute Phase 6 design review and documentation. Context: Phase 5 PASS. Read reviews/phase-5-verify/final-compliance.md and all upstream artifacts. Run Wave 1 (code-quality + design-quality parallel), CC1 consistency check, then Wave 2 (design-note + improvement parallel), CC2 final consistency check.")
 ```
 
-**Phase 6 Completion Gate**: All 4 deliverables exist AND quality checks pass (see policy).
+The `p6-review-orchestrator` handles the 2-wave review pipeline with CC1/CC2
+inter-wave consistency checks per `rtl-p6-design-review-policy`.
+
+**Phase 6 Completion Gate** (verified by p6-review-orchestrator internally):
+- All 4 deliverables exist (code-review.md, design-review.md, design-note.md, improvements.md)
+- CC1/CC2 consistency checks pass
 On FAIL: iterate review → fix cycle (max 2 rounds).
 
 ## Step 8: Completion
@@ -412,12 +304,10 @@ On FAIL: iterate review → fix cycle (max 2 rounds).
 
 # Parallel Execution Patterns
 
-**Phase 2-3**: Skill calls run concurrently (p2-arch-design ∥ ref-model, p3-uarch ∥ bfm-develop).
+**Phase 2**: p2-arch-orchestrator ∥ ref-model skill run concurrently.
+**Phase 3**: p3-uarch-orchestrator handles μArch + BFM internally.
 
-**Phase 4**:
-- Stream A (RTL coding, wave-based) + Stream B (SVA/CDC/TB skeletons): independent, parallel
-- Stream B sub-tasks: all `run_in_background: true`
-- Merge at Phase 4→5 Gate
+**Phase 4**: Delegated to p4-implement-orchestrator (10-Wave pipeline with Stream A ∥ Stream B).
 
 **Phase 5**:
 - 5a (formal) + 5b (CDC) + 5c (integration): independent, parallel via `run_in_background: true`
@@ -459,4 +349,4 @@ On interruption: set `interrupted_reason`, `partial_work_summary`, per-phase `pa
   Different modules → parallel rtl-p4s-bugfix → re-verify 5a + 5c → PASS.
 
 **Bad**: Skipping Quality Gate FAIL verdict — NEVER proceed on FAIL.
-**Bad**: Using rtl-autopilot for a quick sketch — use p2-arch-design directly.
+**Bad**: Using rtl-autopilot for a quick sketch — use p2-arch-orchestrator directly.

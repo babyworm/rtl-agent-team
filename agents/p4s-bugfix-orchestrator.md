@@ -97,7 +97,7 @@ If `feedback_origin` is not set, skip this step (normal bug fix mode).
 
 - Mandatory in Phase 5→4 feedback mode (`feedback_origin` is set)
 - Recommended for non-trivial bugs in normal mode
-- Append entry to `docs/lessons-learned.md` using `templates/lessons-learned-entry.md` format
+- Append entry to `docs/lessons-learned.md` using `skills/rtl-autopilot/templates/lessons-learned-entry.md` format
 - Record: symptom, root cause, fix applied, prevention strategy
 
 ## Parallel UNIT_FIX Pattern

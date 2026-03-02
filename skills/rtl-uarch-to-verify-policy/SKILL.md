@@ -39,7 +39,7 @@ Quality Gate verdicts: `PASS` or `FAIL + findings[]`
 - Upper-spec violation: IMMEDIATE STOP (see Escalation)
 
 ### Context Manifests
-Each phase has a manifest (`templates/context-manifest-phase-{N}.json`) declaring:
+Each phase has a manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`) declaring:
 - `required_full_read`: files that MUST be fully read before starting the phase
 - `required_summary_only`: files where only the phase summary is sufficient
 - `optional_on_demand`: files read only when a specific question arises
@@ -65,7 +65,7 @@ Do NOT proceed to Phase 6.
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
 - [ ] State file updated: `.rtl-agent-team/state/{module}-phase-3-complete.json`
-- [ ] Context manifest ready: `templates/context-manifest-phase-4.json` references valid files
+- [ ] Context manifest ready: `skills/rtl-autopilot/skills/rtl-autopilot/templates/context-manifest-phase-4.json` references valid files
 
 ## Phase Gate Definitions
 
@@ -160,7 +160,7 @@ Stream B artifacts generated concurrently with Stream A (RTL implementation):
 
 ### Lesson Learned Recording
 After each successful feedback fix:
-- Append entry to `docs/lessons-learned.md` using `templates/lessons-learned-entry.md` format
+- Append entry to `docs/lessons-learned.md` using `skills/rtl-autopilot/templates/lessons-learned-entry.md` format
 - Record: symptom, root cause, fix applied, prevention strategy, related REQ/module/ADR
 
 ## Escalation & Stop Conditions

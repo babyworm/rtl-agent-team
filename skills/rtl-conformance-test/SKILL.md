@@ -1,6 +1,7 @@
 ---
 name: rtl-conformance-test
 description: "This skill should be used when running standards conformance tests (H.264/H.265) requiring bitexact comparison against JM/HM reference decoders."
+user-invocable: true
 ---
 
 <Purpose>

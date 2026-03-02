@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-coverage-analyze
 description: "This skill should be used when analyzing functional coverage reports to identify gaps and prioritize additional test generation."
+user-invocable: true
 ---
 
 <Purpose>

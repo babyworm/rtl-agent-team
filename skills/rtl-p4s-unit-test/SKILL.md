@@ -1,6 +1,7 @@
 ---
 name: rtl-p4s-unit-test
 description: "Tier 2 unit testing: verify each RTL module against its uarch specification and C reference model. Goes beyond Tier 1 smoke to exercise FSM transitions, pipeline behavior, and data transformations."
+user-invocable: true
 ---
 
 <Purpose>

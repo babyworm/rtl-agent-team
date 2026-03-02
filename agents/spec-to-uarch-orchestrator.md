@@ -69,7 +69,7 @@ On PASS: generate Phase 1 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 1 artifacts. Generate docs/phase-1-research/phase-1-summary.md
-using templates/phase-summary.md format.")
+using skills/rtl-autopilot/templates/phase-summary.md format.")
 ```
 
 On FAIL: pass findings back, re-run gate (max 2 retries).
@@ -77,7 +77,7 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 
 ## Step 3: Phase 2 — Architecture + Reference Model
 
-**Context Manifest Preload**: Load `templates/context-manifest-phase-2.json`.
+**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-2.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
@@ -104,7 +104,7 @@ On PASS: generate Phase 2 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 2 artifacts. Generate docs/phase-2-architecture/phase-2-summary.md
-using templates/phase-summary.md format.")
+using skills/rtl-autopilot/templates/phase-summary.md format.")
 
 Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
      prompt="Identify 3-5 key architectural decisions. Create ADRs in docs/decisions/.
@@ -113,16 +113,15 @@ Link to REQ IDs and architecture.md sections.")
 
 ## Step 4: Phase 3 — μArch + BFM
 
-**Context Manifest Preload**: Load `templates/context-manifest-phase-3.json`.
+**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-3.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
-# Parallel: μArch design + BFM development
+# μArch design (includes BFM development internally via bfm-dev agent)
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")
-Skill(skill="rtl-agent-team:bfm-develop")            # SystemC TLM BFMs
 ```
 
 **Phase 3 Quality Gate** (criteria in policy):
@@ -134,7 +133,7 @@ On PASS: generate Phase 3 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 3 artifacts. Generate docs/phase-3-uarch/phase-3-summary.md
-using templates/phase-summary.md format.")
+using skills/rtl-autopilot/templates/phase-summary.md format.")
 
 Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
      prompt="Identify 3-5 key μArch decisions. Create ADRs in docs/decisions/.
@@ -154,9 +153,9 @@ Link to architecture.md sections and Phase 2 ADRs.")
 **Phase 2**: p2-arch-design ∥ ref-model (Skill calls run concurrently).
 rtl-critic pre-assessment parallel with p2-arch-design Round 1.
 
-**Phase 3**: rtl-p3-uarch-design ∥ bfm-develop (Skill calls run concurrently).
+**Phase 3**: p3-uarch-orchestrator handles μArch + BFM internally.
 
-**Phase 2/3 iterative reviews** (internal to sub-skills):
+**Phase 2/3 iterative reviews** (internal to sub-orchestrators):
 3 rounds, parallel reviewers per round, wait-and-aggregate pattern.
 
 # Examples

@@ -1,6 +1,7 @@
 ---
 name: rtl-bug-repro
 description: "This skill should be used when creating minimal reproduction testbenches for RTL bugs. Isolates root cause with waveform analysis."
+user-invocable: true
 ---
 
 <Purpose>

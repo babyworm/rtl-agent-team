@@ -8,9 +8,19 @@
 # and MCP servers are loaded from plugins. This hook replaces CLAUDE.md's function
 # by auto-injecting the routing rules and absolute rules that Claude needs to
 # correctly orchestrate RTL design tasks.
+#
+# NOTE: This hook outputs raw markdown text (not JSON) because the content is ~96
+# lines of structured markdown that would be fragile to JSON-escape in POSIX sh
+# without jq. Claude Code SessionStart hooks accept raw text as additional context.
+# Other hooks in this project output JSON because their content is simpler.
+
+# Consume stdin (hook protocol)
+INPUT=$(cat)
+CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+[ -z "$CWD" ] && CWD="$(pwd)"
 
 # Only inject when RTL project is detected
-if [ ! -d "rtl" ] && [ ! -d "docs" ] && [ ! -d ".rtl-agent-team" ]; then
+if [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ] && [ ! -d "$CWD/.rtl-agent-team" ]; then
   exit 0
 fi
 
@@ -28,34 +38,48 @@ cat << 'RULES_EOF'
 8. No Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required)
 9. Phase 7 is exempt — free exploration allowed without pipeline Gate
 
-## Skill Routing (key patterns → skill)
-| Pattern | Skill |
-|---|---|
-| RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` (command) |
-| setup, initialize, project start | `/rtl-agent-team:rtl-setup` |
-| spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` (command) |
-| codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` |
-| architecture design (RTL context) | `/rtl-agent-team:p2-arch-design` (command) |
-| architecture review | `/rtl-agent-team:arch-review` |
-| reference model, C model | `/rtl-agent-team:ref-model` |
-| BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` |
-| microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` (command) |
-| DSE, design space exploration | `/rtl-agent-team:rtl-dse` (command) |
-| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rtl-spec-to-uarch` (command) |
-| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` (command) |
-| bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` |
-| RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` (command) |
-| refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
-| unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
-| lint, lint check | `/rtl-agent-team:rtl-lint-check` |
-| synthesis, yosys, SDC | `/rtl-agent-team:rtl-synth-check` |
-| Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` (command) |
-| simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` (command) |
-| formal, SVA, assertion | `/rtl-agent-team:rtl-p5s-sva-check` |
-| CDC, clock domain | `/rtl-agent-team:rtl-p5s-cdc-verify` |
-| AXI, APB, AHB, protocol | `/rtl-agent-team:rtl-p5s-protocol-verify` |
-| coverage | `/rtl-agent-team:rtl-p5s-coverage-analyze` |
-| design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` (command) |
+## Routing (key patterns → skill or orchestrator agent)
+Orchestrators: spawn via Task(subagent_type="rtl-agent-team:XXX"). Skills: invoke via Skill().
+| Pattern | Route To | Type |
+|---|---|---|
+| RTL design, chip design, full pipeline | `autopilot-orchestrator` | Orchestrator |
+| setup, initialize, project start | `/rtl-agent-team:rtl-setup` | Skill |
+| spec analysis, requirements, research | `p1-research-orchestrator` | Orchestrator |
+| codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Skill |
+| architecture design (RTL context) | `p2-arch-orchestrator` | Orchestrator |
+| architecture review | `/rtl-agent-team:arch-review` | Skill |
+| reference model, C model | `/rtl-agent-team:ref-model` | Skill |
+| BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` | Skill |
+| microarchitecture, uarch | `p3-uarch-orchestrator` | Orchestrator |
+| DSE, design space exploration | `dse-orchestrator` | Orchestrator |
+| spec to uarch, Phase 1-3, design only | `spec-to-uarch-orchestrator` | Orchestrator |
+| uarch to verify, Phase 4-5, RTL from uarch | `uarch-to-verify-orchestrator` | Orchestrator |
+| RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Skill |
+| decoder conformance, conformance stream | `/rtl-agent-team:codec-conformance-eval` | Skill |
+| bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Skill |
+| RTL coding, module implementation | `p4-implement-orchestrator` | Orchestrator |
+| refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Skill |
+| unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Skill |
+| IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Skill |
+| lint, lint check | `/rtl-agent-team:rtl-lint-check` | Skill |
+| synthesis, yosys, SDC | `/rtl-agent-team:rtl-synth-check` | Skill |
+| RTL documentation | `/rtl-agent-team:rtl-document` | Skill |
+| IP-XACT, register map | `/rtl-agent-team:rtl-ipxact-gen` | Skill |
+| Phase 5, verification pipeline | `p5-verify-orchestrator` | Orchestrator |
+| simulation, testbench, cocotb | `p5s-func-verify-orchestrator` | Orchestrator |
+| UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` | Skill |
+| performance verification, throughput | `/rtl-agent-team:rtl-p5s-perf-verify` | Skill |
+| formal, SVA, assertion | `/rtl-agent-team:rtl-p5s-sva-check` | Skill |
+| CDC, clock domain | `/rtl-agent-team:rtl-p5s-cdc-verify` | Skill |
+| AXI, APB, AHB, protocol | `/rtl-agent-team:rtl-p5s-protocol-verify` | Skill |
+| coverage | `/rtl-agent-team:rtl-p5s-coverage-analyze` | Skill |
+| integration test, cross-module, Tier 4 | `/rtl-agent-team:rtl-p5s-integration-test` | Skill |
+| regression, multi-seed | `p5s-func-verify-orchestrator` (Tier 3) | Orchestrator |
+| RTL conformance, golden comparison | `/rtl-agent-team:rtl-conformance-test` | Skill |
+| bug reproduction, waveform debug | `/rtl-agent-team:rtl-bug-repro` | Skill |
+| model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Skill |
+| design review, Phase 6, design note | `p6-review-orchestrator` | Orchestrator |
+| exploration, Phase 7, free exploration | `p6-review-orchestrator` (exploration mode) | Orchestrator |
 Full routing table: `/rtl-agent-team:rtl-orchestrate`
 
 ## Expert Review → Agent Delegation (spawn directly or through skills)

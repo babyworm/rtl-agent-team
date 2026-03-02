@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-cdc-verify
 description: "This skill should be used when analyzing clock domain crossings for synchronizer coverage and metastability risks."
+user-invocable: true
 ---
 
 <Purpose>

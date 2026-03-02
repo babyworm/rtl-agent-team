@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-uvm-verify
 description: "This skill should be used when running UVM-based verification requiring commercial simulators (VCS/Questa/Xcelium)."
+user-invocable: true
 ---
 
 <Purpose>

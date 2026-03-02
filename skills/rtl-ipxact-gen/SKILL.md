@@ -1,6 +1,7 @@
 ---
 name: rtl-ipxact-gen
 description: "This skill should be used when generating IEEE 1685 IP-XACT XML descriptors from RTL port and parameter definitions."
+user-invocable: true
 ---
 
 <Purpose>

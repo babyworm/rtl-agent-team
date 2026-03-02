@@ -28,7 +28,7 @@ Read `docs/phase-3-uarch/{module}.md` to extract key features per module:
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write Tier 2 SV unit testbench sim/{module}/tb_{module}.sv for
-rtl/{module}/{module}.sv. Use templates/sv-testbench-template.sv as scaffold.
+rtl/{module}/{module}.sv. Use skills/rtl-p4s-unit-test/templates/sv-testbench-template.sv as scaffold.
 Read docs/phase-3-uarch/{module}.md to identify key features: FSM states, pipeline stages,
 data transforms. Write at least 1 test case per uarch feature.
 Use sys_clk/sys_rst_n, i_/o_ port prefixes, u_dut instance name.")

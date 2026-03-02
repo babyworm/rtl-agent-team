@@ -1,6 +1,7 @@
 ---
 name: rtl-model-consistency
 description: "This skill should be used when performing 3-way consistency checks between C reference model, BFM, and RTL simulation outputs."
+user-invocable: true
 ---
 
 <Purpose>

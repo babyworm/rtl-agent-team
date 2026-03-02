@@ -1,6 +1,7 @@
 ---
 name: codec-conformance-eval
 description: "Decoder conformance evaluation against JVET/JCTVC/3rd-party conformance bitstreams. Builds ref C model decoder, runs parallel decoding, and verifies bitexact output match against golden references. Supports profile/level filtering, MD5/bitexact/PSNR comparison, optional SSIM/VMAF, and AWS Batch opt-in."
+user-invocable: true
 ---
 
 <Purpose>

@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-sva-check
 description: "This skill should be used when proving or disproving formal properties on RTL using SymbiYosys BMC and induction. Triggers on 'formal verification', 'prove property', 'SVA'."
+user-invocable: true
 ---
 
 <Purpose>

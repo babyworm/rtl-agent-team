@@ -7,7 +7,7 @@
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 50+ specialized agents, 40+ skills, 8 hooks,
+When installed as a plugin, it provides 60+ specialized agents, 45+ skills, 8 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -65,8 +65,9 @@ When modifying this plugin:
 rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
-├── agents/                              # 50+ specialized agent definitions (.md)
-├── skills/                              # 40+ phase-specific workflow skills
+├── agents/                              # 60+ specialized agent definitions (.md)
+├── commands/                            # 11 orchestrator command definitions (.md)
+├── skills/                              # 45+ phase-specific workflow skills
 │   ├── rtl-orchestrate/SKILL.md         #   On-demand routing reference
 │   ├── rtl-setup/templates/             #   Rules + guides deployed to user projects
 │   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project
@@ -74,14 +75,20 @@ rtl-agent-team/                          # Plugin root
 │   └── {skill-name}/SKILL.md            #   Phase-specific workflow
 ├── hooks/                               # Event-driven enforcement
 │   ├── hooks.json                       #   Hook registration config
-│   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
 │   ├── rtl-project-init-advisor.sh      #   SessionStart: setup advisor
-│   ├── rtl-edit-tracker.sh              #   PostToolUse: RTL modification tracking
-│   ├── rtl-skill-activation.sh          #   PreToolUse: skill completion loop
-│   └── *-gate.sh                        #   Stop: verification/pipeline/cascade gates
+│   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
+│   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write: RTL modification tracking
+│   ├── rtl-skill-activation.sh          #   PreToolUse:Skill: skill completion loop
+│   ├── stop-gate.sh                     #   Stop: pipeline state gate
+│   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
+│   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
+│   └── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
 ├── domain-packages/video-codec/         # H.264/H.265 domain knowledge
+├── docker/Dockerfile                    # EDA environment container
+├── plugins/systemverilog-lsp/           # SV LSP sub-plugin
+├── tests/                               # Unit + integration test suite
 ├── scripts/post-install.sh              # One-time EDA environment check
-└── .rtl-agent-team/                     # Runtime state (in user projects)
+└── .rtl-agent-team/                     # Runtime state (gitignored, created per-project)
 ```
 
 ---
@@ -126,11 +133,11 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 
 ## Core Principles
 
-**Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Details in `docs/CLAUDE.md`.
+**Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Details in `skills/rtl-orchestrate/SKILL.md`.
 
-**Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix at the top, not the bottom. Details in `docs/CLAUDE.md`.
+**Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix at the top, not the bottom. Details in `skills/rtl-orchestrate/SKILL.md`.
 
-**Document-as-Memory**: Design artifacts are persistent memory. Each phase reads upstream docs, writes downstream. Enables resumability. Details in `docs/CLAUDE.md`.
+**Document-as-Memory**: Design artifacts are persistent memory. Each phase reads upstream docs, writes downstream. Enables resumability. Details in `skills/rtl-orchestrate/SKILL.md`.
 
 ## Coding Conventions (Core Overrides)
 
@@ -146,8 +153,8 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
-| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
 | `rtl-project-init-advisor.sh` | SessionStart | Advise `rtl-setup` if project not initialized |
+| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track .sv file modifications for verification gate |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria |
 | `stop-gate.sh` | Stop | Pipeline state gate (blocks premature exit) |

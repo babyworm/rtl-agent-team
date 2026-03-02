@@ -1,6 +1,7 @@
 ---
 name: bfm-develop
 description: "This skill should be used when developing SystemC TLM Bus Functional Models with AT non-blocking transport and AMBA protocol support from architecture block specifications."
+user-invocable: true
 ---
 
 <Purpose>

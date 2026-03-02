@@ -1,6 +1,7 @@
 ---
 name: ref-model
 description: "This skill should be used when building C functional reference models (no clock/reset) with external memory access abstraction and bitexact verification. DPI-C integration priority."
+user-invocable: true
 ---
 
 <Purpose>

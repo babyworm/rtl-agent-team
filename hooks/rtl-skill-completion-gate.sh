@@ -24,8 +24,8 @@ fi
 # Check staleness (2 hours = 7200 seconds)
 STARTED_AT=$(sed -n 's/.*"started_at"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SKILL_STATE")
 if [ -n "$STARTED_AT" ]; then
-  # Convert to epoch if possible (GNU date)
-  START_EPOCH=$(date -d "$STARTED_AT" +%s 2>/dev/null)
+  # Convert to epoch — try GNU date -d, then BSD date -jf, then skip
+  START_EPOCH=$(date -d "$STARTED_AT" +%s 2>/dev/null || date -jf "%Y-%m-%dT%H:%M:%SZ" "$STARTED_AT" +%s 2>/dev/null || echo "")
   NOW_EPOCH=$(date +%s 2>/dev/null)
   if [ -n "$START_EPOCH" ] && [ -n "$NOW_EPOCH" ]; then
     AGE=$(( NOW_EPOCH - START_EPOCH ))
@@ -42,7 +42,7 @@ fi
 SKILL_NAME=$(sed -n 's/.*"skill"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SKILL_STATE")
 ITERATION=$(sed -n 's/.*"iteration"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$SKILL_STATE")
 MAX_ITER=$(sed -n 's/.*"max_iterations"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$SKILL_STATE")
-COMPLETED=$(sed -n 's/.*"all_complete"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$SKILL_STATE")
+COMPLETED=$(sed -n 's/.*"all_complete"[[:space:]]*:[[:space:]]*\([a-z]*\).*/\1/p' "$SKILL_STATE")
 PENDING=$(sed -n 's/.*"pending"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SKILL_STATE")
 
 # Default values

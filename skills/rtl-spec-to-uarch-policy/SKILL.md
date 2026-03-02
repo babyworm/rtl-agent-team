@@ -48,7 +48,7 @@ Every phase transition requires BOTH:
 - Upper-spec violation: IMMEDIATE STOP, return to violated upper phase
 
 ### Context Manifests
-Load files per `templates/context-manifest-phase-{N}.json` before each phase.
+Load files per `skills/rtl-autopilot/templates/context-manifest-phase-{N}.json` before each phase.
 
 ### Scratchpad Convention
 During iterative review rounds:
@@ -117,7 +117,7 @@ Do NOT proceed to Phase 4.
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
 - [ ] State file updated: `.rtl-agent-team/state/{module}-phase-3-complete.json`
-- [ ] Context manifest ready: `templates/context-manifest-phase-4.json` references valid files
+- [ ] Context manifest ready: `skills/rtl-autopilot/skills/rtl-autopilot/templates/context-manifest-phase-4.json` references valid files
 
 ## Escalation & Stop Conditions
 

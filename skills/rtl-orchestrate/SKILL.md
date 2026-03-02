@@ -1,7 +1,7 @@
 ---
 name: rtl-orchestrate
 description: "RTL design flow orchestration — complete skill routing table, agent delegation matrix, design rules, and pipeline reference. Invoke when navigating the RTL design flow, unsure which skill/agent to use, or need the full routing reference."
-user_invocable: true
+user-invocable: true
 ---
 
 # RTL Design Flow — Orchestration Reference
@@ -16,65 +16,70 @@ Complete reference for orchestrating the RTL design pipeline. Use this when:
 
 ---
 
-## Skill Routing Table
+## Skill & Agent Routing Table
 
-When RTL/HDL/FPGA/ASIC related tasks are detected, route to the appropriate skill:
+When RTL/HDL/FPGA/ASIC related tasks are detected, route to the appropriate skill or orchestrator agent.
 
-| Pattern Detected | Skill to Invoke |
-|-----------|------------|
-| **--- Full Pipeline ---** | |
-| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` (command) |
-| "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` |
-| **--- Phase 1: Research ---** | |
-| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` (command) |
-| "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` |
-| **--- Phase 2: Architecture ---** | |
-| "architecture design" (RTL context) | `/rtl-agent-team:p2-arch-design` (command) |
-| "architecture review", "arch review" | `/rtl-agent-team:arch-review` |
-| "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
-| "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
-| **--- Phase 3: μArch ---** | |
-| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` (command) |
-| **--- Pipeline Composition ---** | |
-| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` (command) |
-| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` (command) |
-| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` (command) |
-| "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` |
-| "decoder conformance", "conformance stream", "conformance test", "decoder verify" | `/rtl-agent-team:codec-conformance-eval` |
-| **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
-| `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
-| `.sv`, `.sva` (SVA, assertion, bind), formal assertion | `/rtl-agent-team:systemverilog-assertion` |
-| UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` |
-| `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
-| **--- Phase 4: RTL ---** | |
-| "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` |
-| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` (command) |
-| "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
-| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
-| "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
-| "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` |
-| "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
-| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
-| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
-| **--- Phase 5: Verify ---** | |
-| "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` (command) |
-| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` (command) |
-| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` |
-| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` |
-| "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-p5s-sva-check` |
-| "CDC", "clock domain" | `/rtl-agent-team:rtl-p5s-cdc-verify` |
-| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-p5s-protocol-verify` |
-| "coverage" | `/rtl-agent-team:rtl-p5s-coverage-analyze` |
-| **--- Phase 6: Design Note ---** | |
-| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` (command) |
-| **--- Phase 7: Exploration (optional) ---** | |
-| "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p6-design-review` (command, exploration mode) |
-| **--- Other Verification ---** | |
-| "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` |
-| "regression", "multi-seed" | `/rtl-agent-team:rtl-p5s-func-verify` (Tier 3) |
-| "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
-| "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` |
-| "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` |
+**Invocation types:**
+- **Skill**: Invoke via `Skill(skill="rtl-agent-team:XXX")` — standalone workflow
+- **Orchestrator**: Spawn via `Task(subagent_type="rtl-agent-team:XXX")` — multi-phase pipeline with policy skill
+- **Convention**: Auto-applied by file extension/phase — not user-invocable, loaded automatically when relevant files are accessed
+
+| Pattern Detected | Route To | Type |
+|-----------|------------|------|
+| **--- Full Pipeline ---** | | |
+| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `autopilot-orchestrator` (policy: `rtl-autopilot-policy`) | Orchestrator |
+| "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` | Skill |
+| **--- Phase 1: Research ---** | | |
+| "spec analysis", "requirements", "paper research", "research" | `p1-research-orchestrator` (policy: `p1-spec-research-policy`) | Orchestrator |
+| "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` | Skill |
+| **--- Phase 2: Architecture ---** | | |
+| "architecture design" (RTL context) | `p2-arch-orchestrator` (policy: `p2-arch-design-policy`) | Orchestrator |
+| "architecture review", "arch review" | `/rtl-agent-team:arch-review` | Skill |
+| "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` | Skill |
+| "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` | Skill |
+| **--- Phase 3: μArch ---** | | |
+| "microarchitecture", "μArch", "uarch", "pipeline design" | `p3-uarch-orchestrator` (policy: `rtl-p3-uarch-policy`) | Orchestrator |
+| **--- Pipeline Composition ---** | | |
+| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `dse-orchestrator` (policy: `rtl-dse-policy`) | Orchestrator |
+| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `spec-to-uarch-orchestrator` (policy: `rtl-spec-to-uarch-policy`) | Orchestrator |
+| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `uarch-to-verify-orchestrator` (policy: `rtl-uarch-to-verify-policy`) | Orchestrator |
+| "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` | Skill |
+| "decoder conformance", "conformance stream", "conformance test", "decoder verify" | `/rtl-agent-team:codec-conformance-eval` | Skill |
+| **--- Coding Conventions (auto-applied by extension/Phase) ---** | | |
+| `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` | Convention |
+| `.sv`, `.sva` (SVA, assertion, bind), formal assertion | `/rtl-agent-team:systemverilog-assertion` | Convention |
+| UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` | Convention |
+| `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` | Convention |
+| **--- Phase 4: RTL ---** | | |
+| "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` | Skill |
+| "RTL coding", "module implementation", "SV writing" | `p4-implement-orchestrator` (policy: `rtl-p4-implement-policy`) | Orchestrator |
+| "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Skill |
+| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Skill |
+| "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` | Skill |
+| "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` | Skill |
+| "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` | Skill |
+| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` | Skill |
+| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` | Skill |
+| **--- Phase 5: Verify ---** | | |
+| "Phase 5", "verification pipeline", "extensive verification" | `p5-verify-orchestrator` (policy: `rtl-p5-verify-policy`) | Orchestrator |
+| "simulation", "functional verification", "testbench", "cocotb" | `p5s-func-verify-orchestrator` (policy: `rtl-p5s-func-verify-policy`) | Orchestrator |
+| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` | Skill |
+| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` | Skill |
+| "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-p5s-sva-check` | Skill |
+| "CDC", "clock domain" | `/rtl-agent-team:rtl-p5s-cdc-verify` | Skill |
+| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-p5s-protocol-verify` | Skill |
+| "coverage" | `/rtl-agent-team:rtl-p5s-coverage-analyze` | Skill |
+| **--- Phase 6: Design Note ---** | | |
+| "design review", "Phase 6", "design note", "code review documentation" | `p6-review-orchestrator` (policy: `rtl-p6-design-review-policy`) | Orchestrator |
+| **--- Phase 7: Exploration (optional) ---** | | |
+| "free exploration", "exploration", "Phase 7", "improvement exploration" | `p6-review-orchestrator` (policy: `rtl-p6-design-review-policy`, exploration mode) | Orchestrator |
+| **--- Other Verification ---** | | |
+| "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` | Skill |
+| "regression", "multi-seed" | `p5s-func-verify-orchestrator` (Tier 3) | Orchestrator |
+| "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` | Skill |
+| "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` | Skill |
+| "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` | Skill |
 
 ---
 
@@ -121,6 +126,8 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Equivalence checking | `equivalence-checker` | Opus |
 | Integration verification | `integration-verifier` | Opus |
 | Hardware security review | `security-reviewer` | Opus |
+| DFT/scan chain/BIST/JTAG | `dft-designer` | Opus |
+| Clock architecture/PLL review | `clock-architect` | Opus |
 
 ### Phase 6 Agents
 | Task Type | Agent | Model |
@@ -129,6 +136,24 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Design quality review | `design-quality-reviewer` | Opus |
 | Design document writing | `design-note-writer` | Opus |
 | Improvement analysis | `improvement-analyst` | Opus |
+
+### Orchestrator Agents (pipeline coordinators)
+| Pipeline | Agent | Policy Skill |
+|----------|-------|-------------|
+| Full pipeline (P1→P6) | `autopilot-orchestrator` | `rtl-autopilot-policy` |
+| Phase 1: Research | `p1-research-orchestrator` | `p1-spec-research-policy` |
+| Phase 2: Architecture | `p2-arch-orchestrator` | `p2-arch-design-policy` |
+| Phase 3: μArch | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
+| Phase 4: RTL Implementation | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
+| Phase 4: Bug Fix | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
+| Phase 4: Unit Test | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
+| Phase 5: Verification | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
+| Phase 5: Func Verify | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
+| Phase 5: Integration | `p5s-integration-orchestrator` | `rtl-p5s-integration-test-policy` |
+| Phase 6: Design Review | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
+| DSE | `dse-orchestrator` | `rtl-dse-policy` |
+| Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rtl-spec-to-uarch-policy` |
+| μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rtl-uarch-to-verify-policy` |
 
 ### EDA/Infrastructure Agents
 | Task Type | Agent | Model |
@@ -338,10 +363,18 @@ Domain expert agents MUST read relevant knowledge files from `domain-packages/{d
 
 ## State Files
 
-- `.rtl-agent-team/state/rtl-autopilot-state.json` — Full pipeline progress
-- `.rtl-agent-team/state/rtl-verify-done` — RTL verification completion gate
-- `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver
-- `.rtl-agent-team/state/skill-active.json` — Skill completion loop state
-- `.rtl-agent-team/state/phase6-stale` — Phase 6 cascade marker
-- `.rtl-agent-team/state/phase6-cascade-done` — Phase 6 cascade completion
-- `.rtl-agent-team/state/rtl-modified-files.txt` — Modified RTL file tracking
+Hook-enforced (quality gates):
+- `.rtl-agent-team/state/rtl-autopilot-state.json` — Full pipeline progress (stop-gate)
+- `.rtl-agent-team/state/rtl-verify-done` — RTL verification completion gate (rtl-verify-stop-gate)
+- `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver (rtl-verify-stop-gate)
+- `.rtl-agent-team/state/skill-active.json` — Skill completion loop state (rtl-skill-activation, rtl-skill-completion-gate)
+- `.rtl-agent-team/state/phase6-stale` — Phase 6 cascade marker (rtl-edit-tracker, rtl-p6-cascade-gate)
+- `.rtl-agent-team/state/phase6-cascade-done` — Phase 6 cascade completion (rtl-p6-cascade-gate)
+- `.rtl-agent-team/state/rtl-modified-files.txt` — Modified RTL file tracking (rtl-edit-tracker, rtl-verify-stop-gate)
+
+Agent-managed (orchestrator resumability):
+- `.rtl-agent-team/state/rtl-spec-to-uarch-state.json` — Spec-to-μArch pipeline progress
+- `.rtl-agent-team/state/rtl-uarch-to-verify-state.json` — μArch-to-Verify pipeline progress
+- `.rtl-agent-team/state/rtl-dse-state.json` — DSE pipeline progress
+- `.rtl-agent-team/state/feedback-loop-state.json` — Phase 5→4 feedback loop tracking
+- `.rtl-agent-team/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker

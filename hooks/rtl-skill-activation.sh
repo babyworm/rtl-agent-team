@@ -49,8 +49,8 @@ fi
 
 # Create state file
 mkdir -p "$STATE_DIR"
-TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%SZ)
-cat > "$SKILL_STATE" << SKILLEOF
+TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S+00:00)
+cat > "$SKILL_STATE.tmp" << SKILLEOF
 {
   "skill": "${SHORT_NAME}",
   "active": true,
@@ -61,5 +61,6 @@ cat > "$SKILL_STATE" << SKILLEOF
   "started_at": "${TIMESTAMP}"
 }
 SKILLEOF
+mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
 printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop 활성화] %s 스킬이 시작되었습니다. 완료 조건: %s. 모든 조건을 충족할 때까지 세션이 종료되지 않습니다. 완료 시 .rtl-agent-team/state/skill-active.json 의 all_complete 를 true 로 설정하세요."}}' "$SHORT_NAME" "$CRITERIA"

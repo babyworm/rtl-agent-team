@@ -1,6 +1,7 @@
 ---
 name: rtl-p5s-protocol-verify
 description: "This skill should be used when verifying bus protocol compliance (AXI/AHB/APB) using SVA handshake and ordering rules."
+user-invocable: true
 ---
 
 <Purpose>

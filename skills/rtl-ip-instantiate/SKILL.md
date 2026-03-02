@@ -1,6 +1,7 @@
 ---
 name: rtl-ip-instantiate
 description: "This skill should be used when generating IP instantiation wrappers from IP-XACT descriptors or datasheets with convention-compliant port mapping."
+user-invocable: true
 ---
 
 <Purpose>

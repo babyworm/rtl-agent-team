@@ -1,6 +1,7 @@
 ---
 name: domain-consult
 description: "This skill should be used when consulting domain experts for codec standards, video processing, or fixed-point math questions."
+user-invocable: true
 ---
 
 <Purpose>
