@@ -21,6 +21,22 @@ case "$SKILL_NAME" in
     ;;
 esac
 
+# Setup prerequisite check — exempt categories:
+# Category 1 — Self-reference: rtl-setup (cannot check setup before setup)
+# Category 2 — Passive policies: *-policy (14 skills, loaded by agents via skills: field, not user-invocable)
+# Category 3 — File-extension conventions: systemverilog, systemverilog-assertion, systemc, uvm
+# Category 4 — Reference-only: rtl-orchestrate (routing table, no execution)
+case "$SHORT_NAME" in
+  rtl-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
+    ;;
+  *)
+    if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
+      printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[SETUP REQUIRED] rtl-setup이 실행되지 않았습니다. 프로젝트 룰(.claude/rules/), 가이드, 디렉토리 구조가 없어 파이프라인이 올바르게 동작하지 않을 수 있습니다. 먼저 /rtl-agent-team:rtl-setup 을 실행하세요."}}'
+      exit 0
+    fi
+    ;;
+esac
+
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"

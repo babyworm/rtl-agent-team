@@ -1,7 +1,7 @@
 ---
 name: rtl-orchestrate
 description: "RTL design flow orchestration — complete skill routing table, agent delegation matrix, design rules, and pipeline reference. Invoke when navigating the RTL design flow, unsure which skill/agent to use, or need the full routing reference."
-user-invocable: true
+user-invocable: false
 ---
 
 # RTL Design Flow — Orchestration Reference

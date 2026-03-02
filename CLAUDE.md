@@ -22,6 +22,22 @@ Traditional sequential design is error-prone. This plugin addresses these challe
 4. **Automated verification loops** — RTL changes trigger mandatory lint → TB → simulation cycles, enforced by Stop hooks (not by LLM compliance alone)
 5. **Document-as-Memory** — Design artifacts persist across phases and agent boundaries, enabling resumability
 
+### Plugin Runtime vs. Development Context (CRITICAL)
+
+**이 프로젝트를 수정할 때, "plugin 개발"과 "plugin 동작"은 완전히 다른 컨텍스트입니다.**
+
+| | Plugin 개발 (이 프로젝트에서 작업) | Plugin 동작 (사용자 프로젝트에서 실행) |
+|---|---|---|
+| **CWD** | `rtl-agent-team/` (plugin 소스) | 사용자의 RTL 프로젝트 |
+| **이 CLAUDE.md** | ✅ 로드됨 (프로젝트 규칙) | ❌ 로드 안 됨 (plugin CLAUDE.md는 사용자에게 전달 불가) |
+| **agents/*.md** | 소스 파일로 읽기 가능 | Agent 스폰 시 프롬프트로 주입 |
+| **skills/*/SKILL.md** | 소스 파일로 읽기 가능 | Skill 호출 시 프롬프트로 주입 |
+| **hooks/*.sh** | 소스 파일로 읽기 가능 | 이벤트 발생 시 자동 실행 |
+
+**따라서**: Agent/Skill/Hook을 작성할 때는 반드시 **사용자 프로젝트 CWD에서 실행되는 상황**을 가정해야 합니다.
+이 CLAUDE.md의 규칙이나 다른 plugin 내부 파일을 `Read()`로 참조하는 코드를 agent/skill에 넣으면 안 됩니다 —
+사용자 프로젝트에는 그 파일이 존재하지 않습니다.
+
 ### Plugin Architecture: Dynamic Prompt Injection
 
 Plugin CLAUDE.md is **NOT loaded** in user projects (Claude Code plugin architecture limitation).
@@ -47,6 +63,33 @@ Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver 
 **Progressive disclosure**: Session starts with ~130 lines (Layer 1 + Layer 4).
 Additional layers load only when needed, keeping the context window efficient.
 
+### Plugin Component Architecture (Design Principles)
+
+This plugin follows a **Skill → Agent → Policy** architecture.
+
+```
+Action Skill (user entry point, /slash-command)
+    ↓ Task(subagent_type="...")
+Agent (autonomous executor, NOT user-invocable)
+    ↓ skills: [policy-name]
+Policy Skill (knowledge/rules reference)
+```
+
+**Why this layering matters:**
+- **Agent는 사용자가 직접 invoke할 수 없다** — `/agent-name`은 불가, 반드시 Action Skill이 `Task()`로 스폰
+- **Action Skill이 진입점** — 사용자 → Agent를 연결하는 유일한 인터페이스 (phase 전제조건 검증)
+- **Agent → Policy Skill 방향이 지식 흐름** — Agent가 Policy를 참조하지, Policy가 Agent를 제어하지 않음
+- **Hook이 setup 체크** — `rtl-skill-activation.sh`가 setup 전제조건을 검증, Skill에서는 phase 전제조건만 검증
+
+| Component | Location | Role | User-invocable |
+|-----------|----------|------|----------------|
+| **Action Skill** | `skills/*/SKILL.md` | 사용자 진입점 + phase 전제조건 게이트 | Yes (`/plugin:name`) |
+| **Orchestrator Agent** | `agents/*-orchestrator.md` | 자율적 판단/실행, 서브에이전트 스폰 | No (Task로만 스폰) |
+| **Specialist Agent** | `agents/*.md` | 단일 전문 작업 수행 | No (Task로만 스폰) |
+| **Policy Skill** | `skills/*-policy/SKILL.md` | 규칙/기준 제공 (Agent가 `skills:` 로 참조) | No |
+
+**방어 레이어**: Hook(setup 체크) → Skill(phase 전제조건) → Agent Step 0(setup+phase, Task()직접 스폰 대비)
+
 ### Plugin Development Best Practices
 
 When modifying this plugin:
@@ -58,6 +101,8 @@ When modifying this plugin:
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
 6. **Non-destructive deployment** — `rtl-setup` deploys rules/guides only if files don't already exist
 7. **POSIX shell compatibility** — Hook scripts are invoked with `sh`, not `bash`. Use `[` not `[[`
+8. **Skill as gate** — Action skills must validate phase prerequisites before spawning agents, not just delegate blindly
+9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 
 ### File Architecture
 
@@ -66,8 +111,7 @@ rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
 ├── agents/                              # 60+ specialized agent definitions (.md)
-├── commands/                            # 11 orchestrator command definitions (.md)
-├── skills/                              # 45+ phase-specific workflow skills
+├── skills/                              # 55+ skills: 11 orchestrator entry-points + 14 policies + 30+ action workflows
 │   ├── rtl-orchestrate/SKILL.md         #   On-demand routing reference
 │   ├── rtl-setup/templates/             #   Rules + guides deployed to user projects
 │   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project

@@ -16,6 +16,20 @@ HW evaluation criteria, naming conventions, and checklists. Reference it for pas
 
 # Workflow
 
+## Step 0: Setup Prerequisite Check (MANDATORY)
+
+```
+Glob(".claude/rules/rtl-coding-conventions.md")
+```
+
+**If file NOT found** — project has not been initialized:
+```
+Skill(skill="rtl-agent-team:rtl-setup")
+```
+Wait for rtl-setup to complete. Do NOT proceed to Step 1 until setup reports "Ready to start: Yes".
+
+**If file found** — setup already done, proceed to Step 1.
+
 ## Step 1: Read P1 Artifacts + Domain Knowledge
 
 ```

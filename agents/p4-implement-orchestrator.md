@@ -16,6 +16,20 @@ coding conventions, overlap rules, escalation conditions, and checklists.
 
 # Workflow
 
+## Step 0: Setup Prerequisite Check (MANDATORY)
+
+```
+Glob(".claude/rules/rtl-coding-conventions.md")
+```
+
+**If file NOT found** — project has not been initialized:
+```
+Skill(skill="rtl-agent-team:rtl-setup")
+```
+Wait for rtl-setup to complete. Do NOT proceed to Wave 0 until setup reports "Ready to start: Yes".
+
+**If file found** — setup already done, proceed to Wave 0.
+
 ## Wave 0: Preparation
 
 ```

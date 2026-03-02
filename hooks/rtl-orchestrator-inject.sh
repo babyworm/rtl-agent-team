@@ -80,7 +80,7 @@ Orchestrators: spawn via Task(subagent_type="rtl-agent-team:XXX"). Skills: invok
 | model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Skill |
 | design review, Phase 6, design note | `p6-review-orchestrator` | Orchestrator |
 | exploration, Phase 7, free exploration | `p6-review-orchestrator` (exploration mode) | Orchestrator |
-Full routing table: `/rtl-agent-team:rtl-orchestrate`
+For complete agent delegation table and design rules, invoke the rtl-orchestrate skill.
 
 ## Expert Review → Agent Delegation (spawn directly or through skills)
 | Request Pattern | Delegate to Agent |

@@ -16,6 +16,22 @@ review protocols, naming conventions, and checklists. Reference it for pass/fail
 
 # Workflow
 
+## Step 0: Setup Prerequisite Check (MANDATORY)
+
+```
+Glob(".claude/rules/rtl-coding-conventions.md")
+```
+
+**If file NOT found** — project has not been initialized:
+```
+Skill(skill="rtl-agent-team:rtl-setup")
+```
+Wait for rtl-setup to complete. It creates directory structure, deploys coding rules
+and phase guides, and verifies EDA tool availability. Do NOT proceed to Step 1 until
+setup reports "Ready to start: Yes".
+
+**If file found** — setup already done, proceed to Step 1.
+
 ## Step 1: Requirement Clarification and Information Gathering
 
 ```
