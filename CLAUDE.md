@@ -1,82 +1,102 @@
 <!-- RTL-AGENT-TEAM:START -->
-# RTL Agent Team - Plugin Instructions
+# RTL Agent Team — Claude Code Plugin for Agentic Silicon IP Design
 
-## Skill Invocation Rules
+## IMPORTANT — Project Identity
 
-When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized skills.
+**This is a Claude Code plugin project.**
+This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
+agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-| Pattern Detected | Skill to Invoke |
-|-----------|------------|
-| **--- Full Pipeline ---** | |
-| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` |
-| "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` |
-| **--- Phase 1: Research ---** | |
-| "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` |
-| "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` |
-| **--- Phase 2: Architecture ---** | |
-| "architecture design" (RTL context) | `/rtl-agent-team:p2-arch-design` |
-| "architecture review", "arch review" | `/rtl-agent-team:arch-review` |
-| "reference model", "ref model", "C model" | `/rtl-agent-team:ref-model` |
-| "BFM", "bus functional model", "SystemC model" | `/rtl-agent-team:bfm-develop` |
-| **--- Phase 3: μArch ---** | |
-| "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` |
-| **--- Pipeline Composition ---** | |
-| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` |
-| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` |
-| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` |
-| "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` |
-| "decoder conformance", "conformance stream", "conformance test", "decoder verify", "bitexact decoder" | `/rtl-agent-team:codec-conformance-eval` |
-| **--- Coding Conventions (auto-applied by extension/Phase) ---** | |
-| `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `/rtl-agent-team:systemverilog` |
-| `.sv`, `.sva` (SVA, assertion, bind), formal assertion | `/rtl-agent-team:systemverilog-assertion` |
-| UVM testbench, agent, sequence generation | `/rtl-agent-team:uvm` |
-| `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `/rtl-agent-team:systemc` |
-| **--- Phase 4: RTL ---** | |
-| "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` |
-| "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` |
-| "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
-| "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
-| "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
-| "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` |
-| "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
-| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
-| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
-| **--- Phase 5: Verify ---** | |
-| "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` |
-| "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` |
-| "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` |
-| "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` |
-| "formal", "SVA", "assertion" | `/rtl-agent-team:rtl-p5s-sva-check` |
-| "CDC", "clock domain" | `/rtl-agent-team:rtl-p5s-cdc-verify` |
-| "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-p5s-protocol-verify` |
-| "coverage" | `/rtl-agent-team:rtl-p5s-coverage-analyze` |
-| **--- Expert Reviews ---** | |
-| "CDC review", "CDC design review", "synchronization strategy review" | Delegate directly to `cdc-reviewer` agent |
-| "protocol review", "AXI design review", "interface review" | Delegate directly to `protocol-reviewer` agent |
-| "formal review", "SVA review", "assertion quality" | Delegate directly to `formal-reviewer` agent |
-| "power analysis", "power review", "power estimation" | Delegate directly to `power-analyzer` agent |
-| "synthesis review", "area/timing review" | Delegate directly to `synthesis-reviewer` agent |
-| "UVM review", "testbench review", "TB quality" | Delegate directly to `uvm-reviewer` agent |
-| "requirement tracing", "traceability", "feature coverage", "spec verification status" | Delegate directly to `requirement-tracer` agent |
-| "cocotb review", "cocotb quality", "Python TB review" | Delegate directly to `cocotb-reviewer` agent |
-| "reference model review", "ref model verification", "golden model review" | Delegate directly to `ref-model-reviewer` agent |
-| "regression analysis", "flaky test", "seed analysis", "coverage convergence" | Delegate directly to `regression-analyzer` agent |
-| "equivalence checking", "equivalence", "RTL vs netlist" | Delegate directly to `equivalence-checker` agent |
-| "integration verification", "integration", "module connection check", "top-level" | Delegate directly to `integration-verifier` agent |
-| "security review", "security", "side-channel", "fault injection" | Delegate directly to `security-reviewer` agent |
-| **--- EDA Experts ---** | |
-| "DFT", "scan chain", "BIST", "JTAG", "testability" | Delegate directly to `dft-designer` agent |
-| "clock architecture", "clock tree", "PLL", "clock gating review" | Delegate directly to `clock-architect` agent |
-| **--- Phase 6: Design Note ---** | |
-| "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` |
-| **--- Phase 7: Exploration (optional) ---** | |
-| "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) |
-| **--- Other Verification ---** | |
-| "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` |
-| "regression", "multi-seed" | `/rtl-agent-team:rtl-p5s-func-verify` (Tier 3, absorbs rtl-regression-run) |
-| "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` |
-| "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` |
-| "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` |
+When installed as a plugin, it provides 50+ specialized agents, 40+ skills, 7 hooks,
+and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
+from specification to verified silicon.
+
+### Why Agentic Coding for Silicon IP
+
+Silicon IP design is a **reliability-critical domain** — a single RTL bug can cost millions in re-spin.
+Traditional sequential design is error-prone. This plugin addresses these challenges through:
+
+1. **Phase-gated pipeline** — 6 mandatory phases with quality gates prevent premature progression
+2. **Iterative review enforcement** — Higher abstraction levels require MORE review rounds (Cascading Quality principle). Phase 1-3 enforce minimum 3 rounds of review each
+3. **Parallel agent execution** — Specialized agents (spec-analyst, rtl-coder, func-verifier, etc.) work concurrently within each phase, spawned as subagents via the Task tool
+4. **Automated verification loops** — RTL changes trigger mandatory lint → TB → simulation cycles, enforced by Stop hooks (not by LLM compliance alone)
+5. **Document-as-Memory** — Design artifacts persist across phases and agent boundaries, enabling resumability
+
+### Plugin Architecture: Dynamic Prompt Injection
+
+Plugin CLAUDE.md is **NOT loaded** in user projects (Claude Code plugin architecture limitation).
+Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver rules and context:
+
+```
+[Always-on]  SessionStart hook  → Absolute Rules + Routing Table (~79 lines auto-injected)
+[Path-scoped] .claude/rules/    → Coding conventions, verification gates (on .sv file access)
+[On-demand]  Subdirectory CLAUDE.md → Phase-specific guides (on directory entry)
+[Invoked]    Skill SKILL.md     → Full workflow instructions (on skill invocation)
+[Spawned]    Agent .md          → Specialized agent prompts (on agent spawn)
+```
+
+| Layer | Mechanism | When Loaded | Content |
+|-------|-----------|-------------|---------|
+| 1 | `hooks/rtl-orchestrator-inject.sh` | Every RTL session | Routing, rules, principles |
+| 2 | `.claude/rules/*` (deployed by rtl-setup) | .sv/.svh/.v/.vh access | Coding conventions, verification gates |
+| 3 | Subdirectory CLAUDE.md (deployed by rtl-setup) | Directory entry | Phase guides, tool usage |
+| 4 | Skill frontmatter | Session start (all) | Name + description (~2 lines each) |
+| 5 | Skill SKILL.md body | Skill invocation | Full workflow (50-300 lines) |
+| 6 | Agent prompt | Agent spawn | Role, constraints, output format |
+
+**Progressive disclosure**: Session starts with ~130 lines (Layer 1 + Layer 4).
+Additional layers load only when needed, keeping the context window efficient.
+
+### Plugin Development Best Practices
+
+When modifying this plugin:
+
+1. **Prompt injection efficiency** — Minimize always-on context (hook output), maximize on-demand loading (skills, rules, guides)
+2. **Agent specialization** — Each agent has a focused, single-responsibility role. Avoid general-purpose agents
+3. **Hook enforcement** — Quality gates MUST be enforced by hooks (Stop/PreToolUse/PostToolUse), never by LLM instruction compliance alone
+4. **Skill completion criteria** — Every action skill must define criteria in `.rtl-agent-team/skill-completion-criteria.json`
+5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
+6. **Non-destructive deployment** — `rtl-setup` deploys rules/guides only if files don't already exist
+7. **POSIX shell compatibility** — Hook scripts are invoked with `sh`, not `bash`. Use `[` not `[[`
+
+### File Architecture
+
+```
+rtl-agent-team/                          # Plugin root
+├── .claude-plugin/plugin.json           # Plugin manifest
+├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
+├── agents/                              # 50+ specialized agent definitions (.md)
+├── skills/                              # 40+ phase-specific workflow skills
+│   ├── rtl-orchestrate/SKILL.md         #   On-demand routing reference
+│   ├── rtl-setup/templates/             #   Rules + guides deployed to user projects
+│   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project
+│   │   └── guides/ (6 files)            #     → {dir}/CLAUDE.md in user project
+│   └── {skill-name}/SKILL.md            #   Phase-specific workflow
+├── hooks/                               # Event-driven enforcement
+│   ├── hooks.json                       #   Hook registration config
+│   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
+│   ├── rtl-project-init-advisor.sh      #   SessionStart: setup advisor
+│   ├── rtl-edit-tracker.sh              #   PostToolUse: RTL modification tracking
+│   ├── rtl-skill-activation.sh          #   PreToolUse: skill completion loop
+│   └── *-gate.sh                        #   Stop: verification/pipeline/cascade gates
+├── domain-packages/video-codec/         # H.264/H.265 domain knowledge
+├── scripts/post-install.sh              # One-time EDA environment check
+└── .rtl-agent-team/                     # Runtime state (in user projects)
+```
+
+---
+
+## Skill & Agent Routing
+
+The authoritative routing table (natural language pattern → skill/agent mapping) lives in
+`skills/rtl-orchestrate/SKILL.md` — the **single source of truth** for all routing decisions.
+
+This routing is delivered to end users via two mechanisms:
+- **SessionStart hook** (`hooks/rtl-orchestrator-inject.sh`): condensed routing auto-injected
+- **On-demand skill** (`/rtl-agent-team:rtl-orchestrate`): full reference when invoked
+
+When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md` and
+sync the condensed version in `hooks/rtl-orchestrator-inject.sh`.
 
 ## Absolute Rules
 
@@ -124,9 +144,16 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 ## Hook-Based Enforcement
 
-**Skill Completion Loop**: Skills with completion criteria are enforced by Stop hook. Set `all_complete: true` in `.rtl-agent-team/state/skill-active.json` when done.
-
-**Phase 6 Cascade**: RTL changes after Phase 6 trigger mandatory lint + code review + design note update. Signal with `touch .rtl-agent-team/state/phase6-cascade-done`.
+| Hook Script | Event | Enforcement |
+|-------------|-------|-------------|
+| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
+| `rtl-project-init-advisor.sh` | SessionStart | Advise `rtl-setup` if project not initialized |
+| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track .sv file modifications for verification gate |
+| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria |
+| `stop-gate.sh` | Stop | Pipeline state gate (blocks premature exit) |
+| `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
+| `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
+| `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement (max iterations) |
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 

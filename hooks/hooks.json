@@ -8,6 +8,11 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-project-init-advisor.sh\"",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh\"",
+            "timeout": 3
           }
         ]
       }

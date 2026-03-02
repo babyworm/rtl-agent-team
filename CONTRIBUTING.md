@@ -138,7 +138,8 @@ skills/{skill-name}/
 
 | 파일 | 업데이트 내용 |
 |------|-------------|
-| `CLAUDE.md` | 위임 테이블 + 스킬 호출 규칙 테이블 |
+| `skills/rtl-orchestrate/SKILL.md` | 스킬 라우팅 테이블 + 에이전트 위임 테이블 (single source of truth) |
+| `hooks/rtl-orchestrator-inject.sh` | 축약 라우팅 (SessionStart hook, 위 테이블과 동기화 필요) |
 | `README.md` | 에이전트/스킬 카운트, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
 | `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
