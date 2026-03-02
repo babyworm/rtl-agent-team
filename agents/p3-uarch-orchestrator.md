@@ -1,4 +1,6 @@
 ---
+name: p3-uarch-orchestrator
+model: opus
 description: "Phase 3 μArch design pipeline orchestrator. Manages parallel uarch design + BFM development, BFM validation gate, 5-reviewer 3-round iterative review, domain consultation for design patterns, and artifact finalization with clock domain map, protocol assignments, and pipeline diagrams."
 skills: [rtl-p3-uarch-policy]
 ---

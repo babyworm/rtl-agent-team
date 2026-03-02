@@ -1,4 +1,4 @@
-"""Tests for hook scripts — edit tracker, verify stop gate, autopilot stop gate."""
+"""Tests for hook scripts — routing inject, edit tracker, and stop gates."""
 
 import json
 import os
@@ -7,6 +7,38 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import HOOKS_DIR, run_hook
+
+
+class TestRtlOrchestratorInject:
+    """Tests for hooks/rtl-orchestrator-inject.sh."""
+
+    HOOK = HOOKS_DIR / "rtl-orchestrator-inject.sh"
+
+    def test_no_project_markers_no_injection(self, tmp_path):
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
+        assert result.get("raw_stdout", "") == ""
+
+    def test_rtl_dir_triggers_injection(self, tmp_path):
+        (tmp_path / "rtl").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
+        output = result.get("raw_stdout", "")
+        assert "# RTL Agent Team — Active Project Rules" in output
+        assert "/rtl-agent-team:rtl-autopilot" in output
+        assert "Action Skills first" in output
+
+    def test_docs_dir_triggers_injection(self, tmp_path):
+        (tmp_path / "docs").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
+        output = result.get("raw_stdout", "")
+        assert "## Absolute Rules (Hard Gates)" in output
+        assert "/rtl-agent-team:p1-spec-research" in output
+
+    def test_rtl_state_dir_triggers_injection(self, tmp_path):
+        (tmp_path / ".rtl-agent-team").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
+        output = result.get("raw_stdout", "")
+        assert "/rtl-agent-team:rtl-p5-verify" in output
+        assert "/rtl-agent-team:rtl-p6-design-review" in output
 
 
 class TestRtlEditTracker:

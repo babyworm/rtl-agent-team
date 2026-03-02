@@ -20,6 +20,32 @@ SKILLS_DIR = REPO_ROOT / "skills"
 HOOKS_JSON = REPO_ROOT / "hooks" / "hooks.json"
 PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
+RTL_ORCHESTRATE_SKILL = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
+ORCHESTRATOR_INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
+
+
+def _read_frontmatter(path: Path) -> str:
+    content = path.read_text()
+    parts = content.split("---", 2)
+    assert len(parts) >= 3, f"Missing YAML frontmatter: {path}"
+    return parts[1]
+
+
+def _extract_marked_block(path: Path, start_marker: str, end_marker: str) -> str:
+    lines = path.read_text().splitlines()
+    in_block = False
+    out = []
+
+    for line in lines:
+        if line == start_marker:
+            in_block = True
+            continue
+        if in_block and line == end_marker:
+            return "\n".join(out).strip()
+        if in_block:
+            out.append(line)
+
+    raise AssertionError(f"Markers not found in {path}: {start_marker} ... {end_marker}")
 
 
 # ── Agent definition tests ──────────────────────────────────────────────────
@@ -215,9 +241,82 @@ class TestCrossReferences:
             skill_match = any(ref == s for s in [d.name for d in SKILLS_DIR.iterdir() if d.is_dir()])
             if not skill_match:
                 missing.append(ref)
-        # We don't fail on skill references that aren't agents
-        # Only check explicitly listed agents in the delegation table
-        pass
+        assert missing == [], f"Unknown rtl-agent-team references in CLAUDE.md: {sorted(set(missing))}"
+
+    def test_action_skill_to_orchestrator_policy_chain(self):
+        """Action Skill → Orchestrator Agent → Policy Skill mapping must be intact."""
+        chains = [
+            ("rtl-autopilot", "autopilot-orchestrator", "rtl-autopilot-policy"),
+            ("p1-spec-research", "p1-research-orchestrator", "p1-spec-research-policy"),
+            ("p2-arch-design", "p2-arch-orchestrator", "p2-arch-design-policy"),
+            ("rtl-p3-uarch-design", "p3-uarch-orchestrator", "rtl-p3-uarch-policy"),
+            ("rtl-p4-implement", "p4-implement-orchestrator", "rtl-p4-implement-policy"),
+            ("rtl-p4s-bugfix", "p4s-bugfix-orchestrator", "rtl-p4s-bugfix-policy"),
+            ("rtl-p4s-unit-test", "p4s-unit-test-orchestrator", "rtl-p4s-unit-test-policy"),
+            ("rtl-p5-verify", "p5-verify-orchestrator", "rtl-p5-verify-policy"),
+            ("rtl-p5s-func-verify", "p5s-func-verify-orchestrator", "rtl-p5s-func-verify-policy"),
+            ("rtl-p5s-integration-test", "p5s-integration-orchestrator", "rtl-p5s-integration-test-policy"),
+            ("rtl-p6-design-review", "p6-review-orchestrator", "rtl-p6-design-review-policy"),
+            ("rtl-dse", "dse-orchestrator", "rtl-dse-policy"),
+            ("rtl-spec-to-uarch", "spec-to-uarch-orchestrator", "rtl-spec-to-uarch-policy"),
+            ("rtl-uarch-to-verify", "uarch-to-verify-orchestrator", "rtl-uarch-to-verify-policy"),
+        ]
+
+        for action_skill, orchestrator, policy_skill in chains:
+            action_file = SKILLS_DIR / action_skill / "SKILL.md"
+            assert action_file.exists(), f"Missing action skill: {action_skill}"
+            action_frontmatter = _read_frontmatter(action_file)
+            assert re.search(r"^user-invocable:\s*true\s*$", action_frontmatter, re.MULTILINE), (
+                f"Action skill must be user-invocable: {action_skill}"
+            )
+
+            action_content = action_file.read_text()
+            task_pattern = rf'Task\(subagent_type="rtl-agent-team:{re.escape(orchestrator)}"'
+            assert re.search(task_pattern, action_content), (
+                f"{action_skill} must delegate to orchestrator {orchestrator}"
+            )
+
+            agent_file = AGENTS_DIR / f"{orchestrator}.md"
+            assert agent_file.exists(), f"Missing orchestrator agent: {orchestrator}"
+            agent_frontmatter = _read_frontmatter(agent_file)
+            skills_pattern = rf"^skills:\s*\[[^\]]*\b{re.escape(policy_skill)}\b[^\]]*\]\s*$"
+            assert re.search(skills_pattern, agent_frontmatter, re.MULTILINE), (
+                f"{orchestrator} must load policy skill {policy_skill}"
+            )
+
+            policy_file = SKILLS_DIR / policy_skill / "SKILL.md"
+            assert policy_file.exists(), f"Missing policy skill: {policy_skill}"
+            policy_frontmatter = _read_frontmatter(policy_file)
+            assert re.search(r"^user-invocable:\s*false\s*$", policy_frontmatter, re.MULTILINE), (
+                f"Policy skill must not be user-invocable: {policy_skill}"
+            )
+
+    def test_convention_skills_are_non_user_invocable(self):
+        convention_skills = ["systemverilog", "systemverilog-assertion", "systemc", "uvm"]
+        for skill_name in convention_skills:
+            skill_file = SKILLS_DIR / skill_name / "SKILL.md"
+            assert skill_file.exists(), f"Missing convention skill: {skill_name}"
+            frontmatter = _read_frontmatter(skill_file)
+            assert re.search(r"^user-invocable:\s*false\s*$", frontmatter, re.MULTILINE), (
+                f"Convention skill must be non-user-invocable: {skill_name}"
+            )
+
+    def test_rtl_orchestrate_hook_export_is_synced(self):
+        skill_block = _extract_marked_block(
+            RTL_ORCHESTRATE_SKILL,
+            "<!-- SESSIONSTART_HOOK_EXPORT_START -->",
+            "<!-- SESSIONSTART_HOOK_EXPORT_END -->",
+        )
+        hook_block = _extract_marked_block(
+            ORCHESTRATOR_INJECT_HOOK,
+            "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh",
+            "# END GENERATED ROUTING BLOCK",
+        )
+        assert skill_block, "Export block in rtl-orchestrate must not be empty"
+        assert skill_block == hook_block, (
+            "Hook routing block is out of sync with skills/rtl-orchestrate/SKILL.md. "
+            "Run: sh scripts/sync_orchestrator_inject.sh"
+        )
 
     def test_key_agents_exist(self, agent_names):
         """Core agents listed in CLAUDE.md delegation table must exist."""

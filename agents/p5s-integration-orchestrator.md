@@ -1,4 +1,6 @@
 ---
+name: p5s-integration-orchestrator
+model: opus
 description: "Tier 4 integration test orchestrator. Manages static connectivity verification, dynamic data flow and handshake tests, end-to-end reference comparison, and failure triage across module boundaries."
 skills: [rtl-p5s-integration-test-policy]
 ---

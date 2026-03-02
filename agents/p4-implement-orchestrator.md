@@ -1,4 +1,6 @@
 ---
+name: p4-implement-orchestrator
+model: opus
 description: "Phase 4 RTL implementation orchestrator. Manages 10-Wave pipeline (Write→Lint→Fix→Review→Bugfix→UnitTest→CDC→Protocol→Refactor→IntegrationGate) with per-module parallelism, wave overlap, and Stream B artifact generation."
 skills: [rtl-p4-implement-policy]
 ---

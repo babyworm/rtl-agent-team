@@ -1,4 +1,6 @@
 ---
+name: autopilot-orchestrator
+model: opus
 description: "Full RTL design pipeline orchestrator. Manages 6-phase flow with dual-layer phase gates, parallel agent execution, feedback loops, and resumability. Spawns specialist agents for each phase and enforces quality gates between phases."
 skills: [rtl-autopilot-policy]
 ---

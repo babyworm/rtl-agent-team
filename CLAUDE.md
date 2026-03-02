@@ -103,6 +103,8 @@ When modifying this plugin:
 7. **POSIX shell compatibility** — Hook scripts are invoked with `sh`, not `bash`. Use `[` not `[[`
 8. **Skill as gate** — Action skills must validate phase prerequisites before spawning agents, not just delegate blindly
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
+10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
+11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
 
 ### File Architecture
 
@@ -112,7 +114,7 @@ rtl-agent-team/                          # Plugin root
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
 ├── agents/                              # 64 specialized agent definitions (.md)
 ├── skills/                              # 56 skills: 14 orchestrator entry-points + 14 policies + 22 action workflows + 4 conventions + 2 other
-│   ├── rtl-orchestrate/SKILL.md         #   On-demand routing reference
+│   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rtl-setup/templates/             #   Rules + guides deployed to user projects
 │   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project
 │   │   └── guides/ (6 files)            #     → {dir}/CLAUDE.md in user project
@@ -142,12 +144,18 @@ rtl-agent-team/                          # Plugin root
 The authoritative routing table (natural language pattern → skill/agent mapping) lives in
 `skills/rtl-orchestrate/SKILL.md` — the **single source of truth** for all routing decisions.
 
-This routing is delivered to end users via two mechanisms:
-- **SessionStart hook** (`hooks/rtl-orchestrator-inject.sh`): condensed routing auto-injected
-- **On-demand skill** (`/rtl-agent-team:rtl-orchestrate`): full reference when invoked
+This routing is delivered via two mechanisms:
+- **SessionStart hook** (`hooks/rtl-orchestrator-inject.sh`): condensed routing auto-injected for users
+- **Internal reference skill** (`skills/rtl-orchestrate/SKILL.md`): full routing/delegation reference loaded by agents (not user-invocable)
 
-When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md` and
-sync the condensed version in `hooks/rtl-orchestrator-inject.sh`.
+Routing contract:
+- User intent routes to **Action Skills first**.
+- Orchestrator agents are spawned by Action Skills via `Task()`.
+- Policy skills are loaded by orchestrators via `skills: [*-policy]`.
+
+When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md`, then run:
+- `sh scripts/sync_orchestrator_inject.sh`
+to regenerate the condensed routing block in `hooks/rtl-orchestrator-inject.sh`.
 
 ## Absolute Rules
 
@@ -201,10 +209,10 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria |
-| `stop-gate.sh` | Stop | Autopilot state gate (blocks premature exit during rtl-autopilot) |
+| `stop-gate.sh` | Stop | Autopilot gate ladder enforcement (`N→2N→last-chance→user escalation`) + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
-| `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement (max iterations) |
+| `rtl-skill-completion-gate.sh` | Stop | Skill completion enforcement (legacy max-iteration mode + optional escalation ladder mode) |
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 

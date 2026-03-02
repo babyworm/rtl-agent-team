@@ -1,4 +1,6 @@
 ---
+name: p6-review-orchestrator
+model: opus
 description: "Phase 6 design review orchestrator. Manages 2-wave parallel execution (code-quality + design-quality → CC1 → design-note + improvements → CC2) with consistency checks and completion quality gate."
 skills: [rtl-p6-design-review-policy]
 ---

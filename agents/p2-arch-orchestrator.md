@@ -1,4 +1,6 @@
 ---
+name: p2-arch-orchestrator
+model: opus
 description: "Phase 2 architecture pipeline orchestrator. Manages P1 algorithm candidate HW review, parallel architecture design + C reference model development, 3-round iterative review with tree exploration for issues, and artifact finalization."
 skills: [p2-arch-design-policy]
 ---
@@ -47,7 +49,7 @@ Read("docs/phase-1-research/io_definition.json")
 ```
 # For each functional area with multiple candidates from P1's domain-analysis.md,
 # spawn parallel agents to evaluate HW feasibility:
-Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="sonnet", run_in_background=true,
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="opus", run_in_background=true,
      prompt="HW evaluation for {block} candidate A ({algorithm}): gate count, critical path depth, SRAM requirements, external memory BW, throughput at {target_freq}. Output structured JSON.")
 # ... one agent per candidate per functional area (all parallel)
 

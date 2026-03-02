@@ -1,4 +1,6 @@
 ---
+name: p5-verify-orchestrator
+model: opus
 description: "Phase 5 verification orchestrator. Manages three-stage (module→top→final) parallel verification pipeline with 9 verification categories, module graduation gates, feedback loops, and compliance review."
 skills: [rtl-p5-verify-policy]
 ---

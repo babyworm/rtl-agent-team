@@ -1,4 +1,6 @@
 ---
+name: p4s-unit-test-orchestrator
+model: opus
 description: "Tier 2 unit test orchestrator. Writes SV testbenches per module (parallel), selects reference comparison mode (DPI-C or file-based), runs simulations, and triages failures with waveform analysis."
 skills: [rtl-p4s-unit-test-policy]
 ---

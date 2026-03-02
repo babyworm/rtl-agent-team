@@ -1,4 +1,6 @@
 ---
+name: p4s-bugfix-orchestrator
+model: opus
 description: "RTL bug fix orchestrator. Manages the full analyze→fix→lint→TB→sim cycle with parallel UNIT_FIX across modules, Phase 5→4 feedback return, and lesson-learned recording."
 skills: [rtl-p4s-bugfix-policy]
 ---

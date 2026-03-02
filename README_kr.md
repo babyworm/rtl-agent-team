@@ -67,6 +67,13 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 ## 사용법
 
+### 라우팅 계약
+
+- 사용자 요청은 **Action Skill 우선**으로 라우팅합니다 (예: `/rtl-agent-team:rtl-autopilot`, `/rtl-agent-team:rtl-p5-verify`).
+- Orchestrator Agent는 사용자 직접 호출 대상이 아니며, Action Skill이 `Task(...)`로 내부 스폰합니다.
+- Policy Skill은 Orchestrator의 `skills: [*-policy]`를 통해 로드됩니다.
+- `rtl-orchestrate`는 내부 라우팅 참조 스킬(`user-invocable: false`)이며 사용자 slash-command가 아닙니다.
+
 ### 전체 자동화
 
 ```
@@ -74,6 +81,16 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
 6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
+
+### Autopilot 에스컬레이션 래더
+
+`rtl-autopilot`의 gate 재시도는 gate별 `N` 기준으로 동작합니다:
+- `1..N`: 기본 전략
+- `N+1..2N`: fallback 전략 (실패 범위 분해 + 에이전트 조합 전환)
+- `2N+1`: last-chance 대안 전략 1회 자동 실행
+- last-chance 실패 후: 즉시 사용자 가이드 요청
+
+fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text`)에 기록되고 Stop hook에서 주입됩니다.
 
 ### 파이프라인 분할 실행
 
@@ -146,6 +163,7 @@ rtl-agent-team/
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
 ├── agents/                     # 64개 에이전트 (설계/검증/리뷰/EDA/도메인)
 ├── skills/                     # 56개 스킬 (SKILL.md + templates/ + examples/)
+│   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
 │   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
@@ -162,6 +180,15 @@ rtl-agent-team/
     └── video-codec/            # H.264/H.265 지식, 적합성 데이터
 ```
 
+### 라우팅 동기화 (기여자)
+
+라우팅/위임 문서를 수정한 뒤 아래를 실행하세요:
+
+```bash
+sh scripts/sync_orchestrator_inject.sh
+python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py
+```
+
 ## 에이전트 팀
 
 ### 에이전트 구성 (64개, 전체 Opus)
@@ -175,6 +202,10 @@ rtl-agent-team/
 | EDA/합성 | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
 | 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
 | 도메인 전문가 | 7 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert |
+
+모델 사용 원칙:
+- 추론이 많이 필요한 설계/검증/디버깅은 `opus` 사용
+- `sonnet`은 문서 생성 또는 도구 결과 요약/포맷팅 용도로만 사용
 
 ### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
 

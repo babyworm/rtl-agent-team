@@ -67,6 +67,13 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 ## Usage
 
+### Routing contract
+
+- Route user intent to **Action Skills first** (for example, `/rtl-agent-team:rtl-autopilot`, `/rtl-agent-team:rtl-p5-verify`).
+- Orchestrator agents are internal execution units and are spawned by Action Skills via `Task(...)`.
+- Policy skills are loaded by orchestrators via `skills: [*-policy]`.
+- `rtl-orchestrate` is an internal routing reference skill (`user-invocable: false`), not a user slash command.
+
 ### Full automation
 
 ```
@@ -74,6 +81,16 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
 Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
+
+### Autopilot escalation ladder
+
+`rtl-autopilot` gates use a per-gate retry ladder:
+- `1..N`: primary strategy
+- `N+1..2N`: fallback strategy (scope split + agent composition switch)
+- `2N+1`: last-chance alternative (one automatic attempt)
+- after last-chance fail: stop and ask user guidance
+
+Dynamic fallback guidance is injected through state (`orchestration_control.dynamic_prompt_text`) and surfaced by Stop hooks.
 
 ### Pipeline composition (split execution)
 
@@ -146,6 +163,7 @@ rtl-agent-team/
 ├── CLAUDE.md                   # 6-Phase pipeline rules
 ├── agents/                     # 64 agents (design/verification/review/EDA/domain)
 ├── skills/                     # 56 skills (SKILL.md + templates/ + examples/)
+│   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
@@ -162,6 +180,15 @@ rtl-agent-team/
     └── video-codec/            # H.264/H.265 knowledge, conformance data
 ```
 
+### Routing sync for contributors
+
+When modifying routing/delegation docs:
+
+```bash
+sh scripts/sync_orchestrator_inject.sh
+python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py
+```
+
 ## Agent Team
 
 ### Agent Composition (64 agents, all Opus)
@@ -175,6 +202,10 @@ rtl-agent-team/
 | EDA/Synthesis | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
 | Infrastructure | 3 | ipxact-generator, bfm-dev, ref-model-dev |
 | Domain Experts | 7 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert |
+
+Model policy:
+- Use `opus` for reasoning-heavy analysis, architecture decisions, and debugging.
+- Use `sonnet` only for documentation generation or tool-result summarization/formatting.
 
 ### 6-Phase Pipeline (+Phase 7 Optional Exploration)
 

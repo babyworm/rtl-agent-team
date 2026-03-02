@@ -1,4 +1,6 @@
 ---
+name: dse-orchestrator
+model: opus
 description: "Design Space Exploration orchestrator. Manages Phase 1→2 with deep algorithm study, multiple architecture candidates, user decision points (AskUserQuestion), optional functional→architectural C model transformation, and 3-round iterative review. Stops before Phase 3."
 skills: [rtl-dse-policy]
 ---

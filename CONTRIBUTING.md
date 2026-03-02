@@ -138,12 +138,20 @@ skills/{skill-name}/
 
 | 파일 | 업데이트 내용 |
 |------|-------------|
-| `skills/rtl-orchestrate/SKILL.md` | 스킬 라우팅 테이블 + 에이전트 위임 테이블 (single source of truth) |
-| `hooks/rtl-orchestrator-inject.sh` | 축약 라우팅 (SessionStart hook, 위 테이블과 동기화 필요) |
+| `skills/rtl-orchestrate/SKILL.md` | 스킬 라우팅 테이블 + Action Skill→Orchestrator→Policy 매핑 + SessionStart export block (single source of truth) |
+| `scripts/sync_orchestrator_inject.sh` | `rtl-orchestrate`의 export block을 `hooks/rtl-orchestrator-inject.sh` generated block으로 동기화 |
+| `hooks/rtl-orchestrator-inject.sh` | SessionStart 축약 라우팅 (generated block 직접 수동 수정 금지) |
 | `README.md` | 에이전트/스킬 카운트, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
 | `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
 | `skills/rtl-autopilot/templates/context-manifest-phase-*.json` | Phase별 입출력 artifact 변경 시 manifest 업데이트 |
+
+라우팅/위임 변경 시 반드시 아래를 실행하세요:
+
+```bash
+sh scripts/sync_orchestrator_inject.sh
+python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py
+```
 
 ### 플러그인 캐시 동기화 (필수)
 

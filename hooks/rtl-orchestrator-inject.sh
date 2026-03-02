@@ -25,6 +25,7 @@ if [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ] && [ ! -d "$CWD/.rtl-agent-team" 
 fi
 
 cat << 'RULES_EOF'
+# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh
 # RTL Agent Team — Active Project Rules
 
 ## Absolute Rules (Hard Gates)
@@ -38,49 +39,53 @@ cat << 'RULES_EOF'
 8. No Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required)
 9. Phase 7 is exempt — free exploration allowed without pipeline Gate
 
-## Routing (key patterns → skill or orchestrator agent)
-Orchestrators: spawn via Task(subagent_type="rtl-agent-team:XXX"). Skills: invoke via Skill().
+## Routing (key patterns → Action Skill)
+Always route user intent to Action Skills first. Orchestrators are internal and spawned by skills.
 | Pattern | Route To | Type |
 |---|---|---|
-| RTL design, chip design, full pipeline | `autopilot-orchestrator` | Orchestrator |
-| setup, initialize, project start | `/rtl-agent-team:rtl-setup` | Skill |
-| spec analysis, requirements, research | `p1-research-orchestrator` | Orchestrator |
-| codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Skill |
-| architecture design (RTL context) | `p2-arch-orchestrator` | Orchestrator |
-| architecture review | `/rtl-agent-team:arch-review` | Skill |
-| reference model, C model | `/rtl-agent-team:ref-model` | Skill |
-| BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` | Skill |
-| microarchitecture, uarch | `p3-uarch-orchestrator` | Orchestrator |
-| DSE, design space exploration | `dse-orchestrator` | Orchestrator |
-| spec to uarch, Phase 1-3, design only | `spec-to-uarch-orchestrator` | Orchestrator |
-| uarch to verify, Phase 4-5, RTL from uarch | `uarch-to-verify-orchestrator` | Orchestrator |
-| RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Skill |
-| decoder conformance, conformance stream | `/rtl-agent-team:codec-conformance-eval` | Skill |
-| bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Skill |
-| RTL coding, module implementation | `p4-implement-orchestrator` | Orchestrator |
-| refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Skill |
-| unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Skill |
-| IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Skill |
-| lint, lint check | `/rtl-agent-team:rtl-lint-check` | Skill |
-| synthesis, yosys, SDC | `/rtl-agent-team:rtl-synth-check` | Skill |
-| RTL documentation | `/rtl-agent-team:rtl-document` | Skill |
-| IP-XACT, register map | `/rtl-agent-team:rtl-ipxact-gen` | Skill |
-| Phase 5, verification pipeline | `p5-verify-orchestrator` | Orchestrator |
-| simulation, testbench, cocotb | `p5s-func-verify-orchestrator` | Orchestrator |
-| UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` | Skill |
-| performance verification, throughput | `/rtl-agent-team:rtl-p5s-perf-verify` | Skill |
-| formal, SVA, assertion | `/rtl-agent-team:rtl-p5s-sva-check` | Skill |
-| CDC, clock domain | `/rtl-agent-team:rtl-p5s-cdc-verify` | Skill |
-| AXI, APB, AHB, protocol | `/rtl-agent-team:rtl-p5s-protocol-verify` | Skill |
-| coverage | `/rtl-agent-team:rtl-p5s-coverage-analyze` | Skill |
-| integration test, cross-module, Tier 4 | `/rtl-agent-team:rtl-p5s-integration-test` | Skill |
-| regression, multi-seed | `p5s-func-verify-orchestrator` (Tier 3) | Orchestrator |
-| RTL conformance, golden comparison | `/rtl-agent-team:rtl-conformance-test` | Skill |
-| bug reproduction, waveform debug | `/rtl-agent-team:rtl-bug-repro` | Skill |
-| model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Skill |
-| design review, Phase 6, design note | `p6-review-orchestrator` | Orchestrator |
-| exploration, Phase 7, free exploration | `p6-review-orchestrator` (exploration mode) | Orchestrator |
-For complete agent delegation table and design rules, invoke the rtl-orchestrate skill.
+| RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` | Action Skill |
+| setup, initialize, project start | `/rtl-agent-team:rtl-setup` | Action Skill |
+| spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` | Action Skill |
+| codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Action Skill |
+| architecture design (RTL context) | `/rtl-agent-team:p2-arch-design` | Action Skill |
+| architecture review | `/rtl-agent-team:arch-review` | Action Skill |
+| reference model, C model | `/rtl-agent-team:ref-model` | Action Skill |
+| BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` | Action Skill |
+| microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
+| DSE, design space exploration | `/rtl-agent-team:rtl-dse` | Action Skill |
+| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rtl-spec-to-uarch` | Action Skill |
+| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
+| RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Action Skill |
+| decoder conformance, conformance stream | `/rtl-agent-team:codec-conformance-eval` | Action Skill |
+| bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
+| RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
+| refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
+| unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
+| IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
+| lint, lint check | `/rtl-agent-team:rtl-lint-check` | Action Skill |
+| synthesis, yosys, SDC | `/rtl-agent-team:rtl-synth-check` | Action Skill |
+| RTL documentation | `/rtl-agent-team:rtl-document` | Action Skill |
+| IP-XACT, register map | `/rtl-agent-team:rtl-ipxact-gen` | Action Skill |
+| Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` | Action Skill |
+| simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` | Action Skill |
+| UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` | Action Skill |
+| performance verification, throughput | `/rtl-agent-team:rtl-p5s-perf-verify` | Action Skill |
+| formal, SVA, assertion | `/rtl-agent-team:rtl-p5s-sva-check` | Action Skill |
+| CDC, clock domain | `/rtl-agent-team:rtl-p5s-cdc-verify` | Action Skill |
+| AXI, APB, AHB, protocol | `/rtl-agent-team:rtl-p5s-protocol-verify` | Action Skill |
+| coverage | `/rtl-agent-team:rtl-p5s-coverage-analyze` | Action Skill |
+| integration test, cross-module, Tier 4 | `/rtl-agent-team:rtl-p5s-integration-test` | Action Skill |
+| regression, multi-seed | `/rtl-agent-team:rtl-p5s-func-verify` (Tier 3) | Action Skill |
+| RTL conformance, golden comparison | `/rtl-agent-team:rtl-conformance-test` | Action Skill |
+| bug reproduction, waveform debug | `/rtl-agent-team:rtl-bug-repro` | Action Skill |
+| model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
+| design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
+| exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) | Action Skill |
+| `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
+| `.sv/.sva` assertion work | `systemverilog-assertion` (auto-applied) | Convention |
+| UVM testbench generation | `uvm` (auto-applied) | Convention |
+| `.cpp/.h` SystemC/TLM work | `systemc` (auto-applied) | Convention |
+Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and loaded by agents when needed.
 
 ## Expert Review → Agent Delegation (spawn directly or through skills)
 | Request Pattern | Delegate to Agent |
@@ -120,4 +125,5 @@ Gate: `touch .rtl-agent-team/state/rtl-verify-done` (or `rtl-verify-waiver` for 
 ## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)
 Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts)
+# END GENERATED ROUTING BLOCK
 RULES_EOF

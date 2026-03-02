@@ -1,4 +1,6 @@
 ---
+name: spec-to-uarch-orchestrator
+model: opus
 description: "Phase 1→3 pipeline orchestrator. Manages Research → Architecture → μArch flow with 3-round iterative reviews per phase, dual-layer phase gates, ADR recording, parallel sub-pipeline execution, and resumability. Stops before Phase 4."
 skills: [rtl-spec-to-uarch-policy]
 ---

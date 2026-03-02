@@ -1,4 +1,6 @@
 ---
+name: uarch-to-verify-orchestrator
+model: opus
 description: "Phase 4→5 pipeline orchestrator. Manages RTL implementation (dual-stream) and verification (5 sub-phases) with prerequisite checks, dual-layer phase gates, Phase 5→4 feedback loops, and resumability. Stops before Phase 6."
 skills: [rtl-uarch-to-verify-policy]
 ---
