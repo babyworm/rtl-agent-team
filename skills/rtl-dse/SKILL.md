@@ -392,7 +392,7 @@ User: "H.264 인트라 예측 모듈을 설계하려고 해. 알고리즘 비교
   - Candidate C: 2-mode parallel with pipeline (balanced)
   - User selects: Candidate C
   - Ref C model built from scratch
-→ STOP: "DSE 완료. 아키텍처 검토 후 /rtl-agent-team:rtl-uarch-design으로 μArch 설계를 진행하세요."
+→ STOP: "DSE 완료. 아키텍처 검토 후 /rtl-agent-team:rtl-p3-uarch-design으로 μArch 설계를 진행하세요."
 ```
 
 **Example 2: DSE with existing functional C model**

@@ -12,7 +12,7 @@ CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 if [ -f "$CWD/$STATE_FILE" ]; then
-  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"RTL Autopilot is still running. Complete all 6 phases or run /rtl-agent-team:cancel to stop."}}'
+  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"RTL Autopilot is still running. Complete all 6 phases or remove .rtl-agent-team/state/rtl-autopilot-state.json to stop."}}'
 else
   printf '{"continue":true}'
 fi

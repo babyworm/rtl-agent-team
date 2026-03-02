@@ -65,6 +65,6 @@ fi
 
 # Skill not complete — BLOCK exit and increment iteration
 NEW_ITER=$((ITERATION + 1))
-sed -i "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEW_ITER/" "$SKILL_STATE" 2>/dev/null
+sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEW_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
 printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop - %s/%s] %s 스킬이 아직 완료되지 않았습니다. 남은 조건: %s. 작업을 계속 진행하세요. 모든 조건 충족 시 .rtl-agent-team/state/skill-active.json 의 all_complete 를 true 로 설정하세요."}}' "$NEW_ITER" "$MAX_ITER" "$SKILL_NAME" "$PENDING"

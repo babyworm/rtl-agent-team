@@ -9,10 +9,10 @@
 
 | 구분 | 테스트 수 | 상태 |
 |------|----------|------|
-| 유닛 테스트 | 219개 | 모두 PASS |
+| 유닛 테스트 | 257개 | 모두 PASS |
 | 통합 테스트 (EDA 도구) | 12개 | EDA 도구 없으면 SKIP |
 | 통합 테스트 (Docker 빌드) | 33개 | Docker daemon 없으면 SKIP |
-| **합계** | **264개** | **231 passed, 45 skipped** |
+| **합계** | **302개** | **269 passed, 45 skipped** |
 
 ---
 
@@ -106,9 +106,12 @@ python -m pytest tests/unit/ -n auto
 
 | 훅 | 역할 | 테스트 항목 |
 |----|------|------------|
-| `rtl-edit-tracker.sh` | RTL 파일(.sv/.svh/.v/.vh) 수정 추적 | 파일 확장자 필터링, 중복 방지, 카운트 |
+| `rtl-edit-tracker.sh` | RTL 파일(.sv/.svh/.v/.vh) 수정 추적 + Phase 6 stale 감지 | 파일 확장자 필터링, 중복 방지, 카운트, Phase 6 마커 |
 | `rtl-verify-stop-gate.sh` | RTL 수정 후 검증 완료 전 세션 종료 차단 | 차단/허용 조건, 정리(cleanup) |
 | `stop-gate.sh` | autopilot 실행 중 세션 종료 차단 | 상태 파일 유무에 따른 차단 |
+| `rtl-p6-cascade-gate.sh` | Phase 6 이후 RTL 수정 시 cascade 재검토 강제 | stale 마커, cascade-done, 차단/허용 |
+| `rtl-skill-activation.sh` | 스킬 호출 시 완료 상태 자동 생성 (PreToolUse:Skill) | 상태 파일 생성, 재진입 방지, 기준 로딩 |
+| `rtl-skill-completion-gate.sh` | 스킬 완료 전 세션 종료 차단 (Stop) | 반복 카운트, 최대 반복, staleness, 정리 |
 
 **동작 원리:** 훅은 stdin으로 JSON을 받고, stdout으로 `{"continue": true/false}` JSON을 출력합니다.
 테스트는 `run_hook()` helper로 실제 셸 스크립트를 실행하고 출력 JSON을 검증합니다.

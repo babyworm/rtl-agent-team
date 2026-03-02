@@ -39,6 +39,8 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` |
 | "lint", "lint check" (RTL context) | `/rtl-agent-team:rtl-lint-check` |
 | "synthesis", "yosys", "SDC" | `/rtl-agent-team:rtl-synth-check` |
+| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
+| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
 | **--- Phase 5: Verify ---** | |
 | "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` |
 | "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` |
@@ -67,8 +69,6 @@ When RTL/HDL/FPGA/ASIC related tasks are detected, use this plugin's specialized
 | "clock architecture", "clock tree", "PLL", "clock gating review" | Delegate directly to `clock-architect` agent |
 | **--- Phase 6: Design Note ---** | |
 | "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` |
-| "documentation", "RTL docs" | `/rtl-agent-team:rtl-document` |
-| "IP-XACT", "ipxact", "register map generation" | `/rtl-agent-team:rtl-ipxact-gen` |
 | **--- Phase 7: Exploration (optional) ---** | |
 | "free exploration", "exploration", "Phase 7", "improvement exploration", "experimental improvement" | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) |
 | **--- Other Verification ---** | |

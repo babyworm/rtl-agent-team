@@ -484,14 +484,14 @@ Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="Intensive code review of rtl/{module_a}/*.sv. Check for quality regressions from verification debug. Report findings by severity (CRITICAL/HIGH/MEDIUM/LOW). READ-ONLY.")
 
 # If findings exist:
-Skill("rtl-agent-team:rtl-refactor",
+Skill("rtl-agent-team:rtl-p4s-refactor",
       args="rtl/{module_a}/*.sv — apply fixes from code review findings. No behavioral change.")
 
 # ============================================================
 # Stage 1 Feedback Loop (on FAIL)
 # ============================================================
 # Module {module_a} V2 (formal) FAIL: SVA counterexample
-Skill("rtl-agent-team:rtl-bugfix",
+Skill("rtl-agent-team:rtl-p4s-bugfix",
       args="Fix SVA counterexample in {module_a}. feedback_origin=5-formal")
 # After fix: re-verify V2 only (not all 9 checks)
 

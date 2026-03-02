@@ -35,7 +35,10 @@ case "$FILE_PATH" in
       P6_MSG=" Phase 6 리뷰 문서가 stale 상태로 표시되었습니다 — 검증 완료 후 코드 리뷰/디자인 노트도 갱신하세요."
     fi
 
-    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] %s 수정됨 (미검증 RTL 파일 %s개). RTL 수정 완료 후 반드시: (1) TB 생성/업데이트, (2) cocotb/verilator 기능 시뮬레이션 수행. lint만으로는 기능 정확성을 보장할 수 없습니다. 완료 시: touch %s/rtl-verify-done%s"}}' "$BASENAME" "$COUNT" "$STATE_DIR" "$P6_MSG"
+    # Escape JSON-special characters in path/message variables
+    SAFE_BASENAME=$(printf '%s' "$BASENAME" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    SAFE_STATE_DIR=$(printf '%s' "$STATE_DIR" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] %s 수정됨 (미검증 RTL 파일 %s개). RTL 수정 완료 후 반드시: (1) TB 생성/업데이트, (2) cocotb/verilator 기능 시뮬레이션 수행. lint만으로는 기능 정확성을 보장할 수 없습니다. 완료 시: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
     ;;
   *)
     # Not an RTL file, no action needed

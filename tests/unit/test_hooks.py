@@ -279,7 +279,7 @@ class TestSkillCompletionGate:
 
     HOOK = HOOKS_DIR / "rtl-skill-completion-gate.sh"
 
-    def _write_skill_state(self, tmp_project, skill="rtl-bugfix", iteration=1,
+    def _write_skill_state(self, tmp_project, skill="rtl-p4s-bugfix", iteration=1,
                            max_iterations=5, all_complete=False,
                            pending="lint_pass, tb_updated, sim_pass"):
         state_dir = tmp_project / ".rtl-agent-team" / "state"
@@ -343,10 +343,10 @@ class TestSkillCompletionGate:
 
     def test_block_message_includes_skill_name(self, tmp_project):
         """Block message should include the skill name."""
-        self._write_skill_state(tmp_project, skill="rtl-bugfix")
+        self._write_skill_state(tmp_project, skill="rtl-p4s-bugfix")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "rtl-bugfix" in ctx
+        assert "rtl-p4s-bugfix" in ctx
 
     def test_block_message_includes_pending(self, tmp_project):
         """Block message should include pending criteria."""
@@ -363,7 +363,7 @@ class TestSkillCompletionGate:
         import datetime
         old_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
         state = {
-            "skill": "rtl-bugfix",
+            "skill": "rtl-p4s-bugfix",
             "active": True,
             "iteration": 1,
             "max_iterations": 5,
@@ -394,16 +394,16 @@ class TestSkillActivation:
         # Create criteria config
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
-        criteria = {"rtl-bugfix": "lint_pass, tb_updated, sim_pass"}
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-bugfix"}
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
         assert state_file.exists()
         state = json.loads(state_file.read_text())
-        assert state["skill"] == "rtl-bugfix"
+        assert state["skill"] == "rtl-p4s-bugfix"
         assert state["all_complete"] is False
         assert "lint_pass" in state["pending"]
 
@@ -411,7 +411,7 @@ class TestSkillActivation:
         """rtl-agent-team skill without criteria in config should not create state."""
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
-        criteria = {"rtl-bugfix": "lint_pass"}
+        criteria = {"rtl-p4s-bugfix": "lint_pass"}
         (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:systemverilog"}
@@ -422,7 +422,7 @@ class TestSkillActivation:
 
     def test_no_criteria_file_no_state(self, tmp_project):
         """Missing criteria file should not create state."""
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-bugfix"}
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
@@ -432,29 +432,29 @@ class TestSkillActivation:
         """If state already exists, should not be overridden."""
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
-        criteria = {"rtl-bugfix": "lint_pass, tb_updated, sim_pass"}
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
-        existing = {"skill": "rtl-code", "iteration": 3, "all_complete": False, "pending": "something"}
+        existing = {"skill": "rtl-p4-implement", "iteration": 3, "all_complete": False, "pending": "something"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-bugfix"}
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         # State should NOT be overridden
         state = json.loads((state_dir / "skill-active.json").read_text())
-        assert state["skill"] == "rtl-code"  # Original, not rtl-bugfix
+        assert state["skill"] == "rtl-p4-implement"  # Original, not rtl-p4s-bugfix
         assert state["iteration"] == 3
 
     def test_activation_message(self, tmp_project):
         """Activation should include skill name in additionalContext."""
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
-        criteria = {"rtl-bugfix": "lint_pass, sim_pass"}
+        criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
         (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-bugfix"}
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "rtl-bugfix" in ctx
+        assert "rtl-p4s-bugfix" in ctx
