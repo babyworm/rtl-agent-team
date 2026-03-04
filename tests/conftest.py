@@ -213,15 +213,17 @@ def run_script(script_path, *args, stdin_data=None, env=None, cwd=None, timeout=
     )
 
 
-def run_hook(hook_path, stdin_json, cwd=None, timeout=10):
+def run_hook(hook_path, stdin_json, cwd=None, timeout=10, env=None):
     """Run a hook script with JSON on stdin, return parsed JSON output."""
     if isinstance(stdin_json, dict):
         stdin_json = json.dumps(stdin_json)
+    merged_env = {**os.environ, **(env or {})}
     result = subprocess.run(
         ["sh", str(hook_path)],
         capture_output=True,
         text=True,
         input=stdin_json,
+        env=merged_env,
         cwd=cwd,
         timeout=timeout,
     )

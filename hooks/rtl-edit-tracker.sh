@@ -5,15 +5,18 @@
 # a reminder that functional verification (not just lint) is required.
 
 INPUT=$(cat)
-CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/json-util.sh"
+jsonu_detect_parser
+
+CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 # Load flock utility for concurrent access protection
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 
 # Extract file_path from tool input
-FILE_PATH=$(printf '%s' "$INPUT" | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+FILE_PATH=$(jsonu_get_input_string "$INPUT" "file_path")
 
 # Check if the file is an RTL file
 case "$FILE_PATH" in
@@ -43,8 +46,8 @@ case "$FILE_PATH" in
     fi
 
     # Escape JSON-special characters in path/message variables
-    SAFE_BASENAME=$(printf '%s' "$BASENAME" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    SAFE_STATE_DIR=$(printf '%s' "$STATE_DIR" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    SAFE_BASENAME=$(jsonu_escape "$BASENAME")
+    SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
     printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] %s 수정됨 (미검증 RTL 파일 %s개). RTL 수정 완료 후 반드시: (1) TB 생성/업데이트, (2) cocotb/verilator 기능 시뮬레이션 수행. lint만으로는 기능 정확성을 보장할 수 없습니다. 완료 시: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
     ;;
   *)

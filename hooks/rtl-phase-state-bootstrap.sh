@@ -3,65 +3,61 @@
 # Initializes phase state files for new P4/P5A/P5B action skills.
 
 INPUT=$(cat)
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/json-util.sh"
+
+jsonu_detect_parser
 
 emit_continue() {
-  printf '{"continue":true}'
+  MSG="$1"
+  if [ -n "$MSG" ]; then
+    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(jsonu_escape "$MSG")"
+  else
+    printf '{"continue":true}'
+  fi
   exit 0
 }
 
-json_get_string() {
-  KEY="$1"
-
-  # Prefer structured JSON parsing. Fallbacks keep backward compatibility.
-  if command -v jq >/dev/null 2>&1; then
-    printf '%s' "$INPUT" | jq -r --arg key "$KEY" '.[$key] // empty' 2>/dev/null
-    return 0
-  fi
-
-  PY_BIN=""
-  if command -v python3 >/dev/null 2>&1; then
-    PY_BIN="python3"
-  elif command -v python >/dev/null 2>&1; then
-    PY_BIN="python"
-  fi
-  if [ -n "$PY_BIN" ]; then
-    printf '%s' "$INPUT" | "$PY_BIN" -c '
-import json
-import sys
-
-key = sys.argv[1]
-try:
-    payload = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-value = payload.get(key, "")
-if isinstance(value, str):
-    sys.stdout.write(value)
-' "$KEY" 2>/dev/null
-    return 0
-  fi
-
-  # Last-resort fallback when jq/python are unavailable.
-  printf '%s' "$INPUT" | sed -n "s/.*\"$KEY\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1
+emit_block() {
+  MSG="$1"
+  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(jsonu_escape "$MSG")"
+  exit 0
 }
 
-CWD=$(json_get_string "cwd")
+get_file_mtime_epoch() {
+  TARGET_FILE="$1"
+  if [ ! -e "$TARGET_FILE" ]; then
+    printf ''
+    return 0
+  fi
+  date -r "$TARGET_FILE" +%s 2>/dev/null \
+    || stat -c %Y "$TARGET_FILE" 2>/dev/null \
+    || stat -f %m "$TARGET_FILE" 2>/dev/null \
+    || printf ''
+}
+
+CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
-SKILL_NAME=$(json_get_string "skill")
+SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
 case "$SKILL_NAME" in
   rtl-agent-team:*)
     SHORT_NAME="${SKILL_NAME#rtl-agent-team:}"
     ;;
   *)
-    emit_continue
+    emit_continue ""
     ;;
 esac
 
+SETUP_HINT=""
+if [ "$JSONU_PARSER_MODE" = "sed" ]; then
+  SETUP_HINT="[ENV WARNING] jq/python JSON parser가 없어 fallback(sed) 모드로 동작 중입니다. 안정성을 위해 /rtl-agent-team:rtl-setup 실행 후 jq 또는 python3 환경을 준비하세요."
+fi
+
 # Skip bootstrap if project setup marker is absent.
 if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
-  emit_continue
+  emit_continue "$SETUP_HINT"
 fi
 
 TEMPLATE=""
@@ -76,21 +72,69 @@ case "$SHORT_NAME" in
     TARGET="$CWD/.rtl-agent-team/state/p5a-state.json"
     ;;
   rtl-p5b-silicon-validation)
+    P5A_STATE="$CWD/.rtl-agent-team/state/p5a-state.json"
+    if [ ! -f "$P5A_STATE" ]; then
+      MSG="[P5B Gate BLOCKED] P5A functional closure 상태 파일(.rtl-agent-team/state/p5a-state.json)이 없습니다. 먼저 /rtl-agent-team:rtl-p5a-functional-closure 를 실행하세요."
+      if [ -n "$SETUP_HINT" ]; then
+        MSG="$MSG $SETUP_HINT"
+      fi
+      emit_block "$MSG"
+    fi
+
+    P5A_VERDICT=$(jsonu_get_file_path_string "$P5A_STATE" "gates.p5a_exit.verdict")
+    if [ "$P5A_VERDICT" != "pass" ]; then
+      [ -z "$P5A_VERDICT" ] && P5A_VERDICT="unknown"
+      MSG="[P5B Gate BLOCKED] P5A handoff 불충분: gates.p5a_exit.verdict=$P5A_VERDICT. P5A를 PASS 상태로 완료한 뒤 P5B를 실행하세요."
+      if [ -n "$SETUP_HINT" ]; then
+        MSG="$MSG $SETUP_HINT"
+      fi
+      emit_block "$MSG"
+    fi
+
+    # Staleness guard: if tracked RTL files were modified after P5A PASS, re-run P5A.
+    TRACK_FILE="$CWD/.rtl-agent-team/state/rtl-modified-files.txt"
+    P5A_MTIME=$(get_file_mtime_epoch "$P5A_STATE")
+    if [ -n "$P5A_MTIME" ] && [ -f "$TRACK_FILE" ] && [ -s "$TRACK_FILE" ]; then
+      LATEST_RTL_MTIME=""
+      while IFS= read -r TRACKED_PATH; do
+        [ -z "$TRACKED_PATH" ] && continue
+        case "$TRACKED_PATH" in
+          /*) RTL_FILE="$TRACKED_PATH" ;;
+          *) RTL_FILE="$CWD/$TRACKED_PATH" ;;
+        esac
+        [ -f "$RTL_FILE" ] || continue
+        RTL_MTIME=$(get_file_mtime_epoch "$RTL_FILE")
+        [ -z "$RTL_MTIME" ] && continue
+
+        if [ -z "$LATEST_RTL_MTIME" ] || [ "$RTL_MTIME" -gt "$LATEST_RTL_MTIME" ]; then
+          LATEST_RTL_MTIME="$RTL_MTIME"
+        fi
+      done < "$TRACK_FILE"
+
+      if [ -n "$LATEST_RTL_MTIME" ] && [ "$LATEST_RTL_MTIME" -gt "$P5A_MTIME" ]; then
+        MSG="[P5B Gate BLOCKED] P5A PASS 이후 RTL 변경이 감지되었습니다(stale functional closure). /rtl-agent-team:rtl-p5a-functional-closure 를 재실행해 functional closure를 갱신하세요."
+        if [ -n "$SETUP_HINT" ]; then
+          MSG="$MSG $SETUP_HINT"
+        fi
+        emit_block "$MSG"
+      fi
+    fi
+
     TEMPLATE="$PLUGIN_ROOT/skills/rtl-silicon-validation-policy/templates/p5b-state.json"
     TARGET="$CWD/.rtl-agent-team/state/p5b-state.json"
     ;;
   *)
-    emit_continue
+    emit_continue "$SETUP_HINT"
     ;;
 esac
 
 # Resume-friendly: never overwrite existing state.
 if [ -f "$TARGET" ]; then
-  emit_continue
+  emit_continue "$SETUP_HINT"
 fi
 
 if [ ! -f "$TEMPLATE" ]; then
-  emit_continue
+  emit_continue "$SETUP_HINT"
 fi
 
 mkdir -p "$(dirname "$TARGET")"
@@ -98,4 +142,4 @@ TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S+0
 sed "s/{{TIMESTAMP}}/${TIMESTAMP}/g" "$TEMPLATE" > "$TARGET.tmp"
 mv "$TARGET.tmp" "$TARGET"
 
-emit_continue
+emit_continue "$SETUP_HINT"

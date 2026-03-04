@@ -4,12 +4,16 @@
 # Reads completion criteria from .rtl-agent-team/skill-completion-criteria.json.
 
 INPUT=$(cat)
-CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/json-util.sh"
+jsonu_detect_parser
+
+CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 json_escape() {
-  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+  jsonu_escape "$1"
 }
 
 emit_continue() {
@@ -23,7 +27,7 @@ emit_continue() {
 }
 
 # Extract skill name from tool input
-SKILL_NAME=$(printf '%s' "$INPUT" | sed -n 's/.*"skill"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
 
 # Only handle rtl-agent-team skills
 case "$SKILL_NAME" in

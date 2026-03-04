@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -121,6 +122,22 @@ class TestRtlEditTracker:
         stdin = {"cwd": str(tmp_project), "file_path": ""}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
+
+    def test_parser_uses_top_level_file_path_key(self, tmp_project):
+        raw_input = json.dumps(
+            {
+                "cwd": str(tmp_project),
+                "file_path": "rtl/top_level.sv",
+                "meta": {"file_path": "rtl/nested_should_be_ignored.sv"},
+            }
+        )
+        result = run_hook(self.HOOK, raw_input)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+        tracked = track_file.read_text()
+        assert "rtl/top_level.sv" in tracked
+        assert "rtl/nested_should_be_ignored.sv" not in tracked
 
 
 class TestRtlVerifyStopGate:
@@ -719,6 +736,28 @@ class TestSkillActivation:
         assert result["continue"] is True
         assert run_sim.read_text() == "#!/usr/bin/env bash\necho custom\n"
 
+    def test_parser_uses_top_level_skill_key(self, tmp_project):
+        self._setup_marker(tmp_project)
+        criteria_dir = tmp_project / ".rtl-agent-team"
+        criteria_dir.mkdir(parents=True, exist_ok=True)
+        criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
+        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+
+        raw_input = json.dumps(
+            {
+                "cwd": str(tmp_project),
+                "skill": "rtl-agent-team:rtl-p4s-bugfix",
+                "meta": {"skill": "rtl-agent-team:rtl-setup"},
+            }
+        )
+
+        result = run_hook(self.HOOK, raw_input)
+        assert result["continue"] is True
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        assert state_file.exists()
+        state = json.loads(state_file.read_text())
+        assert state["skill"] == "rtl-p4s-bugfix"
+
 
 class TestPhaseStateBootstrap:
     """Tests for hooks/rtl-phase-state-bootstrap.sh."""
@@ -746,7 +785,6 @@ class TestPhaseStateBootstrap:
         [
             ("rtl-agent-team:rtl-p4-rapid-impl", "p4-state.json", "p4"),
             ("rtl-agent-team:rtl-p5a-functional-closure", "p5a-state.json", "p5a"),
-            ("rtl-agent-team:rtl-p5b-silicon-validation", "p5b-state.json", "p5b"),
         ],
     )
     def test_target_skill_bootstraps_state(self, tmp_project, skill_name, state_file, phase):
@@ -769,6 +807,93 @@ class TestPhaseStateBootstrap:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
         assert result["continue"] is True
         assert json.loads(state_path.read_text())["status"] == "custom"
+
+    def test_p5b_blocks_without_p5a_state(self, tmp_project):
+        self._setup_marker(tmp_project)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "P5B Gate BLOCKED" in ctx
+        assert "rtl-p5a-functional-closure" in ctx
+        assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
+
+    def test_p5b_blocks_when_p5a_verdict_not_pass(self, tmp_project):
+        self._setup_marker(tmp_project)
+        p5a_state = tmp_project / ".rtl-agent-team" / "state" / "p5a-state.json"
+        p5a_state.parent.mkdir(parents=True, exist_ok=True)
+        p5a_state.write_text(
+            json.dumps({"gates": {"p5a_exit": {"verdict": "fail"}}}, indent=2)
+        )
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "gates.p5a_exit.verdict=fail" in ctx
+        assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
+
+    def test_p5b_bootstraps_when_p5a_pass(self, tmp_project):
+        self._setup_marker(tmp_project)
+        p5a_state = tmp_project / ".rtl-agent-team" / "state" / "p5a-state.json"
+        p5a_state.parent.mkdir(parents=True, exist_ok=True)
+        p5a_state.write_text(
+            json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2)
+        )
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        assert result["continue"] is True
+        state_path = tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json"
+        assert state_path.exists()
+        assert json.loads(state_path.read_text())["phase"] == "p5b"
+
+    def test_p5b_blocks_when_rtl_changed_after_p5a_pass(self, tmp_project):
+        self._setup_marker(tmp_project)
+
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        p5a_state = state_dir / "p5a-state.json"
+        p5a_state.write_text(json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2))
+
+        time.sleep(1.1)
+        rtl_dir = tmp_project / "rtl"
+        rtl_dir.mkdir(parents=True, exist_ok=True)
+        (rtl_dir / "top.sv").write_text("module top; endmodule\n")
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "stale functional closure" in ctx
+        assert not (state_dir / "p5b-state.json").exists()
+
+    def test_p5b_allows_when_p5a_newer_than_tracked_rtl_changes(self, tmp_project):
+        self._setup_marker(tmp_project)
+
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        rtl_dir = tmp_project / "rtl"
+        rtl_dir.mkdir(parents=True, exist_ok=True)
+        (rtl_dir / "top.sv").write_text("module top; endmodule\n")
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+
+        time.sleep(1.1)
+        p5a_state = state_dir / "p5a-state.json"
+        p5a_state.write_text(json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        assert result["continue"] is True
+        assert (state_dir / "p5b-state.json").exists()
+
+    def test_missing_json_parser_emits_setup_hint_with_fallback(self, tmp_project):
+        self._setup_marker(tmp_project)
+        result = run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"},
+            env={"RTL_FORCE_JSON_FALLBACK": "1"},
+        )
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "fallback" in ctx
+        assert "/rtl-agent-team:rtl-setup" in ctx
 
     def test_parser_uses_top_level_skill_key(self, tmp_project):
         self._setup_marker(tmp_project)
@@ -963,6 +1088,60 @@ class TestTeamAwarenessGuard:
         (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
         result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is True
+
+    def test_leader_session_still_blocked_by_verify_gate(self, tmp_project):
+        """Leader session in team mode → verify gate still blocks."""
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        import subprocess
+        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
+        result = subprocess.run(
+            ["sh", str(self.HOOKS["verify-stop-gate"])],
+            capture_output=True, text=True,
+            input=json.dumps({"cwd": str(tmp_project)}),
+            env=env, timeout=10,
+        )
+        parsed = json.loads(result.stdout)
+        assert parsed["continue"] is False
+
+    def test_leader_session_still_blocked_by_p6_cascade(self, tmp_project):
+        """Leader session in team mode → P6 cascade gate still blocks."""
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "phase6-stale").touch()
+        import subprocess
+        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
+        result = subprocess.run(
+            ["sh", str(self.HOOKS["p6-cascade-gate"])],
+            capture_output=True, text=True,
+            input=json.dumps({"cwd": str(tmp_project)}),
+            env=env, timeout=10,
+        )
+        parsed = json.loads(result.stdout)
+        assert parsed["continue"] is False
+
+    def test_leader_session_still_blocked_by_skill_completion(self, tmp_project):
+        """Leader session in team mode → skill completion gate still blocks."""
+        import datetime
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        skill_state = {
+            "skill": "rtl-p4s-bugfix", "active": True, "iteration": 1,
+            "max_iterations": 5, "pending": "lint_pass", "all_complete": False,
+            "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        }
+        (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
+        import subprocess
+        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
+        result = subprocess.run(
+            ["sh", str(self.HOOKS["skill-completion-gate"])],
+            capture_output=True, text=True,
+            input=json.dumps({"cwd": str(tmp_project)}),
+            env=env, timeout=10,
+        )
+        parsed = json.loads(result.stdout)
+        assert parsed["continue"] is False
 
     def test_empty_leader_id_bypasses_all_sessions(self, tmp_project):
         """Empty leader_session_id with team_mode=true → all sessions bypass."""

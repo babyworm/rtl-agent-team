@@ -117,6 +117,7 @@ This skill ensures everything is in place before design work begins.
    | gtkwave | `gtkwave --version` | Waveform viewer | Optional |
    | systemc | `pkg-config --modversion systemc` or check `$SYSTEMC_HOME` | SystemC/TLM-2.0 library (ref model, BFM) | Optional |
    | python3 | `python3 --version` | cocotb runtime | Yes |
+   | jq | `jq --version` | Hook JSON parser (robust state gating) | Recommended |
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
    | make | `make --version` | Build system | Yes |
 
@@ -285,6 +286,7 @@ Bash: yosys --version 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import cocotb; print(cocotb.__version__)" 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
+Bash: jq --version 2>&1 || echo "NOT_FOUND"
 Bash: pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && test -f "$SYSTEMC_HOME/lib-linux64/libsystemc.a" && echo "$SYSTEMC_HOME (found via SYSTEMC_HOME)") || echo "NOT_FOUND"
 Bash: g++ --version 2>&1 || echo "NOT_FOUND"
 
@@ -334,7 +336,7 @@ export PATH="$PATH:$HOME/tools/oss-cad-suite/bin"
 # Add the export to ~/.bashrc for persistence
 
 # ===== Ubuntu/Debian =====
-sudo apt install verilator iverilog gtkwave build-essential python3-pip
+sudo apt install verilator iverilog gtkwave build-essential python3-pip jq
 pip3 install cocotb
 
 # Verible (GitHub Releases)
@@ -342,7 +344,7 @@ pip3 install cocotb
 # Download prebuilt binary for your platform and add to PATH
 
 # macOS (Homebrew)
-brew install verilator icarus-verilog gtkwave
+brew install verilator icarus-verilog gtkwave jq
 pip3 install cocotb
 # Yosys + SymbiYosys: use OSS CAD Suite (recommended) or brew install yosys
 
@@ -372,6 +374,7 @@ docker build -t rtl-eda-tools docker/
 
 <Escalation_And_Stop_Conditions>
 - Required tool not found (verilator, verible, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
+- `jq` not found → report as recommended install (hooks fall back to python/sed, but robust JSON gating prefers jq)
 - Directory creation permission denied → report error, suggest user fix permissions
 - Existing project detected (rtl/ has .sv files in subdirectories) → warn user, ask whether to skip template generation
 - Python version < 3.9 → Project requires Python 3.9+ (hashlib usedforsecurity); report incompatibility

@@ -67,6 +67,7 @@ acquire_lock() {
 }
 
 release_lock() {
+  [ -z "$1" ] && return 0
   _lock_path="$1.lock"
   rm -f "$_lock_path/pid" 2>/dev/null
   rmdir "$_lock_path" 2>/dev/null || rm -rf "$_lock_path" 2>/dev/null

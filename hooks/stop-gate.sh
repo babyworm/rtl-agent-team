@@ -185,8 +185,7 @@ if [ -f "$TEAM_CONFIG" ]; then
         || echo "")
       _TC_NOW=$(date +%s 2>/dev/null || echo "")
       if [ -n "$_TC_START" ] && [ -n "$_TC_NOW" ]; then
-        _TC_AGE=$(( _TC_NOW - _TC_START ))
-        if [ "$_TC_AGE" -gt 7200 ]; then
+        if [ $(( _TC_NOW - _TC_START )) -gt 7200 ]; then
           rm -f "$TEAM_CONFIG"
           _TC_STALE=true
         fi

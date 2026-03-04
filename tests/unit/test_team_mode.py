@@ -197,6 +197,24 @@ class TestP4TaskDependencyGraph:
         for node in graph:
             assert not has_cycle(node), f"Cycle detected involving {node}"
 
+    def test_refactor_no_protocol_deps_exclude_w8(self):
+        """W9 depends only on W6+W7 when module has no bus interfaces (no W8)."""
+        graph_no_proto = {
+            "W1_write": [],
+            "W2_lint": ["W1_write"],
+            "W3_fix": ["W2_lint"],
+            "W4_review": ["W2_lint"],
+            "W5_bugfix": ["W4_review"],
+            "W6_unittest": ["W4_review"],
+            "W7_cdc": ["W1_write"],
+            # W8_protocol omitted — module has no bus interfaces
+            "W9_refactor": ["W6_unittest", "W7_cdc"],
+            "W10_integration": ["W9_refactor"],
+        }
+        assert "W8_protocol" not in graph_no_proto["W9_refactor"]
+        assert set(graph_no_proto["W9_refactor"]) == {"W6_unittest", "W7_cdc"}
+        assert len(graph_no_proto) == 9  # 9 waves, not 10
+
     def test_ten_waves_per_module(self):
         graph = self._build_dependency_graph()
         assert len(graph) == 10
