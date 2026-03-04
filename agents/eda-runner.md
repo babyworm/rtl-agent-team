@@ -175,4 +175,23 @@ color: green
   - [ ] For formal failures: counterexample summarized?
   - [ ] No RTL files modified?
 </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V7 (Performance) and V8 (Synth) tasks from TaskList
+3. For performance tasks:
+   - Run simulation with performance measurement
+   - Extract latency/throughput metrics
+   - Save to `reviews/phase-5-verify/perf-{module}.md`
+4. For synthesis tasks:
+   - Run Yosys synthesis estimation
+   - Parse area/timing/resource reports
+   - Save to `reviews/phase-5-verify/synth-{module}.md`
+5. TaskUpdate(completed) + SendMessage to leader with metrics summary
+6. When no more tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

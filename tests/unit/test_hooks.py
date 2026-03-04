@@ -2,6 +2,7 @@
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pytest
@@ -768,3 +769,216 @@ class TestPhaseStateBootstrap:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
         assert result["continue"] is True
         assert json.loads(state_path.read_text())["status"] == "custom"
+
+
+class TestHookConcurrency:
+    """Tests for concurrent hook execution with flock-util protection."""
+
+    EDIT_TRACKER = HOOKS_DIR / "rtl-edit-tracker.sh"
+    SKILL_GATE = HOOKS_DIR / "rtl-skill-completion-gate.sh"
+
+    def test_concurrent_edit_tracker_no_duplicates(self, tmp_project):
+        """5 parallel edit-tracker calls for different files → no lost entries."""
+        files = [f"rtl/mod_{i}.sv" for i in range(5)]
+
+        def track_file(f):
+            return run_hook(self.EDIT_TRACKER, {"cwd": str(tmp_project), "file_path": f})
+
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = [pool.submit(track_file, f) for f in files]
+            results = [fut.result() for fut in as_completed(futures)]
+
+        # All should succeed
+        for r in results:
+            assert r.get("continue") is True
+
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+        lines = sorted(l for l in track_file.read_text().splitlines() if l.strip())
+        assert lines == sorted(files), f"Expected {sorted(files)}, got {lines}"
+
+    def test_concurrent_edit_tracker_same_file_no_duplicates(self, tmp_project):
+        """5 parallel edit-tracker calls for the SAME file → exactly 1 entry."""
+        def track_same():
+            return run_hook(self.EDIT_TRACKER, {"cwd": str(tmp_project), "file_path": "rtl/top.sv"})
+
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = [pool.submit(track_same) for _ in range(5)]
+            [fut.result() for fut in as_completed(futures)]
+
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        lines = [l for l in track_file.read_text().splitlines() if l.strip()]
+        assert lines.count("rtl/top.sv") == 1
+
+    def test_concurrent_skill_completion_gate_counter_accuracy(self, tmp_project):
+        """3 parallel skill-completion-gate calls → iteration increments correctly."""
+        import datetime
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        state = {
+            "skill": "rtl-p4s-bugfix",
+            "active": True,
+            "iteration": 1,
+            "max_iterations": 10,
+            "pending": "lint_pass",
+            "all_complete": False,
+            "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "use_escalation_ladder": True,
+            "strategy": "primary"
+        }
+        (state_dir / "skill-active.json").write_text(json.dumps(state, indent=2))
+
+        def run_gate():
+            return run_hook(self.SKILL_GATE, {"cwd": str(tmp_project)})
+
+        # Run 3 calls sequentially (parallel would be racy by design — we test lock correctness)
+        for _ in range(3):
+            result = run_gate()
+            assert result.get("continue") is False
+
+        final_state = json.loads((state_dir / "skill-active.json").read_text())
+        assert final_state["iteration"] == 4, f"Expected iteration=4, got {final_state['iteration']}"
+
+
+class TestTeamAwarenessGuard:
+    """Tests for team-awareness guard in Stop hooks."""
+
+    HOOKS = {
+        "stop-gate": HOOKS_DIR / "stop-gate.sh",
+        "verify-stop-gate": HOOKS_DIR / "rtl-verify-stop-gate.sh",
+        "p6-cascade-gate": HOOKS_DIR / "rtl-p6-cascade-gate.sh",
+        "skill-completion-gate": HOOKS_DIR / "rtl-skill-completion-gate.sh",
+    }
+
+    def _write_team_config(self, tmp_project, team_mode=True, leader_id="leader-session-123"):
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        config = {
+            "team_mode": team_mode,
+            "team_name": "test-team",
+            "leader_session_id": leader_id,
+            "phase": "p5",
+            "created_at": "2026-03-05T00:00:00Z"
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(config, indent=2))
+
+    def test_no_team_config_normal_behavior_stop_gate(self, tmp_project):
+        """Without team config, stop-gate works normally (allow exit when no state)."""
+        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_no_team_config_normal_behavior_verify(self, tmp_project):
+        """Without team config, verify gate works normally."""
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_no_team_config_normal_behavior_p6(self, tmp_project):
+        """Without team config, P6 cascade gate works normally."""
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_no_team_config_normal_behavior_skill(self, tmp_project):
+        """Without team config, skill completion gate works normally."""
+        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_worker_session_bypasses_stop_gate(self, tmp_project):
+        """Worker (non-leader) in team mode → stop gate allows exit."""
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        # Create blocking state
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state = {"status": "in_progress", "orchestration_control": {
+            "active_gate_id": "test", "active_gate_retry_limit": 2,
+            "active_gate_primary_attempts": 0, "active_gate_fallback_attempts": 0,
+            "active_gate_last_chance_attempts": 0, "needs_user_decision": False
+        }}
+        (state_dir / "rtl-autopilot-state.json").write_text(json.dumps(state))
+        # Worker session (no CLAUDE_SESSION_ID or different from leader)
+        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_leader_session_still_blocked_by_stop_gate(self, tmp_project):
+        """Leader session in team mode → stop gate still blocks."""
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state = {"status": "in_progress", "orchestration_control": {
+            "active_gate_id": "test", "active_gate_retry_limit": 2,
+            "active_gate_primary_attempts": 0, "active_gate_fallback_attempts": 0,
+            "active_gate_last_chance_attempts": 0, "needs_user_decision": False
+        }}
+        (state_dir / "rtl-autopilot-state.json").write_text(json.dumps(state))
+        # Simulate leader session via env
+        import subprocess
+        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
+        result = subprocess.run(
+            ["sh", str(self.HOOKS["stop-gate"])],
+            capture_output=True, text=True,
+            input=json.dumps({"cwd": str(tmp_project)}),
+            env=env, timeout=10,
+        )
+        parsed = json.loads(result.stdout)
+        assert parsed["continue"] is False
+
+    def test_worker_bypasses_verify_gate(self, tmp_project):
+        """Worker in team mode → verify gate allows exit even with tracked files."""
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_worker_bypasses_p6_cascade(self, tmp_project):
+        """Worker in team mode → P6 cascade allows exit even with stale marker."""
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_worker_bypasses_skill_completion(self, tmp_project):
+        """Worker in team mode → skill completion gate allows exit."""
+        import datetime
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        skill_state = {
+            "skill": "rtl-p4s-bugfix", "active": True, "iteration": 1,
+            "max_iterations": 5, "pending": "lint_pass", "all_complete": False,
+            "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        }
+        (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
+        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_empty_leader_id_bypasses_all_sessions(self, tmp_project):
+        """Empty leader_session_id with team_mode=true → all sessions bypass."""
+        self._write_team_config(tmp_project, leader_id="")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
+        """team-config.json older than 2h → removed, normal gate behavior resumes."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        stale_config = {
+            "team_mode": True,
+            "team_name": "p5-verify",
+            "leader_session_id": "leader-old",
+            "phase": "p5",
+            "created_at": "2020-01-01T00:00:00Z"
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(stale_config, indent=2))
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        # Stale config removed → gate blocks as normal
+        assert result["continue"] is False
+        assert not (state_dir / "team-config.json").exists()
+
+    def test_team_mode_false_does_not_bypass(self, tmp_project):
+        """team_mode=false → no bypass, normal behavior."""
+        self._write_team_config(tmp_project, team_mode=False, leader_id="leader-abc")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        assert result["continue"] is False

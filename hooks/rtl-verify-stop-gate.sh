@@ -16,6 +16,33 @@ TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
 VERIFY_DONE="$STATE_DIR/rtl-verify-done"
 VERIFY_WAIVER="$STATE_DIR/rtl-verify-waiver"
 
+# Team-awareness: if running inside a team and not the leader, skip this gate.
+TEAM_CONFIG="$STATE_DIR/team-config.json"
+if [ -f "$TEAM_CONFIG" ]; then
+  _TEAM_MODE=$(sed -n 's/.*"team_mode"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$TEAM_CONFIG" | head -n 1)
+  _LEADER_ID=$(sed -n 's/.*"leader_session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+  if [ "$_TEAM_MODE" = "true" ]; then
+    _TC_CREATED=$(sed -n 's/.*"created_at"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+    _TC_STALE=false
+    if [ -n "$_TC_CREATED" ]; then
+      _TC_START=$(date -d "$_TC_CREATED" +%s 2>/dev/null || echo "")
+      _TC_NOW=$(date +%s 2>/dev/null || echo "")
+      if [ -n "$_TC_START" ] && [ -n "$_TC_NOW" ]; then
+        if [ $(( _TC_NOW - _TC_START )) -gt 7200 ]; then
+          rm -f "$TEAM_CONFIG"
+          _TC_STALE=true
+        fi
+      fi
+    fi
+    if [ "$_TC_STALE" = "false" ]; then
+      if [ -z "$_LEADER_ID" ] || [ "$_LEADER_ID" != "${CLAUDE_SESSION_ID:-}" ]; then
+        printf '{"continue":true}'
+        exit 0
+      fi
+    fi
+  fi
+fi
+
 # If no tracked files, allow exit
 if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
   printf '{"continue":true}'

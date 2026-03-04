@@ -171,4 +171,19 @@ disallowedTools: Write, Edit
     - Is reset synchronization analyzed for every domain?
     - Are multi-bit buses flagged as requiring structural guarantee (not just stability assumption)?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V3 (CDC) tasks from TaskList matching your specialty
+3. For each CDC task:
+   - Analyze clock domain crossings using slang AST analysis
+   - Verify synchronizer presence and correctness
+   - Save report to `sim/cdc/{module}/` and `reviews/phase-5-verify/cdc-{module}.md`
+   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL + crossing count
+4. When no more CDC tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

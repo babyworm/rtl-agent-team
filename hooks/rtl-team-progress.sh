@@ -1,0 +1,40 @@
+#!/bin/sh
+# Hook: PostToolUse:TaskUpdate — Team progress tracking
+# Updates .rtl-agent-team/state/team-progress.json when team mode is active.
+# Shows progress summary in hook output.
+
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/flock-util.sh"
+
+STATE_DIR=".rtl-agent-team/state"
+TEAM_CONFIG="$STATE_DIR/team-config.json"
+PROGRESS_FILE="$STATE_DIR/team-progress.json"
+
+# Only active during team mode
+if [ ! -f "$TEAM_CONFIG" ]; then
+  exit 0
+fi
+
+# Check team_mode is true
+_TEAM_MODE=$(sed -n 's/.*"team_mode"[^:]*:[^t]*\(true\|false\).*/\1/p' "$TEAM_CONFIG" | head -n 1)
+if [ "$_TEAM_MODE" != "true" ]; then
+  exit 0
+fi
+
+# Extract team name for display
+_TEAM_NAME=$(sed -n 's/.*"team_name"[^"]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+
+# Update timestamp in progress file (locked to prevent concurrent write races)
+if [ -f "$PROGRESS_FILE" ]; then
+  _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  if acquire_lock "$PROGRESS_FILE"; then
+    sed "s/\"last_updated\"[^\"]*\"[^\"]*\"/\"last_updated\": \"$_NOW\"/" "$PROGRESS_FILE" > "$PROGRESS_FILE.tmp" 2>/dev/null
+    if [ -s "$PROGRESS_FILE.tmp" ]; then
+      mv "$PROGRESS_FILE.tmp" "$PROGRESS_FILE"
+    fi
+    rm -f "$PROGRESS_FILE.tmp" 2>/dev/null
+    release_lock "$PROGRESS_FILE"
+  fi
+fi
+
+exit 0

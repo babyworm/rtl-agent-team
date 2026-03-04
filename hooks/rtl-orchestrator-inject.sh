@@ -60,6 +60,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | rapid rtl, P4 rapid, sanity integration, fast implementation loop | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
+| Phase 4 team, implement team, parallel implement | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
 | IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
@@ -70,6 +71,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | functional closure, P5A, deep functional verification, hierarchical functional closure | `/rtl-agent-team:rtl-p5a-functional-closure` | Action Skill |
 | silicon validation, P5B, signoff readiness, timing signoff, post-functional signoff | `/rtl-agent-team:rtl-p5b-silicon-validation` | Action Skill |
 | Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` | Action Skill |
+| Phase 5 team, verify team, parallel verify | `/rtl-agent-team:rtl-p5-verify-team` | Action Skill |
 | simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` | Action Skill |
 | UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` | Action Skill |
 | performance verification, throughput | `/rtl-agent-team:rtl-p5s-perf-verify` | Action Skill |

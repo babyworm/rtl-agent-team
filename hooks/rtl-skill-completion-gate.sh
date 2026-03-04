@@ -12,12 +12,43 @@ INPUT=$(cat)
 CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -z "$CWD" ] && CWD="$(pwd)"
 
+# Load flock utility for concurrent access protection
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/flock-util.sh"
+
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
+
+# Team-awareness: if running inside a team and not the leader, skip this gate.
+TEAM_CONFIG="$STATE_DIR/team-config.json"
+if [ -f "$TEAM_CONFIG" ]; then
+  _TEAM_MODE=$(sed -n 's/.*"team_mode"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$TEAM_CONFIG" | head -n 1)
+  _LEADER_ID=$(sed -n 's/.*"leader_session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+  if [ "$_TEAM_MODE" = "true" ]; then
+    _TC_CREATED=$(sed -n 's/.*"created_at"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+    _TC_STALE=false
+    if [ -n "$_TC_CREATED" ]; then
+      _TC_START=$(date -d "$_TC_CREATED" +%s 2>/dev/null || echo "")
+      _TC_NOW=$(date +%s 2>/dev/null || echo "")
+      if [ -n "$_TC_START" ] && [ -n "$_TC_NOW" ]; then
+        if [ $(( _TC_NOW - _TC_START )) -gt 7200 ]; then
+          rm -f "$TEAM_CONFIG"
+          _TC_STALE=true
+        fi
+      fi
+    fi
+    if [ "$_TC_STALE" = "false" ]; then
+      if [ -z "$_LEADER_ID" ] || [ "$_LEADER_ID" != "${CLAUDE_SESSION_ID:-}" ]; then
+        printf '{"continue":true}'
+        exit 0
+      fi
+    fi
+  fi
+fi
 
 # If no active skill state, allow exit
 if [ ! -f "$SKILL_STATE" ]; then
@@ -96,11 +127,15 @@ else
   fi
 fi
 
-sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEXT_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+# Lock state file for atomic iteration increment + strategy update
+if acquire_lock "$SKILL_STATE"; then
+  sed "s/\"iteration\"[[:space:]]*:[[:space:]]*[0-9]*/\"iteration\": $NEXT_ITER/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
-# Best-effort mark of current stage for external readers.
-if grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
-  sed "s/\"strategy\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"strategy\": \"$STAGE\"/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+  # Best-effort mark of current stage for external readers.
+  if grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
+    sed "s/\"strategy\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"strategy\": \"$STAGE\"/" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null && mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+  fi
+  release_lock "$SKILL_STATE"
 fi
 
 printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$STAGE_MSG")"

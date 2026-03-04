@@ -187,16 +187,27 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
 **Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-4.json`.
 Verify all `required_full_read` files exist. STOP if any missing.
 
-Delegate Phase 4 to the dedicated orchestrator which manages the 10-Wave pipeline:
+Delegate Phase 4 to the dedicated orchestrator which manages the 10-Wave pipeline.
+
+**Team Mode Check**: If `.rtl-agent-team/state/team-config.json` exists with `team_mode: true`
+and `phase: "p4"`, use the team orchestrator instead for native parallel execution:
 
 ```
 Bash("mkdir -p reviews/phase-4-rtl")
 
+# Check for team mode
+Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
+
+# If team-config exists with team_mode=true and phase=p4:
+Task(subagent_type="rtl-agent-team:p4-implement-team-orchestrator",
+     prompt="Execute Phase 4 RTL implementation using native teams. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs.")
+
+# Otherwise (default):
 Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
      prompt="Execute Phase 4 RTL implementation. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs. Implement all modules using the 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) with parallel Stream A (RTL coding) + Stream B (SVA/CDC/TB skeletons).")
 ```
 
-The `p4-implement-orchestrator` handles the 10-Wave pipeline, Stream A/B parallelism,
+The orchestrator (team or legacy) handles the 10-Wave pipeline, Stream A/B parallelism,
 lint checks, unit TB creation, and per-module iteration per `rtl-p4-implement-policy`.
 
 **Phase 4→5 Quality Gate** (verified by p4-implement-orchestrator internally):
@@ -219,6 +230,18 @@ Verify all `required_full_read` files exist. STOP if any missing.
 
 ```
 Bash("mkdir -p reviews/phase-5-verify")
+```
+
+### Team-Awareness Check
+
+```python
+# Check if team mode is active for Phase 5
+Read(".rtl-agent-team/state/team-config.json")
+# If team-config exists with team_mode=true and phase=p5:
+Task(subagent_type="rtl-agent-team:p5-verify-team-orchestrator",
+     prompt="Execute Phase 5 verification using native teams. Context: Phase 4 artifacts complete. Read docs/phase-4-rtl/ for implementation summary and Stream B artifacts.")
+
+# Otherwise (default): use sub-phase approach below
 ```
 
 ### Sub-phase 5a: SVA + Formal (parallel with 5b/5c)

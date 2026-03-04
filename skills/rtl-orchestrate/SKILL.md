@@ -56,6 +56,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "rapid rtl", "P4 rapid", "sanity integration", "fast implementation loop" | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |
 | "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
+| "Phase 4 team", "implement team", "parallel implement" | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
 | "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
 | "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
@@ -67,6 +68,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "functional closure", "P5A", "deep functional verification", "hierarchical functional closure" | `/rtl-agent-team:rtl-p5a-functional-closure` | Action Skill |
 | "silicon validation", "P5B", "signoff readiness", "timing signoff", "post-functional signoff" | `/rtl-agent-team:rtl-p5b-silicon-validation` | Action Skill |
 | "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` | Action Skill |
+| "Phase 5 team", "verify team", "parallel verify" | `/rtl-agent-team:rtl-p5-verify-team` | Action Skill |
 | "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` | Action Skill |
 | "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` | Action Skill |
 | "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` | Action Skill |
@@ -98,10 +100,12 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `p2-arch-design` | `p2-arch-orchestrator` | `p2-arch-design-policy` |
 | `rtl-p3-uarch-design` | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
 | `rtl-p4-implement` | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
+| `rtl-p4-implement-team` | `p4-implement-team-orchestrator` | `rtl-p4-implement-policy` |
 | `rtl-p4-rapid-impl` | `p4-rtl-sanity-orchestrator` | `rtl-design-policy` |
 | `rtl-p4s-bugfix` | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
 | `rtl-p4s-unit-test` | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
 | `rtl-p5-verify` | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
+| `rtl-p5-verify-team` | `p5-verify-team-orchestrator` | `rtl-p5-verify-policy` |
 | `rtl-p5a-functional-closure` | `p5a-functional-closure-orchestrator` | `rtl-functional-verify-policy` |
 | `rtl-p5b-silicon-validation` | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | `rtl-p5s-func-verify` | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
@@ -176,10 +180,12 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 2: Architecture | `p2-arch-orchestrator` | `p2-arch-design-policy` |
 | Phase 3: μArch | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
 | Phase 4: RTL Implementation | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
+| Phase 4: RTL Implementation (Team) | `p4-implement-team-orchestrator` | `rtl-p4-implement-policy` |
 | Phase 4: Rapid RTL + Sanity | `p4-rtl-sanity-orchestrator` | `rtl-design-policy` |
 | Phase 4: Bug Fix | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
 | Phase 4: Unit Test | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
 | Phase 5: Verification | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
+| Phase 5: Verification (Team) | `p5-verify-team-orchestrator` | `rtl-p5-verify-policy` |
 | Phase 5A: Functional Closure | `p5a-functional-closure-orchestrator` | `rtl-functional-verify-policy` |
 | Phase 5B: Silicon Validation | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | Phase 5: Func Verify | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
@@ -463,6 +469,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | rapid rtl, P4 rapid, sanity integration, fast implementation loop | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
+| Phase 4 team, implement team, parallel implement | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
 | IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
@@ -473,6 +480,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | functional closure, P5A, deep functional verification, hierarchical functional closure | `/rtl-agent-team:rtl-p5a-functional-closure` | Action Skill |
 | silicon validation, P5B, signoff readiness, timing signoff, post-functional signoff | `/rtl-agent-team:rtl-p5b-silicon-validation` | Action Skill |
 | Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` | Action Skill |
+| Phase 5 team, verify team, parallel verify | `/rtl-agent-team:rtl-p5-verify-team` | Action Skill |
 | simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` | Action Skill |
 | UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` | Action Skill |
 | performance verification, throughput | `/rtl-agent-team:rtl-p5s-perf-verify` | Action Skill |

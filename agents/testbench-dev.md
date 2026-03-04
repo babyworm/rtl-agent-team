@@ -194,4 +194,22 @@ color: magenta
     - Is coverage report shown with per-bin hit counts?
     - Does the testbench terminate with explicit PASS or FAIL?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V5 (Functional) and V6 (Coverage) tasks from TaskList
+3. For each functional task:
+   - Design cocotb testbench with stimulus generators and scoreboards
+   - Run multi-seed regression via `scripts/run_sim.sh --sim verilator`
+   - Save results to `sim/{module}/` and `reviews/phase-5-verify/func-{module}.md`
+   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL + seed results
+4. For coverage tasks:
+   - Analyze coverage reports, identify gaps
+   - Save to `sim/coverage/{module}/` and `reviews/phase-5-verify/coverage-{module}.md`
+5. When no more tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

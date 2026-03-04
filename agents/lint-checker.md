@@ -158,4 +158,19 @@ color: yellow
   - [ ] Cross-file patterns identified and counted?
   - [ ] Severity classification applied to all findings?
 </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V1 (Lint) tasks from TaskList matching your specialty
+3. For each lint task:
+   - Run `verilator --lint-only -Wall` on the target module
+   - Parse results, classify findings by severity
+   - Save report to `reviews/phase-5-verify/lint-{module}.md`
+   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL summary
+4. When no more lint tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

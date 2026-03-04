@@ -8,6 +8,10 @@ INPUT=$(cat)
 CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -z "$CWD" ] && CWD="$(pwd)"
 
+# Load flock utility for concurrent access protection
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/flock-util.sh"
+
 # Extract file_path from tool input
 FILE_PATH=$(printf '%s' "$INPUT" | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 
@@ -18,9 +22,12 @@ case "$FILE_PATH" in
     mkdir -p "$STATE_DIR"
     TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
 
-    # Add file if not already tracked
-    if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
-      printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
+    # Add file if not already tracked (locked for concurrent access)
+    if acquire_lock "$TRACK_FILE"; then
+      if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
+        printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
+      fi
+      release_lock "$TRACK_FILE"
     fi
 
     # Count tracked files

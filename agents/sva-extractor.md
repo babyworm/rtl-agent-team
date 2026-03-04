@@ -249,4 +249,20 @@ color: red
     - Are all assume properties justified in comments?
     - Are cover properties included to verify reachability?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V2 (SVA/Formal) tasks from TaskList matching your specialty
+3. For each SVA task:
+   - Extract SVA assertions from spec/uarch docs
+   - Write `.sva` bind files
+   - Run SymbiYosys BMC + induction
+   - Save report to `sim/formal/{module}/` and `reviews/phase-5-verify/sva-{module}.md`
+   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL + counterexample count
+4. When no more SVA tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

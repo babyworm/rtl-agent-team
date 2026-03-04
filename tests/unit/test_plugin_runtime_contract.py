@@ -336,3 +336,46 @@ class TestToolProfileRuntimeContract:
         content = SYN_TOOL_PROFILES.read_text()
         assert "syn/scripts/run_syn.sh --tool yosys" in content
         assert "Gate Criteria" in content
+
+
+class TestFlockUtilContract:
+    """Validate flock-util.sh exists and has required functions."""
+
+    FLOCK_UTIL = REPO_ROOT / "hooks" / "lib" / "flock-util.sh"
+
+    def test_flock_util_exists(self):
+        assert self.FLOCK_UTIL.exists(), "hooks/lib/flock-util.sh must exist"
+
+    def test_flock_util_has_acquire_and_release(self):
+        content = self.FLOCK_UTIL.read_text()
+        assert "acquire_lock()" in content or "acquire_lock()" in content.replace(" ", "")
+        assert "release_lock()" in content or "release_lock()" in content.replace(" ", "")
+
+    def test_flock_util_uses_mkdir(self):
+        """Lock mechanism must use mkdir for POSIX atomicity."""
+        content = self.FLOCK_UTIL.read_text()
+        assert "mkdir" in content
+
+
+class TestTeamConfigTemplate:
+    """Validate team-config.json template."""
+
+    TEMPLATE = REPO_ROOT / "skills" / "rtl-design-policy" / "templates" / "team-config.json"
+
+    def test_template_exists(self):
+        assert self.TEMPLATE.exists()
+
+    def test_template_valid_json(self):
+        import json
+        data = json.loads(self.TEMPLATE.read_text())
+        assert "team_mode" in data
+        assert "team_name" in data
+        assert "leader_session_id" in data
+        assert "phase" in data
+        assert "created_at" in data
+
+    def test_template_defaults(self):
+        import json
+        data = json.loads(self.TEMPLATE.read_text())
+        assert data["team_mode"] is False
+        assert data["team_name"] == ""

@@ -213,7 +213,28 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
+| `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
+
+## Native Team Mode (v0.3.0)
+
+Phase 4 (RTL Implementation) and Phase 5 (Verification) support **Claude Code native team mode**
+using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution across modules.
+
+| Component | Purpose |
+|-----------|---------|
+| `agents/p4-implement-team-orchestrator.md` | 10-wave pipeline with per-module parallelism |
+| `agents/p5-verify-team-orchestrator.md` | 9-category verification with dependency graph |
+| `skills/rtl-p4-implement-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p4-implement-team` |
+| `skills/rtl-p5-verify-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p5-verify-team` |
+| `agents/lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
+| `agents/lib/team-fallback.md` | Graceful degradation patterns |
+
+**Team-awareness**: Stop hooks check `.rtl-agent-team/state/team-config.json` — workers bypass
+gates, only the leader session is subject to stop enforcement. Hook concurrency is protected
+by POSIX file locking (`hooks/lib/flock-util.sh`).
+
+**Fallback**: If `TeamCreate` fails, orchestrators fall back to sequential `Task()` execution automatically.
 
 <!-- RTL-AGENT-TEAM:END -->
