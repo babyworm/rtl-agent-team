@@ -29,7 +29,7 @@ teamu_should_skip_gate() {
     TEAMU_NOW=$(date +%s 2>/dev/null || echo "")
     if [ -n "$TEAMU_START" ] && [ -n "$TEAMU_NOW" ]; then
       if [ $(( TEAMU_NOW - TEAMU_START )) -gt 7200 ]; then
-        # Re-check created_at before deleting to avoid TOCTOU with concurrent fresh writes
+        # Re-check created_at to reduce TOCTOU window with concurrent fresh writes
         _CURRENT_CREATED=$(jsonu_get_file_path_string "$TEAMU_CONFIG" "created_at")
         if [ "$_CURRENT_CREATED" = "$TEAMU_CREATED" ]; then
           rm -f "$TEAMU_CONFIG"

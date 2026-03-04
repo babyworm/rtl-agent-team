@@ -37,8 +37,10 @@ acquire_lock() {
         _lock_pid=$(cat "$_lock_pid_file" 2>/dev/null)
         # If the holding process is gone, reclaim
         if [ -n "$_lock_pid" ] && ! kill -0 "$_lock_pid" 2>/dev/null; then
-          rm -rf "$_lock_path" 2>/dev/null
-          # Fall through to sleep+increment to avoid CPU spin if rm failed
+          if rm -rf "$_lock_path" 2>/dev/null; then
+            continue  # Retry mkdir immediately on successful removal
+          fi
+          # rm failed — fall through to sleep to avoid CPU spin
         fi
       fi
     fi

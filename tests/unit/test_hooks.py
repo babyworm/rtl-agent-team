@@ -536,6 +536,15 @@ class TestSkillCompletionGate:
         content = state_file.read_text()
         assert '"iteration": 2' in content
 
+    def test_sed_script_tempfile_cleaned_up(self, tmp_project):
+        """Verify no skill-gate-sed.* tempfiles are left after hook run."""
+        import glob
+        self._write_skill_state(tmp_project)
+        before = set(glob.glob("/tmp/skill-gate-sed.*"))
+        run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        after = set(glob.glob("/tmp/skill-gate-sed.*"))
+        assert after == before, f"Leaked tempfiles: {after - before}"
+
     def test_block_message_includes_skill_name(self, tmp_project):
         """Block message should include the skill name."""
         self._write_skill_state(tmp_project, skill="rtl-p4s-bugfix")
