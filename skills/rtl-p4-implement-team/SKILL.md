@@ -36,27 +36,17 @@ If prerequisite is missing, inform the user to run `/rtl-agent-team:rtl-p3-uarch
 ## Execution
 
 ```python
-# Write team-config.json for Stop hook team-awareness
-import json, datetime
-config = {
-    "team_mode": True,
-    "team_name": "p4-implement",
-    "leader_session_id": "",  # Orchestrator fills this
-    "phase": "p4",
-    "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-}
-Write(".rtl-agent-team/state/team-config.json", json.dumps(config, indent=2))
-```
+# Do NOT pre-write team-config.json here — the orchestrator writes it atomically
+# in Step 2 with a valid leader_session_id. This avoids race windows where
+# Stop hooks see an empty leader_session_id and bypass all gates.
 
-Spawn orchestrator:
-```python
 Task(subagent_type="rtl-agent-team:p4-implement-team-orchestrator",
      prompt="Execute Phase 4 RTL implementation using native teams. User input: $ARGUMENTS")
 ```
 
 Do not perform any work directly.
-The team orchestrator manages TeamCreate, 10-wave task graphs, worker spawning,
-per-module progress tracking, and phase gate verification.
+The team orchestrator manages TeamCreate, team-config.json creation, 10-wave task graphs,
+worker spawning, per-module progress tracking, and phase gate verification.
 
 ## Cleanup
 

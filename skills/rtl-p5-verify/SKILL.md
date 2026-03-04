@@ -23,7 +23,7 @@ This is a legacy bundled bridge while teams transition to split P5A/P5B.
 </Use_When>
 
 <Do_Not_Use_When>
-- RTL modules don't exist yet (run rtl-p4-implement first)
+- RTL modules don't exist yet (run `rtl-p4-rapid-impl` or `rtl-p4-implement` first)
 - Only need functional regression (use rtl-p5s-func-verify)
 - Only need a specific verification category (use the category-specific skill)
 - Want strict separation of functional closure and silicon validation
@@ -36,9 +36,12 @@ This is a legacy bundled bridge while teams transition to split P5A/P5B.
 
 Phase 4 completion required:
 - `rtl/**/*.sv` files must exist
-- `reviews/phase-4-rtl/lint-report.md` must exist (lint PASS)
+- One of the following completion proofs must exist:
+  - `reviews/phase-4-rtl/lint-report.md` (full `rtl-p4-implement` path)
+  - `.rtl-agent-team/state/p4-state.json` with `gates.p4_exit.verdict` = `pass` (rapid `rtl-p4-rapid-impl` path)
 
-If prerequisites are missing, inform the user to run `/rtl-agent-team:rtl-p4-implement` first.
+If prerequisites are missing, inform the user to run `/rtl-agent-team:rtl-p4-rapid-impl`
+for fast closure or `/rtl-agent-team:rtl-p4-implement` for full 10-Wave artifacts.
 
 ## Execution
 

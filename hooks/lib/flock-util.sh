@@ -19,6 +19,7 @@ FLOCK_TIMEOUT=${FLOCK_TIMEOUT:-5}
 FLOCK_STALE_AGE=${FLOCK_STALE_AGE:-30}
 
 acquire_lock() {
+  [ -z "$1" ] && return 1
   _lock_path="$1.lock"
   _waited=0
 

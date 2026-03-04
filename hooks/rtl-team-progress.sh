@@ -6,7 +6,12 @@
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 
-STATE_DIR=".rtl-agent-team/state"
+# Extract CWD from hook input (consistent with peer hooks)
+INPUT=$(cat)
+CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+[ -z "$CWD" ] && CWD="$(pwd)"
+
+STATE_DIR="$CWD/.rtl-agent-team/state"
 TEAM_CONFIG="$STATE_DIR/team-config.json"
 PROGRESS_FILE="$STATE_DIR/team-progress.json"
 
@@ -15,14 +20,14 @@ if [ ! -f "$TEAM_CONFIG" ]; then
   exit 0
 fi
 
-# Check team_mode is true
-_TEAM_MODE=$(sed -n 's/.*"team_mode"[^:]*:[^t]*\(true\|false\).*/\1/p' "$TEAM_CONFIG" | head -n 1)
+# Check team_mode is true (consistent sed pattern with peer hooks)
+_TEAM_MODE=$(sed -n 's/.*"team_mode"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$TEAM_CONFIG" | head -n 1)
 if [ "$_TEAM_MODE" != "true" ]; then
   exit 0
 fi
 
 # Extract team name for display
-_TEAM_NAME=$(sed -n 's/.*"team_name"[^"]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+_TEAM_NAME=$(sed -n 's/.*"team_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
 
 # Update timestamp in progress file (locked to prevent concurrent write races)
 if [ -f "$PROGRESS_FILE" ]; then

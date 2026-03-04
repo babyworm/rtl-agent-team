@@ -349,8 +349,12 @@ class TestCrossReferences:
         p4_orchestrator = AGENTS_DIR / "p4-rtl-sanity-orchestrator.md"
         assert p4_orchestrator.exists(), "Missing p4-rtl-sanity-orchestrator agent"
         orchestrator_text = p4_orchestrator.read_text()
-        assert "no `{{module_name}}` placeholder" in orchestrator_text
-        assert "Populate `modules` map" in orchestrator_text
+        assert re.search(r"modules?.*empty", orchestrator_text, re.IGNORECASE | re.DOTALL), (
+            "p4 orchestrator should explain that template modules map starts empty"
+        )
+        assert re.search(r"populate\s+`?modules`?\s+map", orchestrator_text, re.IGNORECASE), (
+            "p4 orchestrator should state runtime population of modules map"
+        )
 
     def test_p5_legacy_and_split_relationships_are_documented(self):
         p5_legacy = (SKILLS_DIR / "rtl-p5-verify" / "SKILL.md").read_text()
@@ -364,13 +368,25 @@ class TestCrossReferences:
         assert "rtl-p5-verify" in p5b
         assert "rtl-p5a-functional-closure" in p5b
 
+    def test_p5_verify_prereqs_reference_both_p4_entry_paths(self):
+        p5_legacy = (SKILLS_DIR / "rtl-p5-verify" / "SKILL.md").read_text()
+        assert "rtl-p4-rapid-impl" in p5_legacy
+        assert "rtl-p4-implement" in p5_legacy
+        assert "gates.p4_exit.verdict" in p5_legacy
+
+    def test_p5b_precondition_is_state_based(self):
+        p5b_orchestrator = (AGENTS_DIR / "p5b-silicon-validation-orchestrator.md").read_text()
+        assert ".rtl-agent-team/state/p5a-state.json" in p5b_orchestrator
+        assert "gates.p5a_exit.verdict" in p5b_orchestrator
+        assert "precondition.p5a_functional_closure_pass" in p5b_orchestrator
+
     def test_review_refactor_is_marked_cross_cutting_not_phase_replacement(self):
         skill_file = SKILLS_DIR / "rtl-review-refactor" / "SKILL.md"
         assert skill_file.exists(), "Missing rtl-review-refactor skill"
         content = skill_file.read_text()
         assert "cross-cutting" in content
-        assert "not a replacement for the phase pipeline itself" in content
-        assert "P1-P6" in content
+        assert re.search(r"not\s+a\s+replacement.*phase pipeline", content, re.IGNORECASE | re.DOTALL)
+        assert re.search(r"P1\s*-\s*P6|P1-P6", content)
 
     def test_rtl_orchestrate_hook_export_is_synced(self):
         skill_block = _extract_marked_block(

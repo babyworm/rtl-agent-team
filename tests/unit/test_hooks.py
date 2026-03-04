@@ -770,6 +770,21 @@ class TestPhaseStateBootstrap:
         assert result["continue"] is True
         assert json.loads(state_path.read_text())["status"] == "custom"
 
+    def test_parser_uses_top_level_skill_key(self, tmp_project):
+        self._setup_marker(tmp_project)
+        raw_input = json.dumps(
+            {
+                "cwd": str(tmp_project),
+                "skill": "rtl-agent-team:rtl-p4-rapid-impl",
+                "meta": {"skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+            }
+        )
+
+        result = run_hook(self.HOOK, raw_input)
+        assert result["continue"] is True
+        assert (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
+        assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
+
 
 class TestHookConcurrency:
     """Tests for concurrent hook execution with flock-util protection."""

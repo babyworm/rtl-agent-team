@@ -180,7 +180,9 @@ if [ -f "$TEAM_CONFIG" ]; then
     _TC_CREATED=$(sed -n 's/.*"created_at"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
     _TC_STALE=false
     if [ -n "$_TC_CREATED" ]; then
-      _TC_START=$(date -d "$_TC_CREATED" +%s 2>/dev/null || echo "")
+      _TC_START=$(date -d "$_TC_CREATED" +%s 2>/dev/null \
+        || date -jf "%Y-%m-%dT%H:%M:%SZ" "$_TC_CREATED" +%s 2>/dev/null \
+        || echo "")
       _TC_NOW=$(date +%s 2>/dev/null || echo "")
       if [ -n "$_TC_START" ] && [ -n "$_TC_NOW" ]; then
         _TC_AGE=$(( _TC_NOW - _TC_START ))

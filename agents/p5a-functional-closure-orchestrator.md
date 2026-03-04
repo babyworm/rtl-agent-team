@@ -49,7 +49,9 @@ PASS when:
 - Functional regressions pass across module/block/top
 - Coverage targets meet project threshold
 - Requirement traceability matrix is complete
+- Set `gates.p5a_exit.verdict = "pass"` and `status = "completed"`.
 
 If FAIL:
 - Classify failure and route fix scope to P4 loop.
+- Set `gates.p5a_exit.verdict = "fail"` and `status = "blocked"`.
 - Persist terminal verdict in `.rtl-agent-team/state/p5a-state.json`.
