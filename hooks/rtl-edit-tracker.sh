@@ -23,7 +23,16 @@ case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     STATE_DIR="$CWD/.rtl-agent-team/state"
     mkdir -p "$STATE_DIR"
+
+    # Session-scoped tracking in team mode to prevent cross-worker file pollution
     TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
+    TEAM_CONFIG="$STATE_DIR/team-config.json"
+    if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
+      TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
+      if [ "$TEAM_MODE" = "true" ]; then
+        TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
+      fi
+    fi
 
     # Add file if not already tracked (locked for concurrent access)
     if acquire_lock "$TRACK_FILE"; then

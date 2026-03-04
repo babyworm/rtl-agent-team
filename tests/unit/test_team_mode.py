@@ -277,9 +277,25 @@ class TestTeamOrchestratorStructure:
         assert "Shutdown" in content
         assert "Error Handling" in content
 
+    def test_worker_protocol_template_exists(self):
+        """agents/lib/team-worker-protocol.md must exist."""
+        protocol = AGENTS_DIR / "lib" / "team-worker-protocol.md"
+        assert protocol.exists()
+
+    def test_worker_protocol_has_key_steps(self):
+        """Protocol template must have INIT, CLAIM, EXECUTE, REPORT, SHUTDOWN."""
+        protocol = AGENTS_DIR / "lib" / "team-worker-protocol.md"
+        content = protocol.read_text()
+        for step in ["INIT", "CLAIM", "EXECUTE", "REPORT", "SHUTDOWN"]:
+            assert step in content, f"Protocol missing step: {step}"
+
     def test_specialist_agents_have_team_worker_protocol(self):
-        """5 specialist agents must have Team Worker Protocol section."""
-        agents = ["lint-checker", "sva-extractor", "cdc-checker", "testbench-dev", "eda-runner"]
+        """11 specialist agents must have Team Worker Protocol section."""
+        agents = [
+            "rtl-coder", "lint-checker", "rtl-critic", "testbench-dev", "eda-runner",
+            "sva-extractor", "cdc-checker", "protocol-checker",
+            "func-verifier", "coverage-analyst", "perf-verifier",
+        ]
         missing = []
         for name in agents:
             agent_file = AGENTS_DIR / f"{name}.md"

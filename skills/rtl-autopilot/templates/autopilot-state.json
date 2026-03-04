@@ -132,7 +132,12 @@
       "completed_modules": [],
       "pending_modules": [],
       "stream_a_status": "pending",
-      "stream_b_status": "pending"
+      "stream_b_status": "pending",
+      "team": {
+        "team_name": null,
+        "status": "inactive",
+        "worker_count": 0
+      }
     },
     "5_verify": {
       "status": "pending",
@@ -160,7 +165,12 @@
       },
       "completed_sub_phases": [],
       "pending_sub_phases": ["5a_formal", "5b_cdc", "5c_integration", "5d_coverage", "5e_compliance"],
-      "fix_history": []
+      "fix_history": [],
+      "team": {
+        "team_name": null,
+        "status": "inactive",
+        "worker_count": 0
+      }
     },
     "6_design_note": {
       "status": "pending",

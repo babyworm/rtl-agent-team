@@ -263,4 +263,20 @@ def load_ref_model(so_path: str):
     - Is the random seed printed at test start for reproducibility?
     - Is the reference model called with identical bit patterns as RTL input?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V5 (Functional) tasks from TaskList matching your specialty
+3. For each functional verification task:
+   - Set up cocotb testbench comparing RTL against C reference model
+   - Run multi-seed regression with at least 3 seeds
+   - Generate requirement traceability matrix
+   - Save report to `reviews/phase-5-verify/func-{module}.md`
+   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL and mismatch count
+4. When no more functional tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

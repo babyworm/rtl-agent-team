@@ -215,4 +215,19 @@ color: magenta
     - Does every case statement have a default branch?
     - Are all always_comb signals assigned in every branch (no latches)?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim W1 (Write) tasks from TaskList matching your specialty
+3. For each write task:
+   - Read uarch spec for the target module from `docs/phase-3-uarch/`
+   - Implement `rtl/{module}/{module}.sv` following coding conventions
+   - Ensure the module compiles with `verilator --lint-only -Wall`
+   - TaskUpdate(completed) + SendMessage to leader with implementation summary
+4. When no more write tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

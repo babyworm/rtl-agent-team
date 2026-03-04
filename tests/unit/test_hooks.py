@@ -140,6 +140,127 @@ class TestRtlEditTracker:
         assert "rtl/nested_should_be_ignored.sv" not in tracked
 
 
+class TestSessionScopedState:
+    """Tests for session-scoped state isolation in team mode (Phase A)."""
+
+    EDIT_HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
+    GATE_HOOK = HOOKS_DIR / "rtl-verify-stop-gate.sh"
+    SKILL_HOOK = HOOKS_DIR / "rtl-skill-activation.sh"
+
+    def _write_team_config(self, tmp_project, leader_id="leader-session-001"):
+        """Create a team-config.json in the project state dir."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        config = {
+            "team_mode": True,
+            "team_name": "test-team",
+            "leader_session_id": leader_id,
+            "phase": "p4",
+            "created_at": "2026-03-05T00:00:00Z",
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(config))
+
+    def test_edit_tracker_session_scoped_in_team_mode(self, tmp_project):
+        """In team mode with SESSION_ID, tracking file uses session suffix."""
+        self._write_team_config(tmp_project)
+        env = {"CLAUDE_SESSION_ID": "worker-abc-123"}
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv"},
+            env=env,
+        )
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        session_file = state_dir / "rtl-modified-files-worker-abc-123.txt"
+        solo_file = state_dir / "rtl-modified-files.txt"
+        assert session_file.exists(), "Session-scoped file should be created"
+        assert "rtl/mod_a.sv" in session_file.read_text()
+        assert not solo_file.exists(), "Solo file should not be created in team mode"
+
+    def test_edit_tracker_solo_mode_unchanged(self, tmp_project):
+        """Without team config, tracking uses the solo file as before."""
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_b.sv"},
+        )
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        solo_file = state_dir / "rtl-modified-files.txt"
+        assert solo_file.exists()
+        assert "rtl/mod_b.sv" in solo_file.read_text()
+
+    def test_two_sessions_produce_separate_files(self, tmp_project):
+        """Two different SESSION_IDs write to separate tracking files."""
+        self._write_team_config(tmp_project)
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/a.sv"},
+            env={"CLAUDE_SESSION_ID": "session-1"},
+        )
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/b.sv"},
+            env={"CLAUDE_SESSION_ID": "session-2"},
+        )
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        f1 = state_dir / "rtl-modified-files-session-1.txt"
+        f2 = state_dir / "rtl-modified-files-session-2.txt"
+        assert f1.exists() and f2.exists()
+        assert "rtl/a.sv" in f1.read_text()
+        assert "rtl/b.sv" in f2.read_text()
+        assert "rtl/b.sv" not in f1.read_text()
+        assert "rtl/a.sv" not in f2.read_text()
+
+    def test_verify_gate_aggregates_session_files(self, tmp_project):
+        """Verify gate merges all session-scoped files for leader gate judgment."""
+        self._write_team_config(tmp_project, leader_id="leader-001")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        # Simulate two workers' tracking files
+        (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
+        (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
+        # Leader session runs the gate — must match leader_session_id
+        result = run_hook(
+            self.GATE_HOOK,
+            {"cwd": str(tmp_project)},
+            env={"CLAUDE_SESSION_ID": "leader-001"},
+        )
+        # Gate should block because there are unverified files
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        # Should mention both files (aggregated)
+        assert "2" in ctx  # 2 files total
+
+    def test_verify_gate_cleanup_removes_session_files(self, tmp_project):
+        """When verify-done exists, gate cleans up all session-scoped files."""
+        self._write_team_config(tmp_project, leader_id="leader-001")
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
+        (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
+        (state_dir / "rtl-verify-done").touch()
+        # Leader session runs the gate — must match leader_session_id
+        result = run_hook(
+            self.GATE_HOOK,
+            {"cwd": str(tmp_project)},
+            env={"CLAUDE_SESSION_ID": "leader-001"},
+        )
+        assert result["continue"] is True
+        # All session files should be cleaned up
+        assert not (state_dir / "rtl-modified-files-worker-1.txt").exists()
+        assert not (state_dir / "rtl-modified-files-worker-2.txt").exists()
+
+    def test_skill_activation_skipped_for_worker(self, tmp_project):
+        """Worker sessions should skip skill state management."""
+        self._write_team_config(tmp_project, leader_id="leader-001")
+        env = {"CLAUDE_SESSION_ID": "worker-session-99", "CLAUDE_PLUGIN_ROOT": str(HOOKS_DIR / "..")}
+        result = run_hook(
+            self.SKILL_HOOK,
+            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5-verify"},
+            env=env,
+        )
+        assert result["continue"] is True
+        # skill-active.json should NOT be created by worker
+        skill_state = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        assert not skill_state.exists(), "Worker should not create skill-active.json"
+
+
 class TestRtlVerifyStopGate:
     """Tests for hooks/rtl-verify-stop-gate.sh."""
 

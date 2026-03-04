@@ -80,6 +80,19 @@ STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 CRITERIA_FILE="$PLUGIN_ROOT/.rtl-agent-team/skill-completion-criteria.json"
 
+# Team mode: worker sessions skip skill state management (leader only)
+TEAM_CONFIG="$STATE_DIR/team-config.json"
+if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
+  . "$SCRIPT_DIR/lib/json-util.sh" 2>/dev/null
+  TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
+  if [ "$TEAM_MODE" = "true" ]; then
+    LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")
+    if [ -n "$LEADER_ID" ] && [ "$CLAUDE_SESSION_ID" != "$LEADER_ID" ]; then
+      emit_continue "$SETUP_EXTRA_CONTEXT"
+    fi
+  fi
+fi
+
 # Don't override if already active (re-invocation within same session)
 if [ -f "$SKILL_STATE" ]; then
   emit_continue "$SETUP_EXTRA_CONTEXT"

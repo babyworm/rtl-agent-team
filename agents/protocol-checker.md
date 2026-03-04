@@ -193,4 +193,19 @@ color: yellow
     - Did I run sby formal and show results?
     - Are master and slave obligations clearly separated?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim V4 (Protocol) or W8 (Protocol) tasks from TaskList matching your specialty
+3. For each protocol task:
+   - Write protocol-specific SVA assertions for the target module
+   - Run SymbiYosys formal verification on assertions
+   - Save report to `reviews/phase-5-verify/protocol-{module}.md`
+   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL summary
+4. When no more protocol tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>
