@@ -204,6 +204,13 @@ class TestRtlVerifyStopGate:
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "3" in ctx  # 3 files
 
+    def test_verify_stop_gate_uses_shared_json_util(self):
+        content = (HOOKS_DIR / "rtl-verify-stop-gate.sh").read_text()
+        assert "lib/json-util.sh" in content
+        assert "lib/team-gate-util.sh" in content
+        assert "jsonu_get_input_string" in content
+        assert "teamu_should_skip_gate" in content
+
 
 class TestStopGate:
     """Tests for hooks/stop-gate.sh."""
@@ -344,6 +351,13 @@ class TestStopGate:
         assert "p3-quality-gate" in ctx
         assert "primary=1" in ctx
 
+    def test_stop_gate_uses_shared_json_util(self):
+        content = (HOOKS_DIR / "stop-gate.sh").read_text()
+        assert "lib/json-util.sh" in content
+        assert "jsonu_get_file_path_string" in content
+        assert "jsonu_get_file_path_bool" in content
+        assert "jsonu_get_file_path_num" in content
+
 
 class TestRtlEditTrackerPhase6:
     """Tests for Phase 6 stale detection in hooks/rtl-edit-tracker.sh."""
@@ -444,6 +458,13 @@ class TestP6CascadeGate:
         assert "lint" in ctx.lower()
         assert "code-review" in ctx.lower() or "code_review" in ctx.lower()
         assert "design-note" in ctx.lower() or "design_note" in ctx.lower()
+
+    def test_p6_cascade_gate_uses_shared_json_util(self):
+        content = (HOOKS_DIR / "rtl-p6-cascade-gate.sh").read_text()
+        assert "lib/json-util.sh" in content
+        assert "lib/team-gate-util.sh" in content
+        assert "jsonu_get_input_string" in content
+        assert "teamu_should_skip_gate" in content
 
 
 class TestSkillCompletionGate:
@@ -611,6 +632,14 @@ class TestSkillCompletionGate:
         assert result["continue"] is False
         migrated = json.loads(state_file.read_text())
         assert migrated["use_escalation_ladder"] is True
+
+    def test_skill_completion_gate_uses_shared_json_util(self):
+        content = (HOOKS_DIR / "rtl-skill-completion-gate.sh").read_text()
+        assert "lib/json-util.sh" in content
+        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_file_path_string" in content
+        assert "jsonu_get_file_path_bool" in content
+        assert "jsonu_get_file_path_num" in content
 
 
 class TestSkillActivation:
@@ -1176,3 +1205,9 @@ class TestTeamAwarenessGuard:
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is False
+
+    def test_stop_hooks_use_shared_team_gate_util(self):
+        for _, hook_path in self.HOOKS.items():
+            content = hook_path.read_text()
+            assert "lib/team-gate-util.sh" in content
+            assert "teamu_should_skip_gate" in content

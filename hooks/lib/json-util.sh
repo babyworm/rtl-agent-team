@@ -83,7 +83,7 @@ jsonu_get_file_path_string() {
   case "$JSONU_PARSER_MODE" in
     jq)
       JSONU_JQ_QUERY=$(jsonu_path_to_jq_query "$JSONU_KEY_PATH")
-      jq -r "($JSONU_JQ_QUERY // empty) | if . == null then \"\" else tostring end" "$JSONU_FILE" 2>/dev/null | head -n 1
+      jq -r "($JSONU_JQ_QUERY) as \$v | if \$v == null then \"\" else (\$v|tostring) end" "$JSONU_FILE" 2>/dev/null | head -n 1
       ;;
     python)
       "$JSONU_PY_BIN" - "$JSONU_FILE" "$JSONU_KEY_PATH" 2>/dev/null <<'PY'
@@ -115,6 +115,98 @@ PY
       # Last-resort fallback when jq/python are unavailable.
       JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
       sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$JSONU_FILE" | head -n 1
+      ;;
+  esac
+}
+
+jsonu_get_file_path_bool() {
+  JSONU_FILE="$1"
+  JSONU_KEY_PATH="$2"
+
+  if [ ! -f "$JSONU_FILE" ]; then
+    printf ''
+    return 0
+  fi
+
+  case "$JSONU_PARSER_MODE" in
+    jq)
+      JSONU_JQ_QUERY=$(jsonu_path_to_jq_query "$JSONU_KEY_PATH")
+      jq -r "($JSONU_JQ_QUERY) as \$v | if (\$v|type)==\"boolean\" then (if \$v then \"true\" else \"false\" end) else \"\" end" "$JSONU_FILE" 2>/dev/null | head -n 1
+      ;;
+    python)
+      "$JSONU_PY_BIN" - "$JSONU_FILE" "$JSONU_KEY_PATH" 2>/dev/null <<'PY'
+import json
+import sys
+
+state_file = sys.argv[1]
+path = sys.argv[2].split(".")
+
+try:
+    with open(state_file, "r", encoding="utf-8") as f:
+        node = json.load(f)
+    for key in path:
+        if not isinstance(node, dict) or key not in node:
+            print("")
+            raise SystemExit(0)
+        node = node[key]
+    if isinstance(node, bool):
+        print("true" if node else "false")
+    else:
+        print("")
+except Exception:
+    print("")
+PY
+      ;;
+    *)
+      # Last-resort fallback when jq/python are unavailable.
+      JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
+      sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p" "$JSONU_FILE" | head -n 1
+      ;;
+  esac
+}
+
+jsonu_get_file_path_num() {
+  JSONU_FILE="$1"
+  JSONU_KEY_PATH="$2"
+
+  if [ ! -f "$JSONU_FILE" ]; then
+    printf ''
+    return 0
+  fi
+
+  case "$JSONU_PARSER_MODE" in
+    jq)
+      JSONU_JQ_QUERY=$(jsonu_path_to_jq_query "$JSONU_KEY_PATH")
+      jq -r "($JSONU_JQ_QUERY // null) as \$v | if (\$v|type)==\"number\" then (\$v|floor|tostring) else \"\" end" "$JSONU_FILE" 2>/dev/null | head -n 1
+      ;;
+    python)
+      "$JSONU_PY_BIN" - "$JSONU_FILE" "$JSONU_KEY_PATH" 2>/dev/null <<'PY'
+import json
+import sys
+
+state_file = sys.argv[1]
+path = sys.argv[2].split(".")
+
+try:
+    with open(state_file, "r", encoding="utf-8") as f:
+        node = json.load(f)
+    for key in path:
+        if not isinstance(node, dict) or key not in node:
+            print("")
+            raise SystemExit(0)
+        node = node[key]
+    if isinstance(node, (int, float)) and not isinstance(node, bool):
+        print(str(int(node)))
+    else:
+        print("")
+except Exception:
+    print("")
+PY
+      ;;
+    *)
+      # Last-resort fallback when jq/python are unavailable.
+      JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
+      sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$JSONU_FILE" | head -n 1
       ;;
   esac
 }

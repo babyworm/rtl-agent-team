@@ -33,7 +33,7 @@ _TEAM_NAME=$(sed -n 's/.*"team_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
 if [ -f "$PROGRESS_FILE" ]; then
   _NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
   if acquire_lock "$PROGRESS_FILE"; then
-    sed "s/\"last_updated\"[^\"]*\"[^\"]*\"/\"last_updated\": \"$_NOW\"/" "$PROGRESS_FILE" > "$PROGRESS_FILE.tmp" 2>/dev/null
+    sed "s/\"last_updated\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"last_updated\": \"$_NOW\"/" "$PROGRESS_FILE" > "$PROGRESS_FILE.tmp" 2>/dev/null
     if [ -s "$PROGRESS_FILE.tmp" ]; then
       mv "$PROGRESS_FILE.tmp" "$PROGRESS_FILE"
     fi

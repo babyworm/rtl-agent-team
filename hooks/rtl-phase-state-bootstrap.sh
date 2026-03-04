@@ -30,8 +30,7 @@ get_file_mtime_epoch() {
     printf ''
     return 0
   fi
-  date -r "$TARGET_FILE" +%s 2>/dev/null \
-    || stat -c %Y "$TARGET_FILE" 2>/dev/null \
+  stat -c %Y "$TARGET_FILE" 2>/dev/null \
     || stat -f %m "$TARGET_FILE" 2>/dev/null \
     || printf ''
 }
