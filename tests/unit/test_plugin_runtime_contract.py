@@ -23,6 +23,13 @@ RTL_ORCHESTRATE_SKILL = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
 INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
 P5S_FUNC_VERIFY_ORCHESTRATOR = AGENTS_DIR / "p5s-func-verify-orchestrator.md"
 P5S_FUNC_VERIFY_POLICY = SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md"
+CODE_REVIEW_POLICY = SKILLS_DIR / "code-review-policy" / "SKILL.md"
+REFACTOR_POLICY = SKILLS_DIR / "refactor-policy" / "SKILL.md"
+VERIFICATION_RECHECK_POLICY = SKILLS_DIR / "verification-recheck-policy" / "SKILL.md"
+SIM_TOOL_PROFILES = SKILLS_DIR / "sim-tool-profiles" / "SKILL.md"
+LINT_TOOL_PROFILES = SKILLS_DIR / "lint-tool-profiles" / "SKILL.md"
+CDC_TOOL_PROFILES = SKILLS_DIR / "cdc-tool-profiles" / "SKILL.md"
+SYN_TOOL_PROFILES = SKILLS_DIR / "syn-tool-profiles" / "SKILL.md"
 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
 SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
@@ -95,12 +102,15 @@ class TestHookRuntimeContract:
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh"',
         ]
 
-    def test_pretooluse_skill_activation_only(self, hooks):
+    def test_pretooluse_skill_hooks_order(self, hooks):
         entries = hooks["hooks"]["PreToolUse"]
         assert len(entries) == 1
         assert entries[0]["matcher"] == "Skill"
         commands = [h["command"] for h in entries[0]["hooks"]]
-        assert commands == ['sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"']
+        assert commands == [
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-phase-state-bootstrap.sh"',
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
+        ]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]
@@ -279,3 +289,50 @@ class TestP5sFuncVerifyRuntimePolicyContract:
     def test_policy_examples_do_not_hardcode_parallel_4(self, policy_content):
         assert "--mode local --seeds \"1 42 123 1337 65536\" --sim verilator" in policy_content
         assert "--parallel 4" not in policy_content
+
+
+class TestReviewRefactorPolicyRuntimeContract:
+    """Lock minimum depth requirements for review/refactor policies."""
+
+    def test_code_review_policy_has_gate_escalation_and_output(self):
+        content = CODE_REVIEW_POLICY.read_text()
+        assert "Pass/Fail Gate" in content
+        assert "Escalation" in content
+        assert "Output Format" in content
+
+    def test_refactor_policy_has_gate_escalation_and_output(self):
+        content = REFACTOR_POLICY.read_text()
+        assert "Pass/Fail Gate" in content
+        assert "Escalation" in content
+        assert "Output Format" in content
+
+    def test_recheck_policy_has_commands_criteria_and_output(self):
+        content = VERIFICATION_RECHECK_POLICY.read_text()
+        assert "Recommended Commands" in content
+        assert "Pass/Fail Criteria" in content
+        assert "Escalation" in content
+        assert "Output Format" in content
+
+
+class TestToolProfileRuntimeContract:
+    """Lock minimum actionable content for tool profile skills."""
+
+    def test_sim_tool_profiles_include_open_source_invocation(self):
+        content = SIM_TOOL_PROFILES.read_text()
+        assert "scripts/run_sim.sh --sim verilator" in content
+        assert "Normalized Result Fields" in content
+
+    def test_lint_tool_profiles_include_open_source_invocation(self):
+        content = LINT_TOOL_PROFILES.read_text()
+        assert "lint/scripts/run_lint.sh --tool verilator" in content
+        assert "Gate decision is based on normalized" in content
+
+    def test_cdc_tool_profiles_include_open_source_invocation(self):
+        content = CDC_TOOL_PROFILES.read_text()
+        assert "sim/cdc/run_cdc.sh --tool structural" in content
+        assert "Gate fail when unwaived `VIOLATION` exists." in content
+
+    def test_syn_tool_profiles_include_open_source_invocation(self):
+        content = SYN_TOOL_PROFILES.read_text()
+        assert "syn/scripts/run_syn.sh --tool yosys" in content
+        assert "Gate Criteria" in content

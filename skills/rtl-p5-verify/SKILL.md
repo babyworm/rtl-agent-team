@@ -10,18 +10,26 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 Execute Phase 5 verification pipeline. Runs three-stage verification
 (module → top → final) covering 9 verification categories with module
 graduation gates and compliance review.
+This is a legacy bundled bridge while teams transition to split P5A/P5B.
 </Purpose>
 
 <Use_When>
 - Phase 4 RTL implementation is complete with lint passing
 - User says "verify", "verification", "Phase 5", "run all checks"
 - Need comprehensive verification: lint, formal, CDC, functional, coverage, synthesis
+- Need one legacy-style Phase-5 command that bundles functional + silicon-oriented checks
+- Need migration bridge while adopting split flows (`rtl-p5a-functional-closure` + `rtl-p5b-silicon-validation`)
+- Team workflow intentionally keeps the combined legacy Phase-5 interface
 </Use_When>
 
 <Do_Not_Use_When>
 - RTL modules don't exist yet (run rtl-p4-implement first)
 - Only need functional regression (use rtl-p5s-func-verify)
 - Only need a specific verification category (use the category-specific skill)
+- Want strict separation of functional closure and silicon validation
+  (use `rtl-p5a-functional-closure` first, then `rtl-p5b-silicon-validation`)
+- Starting a new verification flow with explicit two-stage closure
+  (default to split `rtl-p5a-functional-closure` + `rtl-p5b-silicon-validation`)
 </Do_Not_Use_When>
 
 ## Prerequisites

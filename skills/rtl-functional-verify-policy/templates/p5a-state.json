@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "phase": "p5a",
+  "status": "in_progress",
+  "started_at": "{{TIMESTAMP}}",
+  "updated_at": "{{TIMESTAMP}}",
+  "current_stage": "module_closure",
+  "scopes": {
+    "module": {
+      "functional_regression": "pending",
+      "coverage": "pending",
+      "traceability": "pending"
+    },
+    "block": {
+      "functional_regression": "pending",
+      "coverage": "pending",
+      "traceability": "pending"
+    },
+    "top": {
+      "functional_regression": "pending",
+      "coverage": "pending",
+      "traceability": "pending"
+    }
+  },
+  "coverage_targets": {
+    "line": 0,
+    "toggle": 0,
+    "fsm": 0
+  },
+  "gates": {
+    "p5a_exit": {
+      "functional_pass": false,
+      "coverage_pass": false,
+      "traceability_pass": false,
+      "verdict": "pending"
+    }
+  },
+  "next_action": "run_deep_regression"
+}

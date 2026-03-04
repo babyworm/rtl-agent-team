@@ -251,12 +251,16 @@ class TestCrossReferences:
             ("p2-arch-design", "p2-arch-orchestrator", "p2-arch-design-policy"),
             ("rtl-p3-uarch-design", "p3-uarch-orchestrator", "rtl-p3-uarch-policy"),
             ("rtl-p4-implement", "p4-implement-orchestrator", "rtl-p4-implement-policy"),
+            ("rtl-p4-rapid-impl", "p4-rtl-sanity-orchestrator", "rtl-design-policy"),
             ("rtl-p4s-bugfix", "p4s-bugfix-orchestrator", "rtl-p4s-bugfix-policy"),
             ("rtl-p4s-unit-test", "p4s-unit-test-orchestrator", "rtl-p4s-unit-test-policy"),
             ("rtl-p5-verify", "p5-verify-orchestrator", "rtl-p5-verify-policy"),
+            ("rtl-p5a-functional-closure", "p5a-functional-closure-orchestrator", "rtl-functional-verify-policy"),
+            ("rtl-p5b-silicon-validation", "p5b-silicon-validation-orchestrator", "rtl-silicon-validation-policy"),
             ("rtl-p5s-func-verify", "p5s-func-verify-orchestrator", "rtl-p5s-func-verify-policy"),
             ("rtl-p5s-integration-test", "p5s-integration-orchestrator", "rtl-p5s-integration-test-policy"),
             ("rtl-p6-design-review", "p6-review-orchestrator", "rtl-p6-design-review-policy"),
+            ("rtl-review-refactor", "review-refactor-orchestrator", "code-review-policy"),
             ("rtl-dse", "dse-orchestrator", "rtl-dse-policy"),
             ("rtl-spec-to-uarch", "spec-to-uarch-orchestrator", "rtl-spec-to-uarch-policy"),
             ("rtl-uarch-to-verify", "uarch-to-verify-orchestrator", "rtl-uarch-to-verify-policy"),
@@ -300,6 +304,71 @@ class TestCrossReferences:
             assert re.search(r"^user-invocable:\s*false\s*$", frontmatter, re.MULTILINE), (
                 f"Convention skill must be non-user-invocable: {skill_name}"
             )
+
+    def test_review_refactor_orchestrator_loads_all_required_policies(self):
+        action_skill = "rtl-review-refactor"
+        orchestrator = "review-refactor-orchestrator"
+        required_policies = [
+            "code-review-policy",
+            "refactor-policy",
+            "verification-recheck-policy",
+        ]
+
+        action_file = SKILLS_DIR / action_skill / "SKILL.md"
+        assert action_file.exists(), f"Missing action skill: {action_skill}"
+        action_content = action_file.read_text()
+        assert re.search(r'Task\(subagent_type="rtl-agent-team:review-refactor-orchestrator"', action_content)
+
+        agent_file = AGENTS_DIR / f"{orchestrator}.md"
+        assert agent_file.exists(), f"Missing orchestrator agent: {orchestrator}"
+        agent_frontmatter = _read_frontmatter(agent_file)
+
+        for policy in required_policies:
+            skills_pattern = rf"^skills:\s*\[[^\]]*\b{re.escape(policy)}\b[^\]]*\]\s*$"
+            assert re.search(skills_pattern, agent_frontmatter, re.MULTILINE), (
+                f"{orchestrator} must load policy skill {policy}"
+            )
+
+            policy_file = SKILLS_DIR / policy / "SKILL.md"
+            assert policy_file.exists(), f"Missing policy skill: {policy}"
+            policy_frontmatter = _read_frontmatter(policy_file)
+            assert re.search(r"^user-invocable:\s*false\s*$", policy_frontmatter, re.MULTILINE), (
+                f"Policy skill must not be user-invocable: {policy}"
+            )
+
+    def test_p4_state_module_population_contract_is_explicit(self):
+        p4_template = SKILLS_DIR / "rtl-design-policy" / "templates" / "p4-state.json"
+        assert p4_template.exists(), "Missing p4-state template"
+        template_text = p4_template.read_text()
+        assert "{{module_name}}" not in template_text, (
+            "p4-state template should not keep unresolved {{module_name}} placeholders"
+        )
+
+        p4_orchestrator = AGENTS_DIR / "p4-rtl-sanity-orchestrator.md"
+        assert p4_orchestrator.exists(), "Missing p4-rtl-sanity-orchestrator agent"
+        orchestrator_text = p4_orchestrator.read_text()
+        assert "no `{{module_name}}` placeholder" in orchestrator_text
+        assert "Populate `modules` map" in orchestrator_text
+
+    def test_p5_legacy_and_split_relationships_are_documented(self):
+        p5_legacy = (SKILLS_DIR / "rtl-p5-verify" / "SKILL.md").read_text()
+        p5a = (SKILLS_DIR / "rtl-p5a-functional-closure" / "SKILL.md").read_text()
+        p5b = (SKILLS_DIR / "rtl-p5b-silicon-validation" / "SKILL.md").read_text()
+
+        assert "rtl-p5a-functional-closure" in p5_legacy
+        assert "rtl-p5b-silicon-validation" in p5_legacy
+        assert "rtl-p5-verify" in p5a
+        assert "rtl-p5b-silicon-validation" in p5a
+        assert "rtl-p5-verify" in p5b
+        assert "rtl-p5a-functional-closure" in p5b
+
+    def test_review_refactor_is_marked_cross_cutting_not_phase_replacement(self):
+        skill_file = SKILLS_DIR / "rtl-review-refactor" / "SKILL.md"
+        assert skill_file.exists(), "Missing rtl-review-refactor skill"
+        content = skill_file.read_text()
+        assert "cross-cutting" in content
+        assert "not a replacement for the phase pipeline itself" in content
+        assert "P1-P6" in content
 
     def test_rtl_orchestrate_hook_export_is_synced(self):
         skill_block = _extract_marked_block(

@@ -57,6 +57,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
 | RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Action Skill |
 | decoder conformance, conformance stream | `/rtl-agent-team:codec-conformance-eval` | Action Skill |
+| rapid rtl, P4 rapid, sanity integration, fast implementation loop | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
@@ -66,6 +67,8 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | synthesis, yosys, SDC | `/rtl-agent-team:rtl-synth-check` | Action Skill |
 | RTL documentation | `/rtl-agent-team:rtl-document` | Action Skill |
 | IP-XACT, register map | `/rtl-agent-team:rtl-ipxact-gen` | Action Skill |
+| functional closure, P5A, deep functional verification, hierarchical functional closure | `/rtl-agent-team:rtl-p5a-functional-closure` | Action Skill |
+| silicon validation, P5B, signoff readiness, timing signoff, post-functional signoff | `/rtl-agent-team:rtl-p5b-silicon-validation` | Action Skill |
 | Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` | Action Skill |
 | simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` | Action Skill |
 | UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` | Action Skill |
@@ -81,6 +84,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) | Action Skill |
+| LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
 | `.sv/.sva` assertion work | `systemverilog-assertion` (auto-applied) | Convention |
 | UVM testbench generation | `uvm` (auto-applied) | Convention |

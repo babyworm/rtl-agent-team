@@ -157,3 +157,23 @@ class TestAllJsonFilesValid:
             except json.JSONDecodeError as e:
                 errors.append(f"{json_file}: {e}")
         assert not errors, f"Invalid JSON files:\n" + "\n".join(errors)
+
+
+class TestP4P5StateTemplates:
+    """Validate new phase state templates for P4/P5A/P5B."""
+
+    @pytest.mark.parametrize(
+        "relpath",
+        [
+            "skills/rtl-design-policy/templates/p4-state.json",
+            "skills/rtl-functional-verify-policy/templates/p5a-state.json",
+            "skills/rtl-silicon-validation-policy/templates/p5b-state.json",
+        ],
+    )
+    def test_state_template_exists_and_valid_json(self, relpath):
+        path = REPO_ROOT / relpath
+        assert path.exists(), f"Missing state template: {path}"
+        data = json.loads(path.read_text())
+        assert "schema_version" in data
+        assert "phase" in data
+        assert "gates" in data

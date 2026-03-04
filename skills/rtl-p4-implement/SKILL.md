@@ -16,12 +16,15 @@ UnitTest → CDC → Protocol → Refactor → IntegrationGate.
 - Phase 3 μArch specs are complete and RTL coding is needed
 - User says "implement RTL", "write RTL", "Phase 4", "code modules"
 - Need lint-clean, unit-tested SystemVerilog modules
+- Need the full 10-Wave implementation pipeline with comprehensive review/fix/refactor
+- Need richer Phase-4 artifacts before handoff to Phase 5
 </Use_When>
 
 <Do_Not_Use_When>
 - Phase 3 μArch specs are not complete (run rtl-p3-uarch-design first)
 - Only need a single module bug fix (use rtl-p4s-bugfix)
 - Need RTL + verification together from uarch (use rtl-uarch-to-verify)
+- Need a faster minimal Phase-4 sanity loop first (use rtl-p4-rapid-impl)
 </Do_Not_Use_When>
 
 ## Prerequisites

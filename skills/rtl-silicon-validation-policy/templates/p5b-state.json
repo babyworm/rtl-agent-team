@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "phase": "p5b",
+  "status": "in_progress",
+  "started_at": "{{TIMESTAMP}}",
+  "updated_at": "{{TIMESTAMP}}",
+  "current_stage": "constraints_and_synthesis",
+  "precondition": {
+    "p5a_functional_closure_pass": false
+  },
+  "scopes": {
+    "block": {
+      "constraints": "pending",
+      "synthesis": "pending",
+      "timing": "pending",
+      "cdc": "pending"
+    },
+    "top": {
+      "constraints": "pending",
+      "synthesis": "pending",
+      "timing": "pending",
+      "cdc": "pending",
+      "functional_precision_regression": "pending"
+    }
+  },
+  "gates": {
+    "p5b_exit": {
+      "constraints_pass": false,
+      "synthesis_pass": false,
+      "timing_cdc_pass": false,
+      "top_precision_functional_pass": false,
+      "verdict": "pending"
+    }
+  },
+  "next_action": "run_signoff_flow"
+}

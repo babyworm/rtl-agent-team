@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "phase": "p4",
+  "_template_notes": "modules map is populated by orchestrator at runtime using discovered/target module names.",
+  "status": "in_progress",
+  "started_at": "{{TIMESTAMP}}",
+  "updated_at": "{{TIMESTAMP}}",
+  "current_stage": "module_implementation",
+  "modules": {},
+  "gates": {
+    "p4_exit": {
+      "lint_pass": false,
+      "cdc_pass": false,
+      "functional_smoke_pass": false,
+      "block_sanity_pass": false,
+      "verdict": "pending"
+    }
+  },
+  "next_action": "run_module_loop"
+}

@@ -717,3 +717,54 @@ class TestSkillActivation:
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         assert run_sim.read_text() == "#!/usr/bin/env bash\necho custom\n"
+
+
+class TestPhaseStateBootstrap:
+    """Tests for hooks/rtl-phase-state-bootstrap.sh."""
+
+    HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
+
+    def _setup_marker(self, tmp_project):
+        rules_dir = tmp_project / ".claude" / "rules"
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
+
+    def test_non_target_skill_ignored(self, tmp_project):
+        self._setup_marker(tmp_project)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-implement"})
+        assert result["continue"] is True
+        assert not (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
+
+    def test_setup_missing_does_not_bootstrap(self, tmp_project):
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
+        assert result["continue"] is True
+        assert not (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
+
+    @pytest.mark.parametrize(
+        "skill_name,state_file,phase",
+        [
+            ("rtl-agent-team:rtl-p4-rapid-impl", "p4-state.json", "p4"),
+            ("rtl-agent-team:rtl-p5a-functional-closure", "p5a-state.json", "p5a"),
+            ("rtl-agent-team:rtl-p5b-silicon-validation", "p5b-state.json", "p5b"),
+        ],
+    )
+    def test_target_skill_bootstraps_state(self, tmp_project, skill_name, state_file, phase):
+        self._setup_marker(tmp_project)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill_name})
+        assert result["continue"] is True
+
+        state_path = tmp_project / ".rtl-agent-team" / "state" / state_file
+        assert state_path.exists()
+        data = json.loads(state_path.read_text())
+        assert data["phase"] == phase
+        assert "{{TIMESTAMP}}" not in state_path.read_text()
+
+    def test_existing_state_not_overwritten(self, tmp_project):
+        self._setup_marker(tmp_project)
+        state_path = tmp_project / ".rtl-agent-team" / "state" / "p4-state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text('{"phase":"p4","status":"custom"}')
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
+        assert result["continue"] is True
+        assert json.loads(state_path.read_text())["status"] == "custom"
