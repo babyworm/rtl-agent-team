@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 77 specialized AI agents + 56 skills automate the 6-Phase pipeline:
+> 77 specialized AI agents + 76 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-77개 전문 AI 에이전트 + 56개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+77개 전문 AI 에이전트 + 76개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -132,7 +132,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 56개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 76개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -166,7 +166,7 @@ rtl-agent-team/
 ├── agents/                     # 77개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 56개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 76개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── rtl-setup/
 │   │   ├── scripts/
@@ -324,7 +324,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
 ├── agents/                              # rtl-agent-team 에이전트 (77개)
-├── skills/                              # rtl-agent-team 스킬 (56개, 13개 레퍼런스 문서 포함)
+├── skills/                              # rtl-agent-team 스킬 (76개, 13개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지

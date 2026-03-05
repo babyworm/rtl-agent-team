@@ -1389,13 +1389,13 @@ class TestTeamAwarenessGuard:
         parsed = json.loads(result.stdout)
         assert parsed["continue"] is False
 
-    def test_empty_leader_id_bypasses_all_sessions(self, tmp_project):
-        """Empty leader_session_id with team_mode=true → all sessions bypass."""
+    def test_empty_leader_id_enforces_gate_fail_closed(self, tmp_project):
+        """Empty leader_session_id with team_mode=true → fail-closed, gate enforced for all."""
         self._write_team_config(tmp_project, leader_id="")
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
-        assert result["continue"] is True
+        assert result["continue"] is False
 
     def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
         """team-config.json older than 2h → removed, normal gate behavior resumes."""
