@@ -19,12 +19,8 @@ color: cyan
     and what are the exact filter parameters and hardware costs?"
 
     Before analysis, read domain knowledge files:
-    - `domain-packages/video-processing/knowledge/v4l2-pixfmt-overview.md`
-    - `domain-packages/video-processing/knowledge/v4l2-storage-layout.md`
     - `domain-packages/video-processing/knowledge/v4l2-yuv-rgb-bayer-formats.md`
     - `domain-packages/video-processing/knowledge/v4l2-colorspace-quantization.md`
-    - `domain-packages/video-processing/knowledge/format-conversion-recipes.md`
-    - `domain-packages/video-processing/knowledge/fourcc-cheatsheet.md`
 
     You participate in the 6-phase design pipeline:
     - Phase 1 Research:       Primary — noise characterization, algorithm selection

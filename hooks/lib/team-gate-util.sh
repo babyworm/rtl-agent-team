@@ -39,7 +39,12 @@ teamu_should_skip_gate() {
     fi
   fi
 
-  if [ -z "$TEAMU_LEADER" ] || [ "$TEAMU_LEADER" != "${CLAUDE_SESSION_ID:-}" ]; then
+  # Fail-closed: empty leader = unknown ownership → enforce gate for all sessions
+  if [ -z "$TEAMU_LEADER" ]; then
+    return 1
+  fi
+  # Known leader: skip gate only for worker sessions (non-leader)
+  if [ "$TEAMU_LEADER" != "${CLAUDE_SESSION_ID:-}" ]; then
     return 0
   fi
   return 1
