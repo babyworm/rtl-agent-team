@@ -149,6 +149,7 @@ class TestSessionScopedState:
 
     def _write_team_config(self, tmp_project, leader_id="leader-session-001"):
         """Create a team-config.json in the project state dir."""
+        import datetime
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         config = {
@@ -156,7 +157,7 @@ class TestSessionScopedState:
             "team_name": "test-team",
             "leader_session_id": leader_id,
             "phase": "p4",
-            "created_at": "2026-03-05T00:00:00Z",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
 
@@ -1150,6 +1151,7 @@ class TestTeamAwarenessGuard:
     }
 
     def _write_team_config(self, tmp_project, team_mode=True, leader_id="leader-session-123"):
+        import datetime
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         config = {
@@ -1157,7 +1159,7 @@ class TestTeamAwarenessGuard:
             "team_name": "test-team",
             "leader_session_id": leader_id,
             "phase": "p5",
-            "created_at": "2026-03-05T00:00:00Z"
+            "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         (state_dir / "team-config.json").write_text(json.dumps(config, indent=2))
 
