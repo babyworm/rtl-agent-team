@@ -10,6 +10,8 @@ A Claude Code plugin for automated RTL design and verification.
 
 Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 64 specialized AI agents + 56 skills + 13 reference documents.
 
+![](./rat_logo.jpg)
+
 ## Marketplace
 
 This repository serves as the **RTL Agent Marketplace**, providing hardware design plugins.
