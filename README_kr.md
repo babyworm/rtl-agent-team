@@ -10,6 +10,8 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 64개 전문 AI 에이전트 + 56개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
+![](./rat_logo.jpg)
+
 ## Marketplace
 
 이 repository는 **RTL Agent Marketplace**로, 하드웨어 설계 관련 플러그인들을 제공합니다.
