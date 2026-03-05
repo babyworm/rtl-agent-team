@@ -1,7 +1,7 @@
 # Phase {{N}} Summary: {{PHASE_NAME}}
 
 > Auto-generated at phase completion. Max 1 page. Used by downstream phases as
-> compressed context (via `required_summary_only` in Context Manifest).
+> compressed context (via `summary only` in Context Preload).
 
 ## Key Decisions
 <!-- Top 3-5 decisions made in this phase with brief rationale -->

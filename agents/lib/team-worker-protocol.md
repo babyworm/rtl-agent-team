@@ -7,8 +7,8 @@ in a Claude Code native team. For the full lifecycle reference, see `team-worker
 
 When spawned with `team_name` parameter, follow these steps:
 
-1. **INIT**: Read team config (`~/.claude/teams/{team_name}/config.json`).
-   Identify self (name) and leader from members list.
+1. **INIT**: Team membership is managed by Claude Code natively.
+   Identify self (name) and leader from team context.
 2. **CLAIM**: Call `TaskList()` → find first task where status="pending",
    owner is empty or matches your name, and blockedBy is empty.
    Claim it with `TaskUpdate(taskId, status="in_progress", owner=my_name)`.

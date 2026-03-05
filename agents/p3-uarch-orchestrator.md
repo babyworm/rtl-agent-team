@@ -36,8 +36,8 @@ Wait for rtl-setup to complete. Do NOT proceed to Step 1 until setup reports "Re
 
 ```
 Read("docs/phase-2-architecture/architecture.md")
-Read("docs/phase-2-architecture/block_diagram")
 # P2 memory classification (internal SRAM vs external DRAM/cache)
+# Block diagram is embedded within architecture.md
 ```
 
 ## Step 2: Domain Consultation for Design Patterns

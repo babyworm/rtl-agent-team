@@ -47,8 +47,8 @@ Every phase transition requires BOTH:
 - Quality Gate failure: pass findings to worker, re-run gate. Max 2 retries
 - Upper-spec violation: IMMEDIATE STOP, return to violated upper phase
 
-### Context Manifests
-Load files per `skills/rtl-autopilot/templates/context-manifest-phase-{N}.json` before each phase.
+### Context Preload
+Before each phase, verify required upstream files exist (specific file lists defined inline in orchestrator steps).
 
 ### Scratchpad Convention
 During iterative review rounds:
@@ -73,7 +73,7 @@ Do NOT proceed to Phase 4.
 **Summary Validation**: `docs/phase-1-research/phase-1-summary.md`
 
 ### Phase 2→3 (Architecture → μArch)
-**Artifact Gate**: architecture.md + block_diagram + refc/*/*.c exist
+**Artifact Gate**: architecture.md (with D2 block diagram) + refc/*/*.c exist
 **Quality Gate**:
 - 3-round iterative review converged (or user-approved)
 - Feature Coverage: 100% REQ-NNN mapped to architecture blocks
@@ -117,7 +117,7 @@ Do NOT proceed to Phase 4.
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
 - [ ] State file updated: `.rtl-agent-team/state/{module}-phase-3-complete.json`
-- [ ] Context manifest ready: `skills/rtl-autopilot/skills/rtl-autopilot/templates/context-manifest-phase-4.json` references valid files
+- [ ] Context preload files verified: Phase 4 required upstream files exist
 
 ## Escalation & Stop Conditions
 

@@ -71,7 +71,6 @@
       "review_rounds_completed": 0,
       "artifacts": {
         "architecture_md": false,
-        "block_diagram": false,
         "ref_model_src": false
       },
       "artifact_gate": null,
@@ -79,7 +78,7 @@
       "quality_gate_retries": 0,
       "partial_work": {
         "completed_items": [],
-        "pending_items": ["architecture_md", "block_diagram", "ref_model_src"],
+        "pending_items": ["architecture_md", "ref_model_src"],
         "current_action": null,
         "last_agent": null
       }

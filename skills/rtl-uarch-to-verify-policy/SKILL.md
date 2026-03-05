@@ -38,11 +38,13 @@ Quality Gate verdicts: `PASS` or `FAIL + findings[]`
 - Quality Gate failure: pass findings to worker agent, re-run gate. Max 2 retries
 - Upper-spec violation: IMMEDIATE STOP (see Escalation)
 
-### Context Manifests
-Each phase has a manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`) declaring:
-- `required_full_read`: files that MUST be fully read before starting the phase
-- `required_summary_only`: files where only the phase summary is sufficient
-- `optional_on_demand`: files read only when a specific question arises
+### Context Preload
+Before each phase, verify required upstream files exist:
+- **required (full read)**: files that MUST be fully read before starting the phase
+- **summary only**: files where only the phase summary is sufficient
+- **optional (on demand)**: files read only when a specific question arises
+
+Specific file lists are defined inline in each orchestrator's phase steps.
 
 ### Termination
 After Phase 5 Final Compliance Gate PASS, generate summary, then STOP.
@@ -65,7 +67,7 @@ Do NOT proceed to Phase 6.
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
 - [ ] State file updated: `.rtl-agent-team/state/{module}-phase-3-complete.json`
-- [ ] Context manifest ready: `skills/rtl-autopilot/skills/rtl-autopilot/templates/context-manifest-phase-4.json` references valid files
+- [ ] Context preload files verified: Phase 4 required upstream files exist
 
 ## Phase Gate Definitions
 
@@ -160,7 +162,7 @@ Stream B artifacts generated concurrently with Stream A (RTL implementation):
 
 ### Lesson Learned Recording
 After each successful feedback fix:
-- Append entry to `docs/lessons-learned.md` using `skills/rtl-autopilot/templates/lessons-learned-entry.md` format
+- Append entry to `docs/lessons-learned.md` with format: LL-{NNN} with sections: Symptom, Root Cause, Fix Applied, Prevention, Related (REQ IDs, module, fix commit, ADR, Phase 5 Sub-phase)
 - Record: symptom, root cause, fix applied, prevention strategy, related REQ/module/ADR
 
 ## Escalation & Stop Conditions

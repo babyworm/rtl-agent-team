@@ -50,7 +50,7 @@ Wait for rtl-setup to complete. Do NOT proceed until setup reports "Ready to sta
 Glob("docs/phase-3-uarch/*.md")
 Read("docs/phase-3-uarch/clock-domain-map.md")
 Read("docs/phase-3-uarch/protocol-assignments.md")
-Read("io_definition.json")
+Read("docs/phase-1-research/io_definition.json")
 
 Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
 ```

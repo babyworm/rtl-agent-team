@@ -126,7 +126,7 @@ skills/{skill-name}/
 - [ ] CLAUDE.md 스킬 호출 규칙 테이블에 패턴을 추가했는가
 - [ ] README.md 스킬 카운트를 업데이트했는가
 - [ ] 스킬이 review artifact를 생성하면 `review-checklist.md`에 추가했는가
-- [ ] 스킬이 Phase 입출력을 변경하면 해당 `context-manifest-phase-*.json`을 업데이트했는가
+- [ ] 스킬이 Phase 입출력을 변경하면 해당 orchestrator의 Context Preload 섹션을 업데이트했는가
 
 ### 레퍼런스 문서 추가
 
@@ -144,7 +144,7 @@ skills/{skill-name}/
 | `README.md` | 에이전트/스킬 카운트, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
 | `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
-| `skills/rtl-autopilot/templates/context-manifest-phase-*.json` | Phase별 입출력 artifact 변경 시 manifest 업데이트 |
+| `agents/*-orchestrator.md` (Context Preload 섹션) | Phase별 입출력 artifact 변경 시 inline preload 목록 업데이트 |
 
 라우팅/위임 변경 시 반드시 아래를 실행하세요:
 

@@ -159,7 +159,7 @@ python -m pytest tests/unit/ -n auto
 | hooks.json | 훅 이벤트, matcher, command 구조 |
 | plugin.json | 플러그인 메타데이터 |
 | autopilot-state.json | Phase 1-6 상태 템플릿 |
-| context-manifest | 각 Phase별 컨텍스트 매니페스트 구조 |
+| context-preload | 각 Phase별 컨텍스트 프리로드 구조 |
 | conformance-config.json | 적합성 테스트 설정 |
 | domain manifest | 도메인 패키지 매니페스트 |
 

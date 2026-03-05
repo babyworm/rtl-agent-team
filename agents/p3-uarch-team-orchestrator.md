@@ -52,7 +52,6 @@ Wait for completion. Do NOT proceed until "Ready to start: Yes".
 ```
 # Read P2 artifacts
 Read("docs/phase-2-architecture/architecture.md")
-Read("docs/phase-2-architecture/block_diagram")
 Read("docs/phase-1-research/requirements.json")
 
 # Domain consultation for design patterns

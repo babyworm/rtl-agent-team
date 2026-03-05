@@ -39,7 +39,7 @@ Wait for rtl-setup to complete. Do NOT proceed to Wave 0 until setup reports "Re
 Glob("docs/phase-3-uarch/*.md")
 Read("docs/phase-3-uarch/clock-domain-map.md")
 Read("docs/phase-3-uarch/protocol-assignments.md")
-Read("io_definition.json")
+Read("docs/phase-1-research/io_definition.json")
 ```
 
 - Enumerate all modules from uarch specs

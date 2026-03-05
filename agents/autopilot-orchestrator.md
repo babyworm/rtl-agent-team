@@ -64,7 +64,7 @@ Read(".rtl-agent-team/state/rtl-autopilot-state.json")
    - Phase 4: check `completed_modules` vs `pending_modules`, `stream_a/b_status`
    - Phase 5: check `completed_sub_phases` vs `pending_sub_phases`, `fix_history`
    - Phase 6: check `completed_waves`, resume from `current_wave`
-4. **Context Load**: Read upstream docs per Context Manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`)
+4. **Context Load**: Read upstream docs per Context Preload (defined in each phase step below)
 5. Clear `interrupted_reason` and `partial_work_summary`
 
 **If no state file** — Fresh start:
@@ -122,7 +122,7 @@ On PASS: generate Phase 1 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 1 artifacts and generate docs/phase-1-research/phase-1-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
+     prompt="Read all Phase 1 artifacts and generate docs/phase-1-research/phase-1-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
 On FAIL: pass findings back for correction, re-run gate (max 2 retries).
@@ -130,8 +130,11 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 
 ## Step 3: Phase 2 — Architecture + Reference Model
 
-**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-2.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload**: Verify required upstream files exist before starting Phase 2:
+- `docs/phase-1-research/requirements.json`
+- `docs/phase-1-research/io_definition.json`
+- `docs/phase-1-research/domain-analysis.md`
+STOP if any missing.
 
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
@@ -166,17 +169,19 @@ On PASS: generate Phase 2 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 2 artifacts and generate docs/phase-2-architecture/phase-2-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
+     prompt="Read all Phase 2 artifacts and generate docs/phase-2-architecture/phase-2-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
 Task(subagent_type="rtl-agent-team:arch-designer",
      model="sonnet",
-     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md using skills/rtl-autopilot/templates/adr-template.md format. Link to REQ IDs and architecture.md sections.")
+     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
 ## Step 4: Phase 3 — μArch + BFM
 
-**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-3.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload**: Verify required upstream files exist before starting Phase 3:
+- `docs/phase-2-architecture/architecture.md` (required, full read)
+- `docs/phase-1-research/phase-1-summary.md` (optional, summary only)
+STOP if required file missing.
 
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
@@ -186,12 +191,12 @@ Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
 
 # If team-config exists with team_mode=true and phase=p3:
 Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
-     prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")
+     prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
 
 # Otherwise (default):
 # μArch design (includes BFM development internally via bfm-dev agent)
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
-     prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")
+     prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
 ```
 
 **Phase 3→4 Quality Gate** (criteria in policy skill):
@@ -203,17 +208,21 @@ On PASS: generate Phase 3 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 3 artifacts and generate docs/phase-3-uarch/phase-3-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
+     prompt="Read all Phase 3 artifacts and generate docs/phase-3-uarch/phase-3-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
 Task(subagent_type="rtl-agent-team:uarch-designer",
      model="sonnet",
-     prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md using skills/rtl-autopilot/templates/adr-template.md format. Link to architecture.md sections and Phase 2 ADRs.")
+     prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
 ```
 
 ## Step 5: Phase 4 — RTL Implementation + Early Verification
 
-**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-4.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload**: Verify required upstream files exist before starting Phase 4:
+- `docs/phase-3-uarch/*.md` (required, full read)
+- `docs/phase-1-research/io_definition.json` (required, full read)
+- `docs/phase-2-architecture/phase-2-summary.md` (summary only)
+- `docs/phase-1-research/phase-1-summary.md` (summary only)
+STOP if required files missing.
 
 Delegate Phase 4 to the dedicated orchestrator which manages the 10-Wave pipeline.
 
@@ -248,13 +257,18 @@ On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
+     prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
 ## Step 6: Phase 5 — Extensive Verification
 
-**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-5.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload**: Verify required upstream files exist before starting Phase 5:
+- `rtl/*/*.sv` (required, full read)
+- `docs/phase-1-research/requirements.json` (required, full read)
+- `docs/phase-4-rtl/phase-4-summary.md` (summary only)
+- `docs/phase-3-uarch/phase-3-summary.md` (summary only)
+- `docs/phase-2-architecture/phase-2-summary.md` (summary only)
+STOP if required files missing.
 
 ```
 Bash("mkdir -p reviews/phase-5-verify")
@@ -373,7 +387,7 @@ On Phase 5 gate PASS: generate Phase 5 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 5 artifacts and generate docs/phase-5-verify/phase-5-summary.md using skills/rtl-autopilot/templates/phase-summary.md format.")
+     prompt="Read all Phase 5 artifacts and generate docs/phase-5-verify/phase-5-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
 ## Step 7: Phase 6 — Design Review & Documentation

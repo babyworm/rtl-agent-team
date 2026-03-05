@@ -67,7 +67,7 @@ Bash("mkdir -p reviews/phase-2-architecture")
 
 # Parallel stream A: architecture design
 Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md and block_diagram. Block names in snake_case. Include D2 block diagram. Memory classification per block (local SRAM vs external).")
+     prompt="Design system architecture from requirements.json and io_definition.json. Produce architecture.md with D2 block diagram embedded. Block names in snake_case. Memory classification per block (local SRAM vs external).")
 
 # Parallel stream B: C reference model
 Task(subagent_type="rtl-agent-team:ref-model-dev",

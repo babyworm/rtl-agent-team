@@ -51,7 +51,7 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 - [ ] docs/phase-2-architecture/hw-candidate-review.md exists with per-block selection + HW rationale
 - [ ] P1 algorithm candidates reviewed from HW perspective
 - [ ] architecture.md exists with all blocks and data paths
-- [ ] block_diagram exists (D2)
+- [ ] architecture.md includes D2 block diagram
 - [ ] Every REQ-NNN mapped to at least one architecture block
 - [ ] 3-round iterative review completed (or gaps escalated and approved)
 - [ ] Memory access patterns reviewed for all large blocks

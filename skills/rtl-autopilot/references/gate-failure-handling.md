@@ -11,7 +11,7 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 Read requirements.json and architecture.md. Fix each finding while ensuring:
 - No requirement from requirements.json is dropped or weakened
 - All interface conventions (i_/o_ prefix, {domain}_clk/{domain}_rst_n) are maintained
-Update architecture.md and block_diagram accordingly.")
+Update architecture.md (including block diagram) accordingly.")
 ```
 
 Then re-run the Phase 2→3 Quality Gate. Maximum 2 retry cycles per gate.

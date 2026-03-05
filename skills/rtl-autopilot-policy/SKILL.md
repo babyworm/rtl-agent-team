@@ -91,13 +91,14 @@ If both paths are unreadable, orchestrator MUST use built-in defaults and still 
 the chosen text into `orchestration_control.dynamic_prompt_text` with
 `orchestration_control.dynamic_prompt.source = "builtin"`.
 
-### Context Manifests
-Each phase has a manifest (`skills/rtl-autopilot/templates/context-manifest-phase-{N}.json`) declaring:
-- `required_full_read`: files that MUST be fully read before starting the phase
-- `required_summary_only`: files where only the phase summary is sufficient
-- `optional_on_demand`: files read only when a specific question arises
+### Context Preload
+Before each phase, verify required upstream files exist:
+- **required (full read)**: files that MUST be fully read before starting the phase
+- **summary only**: files where only the phase summary is sufficient
+- **optional (on demand)**: files read only when a specific question arises
 
-Agents entering a phase MUST load `required_full_read` first, then summaries.
+Agents entering a phase MUST load required files first, then summaries.
+Specific file lists are defined inline in each orchestrator's phase steps.
 
 ### Scratchpad Convention
 During iterative review rounds, reviewers write findings to:
@@ -123,10 +124,10 @@ On phase gate FAIL + retry: scratch files preserved for next round.
   - No missing constraints
 - **Verdict**: PASS if all requirements clear, consistent, and implementable
 
-**Summary Validation**: `docs/phase-1-research/phase-1-summary.md` must exist (format: `skills/rtl-autopilot/templates/phase-summary.md`)
+**Summary Validation**: `docs/phase-1-research/phase-1-summary.md` must exist (format: max 1 page with tables for Key Decisions, Module Inventory, Interface Summary, Quality Gate Results, Open Items, Document References)
 
 ### Phase 2→3 (Architecture → μArch)
-**Artifact Gate**: architecture.md + block_diagram + refc/*/*.c exist
+**Artifact Gate**: architecture.md (with D2 block diagram) + refc/*/*.c exist
 **Quality Gate**:
 - 3-round iterative review converged (or gaps escalated and user-approved)
 - Feature Coverage Checklist: 100% of REQ-NNN mapped to architecture blocks
@@ -283,7 +284,7 @@ Stream B artifacts are generated concurrently with Stream A (RTL implementation)
 
 ### Lesson Learned Recording
 After each successful feedback fix:
-- Append entry to `docs/lessons-learned.md` using `skills/rtl-autopilot/templates/lessons-learned-entry.md` format
+- Append entry to `docs/lessons-learned.md` with format: LL-{NNN} with sections: Symptom, Root Cause, Fix Applied, Prevention, Related (REQ IDs, module, fix commit, ADR, Phase 5 Sub-phase)
 - Record: symptom, root cause, fix applied, prevention strategy, related REQ/module/ADR
 
 ## Escalation & Stop Conditions

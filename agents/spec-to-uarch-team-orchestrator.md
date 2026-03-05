@@ -47,7 +47,7 @@ Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
 2. **Skip completed phases**: status == "completed" AND gate_passed_at != null
 3. **Resume in-progress phase**: read `partial_work.completed_items`, continue from `current_action`
 4. Resume review rounds from `review_rounds_completed`
-5. **Context reload**: read upstream documents per Context Manifest
+5. **Context reload**: read upstream documents per Context Preload (defined in each phase step below)
 6. Clear `interrupted_reason` and `partial_work_summary`
 
 **If no state file** — Fresh start:
@@ -86,7 +86,7 @@ On PASS: generate Phase 1 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 1 artifacts. Generate docs/phase-1-research/phase-1-summary.md
-using skills/rtl-autopilot/templates/phase-summary.md format.")
+Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
 On FAIL: pass findings back, re-run gate (max 2 retries).
@@ -94,8 +94,11 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 
 ## Step 3: Phase 2 — Architecture + Reference Model (Team)
 
-**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-2.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload**: Verify required upstream files exist before starting Phase 2:
+- `docs/phase-1-research/requirements.json`
+- `docs/phase-1-research/io_definition.json`
+- `docs/phase-1-research/domain-analysis.md`
+STOP if any missing.
 
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
@@ -113,23 +116,24 @@ On PASS: generate Phase 2 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 2 artifacts. Generate docs/phase-2-architecture/phase-2-summary.md
-using skills/rtl-autopilot/templates/phase-summary.md format.")
+Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
 Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
-     prompt="Identify 3-5 key architectural decisions. Create ADRs in docs/decisions/.
-Link to REQ IDs and architecture.md sections.")
+     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
 ## Step 4: Phase 3 — uArch + BFM (Team)
 
-**Context Manifest Preload**: Load `skills/rtl-autopilot/templates/context-manifest-phase-3.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload**: Verify required upstream files exist before starting Phase 3:
+- `docs/phase-2-architecture/architecture.md` (required, full read)
+- `docs/phase-1-research/phase-1-summary.md` (optional, summary only)
+STOP if required file missing.
 
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
 Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
-     prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")
+     prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
 ```
 
 **Phase 3 Quality Gate** (criteria in policy):
@@ -141,11 +145,10 @@ On PASS: generate Phase 3 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 3 artifacts. Generate docs/phase-3-uarch/phase-3-summary.md
-using skills/rtl-autopilot/templates/phase-summary.md format.")
+Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
 Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
-     prompt="Identify 3-5 key uArch decisions. Create ADRs in docs/decisions/.
-Link to architecture.md sections and Phase 2 ADRs.")
+     prompt="Identify 3-5 key uArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
 ```
 
 ## Step 5: Completion

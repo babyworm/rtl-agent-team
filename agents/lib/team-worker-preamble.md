@@ -7,9 +7,9 @@ within a Claude Code native team (TeamCreate/SendMessage/TaskCreate).
 
 ### 1. Initialization
 When spawned with `team_name` parameter:
-- Read team config from `~/.claude/teams/{team_name}/config.json` (Claude Code native)
-  and project state from `.rtl-agent-team/state/team-config.json` (plugin state)
-- Identify self (name) and leader from team config members list
+- Team membership is managed by Claude Code natively (via TeamCreate/SendMessage)
+- Identify self (name) and leader from native team context
+- Read `.rtl-agent-team/state/team-config.json` for plugin state only (team_mode, phase)
 - Call `TaskList()` to discover available tasks
 
 ### 2. Task Claim Loop

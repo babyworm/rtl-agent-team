@@ -47,10 +47,17 @@ case "$FILE_PATH" in
     BASENAME=$(basename "$FILE_PATH")
 
     # Phase 6 stale detection: if a completed Phase 6 review exists, mark it stale
+    # Protected by flock to prevent concurrent worker race conditions in team mode
     P6_MSG=""
     P6_REVIEW_DIR="$CWD/reviews/phase-6-review"
     if [ -d "$P6_REVIEW_DIR" ] && ls "$P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
-      touch "$STATE_DIR/phase6-stale"
+      if acquire_lock "$STATE_DIR/phase6-stale"; then
+        touch "$STATE_DIR/phase6-stale"
+        release_lock "$STATE_DIR/phase6-stale"
+      else
+        # Fail-closed: mark stale even if lock acquisition fails
+        touch "$STATE_DIR/phase6-stale"
+      fi
       P6_MSG=" Phase 6 리뷰 문서가 stale 상태로 표시되었습니다 — 검증 완료 후 코드 리뷰/디자인 노트도 갱신하세요."
     fi
 

@@ -532,6 +532,25 @@ class TestRtlEditTrackerPhase6:
         stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
         assert not stale.exists()
 
+    def test_phase6_stale_created_despite_lock_timeout(self, tmp_project):
+        """Fail-closed: stale marker must be created even when lock acquisition fails."""
+        p6_dir = tmp_project / "reviews" / "phase-6-review"
+        p6_dir.mkdir(parents=True)
+        (p6_dir / "code-review.md").write_text("# Review")
+        # Pre-create lock dir to simulate a held lock (causes acquire_lock timeout)
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        lock_dir = state_dir / "phase6-stale.lock"
+        lock_dir.mkdir()
+        # Write current process PID — a live process so stale detection cannot reclaim the lock
+        (lock_dir / "pid").write_text(str(os.getpid()))
+        stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
+        result = run_hook(self.HOOK, stdin, env={"FLOCK_TIMEOUT": "1"})
+        stale = state_dir / "phase6-stale"
+        assert stale.exists(), "Stale marker must be created even on lock timeout (fail-closed)"
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "stale" in ctx.lower() or "Phase 6" in ctx
+
 
 class TestP6CascadeGate:
     """Tests for hooks/rtl-p6-cascade-gate.sh."""
@@ -801,7 +820,7 @@ class TestSkillActivation:
         (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
-        result = run_hook(self.HOOK, stdin)
+        result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
         assert state_file.exists()
@@ -862,7 +881,7 @@ class TestSkillActivation:
         (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
-        result = run_hook(self.HOOK, stdin)
+        result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "rtl-p4s-bugfix" in ctx
 
@@ -911,7 +930,7 @@ class TestSkillActivation:
             }
         )
 
-        result = run_hook(self.HOOK, raw_input)
+        result = run_hook(self.HOOK, raw_input, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
         assert state_file.exists()

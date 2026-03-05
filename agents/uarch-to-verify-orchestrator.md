@@ -50,14 +50,14 @@ Read("docs/phase-3-uarch/phase-3-summary.md")
 **On prerequisite failure**: report missing artifacts, suggest `/rtl-agent-team:rtl-spec-to-uarch`,
 DO NOT proceed — exit immediately.
 
-**On prerequisite PASS**: verify intake checklist (see policy), then load Context Manifest:
+**On prerequisite PASS**: verify intake checklist (see policy), then load Context Preload:
 ```
-# Context Manifest Preload (Phase 4):
-# required_full_read:
+# Context Preload (Phase 4):
+# required (full read):
 Read("docs/phase-3-uarch/*.md")
 Read("docs/phase-1-research/requirements.json")
 Read("docs/phase-1-research/io_definition.json")
-# required_summary_only:
+# summary only:
 Read("docs/phase-1-research/phase-1-summary.md")
 Read("docs/phase-2-architecture/phase-2-summary.md")
 ```
@@ -138,15 +138,20 @@ On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 4 artifacts. Generate docs/phase-4-rtl/phase-4-summary.md
-using skills/rtl-autopilot/templates/phase-summary.md format.")
+Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
 On FAIL: pass findings to worker agent for correction, re-run gate (max 2 retries).
 
 ## Step 4: Phase 5 — Extensive Verification (Sub-Phases)
 
-**Context Manifest Preload** (Phase 5): Load `skills/rtl-autopilot/templates/context-manifest-phase-5.json`.
-Verify all `required_full_read` files exist. STOP if any missing.
+**Context Preload** (Phase 5): Verify required upstream files exist:
+- `rtl/*/*.sv` (required, full read)
+- `docs/phase-1-research/requirements.json` (required, full read)
+- `docs/phase-4-rtl/phase-4-summary.md` (summary only)
+- `docs/phase-3-uarch/phase-3-summary.md` (summary only)
+- `docs/phase-2-architecture/phase-2-summary.md` (summary only)
+STOP if required files missing.
 
 ```
 Bash("mkdir -p reviews/phase-5-verify")
@@ -231,7 +236,7 @@ On Phase 5 gate PASS: generate Phase 5 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 5 artifacts. Generate docs/phase-5-verify/phase-5-summary.md
-using skills/rtl-autopilot/templates/phase-summary.md format.")
+Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
 ## Step 5: Completion
