@@ -95,15 +95,27 @@ For every active gate:
 
 ## Step 2: Phase 1 — Research
 
+### Team-Awareness Check
+
+```python
+# Check if team mode is active for Phase 1
+Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
+```
+
 Delegate Phase 1 to the dedicated orchestrator:
 ```
 Bash("mkdir -p reviews/phase-1-research")
 
+# If team-config exists with team_mode=true and phase=p1:
+Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
+     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, domain-analysis.md.")
+
+# Otherwise (default):
 Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
      prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
 ```
 
-The `p1-research-orchestrator` handles tree exploration, domain-consult, 3-round chief review,
+The orchestrator (team or legacy) handles tree exploration, domain-consult, 3-round chief review,
 sub-domain expert parallel agents, and quality gate enforcement per `p1-spec-research-policy`.
 
 On PASS: generate Phase 1 summary:
@@ -124,6 +136,14 @@ Verify all `required_full_read` files exist. STOP if any missing.
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
+# Check for team mode
+Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
+
+# If team-config exists with team_mode=true and phase=p2:
+Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
+     prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
+
+# Otherwise (default):
 # Parallel: architecture design + reference model development
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
@@ -161,6 +181,14 @@ Verify all `required_full_read` files exist. STOP if any missing.
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
+# Check for team mode
+Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
+
+# If team-config exists with team_mode=true and phase=p3:
+Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
+     prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")
+
+# Otherwise (default):
 # μArch design (includes BFM development internally via bfm-dev agent)
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/ for architecture.md, block_diagram.")

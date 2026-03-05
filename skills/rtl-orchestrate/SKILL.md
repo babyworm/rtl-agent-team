@@ -43,6 +43,10 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
 | **--- Pipeline Composition ---** | | |
 | "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` | Action Skill |
+| "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
+| "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
+| "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
+| "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rtl-spec-to-uarch-team` | Action Skill |
 | "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` | Action Skill |
 | "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
 | "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` | Action Skill |
@@ -113,7 +117,11 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p6-design-review` | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
 | `rtl-review-refactor` | `review-refactor-orchestrator` | `code-review-policy`, `refactor-policy`, `verification-recheck-policy` |
 | `rtl-dse` | `dse-orchestrator` | `rtl-dse-policy` |
+| `rtl-p1-research-team` | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
+| `rtl-p2-arch-team` | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
+| `rtl-p3-uarch-team` | `p3-uarch-team-orchestrator` | `rtl-p3-uarch-policy` |
 | `rtl-spec-to-uarch` | `spec-to-uarch-orchestrator` | `rtl-spec-to-uarch-policy` |
+| `rtl-spec-to-uarch-team` | `spec-to-uarch-team-orchestrator` | `rtl-spec-to-uarch-policy` |
 | `rtl-uarch-to-verify` | `uarch-to-verify-orchestrator` | `rtl-uarch-to-verify-policy` |
 
 ---
@@ -180,6 +188,9 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 2: Architecture | `p2-arch-orchestrator` | `p2-arch-design-policy` |
 | Phase 3: μArch | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
 | Phase 4: RTL Implementation | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
+| Phase 1: Research (Team) | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
+| Phase 2: Architecture (Team) | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
+| Phase 3: μArch (Team) | `p3-uarch-team-orchestrator` | `rtl-p3-uarch-policy` |
 | Phase 4: RTL Implementation (Team) | `p4-implement-team-orchestrator` | `rtl-p4-implement-policy` |
 | Phase 4: Rapid RTL + Sanity | `p4-rtl-sanity-orchestrator` | `rtl-design-policy` |
 | Phase 4: Bug Fix | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
@@ -194,6 +205,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | LLM Review + Refactor | `review-refactor-orchestrator` | `code-review-policy` + `refactor-policy` + `verification-recheck-policy` |
 | DSE | `dse-orchestrator` | `rtl-dse-policy` |
 | Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rtl-spec-to-uarch-policy` |
+| Spec→μArch (P1-3 Team) | `spec-to-uarch-team-orchestrator` | `rtl-spec-to-uarch-policy` |
 | μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rtl-uarch-to-verify-policy` |
 
 ### EDA/Infrastructure Agents
@@ -462,6 +474,10 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` | Action Skill |
 | microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
 | DSE, design space exploration | `/rtl-agent-team:rtl-dse` | Action Skill |
+| Phase 1 team, research team, parallel research | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
+| Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
+| Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
+| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rtl-spec-to-uarch-team` | Action Skill |
 | spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rtl-spec-to-uarch` | Action Skill |
 | uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
 | RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Action Skill |

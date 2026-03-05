@@ -217,15 +217,23 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 
-## Native Team Mode (v0.3.0)
+## Native Team Mode (v0.4.0)
 
-Phase 4 (RTL Implementation) and Phase 5 (Verification) support **Claude Code native team mode**
-using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution across modules.
+Phases 1-5 support **Claude Code native team mode**
+using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution.
 
 | Component | Purpose |
 |-----------|---------|
+| `agents/p1-research-team-orchestrator.md` | Tree-of-thought parallel candidate exploration |
+| `agents/p2-arch-team-orchestrator.md` | Dual-stream architecture + RefC parallelism |
+| `agents/p3-uarch-team-orchestrator.md` | Dual-stream uArch + BFM with 5-reviewer review |
+| `agents/spec-to-uarch-team-orchestrator.md` | P1→P3 pipeline sequencing team orchestrators |
 | `agents/p4-implement-team-orchestrator.md` | 10-wave pipeline with per-module parallelism |
 | `agents/p5-verify-team-orchestrator.md` | 9-category verification with dependency graph |
+| `skills/rtl-p1-research-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p1-research-team` |
+| `skills/rtl-p2-arch-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p2-arch-team` |
+| `skills/rtl-p3-uarch-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p3-uarch-team` |
+| `skills/rtl-spec-to-uarch-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-spec-to-uarch-team` |
 | `skills/rtl-p4-implement-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p4-implement-team` |
 | `skills/rtl-p5-verify-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p5-verify-team` |
 | `agents/lib/team-worker-preamble.md` | Standard worker lifecycle protocol |

@@ -232,4 +232,15 @@ disallowedTools: Edit
     - [ ] Assumptions and accuracy range clearly stated?
     - [ ] Review report saved to reviews/ path?
   </Final_Checklist>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter as part of a native team:
+
+1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+2. Claim P1 power survey tasks from TaskList matching your specialty
+3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader
+4. When no more tasks are available, notify leader and wait for shutdown
+
+When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

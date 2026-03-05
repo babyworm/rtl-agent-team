@@ -404,7 +404,7 @@ class TestTeamIntegrationInfrastructure:
     def test_plugin_version_bumped(self):
         plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
         major, minor, patch = plugin["version"].split(".")
-        assert int(minor) >= 3 or int(major) >= 1, "Version should be >= 0.3.0 for team mode"
+        assert int(minor) >= 4 or int(major) >= 1, "Version should be >= 0.4.0 for P1-P3 team mode"
 
     def test_claude_md_has_team_mode_section(self):
         claude_md = (REPO_ROOT / "CLAUDE.md").read_text()
@@ -414,3 +414,452 @@ class TestTeamIntegrationInfrastructure:
         skill = SKILLS_DIR / "rtl-autopilot" / "SKILL.md"
         content = skill.read_text()
         assert "--no-team" in content or "team mode" in content.lower()
+
+
+# ── P1 Task Dependency Graph ────────────────────────────────────────────────
+
+
+class TestP1TaskDependencyGraph:
+    """Validate the P1 research tree-of-thought task dependency structure."""
+
+    def _build_dependency_graph(self):
+        """Build the canonical P1 dependency graph."""
+        return {
+            "T1_tree": [],
+            "T2_validate": ["T1_tree"],
+            "T3a_deepdive": ["T2_validate"],
+            "T3b_deepdive": ["T2_validate"],
+            "T4a_memory": ["T2_validate"],
+            "T4b_interconnect": ["T2_validate"],
+            "T4c_power": ["T2_validate"],
+            "T5_comparison": ["T3a_deepdive", "T3b_deepdive",
+                              "T4a_memory", "T4b_interconnect", "T4c_power"],
+            "T6a_syntax": ["T5_comparison"],
+            "T6b_prediction": ["T5_comparison"],
+            "T6c_transform": ["T5_comparison"],
+            "T6d_filter": ["T5_comparison"],
+            "T6e_vidproc": ["T5_comparison"],
+            "T6f_merge": ["T5_comparison"],
+            "T7_review_r1": ["T6a_syntax", "T6b_prediction", "T6c_transform",
+                             "T6d_filter", "T6e_vidproc", "T6f_merge"],
+            "T8_revision_r1": ["T7_review_r1"],
+            "T9_review_r2": ["T8_revision_r1"],
+            "T10_revision_r2": ["T9_review_r2"],
+            "T11_review_r3": ["T10_revision_r2"],
+            "T12_artifacts": ["T11_review_r3"],
+        }
+
+    def test_tree_construction_has_no_deps(self):
+        graph = self._build_dependency_graph()
+        assert graph["T1_tree"] == []
+
+    def test_validation_depends_on_tree(self):
+        graph = self._build_dependency_graph()
+        assert graph["T2_validate"] == ["T1_tree"]
+
+    def test_deepdive_depends_on_validation(self):
+        graph = self._build_dependency_graph()
+        assert graph["T3a_deepdive"] == ["T2_validate"]
+        assert graph["T3b_deepdive"] == ["T2_validate"]
+
+    def test_surveys_depend_on_validation(self):
+        graph = self._build_dependency_graph()
+        for key in ["T4a_memory", "T4b_interconnect", "T4c_power"]:
+            assert graph[key] == ["T2_validate"]
+
+    def test_comparison_depends_on_all_deepdives_and_surveys(self):
+        graph = self._build_dependency_graph()
+        deps = set(graph["T5_comparison"])
+        assert "T3a_deepdive" in deps
+        assert "T4a_memory" in deps
+        assert "T4b_interconnect" in deps
+        assert "T4c_power" in deps
+
+    def test_subdomain_tasks_depend_on_comparison(self):
+        graph = self._build_dependency_graph()
+        for key in ["T6a_syntax", "T6b_prediction", "T6c_transform",
+                     "T6d_filter", "T6e_vidproc", "T6f_merge"]:
+            assert graph[key] == ["T5_comparison"]
+
+    def test_review_r1_depends_on_all_subdomain(self):
+        graph = self._build_dependency_graph()
+        assert len(graph["T7_review_r1"]) == 6
+
+    def test_three_mandatory_review_rounds(self):
+        graph = self._build_dependency_graph()
+        assert "T7_review_r1" in graph
+        assert "T9_review_r2" in graph
+        assert "T11_review_r3" in graph
+
+    def test_final_artifacts_depend_on_r3(self):
+        graph = self._build_dependency_graph()
+        assert graph["T12_artifacts"] == ["T11_review_r3"]
+
+    def test_no_circular_dependencies(self):
+        graph = self._build_dependency_graph()
+        visited = set()
+        in_stack = set()
+
+        def has_cycle(node):
+            if node in in_stack:
+                return True
+            if node in visited:
+                return False
+            visited.add(node)
+            in_stack.add(node)
+            for dep in graph.get(node, []):
+                if has_cycle(dep):
+                    return True
+            in_stack.discard(node)
+            return False
+
+        for node in graph:
+            assert not has_cycle(node), f"Cycle detected involving {node}"
+
+
+# ── P2 Task Dependency Graph ────────────────────────────────────────────────
+
+
+class TestP2TaskDependencyGraph:
+    """Validate the P2 architecture dual-stream task dependency structure."""
+
+    def _build_dependency_graph(self):
+        """Build the canonical P2 dependency graph."""
+        return {
+            "T1a_hw_eval": [],
+            "T1b_hw_eval": [],
+            "T2_selection": ["T1a_hw_eval", "T1b_hw_eval"],
+            "T3_arch_design": ["T2_selection"],
+            "T4_refc_dev": ["T2_selection"],
+            "T5_bandwidth": ["T3_arch_design", "T4_refc_dev"],
+            "T6a_r1_spec": ["T5_bandwidth"],
+            "T6b_r1_mem": ["T5_bandwidth"],
+            "T6c_r1_model": ["T5_bandwidth"],
+            "T7_aggregate_r1": ["T6a_r1_spec", "T6b_r1_mem", "T6c_r1_model"],
+            "T8a_explore": ["T7_aggregate_r1"],
+            "T9_apply": ["T8a_explore"],
+            "T10a_r2_spec": ["T9_apply"],
+            "T10b_r2_mem": ["T9_apply"],
+            "T10c_r2_model": ["T9_apply"],
+            "T11_aggregate_r2": ["T10a_r2_spec", "T10b_r2_mem", "T10c_r2_model"],
+            "T12a_r3_spec": ["T11_aggregate_r2"],
+            "T12b_r3_mem": ["T11_aggregate_r2"],
+            "T12c_r3_model": ["T11_aggregate_r2"],
+            "T13_final": ["T12a_r3_spec", "T12b_r3_mem", "T12c_r3_model"],
+        }
+
+    def test_hw_eval_has_no_deps(self):
+        graph = self._build_dependency_graph()
+        assert graph["T1a_hw_eval"] == []
+        assert graph["T1b_hw_eval"] == []
+
+    def test_selection_depends_on_all_hw_evals(self):
+        graph = self._build_dependency_graph()
+        assert set(graph["T2_selection"]) == {"T1a_hw_eval", "T1b_hw_eval"}
+
+    def test_parallel_streams_depend_on_selection(self):
+        graph = self._build_dependency_graph()
+        assert graph["T3_arch_design"] == ["T2_selection"]
+        assert graph["T4_refc_dev"] == ["T2_selection"]
+
+    def test_bandwidth_depends_on_both_streams(self):
+        graph = self._build_dependency_graph()
+        assert set(graph["T5_bandwidth"]) == {"T3_arch_design", "T4_refc_dev"}
+
+    def test_three_parallel_reviewers_per_round(self):
+        graph = self._build_dependency_graph()
+        # R1: 3 reviewers
+        for key in ["T6a_r1_spec", "T6b_r1_mem", "T6c_r1_model"]:
+            assert graph[key] == ["T5_bandwidth"]
+        # R2: 3 reviewers
+        for key in ["T10a_r2_spec", "T10b_r2_mem", "T10c_r2_model"]:
+            assert graph[key] == ["T9_apply"]
+        # R3: 3 reviewers
+        for key in ["T12a_r3_spec", "T12b_r3_mem", "T12c_r3_model"]:
+            assert graph[key] == ["T11_aggregate_r2"]
+
+    def test_final_depends_on_all_r3(self):
+        graph = self._build_dependency_graph()
+        assert set(graph["T13_final"]) == {"T12a_r3_spec", "T12b_r3_mem", "T12c_r3_model"}
+
+    def test_no_circular_dependencies(self):
+        graph = self._build_dependency_graph()
+        visited = set()
+        in_stack = set()
+
+        def has_cycle(node):
+            if node in in_stack:
+                return True
+            if node in visited:
+                return False
+            visited.add(node)
+            in_stack.add(node)
+            for dep in graph.get(node, []):
+                if has_cycle(dep):
+                    return True
+            in_stack.discard(node)
+            return False
+
+        for node in graph:
+            assert not has_cycle(node), f"Cycle detected involving {node}"
+
+
+# ── P3 Task Dependency Graph ────────────────────────────────────────────────
+
+
+class TestP3TaskDependencyGraph:
+    """Validate the P3 uArch dual-stream task dependency structure."""
+
+    def _build_dependency_graph(self):
+        """Build the canonical P3 dependency graph."""
+        return {
+            "T1_uarch": [],
+            "T2_bfm": [],
+            "T3_bfm_gate": ["T1_uarch", "T2_bfm"],
+            "T4a_r1_feature": ["T3_bfm_gate"],
+            "T4b_r1_timing": ["T3_bfm_gate"],
+            "T4c_r1_algo": ["T3_bfm_gate"],
+            "T4d_r1_model": ["T3_bfm_gate"],
+            "T4e_r1_bfm": ["T3_bfm_gate"],
+            "T5_aggregate_r1": ["T4a_r1_feature", "T4b_r1_timing",
+                                "T4c_r1_algo", "T4d_r1_model", "T4e_r1_bfm"],
+            "T6_revision": ["T5_aggregate_r1"],
+            "T7a_r2": ["T6_revision"],
+            "T7b_r2": ["T6_revision"],
+            "T8_aggregate_r2": ["T7a_r2", "T7b_r2"],
+            "T9a_r3": ["T8_aggregate_r2"],
+            "T9b_r3": ["T8_aggregate_r2"],
+            "T9c_r3": ["T8_aggregate_r2"],
+            "T9d_r3": ["T8_aggregate_r2"],
+            "T9e_r3": ["T8_aggregate_r2"],
+            "T10_final": ["T9a_r3", "T9b_r3", "T9c_r3", "T9d_r3", "T9e_r3"],
+        }
+
+    def test_parallel_streams_have_no_deps(self):
+        graph = self._build_dependency_graph()
+        assert graph["T1_uarch"] == []
+        assert graph["T2_bfm"] == []
+
+    def test_bfm_gate_depends_on_both_streams(self):
+        graph = self._build_dependency_graph()
+        assert set(graph["T3_bfm_gate"]) == {"T1_uarch", "T2_bfm"}
+
+    def test_five_reviewers_in_r1(self):
+        graph = self._build_dependency_graph()
+        r1_tasks = [k for k in graph if k.startswith("T4")]
+        assert len(r1_tasks) == 5
+        for key in r1_tasks:
+            assert graph[key] == ["T3_bfm_gate"]
+
+    def test_aggregate_r1_depends_on_all_reviewers(self):
+        graph = self._build_dependency_graph()
+        assert len(graph["T5_aggregate_r1"]) == 5
+
+    def test_r2_is_selective(self):
+        """R2 has fewer reviewers (only those with findings)."""
+        graph = self._build_dependency_graph()
+        r2_tasks = [k for k in graph if k.startswith("T7") and k != "T7_aggregate"]
+        assert len(r2_tasks) >= 2  # At least some selective reviewers
+
+    def test_r3_is_mandatory_all_five(self):
+        graph = self._build_dependency_graph()
+        r3_tasks = [k for k in graph if k.startswith("T9") and k != "T9_aggregate"]
+        assert len(r3_tasks) == 5
+
+    def test_final_depends_on_all_r3(self):
+        graph = self._build_dependency_graph()
+        assert len(graph["T10_final"]) == 5
+
+    def test_no_circular_dependencies(self):
+        graph = self._build_dependency_graph()
+        visited = set()
+        in_stack = set()
+
+        def has_cycle(node):
+            if node in in_stack:
+                return True
+            if node in visited:
+                return False
+            visited.add(node)
+            in_stack.add(node)
+            for dep in graph.get(node, []):
+                if has_cycle(dep):
+                    return True
+            in_stack.discard(node)
+            return False
+
+        for node in graph:
+            assert not has_cycle(node), f"Cycle detected involving {node}"
+
+
+# ── P1-P3 Team Orchestrator Structure ───────────────────────────────────────
+
+
+class TestP1P3TeamOrchestratorStructure:
+    """Validate P1-P3 team orchestrator and skill structural integrity."""
+
+    TEAM_ORCHESTRATORS = [
+        ("p1-research-team-orchestrator", "p1-research-team"),
+        ("p2-arch-team-orchestrator", "p2-arch-team"),
+        ("p3-uarch-team-orchestrator", "p3-uarch-team"),
+    ]
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_orchestrator_exists(self, agent_name, skill_name):
+        agent = AGENTS_DIR / f"{agent_name}.md"
+        assert agent.exists(), f"Missing team orchestrator: {agent_name}"
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_orchestrator_has_frontmatter(self, agent_name, skill_name):
+        agent = AGENTS_DIR / f"{agent_name}.md"
+        content = agent.read_text()
+        assert content.startswith("---")
+        parts = content.split("---", 2)
+        assert len(parts) >= 3
+        fm = parts[1]
+        assert f"name: {agent_name}" in fm
+        assert "model: opus" in fm
+        assert "skills:" in fm
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_orchestrator_references_team_primitives(self, agent_name, skill_name):
+        agent = AGENTS_DIR / f"{agent_name}.md"
+        content = agent.read_text()
+        assert "TeamCreate" in content
+        assert "TaskCreate" in content
+        assert "SendMessage" in content
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_orchestrator_references_dependency_graph(self, agent_name, skill_name):
+        agent = AGENTS_DIR / f"{agent_name}.md"
+        content = agent.read_text()
+        assert "blockedBy" in content or "blocked by" in content.lower()
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_skill_exists(self, agent_name, skill_name):
+        skill = SKILLS_DIR / f"rtl-{skill_name}" / "SKILL.md"
+        assert skill.exists(), f"Missing team skill: rtl-{skill_name}"
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_skill_is_user_invocable(self, agent_name, skill_name):
+        skill = SKILLS_DIR / f"rtl-{skill_name}" / "SKILL.md"
+        content = skill.read_text()
+        assert "user-invocable: true" in content
+
+    @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
+    def test_team_skill_delegates_to_orchestrator(self, agent_name, skill_name):
+        skill = SKILLS_DIR / f"rtl-{skill_name}" / "SKILL.md"
+        content = skill.read_text()
+        assert f"rtl-agent-team:{agent_name}" in content
+
+
+class TestSpecToUarchTeamStructure:
+    """Validate spec-to-uarch-team orchestrator (pipeline, NOT a team)."""
+
+    def test_orchestrator_exists(self):
+        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
+        assert agent.exists()
+
+    def test_orchestrator_has_frontmatter(self):
+        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
+        content = agent.read_text()
+        assert content.startswith("---")
+        parts = content.split("---", 2)
+        fm = parts[1]
+        assert "name: spec-to-uarch-team-orchestrator" in fm
+        assert "model: opus" in fm
+
+    def test_orchestrator_does_not_create_team(self):
+        """Pipeline orchestrator should NOT use TeamCreate (it delegates to phase teams)."""
+        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
+        content = agent.read_text()
+        assert "TeamCreate" not in content
+
+    def test_orchestrator_delegates_to_phase_teams(self):
+        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
+        content = agent.read_text()
+        assert "p1-research-team-orchestrator" in content
+        assert "p2-arch-team-orchestrator" in content
+        assert "p3-uarch-team-orchestrator" in content
+
+    def test_skill_exists(self):
+        skill = SKILLS_DIR / "rtl-spec-to-uarch-team" / "SKILL.md"
+        assert skill.exists()
+
+    def test_skill_is_user_invocable(self):
+        skill = SKILLS_DIR / "rtl-spec-to-uarch-team" / "SKILL.md"
+        content = skill.read_text()
+        assert "user-invocable: true" in content
+
+    def test_skill_delegates_to_orchestrator(self):
+        skill = SKILLS_DIR / "rtl-spec-to-uarch-team" / "SKILL.md"
+        content = skill.read_text()
+        assert "rtl-agent-team:spec-to-uarch-team-orchestrator" in content
+
+
+# ── P1-P3 Agent Worker Protocol ─────────────────────────────────────────────
+
+
+class TestP1P3AgentsHaveProtocol:
+    """Validate that all 14 P1-P3 specialist agents have Team Worker Protocol."""
+
+    P1_P3_AGENTS = [
+        "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
+        "vcodec-architecture-expert", "arch-designer", "power-analyzer",
+        "vcodec-syntax-entropy-expert", "vcodec-prediction-expert",
+        "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
+        "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
+    ]
+
+    def test_all_agents_have_team_worker_protocol(self):
+        missing = []
+        for name in self.P1_P3_AGENTS:
+            agent_file = AGENTS_DIR / f"{name}.md"
+            assert agent_file.exists(), f"Missing agent: {name}"
+            content = agent_file.read_text()
+            if "## Team Worker Protocol" not in content:
+                missing.append(name)
+        assert missing == [], f"P1-P3 agents missing Team Worker Protocol: {missing}"
+
+
+class TestWriteRestrictedProtocol:
+    """Validate write-restricted agents have SendMessage-to-leader pattern."""
+
+    WRITE_RESTRICTED = [
+        "vcodec-architecture-expert",
+        "arch-designer",
+        "timing-advisor",
+    ]
+
+    def test_write_restricted_agents_have_sendmessage_note(self):
+        missing = []
+        for name in self.WRITE_RESTRICTED:
+            agent_file = AGENTS_DIR / f"{name}.md"
+            content = agent_file.read_text()
+            if "Write-restricted" not in content and "write-restricted" not in content:
+                missing.append(name)
+        assert missing == [], f"Write-restricted agents missing SendMessage note: {missing}"
+
+    def test_write_restricted_mentioned_in_orchestrators(self):
+        """Team orchestrators should document write-restricted agent handling."""
+        for orch in ["p1-research-team-orchestrator", "p2-arch-team-orchestrator",
+                      "p3-uarch-team-orchestrator"]:
+            content = (AGENTS_DIR / f"{orch}.md").read_text()
+            assert "Write-Restricted" in content or "write-restricted" in content.lower(), \
+                f"{orch} should document write-restricted agent handling"
+
+
+class TestAutopilotP1P3TeamAwareness:
+    """Validate autopilot orchestrator team-awareness for P1-P3."""
+
+    def test_autopilot_references_p1_team_orchestrator(self):
+        content = (AGENTS_DIR / "autopilot-orchestrator.md").read_text()
+        assert "p1-research-team-orchestrator" in content
+
+    def test_autopilot_references_p2_team_orchestrator(self):
+        content = (AGENTS_DIR / "autopilot-orchestrator.md").read_text()
+        assert "p2-arch-team-orchestrator" in content
+
+    def test_autopilot_references_p3_team_orchestrator(self):
+        content = (AGENTS_DIR / "autopilot-orchestrator.md").read_text()
+        assert "p3-uarch-team-orchestrator" in content

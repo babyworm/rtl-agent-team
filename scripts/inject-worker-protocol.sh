@@ -18,8 +18,13 @@ if [ ! -f "$PROTOCOL_FILE" ]; then
   exit 1
 fi
 
-# Tier-1 agents that should have the Team Worker Protocol
-DEFAULT_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier"
+# Tier-1 agents (P4/P5) that should have the Team Worker Protocol
+P4_P5_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier"
+
+# P1-P3 specialist agents that participate in team mode
+P1_P3_AGENTS="spec-analyst vcodec-chief-standard-expert rtl-architect vcodec-architecture-expert arch-designer power-analyzer vcodec-syntax-entropy-expert vcodec-prediction-expert vcodec-transform-quant-expert vcodec-filter-recon-expert video-processing-expert ref-model-dev bfm-dev timing-advisor"
+
+DEFAULT_AGENTS="$P4_P5_AGENTS $P1_P3_AGENTS"
 
 # Use arguments if provided, otherwise defaults
 TARGETS="${*:-$DEFAULT_AGENTS}"
@@ -38,7 +43,29 @@ get_task_type() {
     func-verifier)    echo "V5 (Functional)" ;;
     coverage-analyst) echo "V6 (Coverage)" ;;
     perf-verifier)    echo "V7 (Performance)" ;;
+    spec-analyst)     echo "P1 solution tree, requirements merge, or P1 gate review" ;;
+    vcodec-chief-standard-expert) echo "P1 tree validation, comparison matrix, or chief review" ;;
+    rtl-architect)    echo "P1 candidate deep-dive, P2/P3 review aggregation, or phase gate" ;;
+    vcodec-architecture-expert) echo "P1 memory survey, P2 HW evaluation, or P3 algorithm review" ;;
+    arch-designer)    echo "P1 interconnect survey, P2 architecture design, or P2 gate review" ;;
+    power-analyzer)   echo "P1 power survey" ;;
+    vcodec-syntax-entropy-expert) echo "P1 syntax/entropy requirements" ;;
+    vcodec-prediction-expert) echo "P1 prediction requirements" ;;
+    vcodec-transform-quant-expert) echo "P1 transform/quant requirements" ;;
+    vcodec-filter-recon-expert) echo "P1 filter/recon requirements" ;;
+    video-processing-expert) echo "P1 signal processing requirements" ;;
+    ref-model-dev)    echo "P2 RefC development, P2/P3 model consistency review" ;;
+    bfm-dev)          echo "P3 BFM development or P3 BFM correctness review" ;;
+    timing-advisor)   echo "P3 timing/pipeline review" ;;
     *)                echo "assigned" ;;
+  esac
+}
+
+# Check if agent is write-restricted (must use SendMessage-to-leader for file output)
+is_write_restricted() {
+  case "$1" in
+    vcodec-architecture-expert|arch-designer|timing-advisor) return 0 ;;
+    *) return 1 ;;
   esac
 }
 
@@ -63,20 +90,13 @@ for agent in $TARGETS; do
 
   TASK_TYPE=$(get_task_type "$agent")
 
-  # Append before closing </Agent_Prompt> tag
-  # Use sed to insert before the last </Agent_Prompt>
-  SECTION="\\
-\\
-## Team Worker Protocol\\
-\\
-When spawned with \`team_name\` parameter as part of a native team:\\
-\\
-1. Follow the standard Team Worker Protocol defined in \`agents/lib/team-worker-preamble.md\`\\
-2. Claim ${TASK_TYPE} tasks from TaskList matching your specialty\\
-3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader\\
-4. When no more tasks are available, notify leader and wait for shutdown\\
-\\
-When spawned WITHOUT \`team_name\` (traditional Task() mode), ignore this section entirely."
+  # Build write-restriction note if applicable
+  WRITE_NOTE=""
+  if is_write_restricted "$agent"; then
+    WRITE_NOTE="
+5. **Write-restricted**: You cannot write files directly. Send file content via
+   \`SendMessage(recipient=leader, content=file_content)\` and the leader will write on your behalf."
+  fi
 
   # Insert before the last </Agent_Prompt>
   if grep -q "</Agent_Prompt>" "$AGENT_FILE"; then
@@ -89,14 +109,14 @@ When spawned with \`team_name\` parameter as part of a native team:
 1. Follow the standard Team Worker Protocol defined in \`agents/lib/team-worker-preamble.md\`
 2. Claim ${TASK_TYPE} tasks from TaskList matching your specialty
 3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader
-4. When no more tasks are available, notify leader and wait for shutdown
+4. When no more tasks are available, notify leader and wait for shutdown${WRITE_NOTE}
 
 When spawned WITHOUT \`team_name\` (traditional Task() mode), ignore this section entirely." \
       '/^<\/Agent_Prompt>/ && !done { print section; done=1 } { print }' \
       "$AGENT_FILE" > "$AGENT_FILE.tmp" && mv "$AGENT_FILE.tmp" "$AGENT_FILE"
   else
     # No </Agent_Prompt> tag — append at end
-    printf '\n\n## Team Worker Protocol\n\nWhen spawned with `team_name` parameter as part of a native team:\n\n1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`\n2. Claim %s tasks from TaskList matching your specialty\n3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader\n4. When no more tasks are available, notify leader and wait for shutdown\n\nWhen spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.\n' "$TASK_TYPE" >> "$AGENT_FILE"
+    printf '\n\n## Team Worker Protocol\n\nWhen spawned with `team_name` parameter as part of a native team:\n\n1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`\n2. Claim %s tasks from TaskList matching your specialty\n3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader\n4. When no more tasks are available, notify leader and wait for shutdown%s\n\nWhen spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.\n' "$TASK_TYPE" "$WRITE_NOTE" >> "$AGENT_FILE"
   fi
 
   INJECTED=$((INJECTED + 1))
