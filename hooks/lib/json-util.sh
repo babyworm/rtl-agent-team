@@ -177,7 +177,7 @@ jsonu_get_file_path_num() {
   case "$JSONU_PARSER_MODE" in
     jq)
       JSONU_JQ_QUERY=$(jsonu_path_to_jq_query "$JSONU_KEY_PATH")
-      jq -r "($JSONU_JQ_QUERY // null) as \$v | if (\$v|type)==\"number\" then (\$v|floor|tostring) else \"\" end" "$JSONU_FILE" 2>/dev/null | head -n 1
+      jq -r "($JSONU_JQ_QUERY // null) as \$v | if (\$v|type)==\"number\" then (if \$v == (\$v|floor) then (\$v|tostring) else \"\" end) else \"\" end" "$JSONU_FILE" 2>/dev/null | head -n 1
       ;;
     python)
       "$JSONU_PY_BIN" - "$JSONU_FILE" "$JSONU_KEY_PATH" 2>/dev/null <<'PY'
@@ -195,8 +195,15 @@ try:
             print("")
             raise SystemExit(0)
         node = node[key]
-    if isinstance(node, (int, float)) and not isinstance(node, bool):
-        print(str(int(node)))
+    if isinstance(node, bool):
+        print("")
+    elif isinstance(node, int):
+        print(str(node))
+    elif isinstance(node, float):
+        if node == int(node):
+            print(str(int(node)))
+        else:
+            print("")
     else:
         print("")
 except Exception:

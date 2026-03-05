@@ -1343,3 +1343,138 @@ class TestTeamAwarenessGuard:
             content = hook_path.read_text()
             assert "lib/team-gate-util.sh" in content
             assert "teamu_should_skip_gate" in content
+
+
+class TestSedFallbackContract:
+    """Contract tests verifying all 4 stop hooks work correctly under sed fallback mode.
+
+    RTL_FORCE_JSON_FALLBACK=1 forces json-util.sh to use sed-only parsing,
+    ensuring hooks degrade gracefully when jq/python are unavailable.
+    """
+
+    FALLBACK_ENV = {"RTL_FORCE_JSON_FALLBACK": "1"}
+
+    HOOKS = {
+        "stop-gate": HOOKS_DIR / "stop-gate.sh",
+        "verify-stop-gate": HOOKS_DIR / "rtl-verify-stop-gate.sh",
+        "p6-cascade-gate": HOOKS_DIR / "rtl-p6-cascade-gate.sh",
+        "skill-completion-gate": HOOKS_DIR / "rtl-skill-completion-gate.sh",
+    }
+
+    # ── stop-gate ────────────────────────────────────────────────────────────
+
+    def test_stop_gate_fallback_allows_clean_exit(self, tmp_project):
+        """No autopilot state → continue=true under sed fallback."""
+        result = run_hook(
+            self.HOOKS["stop-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is True
+
+    def test_stop_gate_fallback_blocks_active(self, tmp_project):
+        """Active autopilot state → continue=false under sed fallback."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_file = state_dir / "rtl-autopilot-state.json"
+        state_file.write_text(json.dumps({"status": "in_progress", "phase": 3}, indent=2))
+        result = run_hook(
+            self.HOOKS["stop-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is False
+
+    # ── verify-stop-gate ─────────────────────────────────────────────────────
+
+    def test_verify_gate_fallback_blocks_unverified(self, tmp_project):
+        """Tracked files without verification → continue=false under sed fallback."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
+        result = run_hook(
+            self.HOOKS["verify-stop-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is False
+
+    def test_verify_gate_fallback_allows_verified(self, tmp_project):
+        """Tracked files with verify-done → continue=true under sed fallback."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
+        (state_dir / "rtl-verify-done").touch()
+        result = run_hook(
+            self.HOOKS["verify-stop-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is True
+
+    # ── p6-cascade-gate ──────────────────────────────────────────────────────
+
+    def test_p6_cascade_fallback_blocks_stale(self, tmp_project):
+        """phase6-stale marker → continue=false under sed fallback."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(
+            self.HOOKS["p6-cascade-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is False
+
+    def test_p6_cascade_fallback_allows_clean(self, tmp_project):
+        """No stale marker → continue=true under sed fallback."""
+        result = run_hook(
+            self.HOOKS["p6-cascade-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is True
+
+    # ── skill-completion-gate ────────────────────────────────────────────────
+
+    def test_skill_completion_fallback_blocks_active(self, tmp_project):
+        """Active skill state → continue=false under sed fallback."""
+        import datetime
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state = {
+            "skill": "rtl-p4s-bugfix",
+            "active": True,
+            "iteration": 1,
+            "max_iterations": 5,
+            "pending": "lint_pass, sim_pass",
+            "all_complete": False,
+            "started_at": datetime.datetime.now(datetime.timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            ),
+        }
+        (state_dir / "skill-active.json").write_text(json.dumps(state, indent=2))
+        result = run_hook(
+            self.HOOKS["skill-completion-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is False
+
+    def test_skill_completion_fallback_allows_complete(self, tmp_project):
+        """all_complete=true → continue=true under sed fallback."""
+        import datetime
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state = {
+            "skill": "rtl-p4s-bugfix",
+            "active": True,
+            "iteration": 3,
+            "max_iterations": 5,
+            "pending": "",
+            "all_complete": True,
+            "started_at": datetime.datetime.now(datetime.timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            ),
+        }
+        (state_dir / "skill-active.json").write_text(json.dumps(state, indent=2))
+        result = run_hook(
+            self.HOOKS["skill-completion-gate"],
+            {"cwd": str(tmp_project)},
+            env=self.FALLBACK_ENV,
+        )
+        assert result["continue"] is True
