@@ -45,7 +45,7 @@ produces shallow answers. This skill reads the query and selects the best match 
 | cross-block, cross-block dependency, pipeline dependency, architecture-ready, architecture-ready assessment, codec domain coordination, codec overview, block interaction, data flow between blocks | vcodec-chief-standard-expert | Cross-block coordination, multi-block dependency analysis |
 | codec pipeline, encoder/decoder architecture, datapath, throughput, latency, SRAM organization | vcodec-architecture-expert | Architecture-level codec design decisions |
 | throughput, memory bandwidth, cycles per block, macroblock rate, CTU rate, DPB sizing, line buffer sizing, pipeline depth, parallelism degree, performance budget, frames per second, resolution target | video-processing-expert | Codec HW performance analysis (throughput, bandwidth, pipeline) |
-| color space conversion, RGB to YUV, YUV to RGB, BT.601, BT.709, BT.2020, chroma subsampling, chroma upsampling, 4:2:0, 4:2:2, 4:4:4, bit depth conversion, 8-bit to 10-bit, Bayer demosaic, color format, limited range, full range | vproc-color-format-expert | Color format conversion, Bayer demosaic, bit-depth conversion |
+| color space conversion, RGB to YUV, YUV to RGB, BT.601, BT.709, BT.2020, chroma subsampling, chroma upsampling, 4:2:0, 4:2:2, 4:4:4, bit depth conversion, 8-bit to 10-bit, Bayer demosaic, color format, limited range, full range, V4L2, fourcc, pixelformat, bytesperline, sizeimage, single-planar, multi-planar, NV12M, tiled format, storage layout | vproc-color-format-expert | Color format conversion + V4L2 storage semantics (FOURCC/plane/stride/sizeimage) |
 | denoise, noise reduction, bilateral filter, NLM, temporal noise reduction, 3DNR, motion adaptive, spatial filter, Gaussian filter, noise model, AWGN, shot noise | vproc-denoise-expert | Spatial/temporal noise reduction for video HW |
 | HDR, tone mapping, PQ curve, HLG, gamma correction, OETF, EOTF, sRGB, image scaling, resampling, bilinear, bicubic, Lanczos, edge enhancement, sharpening, unsharp mask, ISP pipeline, image signal processing | vproc-image-processing-expert | HDR, gamma, scaling, sharpening, ISP pipeline |
 | AXI, AHB, APB, PCIe, USB, Ethernet, bus protocol, handshake, transaction | protocol-checker | Bus protocol rules and timing |
@@ -53,7 +53,7 @@ produces shallow answers. This skill reads the query and selects the best match 
 
 <Steps>
 0. Domain expert agents have `<Knowledge_Base>` or `<Domain_Knowledge>` sections with domain-specific knowledge.
-   Video-codec experts reference `domain-packages/video-codec/knowledge/` files; video-processing experts have inline domain knowledge.
+   Video-codec experts reference `domain-packages/video-codec/knowledge/`; video-processing experts reference `domain-packages/video-processing/knowledge/`.
    They will read relevant knowledge files autonomously before answering. No manual loading required.
 1. Read the user's query and identify domain keywords
 2. Select primary expert from routing table

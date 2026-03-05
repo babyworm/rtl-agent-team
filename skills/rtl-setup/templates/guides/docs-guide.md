@@ -97,7 +97,9 @@ Do NOT ask when: detailed spec provided, standard has one valid interpretation, 
 
 Domain packages provide pre-built knowledge bases at `domain-packages/{domain}/`.
 
-**Active**: `video-codec` (`domain-packages/video-codec/manifest.json`)
+**Active**:
+- `video-codec` (`domain-packages/video-codec/manifest.json`)
+- `video-processing` (`domain-packages/video-processing/manifest.json`)
 
 Domain expert agents MUST read knowledge files from `domain-packages/{domain}/knowledge/` BEFORE analysis.
 
@@ -113,6 +115,16 @@ Domain expert agents MUST read knowledge files from `domain-packages/{domain}/kn
 Conformance data: `domain-packages/video-codec/conformance/`
 Templates: `domain-packages/video-codec/templates/`
 Agent coordination workflows: See `manifest.json` `agent_coordination` section.
+
+Video-processing package key files:
+| Knowledge File | Relevant Agents | Phase |
+|---|---|---|
+| `v4l2-pixfmt-overview.md` | all `vproc-*` experts | Phase 1-2 |
+| `v4l2-storage-layout.md` | `vproc-color-format-expert`, `vproc-denoise-expert` | Phase 1-3 |
+| `v4l2-yuv-rgb-bayer-formats.md` | `vproc-color-format-expert`, `vproc-image-processing-expert` | Phase 1-2 |
+| `v4l2-colorspace-quantization.md` | `vproc-color-format-expert`, `vproc-image-processing-expert` | Phase 1-2 |
+| `format-conversion-recipes.md` | all `vproc-*` experts | Phase 2-4 |
+| `fourcc-cheatsheet.md` | all `vproc-*` experts | Phase 1-3 |
 
 ## Diagram Syntax Reference
 

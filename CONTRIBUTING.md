@@ -371,7 +371,7 @@ Codec 성능 분석(`video-processing-expert`)과 일반 영상 처리(color spa
 
 ### 테스트 게이트
 
-PR merge 조건으로 다음 4종 테스트를 통과해야 합니다:
+PR merge 조건으로 다음 5종 테스트를 통과해야 합니다:
 
 1. **manifest schema pass** — `test_json_schemas.py::TestDomainManifest` 통과
 2. **routing keyword coverage pass** — `test_expert_quality.py::TestRoutingKeywordCoverage` 통과 (vcodec + vproc 라우팅)
@@ -386,7 +386,7 @@ PR merge 조건으로 다음 4종 테스트를 통과해야 합니다:
 - [ ] `manifest.json` — standards 배열 + standard_support_matrix + knowledge_base 항목
 - [ ] `knowledge/` — 지식 파일 최소 세트 (티어에 따라)
 - [ ] 라우팅 — domain-consult + rtl-orchestrate + hook inject 동기화
-- [ ] 테스트 — 4종 테스트 게이트 통과
+- [ ] 테스트 — 5종 테스트 게이트 통과
 - [ ] README.md — 지원 표준 목록 업데이트
 
 ---

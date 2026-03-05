@@ -401,9 +401,8 @@ Domain packages provide pre-built knowledge bases. Active packages:
 | video-codec | `domain-packages/video-codec/` | `domain-packages/video-codec/manifest.json` | stable |
 | video-processing | `domain-packages/video-processing/` | `domain-packages/video-processing/manifest.json` | active |
 
-Domain expert agents MUST consult domain knowledge BEFORE producing analysis:
-- If `knowledge/` directory has files: read relevant knowledge files from `domain-packages/{domain}/knowledge/`
-- If agents use inline `<Domain_Knowledge>`: no external file read required (e.g., video-processing agents)
+Domain expert agents MUST read relevant knowledge files from `domain-packages/{domain}/knowledge/` BEFORE producing analysis.
+Each agent's prompt lists the specific files to read in its "Before analysis, read domain knowledge files:" section.
 
 ---
 

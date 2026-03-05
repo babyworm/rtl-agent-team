@@ -145,12 +145,43 @@
 
   "knowledge_base": {
     "path": "domain-packages/video-processing/knowledge/",
-    "contents": [],
-    "note": "Intentionally empty — vproc agents use inline <Domain_Knowledge> sections. External knowledge files will be added when domain complexity warrants extraction."
+    "contents": [
+      {
+        "file": "v4l2-pixfmt-overview.md",
+        "description": "V4L2 pixel format overview focused on conversion and storage semantics",
+        "source": "kernel-v4.10"
+      },
+      {
+        "file": "v4l2-storage-layout.md",
+        "description": "Single-planar vs multi-planar storage layout, stride/sizeimage guidance",
+        "source": "kernel-v4.10+supplemental"
+      },
+      {
+        "file": "v4l2-yuv-rgb-bayer-formats.md",
+        "description": "Common YUV/RGB/Bayer families and conversion implications",
+        "source": "kernel-v4.10"
+      },
+      {
+        "file": "v4l2-colorspace-quantization.md",
+        "description": "Colorspace/xfer/ycbcr/quantization metadata handling for conversions",
+        "source": "kernel-v4.10+current-docs"
+      },
+      {
+        "file": "format-conversion-recipes.md",
+        "description": "Implementation recipes for practical V4L2 format conversion paths",
+        "source": "project-curated"
+      },
+      {
+        "file": "fourcc-cheatsheet.md",
+        "description": "Storage-centric FOURCC comparison and bring-up checklist",
+        "source": "project-curated"
+      }
+    ],
+    "note": "Primary baseline is Linux kernel v4.10 media userspace API; where v4.10 pages are sparse/missing (e.g., detailed mplane coverage), supplemental references from v4.8/current docs are listed in each file."
   },
 
   "migration_notes": {
-    "from_video_codec": "When non-codec video processing agents are created, they should be registered here instead of in the video-codec package. Existing routing in domain-consult/SKILL.md already separates codec-performance keywords (-> video-processing-expert in video-codec) from general video keywords (-> this package, once agents exist).",
+    "from_video_codec": "Non-codec video processing agents are registered here instead of in the video-codec package. Routing in domain-consult/SKILL.md separates codec-performance keywords (-> video-processing-expert in video-codec) from general video keywords (-> vproc agents in this package).",
     "backward_compatibility": "The video-processing-expert agent remains in the video-codec package and is NOT moved here. Its name is a historical artifact — it is a codec performance expert, not a general video processing expert."
   }
 }

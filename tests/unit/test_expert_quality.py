@@ -371,6 +371,22 @@ class TestRoutingKeywordCoverage:
             f"{agents_with_missing_triggers}"
         )
 
+    def test_v4l2_storage_keywords_covered(self):
+        """Routing should include key V4L2 storage/layout keywords."""
+        routing_content = self._get_routing_table_content().lower()
+        required = [
+            "fourcc",
+            "pixelformat",
+            "bytesperline",
+            "sizeimage",
+            "single-planar",
+            "multi-planar",
+            "nv12m",
+            "storage layout",
+        ]
+        missing = [kw for kw in required if kw not in routing_content]
+        assert missing == [], f"Routing missing V4L2 storage keywords: {missing}"
+
 
 # ── Video Processing Domain Tests ────────────────────────────────────────────
 
@@ -427,6 +443,21 @@ class TestVprocExpertQuality:
             f"{agent_name} missing Team Worker Protocol section"
         )
 
+    @pytest.mark.parametrize("agent_name", VPROC_EXPERTS)
+    def test_references_vproc_knowledge_files(self, agent_name):
+        content = (AGENTS_DIR / f"{agent_name}.md").read_text()
+        refs = re.findall(
+            r"domain-packages/video-processing/knowledge/([^\s)`\"]+\.md)", content
+        )
+        assert len(refs) > 0, (
+            f"{agent_name} does not reference video-processing knowledge files"
+        )
+        for ref in refs:
+            knowledge_file = VPROC_PKG_DIR / "knowledge" / ref
+            assert knowledge_file.exists(), (
+                f"{agent_name} references non-existent knowledge file: {ref}"
+            )
+
 
 class TestVprocManifestConsistency:
     """Validate video-processing manifest-agent consistency."""
@@ -465,3 +496,17 @@ class TestVprocManifestConsistency:
         assert "scope_definition" in vproc_manifest, (
             "Vproc manifest missing scope_definition"
         )
+
+    def test_manifest_knowledge_base_not_empty(self, vproc_manifest):
+        contents = vproc_manifest.get("knowledge_base", {}).get("contents", [])
+        assert len(contents) > 0, (
+            "Vproc manifest knowledge_base.contents should not be empty"
+        )
+
+    def test_manifest_knowledge_files_exist(self, vproc_manifest):
+        missing = []
+        for entry in vproc_manifest.get("knowledge_base", {}).get("contents", []):
+            knowledge_file = VPROC_PKG_DIR / "knowledge" / entry["file"]
+            if not knowledge_file.exists():
+                missing.append(entry["file"])
+        assert missing == [], f"Vproc manifest knowledge files missing: {missing}"
