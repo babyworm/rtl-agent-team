@@ -57,6 +57,13 @@ if [ -f "$TEAM_CONFIG" ]; then
   fi
 fi
 
+# Merge lock-failure fallback entries (non-team mode; team mode glob already includes them)
+FALLBACK_FILE="$STATE_DIR/rtl-modified-files-fallback.txt"
+if [ -z "$AGGREGATED_TRACK" ] && [ -f "$FALLBACK_FILE" ] && [ -s "$FALLBACK_FILE" ]; then
+  cat "$FALLBACK_FILE" >> "$TRACK_FILE"
+  rm -f "$FALLBACK_FILE"
+fi
+
 # If no tracked files, allow exit
 if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
   rm -f "$AGGREGATED_TRACK"
@@ -67,7 +74,7 @@ fi
 # If verification was done or waived, clean up and allow exit
 if [ -f "$VERIFY_DONE" ] || [ -f "$VERIFY_WAIVER" ]; then
   # Clean up solo + all session-scoped tracking files
-  rm -f "$STATE_DIR/rtl-modified-files.txt" "$VERIFY_DONE" "$VERIFY_WAIVER" "$AGGREGATED_TRACK"
+  rm -f "$STATE_DIR/rtl-modified-files.txt" "$VERIFY_DONE" "$VERIFY_WAIVER" "$AGGREGATED_TRACK" "$STATE_DIR/rtl-modified-files-fallback.txt"
   for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
     [ -f "$sf" ] && rm -f "$sf"
   done

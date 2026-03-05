@@ -209,8 +209,15 @@ After T12 (final artifacts) completes:
 2. Verify `docs/phase-1-research/io_definition.json` exists with i_/o_/io_ port prefixes
 3. Verify `docs/phase-1-research/domain-analysis.md` exists
 4. Verify `docs/phase-1-research/candidate-comparison.md` exists
-5. Verify `reviews/phase-1-research/research-review.md` exists
+5. Verify `reviews/phase-1-research/research-review.md` exists (consolidated)
 6. Count spec features vs REQ items — flag suspected omissions
+7. **Per-round artifacts** (enforces 3-round review protocol per p1-spec-research-policy):
+   - `reviews/phase-1-research/research-review-r1.md` — Round 1 findings with [severity] tags
+   - `reviews/phase-1-research/research-review-r2.md` — Round 2 rebuttal + convergence assessment
+   - `reviews/phase-1-research/research-review-r3.md` — Round 3 mandatory final quality pass
+   FAIL if any missing.
+8. **Rebuttal evidence** in R2: verify R2 artifact contains accept/reject entries with rationale
+   for each R1 finding (not just a "converged" statement). FAIL if rebuttal section absent.
 
 ## Step 7: Cleanup
 

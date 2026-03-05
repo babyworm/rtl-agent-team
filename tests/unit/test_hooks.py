@@ -326,6 +326,55 @@ class TestRtlVerifyStopGate:
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "3" in ctx  # 3 files
 
+    def test_fallback_file_blocks_exit(self, tmp_project):
+        """Fallback entries from lock failure must block exit even without main track file."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/alu/alu.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "1" in ctx
+
+    def test_fallback_merged_with_main_track(self, tmp_project):
+        """Fallback and main track entries are both counted."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "2" in ctx
+
+    def test_verify_done_cleans_fallback(self, tmp_project):
+        """Verify-done should clean up fallback file too."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
+        (state_dir / "rtl-verify-done").touch()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+        assert not (state_dir / "rtl-modified-files-fallback.txt").exists()
+
+    def test_fallback_aggregated_in_team_mode(self, tmp_project):
+        """In team mode, fallback file is included via glob aggregation."""
+        import datetime
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        config = {
+            "team_mode": True,
+            "team_name": "test-team",
+            "leader_session_id": "leader-001",
+            "phase": "p4",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(config))
+        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/c.sv\n")
+        result = run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project)},
+            env={"CLAUDE_SESSION_ID": "leader-001"},
+        )
+        assert result["continue"] is False
+
     def test_verify_stop_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-verify-stop-gate.sh").read_text()
         assert "lib/json-util.sh" in content
@@ -533,18 +582,18 @@ class TestRtlEditTrackerPhase6:
         assert not stale.exists()
 
     def test_trackfile_recorded_despite_lock_timeout(self, tmp_project):
-        """Fail-closed: RTL file must be tracked even when TRACK_FILE lock acquisition fails."""
+        """Fail-closed: RTL file must be tracked in fallback when TRACK_FILE lock fails."""
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
-        track_file = state_dir / "rtl-modified-files.txt"
         # Pre-create lock dir with live PID to prevent stale reclaim
         lock_dir = state_dir / "rtl-modified-files.txt.lock"
         lock_dir.mkdir()
         (lock_dir / "pid").write_text(str(os.getpid()))
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/alu/alu.sv"}
         result = run_hook(self.HOOK, stdin, env={"FLOCK_TIMEOUT": "1"})
-        assert track_file.exists(), "Track file must be created even on lock timeout (fail-closed)"
-        assert "rtl/alu/alu.sv" in track_file.read_text()
+        fallback_file = state_dir / "rtl-modified-files-fallback.txt"
+        assert fallback_file.exists(), "Fallback file must be created on lock timeout (fail-closed)"
+        assert "rtl/alu/alu.sv" in fallback_file.read_text()
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx

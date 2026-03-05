@@ -66,6 +66,11 @@ Read(".rtl-agent-team/state/rtl-autopilot-state.json")
    - Phase 6: check `completed_waves`, resume from `current_wave`
 4. **Context Load**: Read upstream docs per Context Preload (defined in each phase step below)
 5. Clear `interrupted_reason` and `partial_work_summary`
+6. **Team config**: If `execution_mode == "team"` and `.rtl-agent-team/state/team-config.json` doesn't exist, recreate it:
+   ```
+   Write(".rtl-agent-team/state/team-config.json", { team_mode: true })
+   ```
+   This ensures hooks see team mode on resume (phase orchestrators recreate their own on start).
 
 **If no state file** — Fresh start:
 
@@ -156,7 +161,8 @@ Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
      prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
 
 # If execution_mode == "sequential":
-# p2-arch-orchestrator handles both architecture design AND ref model internally (Step 3)
+# p2-arch-orchestrator is the SINGLE OWNER of RefC artifacts (Step 3: parallel arch + ref-model).
+# Do NOT spawn a separate ref-model-dev agent here.
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
 

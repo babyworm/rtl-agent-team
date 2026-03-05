@@ -25,15 +25,17 @@ T6a:   Review R1 — spec compliance (rtl-architect, blockedBy: T5)
 T6b:   Review R1 — memory/perf (vcodec-architecture-expert, blockedBy: T5)
 T6c:   Review R1 — model consistency (ref-model-dev, blockedBy: T5)
 T7:    Aggregate R1 (rtl-architect, blockedBy: ALL T6*)
-T8a-M: Tree exploration per issue (DYNAMIC, blockedBy: T7)
+T7b:   Rebuttal R1 (arch-designer, blockedBy: T7) — accept/reject each finding with rationale
+T8a-M: Tree exploration per issue (DYNAMIC, blockedBy: T7b, only for accepted findings)
 T9:    Apply resolutions (arch-designer, blockedBy: ALL T8*)
 T10a:  Review R2 — spec compliance (rtl-architect, blockedBy: T9)
 T10b:  Review R2 — memory/perf (vcodec-architecture-expert, blockedBy: T9)
 T10c:  Review R2 — model consistency (ref-model-dev, blockedBy: T9)
 T11:   Aggregate R2 (rtl-architect, blockedBy: ALL T10*)
-T12a:  Review R3 — spec (rtl-architect, blockedBy: T11, MANDATORY)
-T12b:  Review R3 — memory (vcodec-architecture-expert, blockedBy: T11, MANDATORY)
-T12c:  Review R3 — model (ref-model-dev, blockedBy: T11, MANDATORY)
+T11b:  Rebuttal R2 (arch-designer, blockedBy: T11) — accept/reject each finding with rationale
+T12a:  Review R3 — spec (rtl-architect, blockedBy: T11b, MANDATORY)
+T12b:  Review R3 — memory (vcodec-architecture-expert, blockedBy: T11b, MANDATORY)
+T12c:  Review R3 — model (ref-model-dev, blockedBy: T11b, MANDATORY)
 T13:   Final consolidation (rtl-architect, blockedBy: ALL T12*)
 ```
 
@@ -136,15 +138,20 @@ while not all_tasks_complete:
     # T6a-c: 3 parallel reviewers for Round 1
     # T7: aggregation
 
-    # === After T7 (R1 aggregate): dynamic tree exploration ===
-    # For each issue found in R1, spawn exploration task:
+    # === After T7 (R1 aggregate): rebuttal + dynamic tree exploration ===
+    # T7b: arch-designer rebuts each R1 finding (accept/reject with rationale)
+    # t7b = TaskCreate(subject="T7b: Rebuttal R1",
+    #                  description="Accept or reject each R1 finding with rationale. Save rebuttal section to reviews/phase-2-architecture/architecture-review-r1.md.")
+    # TaskUpdate(taskId=t7b, addBlockedBy=[t7])
+    # For each ACCEPTED issue, spawn exploration task:
     # t8_N = TaskCreate(subject=f"T8{N}: Explore resolution for {issue}",
     #                   description=f"Evaluate 2-3 alternative resolutions for: {issue_details}")
-    # TaskUpdate(taskId=t8_N, addBlockedBy=[t7])
+    # TaskUpdate(taskId=t8_N, addBlockedBy=[t7b])
 
     # === T9: apply best resolutions (arch-designer) ===
     # === T10a-c, T11: Review R2 (same pattern as R1) ===
-    # === T12a-c, T13: Review R3 (MANDATORY) ===
+    # === After T11 (R2 aggregate): T11b rebuttal (same pattern as T7b) ===
+    # === T12a-c (blockedBy: T11b), T13: Review R3 (MANDATORY) ===
 
     # === Write-restricted agent handling ===
     # arch-design worker sends architecture.md content via SendMessage
@@ -171,6 +178,13 @@ After T13 (final consolidation) completes:
 3. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
 4. Verify `refc/` has compilable C reference model
 5. Generate `docs/phase-2-architecture/phase-2-summary.md`
+6. **Per-round artifacts** (enforces 3-round review protocol per p2-arch-design-policy):
+   - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
+   - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal
+   - `reviews/phase-2-architecture/architecture-review-r3.md` — Round 3 mandatory final pass
+   FAIL if any missing.
+7. **Rebuttal evidence** in R1 and R2: verify each round artifact contains a rebuttal section
+   with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 
 ## Step 7: Cleanup
 

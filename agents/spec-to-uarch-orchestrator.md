@@ -104,7 +104,8 @@ STOP if any missing.
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
-# p2-arch-orchestrator handles both architecture design AND ref model internally (Step 3)
+# p2-arch-orchestrator is the SINGLE OWNER of RefC artifacts (Step 3: parallel arch + ref-model).
+# Do NOT spawn a separate ref-model-dev agent here.
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
 

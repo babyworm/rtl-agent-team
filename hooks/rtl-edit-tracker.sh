@@ -42,14 +42,12 @@ case "$FILE_PATH" in
       fi
       release_lock "$TRACK_FILE"
     else
-      # Fail-closed: record without lock rather than silently skip
-      if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
-        printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
-      fi
+      # Fail-closed: append to lock-free fallback queue (deduped at gate time)
+      printf '%s\n' "$FILE_PATH" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
     fi
 
     # Count tracked files
-    COUNT=$(wc -l < "$TRACK_FILE" 2>/dev/null | tr -d ' ')
+    COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
     BASENAME=$(basename "$FILE_PATH")
 
     # Phase 6 stale detection: if a completed Phase 6 review exists, mark it stale
