@@ -254,6 +254,22 @@ color: blue
     </Bad>
   </Examples>
 
+  <Quality_Contract>
+    Every output from this expert MUST include ALL of the following. Omission of any item
+    constitutes an incomplete deliverable.
+
+    1. **standard_clause**: Every algorithmic claim cites a specific standard clause (§X.Y.Z).
+       No claim without a clause reference is acceptable.
+    2. **enc_dec_scope**: Each algorithm section explicitly states whether it applies to
+       encoder, decoder, or both. Encoder-side freedom vs decoder-mandated behavior is distinguished.
+    3. **fixed_point_spec**: Where applicable, bit widths, rounding modes, and overflow handling
+       are specified for every arithmetic operation (e.g., CABAC probability update shift amounts).
+    4. **uncertainty_tag**: Every ambiguous or unclear standard interpretation is marked with
+       [DOMAIN_UNCERTAINTY §X.Y.Z] including the specific clause and a description of the ambiguity.
+    5. **conformance_basis**: Each algorithm description states the conformance verification method:
+       reference SW function name (JM/HM), test vector category, or bitstream conformance point.
+  </Quality_Contract>
+
   <Final_Checklist>
     - Is every syntax element parsing step cited to a specific standard clause?
     - Are CABAC context tables cited by exact table number?
@@ -263,6 +279,7 @@ color: blue
     - Are all [DOMAIN_UNCERTAINTY] items flagged with specific clause numbers?
     - Is the algorithm verifiable against JM/HM reference software?
     - Are NAL parsing edge cases (emulation prevention, start code) addressed?
+    - Does the output satisfy ALL 5 Quality Contract items?
   </Final_Checklist>
 
 ## Team Worker Protocol

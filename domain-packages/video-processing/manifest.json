@@ -1,0 +1,156 @@
+{
+  "domain": "video-processing",
+  "version": "0.1.0",
+  "description": "Non-codec video processing domain package for color space conversion, HDR/tone mapping, image signal processing (ISP), and general video pipeline hardware design. Separated from video-codec to maintain clear scope boundaries.",
+  "maintainer": "rtl-agent-team",
+  "status": "active",
+
+  "scope_definition": {
+    "in_scope": [
+      "Color space conversion (BT.601/BT.709/BT.2020, YCbCr/RGB/YUV)",
+      "HDR processing (PQ, HLG, tone mapping)",
+      "Gamma correction and OETF/EOTF",
+      "Chroma subsampling and upsampling (4:2:0 <-> 4:4:4)",
+      "Image signal processing (ISP) pipeline blocks",
+      "Noise reduction (spatial, temporal)",
+      "Scaling and resampling (upscale, downscale)",
+      "Frame rate conversion"
+    ],
+    "out_of_scope": [
+      "Codec-specific algorithms (H.264/H.265/AV1 encode/decode) — see video-codec package",
+      "Codec throughput/bandwidth analysis — see video-codec:video-processing-expert",
+      "Entropy coding, transform, quantization — see video-codec sub-domain experts"
+    ],
+    "codec_alias_note": "The video-processing-expert agent in the video-codec package handles codec HW performance analysis (throughput, bandwidth, pipeline). It is NOT part of this package despite the name overlap. This package covers non-codec video processing."
+  },
+
+  "standards": [
+    {
+      "id": "BT.601",
+      "full_name": "ITU-R BT.601 — Studio encoding parameters of digital television for standard 4:3 and wide-screen 16:9 aspect ratios",
+      "url": "https://www.itu.int/rec/R-REC-BT.601/en"
+    },
+    {
+      "id": "BT.709",
+      "full_name": "ITU-R BT.709 — Parameter values for the HDTV standards",
+      "url": "https://www.itu.int/rec/R-REC-BT.709/en"
+    },
+    {
+      "id": "BT.2020",
+      "full_name": "ITU-R BT.2020 — Parameter values for ultra-high definition television systems",
+      "url": "https://www.itu.int/rec/R-REC-BT.2020/en"
+    },
+    {
+      "id": "BT.2100",
+      "full_name": "ITU-R BT.2100 — Image parameter values for high dynamic range television",
+      "url": "https://www.itu.int/rec/R-REC-BT.2100/en"
+    }
+  ],
+
+  "agents": [
+    {
+      "id": "vproc-color-format-expert",
+      "file": "agents/vproc-color-format-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Color format conversion — RGB/YUV/Bayer, BT.601/709/2020, chroma subsampling, bit-depth conversion (8/10/12-bit)",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "triggers": [
+        "color space conversion",
+        "RGB to YUV",
+        "YUV to RGB",
+        "BT.601",
+        "BT.709",
+        "BT.2020",
+        "chroma subsampling",
+        "chroma upsampling",
+        "4:2:0",
+        "4:2:2",
+        "4:4:4",
+        "bit depth conversion",
+        "8-bit to 10-bit",
+        "Bayer demosaic",
+        "color format",
+        "limited range",
+        "full range"
+      ]
+    },
+    {
+      "id": "vproc-denoise-expert",
+      "file": "agents/vproc-denoise-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Video denoising — spatial NR (bilateral, NLM), temporal NR (3DNR, motion-adaptive), noise modeling, filter HW implementation",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "triggers": [
+        "denoise",
+        "noise reduction",
+        "bilateral filter",
+        "non-local means",
+        "NLM",
+        "temporal noise reduction",
+        "3DNR",
+        "motion adaptive",
+        "spatial filter",
+        "Gaussian filter",
+        "noise model",
+        "AWGN",
+        "shot noise"
+      ]
+    },
+    {
+      "id": "vproc-image-processing-expert",
+      "file": "agents/vproc-image-processing-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Image/video signal processing — HDR tone mapping (PQ/HLG), gamma correction, scaling/resampling, edge enhancement, ISP pipeline architecture",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "triggers": [
+        "HDR",
+        "tone mapping",
+        "PQ curve",
+        "HLG",
+        "gamma correction",
+        "OETF",
+        "EOTF",
+        "sRGB",
+        "image scaling",
+        "resampling",
+        "bilinear",
+        "bicubic",
+        "Lanczos",
+        "edge enhancement",
+        "sharpening",
+        "unsharp mask",
+        "ISP pipeline",
+        "image signal processing"
+      ]
+    }
+  ],
+
+  "knowledge_base": {
+    "path": "domain-packages/video-processing/knowledge/",
+    "contents": [],
+    "note": "Intentionally empty — vproc agents use inline <Domain_Knowledge> sections. External knowledge files will be added when domain complexity warrants extraction."
+  },
+
+  "migration_notes": {
+    "from_video_codec": "When non-codec video processing agents are created, they should be registered here instead of in the video-codec package. Existing routing in domain-consult/SKILL.md already separates codec-performance keywords (-> video-processing-expert in video-codec) from general video keywords (-> this package, once agents exist).",
+    "backward_compatibility": "The video-processing-expert agent remains in the video-codec package and is NOT moved here. Its name is a historical artifact — it is a codec performance expert, not a general video processing expert."
+  }
+}

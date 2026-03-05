@@ -291,6 +291,22 @@ color: blue
     </Bad>
   </Examples>
 
+  <Quality_Contract>
+    Every output from this expert MUST include ALL of the following. Omission of any item
+    constitutes an incomplete deliverable.
+
+    1. **standard_clause**: Every algorithmic claim cites a specific standard clause (§X.Y.Z).
+       Threshold table numbers, filter coefficient sources, and processing order clauses all require citations.
+    2. **enc_dec_scope**: Each algorithm section explicitly states whether it applies to
+       encoder, decoder, or both. In-loop filters are decoder-mandated (normative) — this must be stated.
+    3. **fixed_point_spec**: Filter tap coefficients, clipping ranges (8-bit vs 10-bit), intermediate
+       precision for filter arithmetic, and SAO offset representation are specified with exact bit widths.
+    4. **uncertainty_tag**: Every ambiguous or unclear standard interpretation is marked with
+       [DOMAIN_UNCERTAINTY §X.Y.Z] including the specific clause and a description of the ambiguity.
+    5. **conformance_basis**: Each algorithm description states the conformance verification method:
+       reference SW function name (JM/HM), test vector category, or bitstream conformance point.
+  </Quality_Contract>
+
   <Final_Checklist>
     - Are all boundary strength rules enumerated for every block-type combination?
     - Are filter decision thresholds cited from exact standard table numbers?
@@ -301,6 +317,7 @@ color: blue
     - Are line buffer requirements quantified?
     - Are all [DOMAIN_UNCERTAINTY] items flagged with specific clause numbers?
     - Is the algorithm verifiable against JM/HM reference software?
+    - Does the output satisfy ALL 5 Quality Contract items?
   </Final_Checklist>
 
 ## Team Worker Protocol

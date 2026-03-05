@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 64 specialized AI agents + 56 skills automate the 6-Phase pipeline:
+> 67 specialized AI agents + 56 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 64 specialized AI agents + 56 skills + 13 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 67 specialized AI agents + 56 skills + 13 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 64-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.2.0 |
+| **rtl-agent-team** | 67-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.2.0 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.0 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -163,7 +163,7 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 64 agents (design/verification/review/EDA/domain)
+├── agents/                     # 67 agents (design/verification/review/EDA/domain)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
 ├── skills/                     # 56 skills (SKILL.md + templates/ + examples/)
@@ -191,7 +191,8 @@ rtl-agent-team/
 ├── docker/                     # EDA tool Docker image
 │   └── Dockerfile              # Open-source EDA full bundle
 └── domain-packages/            # Domain knowledge packages
-    └── video-codec/            # H.264/H.265 knowledge, conformance data
+    ├── video-codec/            # H.264/H.265 knowledge, conformance data
+    └── video-processing/       # Color conversion, denoise, HDR/ISP (3 agents)
 ```
 
 ### Routing sync for contributors
@@ -205,7 +206,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## Agent Team
 
-### Agent Composition (64 agents, all Opus)
+### Agent Composition (67 agents, all Opus)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
@@ -215,7 +216,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | Phase 6 Design Note | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
 | EDA/Synthesis | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
 | Infrastructure | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| Domain Experts | 7 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert |
+| Domain Experts | 10 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
 
 Model policy:
 - Use `opus` for reasoning-heavy analysis, architecture decisions, and debugging.
@@ -321,12 +322,13 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (64)
+├── agents/                              # rtl-agent-team agents (67)
 ├── skills/                              # rtl-agent-team skills (56, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages
-    └── video-codec/                     # H.264/H.265 codec knowledge
+    ├── video-codec/                     # H.264/H.265 codec knowledge
+    └── video-processing/                # Color, denoise, HDR/ISP
 ```
 
 To add a new plugin to the Marketplace, add an entry to the `plugins` array in `marketplace.json`:

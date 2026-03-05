@@ -232,7 +232,10 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Transform/quantization expert | `vcodec-transform-quant-expert` | Opus |
 | Filter/reconstruction expert | `vcodec-filter-recon-expert` | Opus |
 | Codec architecture expert | `vcodec-architecture-expert` | Opus |
-| Video processing expert | `video-processing-expert` | Opus |
+| Codec performance expert | `video-processing-expert` | Opus |
+| Color format expert | `vproc-color-format-expert` | Opus |
+| Denoise expert | `vproc-denoise-expert` | Opus |
+| Image processing expert | `vproc-image-processing-expert` | Opus |
 
 ---
 
@@ -393,11 +396,14 @@ Diagram rules: `.claude/rules/diagram-rules.md`
 
 Domain packages provide pre-built knowledge bases. Active packages:
 
-| Package | Path | Manifest |
-|---------|------|----------|
-| video-codec | `domain-packages/video-codec/` | `domain-packages/video-codec/manifest.json` |
+| Package | Path | Manifest | Status |
+|---------|------|----------|--------|
+| video-codec | `domain-packages/video-codec/` | `domain-packages/video-codec/manifest.json` | stable |
+| video-processing | `domain-packages/video-processing/` | `domain-packages/video-processing/manifest.json` | active |
 
-Domain expert agents MUST read relevant knowledge files from `domain-packages/{domain}/knowledge/` BEFORE producing analysis.
+Domain expert agents MUST consult domain knowledge BEFORE producing analysis:
+- If `knowledge/` directory has files: read relevant knowledge files from `domain-packages/{domain}/knowledge/`
+- If agents use inline `<Domain_Knowledge>`: no external file read required (e.g., video-processing agents)
 
 ---
 

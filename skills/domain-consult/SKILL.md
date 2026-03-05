@@ -42,14 +42,18 @@ produces shallow answers. This skill reads the query and selects the best match 
 | intra prediction, motion estimation, motion compensation, ME, MC, motion vector, MV prediction, sub-pel, reference frame, merge mode, AMVP, bi-prediction | vcodec-prediction-expert | Intra modes, ME search, MC interpolation, MV prediction |
 | DCT, DST, quantization, RDOQ, fixed-point, scaling matrix, QP, transform, inverse transform, butterfly, dequantization, coefficient, scaling list | vcodec-transform-quant-expert | Transform, quantization, fixed-point arithmetic |
 | deblocking, SAO, in-loop filter, boundary strength, reconstruction, filter decision, edge offset, band offset, sample adaptive offset | vcodec-filter-recon-expert | Deblocking filter, SAO, reconstruction path |
-| cross-block, pipeline dependency, architecture-ready, codec overview, block interaction, data flow between blocks | vcodec-chief-standard-expert | Cross-block coordination, multi-block dependency analysis |
+| cross-block, cross-block dependency, pipeline dependency, architecture-ready, architecture-ready assessment, codec domain coordination, codec overview, block interaction, data flow between blocks | vcodec-chief-standard-expert | Cross-block coordination, multi-block dependency analysis |
 | codec pipeline, encoder/decoder architecture, datapath, throughput, latency, SRAM organization | vcodec-architecture-expert | Architecture-level codec design decisions |
-| chroma subsampling, color space, YUV, frame rate, resolution, HDR, tone mapping, bandwidth, performance | video-processing-expert | Video signal processing chain, performance analysis |
+| throughput, memory bandwidth, cycles per block, macroblock rate, CTU rate, DPB sizing, line buffer sizing, pipeline depth, parallelism degree, performance budget, frames per second, resolution target | video-processing-expert | Codec HW performance analysis (throughput, bandwidth, pipeline) |
+| color space conversion, RGB to YUV, YUV to RGB, BT.601, BT.709, BT.2020, chroma subsampling, chroma upsampling, 4:2:0, 4:2:2, 4:4:4, bit depth conversion, 8-bit to 10-bit, Bayer demosaic, color format, limited range, full range | vproc-color-format-expert | Color format conversion, Bayer demosaic, bit-depth conversion |
+| denoise, noise reduction, bilateral filter, NLM, temporal noise reduction, 3DNR, motion adaptive, spatial filter, Gaussian filter, noise model, AWGN, shot noise | vproc-denoise-expert | Spatial/temporal noise reduction for video HW |
+| HDR, tone mapping, PQ curve, HLG, gamma correction, OETF, EOTF, sRGB, image scaling, resampling, bilinear, bicubic, Lanczos, edge enhancement, sharpening, unsharp mask, ISP pipeline, image signal processing | vproc-image-processing-expert | HDR, gamma, scaling, sharpening, ISP pipeline |
 | AXI, AHB, APB, PCIe, USB, Ethernet, bus protocol, handshake, transaction | protocol-checker | Bus protocol rules and timing |
 </Routing_Table>
 
 <Steps>
-0. Domain expert agents have `<Knowledge_Base>` sections that point to `domain-packages/video-codec/knowledge/` files.
+0. Domain expert agents have `<Knowledge_Base>` or `<Domain_Knowledge>` sections with domain-specific knowledge.
+   Video-codec experts reference `domain-packages/video-codec/knowledge/` files; video-processing experts have inline domain knowledge.
    They will read relevant knowledge files autonomously before answering. No manual loading required.
 1. Read the user's query and identify domain keywords
 2. Select primary expert from routing table
@@ -86,9 +90,21 @@ Task(subagent_type="rtl-agent-team:vcodec-chief-standard-expert",
 Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
      prompt="What is the optimal pipeline depth for a CABAC encoder targeting 4K@60fps with a 500MHz sys_clk? Consider throughput vs latency tradeoffs.")
 
-# Video processing question
+# Codec performance question
 Task(subagent_type="rtl-agent-team:video-processing-expert",
-     prompt="What are the correct coefficients for BT.709 YCbCr to RGB conversion? Include fixed-point representation suitable for RTL implementation.")
+     prompt="What are the throughput requirements for a 4K@60fps H.265 decoder at 500 MHz? Include cycles-per-CTU budget and memory bandwidth breakdown.")
+
+# Color format conversion question
+Task(subagent_type="rtl-agent-team:vproc-color-format-expert",
+     prompt="What are the exact BT.709 YCbCr-to-RGB conversion coefficients for 10-bit limited range? Include fixed-point Q-format suitable for RTL implementation.")
+
+# Denoise question
+Task(subagent_type="rtl-agent-team:vproc-denoise-expert",
+     prompt="What are the line buffer requirements and DRAM bandwidth for a motion-adaptive 3DNR engine targeting 4K@60fps 10-bit 4:2:0?")
+
+# Image processing / HDR question
+Task(subagent_type="rtl-agent-team:vproc-image-processing-expert",
+     prompt="Design a PQ EOTF LUT for 12-bit input to 16-bit output. Specify entry count, interpolation method, and maximum error vs floating-point reference.")
 
 # Protocol question
 Task(subagent_type="rtl-agent-team:protocol-checker",

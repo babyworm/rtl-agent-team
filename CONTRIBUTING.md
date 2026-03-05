@@ -206,6 +206,7 @@ claude plugin install rtl-agent-team@rtl-agent-marketplace
 | 도메인 | 접두사 | 예시 |
 |--------|--------|------|
 | Video codec | `vcodec-` | `vcodec-syntax-entropy-expert` |
+| Video processing | `vproc-` | `vproc-color-format-expert` |
 | DDR/메모리 | `ddr-` | `ddr-timing-expert` |
 | PCIe | `pcie-` | `pcie-ltssm-expert` |
 | 오디오 | `audio-` | `audio-dsp-expert` |
@@ -279,6 +280,114 @@ Chief 에이전트의 역할:
 - [ ] (4+ 에이전트) Chief 에이전트 추가 권장
 - [ ] 기존 스킬(p1-spec-research, domain-consult 등)의 라우팅 테이블에 새 도메인 추가
 - [ ] 에이전트/스킬 카운트 업데이트 (README.md, marketplace.json)
+
+---
+
+## 2.5 Video Codec Standard Onboarding (H.264/H.265/AV1/VVC ...)
+
+새로운 video codec 표준을 도메인 패키지에 추가하는 가이드입니다. 일반 도메인 에이전트 추가(§2)와 달리,
+codec 표준은 지식 파일 세트, 전문가 프롬프트 동기화, 라우팅 갱신, 테스트 게이트가 함께 필요합니다.
+
+### 지원 티어
+
+| 티어 | 범위 | 예시 |
+|------|------|------|
+| **full** | 분석 + RD eval + conformance + expert prompts | H.264, H.265 |
+| **analysis_only** | 분석만 (knowledge + expert `<Domain_Knowledge>` 갱신) | AV1 (초기) |
+| **roadmap** | 계획 단계 (manifest 등록만, 지식 파일 없음) | VVC |
+
+### 표준 지원 매트릭스 (manifest.json)
+
+`domain-packages/video-codec/manifest.json`에 `standard_support_matrix` 필드를 유지합니다:
+
+```json
+"standard_support_matrix": {
+  "H.264": {
+    "tier": "full",
+    "agent_coverage": ["syntax", "prediction", "tq", "filter", "chief", "arch", "perf"],
+    "conformance_available": true,
+    "rd_eval_available": true,
+    "owner": "rtl-agent-team",
+    "maturity": "stable"
+  }
+}
+```
+
+### 지식 파일 최소 세트
+
+표준별로 다음 파일을 `domain-packages/video-codec/knowledge/`에 생성합니다:
+
+| 파일 | 필수 (full) | 필수 (analysis_only) | 내용 |
+|------|:-----------:|:--------------------:|------|
+| `{std}-spec-summary.md` | O | O | 표준 알고리즘 블록 요약 + clause 참조 |
+| `{std}-function-map.md` | O | - | 레퍼런스 SW 함수 → spec clause 매핑 |
+| `{std}-fixed-point.md` | O | - | 고정소수점 산술 규칙 (비트폭, 라운딩) |
+| `{std}-throughput.md` | O | - | 해상도/프레임레이트별 throughput 테이블 |
+| `{std}-conformance-notes.md` | O | - | 적합성 테스트 벡터 및 검증 주의사항 |
+
+> `{std}`는 소문자 하이픈 형식: `h264`, `h265`, `av1`, `vvc`
+>
+> **공용 파일 허용**: 여러 표준에 공통되는 지식(예: `fixed-point-conventions.md`, `throughput-tables.md`)은
+> 표준별로 분리하지 않고 공용 파일로 유지할 수 있습니다. 이 경우 manifest의 `standard_id`를 배열로 지정합니다
+> (예: `"standard_id": ["H.264", "H.265"]`).
+
+### Expert 프롬프트 표준 스코프 동기화
+
+새 표준 추가 시 다음 6개 expert의 `<Domain_Knowledge>` 섹션을 업데이트해야 합니다:
+
+1. `vcodec-syntax-entropy-expert` — 새 표준의 entropy coding 알고리즘
+2. `vcodec-prediction-expert` — 새 표준의 prediction 알고리즘
+3. `vcodec-transform-quant-expert` — 새 표준의 transform/quant 알고리즘
+4. `vcodec-filter-recon-expert` — 새 표준의 in-loop filter 알고리즘
+5. `vcodec-chief-standard-expert` — cross-block 의존성에 새 표준 추가
+6. `vcodec-architecture-expert` — HW 아키텍처 패턴에 새 표준 추가
+
+### 라우팅 동기화
+
+3곳을 동시에 갱신해야 합니다:
+
+1. `skills/domain-consult/SKILL.md` — 라우팅 테이블에 새 표준 키워드 추가
+2. `skills/rtl-orchestrate/SKILL.md` — SSOT 라우팅 블록 (hook export 소스)
+3. `hooks/rtl-orchestrator-inject.sh` — `sh scripts/sync_orchestrator_inject.sh` 실행
+
+### Non-Codec Video Processing 분리
+
+Codec 성능 분석(`video-processing-expert`)과 일반 영상 처리(color space, HDR, ISP)는 별도 도메인으로 관리합니다:
+
+- **`domain-packages/video-codec/`** — `video-processing-expert`는 여기에 유지 (codec throughput 전문가)
+- **`domain-packages/video-processing/`** — non-codec 영상 처리 전문가 등록 (active, 3 agents: color-format, denoise, image-processing)
+
+라우팅은 이미 분리되어 있습니다 (`domain-consult/SKILL.md` 참조).
+
+### 스킬 호환성 매트릭스
+
+| 스킬 | H.264 | H.265 | AV1 | VVC |
+|------|:-----:|:-----:|:---:|:---:|
+| `codec-rd-eval` (encoder RD) | O | O | - | - |
+| `codec-conformance-eval` (decoder) | O | O | - | - |
+| `rtl-conformance-test` (RTL) | O | O | - | - |
+
+새 표준 추가 시 이 테이블을 업데이트하세요.
+
+### 테스트 게이트
+
+PR merge 조건으로 다음 4종 테스트를 통과해야 합니다:
+
+1. **manifest schema pass** — `test_json_schemas.py::TestDomainManifest` 통과
+2. **routing keyword coverage pass** — `test_expert_quality.py::TestRoutingKeywordCoverage` 통과 (vcodec + vproc 라우팅)
+3. **expert contract pass** — `test_expert_quality.py::TestExpertQualityContract` + `TestVprocExpertQuality` 통과
+4. **knowledge version consistency pass** — `test_expert_quality.py::TestKnowledgeVersionConsistency` 통과
+5. **vproc manifest consistency pass** — `test_expert_quality.py::TestVprocManifestConsistency` 통과
+
+### Definition of Done
+
+"새 표준 추가" PR은 최소 다음 5종 변경이 포함되어야 합니다:
+
+- [ ] `manifest.json` — standards 배열 + standard_support_matrix + knowledge_base 항목
+- [ ] `knowledge/` — 지식 파일 최소 세트 (티어에 따라)
+- [ ] 라우팅 — domain-consult + rtl-orchestrate + hook inject 동기화
+- [ ] 테스트 — 4종 테스트 게이트 통과
+- [ ] README.md — 지원 표준 목록 업데이트
 
 ---
 

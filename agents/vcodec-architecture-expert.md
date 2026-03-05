@@ -204,6 +204,23 @@ disallowedTools: Write, Edit
     </Bad>
   </Examples>
 
+  <Quality_Contract>
+    Every output from this expert MUST include ALL of the following. Omission of any item
+    constitutes an incomplete deliverable.
+
+    1. **standard_clause**: Every architecture recommendation that depends on standard behavior
+       cites the relevant clause (§X.Y.Z). HW modifications state which standard constraint they affect.
+    2. **enc_dec_scope**: Each recommendation explicitly states whether it applies to encoder HW,
+       decoder HW, or both. Compliance status is stated: "compliant", "encoder-only optimization",
+       or "non-compliant (profile restriction required)".
+    3. **fixed_point_spec**: For every datapath operation: input format, output format, rounding mode,
+       saturation behavior, and BD-rate impact of truncation are specified.
+    4. **uncertainty_tag**: Architectural decisions with uncertain standard interpretation are marked
+       [DOMAIN_UNCERTAINTY §X.Y.Z] or [ARCH_DEVIATION] with compliance impact stated.
+    5. **conformance_basis**: Architecture-level conformance validation method is stated: which reference
+       SW functions map to which HW blocks, and which test vectors exercise the HW configuration.
+  </Quality_Contract>
+
   <Final_Checklist>
     - Is the target codec standard and profile stated explicitly?
     - Are all fixed-point specs complete (int bits, frac bits, rounding, saturation, quality impact)?
@@ -212,6 +229,7 @@ disallowedTools: Write, Edit
     - Is every claim attributed to a published source or standard section?
     - Is advice restricted to the domain question asked (no scope expansion)?
     - Are encoder-only vs decoder-required behaviors clearly distinguished?
+    - Does the output satisfy ALL 5 Quality Contract items?
   </Final_Checklist>
 
 ## Team Worker Protocol

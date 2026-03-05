@@ -269,6 +269,34 @@ color: blue
     </Bad>
   </Examples>
 
+  <Quality_Contract>
+    Every output from this expert MUST include ALL of the following. Omission of any item
+    constitutes an incomplete deliverable.
+
+    1. **standard_clause**: Every algorithmic claim cites a specific standard clause (§X.Y.Z).
+       Transform matrix sources, scaling table numbers, and rounding definitions all require citations.
+    2. **enc_dec_scope**: Each algorithm section explicitly states whether it applies to
+       encoder (forward transform, may have implementation freedom), decoder (inverse transform,
+       must be bit-exact), or both. Forward/inverse conflation is a critical error.
+    3. **fixed_point_spec**: For EVERY arithmetic operation: input bit width, accumulator bit width,
+       rounding mode (truncation/round-half-up/round-half-to-even), shift amount, output clipping range.
+       No operation without full precision specification is acceptable.
+    4. **uncertainty_tag**: Every ambiguous or unclear standard interpretation is marked with
+       [DOMAIN_UNCERTAINTY §X.Y.Z] including the specific clause and a description of the ambiguity.
+    5. **conformance_basis**: Each algorithm description states the conformance verification method:
+       reference SW function name (JM/HM), test vector category, or bitstream conformance point.
+
+    TQ-Specific Required Items (in addition to items 1-5):
+    6. **lambda_definition**: For RDOQ analysis, the lambda definition formula and its QP mapping
+       (lambda = 0.85 * 2^((QP-12)/3) or equivalent) must be stated with the precision used.
+    7. **cabac_rate_linkage**: When analyzing RDOQ, the method of CABAC rate estimation
+       (table-based, context-model-based, or simplified) must be specified and its accuracy impact noted.
+    8. **qp_boundary**: QP=0 and QP=51 boundary behavior must be explicitly analyzed for every
+       quantization/dequantization path, including scaling factor extremes and accumulator overflow risk.
+    9. **ref_sw_comparison**: At least one comparison point with HM (H.265) or JM (H.264) reference
+       software must be provided: function name, expected output for a known input, or known divergence.
+  </Quality_Contract>
+
   <Final_Checklist>
     - Is every transform/quant step cited to a specific standard clause?
     - Are all arithmetic stages specified with input width, accumulator width, and output width?
@@ -279,6 +307,7 @@ color: blue
     - Is intermediate clipping (H.265) included where mandated?
     - Are all [DOMAIN_UNCERTAINTY] items flagged with specific clause numbers?
     - Is forward vs inverse transform distinction maintained?
+    - Does the output satisfy ALL 9 Quality Contract items (5 common + 4 TQ-specific)?
   </Final_Checklist>
 
 ## Team Worker Protocol

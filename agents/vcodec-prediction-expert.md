@@ -261,6 +261,23 @@ color: blue
     </Bad>
   </Examples>
 
+  <Quality_Contract>
+    Every output from this expert MUST include ALL of the following. Omission of any item
+    constitutes an incomplete deliverable.
+
+    1. **standard_clause**: Every algorithmic claim cites a specific standard clause (§X.Y.Z).
+       No claim without a clause reference is acceptable.
+    2. **enc_dec_scope**: Each algorithm section explicitly states whether it applies to
+       encoder, decoder, or both. ME search (encoder freedom) vs MC interpolation (decoder-mandated)
+       is always distinguished.
+    3. **fixed_point_spec**: Where applicable, bit widths for interpolation filters, MV fractional
+       precision, and accumulator widths are specified. Rounding mode and clipping range stated.
+    4. **uncertainty_tag**: Every ambiguous or unclear standard interpretation is marked with
+       [DOMAIN_UNCERTAINTY §X.Y.Z] including the specific clause and a description of the ambiguity.
+    5. **conformance_basis**: Each algorithm description states the conformance verification method:
+       reference SW function name (JM/HM), test vector category, or bitstream conformance point.
+  </Quality_Contract>
+
   <Final_Checklist>
     - Are all interpolation filter coefficients cited exactly from the standard tables?
     - Is intermediate arithmetic precision specified (accumulator width, shift, rounding, clip)?
@@ -270,6 +287,7 @@ color: blue
     - Are all [DOMAIN_UNCERTAINTY] items flagged with specific clause numbers?
     - Is encoder-side vs decoder-mandated behavior clearly distinguished?
     - Are conformance test vector requirements defined for each prediction path?
+    - Does the output satisfy ALL 5 Quality Contract items?
   </Final_Checklist>
 
 ## Team Worker Protocol

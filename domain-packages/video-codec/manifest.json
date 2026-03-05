@@ -22,6 +22,22 @@
       "published": "2013-04 (original), 2022-08 (latest amendment)",
       "issuing_body": "ITU-T Study Group 16 / ISO/IEC JTC 1/SC 29/WG 11",
       "url": "https://www.itu.int/rec/T-REC-H.265/en"
+    },
+    {
+      "id": "AV1",
+      "full_name": "AOMedia Video 1",
+      "status": "planned",
+      "published": "2018-03 (v1.0.0)",
+      "issuing_body": "Alliance for Open Media",
+      "url": "https://aomedia.org/av1-features/get-started/"
+    },
+    {
+      "id": "VVC",
+      "full_name": "ITU-T H.266 | ISO/IEC 23090-3 (VVC)",
+      "status": "planned",
+      "published": "2020-07 (original)",
+      "issuing_body": "ITU-T Study Group 16 / ISO/IEC JTC 1/SC 29/WG 5",
+      "url": "https://www.itu.int/rec/T-REC-H.266/en"
     }
   ],
 
@@ -53,6 +69,41 @@
       "notes": "Next-generation codec reference. Included for future roadmap awareness."
     }
   ],
+
+  "standard_support_matrix": {
+    "H.264": {
+      "tier": "full",
+      "agent_coverage": ["syntax", "prediction", "tq", "filter", "chief", "arch", "perf"],
+      "conformance_available": true,
+      "rd_eval_available": true,
+      "owner": "rtl-agent-team",
+      "maturity": "stable"
+    },
+    "H.265": {
+      "tier": "full",
+      "agent_coverage": ["syntax", "prediction", "tq", "filter", "chief", "arch", "perf"],
+      "conformance_available": true,
+      "rd_eval_available": true,
+      "owner": "rtl-agent-team",
+      "maturity": "stable"
+    },
+    "AV1": {
+      "tier": "roadmap",
+      "agent_coverage": [],
+      "conformance_available": false,
+      "rd_eval_available": false,
+      "owner": null,
+      "maturity": "planned"
+    },
+    "VVC": {
+      "tier": "roadmap",
+      "agent_coverage": [],
+      "conformance_available": false,
+      "rd_eval_available": false,
+      "owner": null,
+      "maturity": "planned"
+    }
+  },
 
   "agents": [
     {
@@ -180,7 +231,7 @@
       "id": "video-processing-expert",
       "file": "agents/video-processing-expert.md",
       "model": "claude-opus-4-6",
-      "role": "Performance analysis — throughput, memory bandwidth, cycles-per-block, parallelism requirements",
+      "role": "Codec HW performance analysis — throughput (MB/s, CTU/s), memory bandwidth, cycles-per-block, DPB sizing, pipeline parallelism",
       "phase_intensity": {
         "research": "support",
         "architecture": "primary",
@@ -201,7 +252,9 @@
         "parallelism degree",
         "performance budget",
         "frames per second",
-        "resolution target"
+        "resolution target",
+        "codec performance",
+        "codec throughput"
       ]
     },
     {
@@ -240,27 +293,42 @@
     "contents": [
       {
         "file": "h264-spec-summary.md",
-        "description": "H.264 algorithm block summaries with key clause references"
+        "description": "H.264 algorithm block summaries with key clause references",
+        "standard_id": "H.264",
+        "standard_version": "V14",
+        "reference_doc": "ITU-T H.264 (V14) / ISO/IEC 14496-10"
       },
       {
         "file": "h265-spec-summary.md",
-        "description": "H.265 algorithm block summaries with key clause references"
+        "description": "H.265 algorithm block summaries with key clause references",
+        "standard_id": "H.265",
+        "standard_version": "V9",
+        "reference_doc": "ITU-T H.265 (V9) / ISO/IEC 23008-2"
       },
       {
         "file": "jm-function-map.md",
-        "description": "JM reference software function-to-spec-clause mapping for H.264"
+        "description": "JM reference software function-to-spec-clause mapping for H.264",
+        "standard_id": "H.264",
+        "standard_version": "V14",
+        "reference_sw": "JM 19.0"
       },
       {
         "file": "throughput-tables.md",
-        "description": "Pre-computed throughput tables: MB/s and CTU/s for all standard resolution/framerate combinations"
+        "description": "Pre-computed throughput tables: MB/s and CTU/s for all standard resolution/framerate combinations",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
       },
       {
         "file": "fixed-point-conventions.md",
-        "description": "Fixed-point arithmetic conventions for H.264/H.265 transform and quantization"
+        "description": "Fixed-point arithmetic conventions for H.264/H.265 transform and quantization",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
       },
       {
         "file": "hw-architecture-survey.md",
-        "description": "Survey of published VLSI implementations with area, power, and frequency data"
+        "description": "Survey of published VLSI implementations with area, power, and frequency data",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
       }
     ]
   },

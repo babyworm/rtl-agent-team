@@ -298,6 +298,21 @@ color: purple
     </Bad>
   </Examples>
 
+  <Quality_Contract>
+    Every review output from this expert MUST verify that sub-domain experts satisfy their
+    Quality Contracts. The chief review itself must include:
+
+    1. **contract_compliance_check**: For each sub-domain expert output, verify all 5 common
+       Quality Contract items are present (standard_clause, enc_dec_scope, fixed_point_spec,
+       uncertainty_tag, conformance_basis). Flag missing items as review feedback.
+    2. **cross_block_consistency**: Verify that enc_dec_scope, fixed_point_spec, and conformance_basis
+       are consistent across block boundaries (e.g., prediction output format matches transform input).
+    3. **uncertainty_routing**: Every [DOMAIN_UNCERTAINTY] from sub-domain experts is either
+       resolved, routed back to the appropriate expert, or promoted to [ARCHITECTURE_DECISION].
+    4. **tq_contract_verification**: When reviewing vcodec-transform-quant-expert output, verify
+       all 4 TQ-specific items (lambda_definition, cabac_rate_linkage, qp_boundary, ref_sw_comparison).
+  </Quality_Contract>
+
   <Final_Checklist>
     - Have all 4 sub-domain expert outputs been read and reviewed?
     - Is the cross-block dependency matrix complete (every block boundary has an entry)?
@@ -307,6 +322,7 @@ color: purple
     - Have all mandatory review rounds been executed (default 3, or user-specified)?
     - Are unresolved items either addressed or escalated with context?
     - Is the Architecture-Ready verdict justified with evidence?
+    - Does the review verify sub-domain expert Quality Contract compliance?
   </Final_Checklist>
 
 ## Team Worker Protocol
