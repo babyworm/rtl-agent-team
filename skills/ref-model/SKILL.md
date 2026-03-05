@@ -20,6 +20,7 @@ Runs in parallel with p2-arch-design during Phase 2.
 - Reference model needs update after spec change
 - Conformance baseline is needed for RTL verification
 - Bandwidth/datapath width exploration is needed
+- Independent quality gate is needed before declaring model as verification oracle
 </Use_When>
 
 <Do_Not_Use_When>
@@ -65,8 +66,9 @@ SystemVerilog testbenches without wrapper overhead.
 4. Run bitexact comparison via Bash CLI: `cd refc && make test`
 5. Run bandwidth analysis: `cd refc && make bandwidth` (reports ext_mem access count/pattern)
 6. Fix any mismatches (iterate until all vectors pass)
-7. Write conformance_report.json with pass/fail per vector and JM/HM version
-8. Write bandwidth_report.json with external memory access statistics per block
+7. Run independent review via ref-model-reviewer (algorithm fidelity, numeric precision, UB/memory safety)
+8. Write conformance_report.json with pass/fail per vector and JM/HM version
+9. Write bandwidth_report.json with external memory access statistics per block
 </Steps>
 
 <Tool_Usage>
@@ -80,6 +82,12 @@ Task(subagent_type="rtl-agent-team:ref-model-dev",
             "Internal memory as arrays/variables. External memory via ext_mem_read/write functions. "
             "Datapath width parameterizable via PARALLEL_LANES define. "
             "C11, DPI-C compatible (no C++ features). Follow C coding conventions.")
+
+Task(subagent_type="rtl-agent-team:ref-model-reviewer",
+     prompt="Review refc/ model quality before oracle signoff. "
+            "Check algorithm fidelity to requirements/spec, fixed-point/bit-width correctness, "
+            "build warnings/undefined behavior risks, and I/O format compatibility. "
+            "Save report to reviews/phase-2-architecture/ref-model-review.md with PASS/FAIL.")
 
 # Build and test via Bash CLI (NOT MCP)
 Bash: cd refc && make build          # gcc -std=c11 -Wall -Wextra -Werror
@@ -131,6 +139,7 @@ unnecessary complexity for a functional model.
 - [ ] External memory access uses ext_mem_read/ext_mem_write abstraction
 - [ ] PARALLEL_LANES parameterizable for datapath width exploration
 - [ ] All test vectors pass bitexact comparison vs JM/HM
+- [ ] ref-model-reviewer report saved with PASS verdict for oracle use
 - [ ] conformance_report.json written with JM/HM version and vector results
 - [ ] bandwidth_report.json written with external memory access statistics
 </Final_Checklist>

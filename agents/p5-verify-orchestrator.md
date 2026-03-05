@@ -31,19 +31,22 @@ V9: Code Review            → rtl-critic + rtl-p4s-refactor
 
 # Workflow
 
-## Step 0: Setup Prerequisite Check (MANDATORY)
+## Step 0: Context Bootstrap (MANDATORY)
 
+```
+Read(".rtl-agent-team/state/spawn-context.json")
+```
+
+**If file found and valid** — use manifest data:
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- Otherwise proceed with context loaded (phase, staleness, team info available)
+
+**If file NOT found** — fallback to legacy check:
 ```
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
-
-**If file NOT found** — project has not been initialized:
-```
-Skill(skill="rtl-agent-team:rtl-setup")
-```
-Wait for rtl-setup to complete. Do NOT proceed to Stage 0 until setup reports "Ready to start: Yes".
-
-**If file found** — setup already done, proceed to Stage 0.
+If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
 
 ## Stage 0: Preparation
 
@@ -85,6 +88,12 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 Task(subagent_type="rtl-agent-team:cdc-checker",
      prompt="Full CDC analysis for rtl/{module}/*.sv extending docs/phase-4-rtl/stream-b-cdc-preliminary.md. Identify all cross-domain paths, flag missing synchronizers. Write sim/cdc/{module}_cdc_report.md.",
      run_in_background=true)
+
+if CDC findings indicate clock-architecture root cause (generated clocks/mux/gating relationships):
+  Task(subagent_type="rtl-agent-team:clock-architect",
+       prompt="Review module-level clock relationships and crossing assumptions for {module}.
+       Focus on generated clocks, clock mux/gating safety, and domain classification.",
+       run_in_background=true)
 ```
 
 **V4: Protocol Compliance** (per module, skip if no bus interface → mark n/a)
@@ -188,6 +197,12 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 Task(subagent_type="rtl-agent-team:cdc-checker",
      prompt="Full system-level CDC analysis. Read rtl/filelist_top.f. Identify ALL cross-module clock domain crossings. Generate system-level SDC constraints. Write sim/cdc/system_cdc_report.md.",
      run_in_background=true)
+
+if repeated CDC findings map to clock-tree assumptions:
+  Task(subagent_type="rtl-agent-team:clock-architect",
+       prompt="System-level clock architecture review for CDC closure.
+       Validate clock-source relationships, generated-clock definitions, mux/gating safety, and skew assumptions.",
+       run_in_background=true)
 ```
 
 **T4: System-Level Protocol** (if top has bus interfaces)

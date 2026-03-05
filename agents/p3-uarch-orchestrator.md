@@ -18,19 +18,22 @@ document requirements, naming conventions, and checklists. Reference it for pass
 
 # Workflow
 
-## Step 0: Setup Prerequisite Check (MANDATORY)
+## Step 0: Context Bootstrap (MANDATORY)
 
+```
+Read(".rtl-agent-team/state/spawn-context.json")
+```
+
+**If file found and valid** — use manifest data:
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- Otherwise proceed with context loaded (phase, staleness, team info available)
+
+**If file NOT found** — fallback to legacy check:
 ```
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
-
-**If file NOT found** — project has not been initialized:
-```
-Skill(skill="rtl-agent-team:rtl-setup")
-```
-Wait for rtl-setup to complete. Do NOT proceed to Step 1 until setup reports "Ready to start: Yes".
-
-**If file found** — setup already done, proceed to Step 1.
+If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
 
 ## Step 1: Read Architecture Artifacts
 
@@ -48,6 +51,24 @@ Bash("mkdir -p reviews/phase-3-uarch docs/phase-3-uarch")
 Skill("rtl-agent-team:domain-consult",
       args="Protocol selection guidance for inter-block interfaces (valid/ready vs AXI-Stream vs FIFO vs credit-based). Memory architecture patterns (SRAM banking, line buffer). Pipeline design patterns for target domain.")
 ```
+
+## Step 2.5: Conditional Expert Triggers (risk-based)
+
+Use expert reviewers only when trigger conditions are met:
+
+```
+# Trigger A: Planning/dependency risk (module dependency unclear, repeated rework, critical-path uncertainty)
+Task(subagent_type="rtl-agent-team:rtl-planner",
+     prompt="Read architecture.md + current docs/phase-3-uarch drafts. Build a dependency graph and critical path for Phase 3 work. Identify parallel groups and blockers causing non-convergence.")
+
+# Trigger B: Clock architecture risk (multi-root clocks, generated clocks, muxing/gating complexity)
+Task(subagent_type="rtl-agent-team:clock-architect",
+     prompt="Review clock tree/gating/mux strategy from docs/phase-3-uarch/*.md.
+     Validate domain relationships and generated clock assumptions.
+     Save report to reviews/phase-3-uarch/clock-architecture-review.md and propose updates to clock-domain-map.md.")
+```
+
+Apply planner/clock findings before Step 3 and carry unresolved risk items into Round 1 review.
 
 ## Step 3: Parallel uarch Design + BFM Development
 
@@ -109,6 +130,9 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 # Round 2: same pattern → save to uarch-review-r2.md
 # Round 3 (mandatory): cross-module interfaces, clock domain map, memory conflicts,
 #   model consistency matrix, BFM final pass, μArch code review
+# Conditional reviewers (invoke when trigger still active):
+#   - clock-architect: clocking or CDC feasibility remains unresolved
+#   - rtl-planner: dependency/scheduling risk still blocking closure
 #   → save to uarch-review-r3.md
 # If not converged → escalate to user via AskUserQuestion
 # On boundary violation → escalate to Phase 2 (p2-arch-design)

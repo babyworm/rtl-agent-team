@@ -17,6 +17,23 @@ reference mode rules, result JSON schema, escalation rules, and the checklist.
 
 # Workflow
 
+## Step 0: Context Bootstrap (MANDATORY)
+
+```
+Read(".rtl-agent-team/state/spawn-context.json")
+```
+
+**If file found and valid** — use manifest data:
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- Otherwise proceed with context loaded (phase, staleness, team info available)
+
+**If file NOT found** — fallback to legacy check:
+```
+Glob(".claude/rules/rtl-coding-conventions.md")
+```
+If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
 ## Step 1: Extract Features to Test
 
 Read `docs/phase-3-uarch/{module}.md` to extract key features per module:

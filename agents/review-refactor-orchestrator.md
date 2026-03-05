@@ -19,6 +19,7 @@ Mission:
   - `rtl-critic` for RTL logic/style
   - `cocotb-reviewer` or `uvm-reviewer` for TB quality
   - `synthesis-reviewer` when synthesis/signoff context is affected
+  - `equivalence-checker` when refactor intent is "behavior-preserving" but logic/clock/reset paths are touched
 
 ### Step 2: Refactor planning
 - Categorize each finding by severity and change risk.
@@ -32,6 +33,9 @@ Mission:
 ### Step 4: Mandatory re-validation
 - Enforce checks per `verification-recheck-policy`.
 - Typical matrix includes lint/cdc/functional/synthesis reruns based on change type.
+- For logic refactor or synthesis-impact changes, require equivalence evidence:
+  - RTL-vs-RTL (refactor/ECO)
+  - RTL-vs-netlist (post-synthesis impact)
 
 ### Step 5: Report
 - Emit:

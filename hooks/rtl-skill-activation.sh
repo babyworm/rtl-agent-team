@@ -70,7 +70,7 @@ case "$SHORT_NAME" in
     ;;
   *)
     if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
-      printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[SETUP REQUIRED] rtl-setup이 실행되지 않았습니다. 프로젝트 룰(.claude/rules/), 가이드, 디렉토리 구조가 없어 파이프라인이 올바르게 동작하지 않을 수 있습니다. 먼저 /rtl-agent-team:rtl-setup 을 실행하세요."}}'
+      printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[SETUP REQUIRED] rtl-setup has not been run. Project rules (.claude/rules/), guides, and directory structure are missing — the pipeline may not function correctly. Run /rtl-agent-team:rtl-setup first."}}'
       exit 0
     fi
     ;;
@@ -130,4 +130,4 @@ cat > "$SKILL_STATE.tmp" << SKILLEOF
 SKILLEOF
 mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
-printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop 활성화] %s 스킬이 시작되었습니다. 완료 조건: %s. 모든 조건을 충족할 때까지 세션이 종료되지 않습니다. 완료 시 .rtl-agent-team/state/skill-active.json 의 all_complete 를 true 로 설정하세요."}}' "$SHORT_NAME" "$CRITERIA"
+printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop ACTIVATED] Skill %s has started. Completion criteria: %s. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."}}' "$SHORT_NAME" "$CRITERIA"

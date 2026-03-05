@@ -18,21 +18,22 @@ candidate evaluation criteria, C model transformation rules, and gate criteria.
 
 # Workflow
 
-## Step 0: Setup Prerequisite Check (MANDATORY)
+## Step 0: Context Bootstrap (MANDATORY)
 
+```
+Read(".rtl-agent-team/state/spawn-context.json")
+```
+
+**If file found and valid** — use manifest data:
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- Otherwise proceed with context loaded (phase, staleness, team info available)
+
+**If file NOT found** — fallback to legacy check:
 ```
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
-
-**If file NOT found** — project has not been initialized:
-```
-Skill(skill="rtl-agent-team:rtl-setup")
-```
-Wait for rtl-setup to complete. It creates directory structure, deploys coding rules
-and phase guides, and verifies EDA tool availability. Do NOT proceed to Step 1 until
-setup reports "Ready to start: Yes".
-
-**If file found** — setup already done, proceed to Step 1.
+If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
 
 ## Step 1: Initialize or Resume State
 

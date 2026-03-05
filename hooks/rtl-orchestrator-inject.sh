@@ -121,6 +121,12 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 - **Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix defects at the top, not the bottom.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
 
+## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
+- rtl-planner: P3 or P3→P4 handoff when dependency graph and critical path are unclear or rework loops do not converge.
+- clock-architect: P3/P4/P5 when multi-clock/generated-clock/PLL/gating/mux choices are risky or CDC root cause points to clock architecture.
+- ref-model-reviewer: P2 (and later oracle audits) when ref C model is newly built/updated and must be validated before use as golden oracle.
+- equivalence-checker: P4/refactor/P5B when behavior-preserving intent or synthesis/ECO changes require formal semantic equivalence proof.
+
 ## Coding Conventions (Core Overrides — .sv/.svh/.v/.vh)
 - Port prefix: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
 - Clock: `clk` (single) or `{domain}_clk` (multiple), Reset: `rst_n` (single) or `{domain}_rst_n` (multiple) (active-low async)

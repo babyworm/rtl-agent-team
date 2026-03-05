@@ -1,13 +1,20 @@
 <!-- RTL-AGENT-TEAM:START -->
 # RTL Agent Team — Claude Code Plugin for Agentic Silicon IP Design
 
+## Language Rule
+
+All LLM-consumed documents (agents/*.md, skills/*/SKILL.md, hook output, .claude/rules/*, CLAUDE.md guides)
+MUST be written in **English**. English is more token-efficient than Korean, and since these files are
+read by the LLM — not by humans — token efficiency takes priority.
+User-facing conversation may use Korean, but plugin prompt content must remain English-only.
+
 ## IMPORTANT — Project Identity
 
 **This is a Claude Code plugin project.**
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 77 specialized agents, 76 skills, 10 hooks,
+When installed as a plugin, it provides 77 specialized agents, 76 skills, 11 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -24,19 +31,19 @@ Traditional sequential design is error-prone. This plugin addresses these challe
 
 ### Plugin Runtime vs. Development Context (CRITICAL)
 
-**이 프로젝트를 수정할 때, "plugin 개발"과 "plugin 동작"은 완전히 다른 컨텍스트입니다.**
+**"Plugin development" and "plugin runtime" are completely different contexts.**
 
-| | Plugin 개발 (이 프로젝트에서 작업) | Plugin 동작 (사용자 프로젝트에서 실행) |
+| | Plugin Development (working in this repo) | Plugin Runtime (executing in user projects) |
 |---|---|---|
-| **CWD** | `rtl-agent-team/` (plugin 소스) | 사용자의 RTL 프로젝트 |
-| **이 CLAUDE.md** | ✅ 로드됨 (프로젝트 규칙) | ❌ 로드 안 됨 (plugin CLAUDE.md는 사용자에게 전달 불가) |
-| **agents/*.md** | 소스 파일로 읽기 가능 | Agent 스폰 시 프롬프트로 주입 |
-| **skills/*/SKILL.md** | 소스 파일로 읽기 가능 | Skill 호출 시 프롬프트로 주입 |
-| **hooks/*.sh** | 소스 파일로 읽기 가능 | 이벤트 발생 시 자동 실행 |
+| **CWD** | `rtl-agent-team/` (plugin source) | User's RTL project |
+| **This CLAUDE.md** | Loaded (project rules) | NOT loaded (plugin CLAUDE.md cannot be delivered to users) |
+| **agents/*.md** | Readable as source files | Injected as prompts when agents spawn |
+| **skills/*/SKILL.md** | Readable as source files | Injected as prompts when skills are invoked |
+| **hooks/*.sh** | Readable as source files | Auto-executed on events |
 
-**따라서**: Agent/Skill/Hook을 작성할 때는 반드시 **사용자 프로젝트 CWD에서 실행되는 상황**을 가정해야 합니다.
-이 CLAUDE.md의 규칙이나 다른 plugin 내부 파일을 `Read()`로 참조하는 코드를 agent/skill에 넣으면 안 됩니다 —
-사용자 프로젝트에는 그 파일이 존재하지 않습니다.
+**Therefore**: When writing Agent/Skill/Hook content, always assume **execution in the user's project CWD**.
+Do NOT put `Read()` calls referencing this CLAUDE.md or other plugin-internal files in agent/skill prompts —
+those files do not exist in the user's project.
 
 ### Plugin Architecture: Dynamic Prompt Injection
 
@@ -76,19 +83,19 @@ Policy Skill (knowledge/rules reference)
 ```
 
 **Why this layering matters:**
-- **Agent는 사용자가 직접 invoke할 수 없다** — `/agent-name`은 불가, 반드시 Action Skill이 `Task()`로 스폰
-- **Action Skill이 진입점** — 사용자 → Agent를 연결하는 유일한 인터페이스 (phase 전제조건 검증)
-- **Agent → Policy Skill 방향이 지식 흐름** — Agent가 Policy를 참조하지, Policy가 Agent를 제어하지 않음
-- **Hook이 setup 체크** — `rtl-skill-activation.sh`가 setup 전제조건을 검증, Skill에서는 phase 전제조건만 검증
+- **Agents cannot be directly invoked by users** — `/agent-name` is not possible; Action Skills must spawn them via `Task()`
+- **Action Skill is the entry point** — the only interface connecting users to agents (validates phase prerequisites)
+- **Knowledge flows Agent → Policy Skill** — agents reference policies, not the other way around
+- **Hooks check setup** — `rtl-skill-activation.sh` validates setup prerequisites; skills validate only phase prerequisites
 
 | Component | Location | Role | User-invocable |
 |-----------|----------|------|----------------|
-| **Action Skill** | `skills/*/SKILL.md` | 사용자 진입점 + phase 전제조건 게이트 | Yes (`/plugin:name`) |
-| **Orchestrator Agent** | `agents/*-orchestrator.md` | 자율적 판단/실행, 서브에이전트 스폰 | No (Task로만 스폰) |
-| **Specialist Agent** | `agents/*.md` | 단일 전문 작업 수행 | No (Task로만 스폰) |
-| **Policy Skill** | `skills/*-policy/SKILL.md` | 규칙/기준 제공 (Agent가 `skills:` 로 참조) | No |
+| **Action Skill** | `skills/*/SKILL.md` | User entry point + phase prerequisite gate | Yes (`/plugin:name`) |
+| **Orchestrator Agent** | `agents/*-orchestrator.md` | Autonomous decision/execution, spawns sub-agents | No (Task-spawned only) |
+| **Specialist Agent** | `agents/*.md` | Single specialized task execution | No (Task-spawned only) |
+| **Policy Skill** | `skills/*-policy/SKILL.md` | Rules/criteria provider (referenced by agents via `skills:`) | No |
 
-**방어 레이어**: Hook(setup 체크) → Skill(phase 전제조건) → Agent Step 0(setup+phase, Task()직접 스폰 대비)
+**Defense layers**: Hook(setup check) → Skill(phase prerequisites) → Agent Step 0(setup+phase, guards against direct Task() spawn)
 
 ### Plugin Development Best Practices
 
@@ -130,6 +137,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
 │   ├── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
+│   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest (experimental)
 │   └── rtl-team-progress.sh            #   PostToolUse:TaskUpdate: team progress tracking
 ├── domain-packages/video-codec/         # H.264/H.265 domain knowledge
 ├── docker/Dockerfile                    # EDA environment container
@@ -216,6 +224,7 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
+| `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns (experimental) |
 | `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
@@ -240,6 +249,7 @@ using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution.
 | `skills/rtl-p4-implement-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p4-implement-team` |
 | `skills/rtl-p5-verify-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p5-verify-team` |
 | `agents/lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
+| `agents/lib/team-worker-protocol.md` | Worker communication and coordination protocol |
 | `agents/lib/team-fallback.md` | Graceful degradation patterns |
 
 **Team-awareness**: Stop hooks check `.rtl-agent-team/state/team-config.json` — workers bypass

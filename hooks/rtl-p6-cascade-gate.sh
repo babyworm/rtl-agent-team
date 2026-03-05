@@ -42,4 +42,4 @@ if [ -f "$CASCADE_DONE" ]; then
 fi
 
 # Phase 6 stale and cascade not yet confirmed — BLOCK exit
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[Phase 6 Cascade Gate BLOCKED] Phase 6 review 문서가 존재하는데 RTL 파일이 수정되었습니다. 다음을 수행해야 합니다: (1) lint 재실행 (verilator --lint-only -Wall), (2) code-review.md 갱신, (3) design-note.md 갱신. 완료 시: touch .rtl-agent-team/state/phase6-cascade-done"}}'
+printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified. You must: (1) re-run lint (verilator --lint-only -Wall), (2) update code-review.md, (3) update design-note.md. When done: touch .rtl-agent-team/state/phase6-cascade-done"}}'

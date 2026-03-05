@@ -173,31 +173,31 @@ Read(".rtl-agent-team/scratch/rd-eval/bd-metrics.json")
 <Examples>
 **Example 1: Algorithm comparison during DSE**
 ```
-User: "H.264 인트라 예측 알고리즘 후보 3개의 실제 RD 성능을 비교해줘"
+User: "Compare RD performance of 3 H.264 intra prediction algorithm candidates"
 → Invoke /rtl-agent-team:codec-rd-eval
-→ Step 1: refc/ 존재 확인, test-config.hjson 생성 (candidates[] 모드)
-→ Step 2: SAD, Hadamard, SATD+RDOQ 인코더 3개 빌드
-→ Step 3: BasketballDrill, BQTerrace, RaceHorses × QP{22,27,32,37} 시뮬레이션
-→ Step 4: SAD(anchor) 대비 Hadamard BD-rate=-3.2%, SATD+RDOQ BD-rate=-5.1%
-→ Step 5: docs/phase-1-research/rd-eval-report.md 생성 (N-candidate matrix 포함)
-→ "SATD+RDOQ가 SAD 대비 BD-rate -5.1% 최대 개선. Hadamard는 -3.2%."
+→ Step 1: Verify refc/ exists, generate test-config.hjson (candidates[] mode)
+→ Step 2: Build 3 encoders: SAD, Hadamard, SATD+RDOQ
+→ Step 3: Simulate BasketballDrill, BQTerrace, RaceHorses × QP{22,27,32,37}
+→ Step 4: vs SAD(anchor): Hadamard BD-rate=-3.2%, SATD+RDOQ BD-rate=-5.1%
+→ Step 5: Generate docs/phase-1-research/rd-eval-report.md (with N-candidate matrix)
+→ "SATD+RDOQ achieves best BD-rate -5.1% over SAD. Hadamard gives -3.2%."
 ```
 
 **Example 2: Fixed-point precision evaluation with SSIM**
 ```
-User: "12비트 vs 16비트 내부 경로의 품질 차이를 SSIM 포함해서 측정해줘"
-→ quality_metrics: ["psnr", "ssim"] 설정
+User: "Measure quality difference between 12-bit vs 16-bit internal paths including SSIM"
+→ quality_metrics: ["psnr", "ssim"] configured
 → anchor: 16-bit internal path encoder
 → test: 12-bit internal path encoder
 → BD-PSNR = -0.02 dB, BD-rate = +0.5%, SSIM delta = -0.0001
-→ "12비트 경로는 16비트 대비 BD-rate +0.5%, SSIM 차이 무시 가능 (-0.0001). 게이트 절감 효과 고려 시 12비트 채택 권장."
+→ "12-bit path shows BD-rate +0.5% vs 16-bit, negligible SSIM difference (-0.0001). Recommend 12-bit considering gate count savings."
 ```
 
 **Example 3: No encoder source available**
 ```
-User: "BD-rate 비교 해줘"
-→ Step 1: refc/*.c 미존재
-→ "ref C model 인코더 소스가 없습니다. 먼저 /rtl-agent-team:ref-model로 레퍼런스 모델을 생성하세요."
+User: "Run BD-rate comparison"
+→ Step 1: refc/*.c not found
+→ "No ref C model encoder source found. Run /rtl-agent-team:ref-model first to generate the reference model."
 ```
 </Examples>
 

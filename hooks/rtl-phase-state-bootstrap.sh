@@ -5,6 +5,7 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/spawn-context-util.sh"
 
 jsonu_detect_parser
 
@@ -51,7 +52,22 @@ esac
 
 SETUP_HINT=""
 if [ "$JSONU_PARSER_MODE" = "sed" ]; then
-  SETUP_HINT="[ENV WARNING] jq/python JSON parser가 없어 fallback(sed) 모드로 동작 중입니다. 안정성을 위해 /rtl-agent-team:rtl-setup 실행 후 jq 또는 python3 환경을 준비하세요."
+  SETUP_HINT="[ENV WARNING] No jq/python JSON parser available — running in fallback (sed) mode. For stability, run /rtl-agent-team:rtl-setup and ensure jq or python3 is available."
+fi
+
+# Write spawn context manifest for agent context handoff.
+SCTX_MSG=""
+sctx_write_manifest "$CWD" "$SHORT_NAME"
+SCTX_RC=$?
+if [ "$SCTX_RC" -eq 0 ]; then
+  SCTX_MSG=$(sctx_summary "$CWD")
+fi
+if [ -n "$SCTX_MSG" ]; then
+  if [ -n "$SETUP_HINT" ]; then
+    SETUP_HINT="$SETUP_HINT $SCTX_MSG"
+  else
+    SETUP_HINT="$SCTX_MSG"
+  fi
 fi
 
 # Skip bootstrap if project setup marker is absent.
@@ -73,7 +89,7 @@ case "$SHORT_NAME" in
   rtl-p5b-silicon-validation)
     P5A_STATE="$CWD/.rtl-agent-team/state/p5a-state.json"
     if [ ! -f "$P5A_STATE" ]; then
-      MSG="[P5B Gate BLOCKED] P5A functional closure 상태 파일(.rtl-agent-team/state/p5a-state.json)이 없습니다. 먼저 /rtl-agent-team:rtl-p5a-functional-closure 를 실행하세요."
+      MSG="[P5B Gate BLOCKED] P5A functional closure state file (.rtl-agent-team/state/p5a-state.json) not found. Run /rtl-agent-team:rtl-p5a-functional-closure first."
       if [ -n "$SETUP_HINT" ]; then
         MSG="$MSG $SETUP_HINT"
       fi
@@ -83,7 +99,7 @@ case "$SHORT_NAME" in
     P5A_VERDICT=$(jsonu_get_file_path_string "$P5A_STATE" "gates.p5a_exit.verdict")
     if [ "$P5A_VERDICT" != "pass" ]; then
       [ -z "$P5A_VERDICT" ] && P5A_VERDICT="unknown"
-      MSG="[P5B Gate BLOCKED] P5A handoff 불충분: gates.p5a_exit.verdict=$P5A_VERDICT. P5A를 PASS 상태로 완료한 뒤 P5B를 실행하세요."
+      MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict=$P5A_VERDICT. Complete P5A with PASS verdict before running P5B."
       if [ -n "$SETUP_HINT" ]; then
         MSG="$MSG $SETUP_HINT"
       fi
@@ -111,7 +127,7 @@ case "$SHORT_NAME" in
       done < "$TRACK_FILE"
 
       if [ -n "$LATEST_RTL_MTIME" ] && [ "$LATEST_RTL_MTIME" -gt "$P5A_MTIME" ]; then
-        MSG="[P5B Gate BLOCKED] P5A PASS 이후 RTL 변경이 감지되었습니다(stale functional closure). /rtl-agent-team:rtl-p5a-functional-closure 를 재실행해 functional closure를 갱신하세요."
+        MSG="[P5B Gate BLOCKED] RTL changes detected after P5A PASS (stale functional closure). Re-run /rtl-agent-team:rtl-p5a-functional-closure to refresh functional closure."
         if [ -n "$SETUP_HINT" ]; then
           MSG="$MSG $SETUP_HINT"
         fi

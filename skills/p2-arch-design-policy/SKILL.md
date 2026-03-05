@@ -19,10 +19,13 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 ## Architecture Review Criteria (3-Round Protocol)
 
 3-round mandatory, coordinated by rtl-architect:
-- **3 parallel reviewers each round**:
+- **3 mandatory parallel reviewers each round**:
   (a) rtl-architect: spec compliance (Feature Coverage Checklist) + structural review
   (b) vcodec-architecture-expert: memory access patterns, performance analysis
   (c) ref-model-dev: architecture ↔ C model consistency (block mapping, data flow, interfaces)
+- **+1 conditional reviewer**:
+  (d) ref-model-reviewer: independent C model quality gate (algorithm fidelity, numerical precision,
+      undefined behavior/build warning risk) when ref model is newly created or substantially revised
 - Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for issues → targeted revision (rejections recorded in per-round artifact)
 - Round 3 mandatory even if converged: cross-block interface audit + memory conflict analysis
 - After 3 rounds if not converged → escalate to user via AskUserQuestion
@@ -57,6 +60,7 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 - [ ] Memory access patterns reviewed for all large blocks
 - [ ] Architecture ↔ ref model consistency verified
 - [ ] Ref model code reviewed for quality and bitexact correctness
+- [ ] reviews/phase-2-architecture/ref-model-review.md saved when ref model changed
 - [ ] bandwidth_report.json reviewed, external memory bandwidth validated
 - [ ] Internal vs external memory classified per block
 - [ ] C model executed and verified — architecture produces correct results

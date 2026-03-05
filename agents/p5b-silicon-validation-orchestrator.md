@@ -38,6 +38,10 @@ State contract:
 - Use `constraint-writer` to generate/update constraints.
 - Run synthesis via `eda-runner` and `synthesis-reporter` on block/top scope.
 - Update `scopes.block.constraints/synthesis` and `scopes.top.constraints/synthesis`.
+- If synthesis outputs netlist/ECO deltas, invoke `equivalence-checker`:
+  - RTL-vs-netlist for signoff synthesis outputs
+  - RTL-vs-RTL for behavior-preserving ECO/refactor deltas
+- Persist equivalence verdict/evidence path in state under `scopes.*.equivalence`.
 
 ### Step 2: CDC/timing signoff posture
 - Run `cdc-checker` at full integration scope.
@@ -53,6 +57,7 @@ State contract:
 PASS when:
 - constraints/synthesis/timing checklist pass
 - top precision functional checks pass
+- required equivalence checks (if triggered) pass with no unresolved non-equivalent points
 
 FAIL when any signoff-critical risk remains unresolved.
 - Persist terminal verdict in `.rtl-agent-team/state/p5b-state.json`.

@@ -18,19 +18,22 @@ HW evaluation criteria, naming conventions, and checklists. Reference it for pas
 
 # Workflow
 
-## Step 0: Setup Prerequisite Check (MANDATORY)
+## Step 0: Context Bootstrap (MANDATORY)
 
+```
+Read(".rtl-agent-team/state/spawn-context.json")
+```
+
+**If file found and valid** — use manifest data:
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- Otherwise proceed with context loaded (phase, staleness, team info available)
+
+**If file NOT found** — fallback to legacy check:
 ```
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
-
-**If file NOT found** — project has not been initialized:
-```
-Skill(skill="rtl-agent-team:rtl-setup")
-```
-Wait for rtl-setup to complete. Do NOT proceed to Step 1 until setup reports "Ready to start: Yes".
-
-**If file found** — setup already done, proceed to Step 1.
+If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
 
 ## Step 1: Read P1 Artifacts + Domain Knowledge
 
@@ -74,9 +77,19 @@ Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate bandwidth_report.json.")
 ```
 
-## Step 4: Bandwidth Feasibility Check
+## Step 4: Ref Model Quality Gate + Bandwidth Feasibility Check
 
-After both complete: arch-designer revises draft using bandwidth_report.json.
+After Step 3 streams complete:
+```
+Task(subagent_type="rtl-agent-team:ref-model-reviewer",
+     prompt="Independent review of refc/ C model quality before oracle use.
+     Check algorithm fidelity to requirements/spec, fixed-point precision/bit-width behavior,
+     and C undefined behavior/build warning risks.
+     Save review to reviews/phase-2-architecture/ref-model-review.md with PASS/FAIL.")
+```
+
+- If ref-model-reviewer verdict is FAIL: route findings to ref-model-dev, re-run reviewer.
+- If PASS: arch-designer revises architecture using bandwidth_report.json.
 
 ## Step 5: 3-Round Iterative Review
 
@@ -91,6 +104,10 @@ Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
 Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Review Round 1: Architecture-to-model consistency (block mapping, data flow, interface widths).")
 
+# Conditional reviewer (invoke when model was significantly revised or reviewer flagged risk)
+Task(subagent_type="rtl-agent-team:ref-model-reviewer",
+     prompt="Review Round 1: C model oracle quality risk (numerical fidelity, UB/build warnings).")
+
 # Coordinator aggregates
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Aggregate Round 1 findings. Save to reviews/phase-2-architecture/architecture-review-r1.md.")
@@ -98,7 +115,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 # Tree exploration: spawn parallel agents per issue to evaluate resolution alternatives
 # Select best resolution per issue → arch-designer applies → ref-model-dev re-validates
 
-# Round 2: same 3 reviewers → save to architecture-review-r2.md
+# Round 2: same mandatory reviewers (+ conditional reviewer if risk remains) → save to architecture-review-r2.md
 # Round 3 (mandatory): cross-block interface audit, memory conflict analysis, ref model code review
 #   → save to architecture-review-r3.md
 # If not converged → escalate to user via AskUserQuestion

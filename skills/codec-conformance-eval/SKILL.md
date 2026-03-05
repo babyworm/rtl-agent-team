@@ -172,31 +172,31 @@ Read(".rtl-agent-team/scratch/conformance-eval/conformance-metrics.json")
 <Examples>
 **Example 1: H.264 Baseline decoder conformance**
 ```
-User: "H.264 Baseline 프로파일 디코더 conformance 테스트 해줘"
+User: "Run H.264 Baseline profile decoder conformance test"
 → Invoke /rtl-agent-team:codec-conformance-eval
-→ Step 1: refc/ 존재 확인, conformance-config.hjson 생성 (target: h264/Baseline)
-→ Step 2: 디코더 빌드
-→ Step 3: JVET + JCTVC conformance streams 중 Baseline 프로파일 필터링, 병렬 디코딩
-→ Step 4: 각 stream별 MD5 비교 → 42/45 PASS, 3 FAIL
-→ Step 5: docs/phase-1-research/conformance-eval-report.md 생성
-→ "45개 conformance stream 중 42개 PASS. 3개 실패: deblocking filter edge case. 디버깅 필요."
+→ Step 1: Verify refc/ exists, generate conformance-config.hjson (target: h264/Baseline)
+→ Step 2: Build decoder
+→ Step 3: Filter Baseline profile from JVET + JCTVC conformance streams, parallel decoding
+→ Step 4: Per-stream MD5 comparison → 42/45 PASS, 3 FAIL
+→ Step 5: Generate docs/phase-1-research/conformance-eval-report.md
+→ "42 of 45 conformance streams PASS. 3 failures: deblocking filter edge cases. Debugging required."
 ```
 
 **Example 2: Full HEVC conformance with SSIM**
 ```
-User: "H.265 Main 프로파일 conformance를 SSIM 포함해서 돌려줘"
-→ quality_metrics: ["psnr", "ssim"] 설정
-→ JVET + JCTVC + Allegro + Elecard conformance streams 실행
+User: "Run H.265 Main profile conformance with SSIM"
+→ quality_metrics: ["psnr", "ssim"] configured
+→ Execute JVET + JCTVC + Allegro + Elecard conformance streams
 → Mandatory (JVET+JCTVC): 128/128 PASS
 → Optional (3rd party): 45/48 PASS
-→ "Mandatory streams 전체 PASS. 3rd party 3개 실패 (optional). 전체 verdict: PASS."
+→ "All mandatory streams PASS. 3 third-party failures (optional). Overall verdict: PASS."
 ```
 
 **Example 3: No decoder source**
 ```
-User: "디코더 conformance 테스트 해줘"
-→ Step 1: refc/ 에 디코더 코드 미존재
-→ "ref C model 디코더 소스가 없습니다. /rtl-agent-team:ref-model로 레퍼런스 모델을 먼저 생성하세요."
+User: "Run decoder conformance test"
+→ Step 1: No decoder code found in refc/
+→ "No ref C model decoder source found. Run /rtl-agent-team:ref-model first to generate the reference model."
 ```
 </Examples>
 

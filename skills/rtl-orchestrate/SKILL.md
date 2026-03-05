@@ -303,6 +303,17 @@ reviews/phase-N/ → Quality Gate → next phase proceeds or fails
 - Enables resumability: any phase can restart by re-reading its input documents
 - Each phase generates `phase-N-summary.md` on completion for downstream context efficiency
 
+## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
+
+Use these cues to justify dynamic spawning of the four high-value specialists:
+
+| Agent | Primary Phases | Invoke When |
+|---|---|---|
+| `rtl-planner` | P3 (μArch), P3→P4 handoff | Task dependency is unclear, repeated rework loops appear, or critical-path ordering blocks convergence |
+| `clock-architect` | P3 (μArch), P4 (CDC fix loop), P5 (CDC/top signoff) | Multi-clock/generated-clock/PLL/MMCM/mux/gating strategy needs design review or CDC root cause points to clock architecture |
+| `ref-model-reviewer` | P2 (ref model build/review), P5 (oracle confidence audits) | C reference model is newly created/updated and must be validated for algorithm fidelity, numerical precision, and UB safety before oracle use |
+| `equivalence-checker` | P4 (refactor), review-refactor workflow, P5B (silicon validation) | Change is declared behavior-preserving, or synthesis/ECO/refactor introduces semantic drift risk requiring RTL-vs-RTL or RTL-vs-netlist proof |
+
 ---
 
 ## Phase 1 Proactive Requirement Clarification
@@ -546,6 +557,12 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
 - **Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix defects at the top, not the bottom.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
+
+## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
+- rtl-planner: P3 or P3→P4 handoff when dependency graph and critical path are unclear or rework loops do not converge.
+- clock-architect: P3/P4/P5 when multi-clock/generated-clock/PLL/gating/mux choices are risky or CDC root cause points to clock architecture.
+- ref-model-reviewer: P2 (and later oracle audits) when ref C model is newly built/updated and must be validated before use as golden oracle.
+- equivalence-checker: P4/refactor/P5B when behavior-preserving intent or synthesis/ECO changes require formal semantic equivalence proof.
 
 ## Coding Conventions (Core Overrides — .sv/.svh/.v/.vh)
 - Port prefix: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt

@@ -121,28 +121,28 @@ MAX_ITER=${MAX_ITER:-5}
 TWO_X_LIMIT=$((MAX_ITER * 2))
 case "$STAGE" in
   primary)
-    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary 전략 반복 중. 남은 조건: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary strategy iteration. Remaining criteria: ${PENDING}."
     ;;
   fallback)
-    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${TWO_X_LIMIT}] ${SKILL_NAME} fallback 전략 반복 중. 실패 영역 분해 + 에이전트 조합 전환을 적용하세요. 남은 조건: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${TWO_X_LIMIT}] ${SKILL_NAME} fallback strategy iteration. Apply failure area decomposition + agent combination switching. Remaining criteria: ${PENDING}."
     if [ -n "$DYNAMIC_PROMPT" ]; then
       STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
     fi
     ;;
   last_chance)
-    STAGE_MSG="[RTL Skill Completion Loop - last_chance] ${SKILL_NAME} 2x 반복 초과. 대안 전략 1회 자동 실행 단계입니다. 남은 조건: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - last_chance] ${SKILL_NAME} exceeded 2x iterations. One automatic alternative strategy attempt. Remaining criteria: ${PENDING}."
     if [ -n "$DYNAMIC_PROMPT" ]; then
       STAGE_MSG="${STAGE_MSG} Dynamic prompt: ${DYNAMIC_PROMPT}"
     fi
     ;;
   user_escalated)
-    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance 실패. 사용자 결정이 필요합니다. 남은 조건: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance failed. User decision required. Remaining criteria: ${PENDING}."
     if [ -n "$DYNAMIC_PROMPT" ]; then
       STAGE_MSG="${STAGE_MSG} Suggested context: ${DYNAMIC_PROMPT}"
     fi
     ;;
   *)
-    STAGE_MSG="[RTL Skill Completion Loop] ${SKILL_NAME} 진행 중. 남은 조건: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop] ${SKILL_NAME} in progress. Remaining criteria: ${PENDING}."
     ;;
 esac
 

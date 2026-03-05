@@ -209,6 +209,8 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 - Synthesis estimation shows infeasible design → escalate to user with PPA report
 - Multiple modules fail same check type → systematic issue, escalate to rtl-architect
 - Stage 2 integration FAIL with >3 bugs → escalate to rtl-architect for interface review
+- CDC failures where root cause is uncertain clock relationship/clock gating/muxing →
+  escalate to clock-architect + cdc-reviewer before next fix loop
 - Tool not installed → eda-runner provides instructions, halt affected check
 
 ## Final Checklist

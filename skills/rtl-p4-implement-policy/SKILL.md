@@ -105,6 +105,10 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
 - Naming inconsistency flagged by rtl-critic: rename pass
 - Missing parameterization: add parameters for magic numbers
 - Refactoring is selective — not all modules need it
+- Refactor equivalence proof policy:
+  - Cosmetic/style-only cleanup: lint + smoke simulation minimum
+  - Any change touching combinational/sequential logic, reset, clock enable, or constraints intent:
+    invoke equivalence-checker (RTL-vs-RTL) before Wave 10 gate
 
 ## Phase 4 Sub-Skills Integration
 
@@ -120,6 +124,8 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
 - uarch spec is ambiguous for a module → pause that module, flag to user, continue others
 - Unit test fails after 3 debug→fix→re-sim iterations → escalate to waveform-analyzer + rtl-architect
 - CDC FAIL after 2 fix rounds → escalate to cdc-reviewer for synchronization strategy
+- CDC FAIL where root cause is clock source/clock gating/clock mux relationship ambiguity →
+  escalate to clock-architect (in addition to cdc-reviewer)
 - Protocol FAIL after 2 fix rounds → escalate to protocol-reviewer for interface redesign
 - Functional coverage review FAIL with >3 missing REQs → pause, flag to user (potential uarch spec gap)
 
@@ -158,7 +164,8 @@ ALL of the following must be true before Phase 5:
 
 **Refactoring:**
 - [ ] Flagged modules refactored (Wave 9)
-- [ ] Equivalence verified for all refactored modules (lint + smoke sim)
+- [ ] Equivalence verified for all refactored modules
+- [ ] For logic/clock/reset-impact refactors: equivalence-checker report exists (RTL-vs-RTL)
 
 **Integration + Gate:**
 - [ ] Basic integration smoke test PASS

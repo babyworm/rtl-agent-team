@@ -13,13 +13,15 @@
       "constraints": "pending",
       "synthesis": "pending",
       "timing": "pending",
-      "cdc": "pending"
+      "cdc": "pending",
+      "equivalence": "pending|n/a"
     },
     "top": {
       "constraints": "pending",
       "synthesis": "pending",
       "timing": "pending",
       "cdc": "pending",
+      "equivalence": "pending|n/a",
       "functional_precision_regression": "pending"
     }
   },

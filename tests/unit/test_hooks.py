@@ -1563,3 +1563,679 @@ class TestSedFallbackContract:
             env=self.FALLBACK_ENV,
         )
         assert result["continue"] is True
+
+
+class TestSpawnContextManifest:
+    """Tests for spawn context manifest written by rtl-phase-state-bootstrap.sh."""
+
+    HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
+
+    def _invoke(self, tmp_project, skill_name, env=None):
+        return run_hook(
+            self.HOOK,
+            {"skill": f"rtl-agent-team:{skill_name}", "cwd": str(tmp_project)},
+            env=env,
+        )
+
+    def _read_manifest(self, tmp_project):
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert mpath.exists(), "spawn-context.json not written"
+        return json.loads(mpath.read_text())
+
+    def _setup_project(self, tmp_project):
+        """Create setup marker so setup.completed=true."""
+        rules = tmp_project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "rtl-coding-conventions.md").touch()
+
+    # ── Core manifest tests ──────────────────────────────────────────────
+
+    def test_manifest_written_for_p4_skill(self, tmp_project):
+        """P4 skill invocation writes spawn-context.json."""
+        self._setup_project(tmp_project)
+        (tmp_project / "docs" / "phase-3-uarch").mkdir(parents=True)
+        (tmp_project / "docs" / "phase-3-uarch" / "module.md").touch()
+        (tmp_project / "docs" / "phase-1-research").mkdir(parents=True)
+        (tmp_project / "docs" / "phase-1-research" / "io_definition.json").write_text("{}")
+
+        result = self._invoke(tmp_project, "rtl-p4-implement")
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "[Spawn Context]" in ctx
+
+        m = self._read_manifest(tmp_project)
+        assert m["schema_version"] == "1.0"
+        assert m["pipeline"]["current_phase"] == 4
+        assert m["pipeline"]["skill_invoked"] == "rtl-p4-implement"
+
+    def test_manifest_schema_valid(self, tmp_project):
+        """Manifest contains all required top-level keys."""
+        self._setup_project(tmp_project)
+        self._invoke(tmp_project, "rtl-p5-verify")
+
+        m = self._read_manifest(tmp_project)
+        required_keys = {
+            "schema_version", "generated_at", "generated_by",
+            "setup", "pipeline", "upstream_artifacts",
+            "staleness", "team", "quality_gates",
+        }
+        assert required_keys.issubset(set(m.keys()))
+        assert "required" in m["upstream_artifacts"]
+        assert "optional" in m["upstream_artifacts"]
+        assert "all_required_present" in m["upstream_artifacts"]
+
+    def test_manifest_detects_missing_artifacts(self, tmp_project):
+        """Missing required upstream → all_required_present=false."""
+        self._setup_project(tmp_project)
+        # P6 requires reviews/phase-5-verify/final-compliance.md — not created
+        self._invoke(tmp_project, "rtl-p6-design-review")
+
+        m = self._read_manifest(tmp_project)
+        assert m["upstream_artifacts"]["all_required_present"] is False
+        missing = [a for a in m["upstream_artifacts"]["required"] if not a["exists"]]
+        assert len(missing) > 0
+        assert any("final-compliance" in a["path"] for a in missing)
+
+    def test_manifest_detects_present_artifacts(self, tmp_project):
+        """All required upstream present → all_required_present=true."""
+        self._setup_project(tmp_project)
+        p5dir = tmp_project / "reviews" / "phase-5-verify"
+        p5dir.mkdir(parents=True)
+        (p5dir / "final-compliance.md").write_text("verdict: PASS")
+
+        self._invoke(tmp_project, "rtl-p6-design-review")
+
+        m = self._read_manifest(tmp_project)
+        assert m["upstream_artifacts"]["all_required_present"] is True
+
+    def test_manifest_staleness_populated(self, tmp_project):
+        """RTL tracking file → staleness section reflects modified count."""
+        self._setup_project(tmp_project)
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\n")
+
+        self._invoke(tmp_project, "rtl-p4-implement")
+
+        m = self._read_manifest(tmp_project)
+        assert m["staleness"]["rtl_modified_count"] == 2
+        assert m["staleness"]["rtl_verify_done"] is False
+
+    def test_manifest_staleness_verify_done(self, tmp_project):
+        """rtl-verify-done marker → staleness.rtl_verify_done=true."""
+        self._setup_project(tmp_project)
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        (state_dir / "rtl-verify-done").touch()
+
+        self._invoke(tmp_project, "rtl-p4-implement")
+
+        m = self._read_manifest(tmp_project)
+        assert m["staleness"]["rtl_verify_done"] is True
+
+    def test_manifest_team_mode(self, tmp_project):
+        """team-config.json present → team section populated."""
+        self._setup_project(tmp_project)
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        team_cfg = {
+            "team_mode": True,
+            "leader_session_id": "sess-abc-123",
+            "created_at": "2026-03-05T12:00:00Z",
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(team_cfg))
+
+        self._invoke(tmp_project, "rtl-p4-implement")
+
+        m = self._read_manifest(tmp_project)
+        assert m["team"]["active"] is True
+        assert m["team"]["leader_session_id"] == "sess-abc-123"
+
+    def test_manifest_not_written_for_non_rtl_skill(self, tmp_project):
+        """Non-rtl-agent-team skill → no manifest, no crash."""
+        result = run_hook(
+            self.HOOK,
+            {"skill": "other-plugin:some-skill", "cwd": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert not mpath.exists()
+
+    def test_manifest_not_written_for_non_phase_skill(self, tmp_project):
+        """RTL skill without phase mapping (e.g. lint-check) → no manifest."""
+        self._setup_project(tmp_project)
+        self._invoke(tmp_project, "rtl-lint-check")
+
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert not mpath.exists()
+
+    def test_manifest_setup_false_when_marker_missing(self, tmp_project):
+        """No setup marker → setup.completed=false in manifest."""
+        self._invoke(tmp_project, "rtl-p4-implement")
+
+        m = self._read_manifest(tmp_project)
+        assert m["setup"]["completed"] is False
+
+    def test_manifest_quality_gates(self, tmp_project):
+        """Quality gates reflect phase artifact existence."""
+        self._setup_project(tmp_project)
+        # Create P1 + P2 artifacts
+        p1 = tmp_project / "docs" / "phase-1-research"
+        p1.mkdir(parents=True)
+        (p1 / "requirements.json").write_text("{}")
+        p2 = tmp_project / "docs" / "phase-2-architecture"
+        p2.mkdir(parents=True)
+        (p2 / "architecture.md").touch()
+
+        self._invoke(tmp_project, "rtl-p4-implement")
+
+        m = self._read_manifest(tmp_project)
+        assert m["quality_gates"]["p1_passed"] is True
+        assert m["quality_gates"]["p2_passed"] is True
+        assert m["quality_gates"]["p3_passed"] is False
+        assert m["quality_gates"]["p4_passed"] is False
+
+    def test_manifest_performance(self, tmp_project):
+        """Hook execution completes within 3s timeout."""
+        self._setup_project(tmp_project)
+        start = time.time()
+        self._invoke(tmp_project, "rtl-p4-implement")
+        elapsed = time.time() - start
+        assert elapsed < 3.0, f"Hook took {elapsed:.2f}s, exceeds 3s budget"
+
+    def test_manifest_overwrites_on_subsequent_invoke(self, tmp_project):
+        """Second skill invocation overwrites the manifest."""
+        self._setup_project(tmp_project)
+        self._invoke(tmp_project, "p1-spec-research")
+        m1 = self._read_manifest(tmp_project)
+        assert m1["pipeline"]["current_phase"] == 1
+
+        self._invoke(tmp_project, "rtl-p4-implement")
+        m2 = self._read_manifest(tmp_project)
+        assert m2["pipeline"]["current_phase"] == 4
+
+    def test_manifest_p5a_verdict_from_state(self, tmp_project):
+        """p5a_verdict populated from p5a-state.json."""
+        self._setup_project(tmp_project)
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        p5a_state = {
+            "gates": {"p5a_exit": {"verdict": "pass"}},
+        }
+        (state_dir / "p5a-state.json").write_text(json.dumps(p5a_state))
+
+        self._invoke(tmp_project, "rtl-p6-design-review")
+
+        m = self._read_manifest(tmp_project)
+        assert m["quality_gates"]["p5a_verdict"] == "pass"
+
+    def test_manifest_setup_refreshed_after_rtl_setup(self, tmp_project):
+        """rtl-setup skill refreshes existing manifest with setup.completed=true."""
+        # First: invoke P4 without setup marker → setup.completed=false
+        self._invoke(tmp_project, "rtl-p4-implement")
+        m1 = self._read_manifest(tmp_project)
+        assert m1["setup"]["completed"] is False
+        assert m1["pipeline"]["current_phase"] == 4
+
+        # Simulate rtl-setup creating the marker
+        self._setup_project(tmp_project)
+
+        # Invoke rtl-setup skill → should refresh existing manifest
+        result = self._invoke(tmp_project, "rtl-setup")
+        m2 = self._read_manifest(tmp_project)
+        assert m2["setup"]["completed"] is True
+        # Phase context preserved from original invocation
+        assert m2["pipeline"]["current_phase"] == 4
+        assert m2["pipeline"]["skill_invoked"] == "rtl-p4-implement"
+        # Summary message must show actual phase, not empty
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "Phase 4" in ctx
+        assert "setup=OK" in ctx
+
+
+class TestSpawnContextTaskCreate:
+    """Tests for rtl-spawn-context.sh (PreToolUse:TaskCreate hook)."""
+
+    HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
+
+    def _invoke(self, tmp_project, agent_type):
+        return run_hook(
+            self.HOOK,
+            {"subagent_type": f"rtl-agent-team:{agent_type}", "cwd": str(tmp_project)},
+        )
+
+    def _read_manifest(self, tmp_project):
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert mpath.exists(), "spawn-context.json not written"
+        return json.loads(mpath.read_text())
+
+    def test_taskcreate_overwrites_stale_manifest(self, tmp_project):
+        """TaskCreate for different agent overwrites existing manifest phase."""
+        (tmp_project / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
+        (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").touch()
+
+        # Write P1 manifest via Skill hook
+        run_hook(
+            HOOKS_DIR / "rtl-phase-state-bootstrap.sh",
+            {"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project)},
+        )
+        m1 = self._read_manifest(tmp_project)
+        assert m1["pipeline"]["current_phase"] == 1
+
+        # TaskCreate for P6 agent → must overwrite
+        self._invoke(tmp_project, "p6-review-orchestrator")
+        m2 = self._read_manifest(tmp_project)
+        assert m2["pipeline"]["current_phase"] == 6
+
+    def test_taskcreate_non_orchestrator_ignored(self, tmp_project):
+        """Non-orchestrator agent type → no manifest written."""
+        result = run_hook(
+            self.HOOK,
+            {"subagent_type": "rtl-agent-team:rtl-coder", "cwd": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert not mpath.exists()
+
+    # ── Robustness: malformed / unexpected input payloads ────────────
+
+    def test_taskcreate_missing_subagent_type(self, tmp_project):
+        """No subagent_type field → continue=true, no crash."""
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_taskcreate_empty_input(self, tmp_project):
+        """Empty JSON → continue=true, no crash."""
+        result = run_hook(self.HOOK, {})
+        assert result["continue"] is True
+
+    def test_taskcreate_non_rtl_agent(self, tmp_project):
+        """Non-rtl-agent-team subagent_type → continue=true, no manifest."""
+        result = run_hook(
+            self.HOOK,
+            {"subagent_type": "other-plugin:some-agent", "cwd": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert not mpath.exists()
+
+
+class TestSpawnContextInputRobustness:
+    """Robustness tests: hooks handle malformed/unexpected input gracefully."""
+
+    BOOTSTRAP_HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
+    SPAWN_HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
+
+    def test_bootstrap_empty_input(self, tmp_project):
+        """Empty JSON input → continue=true, no crash."""
+        result = run_hook(self.BOOTSTRAP_HOOK, {})
+        assert result["continue"] is True
+
+    def test_bootstrap_missing_skill_field(self, tmp_project):
+        """No skill field → continue=true, no crash."""
+        result = run_hook(self.BOOTSTRAP_HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+
+    def test_bootstrap_garbage_skill_name(self, tmp_project):
+        """Unrecognized skill prefix → continue=true, no manifest."""
+        result = run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "garbage:not-a-skill", "cwd": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert not mpath.exists()
+
+    def test_bootstrap_rtl_skill_unknown_name(self, tmp_project):
+        """rtl-agent-team prefix but unknown skill → continue=true, no manifest."""
+        result = run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "rtl-agent-team:nonexistent-skill", "cwd": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert not mpath.exists()
+
+    def test_spawn_hook_invalid_json(self):
+        """Completely invalid input → no crash (graceful fallback)."""
+        import subprocess
+        result = subprocess.run(
+            ["sh", str(self.SPAWN_HOOK)],
+            input="not-json-at-all",
+            capture_output=True, text=True, timeout=10,
+        )
+        # Should not crash — exit 0 with continue=true
+        assert result.returncode == 0
+        assert "continue" in result.stdout or result.stdout == ""
+
+
+class TestSpawnContextStructuralContracts:
+    """Structural contract tests for spawn context — refactoring safety net."""
+
+    BOOTSTRAP_HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
+    SPAWN_HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
+    AGENTS_DIR = HOOKS_DIR.parent / "agents"
+    SPAWN_CTX_UTIL = HOOKS_DIR / "lib" / "spawn-context-util.sh"
+    ARTIFACT_MAP = HOOKS_DIR / "lib" / "artifact-map.sh"
+
+    # ── Manifest schema stability ────────────────────────────────────
+
+    MANIFEST_REQUIRED_SCHEMA = {
+        "schema_version": str,
+        "generated_at": str,
+        "generated_by": str,
+        "setup": dict,
+        "pipeline": dict,
+        "upstream_artifacts": dict,
+        "staleness": dict,
+        "team": dict,
+        "quality_gates": dict,
+    }
+
+    def _setup_and_invoke(self, tmp_project, skill="rtl-p4-implement"):
+        rules = tmp_project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "rtl-coding-conventions.md").touch()
+        run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)},
+        )
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        return json.loads(mpath.read_text())
+
+    def test_manifest_schema_types(self, tmp_project):
+        """All top-level manifest keys have expected types."""
+        m = self._setup_and_invoke(tmp_project)
+        for key, expected_type in self.MANIFEST_REQUIRED_SCHEMA.items():
+            assert key in m, f"Missing key: {key}"
+            assert isinstance(m[key], expected_type), (
+                f"{key}: expected {expected_type.__name__}, got {type(m[key]).__name__}"
+            )
+
+    def test_manifest_setup_subkeys(self, tmp_project):
+        """setup section has completed (bool) and marker (str)."""
+        m = self._setup_and_invoke(tmp_project)
+        assert isinstance(m["setup"]["completed"], bool)
+        assert isinstance(m["setup"]["marker"], str)
+
+    def test_manifest_pipeline_subkeys(self, tmp_project):
+        """pipeline section has current_phase (int) and skill_invoked (str)."""
+        m = self._setup_and_invoke(tmp_project)
+        assert isinstance(m["pipeline"]["current_phase"], int)
+        assert isinstance(m["pipeline"]["skill_invoked"], str)
+
+    def test_manifest_artifacts_subkeys(self, tmp_project):
+        """upstream_artifacts has required (list), optional (list), all_required_present (bool)."""
+        m = self._setup_and_invoke(tmp_project)
+        ua = m["upstream_artifacts"]
+        assert isinstance(ua["required"], list)
+        assert isinstance(ua["optional"], list)
+        assert isinstance(ua["all_required_present"], bool)
+
+    def test_manifest_artifact_entry_schema(self, tmp_project):
+        """Each artifact entry has path, exists, mtime_epoch, role."""
+        m = self._setup_and_invoke(tmp_project)
+        for entry in m["upstream_artifacts"]["required"] + m["upstream_artifacts"]["optional"]:
+            assert "path" in entry and isinstance(entry["path"], str)
+            assert "exists" in entry and isinstance(entry["exists"], bool)
+            assert "mtime_epoch" in entry and isinstance(entry["mtime_epoch"], int)
+            assert "role" in entry and isinstance(entry["role"], str)
+
+    def test_manifest_staleness_subkeys(self, tmp_project):
+        """staleness has rtl_modified_count (int), rtl_verify_done (bool), phase6_stale (bool)."""
+        m = self._setup_and_invoke(tmp_project)
+        s = m["staleness"]
+        assert isinstance(s["rtl_modified_count"], int)
+        assert isinstance(s["rtl_verify_done"], bool)
+        assert isinstance(s["phase6_stale"], bool)
+
+    def test_manifest_team_subkeys(self, tmp_project):
+        """team has active (bool) and leader_session_id (str)."""
+        m = self._setup_and_invoke(tmp_project)
+        t = m["team"]
+        assert isinstance(t["active"], bool)
+        assert isinstance(t["leader_session_id"], str)
+
+    def test_manifest_quality_gates_subkeys(self, tmp_project):
+        """quality_gates has p1-p4 passed (bool) and p5a_verdict (str or null)."""
+        m = self._setup_and_invoke(tmp_project)
+        qg = m["quality_gates"]
+        for key in ("p1_passed", "p2_passed", "p3_passed", "p4_passed"):
+            assert isinstance(qg[key], bool), f"{key} should be bool"
+        assert qg["p5a_verdict"] is None or isinstance(qg["p5a_verdict"], str)
+
+    # ── Artifact map completeness ────────────────────────────────────
+
+    def test_artifact_map_all_phases_have_required(self):
+        """Every phase 1-6 has at least one required artifact defined."""
+        import subprocess
+        artmap = str(HOOKS_DIR / "lib" / "artifact-map.sh")
+        for phase in range(1, 7):
+            result = subprocess.run(
+                ["sh", "-c", f'. "{artmap}" && artmap_required {phase}'],
+                capture_output=True, text=True, timeout=5,
+            )
+            lines = [l for l in result.stdout.strip().splitlines() if l.strip()]
+            assert len(lines) >= 1, f"Phase {phase} has no required artifacts"
+
+    def test_artifact_map_entries_have_role(self):
+        """Every artifact entry has path|role format."""
+        import subprocess
+        artmap = str(HOOKS_DIR / "lib" / "artifact-map.sh")
+        for phase in range(1, 7):
+            for fn in ("artmap_required", "artmap_optional"):
+                result = subprocess.run(
+                    ["sh", "-c", f'. "{artmap}" && {fn} {phase}'],
+                    capture_output=True, text=True, timeout=5,
+                )
+                for line in result.stdout.strip().splitlines():
+                    if not line.strip():
+                        continue
+                    parts = line.split("|")
+                    assert len(parts) == 2, f"Bad format in {fn}({phase}): {line!r}"
+                    assert parts[0].strip(), f"Empty path in {fn}({phase})"
+                    assert parts[1].strip(), f"Empty role in {fn}({phase})"
+
+    # ── Orchestrator Step 0 consistency ──────────────────────────────
+
+    # Orchestrators that MUST have manifest-aware Step 0
+    MANIFEST_AWARE_ORCHESTRATORS = {
+        "autopilot-orchestrator.md",
+        "dse-orchestrator.md",
+        "p1-research-orchestrator.md",
+        "p1-research-team-orchestrator.md",
+        "p2-arch-orchestrator.md",
+        "p2-arch-team-orchestrator.md",
+        "p3-uarch-orchestrator.md",
+        "p3-uarch-team-orchestrator.md",
+        "p4-implement-orchestrator.md",
+        "p4-implement-team-orchestrator.md",
+        "p4s-bugfix-orchestrator.md",
+        "p4s-unit-test-orchestrator.md",
+        "p5-verify-orchestrator.md",
+        "p5-verify-team-orchestrator.md",
+        "p5s-func-verify-orchestrator.md",
+        "p5s-integration-orchestrator.md",
+        "p6-review-orchestrator.md",
+        "spec-to-uarch-orchestrator.md",
+        "spec-to-uarch-team-orchestrator.md",
+        "uarch-to-verify-orchestrator.md",
+    }
+
+    def test_all_manifest_aware_orchestrators_have_new_step0(self):
+        """Every manifest-aware orchestrator contains spawn-context.json read."""
+        for fname in self.MANIFEST_AWARE_ORCHESTRATORS:
+            fpath = self.AGENTS_DIR / fname
+            assert fpath.exists(), f"Missing orchestrator: {fname}"
+            content = fpath.read_text()
+            assert "spawn-context.json" in content, (
+                f"{fname} missing manifest-aware Step 0"
+            )
+
+    def test_all_manifest_aware_orchestrators_have_fallback(self):
+        """Every manifest-aware orchestrator has Glob fallback for backward compat."""
+        for fname in self.MANIFEST_AWARE_ORCHESTRATORS:
+            content = (self.AGENTS_DIR / fname).read_text()
+            assert "rtl-coding-conventions.md" in content, (
+                f"{fname} missing Glob fallback"
+            )
+
+    # ── Skill-to-phase mapping coverage ──────────────────────────────
+
+    EXPECTED_SKILL_PHASES = {
+        "p1-spec-research": 1,
+        "rtl-p1-research-team": 1,
+        "p2-arch-design": 2,
+        "rtl-p2-arch-team": 2,
+        "rtl-p3-uarch-design": 3,
+        "rtl-p3-uarch-team": 3,
+        "rtl-p4-implement": 4,
+        "rtl-p4-implement-team": 4,
+        "rtl-p4s-bugfix": 4,
+        "rtl-p4s-unit-test": 4,
+        "rtl-p4s-refactor": 4,
+        "rtl-p5-verify": 5,
+        "rtl-p5-verify-team": 5,
+        "rtl-p5s-func-verify": 5,
+        "rtl-p5s-integration-test": 5,
+        "rtl-p5s-sva-check": 5,
+        "rtl-p5s-cdc-verify": 5,
+        "rtl-p5s-protocol-verify": 5,
+        "rtl-p5s-perf-verify": 5,
+        "rtl-p5s-coverage-analyze": 5,
+        "rtl-p6-design-review": 6,
+        "rtl-autopilot": 1,
+        "rtl-spec-to-uarch": 1,
+        "rtl-spec-to-uarch-team": 1,
+        "rtl-dse": 1,
+        "rtl-uarch-to-verify": 4,
+    }
+
+    def test_skill_to_phase_mapping_complete(self):
+        """All expected skills map to correct phases via sctx_skill_to_phase."""
+        import subprocess
+        json_util = str(HOOKS_DIR / "lib" / "json-util.sh")
+        spawn_util = str(HOOKS_DIR / "lib" / "spawn-context-util.sh")
+        hooks_dir = str(HOOKS_DIR)
+        for skill, expected_phase in self.EXPECTED_SKILL_PHASES.items():
+            result = subprocess.run(
+                ["sh", "-c",
+                 f'SCRIPT_DIR="{hooks_dir}" . "{json_util}" && '
+                 f'jsonu_detect_parser && '
+                 f'. "{spawn_util}" && '
+                 f'sctx_skill_to_phase "{skill}"'],
+                capture_output=True, text=True, timeout=5,
+            )
+            actual = result.stdout.strip()
+            assert actual == str(expected_phase), (
+                f"sctx_skill_to_phase({skill!r}) = {actual!r}, expected {expected_phase}"
+            )
+
+    # ── Agent-to-skill mapping in TaskCreate hook ────────────────────
+
+    EXPECTED_AGENT_MAPPINGS = {
+        # Non-team orchestrators
+        "p1-research-orchestrator": "p1-spec-research",
+        "p2-arch-orchestrator": "p2-arch-design",
+        "p3-uarch-orchestrator": "rtl-p3-uarch-design",
+        "p4-implement-orchestrator": "rtl-p4-implement",
+        "p4s-bugfix-orchestrator": "rtl-p4s-bugfix",
+        "p4s-unit-test-orchestrator": "rtl-p4s-unit-test",
+        "p5-verify-orchestrator": "rtl-p5-verify",
+        "p5s-func-verify-orchestrator": "rtl-p5s-func-verify",
+        "p5s-integration-orchestrator": "rtl-p5s-integration-test",
+        "p6-review-orchestrator": "rtl-p6-design-review",
+        "autopilot-orchestrator": "rtl-autopilot",
+        "spec-to-uarch-orchestrator": "rtl-spec-to-uarch",
+        "uarch-to-verify-orchestrator": "rtl-uarch-to-verify",
+        "dse-orchestrator": "rtl-dse",
+        # Team orchestrators → team skills (1:1)
+        "p1-research-team-orchestrator": "rtl-p1-research-team",
+        "p2-arch-team-orchestrator": "rtl-p2-arch-team",
+        "p3-uarch-team-orchestrator": "rtl-p3-uarch-team",
+        "p4-implement-team-orchestrator": "rtl-p4-implement-team",
+        "p5-verify-team-orchestrator": "rtl-p5-verify-team",
+        "spec-to-uarch-team-orchestrator": "rtl-spec-to-uarch-team",
+    }
+
+    def test_taskcreate_agent_mapping_complete(self, tmp_project):
+        """All expected orchestrator agents produce correct phase via TaskCreate hook."""
+        rules = tmp_project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "rtl-coding-conventions.md").touch()
+
+        for agent, expected_skill in self.EXPECTED_AGENT_MAPPINGS.items():
+            result = run_hook(
+                self.SPAWN_HOOK,
+                {"subagent_type": f"rtl-agent-team:{agent}",
+                 "cwd": str(tmp_project)},
+            )
+            assert result["continue"] is True
+            mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+            assert mpath.exists(), f"No manifest for agent {agent}"
+            m = json.loads(mpath.read_text())
+            assert m["pipeline"]["skill_invoked"] == expected_skill, (
+                f"Agent {agent}: expected skill {expected_skill}, "
+                f"got {m['pipeline']['skill_invoked']}"
+            )
+            # Clean up for next iteration
+            mpath.unlink()
+
+    # ── Manifest idempotency ─────────────────────────────────────────
+
+    def test_manifest_idempotent_structure(self, tmp_project):
+        """Same skill invoked twice → structurally identical (except timestamp)."""
+        rules = tmp_project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "rtl-coding-conventions.md").touch()
+
+        run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+        )
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        m1 = json.loads(mpath.read_text())
+
+        run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+        )
+        m2 = json.loads(mpath.read_text())
+
+        # Timestamps may differ, compare everything else
+        m1.pop("generated_at")
+        m2.pop("generated_at")
+        assert m1 == m2
+
+    # ── Full event chain simulation ──────────────────────────────────
+
+    def test_skill_then_taskcreate_chain(self, tmp_project):
+        """Skill invoke → manifest → TaskCreate different agent → manifest updated."""
+        rules = tmp_project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "rtl-coding-conventions.md").touch()
+
+        # Step 1: Skill invocation writes P1 manifest
+        run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project)},
+        )
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        m1 = json.loads(mpath.read_text())
+        assert m1["pipeline"]["current_phase"] == 1
+
+        # Step 2: TaskCreate for P4 orchestrator overwrites
+        run_hook(
+            self.SPAWN_HOOK,
+            {"subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+             "cwd": str(tmp_project)},
+        )
+        m2 = json.loads(mpath.read_text())
+        assert m2["pipeline"]["current_phase"] == 4
+        assert m2["setup"]["completed"] is True
+
+        # Step 3: rtl-setup refreshes with preserved context
+        run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "rtl-agent-team:rtl-setup", "cwd": str(tmp_project)},
+        )
+        m3 = json.loads(mpath.read_text())
+        assert m3["pipeline"]["current_phase"] == 4  # Preserved
+        assert m3["setup"]["completed"] is True

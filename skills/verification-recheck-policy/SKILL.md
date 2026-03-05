@@ -8,9 +8,9 @@ user-invocable: false
 
 ## Minimum Matrix
 - Style-only change: lint
-- Logic refactor: lint + functional smoke/regression
-- Interface-impact change: lint + cdc + functional regression
-- Constraint/synthesis-impact change: lint + cdc + functional + synthesis/timing rerun
+- Logic refactor (behavior-preserving intent): lint + functional smoke/regression + RTL-vs-RTL equivalence
+- Interface-impact change: lint + cdc + functional regression (+ equivalence when change is declared behavior-preserving)
+- Constraint/synthesis-impact change: lint + cdc + functional + synthesis/timing rerun + equivalence (RTL-vs-netlist or RTL-vs-RTL)
 
 ## Recommended Commands (open-source baseline)
 - Lint:
@@ -23,6 +23,10 @@ user-invocable: false
 - Synthesis/timing recheck:
   - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f --outdir syn/reports`
   - If STA wrapper exists: `syn/scripts/run_sta.sh --tool opensta --top <top> --outdir syn/reports`
+- Equivalence recheck:
+  - Delegate to equivalence-checker with context:
+    - RTL-vs-RTL after refactor/ECO (`reference=<pre-change>`, `implementation=<post-change>`)
+    - RTL-vs-netlist after synthesis-impact change (`reference=rtl`, `implementation=syn/netlist.v`)
 
 ## Pass/Fail Criteria
 - `lint`: zero errors
@@ -30,11 +34,13 @@ user-invocable: false
 - `functional`: all must-pass scenarios green
 - `regression`: all required seeds pass (or documented waiver)
 - `synthesis/timing`: run completes with no fatal tool error
+- `equivalence`: no unresolved non-equivalent points (counterexamples must be resolved or approved as intentional deltas)
 
 ## Escalation
 - Same category fails twice after fix attempts: escalate with replay script path
 - CDC or synthesis/timing failure after interface change: escalate to design owner
 - Missing replay artifacts: re-run command to generate reproducible evidence
+- Equivalence FAIL/UNKNOWN after behavior-preserving claim: escalate immediately (potential unintended semantic change)
 
 ## Output Format
 ```markdown

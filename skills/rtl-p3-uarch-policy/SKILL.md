@@ -43,6 +43,23 @@ Each module document MUST contain:
 - BFM outputs compared against C reference model (refc/)
 - If BFM fails: iterate uarch-designer ↔ bfm-dev (max 2 iterations before escalation)
 
+## Conditional Expert Delegation (Phase 3)
+
+- **Invoke rtl-planner** when execution risk is the blocker rather than local RTL details:
+  - Module/interface dependency chain is unclear for 5+ blocks
+  - BFM and μArch revisions bounce for 2+ cycles with no convergence
+  - Critical path or parallelization order is uncertain before Round 2 review
+- **Expected rtl-planner output**: explicit task dependency graph, critical path, and
+  parallel work groups that the orchestrator can apply to Step 3/5 sequencing.
+
+- **Invoke clock-architect** when clocking strategy is non-trivial:
+  - Multiple independent clock roots, generated clocks, PLL/MMCM, or clock muxing
+  - Hierarchical clock gating strategy is proposed (ICG depth/placement decisions)
+  - timing-advisor or cdc-checker repeatedly flags clock relationship feasibility risks
+- **Expected clock-architect output**: review report at
+  `reviews/phase-3-uarch/clock-architecture-review.md` and concrete fixes to
+  `docs/phase-3-uarch/clock-domain-map.md`.
+
 ## Signal Naming Conventions (MANDATORY — flow to RTL)
 
 - Inputs: `i_` prefix (NOT `_i` suffix)
@@ -71,6 +88,9 @@ Mandatory 3 rounds, coordinated by rtl-architect:
 - Round 3 mandatory: cross-module interface audit, clock domain map consistency,
   memory conflict analysis, model consistency matrix, BFM final pass, μArch code review
 - After 3 rounds if not converged → escalate to user via AskUserQuestion
+- Conditional reviewers:
+  - clock-architect: multi-clock/generated-clock/gating risk present
+  - rtl-planner: schedule/dependency risk dominates convergence delays
 
 ### Feature Preservation Checklist Format
 

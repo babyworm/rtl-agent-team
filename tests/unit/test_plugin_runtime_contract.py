@@ -104,12 +104,19 @@ class TestHookRuntimeContract:
 
     def test_pretooluse_skill_hooks_order(self, hooks):
         entries = hooks["hooks"]["PreToolUse"]
-        assert len(entries) == 1
+        assert len(entries) == 2
+        # Skill matcher: phase-state-bootstrap → skill-activation
         assert entries[0]["matcher"] == "Skill"
         commands = [h["command"] for h in entries[0]["hooks"]]
         assert commands == [
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-phase-state-bootstrap.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
+        ]
+        # TaskCreate matcher: spawn-context (experimental)
+        assert entries[1]["matcher"] == "TaskCreate"
+        tc_commands = [h["command"] for h in entries[1]["hooks"]]
+        assert tc_commands == [
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-spawn-context.sh"',
         ]
 
     def test_stop_order_matches_gate_contract(self, hooks):
