@@ -115,6 +115,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 ### Phase 1→2 (Research → Architecture)
 **Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
 **Quality Gate**:
+- 3-round chief review converged (or gaps escalated and user-approved)
 - spec-analyst self-reviews requirements.json for completeness and internal consistency
   - All functional requirements traceable to spec sections
   - No contradictions or ambiguities
@@ -122,7 +123,8 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 - arch-designer evaluates requirements for implementation feasibility
   - Every requirement realizable in RTL within reasonable area/timing
   - No missing constraints
-- **Verdict**: PASS if all requirements clear, consistent, and implementable
+- Per-round review artifacts: `reviews/phase-1-research/research-review-r1.md`, `r2.md`, `r3.md` (mandatory)
+- **Verdict**: PASS if 3-round review converged AND all requirements clear, consistent, and implementable
 
 **Summary Validation**: `docs/phase-1-research/phase-1-summary.md` must exist (format: max 1 page with tables for Key Decisions, Module Inventory, Interface Summary, Quality Gate Results, Open Items, Document References)
 
@@ -136,16 +138,16 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 - Architecture ↔ ref model consistency PASS: block mapping + data flow + interface alignment
 - Ref model code review: quality, bitexact correctness verified
 - Architecture Diagram: D2 block diagram saved
-- Per-round review artifacts: architecture-review-r1.md, r2.md, r3.md
+- Per-round review artifacts: `reviews/phase-2-architecture/architecture-review-r1.md`, `r2.md`, `r3.md` (mandatory)
 - Save: `reviews/phase-2-architecture/architecture-review.md`
-- **Verdict**: PASS if 100% feature coverage AND no structural defects AND iterative review converged
+- **Verdict**: PASS if 100% feature coverage AND no structural defects AND 3-round review converged
 
 **Phase 2 Iterative Review** (3-round mandatory, coordinated by rtl-architect):
 - Parallel reviewers each round:
   (a) rtl-architect: spec compliance (Feature Coverage Checklist) + structural review
   (b) vcodec-architecture-expert: memory access patterns, performance analysis
   (c) ref-model-dev: architecture ↔ C model consistency
-- Round 1-2: review → targeted feedback → revision (only experts with findings re-run)
+- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → targeted revision (only accepted findings applied; rejections recorded in per-round artifact)
 - Round 3 mandatory even if converged: cross-block interface audit + memory conflict analysis
 - After 3 rounds if not converged → escalate to user via AskUserQuestion
 
@@ -162,9 +164,9 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 - Memory access optimization PASS: SRAM banking, port conflicts, access scheduling reviewed
 - μArch ↔ ref model consistency PASS: behavior, data widths, fixed-point formats aligned
 - Pipeline Diagram: Mermaid pipeline diagram saved
-- Per-round review artifacts: uarch-review-r1.md, r2.md, r3.md
+- Per-round review artifacts: `reviews/phase-3-uarch/uarch-review-r1.md`, `r2.md`, `r3.md` (mandatory)
 - Save: `reviews/phase-3-uarch/uarch-review.md`
-- **Verdict**: PASS if 100% feature preservation AND timing paths reasonable AND converged
+- **Verdict**: PASS if 100% feature preservation AND timing paths reasonable AND 3-round review converged
 
 **Phase 3 Iterative Review** (3-round mandatory, coordinated by rtl-architect):
 - Parallel reviewers each round:
@@ -172,6 +174,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
   (b) timing-advisor: critical paths at target frequency, pipeline balance
   (c) vcodec-architecture-expert: algorithm/memory/interface optimization
   (d) ref-model-dev: model consistency (behavioral match, data widths, fixed-point)
+- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → targeted revision (only accepted findings applied; rejections recorded in per-round artifact)
 - Round 3 mandatory: model consistency matrix + cross-module interface audit
 - After 3 rounds if not converged → escalate to user
 

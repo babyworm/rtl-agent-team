@@ -65,10 +65,12 @@ Do NOT proceed to Phase 4.
 ### Phase 1→2 (Research → Architecture)
 **Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
 **Quality Gate**:
+- 3-round chief review converged (or gaps escalated and user-approved)
 - spec-analyst self-reviews requirements.json (completeness, consistency)
   - Save: `reviews/phase-1-research/research-review.md`
 - arch-designer evaluates implementation feasibility
-- **Verdict**: PASS if all requirements clear, consistent, and implementable
+- Per-round review artifacts: `reviews/phase-1-research/research-review-r1.md`, `r2.md`, `r3.md` (mandatory)
+- **Verdict**: PASS if 3-round review converged AND all requirements clear, consistent, and implementable
 
 **Summary Validation**: `docs/phase-1-research/phase-1-summary.md`
 
@@ -81,12 +83,13 @@ Do NOT proceed to Phase 4.
 - Memory access review PASS
 - Architecture ↔ ref model consistency PASS
 - Architecture Diagram saved
+- Per-round review artifacts: `reviews/phase-2-architecture/architecture-review-r1.md`, `r2.md`, `r3.md` (mandatory)
 - Save: `reviews/phase-2-architecture/architecture-review.md`
-- **Verdict**: PASS if 100% feature coverage AND no structural defects AND converged
+- **Verdict**: PASS if 100% feature coverage AND no structural defects AND 3-round review converged
 
 **Phase 2 Iterative Review** (3-round, coordinated by rtl-architect):
 - Parallel reviewers: rtl-architect + vcodec-architecture-expert + ref-model-dev
-- Round 1-2: review → feedback → revision (only experts with findings re-run)
+- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → targeted revision (only accepted findings applied; rejections recorded in per-round artifact)
 - Round 3 mandatory: cross-block interface audit + memory conflict analysis
 - After 3 rounds not converged → escalate to user
 
@@ -101,11 +104,13 @@ Do NOT proceed to Phase 4.
 - Block boundary alignment: 1:1 with architecture.md
 - μArch ↔ ref model consistency PASS
 - Pipeline Diagram saved
+- Per-round review artifacts: `reviews/phase-3-uarch/uarch-review-r1.md`, `r2.md`, `r3.md` (mandatory)
 - Save: `reviews/phase-3-uarch/uarch-review.md`
-- **Verdict**: PASS if 100% preservation AND timing reasonable AND converged
+- **Verdict**: PASS if 100% preservation AND timing reasonable AND 3-round review converged
 
 **Phase 3 Iterative Review** (3-round, coordinated by rtl-architect):
 - Parallel reviewers: rtl-architect + timing-advisor + vcodec-architecture-expert + ref-model-dev
+- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → targeted revision (only accepted findings applied; rejections recorded in per-round artifact)
 - Round 3 mandatory: model consistency matrix + cross-module interface audit
 - After 3 rounds not converged → escalate to user
 
@@ -137,12 +142,12 @@ Do NOT proceed to Phase 4.
 ## Final Checklist
 
 - [ ] Phase 1: requirements.json, io_definition.json, domain-analysis.md exist
-- [ ] Phase 1: research-review.md verdict=PASS, phase-1-summary.md generated
+- [ ] Phase 1: research-review.md verdict=PASS, per-round reviews (r1-r3) saved, phase-1-summary.md generated
 - [ ] Phase 2: architecture.md with proper naming, refc/*/*.c exist
-- [ ] Phase 2: architecture-review.md PASS, feature-coverage.md 100%
+- [ ] Phase 2: architecture-review.md PASS, per-round reviews (r1-r3) saved, feature-coverage.md 100%
 - [ ] Phase 2: phase-2-summary.md generated, ADRs recorded
 - [ ] Phase 3: docs/phase-3-uarch/*.md exist, bfm/ directory exists
-- [ ] Phase 3: uarch-review.md PASS, feature-preservation.md 100%
+- [ ] Phase 3: uarch-review.md PASS, per-round reviews (r1-r3) saved, feature-preservation.md 100%
 - [ ] Phase 3: phase-3-summary.md generated, ADRs recorded
 - [ ] Scratch directories cleaned
 - [ ] State file updated with all phases completed

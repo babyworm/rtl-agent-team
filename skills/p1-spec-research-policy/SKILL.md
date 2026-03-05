@@ -44,8 +44,11 @@ AskUserQuestion MUST cover these areas (skip items already provided by user):
 Mandatory 3 rounds, coordinated by vcodec-chief-standard-expert:
 - **Round 1**: Cross-block data flow completeness, dependencies, performance constraints,
   fixed-point constraints, cross-block issues, [AMBIGUITY]/[CONFLICT] status
-- **Round 2**: Convergence assessment. Even if converged, proceed to Round 3
+  Save: `reviews/phase-1-research/research-review-r1.md`
+- **Round 2**: Convergence assessment. Rebuttal: spec-analyst accepts/rejects each Round 1 finding with rationale. Even if converged, proceed to Round 3
+  Save: `reviews/phase-1-research/research-review-r2.md`
 - **Round 3**: Mandatory final quality pass. Remaining gaps → escalate via AskUserQuestion
+  Save: `reviews/phase-1-research/research-review-r3.md`
 
 Review criteria per round:
 1. Data flow: inputs/outputs defined at every block boundary
@@ -112,7 +115,8 @@ PASS | FAIL: [reason]
 - [ ] vcodec-chief-standard-expert declared Architecture-Ready (or gaps escalated)
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED)
 - [ ] Spec feature count vs requirements.json count documented
-- [ ] reviews/phase-1-research/research-review.md saved
+- [ ] reviews/phase-1-research/research-review.md saved (consolidated)
+- [ ] Per-round review artifacts saved: research-review-r1.md, r2.md, r3.md
 - [ ] docs/phase-1-research/solution-tree.md exists
 - [ ] docs/phase-1-research/candidate-comparison.md exists
 - [ ] docs/phase-1-research/selected-approach.md exists

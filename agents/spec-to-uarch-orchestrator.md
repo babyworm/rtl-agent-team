@@ -104,10 +104,9 @@ STOP if any missing.
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
-# Parallel: architecture design + reference model development
+# p2-arch-orchestrator handles both architecture design AND ref model internally (Step 3)
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
-Skill(skill="rtl-agent-team:ref-model")          # C golden model
 
 # Synthesizability pre-assessment (parallel with Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",
@@ -171,7 +170,7 @@ Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
 
 # Parallel Execution Patterns
 
-**Phase 2**: p2-arch-design ∥ ref-model (Skill calls run concurrently).
+**Phase 2**: p2-arch-orchestrator handles architecture design + ref model internally (parallel streams).
 rtl-critic pre-assessment parallel with p2-arch-design Round 1.
 
 **Phase 3**: p3-uarch-orchestrator handles μArch + BFM internally.

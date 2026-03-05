@@ -31,10 +31,11 @@ None — this is the full pipeline entry point. Setup is handled by the orchestr
 ## Execution
 
 ```python
-# Team mode: Phase 4 and 5 use native teams by default for parallel execution.
+# Team mode: All phases (P1-P5) use native teams by default for parallel execution.
 # Pass --no-team to disable team mode and use sequential Task() execution.
-# The autopilot-orchestrator checks .rtl-agent-team/state/team-config.json
-# to decide between team and legacy orchestrators for P4/P5.
+# The orchestrator stores execution_mode ("team"|"sequential") in the state file
+# and creates team-config.json for hook consumption. Phase branching uses state's
+# execution_mode as the single source of truth.
 
 Task(subagent_type="rtl-agent-team:autopilot-orchestrator",
      prompt="Execute full RTL autopilot pipeline. User input: $ARGUMENTS")
@@ -42,6 +43,5 @@ Task(subagent_type="rtl-agent-team:autopilot-orchestrator",
 
 Do not perform any work directly.
 The orchestrator agent manages all phases, agent spawning, and quality gates.
-For Phase 4 and 5, the orchestrator automatically uses native team mode
-(TeamCreate + TaskCreate + SendMessage) for parallel execution across modules.
-Pass `--no-team` in arguments to fall back to sequential Task() execution.
+All phases (P1-P5) automatically use native team mode (TeamCreate + TaskCreate + SendMessage)
+for parallel execution. Pass `--no-team` in arguments to fall back to sequential Task() execution.

@@ -68,9 +68,27 @@ Read(".rtl-agent-team/state/rtl-autopilot-state.json")
 5. Clear `interrupted_reason` and `partial_work_summary`
 
 **If no state file** — Fresh start:
+
+1. Parse user arguments for `--no-team` flag:
+```python
+# Default: team mode enabled (native teams for P1-P5 parallel execution)
+# --no-team flag: fall back to sequential Task() execution
+TEAM_MODE = "--no-team" not in user_arguments
+EXECUTION_MODE = "team" if TEAM_MODE else "sequential"
+```
+
+2. Create team-config.json (consumed by hooks for session-scoped file tracking):
+```
+Write(".rtl-agent-team/state/team-config.json",
+  { team_mode: TEAM_MODE })
+```
+
+3. Create state file with `execution_mode` as the single source of truth for phase branching:
 ```
 Write(".rtl-agent-team/state/rtl-autopilot-state.json",
-  { schema_version: "3.0", current_phase: 1, orchestration_control: { default_retry_limit: 2, active_gate_id: "p1-quality-gate", active_gate_retry_limit: 2, active_gate_primary_attempts: 0, active_gate_fallback_attempts: 0, active_gate_last_chance_attempts: 0, active_gate_strategy: "primary", needs_user_decision: false, dynamic_prompt_text: "" }, phases: { "1": { status: "pending" }, ... } })
+  { schema_version: "3.0", current_phase: 1, execution_mode: EXECUTION_MODE,
+    orchestration_control: { default_retry_limit: 2, active_gate_id: "p1-quality-gate", active_gate_retry_limit: 2, active_gate_primary_attempts: 0, active_gate_fallback_attempts: 0, active_gate_last_chance_attempts: 0, active_gate_strategy: "primary", needs_user_decision: false, dynamic_prompt_text: "" },
+    phases: { "1": { status: "pending" }, ... } })
 ```
 
 ### Gate Loop Control (MANDATORY)
@@ -95,22 +113,15 @@ For every active gate:
 
 ## Step 2: Phase 1 — Research
 
-### Team-Awareness Check
-
-```python
-# Check if team mode is active for Phase 1
-Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
-```
-
-Delegate Phase 1 to the dedicated orchestrator:
+Delegate Phase 1 based on `execution_mode` in state file:
 ```
 Bash("mkdir -p reviews/phase-1-research")
 
-# If team-config exists with team_mode=true and phase=p1:
+# If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
      prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, domain-analysis.md.")
 
-# Otherwise (default):
+# If execution_mode == "sequential":
 Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
      prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
 ```
@@ -139,19 +150,15 @@ STOP if any missing.
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 
-# Check for team mode
-Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
-
-# If team-config exists with team_mode=true and phase=p2:
+# Branch on execution_mode from state file
+# If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
      prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
 
-# Otherwise (default):
-# Parallel: architecture design + reference model development
+# If execution_mode == "sequential":
+# p2-arch-orchestrator handles both architecture design AND ref model internally (Step 3)
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Develop C golden reference model for Phase 2 in refc/. Functional model only, C11, no clock/reset.")
 
 # Synthesizability pre-assessment (parallel with p2-arch-design Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",
@@ -186,14 +193,12 @@ STOP if required file missing.
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 
-# Check for team mode
-Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
-
-# If team-config exists with team_mode=true and phase=p3:
+# Branch on execution_mode from state file
+# If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
      prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
 
-# Otherwise (default):
+# If execution_mode == "sequential":
 # μArch design (includes BFM development internally via bfm-dev agent)
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
@@ -225,21 +230,16 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
 STOP if required files missing.
 
 Delegate Phase 4 to the dedicated orchestrator which manages the 10-Wave pipeline.
-
-**Team Mode Check**: If `.rtl-agent-team/state/team-config.json` exists with `team_mode: true`
-and `phase: "p4"`, use the team orchestrator instead for native parallel execution:
+Branch on `execution_mode` from state file:
 
 ```
 Bash("mkdir -p reviews/phase-4-rtl")
 
-# Check for team mode
-Read(".rtl-agent-team/state/team-config.json")  # May not exist — that's OK
-
-# If team-config exists with team_mode=true and phase=p4:
+# If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p4-implement-team-orchestrator",
      prompt="Execute Phase 4 RTL implementation using native teams. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs.")
 
-# Otherwise (default):
+# If execution_mode == "sequential":
 Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
      prompt="Execute Phase 4 RTL implementation. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs. Implement all modules using the 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) with parallel Stream A (RTL coding) + Stream B (SVA/CDC/TB skeletons).")
 ```
@@ -274,16 +274,14 @@ STOP if required files missing.
 Bash("mkdir -p reviews/phase-5-verify")
 ```
 
-### Team-Awareness Check
+Branch on `execution_mode` from state file:
 
 ```python
-# Check if team mode is active for Phase 5
-Read(".rtl-agent-team/state/team-config.json")
-# If team-config exists with team_mode=true and phase=p5:
+# If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p5-verify-team-orchestrator",
      prompt="Execute Phase 5 verification using native teams. Context: Phase 4 artifacts complete. Read docs/phase-4-rtl/ for implementation summary and Stream B artifacts.")
 
-# Otherwise (default): use sub-phase approach below
+# If execution_mode == "sequential": use sub-phase approach below
 ```
 
 ### Sub-phase 5a: SVA + Formal (parallel with 5b/5c)
@@ -416,7 +414,7 @@ On FAIL: iterate review → fix cycle (max 2 rounds).
 
 # Parallel Execution Patterns
 
-**Phase 2**: p2-arch-orchestrator ∥ ref-model skill run concurrently.
+**Phase 2**: p2-arch-orchestrator handles architecture design + ref model internally (parallel streams).
 **Phase 3**: p3-uarch-orchestrator handles μArch + BFM internally.
 
 **Phase 4**: Delegated to p4-implement-orchestrator (10-Wave pipeline with Stream A ∥ Stream B).

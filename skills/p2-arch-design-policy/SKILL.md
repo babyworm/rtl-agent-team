@@ -23,7 +23,7 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
   (a) rtl-architect: spec compliance (Feature Coverage Checklist) + structural review
   (b) vcodec-architecture-expert: memory access patterns, performance analysis
   (c) ref-model-dev: architecture ↔ C model consistency (block mapping, data flow, interfaces)
-- Round 1-2: review → tree exploration for issues → targeted revision
+- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for issues → targeted revision (rejections recorded in per-round artifact)
 - Round 3 mandatory even if converged: cross-block interface audit + memory conflict analysis
 - After 3 rounds if not converged → escalate to user via AskUserQuestion
 

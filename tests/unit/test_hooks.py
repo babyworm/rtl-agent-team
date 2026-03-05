@@ -532,6 +532,23 @@ class TestRtlEditTrackerPhase6:
         stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
         assert not stale.exists()
 
+    def test_trackfile_recorded_despite_lock_timeout(self, tmp_project):
+        """Fail-closed: RTL file must be tracked even when TRACK_FILE lock acquisition fails."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        track_file = state_dir / "rtl-modified-files.txt"
+        # Pre-create lock dir with live PID to prevent stale reclaim
+        lock_dir = state_dir / "rtl-modified-files.txt.lock"
+        lock_dir.mkdir()
+        (lock_dir / "pid").write_text(str(os.getpid()))
+        stdin = {"cwd": str(tmp_project), "file_path": "rtl/alu/alu.sv"}
+        result = run_hook(self.HOOK, stdin, env={"FLOCK_TIMEOUT": "1"})
+        assert track_file.exists(), "Track file must be created even on lock timeout (fail-closed)"
+        assert "rtl/alu/alu.sv" in track_file.read_text()
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+
     def test_phase6_stale_created_despite_lock_timeout(self, tmp_project):
         """Fail-closed: stale marker must be created even when lock acquisition fails."""
         p6_dir = tmp_project / "reviews" / "phase-6-review"

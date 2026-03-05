@@ -35,11 +35,17 @@ case "$FILE_PATH" in
     fi
 
     # Add file if not already tracked (locked for concurrent access)
+    # Fail-closed: if lock fails, append without lock to prevent gate bypass
     if acquire_lock "$TRACK_FILE"; then
       if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
         printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
       fi
       release_lock "$TRACK_FILE"
+    else
+      # Fail-closed: record without lock rather than silently skip
+      if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
+        printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
+      fi
     fi
 
     # Count tracked files
