@@ -30,8 +30,8 @@ Phase 3 completion with review required:
 - `docs/phase-3-uarch/` must contain at least one μArch spec
 - `reviews/phase-3-uarch/uarch-review.md` must exist
 
-If prerequisites are missing, inform the user to complete Phase 1-3 first
-(via `/rtl-agent-team:rtl-spec-to-uarch`).
+If prerequisites are missing: WARNING — recommend completing Phase 1-3
+(via `/rtl-agent-team:rtl-spec-to-uarch`). Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

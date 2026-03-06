@@ -40,10 +40,14 @@ case "$SHORT_NAME" in
   p4-implement-orchestrator)      SKILL_NAME="rtl-p4-implement" ;;
   p4s-bugfix-orchestrator)        SKILL_NAME="rtl-p4s-bugfix" ;;
   p4s-unit-test-orchestrator)     SKILL_NAME="rtl-p4s-unit-test" ;;
+  p4-rtl-sanity-orchestrator)     SKILL_NAME="rtl-p4-rapid-impl" ;;
   p5-verify-orchestrator)         SKILL_NAME="rtl-p5-verify" ;;
+  p5a-functional-closure-orchestrator) SKILL_NAME="rtl-p5a-functional-closure" ;;
+  p5b-silicon-validation-orchestrator) SKILL_NAME="rtl-p5b-silicon-validation" ;;
   p5s-func-verify-orchestrator)   SKILL_NAME="rtl-p5s-func-verify" ;;
   p5s-integration-orchestrator)   SKILL_NAME="rtl-p5s-integration-test" ;;
   p6-review-orchestrator)         SKILL_NAME="rtl-p6-design-review" ;;
+  review-refactor-orchestrator)   SKILL_NAME="rtl-review-refactor" ;;
   autopilot-orchestrator)         SKILL_NAME="rtl-autopilot" ;;
   spec-to-uarch-orchestrator)     SKILL_NAME="rtl-spec-to-uarch" ;;
   uarch-to-verify-orchestrator)   SKILL_NAME="rtl-uarch-to-verify" ;;

@@ -30,7 +30,8 @@ bitexact agreement. Produces regression results and Requirement Traceability Mat
 RTL modules required:
 - `rtl/**/*.sv` files must exist
 
-If prerequisite is missing, inform the user to run `/rtl-agent-team:rtl-p4-implement` first.
+If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p4-implement`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

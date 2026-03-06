@@ -290,6 +290,15 @@ Higher abstraction levels require MORE iterative refinement.
 
 Time is NOT a constraint at upper levels. Spend extra review rounds perfecting architecture and μArch.
 
+### Asymmetric Phase Gate Design
+Exit gates are strict, entry gates are flexible.
+
+- **Exit gates** enforce artifact existence (e.g., Stream B files for P4→P5, requirements.json for P1→P2). Missing artifacts → FAIL with specific file list.
+- **Entry gates** scan upstream artifacts and emit WARNING for missing items, but proceed with adaptive scope reduction. Only `rtl-setup` is a hard entry block.
+- **Feedback loops** are capped (max 2 iterations for P5→P4), then escalate to user via AskUserQuestion.
+
+This ensures downstream phases never receive incomplete inputs, while allowing upstream-incomplete work to proceed with reduced scope.
+
 ### Document-as-Memory
 Design artifacts serve as persistent memory across phases and agents.
 
@@ -311,7 +320,7 @@ Use these cues to justify dynamic spawning of the four high-value specialists:
 |---|---|---|
 | `rtl-planner` | P3 (μArch), P3→P4 handoff | Task dependency is unclear, repeated rework loops appear, or critical-path ordering blocks convergence |
 | `clock-architect` | P3 (μArch), P4 (CDC fix loop), P5 (CDC/top signoff) | Multi-clock/generated-clock/PLL/MMCM/mux/gating strategy needs design review or CDC root cause points to clock architecture |
-| `ref-model-reviewer` | P2 (ref model build/review), P5 (oracle confidence audits) | C reference model is newly created/updated and must be validated for algorithm fidelity, numerical precision, and UB safety before oracle use |
+| `ref-model-reviewer` | P2 (ref model build/review) | C reference model is newly created/updated and must be validated for algorithm fidelity, numerical precision, and UB safety before oracle use. P5 oracle confidence is inherited from P2 validation — no separate P5 trigger unless ref model is modified during P5 |
 | `equivalence-checker` | P4 (refactor), review-refactor workflow, P5B (silicon validation) | Change is declared behavior-preserving, or synthesis/ECO/refactor introduces semantic drift risk requiring RTL-vs-RTL or RTL-vs-netlist proof |
 
 ---
@@ -423,11 +432,11 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 |------|-------|---------|
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and absolute rules |
 | `rtl-project-init-advisor.sh` | SessionStart | Advise rtl-setup if project not initialized |
-| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track RTL file modifications |
-| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop |
+| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track RTL file modifications |
+| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop + same-skill re-invocation counter reset |
 | `stop-gate.sh` | Stop | Autopilot escalation ladder enforcement + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate |
-| `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement |
+| `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
 
 Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → `rtl-skill-completion-gate` → `stop-gate`.
@@ -557,6 +566,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
 - **Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix defects at the top, not the bottom.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
+- **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
 
 ## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
 - rtl-planner: P3 or P3→P4 handoff when dependency graph and critical path are unclear or rework loops do not converge.

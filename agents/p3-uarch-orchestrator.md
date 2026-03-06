@@ -26,7 +26,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -34,6 +34,21 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 3. Missing artifacts produce WARNING, not BLOCK.
+
+```
+# Phase 3 upstream artifacts
+Glob("docs/phase-2-architecture/architecture.md")  # Architecture spec
+Glob("refc/**/*.c")                                # C reference model
+Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Step 1: Read Architecture Artifacts
 
@@ -98,7 +113,21 @@ Task(subagent_type="rtl-agent-team:bfm-dev",
 ## Step 4: BFM Validation Gate
 
 BFM must compile, simulate correctly, and produce per-block I/O logs before review.
-If BFM fails: iterate uarch-designer ↔ bfm-dev until consistent.
+
+**BFM I/O Log Existence Gate** (G4: mandatory before review):
+```
+Glob("bfm/logs/*_io.log")     # Per-block I/O log files
+Glob("docs/phase-3-uarch/*.md")  # Per-block uArch docs
+```
+Count blocks from uArch docs excluding known non-block files (clock-domain-map.md,
+protocol-assignments.md, phase-3-summary.md, etc.). Only per-module spec files count.
+Canonical block list source: architecture.md block diagram (when available, cross-check
+doc count against architecture block list for higher confidence).
+Per-block I/O log count must match the number of block spec files.
+If log count < block count: FAIL + "BFM I/O logs missing for blocks: {missing_list}. Per-block I/O logging for ALL blocks is required (per policy)."
+If no logs at all: FAIL + "BFM logs required for Phase 4 unit test generation. Re-run BFM with I/O logging enabled."
+
+If BFM fails: iterate uarch-designer ↔ bfm-dev (max 2 iterations before escalation to user via AskUserQuestion).
 
 ## Step 5: 3-Round Iterative Review (5 parallel reviewers)
 

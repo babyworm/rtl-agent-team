@@ -18,6 +18,63 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 # Extract file_path from tool input
 FILE_PATH=$(jsonu_get_input_string "$INPUT" "file_path")
 
+# B1: Bash command RTL detection
+# When invoked as PostToolUse:Bash, file_path is absent — scan command string instead
+if [ -z "$FILE_PATH" ]; then
+  COMMAND=$(jsonu_get_input_string "$INPUT" "command")
+  if [ -z "$COMMAND" ]; then
+    printf '{"continue":true}'
+    exit 0
+  fi
+  # Quick pass-through: no RTL extensions in command → minimal overhead
+  if ! printf '%s' "$COMMAND" | grep -qE '\.(sv|svh|v|vh)([^a-zA-Z0-9_]|$)'; then
+    printf '{"continue":true}'
+    exit 0
+  fi
+  # Extract RTL file paths from command
+  BASH_RTL_FILES=$(printf '%s' "$COMMAND" | grep -oE '[^ ;<>|"]+\.(sv|svh|v|vh)' 2>/dev/null | sort -u)
+  if [ -z "$BASH_RTL_FILES" ]; then
+    printf '{"continue":true}'
+    exit 0
+  fi
+  STATE_DIR="$CWD/.rtl-agent-team/state"
+  mkdir -p "$STATE_DIR"
+  TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
+  TEAM_CONFIG="$STATE_DIR/team-config.json"
+  if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
+    TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
+    if [ "$TEAM_MODE" = "true" ]; then
+      TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
+    fi
+  fi
+  if acquire_lock "$TRACK_FILE"; then
+    printf '%s\n' "$BASH_RTL_FILES" | while IFS= read -r bf; do
+      [ -z "$bf" ] && continue
+      if ! grep -qxF "$bf" "$TRACK_FILE" 2>/dev/null; then
+        printf '%s\n' "$bf" >> "$TRACK_FILE"
+      fi
+    done
+    release_lock "$TRACK_FILE"
+  else
+    printf '%s\n' "$BASH_RTL_FILES" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
+  fi
+  COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
+  P6_MSG=""
+  P6_REVIEW_DIR="$CWD/reviews/phase-6-review"
+  if [ -d "$P6_REVIEW_DIR" ] && ls "$P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
+    if acquire_lock "$STATE_DIR/phase6-stale"; then
+      touch "$STATE_DIR/phase6-stale"
+      release_lock "$STATE_DIR/phase6-stale"
+    else
+      touch "$STATE_DIR/phase6-stale"
+    fi
+    P6_MSG=" Phase 6 review documents marked as stale — update code-review and design-note after verification."
+  fi
+  SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
+  printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
+  exit 0
+fi
+
 # Check if the file is an RTL file
 case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)

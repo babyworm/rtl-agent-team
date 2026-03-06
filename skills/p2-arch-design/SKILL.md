@@ -29,7 +29,8 @@ reference C model in parallel, and iterates with 3-round review.
 Phase 1 completion required:
 - `docs/phase-1-research/requirements.json` must exist
 
-If prerequisite is missing, inform the user to run `/rtl-agent-team:p1-spec-research` first.
+If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:p1-spec-research`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

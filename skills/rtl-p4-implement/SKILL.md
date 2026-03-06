@@ -32,7 +32,8 @@ UnitTest → CDC → Protocol → Refactor → IntegrationGate.
 Phase 3 completion required:
 - At least one μArch spec in `docs/phase-3-uarch/` must exist
 
-If prerequisite is missing, inform the user to run `/rtl-agent-team:rtl-p3-uarch-design` first.
+If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p3-uarch-design`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

@@ -37,7 +37,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -45,6 +45,21 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 4. Missing artifacts produce WARNING, not BLOCK.
+
+```
+Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-3-uarch/clock-domain-map.md")     # Clock domain map
+Glob("docs/phase-3-uarch/protocol-assignments.md") # Protocol assignments
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+Glob("refc/**/*.c")                                # C reference model
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Step 1: Preparation
 
@@ -115,6 +130,16 @@ if t_protocol:  # Only if module has bus interfaces (Wave 8 created)
     refactor_deps.append(t_protocol)
 t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refactoring for {M}",
                         blockedBy=refactor_deps)
+
+# Wave 9b: Equivalence check (conditional — only for logic-touching refactors)
+# Created dynamically by leader after W9 results:
+# - Cosmetic/style-only cleanup: lint + smoke sim sufficient (no eq-check needed)
+# - Logic/sequential/reset/clock-enable/constraint changes:
+#   t_eqcheck = TaskCreate(subject=f"W9b: Equivalence {M}",
+#                          description=f"RTL-vs-RTL equivalence proof for {M}",
+#                          blockedBy=[t_refactor])
+#   Spawn: Agent(subagent_type="rtl-agent-team:equivalence-checker",
+#                name=f"eqcheck-{M}", team_name="p4-implement")
 ```
 
 Final integration task:
@@ -154,6 +179,20 @@ while not all_tasks_complete:
     #   - Lint FAIL → create W3 Fix task, update W4 blockedBy
     #   - Review finds issues → create W5 Bugfix task, update W6 blockedBy
     #   - Module has bus interfaces → create W8 Protocol task, update W9 blockedBy
+    #   - W9 refactor touches logic → create W9b Equivalence task (see Step 3)
+    #     Then: TaskUpdate(taskId=t_integration, addBlockedBy=[t_eqcheck])
+    #
+    # === CDC/Protocol Escalation (conditional worker spawn) ===
+    #   - W7 CDC FAIL after 2 rounds for module M:
+    #     Agent(subagent_type="rtl-agent-team:cdc-reviewer", name=f"cdc-esc-{M}", team_name="p4-implement")
+    #     If root cause is clock source/gating/mux:
+    #       Agent(subagent_type="rtl-agent-team:clock-architect", name=f"clock-esc-{M}", team_name="p4-implement")
+    #     TaskCreate(subject=f"W7-escalate: CDC expert review {M}", blockedBy=[t_cdc_fail])
+    #
+    #   - W8 Protocol FAIL after 2 rounds for module M:
+    #     Agent(subagent_type="rtl-agent-team:protocol-reviewer", name=f"proto-esc-{M}", team_name="p4-implement")
+    #     TaskCreate(subject=f"W8-escalate: Protocol expert review {M}", blockedBy=[t_proto_fail])
+    #
     # Track per-module wave progress
     # Update .rtl-agent-team/state/team-progress.json
 ```
@@ -171,12 +210,16 @@ During Waves 1-6, generate Stream B early verification artifacts:
 
 ## Step 6: Phase 4 Gate
 
-After all Wave 9 tasks complete and integration passes:
+After all Wave 9 tasks (and conditional W9b) complete and integration passes:
 1. Verify all modules have lint PASS
-2. Verify all modules have unit test PASS
-3. Generate `reviews/phase-4-rtl/lint-report.md`
-4. Generate `docs/phase-4-rtl/module-descriptions.md`
-5. Verify Stream B artifacts exist
+2. Verify all modules have code review PASS (0 critical/major findings)
+3. Verify all modules have unit test PASS
+4. Verify all multi-domain modules have CDC PASS (single-domain: auto-skip)
+5. Verify all bus-interface modules have protocol PASS (no-bus: auto-skip)
+6. Verify equivalence-checker report exists for all logic-touching refactors (per policy)
+7. Generate `reviews/phase-4-rtl/lint-report.md`
+8. Generate `docs/phase-4-rtl/module-descriptions.md`
+9. Verify Stream B artifacts exist
 
 ## Step 7: Cleanup
 
@@ -193,5 +236,7 @@ Bash("rm -f .rtl-agent-team/state/team-config.json")
 
 - **Worker crash**: Re-spawn worker, re-assign in-progress task.
 - **Lint fix loop**: Max 3 rounds per module. After 3, escalate to leader.
+- **CDC FAIL after 2 rounds**: Escalate to cdc-reviewer for synchronization strategy. If root cause is clock source/gating/mux → additionally escalate to clock-architect.
+- **Protocol FAIL after 2 rounds**: Escalate to protocol-reviewer for interface redesign.
 - **TeamCreate failure**: Fall back to sequential Task() execution.
 - **Review disagreement**: Leader resolves by creating directed bugfix tasks.

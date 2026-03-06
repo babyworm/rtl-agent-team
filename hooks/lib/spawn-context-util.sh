@@ -18,9 +18,9 @@ sctx_skill_to_phase() {
     p1-spec-research|rtl-p1-research-team) echo 1 ;;
     p2-arch-design|rtl-p2-arch-team)       echo 2 ;;
     rtl-p3-uarch-design|rtl-p3-uarch-team) echo 3 ;;
-    rtl-p4-implement|rtl-p4-implement-team|rtl-p4s-bugfix|rtl-p4s-unit-test|rtl-p4s-refactor) echo 4 ;;
-    rtl-p5-verify|rtl-p5-verify-team|rtl-p5s-func-verify|rtl-p5s-integration-test) echo 5 ;;
-    rtl-p5s-sva-check|rtl-p5s-cdc-verify|rtl-p5s-protocol-verify|rtl-p5s-perf-verify|rtl-p5s-coverage-analyze) echo 5 ;;
+    rtl-p4-implement|rtl-p4-implement-team|rtl-p4s-bugfix|rtl-p4s-unit-test|rtl-p4s-refactor|rtl-p4-rapid-impl|rtl-review-refactor) echo 4 ;;
+    rtl-p5-verify|rtl-p5-verify-team|rtl-p5s-func-verify|rtl-p5s-integration-test|rtl-p5a-functional-closure|rtl-p5b-silicon-validation) echo 5 ;;
+    rtl-p5s-sva-check|rtl-p5s-cdc-verify|rtl-p5s-protocol-verify|rtl-p5s-perf-verify|rtl-p5s-coverage-analyze|rtl-p5s-uvm-verify) echo 5 ;;
     rtl-p6-design-review) echo 6 ;;
     rtl-autopilot|rtl-spec-to-uarch|rtl-spec-to-uarch-team|rtl-dse) echo 1 ;;
     rtl-uarch-to-verify) echo 4 ;;

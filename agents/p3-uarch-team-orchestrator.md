@@ -41,7 +41,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -49,6 +49,20 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 3. Missing artifacts produce WARNING, not BLOCK.
+
+```
+Glob("docs/phase-2-architecture/architecture.md")  # Architecture spec
+Glob("refc/**/*.c")                                # C reference model
+Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Step 1: Preparation
 
@@ -98,7 +112,7 @@ Create BFM validation gate and review tasks:
 
 ```python
 t3 = TaskCreate(subject="T3: BFM validation gate",
-                description="Leader validates: BFM compiles, simulates correctly, produces per-block I/O logs. If BFM fails, iterate uarch-designer <-> bfm-dev until consistent.")
+                description="Leader validates: BFM compiles, simulates correctly, produces per-block I/O logs. If BFM fails, iterate uarch-designer <-> bfm-dev (max 2 iterations before escalation to user).")
 TaskUpdate(taskId=t3, addBlockedBy=[t1, t2])
 
 # Review R1 — 5 parallel reviewers
@@ -192,10 +206,42 @@ When they complete work:
 Leader validates directly:
 1. BFM compiles without errors
 2. BFM simulation produces correct results
-3. Per-block I/O logs exist and are timestamped
+3. **Per-block I/O log count must match the number of block spec files in uArch docs**
+   - Glob `bfm/logs/*_io.log` and `docs/phase-3-uarch/*.md`
+   - Exclude non-block files from count (clock-domain-map.md, protocol-assignments.md, phase-3-summary.md, etc.)
+   - If log count < block count: FAIL + "BFM I/O logs missing for blocks: {missing_list}. Per-block I/O logging for ALL blocks is required (per policy)."
+   - If no logs at all: FAIL + "BFM logs required for Phase 4 unit test generation."
 4. I/O logs align with C reference model outputs
 
-If validation fails, iterate: create targeted fix tasks for uarch-design and/or bfm-worker.
+If validation fails, iterate: create targeted fix tasks for uarch-design and/or bfm-worker (max 2 iterations before escalation to user via AskUserQuestion).
+
+### Conditional Expert Delegation (per policy)
+
+After BFM validation gate and during review rounds, conditionally spawn expert agents:
+
+**rtl-planner** — invoke when execution risk is the blocker rather than local RTL details:
+- Module/interface dependency chain is unclear for 5+ blocks
+- BFM and μArch revisions bounce for 2+ cycles with no convergence
+- Critical path or parallelization order is uncertain before Round 2 review
+```python
+# Conditional: only when dependency/convergence issues detected
+t_planner = TaskCreate(subject="Conditional: rtl-planner dependency analysis",
+                       description="Produce explicit task dependency graph, critical path, and parallel work groups for Step 3/5 sequencing.")
+TaskUpdate(taskId=t_planner, addBlockedBy=[t3])  # After BFM validation
+Agent(subagent_type="rtl-agent-team:rtl-planner", name="planner", team_name="p3-uarch")
+```
+
+**clock-architect** — invoke when clocking strategy is non-trivial:
+- Multiple independent clock roots, generated clocks, PLL/MMCM, or clock muxing
+- Hierarchical clock gating strategy is proposed (ICG depth/placement decisions)
+- timing-advisor or cdc-checker repeatedly flags clock relationship feasibility risks
+```python
+# Conditional: only when non-trivial clocking detected
+t_clock = TaskCreate(subject="Conditional: clock-architect review",
+                     description="Review clock architecture: generated clocks, clock mux/gating safety, domain classification. Write reviews/phase-3-uarch/clock-architecture-review.md and update docs/phase-3-uarch/clock-domain-map.md.")
+TaskUpdate(taskId=t_clock, addBlockedBy=[t3])  # After BFM validation
+Agent(subagent_type="rtl-agent-team:clock-architect", name="clock-arch", team_name="p3-uarch")
+```
 
 ## Step 6: Phase 3 Gate
 
@@ -222,7 +268,7 @@ Bash("rm -rf .rtl-agent-team/scratch/phase-3/")
 # Error Handling
 
 - **Worker crash**: Re-spawn worker, re-assign in-progress task.
-- **BFM validation failure**: Max 3 iterations of uarch <-> BFM fix. Then escalate.
+- **BFM validation failure**: Max 2 iterations of uarch <-> BFM fix. Then escalate to user via AskUserQuestion.
 - **Review divergence**: After Round 3, if not converged, escalate to user via AskUserQuestion.
 - **TeamCreate failure**: Fall back to sequential Task() execution (same workflow as p3-uarch-orchestrator).
 - **Boundary violation**: If uArch change violates P2 architecture spec, STOP and escalate to Phase 2.

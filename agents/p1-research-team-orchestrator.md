@@ -46,7 +46,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -54,6 +54,18 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts. Missing artifacts produce WARNING, not BLOCK.
+
+```
+# Phase 1 upstream: user-provided specs
+Glob("specs/**/*")                    # Spec documents (user-provided)
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Phase 1 starts from scratch so minimal upstream is expected.
 
 ## Step 1: Preparation
 

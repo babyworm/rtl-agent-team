@@ -31,7 +31,8 @@ Phase 2 completion required:
 - `docs/phase-2-architecture/architecture.md` must exist
 - `refc/` directory with C reference model must exist
 
-If prerequisites are missing, inform the user to run `/rtl-agent-team:p2-arch-design` first.
+If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:p2-arch-design`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

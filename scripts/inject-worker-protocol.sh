@@ -19,7 +19,7 @@ if [ ! -f "$PROTOCOL_FILE" ]; then
 fi
 
 # Tier-1 agents (P4/P5) that should have the Team Worker Protocol
-P4_P5_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier"
+P4_P5_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier constraint-writer synthesis-reporter cdc-reviewer clock-architect protocol-reviewer equivalence-checker"
 
 # P1-P3 specialist agents that participate in team mode
 P1_P3_AGENTS="spec-analyst vcodec-chief-standard-expert rtl-architect vcodec-architecture-expert arch-designer power-analyzer vcodec-syntax-entropy-expert vcodec-prediction-expert vcodec-transform-quant-expert vcodec-filter-recon-expert video-processing-expert ref-model-dev bfm-dev timing-advisor"

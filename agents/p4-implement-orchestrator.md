@@ -26,7 +26,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -34,6 +34,21 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 4. Missing artifacts produce WARNING, not BLOCK.
+
+```
+Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-3-uarch/clock-domain-map.md")     # Clock domain map
+Glob("docs/phase-3-uarch/protocol-assignments.md") # Protocol assignments
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+Glob("refc/**/*.c")                                # C reference model
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Wave 0: Preparation
 
@@ -150,6 +165,8 @@ Classify: CDC_PASS or CDC_FAIL.",
 ```
 
 On CDC_FAIL: rtl-coder adds missing synchronizers → re-check (max 2 rounds).
+After 2 rounds still FAIL → escalate to cdc-reviewer for synchronization strategy.
+If root cause is clock source/gating/mux ambiguity → additionally escalate to clock-architect.
 
 ## Wave 8: Module-level Protocol (parallel, bus-interface modules only)
 
@@ -166,6 +183,7 @@ Classify: PROTOCOL_PASS or PROTOCOL_FAIL.",
 ```
 
 On PROTOCOL_FAIL: rtl-coder fixes → re-check (max 2 rounds).
+After 2 rounds still FAIL → escalate to protocol-reviewer for interface redesign.
 
 ## Wave 9: Refactoring (parallel, selective — only flagged modules)
 
@@ -177,7 +195,15 @@ Include: (1) naming convention fixes, (2) module size reduction if >500 lines,
 
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Apply refactoring plan to rtl/{module}/{module}.sv: [paste plan].
-Do not change behavior. After refactoring, re-run lint and smoke sim to verify equivalence.")
+Do not change behavior. After refactoring, re-run lint and smoke sim.")
+
+# Equivalence verification (per policy):
+# - Cosmetic/style-only cleanup: lint + smoke sim sufficient (above)
+# - Logic/sequential/reset/clock-enable/constraint changes:
+#   invoke equivalence-checker (RTL-vs-RTL) before Wave 10 gate
+if refactor_touches_logic:
+    Task(subagent_type="rtl-agent-team:equivalence-checker",
+         prompt="Verify functional equivalence between pre-refactor and post-refactor RTL for {module}. RTL-vs-RTL proof. Report: EQUIVALENT or NON_EQUIVALENT with specific differences.")
 ```
 
 ## Wave 10: Integration + Gate

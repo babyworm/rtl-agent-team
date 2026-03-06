@@ -120,6 +120,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
 - **Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix defects at the top, not the bottom.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
+- **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
 
 ## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
 - rtl-planner: P3 or P3→P4 handoff when dependency graph and critical path are unclear or rework loops do not converge.

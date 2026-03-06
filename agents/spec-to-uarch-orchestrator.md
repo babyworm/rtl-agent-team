@@ -27,7 +27,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -35,6 +35,18 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 1→3. Missing artifacts produce WARNING, not BLOCK.
+
+```
+# Phase 1 upstream: user-provided specs
+Glob("specs/**/*")                    # Spec documents (user-provided)
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Phase 1 starts from scratch so minimal upstream is expected.
 
 ## Step 1: Initialize or Resume State
 
@@ -84,6 +96,14 @@ Evaluate each requirement for RTL implementation feasibility.
 verdict: PASS or FAIL + findings[]")
 ```
 
+**Artifact Completeness Gate** (G3: mandatory before Phase 2 entry):
+```
+Glob("docs/phase-1-research/requirements.json")    # Structured requirements
+Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
+Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
+```
+All three files must exist. If any missing: FAIL + list specific missing files.
+
 On PASS: generate Phase 1 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
@@ -120,6 +140,15 @@ verdict: PASS or FAIL + findings[]")
 **Phase 2→3 Quality Gate** (criteria in policy):
 - Check: `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
 - Check: `reviews/phase-2-architecture/feature-coverage.md` 100% coverage
+
+**Artifact Completeness Gate** (G3: mandatory before Phase 3 entry):
+```
+Glob("docs/phase-2-architecture/architecture.md")          # Architecture document (with block diagram)
+Glob("refc/**/*.c")                                        # At least one C reference model source
+Glob("docs/phase-2-architecture/bandwidth_report.json")    # Bandwidth analysis
+```
+All three must exist. If any missing: FAIL + list specific missing artifacts.
+
 - Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-2/`
 
 On PASS: generate Phase 2 summary + ADRs:

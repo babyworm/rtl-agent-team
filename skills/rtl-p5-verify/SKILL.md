@@ -40,8 +40,8 @@ Phase 4 completion required:
   - `reviews/phase-4-rtl/lint-report.md` (full `rtl-p4-implement` path)
   - `.rtl-agent-team/state/p4-state.json` with `gates.p4_exit.verdict` = `pass` (rapid `rtl-p4-rapid-impl` path)
 
-If prerequisites are missing, inform the user to run `/rtl-agent-team:rtl-p4-rapid-impl`
-for fast closure or `/rtl-agent-team:rtl-p4-implement` for full 10-Wave artifacts.
+If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl-p4-rapid-impl`
+or `/rtl-agent-team:rtl-p4-implement`. Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

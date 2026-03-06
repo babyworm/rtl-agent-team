@@ -55,3 +55,7 @@ If FAIL:
 - Classify failure and route fix scope to P4 loop.
 - Set `gates.p5a_exit.verdict = "fail"` and `status = "blocked"`.
 - Persist terminal verdict in `.rtl-agent-team/state/p5a-state.json`.
+
+Note: P5A PASS is a precondition for P5B (silicon validation), which is responsible for
+generating `reviews/phase-5-verify/final-compliance.md` — the canonical Phase 6 entry artifact.
+P5A does NOT generate final-compliance.md directly.

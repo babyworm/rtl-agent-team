@@ -30,7 +30,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -38,6 +38,15 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts based on current phase. Missing artifacts produce WARNING, not BLOCK.
+Multi-phase orchestrator: artifact requirements depend on the phase being entered.
+Check `.rtl-agent-team/state/` for current phase, then scan corresponding upstream artifacts.
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Step 1: Initialize or Resume State
 
@@ -69,6 +78,14 @@ Bash("mkdir -p reviews/phase-1-research")
 Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
      prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, domain-analysis.md.")
 ```
+
+**Artifact Completeness Gate** (per policy: requirements.json + io_definition.json + domain-analysis.md):
+```
+Glob("docs/phase-1-research/requirements.json")
+Glob("docs/phase-1-research/io_definition.json")
+Glob("docs/phase-1-research/domain-analysis.md")
+```
+All three files must exist. If any missing: FAIL + list specific missing files.
 
 **Phase 1→2 Quality Gate** (criteria in policy):
 ```
@@ -113,6 +130,15 @@ Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
 **Phase 2→3 Quality Gate** (criteria in policy):
 - Check: `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
 - Check: `reviews/phase-2-architecture/feature-coverage.md` 100% coverage
+
+**Artifact Completeness Gate** (G3: mandatory before Phase 3 entry):
+```
+Glob("docs/phase-2-architecture/architecture.md")          # Architecture document (with block diagram)
+Glob("refc/**/*.c")                                        # At least one C reference model source
+Glob("docs/phase-2-architecture/bandwidth_report.json")    # Bandwidth analysis
+```
+All three must exist. If any missing: FAIL + list specific missing artifacts.
+
 - Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-2/`
 
 On PASS: generate Phase 2 summary + ADRs:

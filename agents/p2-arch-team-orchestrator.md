@@ -24,6 +24,7 @@ T5:    Bandwidth integration (arch-designer, blockedBy: T3 + T4)
 T6a:   Review R1 — spec compliance (rtl-architect, blockedBy: T5)
 T6b:   Review R1 — memory/perf (vcodec-architecture-expert, blockedBy: T5)
 T6c:   Review R1 — model consistency (ref-model-dev, blockedBy: T5)
+T6d:   Review R1 — ref model quality gate (ref-model-reviewer, blockedBy: T5, CONDITIONAL: only when ref model newly created/substantially revised)
 T7:    Aggregate R1 (rtl-architect, blockedBy: ALL T6*)
 T7b:   Rebuttal R1 (arch-designer, blockedBy: T7) — accept/reject each finding with rationale
 T8a-M: Tree exploration per issue (DYNAMIC, blockedBy: T7b, only for accepted findings)
@@ -31,11 +32,13 @@ T9:    Apply resolutions (arch-designer, blockedBy: ALL T8*)
 T10a:  Review R2 — spec compliance (rtl-architect, blockedBy: T9)
 T10b:  Review R2 — memory/perf (vcodec-architecture-expert, blockedBy: T9)
 T10c:  Review R2 — model consistency (ref-model-dev, blockedBy: T9)
+T10d:  Review R2 — ref model quality (ref-model-reviewer, blockedBy: T9, CONDITIONAL: only if T6d was created)
 T11:   Aggregate R2 (rtl-architect, blockedBy: ALL T10*)
 T11b:  Rebuttal R2 (arch-designer, blockedBy: T11) — accept/reject each finding with rationale
 T12a:  Review R3 — spec (rtl-architect, blockedBy: T11b, MANDATORY)
 T12b:  Review R3 — memory (vcodec-architecture-expert, blockedBy: T11b, MANDATORY)
 T12c:  Review R3 — model (ref-model-dev, blockedBy: T11b, MANDATORY)
+T12d:  Review R3 — ref model quality (ref-model-reviewer, blockedBy: T11b, CONDITIONAL: only if T6d was created)
 T13:   Final consolidation (rtl-architect, blockedBy: ALL T12*)
 ```
 
@@ -49,7 +52,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -57,6 +60,19 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING, not BLOCK.
+
+```
+Glob("docs/phase-1-research/requirements.json")    # Structured requirements
+Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
+Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Step 1: Preparation
 
@@ -123,9 +139,22 @@ Agent(subagent_type="rtl-agent-team:ref-model-dev", name="refmodel", team_name="
 
 # Review lead
 Agent(subagent_type="rtl-agent-team:rtl-architect", name="reviewer", team_name="p2-arch")
+
+# Conditional: ref model quality reviewer (spawned when ref model is newly created/substantially revised)
+Agent(subagent_type="rtl-agent-team:ref-model-reviewer", name="refmodel-reviewer", team_name="p2-arch")
 ```
 
 Workers follow Team Worker Protocol (agents/lib/team-worker-preamble.md).
+
+### Conditional ref-model-reviewer Activation
+
+Determine whether to activate ref-model-reviewer by checking:
+- T4 (RefC model development) produces new or substantially changed `refc/**/*.c` files
+- If ref model is newly created OR >30% of lines changed from prior version:
+  1. Spawn `ref-model-reviewer` worker
+  2. Create T6d/T10d/T12d conditional review tasks
+  3. ref-model-reviewer evaluates: algorithm fidelity, numerical precision, undefined behavior/build warning risk
+- If ref model is unchanged: skip T6d/T10d/T12d tasks entirely
 
 ## Step 5: Monitor Loop + Dynamic Task Creation
 

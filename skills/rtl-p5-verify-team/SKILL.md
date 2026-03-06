@@ -32,7 +32,8 @@ Phase 4 completion required:
 - `rtl/**/*.sv` files must exist
 - `reviews/phase-4-rtl/lint-report.md` must exist (lint PASS)
 
-If prerequisites are missing, inform the user to run `/rtl-agent-team:rtl-p4-implement` first.
+If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl-p4-implement`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

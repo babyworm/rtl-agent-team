@@ -93,9 +93,15 @@ if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
   fi
 fi
 
-# Don't override if already active (re-invocation within same session)
+# G6: Re-invocation handling — reset counter for same skill, skip for different skill
 if [ -f "$SKILL_STATE" ]; then
-  emit_continue "$SETUP_EXTRA_CONTEXT"
+  CURRENT_SKILL=$(sed -n 's/.*"skill"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SKILL_STATE")
+  if [ "$CURRENT_SKILL" = "$SHORT_NAME" ]; then
+    # Same skill re-invoked: user intentionally restarting — reset counter
+    rm -f "$SKILL_STATE"
+  else
+    emit_continue "$SETUP_EXTRA_CONTEXT"
+  fi
 fi
 
 # Read criteria for this skill from config

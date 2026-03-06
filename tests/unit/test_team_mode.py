@@ -81,7 +81,7 @@ class TestP5TaskDependencyGraph:
             "V3_cdc": [],
             "V4_proto": [],
             "V8_synth": [],
-            "V5_func": ["V1_lint", "V2_sva", "V3_cdc", "V4_proto"],
+            "V5_func": ["V1_lint"],  # Per policy: V5 depends only on V1 (lint-clean required for sim)
             "V6_cov": ["V5_func"],
             "V7_perf": ["V5_func"],
             "V9_review": ["V1_lint", "V2_sva", "V3_cdc", "V4_proto",
@@ -93,9 +93,10 @@ class TestP5TaskDependencyGraph:
         for cat in ["V1_lint", "V2_sva", "V3_cdc", "V4_proto", "V8_synth"]:
             assert graph[cat] == [], f"{cat} should have no dependencies"
 
-    def test_functional_depends_on_early_categories(self):
+    def test_functional_depends_on_lint_only(self):
+        """Per policy: V5 depends only on V1 (lint-clean required for sim)."""
         graph = self._build_dependency_graph()
-        assert set(graph["V5_func"]) == {"V1_lint", "V2_sva", "V3_cdc", "V4_proto"}
+        assert set(graph["V5_func"]) == {"V1_lint"}
 
     def test_coverage_and_perf_depend_on_functional(self):
         graph = self._build_dependency_graph()

@@ -530,6 +530,80 @@ class TestStopGate:
         assert "jsonu_get_file_path_num" in content
 
 
+class TestRtlEditTrackerBash:
+    """B1: Tests for Bash command RTL detection in hooks/rtl-edit-tracker.sh."""
+
+    HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
+
+    def test_bash_command_with_sv_file_tracked(self, tmp_project):
+        """B1: Bash command containing .sv file should trigger RTL tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/module/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+        assert "top.sv" in track_file.read_text()
+
+    def test_bash_command_without_rtl_passthrough(self, tmp_project):
+        """B1: Bash command without RTL extensions should pass through silently."""
+        stdin = {"cwd": str(tmp_project), "command": "ls -la docs/"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        assert "hookSpecificOutput" not in result
+
+    def test_bash_command_with_svh_tracked(self, tmp_project):
+        """B1: Bash command containing .svh file should trigger tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "cat rtl/include/defines.svh"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+
+    def test_bash_command_with_v_file_tracked(self, tmp_project):
+        """B1: Bash command containing .v file should trigger tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "iverilog -o sim rtl/legacy/counter.v"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+
+    def test_bash_empty_command_passthrough(self, tmp_project):
+        """B1: Empty command should pass through."""
+        stdin = {"cwd": str(tmp_project), "command": ""}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        assert "hookSpecificOutput" not in result
+
+    def test_bash_no_file_path_no_command_passthrough(self, tmp_project):
+        """B1: Missing both file_path and command should pass through."""
+        stdin = {"cwd": str(tmp_project)}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        assert "hookSpecificOutput" not in result
+
+    def test_bash_multiple_sv_files_tracked(self, tmp_project):
+        """B1: Bash command with multiple RTL files should track all."""
+        stdin = {"cwd": str(tmp_project), "command": "cat rtl/a.sv rtl/b.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        content = track_file.read_text()
+        assert "a.sv" in content
+        assert "b.sv" in content
+
+    def test_bash_phase6_stale_on_rtl_command(self, tmp_project):
+        """B1: Bash RTL command should mark Phase 6 stale if review exists."""
+        p6_dir = tmp_project / "reviews" / "phase-6-review"
+        p6_dir.mkdir(parents=True)
+        (p6_dir / "design-note.md").write_text("# Design Note")
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/foo/bar/' rtl/mod.sv"}
+        result = run_hook(self.HOOK, stdin)
+        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        assert stale.exists()
+
+
 class TestRtlEditTrackerPhase6:
     """Tests for Phase 6 stale detection in hooks/rtl-edit-tracker.sh."""
 
@@ -672,6 +746,50 @@ class TestP6CascadeGate:
         assert "lib/team-gate-util.sh" in content
         assert "jsonu_get_input_string" in content
         assert "teamu_should_skip_gate" in content
+
+    def test_cascade_done_blocks_when_docs_older_than_stale(self, tmp_project):
+        """G5: cascade-done present but docs mtime older than stale marker → block."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        review_dir = tmp_project / "reviews" / "phase-6-review"
+        review_dir.mkdir(parents=True)
+        # Create documents with explicitly old mtime
+        (review_dir / "design-note.md").write_text("# Old Design Note")
+        (review_dir / "code-review.md").write_text("# Old Code Review")
+        for doc in [review_dir / "design-note.md", review_dir / "code-review.md"]:
+            os.utime(doc, (1000, 1000))
+        # Stale marker gets current time (much newer than docs)
+        (state_dir / "phase6-stale").touch()
+        (state_dir / "phase6-cascade-done").touch()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "not updated" in ctx.lower() or "cascade" in ctx.lower()
+
+    def test_cascade_done_allows_when_docs_newer_than_stale(self, tmp_project):
+        """G5: cascade-done with docs newer than stale marker → allow and clean up."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        review_dir = tmp_project / "reviews" / "phase-6-review"
+        review_dir.mkdir(parents=True)
+        # Stale marker with explicitly old mtime
+        (state_dir / "phase6-stale").touch()
+        os.utime(state_dir / "phase6-stale", (1000, 1000))
+        # Documents get current time (much newer than stale marker)
+        (review_dir / "design-note.md").write_text("# Updated Design Note")
+        (review_dir / "code-review.md").write_text("# Updated Code Review")
+        (state_dir / "phase6-cascade-done").touch()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is True
+        # Markers should be cleaned up
+        assert not (state_dir / "phase6-stale").exists()
+        assert not (state_dir / "phase6-cascade-done").exists()
+
+    def test_cascade_done_no_docs_allows_exit(self, tmp_project):
+        """G5: cascade-done without review docs → allow exit (no docs to check)."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        (state_dir / "phase6-stale").touch()
+        (state_dir / "phase6-cascade-done").touch()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is True
 
 
 class TestSkillCompletionGate:
@@ -918,8 +1036,8 @@ class TestSkillActivation:
         state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
         assert not state_file.exists()
 
-    def test_existing_state_not_overridden(self, tmp_project):
-        """If state already exists, should not be overridden."""
+    def test_different_skill_state_not_overridden(self, tmp_project):
+        """G6: Different skill invocation should NOT override existing state."""
         self._setup_marker(tmp_project)
         criteria_dir = tmp_project / ".rtl-agent-team"
         criteria_dir.mkdir(parents=True, exist_ok=True)
@@ -933,10 +1051,30 @@ class TestSkillActivation:
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
-        # State should NOT be overridden
+        # State should NOT be overridden (different skill)
         state = json.loads((state_dir / "skill-active.json").read_text())
         assert state["skill"] == "rtl-p4-implement"  # Original, not rtl-p4s-bugfix
         assert state["iteration"] == 3
+
+    def test_same_skill_reinvocation_resets_counter(self, tmp_project):
+        """G6: Re-invoking the same skill should reset iteration counter."""
+        self._setup_marker(tmp_project)
+        criteria_dir = tmp_project / ".rtl-agent-team"
+        criteria_dir.mkdir(parents=True, exist_ok=True)
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
+        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        existing = {"skill": "rtl-p4s-bugfix", "iteration": 3, "all_complete": False, "pending": "sim_pass"}
+        (state_dir / "skill-active.json").write_text(json.dumps(existing))
+
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
+        assert result["continue"] is True
+        state = json.loads((state_dir / "skill-active.json").read_text())
+        assert state["skill"] == "rtl-p4s-bugfix"
+        assert state["iteration"] == 1  # Reset to 1, not 3
 
     def test_activation_message(self, tmp_project):
         """Activation should include skill name in additionalContext."""
@@ -2088,11 +2226,15 @@ class TestSpawnContextStructuralContracts:
         "rtl-p3-uarch-team": 3,
         "rtl-p4-implement": 4,
         "rtl-p4-implement-team": 4,
+        "rtl-p4-rapid-impl": 4,
         "rtl-p4s-bugfix": 4,
         "rtl-p4s-unit-test": 4,
         "rtl-p4s-refactor": 4,
+        "rtl-review-refactor": 4,
         "rtl-p5-verify": 5,
         "rtl-p5-verify-team": 5,
+        "rtl-p5a-functional-closure": 5,
+        "rtl-p5b-silicon-validation": 5,
         "rtl-p5s-func-verify": 5,
         "rtl-p5s-integration-test": 5,
         "rtl-p5s-sva-check": 5,
@@ -2100,6 +2242,7 @@ class TestSpawnContextStructuralContracts:
         "rtl-p5s-protocol-verify": 5,
         "rtl-p5s-perf-verify": 5,
         "rtl-p5s-coverage-analyze": 5,
+        "rtl-p5s-uvm-verify": 5,
         "rtl-p6-design-review": 6,
         "rtl-autopilot": 1,
         "rtl-spec-to-uarch": 1,

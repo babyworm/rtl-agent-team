@@ -39,7 +39,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -47,6 +47,21 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 5. Missing artifacts produce WARNING, not BLOCK.
+
+```
+Glob("rtl/**/*.sv")                                # RTL source files
+Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
+Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
+Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
+Glob("docs/phase-1-research/requirements.json")    # Requirements
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Stage 0: Preparation
 
@@ -90,6 +105,9 @@ Task(subagent_type="rtl-agent-team:cdc-checker",
      run_in_background=true)
 
 if CDC findings indicate clock-architecture root cause (generated clocks/mux/gating relationships):
+  Task(subagent_type="rtl-agent-team:cdc-reviewer",
+       prompt="Review CDC synchronization strategy for {module}. Analyze synchronizer coverage, gray-code usage, and handshake protocol correctness. Recommend fixes.",
+       run_in_background=true)
   Task(subagent_type="rtl-agent-team:clock-architect",
        prompt="Review module-level clock relationships and crossing assumptions for {module}.
        Focus on generated clocks, clock mux/gating safety, and domain classification.",
@@ -105,6 +123,14 @@ Task(subagent_type="rtl-agent-team:protocol-checker",
 
 **V8: Synthesizability + PPA Estimation** (per module, ASIC 28nm, SDC-first)
 ```
+# Step 1: Generate per-module SDC (MANDATORY before synthesis, per policy)
+# SDC is consumed by downstream commercial tools (DC/Genus); Yosys OSS flow uses
+# ordering guarantee only (SDC generated before synthesis, not read by Yosys).
+Task(subagent_type="rtl-agent-team:constraint-writer",
+     prompt="Generate per-module SDC constraints for {module}. Read docs/phase-3-uarch/{module}.md for clock/IO spec. Write syn/constraints/{module}.sdc.",
+     run_in_background=true)
+
+# Step 2: sv2v + Yosys synthesis with NanGate45 (uses ordering contract from Step 1)
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Convert RTL then run ASIC synthesis estimation with NanGate45 (TSMC 28nm proxy) for {module}: sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v && yosys -p 'read_verilog rtl/{module}/{module}_v2v.v; synth -top {module}; dfflibmap -liberty NangateOpenCellLibrary_typical.lib; abc -liberty NangateOpenCellLibrary_typical.lib; stat -liberty NangateOpenCellLibrary_typical.lib' | tee syn/reports/{module}_synth.txt. Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag inferred latches. Save to docs/phase-5-verify/{module}_ppa_estimate.md.",
      run_in_background=true)

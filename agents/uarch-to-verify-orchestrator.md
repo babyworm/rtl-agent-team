@@ -26,7 +26,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -35,21 +35,40 @@ Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
 
-## Step 1: Prerequisite Verification (MANDATORY)
+### Upstream Artifact Scan (E1: soft entry gate)
 
-Verify ALL of the following artifacts exist and are valid:
+Scan for upstream artifacts needed by Phase 4→5. Missing artifacts produce WARNING, not BLOCK.
+
+```
+# Phase 4 upstream artifacts
+Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("reviews/phase-3-uarch/uarch-review.md")      # μArch review verdict
+Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+Glob("refc/**/*.c")                                # C reference model
+Glob("docs/phase-3-uarch/phase-3-summary.md")      # Phase 3 summary
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan: skip sub-phases that critically depend on missing artifacts.
+Use available artifacts + user intent to infer missing context.
+
+## Step 1: Prerequisite Verification (SOFT — adaptive)
+
+Scan the following artifacts for availability:
 
 ```
 Read("docs/phase-3-uarch/")           # At least one μArch module spec
-Read("reviews/phase-3-uarch/uarch-review.md")  # Must contain "Verdict: PASS"
+Read("reviews/phase-3-uarch/uarch-review.md")  # Prefer "Verdict: PASS"
 Read("docs/phase-1-research/requirements.json")
 Read("docs/phase-1-research/io_definition.json")
 Glob("refc/*/*.c")                    # At least one C reference model source
 Read("docs/phase-3-uarch/phase-3-summary.md")
 ```
 
-**On prerequisite failure**: report missing artifacts, suggest `/rtl-agent-team:rtl-spec-to-uarch`,
-DO NOT proceed — exit immediately.
+**On missing artifacts**: WARNING — report missing artifacts, suggest `/rtl-agent-team:rtl-spec-to-uarch`.
+Proceed with adaptive planning: use available artifacts + user intent to infer missing context.
+Reduced-scope execution: skip sub-phases that require missing artifacts.
 
 **On prerequisite PASS**: verify intake checklist (see policy), then load Context Preload:
 ```
@@ -133,7 +152,16 @@ Save to reviews/phase-4-rtl/lint-report.md.
 verdict: PASS or FAIL + findings[]")
 ```
 
-**Verdict**: PASS if functional coverage 100% AND lint-clean AND design quality passes.
+**Stream B Artifact Gate** (G1: mandatory before Phase 5 entry):
+```
+Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md")
+Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md")
+Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")
+```
+ALL 3 files must exist. If any missing: FAIL + "Stream B artifacts missing, re-run Phase 4 Stream B generation"
+with list of specific missing files.
+
+**Verdict**: PASS if functional coverage 100% AND lint-clean AND design quality passes AND Stream B artifacts complete.
 
 On PASS: generate Phase 4 summary:
 ```
@@ -229,7 +257,20 @@ Skill(skill="rtl-agent-team:rtl-p4s-bugfix",
 **DESIGN_FIX**: IMMEDIATE STOP, escalate to user (see policy: Escalation).
 
 Track feedback loop state in `.rtl-agent-team/state/feedback-loop-state.json`.
-Max 2 loops per sub-phase, then escalate.
+
+**G2: Feedback Loop Iteration Enforcement** (mandatory):
+```
+Read(".rtl-agent-team/state/feedback-loop-state.json")
+# Check iteration_count per sub-phase
+```
+If `iteration_count >= 2` for any sub-phase:
+IMMEDIATE STOP — do not attempt another fix iteration.
+Escalate to user via `AskUserQuestion`:
+  "Phase 5→4 feedback loop reached maximum iterations (2) for sub-phase {name}.
+   Failures: {failure_list}. Options:
+   (A) Allow 1 more iteration
+   (B) Skip failing checks and proceed
+   (C) Return to Phase 3 for architecture review"
 
 After successful fix: record lesson in `docs/lessons-learned.md`.
 

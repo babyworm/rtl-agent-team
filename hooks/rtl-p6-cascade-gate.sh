@@ -34,8 +34,25 @@ if [ ! -f "$STALE_MARKER" ]; then
   exit 0
 fi
 
-# If cascade work is confirmed done, clean up and allow exit
+# If cascade work is confirmed done, verify documents were actually updated (G5: mtime check)
 if [ -f "$CASCADE_DONE" ]; then
+  REVIEW_DIR="$CWD/reviews/phase-6-review"
+  STALE_MTIME=$(stat -c %Y "$STALE_MARKER" 2>/dev/null || stat -f %m "$STALE_MARKER" 2>/dev/null || echo 0)
+  DOCS_STALE=false
+  for doc in "$REVIEW_DIR/design-note.md" "$REVIEW_DIR/code-review.md"; do
+    if [ -f "$doc" ]; then
+      DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
+      if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
+        DOCS_STALE=true
+      fi
+    fi
+  done
+
+  if [ "$DOCS_STALE" = "true" ]; then
+    printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (design-note.md, code-review.md) were not updated after RTL change. Document mtime must be newer than the stale marker. Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."}}'
+    exit 0
+  fi
+
   rm -f "$STALE_MARKER" "$CASCADE_DONE"
   printf '{"continue":true}'
   exit 0

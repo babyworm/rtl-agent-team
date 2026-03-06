@@ -95,7 +95,7 @@ Policy Skill (knowledge/rules reference)
 | **Specialist Agent** | `agents/*.md` | Single specialized task execution | No (Task-spawned only) |
 | **Policy Skill** | `skills/*-policy/SKILL.md` | Rules/criteria provider (referenced by agents via `skills:`) | No |
 
-**Defense layers**: Hook(setup check) → Skill(phase prerequisites) → Agent Step 0(setup+phase, guards against direct Task() spawn)
+**Defense layers**: Hook(setup check) → Skill(phase soft advisory) → Agent Step 0(setup+phase, guards against direct Task() spawn)
 
 ### Plugin Development Best Practices
 
@@ -108,7 +108,7 @@ When modifying this plugin:
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
 6. **Non-destructive deployment** — `rtl-setup` deploys rules/guides only if files don't already exist
 7. **POSIX shell compatibility** — Hook scripts are invoked with `sh`, not `bash`. Use `[` not `[[`
-8. **Skill as gate** — Action skills must validate phase prerequisites before spawning agents, not just delegate blindly
+8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rtl-setup` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
 11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
@@ -130,7 +130,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── hooks.json                       #   Hook registration config
 │   ├── rtl-project-init-advisor.sh      #   SessionStart: setup advisor
 │   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
-│   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write: RTL modification tracking + P6 stale detection
+│   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write/Bash: RTL modification tracking + P6 stale detection
 │   ├── rtl-phase-state-bootstrap.sh     #   PreToolUse:Skill: phase state bootstrap
 │   ├── rtl-skill-activation.sh          #   PreToolUse:Skill: skill completion loop
 │   ├── stop-gate.sh                     #   Stop: autopilot state gate
@@ -201,6 +201,8 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 
 **Document-as-Memory**: Design artifacts are persistent memory. Each phase reads upstream docs, writes downstream. Enables resumability. Details in `skills/rtl-orchestrate/SKILL.md`.
 
+**Asymmetric Phase Gate Design**: Exit gates are strict (artifact existence verification required), entry gates are flexible (WARNING + proceed with available artifacts). This ensures downstream phases never receive incomplete inputs, while allowing upstream-incomplete phases to proceed with adaptive scope reduction. Details in `skills/rtl-orchestrate/SKILL.md`.
+
 ## Coding Conventions (Core Overrides)
 
 1. **Port prefix**: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
@@ -217,12 +219,12 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 |-------------|-------|-------------|
 | `rtl-project-init-advisor.sh` | SessionStart | Advise `rtl-setup` if project not initialized |
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
-| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write | Track .sv file modifications for verification gate + Phase 6 stale detection |
+| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |
-| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria |
+| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria + same-skill re-invocation counter reset |
 | `stop-gate.sh` | Stop | Autopilot gate ladder enforcement (`N→2N→last-chance→user escalation`) + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
-| `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) |
+| `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
 | `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns (experimental) |
 | `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |

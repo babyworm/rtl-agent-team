@@ -61,3 +61,15 @@ PASS when:
 
 FAIL when any signoff-critical risk remains unresolved.
 - Persist terminal verdict in `.rtl-agent-team/state/p5b-state.json`.
+
+### Final Compliance Artifact (P6 entry gate)
+
+On PASS verdict:
+1. Generate `reviews/phase-5-verify/final-compliance.md` with verdict=PASS
+   - Aggregate P5A functional closure results + P5B silicon validation results
+   - Include: requirement traceability summary, coverage metrics, synthesis estimates
+2. Generate `docs/phase-5-verify/phase-5-summary.md` (max 200 lines)
+   - Compressed summary of all Phase 5 verification results
+
+These artifacts are the canonical entry gate for Phase 6 (`p6-review-orchestrator` requires
+`final-compliance.md` with verdict=PASS).

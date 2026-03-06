@@ -26,7 +26,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → STOP with error listing missing artifacts
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -34,6 +34,19 @@ Read(".rtl-agent-team/state/spawn-context.json")
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING, not BLOCK.
+
+```
+Glob("docs/phase-1-research/requirements.json")    # Structured requirements
+Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
+Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
+```
+
+For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ## Step 1: Read P1 Artifacts + Domain Knowledge
 
@@ -74,13 +87,16 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 
 # Parallel stream B: C reference model
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate bandwidth_report.json.")
+     prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate docs/phase-2-architecture/bandwidth_report.json.")
 ```
 
 ## Step 4: Ref Model Quality Gate + Bandwidth Feasibility Check
 
 After Step 3 streams complete:
 ```
+# Note: In Phase 2, ref model is always newly created — unconditional invocation
+# matches policy ("when newly created or substantially revised"). Team orchestrator
+# uses >30% threshold for re-run scenarios; both are policy-compliant.
 Task(subagent_type="rtl-agent-team:ref-model-reviewer",
      prompt="Independent review of refc/ C model quality before oracle use.
      Check algorithm fidelity to requirements/spec, fixed-point precision/bit-width behavior,

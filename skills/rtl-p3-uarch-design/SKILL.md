@@ -29,7 +29,8 @@ assignments, register/SRAM/FSM allocation, and BFM validation.
 Phase 2 completion required:
 - `docs/phase-2-architecture/architecture.md` must exist
 
-If prerequisite is missing, inform the user to run `/rtl-agent-team:p2-arch-design` first.
+If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:p2-arch-design`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

@@ -29,7 +29,8 @@ code quality and design quality reviews, and optional PDF generation.
 Phase 5 completion required:
 - `reviews/phase-5-verify/final-compliance.md` must exist with verdict=PASS
 
-If prerequisite is missing, inform the user to run `/rtl-agent-team:rtl-p5-verify` first.
+If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p5-verify`.
+Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

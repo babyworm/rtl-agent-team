@@ -22,6 +22,8 @@ EOF
     3)
       cat <<'EOF'
 docs/phase-2-architecture/architecture.md|p2-architecture
+refc|p2-ref-model
+docs/phase-2-architecture/bandwidth_report.json|p2-bandwidth
 EOF
       ;;
     4)
