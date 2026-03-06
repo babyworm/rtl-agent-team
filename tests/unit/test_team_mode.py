@@ -405,7 +405,7 @@ class TestTeamIntegrationInfrastructure:
     def test_plugin_version_bumped(self):
         plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
         major, minor, patch = plugin["version"].split(".")
-        assert int(minor) >= 4 or int(major) >= 1, "Version should be >= 0.4.0 for P1-P3 team mode"
+        assert int(minor) >= 5 or int(major) >= 1, "Version should be >= 0.5.0 for P1-P5 team mode"
 
     def test_claude_md_has_team_mode_section(self):
         claude_md = (REPO_ROOT / "CLAUDE.md").read_text()

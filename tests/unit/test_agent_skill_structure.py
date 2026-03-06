@@ -266,7 +266,7 @@ class TestCrossReferences:
             ("rtl-dse", "dse-orchestrator", "rtl-dse-policy"),
             ("rtl-spec-to-uarch", "spec-to-uarch-orchestrator", "rtl-spec-to-uarch-policy"),
             ("rtl-uarch-to-verify", "uarch-to-verify-orchestrator", "rtl-uarch-to-verify-policy"),
-            # P1-P3 team mode orchestrators (v0.4.0)
+            # P1-P5 team mode orchestrators (v0.5.0)
             ("rtl-p1-research-team", "p1-research-team-orchestrator", "p1-spec-research-policy"),
             ("rtl-p2-arch-team", "p2-arch-team-orchestrator", "p2-arch-design-policy"),
             ("rtl-p3-uarch-team", "p3-uarch-team-orchestrator", "rtl-p3-uarch-policy"),

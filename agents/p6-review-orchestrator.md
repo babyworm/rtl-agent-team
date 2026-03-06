@@ -35,6 +35,28 @@ Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
 
+### Phase 7 Exploration Mode Detection
+
+If user input contains "Phase 7", "exploration", or "explore":
+- Set `EXPLORATION_MODE = true`
+- Skip Phase 5→6 gate check (Phase 7 exempt from pipeline absolute rules)
+- Skip Wave 1/CC1/Wave 2/CC2 — these are Phase 6 specific
+- Instead, delegate to exploration workflow:
+  ```
+  Bash("mkdir -p docs/phase-7-exploration reviews/phase-7-exploration")
+  ```
+  - Guard Rails:
+    - Existing `rtl/` files must NOT be directly modified (exploration branch only)
+    - Results stored in `docs/phase-7-exploration/exploration-notes.md`
+    - Scope: algorithm alternatives, optimization experiments, technology evaluation
+    - Prohibited: production RTL changes, verification bypass, feature additions without spec change
+  - Spawn exploration agents as needed (rtl-architect for trade-off analysis, spec-analyst for alternative evaluation)
+  - On successful exploration: create ADR in `docs/decisions/ADR-{NNN}.md` with integration proposal
+  - Save final output to `reviews/phase-7-exploration/exploration-review.md`
+  - Report summary and STOP (no further pipeline progression)
+
+If `EXPLORATION_MODE` is false, continue with normal Phase 6 workflow below.
+
 ### Upstream Artifact Scan (E1: soft entry gate)
 
 Scan for upstream artifacts needed by Phase 6. Missing artifacts produce WARNING, not BLOCK.

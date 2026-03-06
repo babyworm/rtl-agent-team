@@ -89,16 +89,33 @@ Read(".rtl-agent-team/state/rtl-uarch-to-verify-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
-1. Skip completed phases/modules based on state
-2. Phase 4 resume: check `completed_modules` vs `pending_modules`, `stream_a_status`/`stream_b_status`
-3. Phase 5 resume: check `completed_sub_phases` vs `pending_sub_phases`
-4. Clear `interrupted_reason` and `partial_work_summary`
+1. **Schema migration**: if `schema_version` missing, `"1.0"`, or `"2.0"`, migrate to v3.0:
+   - Add `schema_version: "3.0"`, `current_phase_name`
+   - Add `interrupted_reason`, `partial_work_summary` (default null)
+   - Add `upper_spec_blocking` (default false)
+   - Add per-phase: `started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`
+   - Write migrated state back immediately
+2. Skip completed phases: `status == "completed"` AND `gate_passed_at != null`
+3. Phase 4 resume: check `completed_modules` vs `pending_modules`, `stream_a_status`/`stream_b_status`
+4. Phase 5 resume: check `completed_sub_phases` vs `pending_sub_phases`, `fix_history`
+5. Clear `interrupted_reason` and `partial_work_summary`
 
 **If no state file** — Fresh start:
 ```
 Write(".rtl-agent-team/state/rtl-uarch-to-verify-state.json",
-  { phase: 4, sub_phase: null, feedback_loops: 0, max_feedback_loops: 2,
-    pipeline_scope: "phase-4-to-5" })
+  { schema_version: "3.0", current_phase: 4, current_phase_name: "rtl_implementation",
+    pipeline_scope: "phase-4-to-5",
+    interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
+    phases: {
+      "4": { status: "pending", started_at: null, completed_at: null, gate_passed_at: null,
+             review_rounds_completed: 0, completed_modules: [], pending_modules: [],
+             stream_a_status: "pending", stream_b_status: "pending",
+             partial_work: { completed_items: [], current_action: null } },
+      "5": { status: "pending", started_at: null, completed_at: null, gate_passed_at: null,
+             review_rounds_completed: 0, completed_sub_phases: [], pending_sub_phases: [],
+             fix_history: [], feedback_loops: 0, max_feedback_loops: 2,
+             partial_work: { completed_items: [], current_action: null } }
+    } })
 ```
 
 ## Step 3: Phase 4 — RTL Implementation + Early Verification (PARALLEL STREAMS)

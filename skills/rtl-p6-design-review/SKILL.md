@@ -16,10 +16,11 @@ code quality and design quality reviews, and optional PDF generation.
 - Phase 5 verification has passed (verdict=PASS)
 - User says "design review", "design note", "Phase 6", "documentation"
 - Need comprehensive design documentation with quality assessment
+- User says "Phase 7", "exploration", "explore" (exploration mode — Phase 7 exempt from pipeline gates)
 </Use_When>
 
 <Do_Not_Use_When>
-- Phase 5 verification has not passed (run rtl-p5-verify first)
+- Phase 5 verification has not passed (run rtl-p5-verify first) — except for Phase 7 exploration mode
 - Only need RTL documentation without review (use rtl-document)
 - Only need a code review (use arch-review or specific reviewer agent)
 </Do_Not_Use_When>

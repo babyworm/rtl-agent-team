@@ -55,7 +55,12 @@ Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
-1. **Schema migration**: if `schema_version` missing or `"1.0"`, migrate to v2.0
+1. **Schema migration**: if `schema_version` missing, `"1.0"`, or `"2.0"`, migrate to v3.0:
+   - Add `schema_version: "3.0"`, `current_phase_name`
+   - Add `interrupted_reason`, `partial_work_summary` (default null)
+   - Add `upper_spec_blocking` (default false)
+   - Add per-phase: `started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`
+   - Write migrated state back immediately
 2. **Skip completed phases**: status == "completed" AND gate_passed_at != null
 3. **Resume in-progress phase**: read `partial_work.completed_items`, continue from `current_action`
 4. Resume review rounds from `review_rounds_completed`
@@ -65,9 +70,17 @@ Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
 **If no state file** — Fresh start:
 ```
 Write(".rtl-agent-team/state/rtl-spec-to-uarch-state.json",
-  { schema_version: "2.0", current_phase: 1, pipeline_scope: "phase-1-to-3",
+  { schema_version: "3.0", current_phase: 1, pipeline_scope: "phase-1-to-3",
     execution_mode: "team",
-    phases: { "1": { status: "pending" }, "2": { status: "pending" }, "3": { status: "pending" } } })
+    interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
+    phases: {
+      "1": { status: "pending", started_at: null, completed_at: null, gate_passed_at: null,
+             review_rounds_completed: 0, partial_work: { completed_items: [], current_action: null } },
+      "2": { status: "pending", started_at: null, completed_at: null, gate_passed_at: null,
+             review_rounds_completed: 0, partial_work: { completed_items: [], current_action: null } },
+      "3": { status: "pending", started_at: null, completed_at: null, gate_passed_at: null,
+             review_rounds_completed: 0, partial_work: { completed_items: [], current_action: null } }
+    } })
 ```
 
 ## Step 2: Phase 1 — Research (Team)
