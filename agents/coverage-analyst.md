@@ -182,8 +182,11 @@ When spawned with `team_name` parameter as part of a native team:
    - Analyze code coverage (line, toggle, FSM) and functional coverage
    - Identify uncovered bins, rank by risk, suggest directed tests
    - Save report to `reviews/phase-5-verify/coverage-{module}.md`
-   - TaskUpdate(completed) + SendMessage to leader with coverage percentages
-4. When no more coverage tasks are available, notify leader and wait for shutdown
+   - TaskUpdate(completed) + SendMessage to coordinator with coverage percentages
+4. When no more coverage tasks are available, notify coordinator and wait for shutdown
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
 
 When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

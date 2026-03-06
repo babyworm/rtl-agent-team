@@ -5,12 +5,33 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 This document defines the standard protocol for agents operating as workers
 within a Claude Code native team (TeamCreate/SendMessage/TaskCreate).
 
+> **Orchestrator as Teammate**: The team leader is the skill (main session).
+> The skill calls TeamCreate, spawns a coordinator teammate (orchestrator) and
+> 3-5 general-purpose workers. The coordinator manages the task graph via
+> TaskCreate/TaskList/TaskUpdate and directs workers via SendMessage.
+> Workers communicate with the coordinator via SendMessage and pick up tasks
+> from the shared task list. For specialist work, workers spawn Task() subagents.
+
+```
+Skill (main session = leader)
+  ├── TeamCreate
+  ├── TaskCreate (initial graph)
+  ├── Agent(coordinator) ← TEAMMATE (orchestrator)
+  │   ├── TaskCreate/TaskList/TaskUpdate ✓
+  │   └── SendMessage ✓ (to workers + leader)
+  ├── Agent(worker) × 3-5
+  │   └── Task(specialist) ← subagent calls
+  ├── Leader: TaskList monitoring loop
+  ├── TeamDelete
+  └── Cleanup
+```
+
 ## Worker Lifecycle
 
 ### 1. Initialization
 When spawned with `team_name` parameter:
 - Team membership is managed by Claude Code natively (via TeamCreate/SendMessage)
-- Identify self (name) and leader from native team context
+- Identify self (name) and coordinator from native team context
 - Read `.rtl-agent-team/state/team-config.json` for plugin state only (team_mode, phase)
 - Call `TaskList()` to discover available tasks
 
@@ -38,21 +59,30 @@ For each claimed task:
 2. Perform the work described in task description
 3. Save artifacts to filesystem (results, reports, logs)
 4. `TaskUpdate(status="completed")`
-5. `SendMessage(type="message", recipient=leader, content=result_summary)`
+5. `SendMessage(type="message", recipient="coordinator", content=result_summary)`
 
-### 4. Result Reporting
-After completing a task, send a concise message to the leader:
+### 4. Specialist Delegation
+For tasks requiring specialist expertise beyond your scope, spawn a Task() subagent:
+```python
+Task(subagent_type="rtl-agent-team:<specialist-name>",
+     description="<short description>",
+     prompt="<detailed task prompt with context>")
+```
+After the specialist returns, incorporate its results and report to the coordinator.
+
+### 5. Result Reporting
+After completing a task, send a concise message to the coordinator:
 ```
 SendMessage(
     type="message",
-    recipient="<leader_name>",
+    recipient="coordinator",
     content="V1 Lint for module_x: PASS. 0 errors, 2 warnings (waived). Report: reviews/phase-5-verify/lint-module_x.md",
     summary="V1 Lint module_x PASS"
 )
 ```
 
-### 5. Shutdown
-When receiving a `shutdown_request`:
+### 6. Shutdown
+When receiving a `shutdown_request` from the coordinator:
 ```
 SendMessage(
     type="shutdown_response",
@@ -64,19 +94,21 @@ SendMessage(
 ## Error Handling
 
 - **Task failure**: Mark task as completed with failure note in description.
-  Send failure details to leader. Do NOT retry automatically — leader decides.
+  Send failure details to coordinator. Do NOT retry automatically — coordinator decides.
 - **Missing dependencies**: If a task's blockedBy is not empty, skip it.
   Check TaskList again later.
 - **Filesystem conflicts**: Use the flock-util pattern for shared state files.
+- **Specialist subagent failure**: Report failure to coordinator with error details.
+  Coordinator will decide whether to retry or reassign.
 
 ## Artifact Conventions
 
-Workers save results following the Phase 5 directory convention:
+Workers save results following the phase directory convention:
 ```
-reviews/phase-5-verify/        # Verdict reports (lint-{module}.md, etc.)
-sim/coverage/                  # Coverage data
-sim/formal/                    # Formal verification results
-sim/cdc/                       # CDC analysis results
+reviews/phase-N-*/          # Verdict reports (lint-{module}.md, etc.)
+sim/coverage/               # Coverage data
+sim/formal/                 # Formal verification results
+sim/cdc/                    # CDC analysis results
 ```
 
 ## Non-Team Fallback

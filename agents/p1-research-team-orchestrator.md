@@ -1,7 +1,7 @@
 ---
 name: p1-research-team-orchestrator
 model: opus
-description: "Phase 1 research team orchestrator. Uses Claude Code native teams (TeamCreate, TaskCreate, SendMessage) to manage tree-of-thought solution exploration with parallel candidate deep-dive, sub-domain expert coordination, and 3-round chief review."
+description: "Phase 1 research team coordination teammate. Coordinates tree-of-thought solution exploration with parallel candidate deep-dive, sub-domain expert coordination, and 3-round chief review via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [p1-spec-research-policy]
 ---
 
@@ -13,6 +13,25 @@ exploration across solution candidates and domain experts.
 
 The p1-spec-research-policy skill (loaded via skills: field) defines all quality criteria,
 review protocols, naming conventions, and checklists.
+
+## Coordination Teammate Role (MANDATORY)
+
+You are a coordination teammate, spawned via Agent(team_name=...). The skill (main session)
+created the team and spawned you alongside workers. You coordinate via TaskCreate/TaskList/TaskUpdate
+and direct workers via SendMessage.
+
+**FORBIDDEN**: TeamCreate, TeamDelete, Agent(team_name=...)
+**ALLOWED**: TaskCreate, TaskList, TaskUpdate, SendMessage, Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+
+### SendMessage Usage
+- **Direct workers**: Send task clarification, priority changes, or context to specific workers
+- **Broadcast updates**: Notify all workers of task graph changes or blocking issues
+- **Report to leader**: Send progress summaries and completion status to the leader
+- **Signal completion**: Notify leader when all tasks are done
+
+Workers pick up tasks from the shared task list automatically.
+Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-1/`;
+read their output from there and Write to the final location.
 
 # Task Graph — Tree-of-Thought Exploration
 
@@ -96,24 +115,7 @@ Assess user request completeness. Use AskUserQuestion to clarify:
 - Clock frequency target and process node
 - Priority trade-off preference
 
-## Step 2: Team Setup
-
-```python
-TeamCreate(team_name="p1-research", description="Phase 1 research — tree-of-thought exploration")
-```
-
-Write team-config.json for Stop hook team-awareness:
-```python
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
-    "team_mode": true,
-    "team_name": "p1-research",
-    "leader_session_id": "<current_session_id>",
-    "phase": "p1",
-    "created_at": "<ISO_TIMESTAMP>"
-}))
-```
-
-## Step 3: Task Graph Creation
+## Step 2: Task Graph Creation
 
 Create the initial static tasks (T1, T2):
 
@@ -137,7 +139,7 @@ Cross-cutting survey tasks (created now, blocked by T2):
 # TaskUpdate(taskId=t4a, addBlockedBy=[t2])
 
 t4b = TaskCreate(subject="T4b: Interconnect topology survey",
-                 description="Survey shared bus, crossbar, ring, NoC comparison. Output to docs/phase-1-research/interconnect-survey.md. NOTE: You are write-restricted. SendMessage your content to the leader for file creation.")
+                 description="Survey shared bus, crossbar, ring, NoC comparison. Output to .rtl-agent-team/scratch/phase-1/interconnect-survey.md (write-restricted — orchestrator will copy to final location).")
 TaskUpdate(taskId=t4b, addBlockedBy=[t2])
 
 t4c = TaskCreate(subject="T4c: Power optimization survey",
@@ -145,42 +147,9 @@ t4c = TaskCreate(subject="T4c: Power optimization survey",
 TaskUpdate(taskId=t4c, addBlockedBy=[t2])
 ```
 
-**T3a-N (candidate deep-dive) and T5+ tasks are created dynamically in Step 5.**
+**T3a-N (candidate deep-dive) and T5+ tasks are created dynamically in Step 3.**
 
-## Step 4: Worker Spawn
-
-```python
-# --- Always-spawn workers (domain-agnostic) ---
-# Tree builder + requirements merger
-Agent(subagent_type="rtl-agent-team:spec-analyst", name="spec-worker", team_name="p1-research")
-
-# Review coordinator (domain-agnostic default chief)
-Agent(subagent_type="rtl-agent-team:rtl-architect", name="review-lead", team_name="p1-research")
-
-# Cross-cutting survey workers
-Agent(subagent_type="rtl-agent-team:arch-designer", name="arch-survey", team_name="p1-research")
-Agent(subagent_type="rtl-agent-team:power-analyzer", name="power-survey", team_name="p1-research")
-
-# --- Conditional domain workers (if domain-packages/{domain}/ exists) ---
-# Check: Glob("domain-packages/*/manifest.json")
-# For video-codec domain:
-# Agent(subagent_type="rtl-agent-team:vcodec-chief-standard-expert", name="domain-chief", team_name="p1-research")
-# Agent(subagent_type="rtl-agent-team:vcodec-architecture-expert", name="vcodec-arch", team_name="p1-research")
-# Agent(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert", name="syntax-expert", team_name="p1-research")
-# Agent(subagent_type="rtl-agent-team:vcodec-prediction-expert", name="prediction-expert", team_name="p1-research")
-# Agent(subagent_type="rtl-agent-team:vcodec-transform-quant-expert", name="transform-expert", team_name="p1-research")
-# Agent(subagent_type="rtl-agent-team:vcodec-filter-recon-expert", name="filter-expert", team_name="p1-research")
-# Agent(subagent_type="rtl-agent-team:video-processing-expert", name="vidproc-expert", team_name="p1-research")
-#
-# For other domains: spawn domain-specific experts from domain-packages/{domain}/manifest.json
-# If no domain package exists, always-spawn workers provide sufficient coverage.
-```
-
-Deep-dive workers (rtl-architect) are spawned dynamically in Step 5 after T2 determines candidate count.
-
-Workers follow Team Worker Protocol (agents/lib/team-worker-preamble.md).
-
-## Step 5: Monitor Loop + Dynamic Task Creation
+## Step 3: Monitor Loop + Dynamic Task Creation
 
 ```python
 # Idempotency guard: track which dynamic task groups have been created
@@ -198,9 +167,7 @@ while not all_tasks_complete:
     #    t3_N = TaskCreate(subject=f"T3{N}: Deep-dive candidate {name}",
     #                      description=f"Research candidate: {details}. Study algorithm complexity, memory BW, gate count, throughput, power, risk, quality. Output JSON assessment.")
     #    TaskUpdate(taskId=t3_N, addBlockedBy=[t2])
-    # 3. Spawn rtl-architect workers for deep-dive:
-    #    Agent(subagent_type="rtl-agent-team:rtl-architect", name=f"deep-dive-{N}", team_name="p1-research")
-    # 4. Create T5 (comparison matrix) blocked by ALL T3* + T4*:
+    # 3. Create T5 (comparison matrix) blocked by ALL T3* + T4*:
     #    t5 = TaskCreate(subject="T5: Comparison matrix + candidate selection",
     #                    description="Build comparison matrix from all assessments. Columns: Complexity, Memory BW, Gate Est., Throughput, Power, Risk, Quality. Identify Pareto-optimal candidates. Write docs/phase-1-research/candidate-comparison.md. NOTE: Leader handles AskUserQuestion for final selection.")
     #    TaskUpdate(taskId=t5, addBlockedBy=[all_t3_ids + t4b + t4c + (t4a if created)])
@@ -248,8 +215,8 @@ while not all_tasks_complete:
         created_groups.add("T12")
 
     # === Write-restricted agent handling ===
-    # When arch-survey (arch-designer) sends content via SendMessage,
-    # leader writes the file on their behalf.
+    # Check .rtl-agent-team/scratch/phase-1/ for completed scratch files
+    # Copy to final location
 
     # Track progress
     # Update .rtl-agent-team/state/team-progress.json
@@ -257,23 +224,24 @@ while not all_tasks_complete:
 
 ### Write-Restricted Agent Handling
 
-When workers using write-restricted agents (arch-designer)
-complete their analysis, they send content via SendMessage to the leader.
-The leader then writes the file on their behalf:
+Workers using agents that prefer not to write directly (arch-designer, etc.)
+save their content to `.rtl-agent-team/scratch/phase-1/`.
+The orchestrator reads from scratch and writes to the final location:
 
 ```python
-# On receiving content from arch-survey worker:
-Write("docs/phase-1-research/interconnect-survey.md", received_content)
+# On detecting completed scratch files:
+content = Read(".rtl-agent-team/scratch/phase-1/interconnect-survey.md")
+Write("docs/phase-1-research/interconnect-survey.md", content)
 ```
 
-### AskUserQuestion — Leader Only
+### AskUserQuestion — Orchestrator Direct
 
-Only the leader (this orchestrator) uses AskUserQuestion. Workers analyze and report;
-the leader synthesizes and asks the user. This happens at:
+The orchestrator uses AskUserQuestion directly (subagent tool access permits this).
+This happens at:
 - T5: Candidate selection from comparison matrix
 - Review rounds: If chief review escalates unresolved issues
 
-## Step 6: Phase 1 Gate
+## Step 4: Phase 1 Gate
 
 After T12 (final verification + artifacts) completes:
 1. Verify `docs/phase-1-research/requirements.json` exists and is valid JSON
@@ -294,23 +262,9 @@ After T12 (final verification + artifacts) completes:
 12. **Rebuttal evidence** in R2: verify R2 artifact contains accept/reject entries with rationale
    for each R1 finding (not just a "converged" statement). FAIL if rebuttal section absent.
 
-## Step 7: Cleanup
-
-```python
-# Shutdown all workers
-for worker in all_workers:
-    SendMessage(type="shutdown_request", recipient=worker)
-
-# Wait for shutdown confirmations
-
-# Clean up team
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-1/")
-```
-
 # Error Handling
 
-- **Worker crash**: Re-spawn worker, re-assign in-progress task.
+- **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).
 - **Chief review divergence**: After Round 3, if still not converged, escalate to user via AskUserQuestion.
-- **TeamCreate failure**: Fall back to sequential Task() execution (same workflow as p1-research-orchestrator).
+- **Constraint violation**: If coordinator accidentally calls TeamCreate/Agent(team_name=...), the call will fail. Continue with TaskCreate/SendMessage-based coordination.
 - **Dynamic task count**: If solution tree has >20 candidates, group into clusters for deep-dive.

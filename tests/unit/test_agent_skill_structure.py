@@ -269,13 +269,11 @@ class TestCrossReferences:
             ("p2-arch-design", "p2-arch-orchestrator", "p2-arch-design-policy"),
             ("rtl-p3-uarch-design", "p3-uarch-orchestrator", "rtl-p3-uarch-policy"),
             ("rtl-p4-implement", "p4-implement-orchestrator", "rtl-p4-implement-policy"),
-            ("rtl-p4-implement-team", "p4-implement-team-orchestrator", "rtl-p4-implement-policy"),
             ("rtl-p4-rapid-impl", "p4-rtl-sanity-orchestrator", "rtl-design-policy"),
             ("rtl-p4s-bugfix", "p4s-bugfix-orchestrator", "rtl-p4s-bugfix-policy"),
             ("rtl-p4s-refactor", "p4s-refactor-orchestrator", "rtl-p4s-refactor-policy"),
             ("rtl-p4s-unit-test", "p4s-unit-test-orchestrator", "rtl-p4s-unit-test-policy"),
             ("rtl-p5-verify", "p5-verify-orchestrator", "rtl-p5-verify-policy"),
-            ("rtl-p5-verify-team", "p5-verify-team-orchestrator", "rtl-p5-verify-policy"),
             ("rtl-p5a-functional-closure", "p5a-functional-closure-orchestrator", "rtl-functional-verify-policy"),
             ("rtl-p5b-silicon-validation", "p5b-silicon-validation-orchestrator", "rtl-silicon-validation-policy"),
             ("rtl-p5s-func-verify", "p5s-func-verify-orchestrator", "rtl-p5s-func-verify-policy"),
@@ -292,11 +290,10 @@ class TestCrossReferences:
             ("rtl-dse", "dse-orchestrator", "rtl-dse-policy"),
             ("rtl-spec-to-uarch", "spec-to-uarch-orchestrator", "rtl-spec-to-uarch-policy"),
             ("rtl-uarch-to-verify", "uarch-to-verify-orchestrator", "rtl-uarch-to-verify-policy"),
-            # P1-P5 team mode orchestrators (v0.5.0)
-            ("rtl-p1-research-team", "p1-research-team-orchestrator", "p1-spec-research-policy"),
-            ("rtl-p2-arch-team", "p2-arch-team-orchestrator", "p2-arch-design-policy"),
-            ("rtl-p3-uarch-team", "p3-uarch-team-orchestrator", "rtl-p3-uarch-policy"),
-            ("rtl-spec-to-uarch-team", "spec-to-uarch-team-orchestrator", "rtl-spec-to-uarch-policy"),
+            # P1-P5 team mode orchestrators (v0.6.0) — use Agent(team_name=...) not Task()
+            # Tested separately below in team-specific delegation check
+            # rtl-spec-to-uarch-team uses Skill() phase sequencing, not Task() delegation
+            # (tested in test_pipeline_skill_phase_sequencing below)
         ]
 
         for action_skill, orchestrator, policy_skill in chains:
@@ -327,6 +324,29 @@ class TestCrossReferences:
             assert re.search(r"^user-invocable:\s*false\s*$", policy_frontmatter, re.MULTILINE), (
                 f"Policy skill must not be user-invocable: {policy_skill}"
             )
+
+    def test_pipeline_skill_phase_sequencing(self):
+        """Pipeline skills that sequence phases via Skill() instead of Task() delegation."""
+        pipeline_skills = {
+            "rtl-spec-to-uarch-team": [
+                "rtl-p1-research-team",
+                "rtl-p2-arch-team",
+                "rtl-p3-uarch-team",
+            ],
+        }
+        for skill_name, phase_skills in pipeline_skills.items():
+            skill_file = SKILLS_DIR / skill_name / "SKILL.md"
+            assert skill_file.exists(), f"Missing pipeline skill: {skill_name}"
+            content = skill_file.read_text()
+            frontmatter = _read_frontmatter(skill_file)
+            assert re.search(r"^user-invocable:\s*true\s*$", frontmatter, re.MULTILINE), (
+                f"Pipeline skill must be user-invocable: {skill_name}"
+            )
+            for phase_skill in phase_skills:
+                pattern = rf'Skill\(skill="rtl-agent-team:{re.escape(phase_skill)}"'
+                assert re.search(pattern, content), (
+                    f"{skill_name} must sequence phase skill {phase_skill} via Skill()"
+                )
 
     def test_convention_skills_are_non_user_invocable(self):
         convention_skills = ["systemverilog", "systemverilog-assertion", "systemc", "uvm"]

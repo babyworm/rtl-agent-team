@@ -5,31 +5,51 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 When using Claude Code native teams (TeamCreate, SendMessage, TaskCreate),
 failures can occur at multiple points. This document defines fallback behaviors.
 
+## Architecture: Orchestrator as Teammate
+
+Team lifecycle is managed by the **skill (main session)** as leader. The skill calls
+TeamCreate, spawns a coordinator teammate (orchestrator) and 3-5 general-purpose workers.
+The coordinator manages the task graph and directs workers via SendMessage.
+
+```
+Skill (main session = leader)
+  ├── TeamCreate(team_name="pN-...")
+  ├── Write(team-config.json)
+  ├── TaskCreate (initial task graph)
+  ├── Agent(team_name=..., name="coordinator", subagent_type=...orchestrator)
+  ├── Agent(team_name=..., name="worker-N") × 3-5
+  │     └── Task(specialist) for expert work
+  ├── Leader: TaskList monitoring loop
+  ├── TeamDelete()
+  └── Bash("rm team-config.json")
+```
+
 ## TeamCreate Failure
 
-If `TeamCreate()` fails (e.g., feature not available, permission error):
+Since TeamCreate is now called by the skill (main session), this failure should
+be rare. If it occurs:
 
 1. Log the failure reason
-2. Fall back to sequential `Task()` execution (legacy mode)
+2. Fall back to sequential `Task()` execution using the non-team orchestrator
 3. Do NOT create `team-config.json` — hooks will behave normally
-4. Continue with the same task graph, but execute sequentially
 
 ```python
+# In skill execution — TeamCreate is at skill level (main session)
 try:
     TeamCreate(team_name="p4-implement", description="Phase 4 RTL implementation")
 except:
-    # Fallback: use sequential Task() execution
-    for module in modules:
-        Task(subagent_type="rtl-agent-team:rtl-coder",
-             prompt=f"Implement {module} from uarch spec")
+    # Fallback: use sequential non-team orchestrator via Task()
+    Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
+         description="P4 sequential fallback",
+         prompt="Execute Phase 4 RTL implementation (sequential mode).")
 ```
 
 ## SendMessage Failure
 
-If `SendMessage()` fails between leader and workers:
+If `SendMessage()` fails between coordinator and workers:
 
 1. Workers write results to filesystem as artifacts (always done regardless)
-2. Leader polls filesystem for completion markers instead of waiting for messages
+2. The coordinator monitors task completion via TaskList
 3. Artifact paths follow standard conventions:
    - RTL: `rtl/{module}/{module}.sv`
    - Reviews: `reviews/phase-N-*/`
@@ -39,36 +59,39 @@ If `SendMessage()` fails between leader and workers:
 
 If a worker agent dies or stops responding:
 
-1. Leader detects via TaskList (task stays `in_progress` with no update)
-2. Leader re-spawns a replacement worker of the same type
-3. Leader re-assigns the stuck task to the new worker via TaskUpdate
-4. Max 2 re-spawn attempts per task; after that, escalate to user
+1. Coordinator detects via TaskList (task stays `in_progress` with no update)
+2. Coordinator sends alert to leader via SendMessage
+3. Coordinator marks the task as failed and continues with remaining tasks
+4. On completion, coordinator reports incomplete tasks to the leader
+5. The skill may re-invoke with `--resume` to handle incomplete work
 
-```python
-# Detection: task in_progress for too long without update
-stale_tasks = [t for t in TaskList() if t.status == "in_progress" and t.age > timeout]
-for task in stale_tasks:
-    # Re-spawn worker
-    Agent(subagent_type=task.agent_type, name=f"{task.worker}-retry", team_name=team)
-    TaskUpdate(task.id, owner=f"{task.worker}-retry")
-```
+## Leader Crash (Skill Session)
 
-## Leader Crash
+If the skill session (team leader) dies:
 
-If the team leader (orchestrator) dies:
+1. Workers complete their current task, write artifacts, then shut down
+2. On next session start, user can resume by re-invoking the team skill
+3. The team skill reads existing artifacts and skips completed modules
+4. Stale `team-config.json` (>2h) is ignored by hooks
 
-1. Workers detect stale progress file (`.rtl-agent-team/state/team-progress.json`
-   not updated for > 5 minutes)
-2. Workers complete their current task, write artifacts, then shut down
-3. On next session start, user can resume by re-invoking the team skill
-4. The team skill reads existing artifacts and skips completed modules
+## Coordinator Crash
+
+If the coordination teammate (orchestrator) dies:
+
+1. Workers continue processing tasks from the shared task list
+2. No new dynamic tasks will be created until coordinator is replaced
+3. The leader detects coordinator absence via TaskList monitoring
+4. The leader can spawn a replacement coordinator teammate
+5. If replacement fails, leader performs cleanup (TeamDelete, rm team-config.json)
+6. User can re-invoke with `--resume` to continue
 
 ## Fallback Decision Matrix
 
 | Failure | Detection | Fallback | User Action |
 |---------|-----------|----------|-------------|
-| TeamCreate fails | Exception on create | Sequential Task() | None (automatic) |
-| SendMessage fails | Exception on send | Filesystem polling | None (automatic) |
-| Worker crash | Stale task in TaskList | Re-spawn + re-assign | None (max 2 retries) |
-| Leader crash | Stale progress file | Workers self-terminate | Re-invoke team skill |
+| TeamCreate fails (skill) | Exception on create | Sequential non-team orchestrator | None (automatic) |
+| SendMessage fails | Exception on send | Filesystem-based artifacts | None (automatic) |
+| Worker crash | Stale task in TaskList | Coordinator marks failed, continues | Re-invoke with --resume |
+| Coordinator crash | Leader TaskList monitoring | Leader spawns replacement | Re-invoke with --resume |
+| Skill session crash | Session termination | Workers self-terminate | Re-invoke team skill |
 | All retries exhausted | Retry count > 2 | Stop and report | User decides next step |

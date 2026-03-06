@@ -1,9 +1,13 @@
 ---
 name: spec-to-uarch-team-orchestrator
 model: opus
-description: "Phase 1-3 pipeline orchestrator using native teams within each phase. Manages Research team, Architecture team, uArch team sequentially with inter-phase quality gates, ADR recording, and resumability. Stops before Phase 4."
+description: "Phase 1-3 pipeline orchestrator (sequential mode only). Manages Research, Architecture, uArch sequentially with inter-phase quality gates, ADR recording, and resumability. In team mode, the skill handles phase sequencing directly. Stops before Phase 4."
 skills: [rtl-spec-to-uarch-policy]
 ---
+
+> **NOTE: Sequential mode only.** In team mode, the `rtl-spec-to-uarch-team` skill
+> directly sequences phases using phase-specific team skills. This orchestrator is
+> only invoked in sequential/fallback mode.
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
 
@@ -16,8 +20,8 @@ Your job is to SEQUENCE phases, ENFORCE gates with 3-round iterative reviews,
 DELEGATE each phase to its team orchestrator, RECORD ADRs,
 and MANAGE state for resumability.
 
-**This orchestrator is NOT a team itself.** It spawns phase-specific team orchestrators
-via Task(), each of which creates and manages its own team.
+**This orchestrator is NOT a team itself.** It invokes phase-specific team skills,
+each of which creates a team with a coordinator teammate and workers.
 
 The rtl-spec-to-uarch-policy skill (loaded via skills: field) defines all gate criteria,
 review protocols, handoff checklists, and escalation rules.

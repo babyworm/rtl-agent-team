@@ -3,13 +3,14 @@ name: rtl-p5-verify-team
 description: "Phase 5 verification using Claude Code native teams for parallel worker execution. Manages 9 verification categories with dependency-aware task graphs and module graduation gates."
 user-invocable: true
 argument-hint: "[--module=name | --resume]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
 ---
 
 <Purpose>
 Execute Phase 5 verification pipeline using Claude Code native team infrastructure.
-Uses TeamCreate + TaskCreate + SendMessage for true parallel verification
-across modules and categories, with dependency-aware task scheduling.
+The skill (main session) handles team lifecycle: TeamCreate, coordinator + worker
+spawning, task monitoring, and cleanup. The coordinator teammate manages the 9-category
+verification task graph and directs workers via SendMessage.
 </Purpose>
 
 <Use_When>
@@ -38,20 +39,82 @@ Proceed with available artifacts — orchestrator will adapt scope.
 ## Execution
 
 ```python
-# Do NOT pre-write team-config.json here — the orchestrator writes it atomically
-# in Step 2 with a valid leader_session_id. This avoids race windows where
-# Stop hooks see an empty leader_session_id and bypass all gates.
+# Step 1: Team creation (main session = leader)
+TeamCreate(team_name="p5-verify", description="Phase 5 verification: 9-category parallel verification")
 
-Task(subagent_type="rtl-agent-team:p5-verify-team-orchestrator",
-     prompt="Execute Phase 5 verification using native teams. User input: $ARGUMENTS")
+# Step 2: Write team-config.json for hook consumption
+Write(".rtl-agent-team/state/team-config.json", json.dumps({
+    "team_mode": true,
+    "team_name": "p5-verify",
+    "leader_session_id": "<current_session_id>",
+    "coordinator_name": "coordinator",
+    "worker_count": 4,
+    "phase": "p5",
+    "created_at": "<ISO_TIMESTAMP>"
+}))
+
+# Step 3: Prepare directories
+Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage sim/formal sim/cdc .rtl-agent-team/scratch/phase-5")
+
+# Step 4: No initial tasks from skill — coordinator creates per-module V1-V9 after discovering modules
+
+# Step 5: Spawn coordinator as teammate (orchestrator)
+Agent(team_name="p5-verify", subagent_type="rtl-agent-team:p5-verify-team-orchestrator",
+      name="coordinator", description="P5 verification coordination",
+      prompt="You are the Phase 5 verification coordinator in team 'p5-verify'. "
+             "Manage the 9-category task graph using TaskCreate/TaskList/TaskUpdate. "
+             "Direct workers via SendMessage. "
+             "Create per-module V1-V9 task graph after discovering modules. "
+             "Signal leader when final compliance review complete. User input: $ARGUMENTS")
+
+# Step 6: Spawn workers as teammates (4 general-purpose)
+Agent(team_name="p5-verify", subagent_type="rtl-agent-team:func-verifier",
+      name="verify-0", description="P5 functional verification",
+      prompt="You are a Phase 5 verification worker in team 'p5-verify'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: reviews/phase-5-verify/, sim/. "
+             "Specialty: lint (V1), functional regression (V5), coverage (V6). "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Examples: lint-checker for V1, testbench-dev for TB, eda-runner for sim, coverage-analyst for V6. "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+Agent(team_name="p5-verify", subagent_type="rtl-agent-team:sva-extractor",
+      name="verify-1", description="P5 formal and CDC verification",
+      prompt="You are a Phase 5 verification worker in team 'p5-verify'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: sim/formal/, sim/cdc/, reviews/phase-5-verify/. "
+             "Specialty: SVA/formal (V2), CDC (V3), protocol (V4). "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Examples: cdc-checker for V3, protocol-checker for V4, constraint-writer for SDC. "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+Agent(team_name="p5-verify", subagent_type="rtl-agent-team:eda-runner",
+      name="analysis-worker", description="P5 performance and synthesis",
+      prompt="You are a Phase 5 analysis worker in team 'p5-verify'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: reviews/phase-5-verify/. "
+             "Specialty: performance (V7), synthesis estimation (V8). "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Examples: perf-verifier for V7, synthesis-reporter for V8. "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+Agent(team_name="p5-verify", subagent_type="rtl-agent-team:rtl-critic",
+      name="review-worker", description="P5 code review and compliance",
+      prompt="You are a Phase 5 review worker in team 'p5-verify'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: reviews/phase-5-verify/. "
+             "Specialty: code review (V9), requirement traceability, final compliance. "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Examples: requirement-tracer for REQ mapping, rtl-critic for review. "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+
+# Step 7: Leader monitoring loop — poll until all tasks complete
+while True:
+    tasks = TaskList()
+    all_done = all(t.status == "completed" for t in tasks)
+    if all_done:
+        break
+    # Continue polling
+
+# Step 8: Cleanup
+TeamDelete()
+Bash("rm -f .rtl-agent-team/state/team-config.json")
+Bash("rm -rf .rtl-agent-team/scratch/phase-5/")
 ```
-
-Do not perform any work directly.
-The team orchestrator manages TeamCreate, team-config.json creation, task graphs,
-worker spawning, module graduation, and compliance review.
-
-## Cleanup
-
-On completion or failure, the orchestrator removes `.rtl-agent-team/state/team-config.json`.
-If the session exits abnormally, the team-config.json staleness (>2h) will prevent
-it from blocking future sessions.

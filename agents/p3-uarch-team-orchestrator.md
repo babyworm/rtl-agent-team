@@ -1,7 +1,7 @@
 ---
 name: p3-uarch-team-orchestrator
 model: opus
-description: "Phase 3 uArch design team orchestrator. Uses Claude Code native teams (TeamCreate, TaskCreate, SendMessage) to manage dual-stream uArch design + BFM development, BFM validation gate, and 5-reviewer 3-round iterative review."
+description: "Phase 3 uArch design team coordination teammate. Coordinates dual-stream uArch design + BFM development, BFM validation gate, and 5-reviewer 3-round iterative review via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [rtl-p3-uarch-policy]
 ---
 
@@ -13,6 +13,25 @@ true parallel execution of per-block uArch design and BFM development.
 
 The rtl-p3-uarch-policy skill (loaded via skills: field) defines all review criteria,
 document requirements, naming conventions, and checklists.
+
+## Coordination Teammate Role (MANDATORY)
+
+You are a coordination teammate, spawned via Agent(team_name=...). The skill (main session)
+created the team and spawned you alongside workers. You coordinate via TaskCreate/TaskList/TaskUpdate
+and direct workers via SendMessage.
+
+**FORBIDDEN**: TeamCreate, TeamDelete, Agent(team_name=...)
+**ALLOWED**: TaskCreate, TaskList, TaskUpdate, SendMessage, Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+
+### SendMessage Usage
+- **Direct workers**: Send task clarification, priority changes, or context to specific workers
+- **Broadcast updates**: Notify all workers of task graph changes or blocking issues
+- **Report to leader**: Send progress summaries and completion status to the leader
+- **Signal completion**: Notify leader when all tasks are done
+
+Workers pick up tasks from the shared task list automatically.
+Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-3/`;
+read their output from there and Write to the final location.
 
 # Task Graph — Dual-Stream uArch + BFM
 
@@ -86,30 +105,13 @@ Skill("rtl-agent-team:domain-consult",
 Bash("mkdir -p docs/phase-3-uarch reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 ```
 
-## Step 2: Team Setup
-
-```python
-TeamCreate(team_name="p3-uarch", description="Phase 3 uArch — dual-stream uArch + BFM")
-```
-
-Write team-config.json:
-```python
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
-    "team_mode": true,
-    "team_name": "p3-uarch",
-    "leader_session_id": "<current_session_id>",
-    "phase": "p3",
-    "created_at": "<ISO_TIMESTAMP>"
-}))
-```
-
-## Step 3: Task Graph Creation
+## Step 2: Task Graph Creation
 
 Create initial parallel streams (T1, T2):
 
 ```python
 t1 = TaskCreate(subject="T1: Per-block uArch design",
-                description="Produce microarchitecture docs at docs/phase-3-uarch/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec. Also produce clock-domain-map.md and protocol-assignments.md. NOTE: You are write-restricted. SendMessage content to leader for file creation.")
+                description="Produce microarchitecture docs at .rtl-agent-team/scratch/phase-3/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec. Also produce clock-domain-map.md and protocol-assignments.md. (Write-restricted — orchestrator will copy to final location at docs/phase-3-uarch/.)")
 
 t2 = TaskCreate(subject="T2: BFM development",
                 description="Build TLM-based BFM from architecture.md. Default blocking transport (LT). Per-block I/O logging MANDATORY. Compare against C reference model (refc/). Archive I/O logs for Phase 4-5.")
@@ -129,14 +131,14 @@ t4a = TaskCreate(subject="T4a: R1 Feature preservation review",
 TaskUpdate(taskId=t4a, addBlockedBy=[t3])
 
 t4b = TaskCreate(subject="T4b: R1 Timing/pipeline review",
-                 description="Review critical path at target frequency, pipeline balance, clock domain feasibility. NOTE: You are write-restricted. SendMessage findings to leader.")
+                 description="Review critical path at target frequency, pipeline balance, clock domain feasibility. Save findings to .rtl-agent-team/scratch/phase-3/timing-review-r1.md (write-restricted — orchestrator will copy to final location).")
 TaskUpdate(taskId=t4b, addBlockedBy=[t3])
 
 # T4c: conditional on domain — use domain expert if domain-packages/{domain}/ exists
 has_domain_expert = len(Glob("domain-packages/*/")) > 0
 if has_domain_expert:
     t4c = TaskCreate(subject="T4c: R1 Algorithm consistency review",
-                     description="Review algorithm-to-uArch consistency, memory optimization, protocol adequacy. NOTE: You are write-restricted. SendMessage findings to leader.")
+                     description="Review algorithm-to-uArch consistency, memory optimization, protocol adequacy. Save findings to .rtl-agent-team/scratch/phase-3/algo-review-r1.md (write-restricted — orchestrator will copy to final location).")
     TaskUpdate(taskId=t4c, addBlockedBy=[t3])
 # If no domain expert: SKIP T4c, rtl-architect (T4a) covers algorithm consistency in its scope
 
@@ -158,40 +160,9 @@ t5 = TaskCreate(subject="T5: Aggregate R1 findings",
 TaskUpdate(taskId=t5, addBlockedBy=t5_deps)
 ```
 
-R2 and R3 review tasks created dynamically in Step 5.
+R2 and R3 review tasks created dynamically in Step 3.
 
-## Step 4: Worker Spawn
-
-```python
-# uArch design worker (write-restricted — sends content to leader)
-Agent(subagent_type="rtl-agent-team:uarch-designer", name="uarch-design", team_name="p3-uarch")
-
-# BFM development worker
-Agent(subagent_type="rtl-agent-team:bfm-dev", name="bfm-worker", team_name="p3-uarch")
-
-# Review lead (also handles aggregation)
-Agent(subagent_type="rtl-agent-team:rtl-architect", name="reviewer-lead", team_name="p3-uarch")
-
-# Timing review worker (write-restricted)
-Agent(subagent_type="rtl-agent-team:timing-advisor", name="timing-review", team_name="p3-uarch")
-
-# Algorithm review worker (CONDITIONAL — only if domain package detected)
-domain_packages = Glob("domain-packages/*/")
-if domain_packages:
-    # Determine domain type from directory name (e.g., "video-codec" → vcodec-architecture-expert)
-    domain = domain_packages[0].split("/")[-2]  # e.g., "video-codec"
-    domain_agent_map = {"video-codec": "vcodec-architecture-expert"}
-    agent_type = domain_agent_map.get(domain, "rtl-architect")  # fallback to rtl-architect
-    Agent(subagent_type=f"rtl-agent-team:{agent_type}", name="algo-review", team_name="p3-uarch")
-# If no domain package: SKIP — rtl-architect (reviewer-lead) covers algorithm consistency
-
-# Model consistency review worker
-Agent(subagent_type="rtl-agent-team:ref-model-dev", name="model-review", team_name="p3-uarch")
-```
-
-Workers follow Team Worker Protocol (agents/lib/team-worker-preamble.md).
-
-## Step 5: Monitor Loop + Dynamic Task Creation
+## Step 3: Monitor Loop + Dynamic Task Creation
 
 ```python
 while not all_tasks_complete:
@@ -223,16 +194,21 @@ while not all_tasks_complete:
     # T10: Final consolidation, blocked by ALL T9*
 
     # === Write-restricted agent handling ===
-    # uarch-design, timing-review, algo-review send content via SendMessage
-    # Leader writes files on their behalf
+    # Check .rtl-agent-team/scratch/phase-3/ for completed scratch files
+    # Copy to final location
 ```
 
 ### Write-Restricted Agent Handling
 
-uarch-designer, timing-advisor, and vcodec-architecture-expert are write-restricted.
-When they complete work:
-1. Worker sends content via `SendMessage(recipient="leader", content=file_content)`
-2. Leader writes file on their behalf (e.g., `docs/phase-3-uarch/{module}.md`)
+Workers using agents that prefer not to write directly (uarch-designer, timing-advisor, vcodec-architecture-expert)
+save their content to `.rtl-agent-team/scratch/phase-3/`.
+The orchestrator reads from scratch and writes to the final location:
+
+```python
+# On detecting completed scratch files:
+content = Read(".rtl-agent-team/scratch/phase-3/{module}.md")
+Write("docs/phase-3-uarch/{module}.md", content)
+```
 
 ### BFM Validation Gate (T3)
 
@@ -250,7 +226,7 @@ If validation fails, iterate: create targeted fix tasks for uarch-design and/or 
 
 ### Conditional Expert Delegation (per policy)
 
-After BFM validation gate and during review rounds, conditionally spawn expert agents:
+After BFM validation gate and during review rounds, conditionally create expert tasks:
 
 **rtl-planner** — invoke when execution risk is the blocker rather than local RTL details:
 - Module/interface dependency chain is unclear for 5+ blocks
@@ -259,9 +235,9 @@ After BFM validation gate and during review rounds, conditionally spawn expert a
 ```python
 # Conditional: only when dependency/convergence issues detected
 t_planner = TaskCreate(subject="Conditional: rtl-planner dependency analysis",
-                       description="Produce explicit task dependency graph, critical path, and parallel work groups for Step 3/5 sequencing.")
+                       description="Produce explicit task dependency graph, critical path, and parallel work groups for Step 2/3 sequencing.")
 TaskUpdate(taskId=t_planner, addBlockedBy=[t3])  # After BFM validation
-Agent(subagent_type="rtl-agent-team:rtl-planner", name="planner", team_name="p3-uarch")
+# Worker pre-spawned by skill — picks up task automatically
 ```
 
 **clock-architect** — invoke when clocking strategy is non-trivial:
@@ -273,10 +249,10 @@ Agent(subagent_type="rtl-agent-team:rtl-planner", name="planner", team_name="p3-
 t_clock = TaskCreate(subject="Conditional: clock-architect review",
                      description="Review clock architecture: generated clocks, clock mux/gating safety, domain classification. Write reviews/phase-3-uarch/clock-architecture-review.md and update docs/phase-3-uarch/clock-domain-map.md.")
 TaskUpdate(taskId=t_clock, addBlockedBy=[t3])  # After BFM validation
-Agent(subagent_type="rtl-agent-team:clock-architect", name="clock-arch", team_name="p3-uarch")
+# Worker pre-spawned by skill — picks up task automatically
 ```
 
-## Step 6: Phase 3 Gate
+## Step 4: Phase 3 Gate
 
 After T10 (final consolidation) completes, verify all gate items:
 1. Verify `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
@@ -293,22 +269,10 @@ After T10 (final consolidation) completes, verify all gate items:
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 8. Generate `docs/phase-3-uarch/phase-3-summary.md`
 
-## Step 7: Cleanup
-
-```python
-# Shutdown all workers
-for worker in all_workers:
-    SendMessage(type="shutdown_request", recipient=worker)
-
-# Clean up
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-3/")
-```
-
 # Error Handling
 
-- **Worker crash**: Re-spawn worker, re-assign in-progress task.
+- **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).
 - **BFM validation failure**: Max 2 iterations of uarch <-> BFM fix. Then escalate to user via AskUserQuestion.
 - **Review divergence**: After Round 3, if not converged, escalate to user via AskUserQuestion.
-- **TeamCreate failure**: Fall back to sequential Task() execution (same workflow as p3-uarch-orchestrator).
+- **Constraint violation**: If coordinator accidentally calls TeamCreate/Agent(team_name=...), the call will fail. Continue with TaskCreate/SendMessage-based coordination.
 - **Boundary violation**: If uArch change violates P2 architecture spec, STOP and escalate to Phase 2.

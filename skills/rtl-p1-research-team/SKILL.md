@@ -3,13 +3,14 @@ name: rtl-p1-research-team
 description: "Phase 1 research using Claude Code native teams for parallel tree-of-thought exploration. Manages solution tree construction, parallel candidate deep-dive, sub-domain expert coordination, and 3-round chief review."
 user-invocable: true
 argument-hint: "[spec-path or --resume]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
 ---
 
 <Purpose>
 Execute Phase 1 research pipeline using Claude Code native team infrastructure.
-Uses TeamCreate + TaskCreate + SendMessage for true parallel solution tree exploration
-with dependency-aware task scheduling across domain experts.
+The skill (main session) handles team lifecycle: TeamCreate, coordinator + worker
+spawning, task monitoring, and cleanup. The coordinator teammate manages task graphs
+and directs workers via SendMessage.
 </Purpose>
 
 <Use_When>
@@ -33,18 +34,96 @@ Specification documents should be available in `specs/` directory.
 ## Execution
 
 ```python
-# Do NOT pre-write team-config.json here — the orchestrator writes it atomically
-# in Step 2 with a valid leader_session_id. This avoids race windows where
-# Stop hooks see an empty leader_session_id and bypass all gates.
+# Step 1: Team creation (main session = leader)
+TeamCreate(team_name="p1-research", description="Phase 1 research: tree-of-thought parallel candidate exploration")
 
-Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
-     prompt="Execute Phase 1 research using native teams. User input: $ARGUMENTS")
+# Step 2: Write team-config.json for hook consumption
+Write(".rtl-agent-team/state/team-config.json", json.dumps({
+    "team_mode": true,
+    "team_name": "p1-research",
+    "leader_session_id": "<current_session_id>",
+    "coordinator_name": "coordinator",
+    "worker_count": 4,
+    "phase": "p1",
+    "created_at": "<ISO_TIMESTAMP>"
+}))
+
+# Step 3: Prepare directories
+Bash("mkdir -p docs/phase-1-research reviews/phase-1-research .rtl-agent-team/scratch/phase-1")
+
+# Step 4: Create initial task graph
+t1 = TaskCreate(subject="T1: Solution Tree Construction",
+                description="Build tree-of-thought solution candidates from spec analysis")
+t2 = TaskCreate(subject="T2: Solution Tree Validation",
+                description="Validate and rank solution candidates")
+TaskUpdate(taskId=t2, addBlockedBy=[t1])
+t4b = TaskCreate(subject="T4b: Interconnect Analysis",
+                 description="Analyze interconnect topology for top candidates")
+TaskUpdate(taskId=t4b, addBlockedBy=[t2])
+t4c = TaskCreate(subject="T4c: Power Analysis",
+                 description="Analyze power characteristics for top candidates")
+TaskUpdate(taskId=t4c, addBlockedBy=[t2])
+
+# Step 5: Spawn coordinator as teammate (orchestrator)
+Agent(team_name="p1-research", subagent_type="rtl-agent-team:p1-research-team-orchestrator",
+      name="coordinator", description="P1 research coordination",
+      prompt="You are the Phase 1 research coordinator in team 'p1-research'. "
+             "Manage the task graph using TaskCreate/TaskList/TaskUpdate. "
+             "Direct workers via SendMessage. "
+             "Initial tasks T1, T2, T4b, T4c already created by leader. "
+             "Create dynamic tasks (T3a-N deep-dive, T5-T12) as the workflow progresses. "
+             "Signal leader when T12 complete. User input: $ARGUMENTS")
+
+# Step 6: Spawn workers as teammates (3-5 general-purpose)
+Agent(team_name="p1-research", subagent_type="rtl-agent-team:spec-analyst",
+      name="research-0", description="P1 spec analysis and research",
+      prompt="You are a Phase 1 research worker in team 'p1-research'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
+             "Specialty: spec analysis, requirements extraction, solution tree construction. "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n. "
+             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
+      name="research-1", description="P1 architecture review and deep-dive",
+      prompt="You are a Phase 1 research worker in team 'p1-research'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
+             "Specialty: architecture review, candidate deep-dive, comparison matrix. "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n. "
+             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
+      name="analysis-0", description="P1 analysis and survey",
+      prompt="You are a Phase 1 research worker in team 'p1-research'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
+             "Specialty: cross-cutting surveys (memory, interconnect, power), literature survey. "
+             "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+Agent(team_name="p1-research", subagent_type="rtl-agent-team:power-analyzer",
+      name="domain-0", description="P1 domain and power analysis",
+      prompt="You are a Phase 1 research worker in team 'p1-research'. "
+             "Coordinator: 'coordinator' (send results via SendMessage). "
+             "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
+             "Specialty: power analysis, domain-specific expert consultation. "
+             "For domain expert work, spawn: Task(subagent_type='rtl-agent-team:vcodec-*-expert', prompt='...'). "
+             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+
+# Step 7: Leader monitoring loop — poll until all tasks complete
+while True:
+    tasks = TaskList()
+    all_done = all(t.status == "completed" for t in tasks)
+    if all_done:
+        break
+    # Continue polling
+
+# Step 8: Cleanup
+TeamDelete()
+Bash("rm -f .rtl-agent-team/state/team-config.json")
+Bash("rm -rf .rtl-agent-team/scratch/phase-1/")
 ```
-
-Do not perform any work directly.
-The team orchestrator manages TeamCreate, team-config.json creation, solution tree task graphs,
-worker spawning, dynamic candidate tasks, chief review rounds, and artifact generation.
-
-## Cleanup
-
-On completion or failure, the orchestrator removes `.rtl-agent-team/state/team-config.json`.

@@ -231,10 +231,13 @@ When spawned with `team_name` parameter as part of a native team:
 
 1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
 2. Claim P1 interconnect survey, P2 architecture design, or P2 gate review tasks from TaskList matching your specialty
-3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader
-4. When no more tasks are available, notify leader and wait for shutdown
+3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to coordinator
+4. When no more tasks are available, notify coordinator and wait for shutdown
 5. **Write-restricted**: You cannot write files directly. Send file content via
-   `SendMessage(recipient=leader, content=file_content)` and the leader will write on your behalf.
+   `SendMessage(recipient="coordinator", content=file_content)` and the coordinator will write on your behalf.
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
 
 When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

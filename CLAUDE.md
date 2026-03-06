@@ -231,33 +231,52 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 
-## Native Team Mode (v0.5.0)
+## Native Team Mode (v0.6.0) — Orchestrator as Teammate Pattern
 
 Phases 1-5 support **Claude Code native team mode**
 using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution.
 
+**Architecture**: Team lifecycle (TeamCreate/Agent/TeamDelete) is managed by the **skill**
+(main session). The orchestrator is promoted to a **coordination teammate** via
+`Agent(team_name=...)`, enabling it to use SendMessage to direct workers. Workers are
+3-5 general-purpose teammates that spawn specialist `Task()` subagents internally.
+
+```
+Skill (main session = leader)
+  ├── TeamCreate + team-config.json
+  ├── TaskCreate (initial task graph)
+  ├── Agent(coordinator) ← TEAMMATE (orchestrator)
+  │     ├── TaskCreate/TaskList/TaskUpdate ✓
+  │     └── SendMessage ✓ (to workers + leader)
+  ├── Agent(worker) × 3-5
+  │     └── Task(specialist) ← subagent calls
+  ├── Leader: TaskList monitoring loop
+  ├── TeamDelete()
+  └── Cleanup (rm team-config.json)
+```
+
 | Component | Purpose |
 |-----------|---------|
-| `agents/p1-research-team-orchestrator.md` | Tree-of-thought parallel candidate exploration |
-| `agents/p2-arch-team-orchestrator.md` | Dual-stream architecture + RefC parallelism |
-| `agents/p3-uarch-team-orchestrator.md` | Dual-stream uArch + BFM with 5-reviewer review |
-| `agents/spec-to-uarch-team-orchestrator.md` | P1→P3 pipeline sequencing team orchestrators |
-| `agents/p4-implement-team-orchestrator.md` | 10-wave pipeline with per-module parallelism |
-| `agents/p5-verify-team-orchestrator.md` | 9-category verification with dependency graph |
-| `skills/rtl-p1-research-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p1-research-team` |
-| `skills/rtl-p2-arch-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p2-arch-team` |
-| `skills/rtl-p3-uarch-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p3-uarch-team` |
-| `skills/rtl-spec-to-uarch-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-spec-to-uarch-team` |
-| `skills/rtl-p4-implement-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p4-implement-team` |
-| `skills/rtl-p5-verify-team/SKILL.md` | User entry point: `/rtl-agent-team:rtl-p5-verify-team` |
+| `skills/rtl-p1-research-team/SKILL.md` | Team leader: creates team, spawns coordinator + 4 workers |
+| `skills/rtl-p2-arch-team/SKILL.md` | Team leader: dual-stream arch + RefC (coordinator + 3 workers) |
+| `skills/rtl-p3-uarch-team/SKILL.md` | Team leader: dual-stream uArch + BFM (coordinator + 3 workers) |
+| `skills/rtl-p4-implement-team/SKILL.md` | Team leader: 10-wave pipeline (coordinator + 4 workers) |
+| `skills/rtl-p5-verify-team/SKILL.md` | Team leader: 9-category verification (coordinator + 4 workers) |
+| `skills/rtl-spec-to-uarch-team/SKILL.md` | Pipeline: sequences P1→P2→P3 team skills |
+| `agents/p1-research-team-orchestrator.md` | Coordination teammate: task graph + SendMessage |
+| `agents/p2-arch-team-orchestrator.md` | Coordination teammate: dual-stream tasks |
+| `agents/p3-uarch-team-orchestrator.md` | Coordination teammate: uArch + BFM tasks |
+| `agents/p4-implement-team-orchestrator.md` | Coordination teammate: 10-wave tasks |
+| `agents/p5-verify-team-orchestrator.md` | Coordination teammate: verification tasks |
 | `agents/lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
 | `agents/lib/team-worker-protocol.md` | Worker communication and coordination protocol |
-| `agents/lib/team-fallback.md` | Graceful degradation patterns |
+| `agents/lib/team-fallback.md` | Graceful degradation patterns (Orchestrator as Teammate) |
 
-**Team-awareness**: Stop hooks check `.rtl-agent-team/state/team-config.json` — workers bypass
-gates, only the leader session is subject to stop enforcement. Hook concurrency is protected
-by POSIX file locking (`hooks/lib/flock-util.sh`).
+**Team-awareness**: Stop hooks check `.rtl-agent-team/state/team-config.json` — coordinator
+and workers bypass gates, only the leader session is subject to stop enforcement.
+Hook concurrency is protected by POSIX file locking (`hooks/lib/flock-util.sh`).
 
-**Fallback**: If `TeamCreate` fails, orchestrators fall back to sequential `Task()` execution automatically.
+**Fallback**: If `TeamCreate` fails at skill level, the skill falls back to the sequential
+(non-team) orchestrator automatically.
 
 <!-- RTL-AGENT-TEAM:END -->

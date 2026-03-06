@@ -2,6 +2,8 @@
   "team_mode": false,
   "team_name": "",
   "leader_session_id": "",
+  "coordinator_name": "",
+  "worker_count": 0,
   "phase": "",
   "created_at": "{{TIMESTAMP}}"
 }

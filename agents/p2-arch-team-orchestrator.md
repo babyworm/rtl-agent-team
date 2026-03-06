@@ -1,7 +1,7 @@
 ---
 name: p2-arch-team-orchestrator
 model: opus
-description: "Phase 2 architecture team orchestrator. Uses Claude Code native teams (TeamCreate, TaskCreate, SendMessage) to manage dual-stream architecture design + C reference model development, 3-round iterative review with tree exploration for issues."
+description: "Phase 2 architecture team coordination teammate. Coordinates dual-stream architecture design + C reference model development, 3-round iterative review with tree exploration for issues via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [p2-arch-design-policy]
 ---
 
@@ -14,6 +14,25 @@ reference model development.
 
 The p2-arch-design-policy skill (loaded via skills: field) defines all review criteria,
 HW evaluation criteria, naming conventions, and checklists.
+
+## Coordination Teammate Role (MANDATORY)
+
+You are a coordination teammate, spawned via Agent(team_name=...). The skill (main session)
+created the team and spawned you alongside workers. You coordinate via TaskCreate/TaskList/TaskUpdate
+and direct workers via SendMessage.
+
+**FORBIDDEN**: TeamCreate, TeamDelete, Agent(team_name=...)
+**ALLOWED**: TaskCreate, TaskList, TaskUpdate, SendMessage, Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+
+### SendMessage Usage
+- **Direct workers**: Send task clarification, priority changes, or context to specific workers
+- **Broadcast updates**: Notify all workers of task graph changes or blocking issues
+- **Report to leader**: Send progress summaries and completion status to the leader
+- **Signal completion**: Notify leader when all tasks are done
+
+Workers pick up tasks from the shared task list automatically.
+Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-2/`;
+read their output from there and Write to the final location.
 
 # Task Graph — Dual-Stream Arch + RefC
 
@@ -92,24 +111,7 @@ Bash("mkdir -p docs/phase-2-architecture reviews/phase-2-architecture .rtl-agent
 
 Enumerate algorithm candidates from P1's domain-analysis.md that need HW evaluation.
 
-## Step 2: Team Setup
-
-```python
-TeamCreate(team_name="p2-arch", description="Phase 2 architecture — dual-stream arch + RefC")
-```
-
-Write team-config.json:
-```python
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
-    "team_mode": true,
-    "team_name": "p2-arch",
-    "leader_session_id": "<current_session_id>",
-    "phase": "p2",
-    "created_at": "<ISO_TIMESTAMP>"
-}))
-```
-
-## Step 3: Task Graph Creation
+## Step 2: Task Graph Creation
 
 Create per-candidate HW evaluation tasks (T1a-N):
 
@@ -129,45 +131,23 @@ TaskUpdate(taskId=t2, addBlockedBy=[all_t1_ids])
 
 Create dual-stream tasks (T3, T4) and subsequent review graph.
 
-## Step 4: Worker Spawn
-
-```python
-# HW evaluation worker
-Agent(subagent_type="rtl-agent-team:vcodec-architecture-expert", name="hw-eval", team_name="p2-arch")
-
-# Architecture design worker (write-restricted — sends content to leader)
-Agent(subagent_type="rtl-agent-team:arch-designer", name="arch-design", team_name="p2-arch")
-
-# Reference model worker
-Agent(subagent_type="rtl-agent-team:ref-model-dev", name="refmodel", team_name="p2-arch")
-
-# Review lead
-Agent(subagent_type="rtl-agent-team:rtl-architect", name="reviewer", team_name="p2-arch")
-
-# Conditional: ref model quality reviewer (spawned when ref model is newly created/substantially revised)
-Agent(subagent_type="rtl-agent-team:ref-model-reviewer", name="refmodel-reviewer", team_name="p2-arch")
-```
-
-Workers follow Team Worker Protocol (agents/lib/team-worker-preamble.md).
-
 ### Conditional ref-model-reviewer Activation
 
-Determine whether to activate ref-model-reviewer by checking:
+Determine whether to activate ref-model-reviewer tasks by checking:
 - T4 (RefC model development) produces new or substantially changed `refc/**/*.c` files
 - If ref model is newly created OR >30% of lines changed from prior version:
-  1. Spawn `ref-model-reviewer` worker
-  2. Create T6d/T10d/T12d conditional review tasks
-  3. ref-model-reviewer evaluates: algorithm fidelity, numerical precision, undefined behavior/build warning risk
+  1. Create T6d/T10d/T12d conditional review tasks
+  2. ref-model-reviewer evaluates: algorithm fidelity, numerical precision, undefined behavior/build warning risk
 - If ref model is unchanged: skip T6d/T10d/T12d tasks entirely
 
-## Step 5: Monitor Loop + Dynamic Task Creation
+## Step 3: Monitor Loop + Dynamic Task Creation
 
 ```python
 while not all_tasks_complete:
     task_list = TaskList()
 
     # === After T2 (selection): create T3 + T4 parallel streams ===
-    # T3: arch-design writes architecture.md (via SendMessage to leader)
+    # T3: arch-design writes architecture.md (via scratch directory)
     # T4: refmodel writes refc/ code directly
 
     # === After T5 (bandwidth integration): create review rounds ===
@@ -190,23 +170,30 @@ while not all_tasks_complete:
     # === T12a-c (blockedBy: T11b), T13: Review R3 (MANDATORY) ===
 
     # === Write-restricted agent handling ===
-    # arch-design worker sends architecture.md content via SendMessage
-    # Leader writes files on behalf of write-restricted workers
+    # Check .rtl-agent-team/scratch/phase-2/ for completed scratch files
+    # Copy to final location
 ```
 
 ### Write-Restricted Agent Handling
 
-arch-designer is write-restricted. When it completes design work:
-1. Worker sends content via `SendMessage(recipient="leader", content=file_content)`
-2. Leader writes `docs/phase-2-architecture/architecture.md` on behalf
+Workers using agents that prefer not to write directly (arch-designer, etc.)
+save their content to `.rtl-agent-team/scratch/phase-2/`.
+The orchestrator reads from scratch and writes to the final location:
 
-### AskUserQuestion — Leader Only
+```python
+# On detecting completed scratch files:
+content = Read(".rtl-agent-team/scratch/phase-2/architecture.md")
+Write("docs/phase-2-architecture/architecture.md", content)
+```
 
-Leader handles all user interaction:
+### AskUserQuestion — Orchestrator Direct
+
+The orchestrator uses AskUserQuestion directly (subagent tool access permits this).
+This happens at:
 - T2: Present HW evaluation comparison matrix, ask user to select candidates
 - Review escalation: If R3 doesn't converge, present findings to user
 
-## Step 6: Phase 2 Gate
+## Step 4: Phase 2 Gate
 
 After T13 (final consolidation) completes:
 1. Verify `docs/phase-2-architecture/architecture.md` exists
@@ -223,21 +210,9 @@ After T13 (final consolidation) completes:
 8. **Rebuttal evidence** in R1 and R2: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 
-## Step 7: Cleanup
-
-```python
-# Shutdown all workers
-for worker in all_workers:
-    SendMessage(type="shutdown_request", recipient=worker)
-
-# Clean up
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-2/")
-```
-
 # Error Handling
 
-- **Worker crash**: Re-spawn worker, re-assign in-progress task.
+- **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).
 - **Review divergence**: After Round 3, if not converged, escalate to user via AskUserQuestion.
-- **TeamCreate failure**: Fall back to sequential Task() execution (same workflow as p2-arch-orchestrator).
+- **Constraint violation**: If coordinator accidentally calls TeamCreate/Agent(team_name=...), the call will fail. Continue with TaskCreate/SendMessage-based coordination.
 - **RefC build failure**: Re-assign T4 with error details, iterate until refc/ compiles.

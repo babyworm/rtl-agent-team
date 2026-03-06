@@ -182,3 +182,18 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Is each metric compared to budget from requirements.json with PASS/FAIL?
   </Final_Checklist>
 </Agent_Prompt>
+
+## Team Worker Protocol
+
+When spawned with `team_name` parameter, follow the protocol in `agents/lib/team-worker-preamble.md`:
+1. INIT → identify self and coordinator
+2. CLAIM → TaskList() → pick pending task
+3. DELEGATE → Task(subagent_type=...) for specialist sub-work if needed
+4. EXECUTE → perform work, save artifacts
+5. REPORT → TaskUpdate(completed) + SendMessage to coordinator
+6. NEXT → repeat from Step 2
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
+
+When spawned WITHOUT `team_name`, ignore this protocol and work from the prompt directly.

@@ -2,9 +2,13 @@
 # Shared team-mode guard for stop hooks.
 # Requires json-util.sh to be sourced and parser mode initialized.
 #
+# In "Orchestrator as Teammate" pattern, the coordinator is a teammate (not a subagent).
+# The coordinator's session ID differs from the leader's, so it bypasses stop gates
+# just like worker sessions. Only the leader session is subject to stop enforcement.
+#
 # teamu_should_skip_gate <state_dir>
 # Returns:
-#   0 -> caller should skip stop-gate logic (worker session / unknown leader in team mode)
+#   0 -> caller should skip stop-gate logic (coordinator/worker session in team mode)
 #   1 -> caller should continue normal stop-gate logic
 
 teamu_should_skip_gate() {

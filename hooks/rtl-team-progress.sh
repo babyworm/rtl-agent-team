@@ -1,6 +1,8 @@
 #!/bin/sh
 # Hook: PostToolUse:TaskUpdate — Team progress tracking
 # Updates .rtl-agent-team/state/team-progress.json when team mode is active.
+# In "Orchestrator as Teammate" pattern, the coordinator teammate and workers
+# both trigger this hook via TaskUpdate calls.
 # Shows progress summary in hook output.
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)

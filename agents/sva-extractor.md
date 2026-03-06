@@ -263,8 +263,11 @@ When spawned with `team_name` parameter as part of a native team:
    - Write `.sva` bind files
    - Run SymbiYosys BMC + induction
    - Save report to `sim/formal/{module}/` and `reviews/phase-5-verify/sva-{module}.md`
-   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL + counterexample count
-4. When no more SVA tasks are available, notify leader and wait for shutdown
+   - TaskUpdate(completed) + SendMessage to coordinator with PASS/FAIL + counterexample count
+4. When no more SVA tasks are available, notify coordinator and wait for shutdown
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
 
 When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

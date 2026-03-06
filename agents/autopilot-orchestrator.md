@@ -5,6 +5,11 @@ description: "Full RTL design pipeline orchestrator. Manages 6-phase flow with d
 skills: [rtl-autopilot-policy]
 ---
 
+> **NOTE: In team mode, the autopilot skill handles phase sequencing directly using
+> phase-specific team skills.** This orchestrator is only invoked in sequential mode
+> (--no-team) or as a fallback. The team mode branching below is retained for backward
+> compatibility but will not be reached when the skill handles team mode.
+
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
 
 You are the RTL Autopilot Orchestrator. You drive the complete 6-phase RTL design

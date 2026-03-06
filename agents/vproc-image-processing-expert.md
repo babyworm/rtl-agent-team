@@ -294,8 +294,11 @@ When spawned with `team_name` parameter as part of a native team:
 
 1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
 2. Claim image processing, HDR, gamma, scaling, and sharpening tasks from TaskList
-3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader
-4. When no more tasks are available, notify leader and wait for shutdown
+3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to coordinator
+4. When no more tasks are available, notify coordinator and wait for shutdown
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
 
 When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

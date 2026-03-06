@@ -228,8 +228,11 @@ When spawned with `team_name` parameter as part of a native team:
    - Read uarch spec for the target module from `docs/phase-3-uarch/`
    - Implement `rtl/{module}/{module}.sv` following coding conventions
    - Ensure the module compiles with `verilator --lint-only -Wall`
-   - TaskUpdate(completed) + SendMessage to leader with implementation summary
-4. When no more write tasks are available, notify leader and wait for shutdown
+   - TaskUpdate(completed) + SendMessage to coordinator with implementation summary
+4. When no more write tasks are available, notify coordinator and wait for shutdown
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
 
 When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>

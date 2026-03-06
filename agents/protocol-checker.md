@@ -206,8 +206,11 @@ When spawned with `team_name` parameter as part of a native team:
    - Write protocol-specific SVA assertions for the target module
    - Run SymbiYosys formal verification on assertions
    - Save report to `reviews/phase-5-verify/protocol-{module}.md`
-   - TaskUpdate(completed) + SendMessage to leader with PASS/FAIL summary
-4. When no more protocol tasks are available, notify leader and wait for shutdown
+   - TaskUpdate(completed) + SendMessage to coordinator with PASS/FAIL summary
+4. When no more protocol tasks are available, notify coordinator and wait for shutdown
+
+You may also be spawned as a Task() subagent by a teammate worker. In that case,
+return results directly (no SendMessage needed).
 
 When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.
 </Agent_Prompt>
