@@ -134,6 +134,24 @@ class TestAgentDefinitions:
         empty = [f.name for f in agent_files if f.stat().st_size < 50]
         assert empty == [], f"Near-empty agent files: {empty}"
 
+    def test_all_agents_have_rat_protocol_reference(self, agent_files):
+        """Every agent .md must reference the audit output protocol."""
+        missing = []
+        for f in agent_files:
+            content = f.read_text()
+            if "audit-output-protocol.md" not in content:
+                missing.append(f.name)
+        assert missing == [], f"Agents missing RAT protocol reference: {missing}"
+
+    def test_audit_output_protocol_exists(self):
+        """The shared audit output protocol file must exist."""
+        protocol = AGENTS_DIR / "lib" / "audit-output-protocol.md"
+        assert protocol.exists(), "agents/lib/audit-output-protocol.md must exist"
+        content = protocol.read_text()
+        assert "RAT" in content
+        assert "DECISION" in content
+        assert "USER_CONFIRMED" in content
+
 
 # ── Skill definition tests ──────────────────────────────────────────────────
 

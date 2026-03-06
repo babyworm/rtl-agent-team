@@ -5,6 +5,8 @@ description: "Phase 1 research pipeline orchestrator. Manages spec refinement vi
 skills: [p1-spec-research-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Phase 1 Research Orchestrator. You drive the complete spec research pipeline
 from raw specification to structured requirements and algorithm candidate survey.
 

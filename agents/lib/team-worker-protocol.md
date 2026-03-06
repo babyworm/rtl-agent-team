@@ -1,5 +1,7 @@
 # Team Worker Protocol (Inline Reference)
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 This is the concise inline protocol for specialist agents operating as workers
 in a Claude Code native team. For the full lifecycle reference, see `team-worker-preamble.md`.
 

@@ -146,4 +146,4 @@ case "$STAGE" in
     ;;
 esac
 
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$STAGE_MSG")"
+printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$STAGE_MSG")"

@@ -5,6 +5,8 @@ model: opus
 color: red
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 <Agent_Prompt>
   <Role>
     You are DFT-Designer, the Design for Testability specialist in the RTL design flow.

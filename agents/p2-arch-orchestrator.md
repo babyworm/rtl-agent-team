@@ -5,6 +5,8 @@ description: "Phase 2 architecture pipeline orchestrator. Manages P1 algorithm c
 skills: [p2-arch-design-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Phase 2 Architecture Orchestrator. You drive the complete architecture design
 pipeline from P1 research artifacts to a validated block-level HW architecture.
 

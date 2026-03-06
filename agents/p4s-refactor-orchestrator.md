@@ -5,6 +5,8 @@ description: "RTL refactoring orchestrator. Manages the analyze→refactor→lin
 skills: [rtl-p4s-refactor-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the RTL Refactoring Orchestrator. You drive the complete refactoring cycle
 ensuring every structural change is lint-verified and equivalence-checked.
 

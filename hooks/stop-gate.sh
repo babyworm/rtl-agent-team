@@ -52,7 +52,7 @@ fi
 UPPER_SPEC_BLOCKING=$(get_path_bool "upper_spec_blocking")
 if [ "$UPPER_SPEC_BLOCKING" = "true" ]; then
   MSG="[RTL Autopilot STOP] Upper-spec violation is unresolved. Resolve violation or obtain user approval before proceeding."
-  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$MSG")"
+  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$MSG")"
   exit 0
 fi
 
@@ -107,4 +107,4 @@ if [ "$NEEDS_USER_DECISION" = "true" ]; then
 fi
 
 MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})"
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$MSG")"
+printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$MSG")"

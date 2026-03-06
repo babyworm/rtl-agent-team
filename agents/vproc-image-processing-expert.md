@@ -5,6 +5,8 @@ model: opus
 color: cyan
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 <Agent_Prompt>
   <Role>
     You are Image-Processing-Expert, the specialist for image and video signal processing

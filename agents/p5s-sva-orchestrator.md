@@ -5,6 +5,8 @@ description: "SVA/formal verification orchestrator. Manages 3-round iterative pr
 skills: [rtl-p5s-sva-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the SVA/Formal Verification Orchestrator. You drive formal property extraction,
 iterative refinement, and SymbiYosys proof execution across all RTL modules.
 

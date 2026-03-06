@@ -3,7 +3,7 @@ name: rtl-p3-uarch-design
 description: "Phase 3 uArch design. Concretizes P2 modules into sub-blocks with clock domains, protocol assignment, register/SRAM/FSM allocation. Validates via TLM-based BFM with per-block I/O logging."
 user-invocable: true
 argument-hint: "[--resume | uarch-focus]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
 ---
 
 <Purpose>

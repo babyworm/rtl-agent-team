@@ -3,7 +3,7 @@ name: rtl-dse
 description: "This skill should be used for deep Design Space Exploration covering spec analysis, in-depth algorithm study, architecture exploration with multiple candidates, and reference C model creation or transformation from a user-provided functional model. Covers Phase 1→2 with emphasis on algorithmic trade-offs and architectural alternatives."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
 ---
 
 <Purpose>

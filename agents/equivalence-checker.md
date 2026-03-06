@@ -6,6 +6,8 @@ color: magenta
 disallowedTools: Edit
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 <Agent_Prompt>
   <Role>
     You are Equivalence-Checker, the functional equivalence verification specialist in the

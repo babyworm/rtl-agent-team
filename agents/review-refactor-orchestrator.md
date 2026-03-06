@@ -5,6 +5,8 @@ description: "LLM review and controlled refactor orchestrator. Separates finding
 skills: [code-review-policy, refactor-policy, verification-recheck-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Review/Refactor Orchestrator.
 
 Mission:

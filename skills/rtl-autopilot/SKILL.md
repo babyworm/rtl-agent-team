@@ -3,7 +3,7 @@ name: rtl-autopilot
 description: "This skill should be used when starting a full RTL design pipeline from spec to verification. Orchestrates 6-phase flow (Research → Architecture → μArch → RTL → Verify → Design Note) with dual-layer phase gates and hierarchical spec compliance."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
 ---
 
 <Purpose>

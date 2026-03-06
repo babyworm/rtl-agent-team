@@ -78,4 +78,26 @@ if [ -n "$SKILL_NAME" ]; then
   sctx_write_manifest "$CWD" "$SKILL_NAME"
 fi
 
+# Audit: log spawn_start event
+_AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
+if [ -f "$_AUDIT_LIB" ]; then
+  . "$SCRIPT_DIR/lib/flock-util.sh"
+  . "$_AUDIT_LIB"
+  _AUDIT_SID=$(audit_session_id "$CWD")
+  if [ -n "$_AUDIT_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_AUDIT_SID" ]; then
+    _AUDIT_PHASE=$(sctx_skill_to_phase "$SKILL_NAME")
+    [ -z "$_AUDIT_PHASE" ] && _AUDIT_PHASE="null"
+    _AUDIT_SAFE_AGENT=$(jsonu_escape "$SHORT_NAME")
+    _AUDIT_SAFE_SKILL=$(jsonu_escape "$SKILL_NAME")
+    _AUDIT_SEQ=$(audit_trace_append "$CWD" \
+      "{\"event\":\"spawn_start\",\"agent\":\"${_AUDIT_SAFE_AGENT}\",\"phase\":${_AUDIT_PHASE},\"detail\":\"Spawning ${_AUDIT_SAFE_AGENT} via ${_AUDIT_SAFE_SKILL}\",\"status\":\"started\"}")
+
+    # Attempt to capture prompt from stdin (may not be available)
+    _AUDIT_PROMPT=$(jsonu_get_input_string "$INPUT" "prompt")
+    if [ -n "$_AUDIT_PROMPT" ]; then
+      audit_save_prompt "$CWD" "$_AUDIT_SEQ" "$SHORT_NAME" "$_AUDIT_PROMPT"
+    fi
+  fi
+fi
+
 printf '{"continue":true}'

@@ -1,5 +1,7 @@
 # Team Mode Graceful Degradation Patterns
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 When using Claude Code native teams (TeamCreate, SendMessage, TaskCreate),
 failures can occur at multiple points. This document defines fallback behaviors.
 

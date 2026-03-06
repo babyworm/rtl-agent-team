@@ -13,6 +13,11 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh\"",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-init.sh\"",
+            "timeout": 3
           }
         ]
       }
@@ -57,6 +62,16 @@
             "timeout": 3
           }
         ]
+      },
+      {
+        "matcher": "TaskCreate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-spawn-complete.sh\"",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -81,6 +96,30 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-spawn-context.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-subagent.sh\"",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-subagent.sh\"",
             "timeout": 3
           }
         ]

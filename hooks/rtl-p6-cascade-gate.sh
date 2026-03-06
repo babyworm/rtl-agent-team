@@ -57,7 +57,7 @@ if [ -f "$CASCADE_DONE" ]; then
   fi
 
   if [ "$DOCS_STALE" = "true" ]; then
-    printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (design-note.md, code-review.md) were not found or not updated after RTL change. Document mtime must be newer than the stale marker. Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."}}'
+    printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (design-note.md, code-review.md) were not found or not updated after RTL change.\\n\\nDocument mtime must be newer than the stale marker.\\n\\nAction: Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."}'
     exit 0
   fi
 
@@ -67,4 +67,4 @@ if [ -f "$CASCADE_DONE" ]; then
 fi
 
 # Phase 6 stale and cascade not yet confirmed — BLOCK exit
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified. You must: (1) re-run lint (verilator --lint-only -Wall), (2) update code-review.md, (3) update design-note.md. When done: touch .rtl-agent-team/state/phase6-cascade-done"}}'
+printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified.\\n\\nRequired steps:\\n  1. Re-run lint (verilator --lint-only -Wall)\\n  2. Update code-review.md\\n  3. Update design-note.md\\n\\nWhen done: touch .rtl-agent-team/state/phase6-cascade-done"}'

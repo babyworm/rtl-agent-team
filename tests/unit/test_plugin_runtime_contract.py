@@ -78,7 +78,7 @@ class TestHookRuntimeContract:
 
     def test_event_keys_present(self, hooks):
         event_keys = set(hooks["hooks"].keys())
-        assert event_keys == {"SessionStart", "PostToolUse", "PreToolUse", "Stop"}
+        assert event_keys == {"SessionStart", "PostToolUse", "PreToolUse", "SubagentStart", "SubagentStop", "Stop"}
 
     def test_hook_commands_use_plugin_root(self, hooks):
         for event_entries in hooks["hooks"].values():
@@ -100,6 +100,7 @@ class TestHookRuntimeContract:
         assert commands == [
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-project-init-advisor.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh"',
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-init.sh"',
         ]
 
     def test_pretooluse_skill_hooks_order(self, hooks):
@@ -122,7 +123,7 @@ class TestHookRuntimeContract:
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in entries]
-        assert matchers == ["Edit", "Write", "Bash", "TaskUpdate"]
+        assert matchers == ["Edit", "Write", "Bash", "TaskUpdate", "TaskCreate"]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]

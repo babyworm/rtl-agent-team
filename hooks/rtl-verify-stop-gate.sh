@@ -90,4 +90,4 @@ rm -f "$AGGREGATED_TRACK"
 # Escape JSON-special characters in filenames
 FILES=$(jsonu_escape "$FILES")
 
-printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate BLOCKED] %s RTL files modified but functional verification not performed: %s. Do one of: (1) run /rtl-agent-team:rtl-p5s-func-verify for functional verification, (2) if verification not needed: touch .rtl-agent-team/state/rtl-verify-waiver, (3) reset tracking: rm .rtl-agent-team/state/rtl-modified-files.txt"}}' "$COUNT" "$FILES"
+printf '{"continue":false,"decision":"block","reason":"[RTL Verify Gate BLOCKED] %s RTL files modified but functional verification not performed: %s.\\n\\nOptions:\\n  1. Run /rtl-agent-team:rtl-p5s-func-verify for functional verification\\n  2. Waive: touch .rtl-agent-team/state/rtl-verify-waiver\\n  3. Reset: rm .rtl-agent-team/state/rtl-modified-files.txt"}' "$COUNT" "$FILES"

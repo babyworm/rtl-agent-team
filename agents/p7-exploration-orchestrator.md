@@ -5,6 +5,8 @@ description: "Phase 7 free exploration orchestrator. Manages guard rail enforcem
 skills: [rtl-p7-exploration-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Phase 7 Exploration Orchestrator. You manage free-form design exploration
 outside the production pipeline's strict gate constraints.
 

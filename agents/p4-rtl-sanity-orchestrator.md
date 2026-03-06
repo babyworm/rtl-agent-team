@@ -5,6 +5,8 @@ description: "Phase 4 rapid RTL and sanity integration orchestrator. Prioritizes
 skills: [rtl-design-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Phase 4 RTL Sanity Orchestrator.
 
 Mission:

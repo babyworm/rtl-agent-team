@@ -225,7 +225,7 @@ class TestSessionScopedState:
         )
         # Gate should block because there are unverified files
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         # Should mention both files (aggregated)
         assert "2" in ctx  # 2 files total
 
@@ -323,7 +323,7 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "3" in ctx  # 3 files
 
     def test_fallback_file_blocks_exit(self, tmp_project):
@@ -332,7 +332,7 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/alu/alu.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "1" in ctx
 
     def test_fallback_merged_with_main_track(self, tmp_project):
@@ -342,7 +342,7 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "2" in ctx
 
     def test_verify_done_cleans_fallback(self, tmp_project):
@@ -402,7 +402,7 @@ class TestStopGate:
         self._write_autopilot_state(tmp_project, {"phase": 3})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        assert "Autopilot" in result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "Autopilot" in result.get("reason", "")
 
     def test_completed_state_allows_exit(self, tmp_project):
         self._write_autopilot_state(tmp_project, {"status": "completed"})
@@ -427,7 +427,7 @@ class TestStopGate:
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "primary strategy" in ctx
         assert "p2-quality-gate" in ctx
 
@@ -450,7 +450,7 @@ class TestStopGate:
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "fallback strategy" in ctx
         assert "Switch to module-split bugfix strategy." in ctx
 
@@ -472,7 +472,7 @@ class TestStopGate:
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "last-chance" in ctx.lower()
 
     def test_user_decision_message(self, tmp_project):
@@ -494,7 +494,7 @@ class TestStopGate:
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "Ask user" in ctx or "user" in ctx.lower()
 
     def test_nested_orchestration_control_fields_take_precedence(self, tmp_project):
@@ -518,7 +518,7 @@ class TestStopGate:
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "p3-quality-gate" in ctx
         assert "primary=1" in ctx
 
@@ -708,7 +708,7 @@ class TestP6CascadeGate:
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "Phase 6" in ctx
 
     def test_cascade_done_allows_exit(self, tmp_project):
@@ -749,7 +749,7 @@ class TestP6CascadeGate:
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "lint" in ctx.lower()
         assert "code-review" in ctx.lower() or "code_review" in ctx.lower()
         assert "design-note" in ctx.lower() or "design_note" in ctx.lower()
@@ -776,7 +776,7 @@ class TestP6CascadeGate:
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "not updated" in ctx.lower() or "cascade" in ctx.lower()
 
     def test_cascade_done_allows_when_docs_newer_than_stale(self, tmp_project):
@@ -804,7 +804,7 @@ class TestP6CascadeGate:
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "not found" in ctx.lower() or "not updated" in ctx.lower()
 
 
@@ -859,7 +859,7 @@ class TestSkillCompletionGate:
         self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "primary" in ctx.lower()
 
     def test_max_iterations_does_not_clean_state_under_ladder(self, tmp_project):
@@ -890,14 +890,14 @@ class TestSkillCompletionGate:
         """Block message should include the skill name."""
         self._write_skill_state(tmp_project, skill="rtl-p4s-bugfix")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "rtl-p4s-bugfix" in ctx
 
     def test_block_message_includes_pending(self, tmp_project):
         """Block message should include pending criteria."""
         self._write_skill_state(tmp_project, pending="lint_pass, sim_pass")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "lint_pass" in ctx or "sim_pass" in ctx
 
     def test_stale_state_allows_exit(self, tmp_project):
@@ -930,7 +930,7 @@ class TestSkillCompletionGate:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "primary" in ctx.lower()
 
     def test_ladder_fallback_stage_blocks(self, tmp_project):
@@ -943,7 +943,7 @@ class TestSkillCompletionGate:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "fallback" in ctx.lower()
         assert "fallback prompt" in ctx
 
@@ -956,7 +956,7 @@ class TestSkillCompletionGate:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "last_chance" in ctx or "last-chance" in ctx
 
     def test_ladder_after_last_chance_requires_user(self, tmp_project):
@@ -968,7 +968,7 @@ class TestSkillCompletionGate:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("reason", "")
         assert "사용자" in ctx or "user" in ctx.lower()
 
     def test_legacy_disabled_ladder_is_migrated_and_still_blocks(self, tmp_project):

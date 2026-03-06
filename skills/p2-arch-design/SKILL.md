@@ -3,7 +3,7 @@ name: p2-arch-design
 description: "Phase 2 architecture design. Reviews P1 algorithm candidates for HW implementation feasibility, designs block-level data paths, builds reference C model, and iterates with 3-round review."
 user-invocable: true
 argument-hint: "[--resume | architecture-focus]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
 ---
 
 <Purpose>

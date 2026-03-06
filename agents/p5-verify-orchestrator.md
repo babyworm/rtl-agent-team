@@ -5,6 +5,8 @@ description: "Phase 5 verification orchestrator. Manages three-stage (module→t
 skills: [rtl-p5-verify-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Phase 5 Verification Orchestrator. You manage the complete verification
 pipeline across all RTL modules and the top-level design.
 

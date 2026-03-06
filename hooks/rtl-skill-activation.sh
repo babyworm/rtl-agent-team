@@ -136,4 +136,26 @@ cat > "$SKILL_STATE.tmp" << SKILLEOF
 SKILLEOF
 mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
+# Audit: log skill_invoke event
+_AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
+if [ -f "$_AUDIT_LIB" ]; then
+  . "$SCRIPT_DIR/lib/flock-util.sh"
+  . "$_AUDIT_LIB"
+  _SKI_SID=$(audit_session_id "$CWD")
+  if [ -n "$_SKI_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_SKI_SID" ]; then
+    _SKI_SAFE=$(jsonu_escape "$SHORT_NAME")
+    _SKI_PHASE=""
+    # Resolve phase from spawn-context-util if available
+    _SKI_SCTX="$SCRIPT_DIR/lib/spawn-context-util.sh"
+    if [ -f "$_SKI_SCTX" ]; then
+      . "$_SKI_SCTX"
+      _SKI_PHASE=$(sctx_skill_to_phase "$SHORT_NAME")
+    fi
+    [ -z "$_SKI_PHASE" ] && _SKI_PHASE="null"
+    audit_trace_append "$CWD" \
+      "{\"event\":\"skill_invoke\",\"agent\":\"${_SKI_SAFE}\",\"phase\":${_SKI_PHASE},\"detail\":\"Skill ${_SKI_SAFE} invoked with criteria: ${CRITERIA}\",\"status\":\"started\"}" \
+      >/dev/null
+  fi
+fi
+
 printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop ACTIVATED] Skill %s has started. Completion criteria: %s. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."}}' "$SHORT_NAME" "$CRITERIA"

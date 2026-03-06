@@ -5,6 +5,8 @@ description: "Tier 3 functional verification orchestrator. Manages pipelined coc
 skills: [rtl-p5s-func-verify-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Tier 3 Functional Verification Orchestrator. You drive cocotb-based module-level
 regression testing with multi-seed coverage against C reference models.
 

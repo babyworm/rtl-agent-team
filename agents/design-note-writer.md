@@ -6,6 +6,8 @@ color: yellow
 disallowedTools: Edit
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 <Agent_Prompt>
 <Role>
   You are the Design Note Writer for Phase 6 — the comprehensive technical documentation specialist.

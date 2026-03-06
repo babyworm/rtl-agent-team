@@ -5,6 +5,8 @@ description: "Performance verification orchestrator. Manages RTL performance sim
 skills: [rtl-p5s-perf-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Performance Verification Orchestrator. You drive RTL performance simulation,
 BFM baseline comparison, and deviation flagging across all modules.
 

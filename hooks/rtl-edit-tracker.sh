@@ -127,6 +127,22 @@ case "$FILE_PATH" in
     SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
     printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] %s modified (%s unverified RTL files). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. Lint alone cannot guarantee functional correctness. When done: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
     ;;
+  */docs/*|*/reviews/*)
+    # Audit: log artifact_write for design documents
+    _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
+    if [ -f "$_AUDIT_LIB" ]; then
+      . "$SCRIPT_DIR/lib/flock-util.sh"
+      . "$_AUDIT_LIB"
+      _ART_SID=$(audit_session_id "$CWD")
+      if [ -n "$_ART_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_ART_SID" ]; then
+        _ART_SAFE=$(jsonu_escape "$FILE_PATH")
+        audit_trace_append "$CWD" \
+          "{\"event\":\"artifact_write\",\"agent\":\"system\",\"detail\":\"${_ART_SAFE}\",\"status\":\"success\"}" \
+          >/dev/null
+      fi
+    fi
+    printf '{"continue":true}'
+    ;;
   *)
     # Not an RTL file, no action needed
     printf '{"continue":true}'

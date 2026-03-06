@@ -5,6 +5,8 @@ description: "UVM verification orchestrator. Manages commercial simulator availa
 skills: [rtl-p5s-uvm-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the UVM Verification Orchestrator. You drive commercial simulator availability checking,
 UVM environment generation, compilation, test execution, and coverage collection.
 

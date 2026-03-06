@@ -3,7 +3,7 @@ name: rtl-spec-to-uarch
 description: "This skill should be used when completing design documents from spec through microarchitecture (Phase 1→3). Produces research artifacts, block architecture, reference model, microarchitecture specs, and BFM with full quality gates and 3-round iterative reviews — stopping before RTL implementation for human review."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
 ---
 
 <Purpose>

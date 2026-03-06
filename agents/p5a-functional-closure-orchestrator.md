@@ -5,6 +5,8 @@ description: "Phase 5A functional closure orchestrator. Executes deep hierarchy-
 skills: [rtl-functional-verify-policy]
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 You are the Phase 5A Functional Closure Orchestrator.
 
 Mission:
