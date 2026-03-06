@@ -59,6 +59,8 @@ Glob("docs/phase-2-architecture/architecture.md")  # Architecture spec
 Glob("refc/**/*.c")                                # C reference model
 Glob("docs/phase-1-research/requirements.json")    # Requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+Glob("docs/phase-1-research/timing_constraints.json")  # Timing estimates per block
+Glob("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -69,7 +71,11 @@ Adjust execution plan based on available artifacts.
 ```
 # Read P2 artifacts
 Read("docs/phase-2-architecture/architecture.md")
+Read("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation from P2
 Read("docs/phase-1-research/requirements.json")
+Read("docs/phase-1-research/timing_constraints.json")     # Per-block timing targets
+# Read bandwidth_report.json if available (from ref-model-dev, saved during Phase 2)
+Glob("docs/phase-2-architecture/bandwidth_report.json")
 
 # Domain consultation for design patterns
 Skill("rtl-agent-team:domain-consult",
@@ -124,9 +130,13 @@ t4b = TaskCreate(subject="T4b: R1 Timing/pipeline review",
                  description="Review critical path at target frequency, pipeline balance, clock domain feasibility. NOTE: You are write-restricted. SendMessage findings to leader.")
 TaskUpdate(taskId=t4b, addBlockedBy=[t3])
 
-t4c = TaskCreate(subject="T4c: R1 Algorithm consistency review",
-                 description="Review algorithm-to-uArch consistency, memory optimization, protocol adequacy. NOTE: You are write-restricted. SendMessage findings to leader.")
-TaskUpdate(taskId=t4c, addBlockedBy=[t3])
+# T4c: conditional on domain — use domain expert if domain-packages/{domain}/ exists
+has_domain_expert = len(Glob("domain-packages/*/")) > 0
+if has_domain_expert:
+    t4c = TaskCreate(subject="T4c: R1 Algorithm consistency review",
+                     description="Review algorithm-to-uArch consistency, memory optimization, protocol adequacy. NOTE: You are write-restricted. SendMessage findings to leader.")
+    TaskUpdate(taskId=t4c, addBlockedBy=[t3])
+# If no domain expert: SKIP T4c, rtl-architect (T4a) covers algorithm consistency in its scope
 
 t4d = TaskCreate(subject="T4d: R1 Model consistency review",
                  description="Review model consistency: behavior, data widths, fixed-point, I/O log alignment.")
@@ -136,10 +146,14 @@ t4e = TaskCreate(subject="T4e: R1 BFM correctness review",
                  description="Review BFM simulation results, I/O logging correctness, protocol behavior.")
 TaskUpdate(taskId=t4e, addBlockedBy=[t3])
 
-# Aggregation
+# Aggregation — dependencies adapt to whether domain expert (T4c) was created
+t5_deps = [t4a, t4b, t4d, t4e]
+if has_domain_expert:
+    t5_deps.append(t4c)
+reviewer_count = "5" if has_domain_expert else "4"
 t5 = TaskCreate(subject="T5: Aggregate R1 findings",
-                description="Aggregate all R1 findings from 5 reviewers. Save to reviews/phase-3-uarch/uarch-review-r1.md. Output targeted feedback per expert/module.")
-TaskUpdate(taskId=t5, addBlockedBy=[t4a, t4b, t4c, t4d, t4e])
+                description=f"Aggregate all R1 findings from {reviewer_count} reviewers. Save to reviews/phase-3-uarch/uarch-review-r1.md. Output targeted feedback per expert/module.")
+TaskUpdate(taskId=t5, addBlockedBy=t5_deps)
 ```
 
 R2 and R3 review tasks created dynamically in Step 5.
@@ -159,8 +173,15 @@ Agent(subagent_type="rtl-agent-team:rtl-architect", name="reviewer-lead", team_n
 # Timing review worker (write-restricted)
 Agent(subagent_type="rtl-agent-team:timing-advisor", name="timing-review", team_name="p3-uarch")
 
-# Algorithm review worker (write-restricted)
-Agent(subagent_type="rtl-agent-team:vcodec-architecture-expert", name="algo-review", team_name="p3-uarch")
+# Algorithm review worker (CONDITIONAL — only if domain package detected)
+domain_packages = Glob("domain-packages/*/")
+if domain_packages:
+    # Determine domain type from directory name (e.g., "video-codec" → vcodec-architecture-expert)
+    domain = domain_packages[0].split("/")[-2]  # e.g., "video-codec"
+    domain_agent_map = {"video-codec": "vcodec-architecture-expert"}
+    agent_type = domain_agent_map.get(domain, "rtl-architect")  # fallback to rtl-architect
+    Agent(subagent_type=f"rtl-agent-team:{agent_type}", name="algo-review", team_name="p3-uarch")
+# If no domain package: SKIP — rtl-architect (reviewer-lead) covers algorithm consistency
 
 # Model consistency review worker
 Agent(subagent_type="rtl-agent-team:ref-model-dev", name="model-review", team_name="p3-uarch")
@@ -178,15 +199,25 @@ while not all_tasks_complete:
     # Check BFM compiles, sim results, I/O logs exist
     # If fail: create fix tasks for uarch-design and/or bfm-worker
 
-    # === After T5 (R1 aggregate): create revision + R2 ===
-    # If findings exist:
-    #   t6 = TaskCreate(subject="T6: Revision R1", description="Apply R1 fixes...")
-    #   TaskUpdate(taskId=t6, addBlockedBy=[t5])
-    # Create T7a-e (R2) blocked by T6 (or T5 if no revision needed)
+    # === After T5 (R1 aggregate): rebuttal + revision + R2 ===
+    # Rebuttal R1: uarch-designer evaluates each finding (accept/reject with rationale)
+    #   t5r = TaskCreate(subject="T5r: Rebuttal R1", description="For each finding in
+    #     uarch-review-r1.md, accept or reject with rationale. Accepted → tree exploration.
+    #     Rejected → record justification. Update uarch-review-r1.md with rebuttal section.")
+    #   TaskUpdate(taskId=t5r, addBlockedBy=[t5])
+    # Tree exploration for accepted issues → resolution alternatives
+    # If findings exist after rebuttal:
+    #   t6 = TaskCreate(subject="T6: Revision R1", description="Apply accepted R1 fixes...")
+    #   TaskUpdate(taskId=t6, addBlockedBy=[t5r])
+    # Create T7a-e (R2) blocked by T6 (or T5r if no revision needed)
     # Only create review tasks for reviewers that had findings (selective)
 
-    # === After T8 (R2 aggregate): create R3 (MANDATORY) ===
-    # T9a-e: All 5 reviewers, blocked by T8
+    # === After T8 (R2 aggregate): rebuttal R2 + revision + R3 ===
+    # Rebuttal R2: same pattern as R1 — accept/reject with rationale
+    #   Update uarch-review-r2.md with rebuttal section
+
+    # === After R2 rebuttal: create R3 (MANDATORY) ===
+    # T9a-e: All 5 reviewers (or 4 if no domain expert), blocked by R2 rebuttal/revision
     # T10: Final consolidation, blocked by ALL T9*
 
     # === Write-restricted agent handling ===
@@ -245,13 +276,20 @@ Agent(subagent_type="rtl-agent-team:clock-architect", name="clock-arch", team_na
 
 ## Step 6: Phase 3 Gate
 
-After T10 (final consolidation) completes:
+After T10 (final consolidation) completes, verify all gate items:
 1. Verify `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 2. Verify `reviews/phase-3-uarch/feature-preservation.md` has 100% preserved
 3. Verify `docs/phase-3-uarch/clock-domain-map.md` exists
 4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
 5. Verify pipeline diagram exists
-6. Generate `docs/phase-3-uarch/phase-3-summary.md`
+6. Per-round artifacts (enforces 3-round review protocol):
+   - `reviews/phase-3-uarch/uarch-review-r1.md` — Round 1 findings + rebuttal
+   - `reviews/phase-3-uarch/uarch-review-r2.md` — Round 2 findings + rebuttal
+   - `reviews/phase-3-uarch/uarch-review-r3.md` — Round 3 mandatory final pass
+   FAIL if any missing.
+7. Rebuttal evidence in R1 and R2: verify each round artifact contains a rebuttal section
+   with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
+8. Generate `docs/phase-3-uarch/phase-3-summary.md`
 
 ## Step 7: Cleanup
 

@@ -44,16 +44,17 @@ color: magenta
     The perf-verifier agent uses your BFM output as the baseline. Without an accurate BFM, there
     is no way to know whether the RTL meets its timing budget.
 
-    Using AT (non-blocking) transport enables accurate modeling of pipelined behavior, out-of-order
-    completions, and protocol-level interactions that blocking transport cannot capture. ARM AMBA
-    protocol extensions ensure the BFM accurately represents bus-level attributes (burst type,
-    cache policy, QoS) that affect real system performance.
+    LT (blocking) transport is the default for fast functional validation and per-block I/O log
+    generation. When timing accuracy is explicitly required (e.g., pipeline utilization, OoO modeling),
+    AT (non-blocking) transport provides accurate pipelined behavior modeling. ARM AMBA protocol
+    extensions ensure the BFM accurately represents bus-level attributes (burst type, cache policy,
+    QoS) that affect real system performance.
   </Why_This_Matters>
 
   <Success_Criteria>
     - BFM compiles against SystemC 3.0+ and TLM-2.0 with zero warnings
-    - TLM initiator and target models use AT (non-blocking) transport by default
-    - Proper 4-phase handshake: BEGIN_REQ -> END_REQ -> BEGIN_RESP -> END_RESP
+    - TLM initiator and target models use LT (blocking) transport by default
+    - When AT is requested: proper 4-phase handshake: BEGIN_REQ -> END_REQ -> BEGIN_RESP -> END_RESP
     - AMBA protocol extensions set correctly (AXI burst/cache/prot attributes)
     - Memory manager (tlm_mm_interface) used for payload pooling in high-throughput paths
     - PEQ (peq_with_cb_and_phase) used for AT phase scheduling
@@ -67,7 +68,8 @@ color: magenta
   </Success_Criteria>
 
   <Constraints>
-    - **AT by default**: Use nb_transport_fw/bw (non-blocking) unless LT is explicitly requested
+    - **LT by default**: Use b_transport (blocking) for fast functional validation and I/O logging.
+      Switch to AT nb_transport_fw/bw (non-blocking) only when explicitly requested for timing accuracy.
     - **AXI by default**: Use AXI protocol with amba_pv::axi_extension unless user specifies AHB/APB/ACE
     - **Payload pooling**: Always use tlm_mm_interface memory manager for high-throughput models
     - **PEQ required**: Use peq_with_cb_and_phase for AT phase scheduling
@@ -526,8 +528,8 @@ color: magenta
 
   <Final_Checklist>
     - Does the BFM compile with zero warnings using -Wall -Wextra?
-    - Does the BFM use AT (non-blocking) transport by default?
-    - Are all 4 AT phases implemented (BEGIN_REQ, END_REQ, BEGIN_RESP, END_RESP)?
+    - Does the BFM use LT (blocking) transport by default (AT only when explicitly requested)?
+    - If AT requested: are all 4 AT phases implemented (BEGIN_REQ, END_REQ, BEGIN_RESP, END_RESP)?
     - Is a Memory Manager (tlm_mm_interface) used for payload pooling?
     - Are AMBA protocol extensions set correctly (AXI/AHB/APB)?
     - Do PEQ callbacks handle all phase transitions?

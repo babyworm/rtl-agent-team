@@ -241,7 +241,20 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 ### Stage 3 (Final)
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved
 - [ ] reviews/phase-5-verify/e2e-traceability.md saved
+- [ ] reviews/phase-5-verify/traceability-audit.md saved with verdict PASS
+- [ ] Zero Critical/High priority requirements with UNTESTED status
 - [ ] reviews/phase-5-verify/final-compliance.md saved with verdict PASS
 - [ ] docs/phase-5-verify/phase-5-summary.md generated
 - [ ] docs/phase-5-verify/ reports collected
 - [ ] All feedback loops resolved (max 2 per module per check)
+
+## Requirement Traceability Gate (P6 Entry Blocker)
+
+Stage 3 includes a **Formal Traceability Audit** that gates P6 entry:
+- Every Critical/High priority requirement in requirements.json must have status
+  VERIFIED (simulation test with assertion) or FORMAL (SVA proof)
+- PARTIAL Critical/High requirements produce WARNING but do not block
+- UNTESTED Critical/High requirements produce FAIL and block P6 entry
+- The traceability-audit.md verdict must be PASS for final-compliance.md to pass
+
+This ensures no Critical/High requirement ships without at least one verification artifact.

@@ -26,6 +26,7 @@ Key principles:
 - "Lint all at once, fix only failures, re-lint only fixes"
 - "Code review before testing — catch design bugs early"
 - "Module-level CDC/protocol before Phase 5 — catch hazards early"
+- "Stream B synthesis smoke test — catch latch inference and unmappable constructs before Phase 5"
 - Modules that pass early waves start later waves immediately
 
 ## Wave Overlap Rules
@@ -110,6 +111,28 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
   - Any change touching combinational/sequential logic, reset, clock enable, or constraints intent:
     invoke equivalence-checker (RTL-vs-RTL) before Wave 10 gate
 
+## Wave 6 vs Tier 2 Unit Test Scope
+
+- **Wave 6** (within 10-Wave pipeline): Tier 1 smoke tests — basic I/O stimulus,
+  FSM state coverage, self-checking assertions. Quick pass/fail per module.
+  Produces: `sim/{module}/tb_{module}.sv`
+- **rtl-p4s-unit-test** (standalone skill): Tier 2 unit tests — reference model
+  comparison (DPI-C or file-based), uarch feature-level coverage, per-feature
+  result JSON. Deeper per-module verification.
+  Extends: `sim/{module}/tb_{module}.sv` (adds reference comparison logic to
+  existing Wave 6 TBs, does NOT replace them)
+
+## Rapid-Impl to Full-Impl Transition
+
+- `rtl-p4-rapid-impl` produces: lint-clean modules, module-level CDC pass,
+  smoke functional pass, block sanity pass. State in `p4-state.json`.
+- `rtl-p4-implement` adds: code review (Wave 4-5), Tier 1 unit tests (Wave 6),
+  protocol checks (Wave 8), refactoring (Wave 9), integration gate (Wave 10),
+  Stream B artifacts.
+- Transition: Full-impl orchestrator should detect existing lint-clean modules
+  from rapid-impl and skip Waves 1-3 for those modules. Detection via:
+  `rtl/*/*.sv` exists + lint passes.
+
 ## Phase 4 Sub-Skills Integration
 
 - `rtl-p4s-bugfix`: Used in Wave 5 for review-driven fixes, and Wave 6 for test-driven fixes
@@ -179,6 +202,7 @@ ALL of the following must be true before Phase 5:
 - [ ] docs/phase-4-rtl/stream-b-sva-skeletons.md saved
 - [ ] docs/phase-4-rtl/stream-b-cdc-preliminary.md saved
 - [ ] docs/phase-4-rtl/stream-b-tb-skeletons.md saved
+- [ ] docs/phase-4-rtl/stream-b-synth-estimate.md saved (synthesis smoke test — no inferred latches, no unmappable constructs)
 
 **Naming Conventions:**
 - [ ] All port names use `i_`/`o_`/`io_` prefix (NOT suffix `_i`/`_o`)

@@ -22,6 +22,7 @@ sctx_skill_to_phase() {
     rtl-p5-verify|rtl-p5-verify-team|rtl-p5s-func-verify|rtl-p5s-integration-test|rtl-p5a-functional-closure|rtl-p5b-silicon-validation) echo 5 ;;
     rtl-p5s-sva-check|rtl-p5s-cdc-verify|rtl-p5s-protocol-verify|rtl-p5s-perf-verify|rtl-p5s-coverage-analyze|rtl-p5s-uvm-verify) echo 5 ;;
     rtl-p6-design-review) echo 6 ;;
+    rtl-p7-exploration) echo 7 ;;
     rtl-autopilot|rtl-spec-to-uarch|rtl-spec-to-uarch-team|rtl-dse) echo 1 ;;
     rtl-uarch-to-verify) echo 4 ;;
     *) echo "" ;;
@@ -34,6 +35,33 @@ _sctx_mtime() {
   stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || printf ''
 }
 
+# Check if path (possibly glob) exists. Returns 0 if at least one match found.
+# For glob patterns (containing * ? [), extracts base dir and uses find(1).
+_sctx_path_exists() {
+  case "$1" in
+    *\**|*\?*|*\[*)
+      _PE_BASE=$(printf '%s' "$1" | sed 's|[*?[].*||; s|/[^/]*$||')
+      [ -z "$_PE_BASE" ] && _PE_BASE="."
+      _PE_NAME=$(basename "$1")
+      [ -d "$_PE_BASE" ] && [ -n "$(find "$_PE_BASE" -name "$_PE_NAME" -type f -print 2>/dev/null | head -n 1)" ]
+      ;;
+    *)
+      [ -e "$1" ]
+      ;;
+  esac
+}
+
+# Get mtime of first matching file for a glob path. Returns epoch seconds or empty.
+_sctx_glob_first_mtime() {
+  _GFM_BASE=$(printf '%s' "$1" | sed 's|[*?[].*||; s|/[^/]*$||')
+  [ -z "$_GFM_BASE" ] && _GFM_BASE="."
+  _GFM_NAME=$(basename "$1")
+  _GFM_FIRST=$(find "$_GFM_BASE" -name "$_GFM_NAME" -type f -print 2>/dev/null | head -n 1)
+  if [ -n "$_GFM_FIRST" ]; then
+    _sctx_mtime "$_GFM_FIRST"
+  fi
+}
+
 # Build a JSON artifact entry: {"path":"...","exists":bool,"mtime_epoch":N,"role":"..."}
 _sctx_artifact_entry() {
   _ART_REL="$1"
@@ -41,9 +69,16 @@ _sctx_artifact_entry() {
   _ART_CWD="$3"
   _ART_FULL="$_ART_CWD/$_ART_REL"
 
-  if [ -e "$_ART_FULL" ]; then
+  if _sctx_path_exists "$_ART_FULL"; then
     _ART_EXISTS="true"
-    _ART_MTIME=$(_sctx_mtime "$_ART_FULL")
+    case "$_ART_FULL" in
+      *\**|*\?*|*\[*)
+        _ART_MTIME=$(_sctx_glob_first_mtime "$_ART_FULL")
+        ;;
+      *)
+        _ART_MTIME=$(_sctx_mtime "$_ART_FULL")
+        ;;
+    esac
     [ -z "$_ART_MTIME" ] && _ART_MTIME=0
   else
     _ART_EXISTS="false"
@@ -99,7 +134,7 @@ _sctx_all_required_present() {
   _ARP_RESULT="true"
   while IFS='|' read -r _arp_path _arp_role; do
     [ -z "$_arp_path" ] && continue
-    if [ ! -e "$_ARP_CWD/$_arp_path" ]; then
+    if ! _sctx_path_exists "$_ARP_CWD/$_arp_path"; then
       _ARP_RESULT="false"
       break
     fi
@@ -116,9 +151,17 @@ _sctx_staleness_json() {
   _ST_STATE="$_ST_CWD/.rtl-agent-team/state"
   _ST_TRACK="$_ST_STATE/rtl-modified-files.txt"
 
+  # Aggregate solo + all session-scoped tracking files (team mode parity with verify gate)
   _ST_COUNT=0
+  _ST_AGG=""
   if [ -f "$_ST_TRACK" ] && [ -s "$_ST_TRACK" ]; then
-    _ST_COUNT=$(wc -l < "$_ST_TRACK" | tr -d ' ')
+    _ST_AGG=$(cat "$_ST_TRACK")
+  fi
+  for _sf in "$_ST_STATE"/rtl-modified-files-*.txt; do
+    [ -f "$_sf" ] && _ST_AGG=$(printf '%s\n%s' "$_ST_AGG" "$(cat "$_sf")")
+  done
+  if [ -n "$_ST_AGG" ]; then
+    _ST_COUNT=$(printf '%s' "$_ST_AGG" | sort -u | grep -c . || true)
   fi
 
   _ST_VERIFY="false"
@@ -127,7 +170,7 @@ _sctx_staleness_json() {
   fi
 
   _ST_P6_STALE="false"
-  if [ -f "$_ST_STATE/p6-stale" ]; then
+  if [ -f "$_ST_STATE/phase6-stale" ]; then
     _ST_P6_STALE="true"
   fi
 

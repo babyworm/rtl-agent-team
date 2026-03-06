@@ -712,19 +712,33 @@ class TestP6CascadeGate:
         assert "Phase 6" in ctx
 
     def test_cascade_done_allows_exit(self, tmp_project):
-        """Both markers exist → clean up and allow exit."""
+        """Both markers + updated docs → clean up and allow exit."""
         state_dir = tmp_project / ".rtl-agent-team" / "state"
+        review_dir = tmp_project / "reviews" / "phase-6-review"
+        review_dir.mkdir(parents=True)
+        # Stale marker with old mtime
         (state_dir / "phase6-stale").touch()
+        os.utime(state_dir / "phase6-stale", (1000, 1000))
+        # Docs with current (newer) mtime
+        (review_dir / "design-note.md").write_text("# Updated")
+        (review_dir / "code-review.md").write_text("# Updated")
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_cascade_done_cleans_markers(self, tmp_project):
-        """After allowing exit with cascade-done, both markers should be removed."""
+        """After allowing exit with cascade-done + updated docs, both markers should be removed."""
         state_dir = tmp_project / ".rtl-agent-team" / "state"
+        review_dir = tmp_project / "reviews" / "phase-6-review"
+        review_dir.mkdir(parents=True)
         stale = state_dir / "phase6-stale"
         done = state_dir / "phase6-cascade-done"
+        # Stale marker with old mtime
         stale.touch()
+        os.utime(stale, (1000, 1000))
+        # Docs with current (newer) mtime
+        (review_dir / "design-note.md").write_text("# Updated")
+        (review_dir / "code-review.md").write_text("# Updated")
         done.touch()
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert not stale.exists()
@@ -783,13 +797,15 @@ class TestP6CascadeGate:
         assert not (state_dir / "phase6-stale").exists()
         assert not (state_dir / "phase6-cascade-done").exists()
 
-    def test_cascade_done_no_docs_allows_exit(self, tmp_project):
-        """G5: cascade-done without review docs → allow exit (no docs to check)."""
+    def test_cascade_done_no_docs_blocks_exit(self, tmp_project):
+        """G5: cascade-done without review docs → block exit (stale marker proves docs once existed)."""
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         (state_dir / "phase6-stale").touch()
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is True
+        assert result["continue"] is False
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "not found" in ctx.lower() or "not updated" in ctx.lower()
 
 
 class TestSkillCompletionGate:
@@ -2189,12 +2205,21 @@ class TestSpawnContextStructuralContracts:
         "p4s-unit-test-orchestrator.md",
         "p5-verify-orchestrator.md",
         "p5-verify-team-orchestrator.md",
+        "p5s-cdc-orchestrator.md",
+        "p5s-coverage-orchestrator.md",
         "p5s-func-verify-orchestrator.md",
         "p5s-integration-orchestrator.md",
+        "p5s-perf-orchestrator.md",
+        "p5s-protocol-orchestrator.md",
+        "p5s-sva-orchestrator.md",
+        "p5s-uvm-orchestrator.md",
         "p6-review-orchestrator.md",
+        "p7-exploration-orchestrator.md",
         "spec-to-uarch-orchestrator.md",
         "spec-to-uarch-team-orchestrator.md",
         "uarch-to-verify-orchestrator.md",
+        "p4-rtl-sanity-orchestrator.md",
+        "p4s-refactor-orchestrator.md",
     }
 
     def test_all_manifest_aware_orchestrators_have_new_step0(self):
@@ -2244,6 +2269,7 @@ class TestSpawnContextStructuralContracts:
         "rtl-p5s-coverage-analyze": 5,
         "rtl-p5s-uvm-verify": 5,
         "rtl-p6-design-review": 6,
+        "rtl-p7-exploration": 7,
         "rtl-autopilot": 1,
         "rtl-spec-to-uarch": 1,
         "rtl-spec-to-uarch-team": 1,
@@ -2280,11 +2306,22 @@ class TestSpawnContextStructuralContracts:
         "p3-uarch-orchestrator": "rtl-p3-uarch-design",
         "p4-implement-orchestrator": "rtl-p4-implement",
         "p4s-bugfix-orchestrator": "rtl-p4s-bugfix",
+        "p4s-refactor-orchestrator": "rtl-p4s-refactor",
+        "p4-rtl-sanity-orchestrator": "rtl-p4-rapid-impl",
         "p4s-unit-test-orchestrator": "rtl-p4s-unit-test",
         "p5-verify-orchestrator": "rtl-p5-verify",
         "p5s-func-verify-orchestrator": "rtl-p5s-func-verify",
         "p5s-integration-orchestrator": "rtl-p5s-integration-test",
+        "p5a-functional-closure-orchestrator": "rtl-p5a-functional-closure",
+        "p5b-silicon-validation-orchestrator": "rtl-p5b-silicon-validation",
+        "p5s-sva-orchestrator": "rtl-p5s-sva-check",
+        "p5s-cdc-orchestrator": "rtl-p5s-cdc-verify",
+        "p5s-protocol-orchestrator": "rtl-p5s-protocol-verify",
+        "p5s-perf-orchestrator": "rtl-p5s-perf-verify",
+        "p5s-coverage-orchestrator": "rtl-p5s-coverage-analyze",
+        "p5s-uvm-orchestrator": "rtl-p5s-uvm-verify",
         "p6-review-orchestrator": "rtl-p6-design-review",
+        "p7-exploration-orchestrator": "rtl-p7-exploration",
         "autopilot-orchestrator": "rtl-autopilot",
         "spec-to-uarch-orchestrator": "rtl-spec-to-uarch",
         "uarch-to-verify-orchestrator": "rtl-uarch-to-verify",

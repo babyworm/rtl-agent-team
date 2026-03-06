@@ -28,11 +28,20 @@ reference C model in parallel, and iterates with 3-round review.
 
 Phase 1 completion required:
 - `docs/phase-1-research/requirements.json` must exist
+- `docs/phase-1-research/io_definition.json` must exist
 
-If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:p1-spec-research`.
+If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:p1-spec-research`.
 Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
+
+If $ARGUMENTS contains "--resume":
+
+Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
+     prompt="Resume Phase 2 architecture design from existing artifacts in
+     docs/phase-2-architecture/ and reviews/phase-2-architecture/. $ARGUMENTS")
+
+Else:
 
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Execute Phase 2 architecture design. User input: $ARGUMENTS")

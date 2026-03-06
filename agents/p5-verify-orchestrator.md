@@ -18,15 +18,15 @@ criteria, graduation gates, checklists, and escalation rules.
 # Verification Categories
 
 ```
-V1: Lint                   → lint-checker
-V2: SVA/Formal             → sva-extractor + eda-runner
-V3: CDC/RDC                → cdc-checker + constraint-writer
-V4: Protocol               → protocol-checker (if bus interfaces)
-V5: Functional Regression  → testbench-dev + eda-runner + func-verifier
-V6: Coverage               → coverage-analyst + testbench-dev
-V7: Performance            → perf-verifier + eda-runner
-V8: Synth Estimation       → eda-runner + synthesis-reporter
-V9: Code Review            → rtl-critic + rtl-p4s-refactor
+V1: Lint                   → lint-checker (direct)
+V2: SVA/Formal             → p5s-sva-orchestrator (sub-orchestrator)
+V3: CDC/RDC                → p5s-cdc-orchestrator (sub-orchestrator)
+V4: Protocol               → p5s-protocol-orchestrator (sub-orchestrator)
+V5: Functional Regression  → p5s-func-verify-orchestrator (sub-orchestrator)
+V6: Coverage               → p5s-coverage-orchestrator (sub-orchestrator)
+V7: Performance            → p5s-perf-orchestrator (sub-orchestrator)
+V8: Synth Estimation       → eda-runner + synthesis-reporter (direct)
+V9: Code Review            → rtl-critic + rtl-p4s-refactor (direct)
 ```
 
 # Workflow
@@ -91,33 +91,36 @@ Task(subagent_type="rtl-agent-team:lint-checker",
      run_in_background=true)
 ```
 
-**V2: SVA Completion + Formal Verification** (per module)
+**V2: SVA Completion + Formal Verification** (per module, via sub-orchestrator)
 ```
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Complete SVA skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md for module {module}. Iterative refinement: Round 1 (Draft) → Round 2 (Strengthen) → Round 3 (Harden). Write sim/formal/{module}_props.sv. Then convert RTL for SymbiYosys: sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v. Generate .sby config referencing _v2v.v (not .sv) and run: sby -f sim/formal/{module}.sby. Report proved/failed/timeout per property.",
+Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
+     prompt="Run SVA/formal verification pipeline for module {module}. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. 3-round iterative refinement (Draft→Strengthen→Harden), sv2v conversion, SymbiYosys BMC+induction. Report proved/failed/timeout per property. IMPORTANT: namespace all outputs by module — iteration notes to sva-iteration-{module}-r{N}.md, formal results to sim/formal/formal_verify_{module}.json.",
      run_in_background=true)
 ```
 
-**V3: CDC/RDC Analysis** (per module)
+**V3: CDC/RDC Analysis** (per module, via sub-orchestrator)
 ```
-Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Full CDC analysis for rtl/{module}/*.sv extending docs/phase-4-rtl/stream-b-cdc-preliminary.md. Identify all cross-domain paths, flag missing synchronizers. Write sim/cdc/{module}_cdc_report.md.",
+Task(subagent_type="rtl-agent-team:p5s-cdc-orchestrator",
+     prompt="Run CDC verification pipeline for module {module}. Extend from docs/phase-4-rtl/stream-b-cdc-preliminary.md if available. Identify clock domains, analyze cross-domain paths, generate SDC constraints, run commercial CDC tool if available. Report violations and convention issues. IMPORTANT: namespace outputs by module — CDC report to sim/cdc/cdc_report_{module}.md, constraints to syn/constraints/cdc_constraints_{module}.sdc.",
      run_in_background=true)
-
-if CDC findings indicate clock-architecture root cause (generated clocks/mux/gating relationships):
-  Task(subagent_type="rtl-agent-team:cdc-reviewer",
-       prompt="Review CDC synchronization strategy for {module}. Analyze synchronizer coverage, gray-code usage, and handshake protocol correctness. Recommend fixes.",
-       run_in_background=true)
-  Task(subagent_type="rtl-agent-team:clock-architect",
-       prompt="Review module-level clock relationships and crossing assumptions for {module}.
-       Focus on generated clocks, clock mux/gating safety, and domain classification.",
-       run_in_background=true)
 ```
 
-**V4: Protocol Compliance** (per module, skip if no bus interface → mark n/a)
+If CDC findings indicate clock-architecture root cause (generated clocks/mux/gating relationships),
+the master orchestrator escalates beyond the sub-orchestrator's scope:
 ```
-Task(subagent_type="rtl-agent-team:protocol-checker",
-     prompt="Verify AXI4 protocol compliance for rtl/{module}/{module}.sv. Write SVA assertions using i_/o_ signal names. Bind and run simulation. Save reviews/phase-5-verify/{module}_protocol.md.",
+Task(subagent_type="rtl-agent-team:cdc-reviewer",
+     prompt="Review CDC synchronization strategy for {module}. Analyze synchronizer coverage, gray-code usage, and handshake protocol correctness. Recommend fixes.",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:clock-architect",
+     prompt="Review module-level clock relationships and crossing assumptions for {module}.
+     Focus on generated clocks, clock mux/gating safety, and domain classification.",
+     run_in_background=true)
+```
+
+**V4: Protocol Compliance** (per module, skip if no bus interface → mark n/a, via sub-orchestrator)
+```
+Task(subagent_type="rtl-agent-team:p5s-protocol-orchestrator",
+     prompt="Run protocol compliance verification for module {module}. Identify bus interfaces (AXI4/AHB-Lite/APB3), generate protocol SVA assertions, bind and simulate. Report violations with waveform evidence. IMPORTANT: namespace output by module — protocol report to reviews/phase-5-verify/protocol-report-{module}.md.",
      run_in_background=true)
 ```
 
@@ -138,40 +141,27 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 
 ### Group B (after V1 pass): V5
 
-**V5: Functional Regression — Scenario Split** (per module, per scenario)
+**V5: Functional Regression** (per module, via sub-orchestrator)
 Wait for V1 (lint) PASS, then:
 ```
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Complete cocotb TB for {module} from Stream B skeleton. Split into scenario categories: basic, corner_case, stress, error_handling. Write sim/{module}/test_{module}_{scenario}.py per category. Signal naming: dut.sys_clk, dut.i_*/dut.o_*.")
-
-# Launch ALL scenarios in parallel with multi-seed:
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb scenario 'basic' for {module}: make -C sim/{module} SIM=verilator TOPLEVEL={module} MODULE=test_{module}_basic RANDOM_SEED=42. Then run seeds [1, 123, 1337, 65536].",
-     run_in_background=true)
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb scenario 'corner_case' for {module}: [same pattern, all 5 seeds].",
-     run_in_background=true)
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb scenario 'stress' for {module}: [same pattern, all 5 seeds].",
-     run_in_background=true)
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb scenario 'error_handling' for {module}: [same pattern, all 5 seeds].",
+Task(subagent_type="rtl-agent-team:p5s-func-verify-orchestrator",
+     prompt="Run functional regression pipeline for module {module}. Use Stream B TB skeletons from docs/phase-4-rtl/stream-b-tb-skeletons.md if available. Pipelined TB generation + multi-seed regression (seeds 42, 1, 123, 1337, 65536). Report per-test pass/fail and coverage data.",
      run_in_background=true)
 ```
 
 ### Group C (after V5): V6 + V7
 
-**V6: Coverage Analysis** (incremental — starts as V5 data arrives)
+**V6: Coverage Analysis** (per module, via sub-orchestrator)
 ```
-Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Analyze coverage for {module} from completed scenario sims. Merge multi-seed data. Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%. Iterative refinement (3 rounds). Write sim/coverage/{module}_coverage_gaps.md.",
+Task(subagent_type="rtl-agent-team:p5s-coverage-orchestrator",
+     prompt="Run coverage analysis pipeline for module {module}. 3-round iterative gap closure (Initial→Deepen→Close) with directed test generation. Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%. Write coverage report and waiver list.",
      run_in_background=true)
 ```
 
-**V7: Performance** (after V5 PASS)
+**V7: Performance** (after V5 PASS, via sub-orchestrator)
 ```
-Task(subagent_type="rtl-agent-team:perf-verifier",
-     prompt="Measure throughput/latency/stall for {module}. Compare vs BFM baseline. Flag >10% deviation. Write sim/{module}/{module}_perf.json.",
+Task(subagent_type="rtl-agent-team:p5s-perf-orchestrator",
+     prompt="Run performance verification pipeline for module {module}. BFM baseline gate, RTL simulation, waveform metric extraction, BFM comparison. Flag >10% deviation.",
      run_in_background=true)
 ```
 
@@ -298,9 +288,25 @@ Task(subagent_type="rtl-agent-team:requirement-tracer",
 Task(subagent_type="rtl-agent-team:requirement-tracer",
      prompt="Build unified end-to-end traceability: REQ → Arch → μArch → RTL → Test → Result. Save reviews/phase-5-verify/e2e-traceability.md.")
 
+# 3.2b Requirement Traceability Audit (MANDATORY gate for P6 entry)
+# After 3.1 and 3.2, verify traceability completeness before final compliance.
+# This is a hard quality gate: untested Critical/High requirements block P6 entry.
+Task(subagent_type="rtl-agent-team:requirement-tracer",
+     prompt="Formal Traceability Audit: Read reviews/phase-5-verify/requirement-traceability.md.
+     Verify: every Critical/High priority REQ-NNN in requirements.json has status VERIFIED or FORMAL.
+     Produce reviews/phase-5-verify/traceability-audit.md with:
+     - Total requirements: N
+     - VERIFIED: N (with test file:line citations)
+     - FORMAL: N (with SVA property citations)
+     - PARTIAL: N (with gap descriptions)
+     - UNTESTED: N (with priority — Critical/High UNTESTED = AUDIT FAIL)
+     - Verdict: PASS if zero Critical/High UNTESTED, FAIL otherwise.
+     NOTE: PARTIAL Critical/High requirements are WARNING (not blocking),
+     but UNTESTED Critical/High requirements are FAIL (blocking P6 entry).")
+
 # 3.3 Final Compliance Review
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY final spec compliance review. Read requirements.json, io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
+     prompt="READ-ONLY final spec compliance review. Read docs/phase-1-research/requirements.json, docs/phase-1-research/io_definition.json, docs/phase-2-architecture/architecture.md, rtl/*/*.sv, ALL Phase 5 review results, AND reviews/phase-5-verify/traceability-audit.md. Verify RTL implements ALL spec requirements AND traceability audit verdict is PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
 
 # 3.4 Phase 5 Summary
 Task(subagent_type="rtl-agent-team:rtl-architect",

@@ -64,7 +64,9 @@ SystemVerilog testbenches without wrapper overhead.
    - DPI-C compatible: no C++ features (no classes, no templates, no exceptions)
 3. Build ref model via Bash CLI: `cd refc && make build`
 4. Run bitexact comparison via Bash CLI: `cd refc && make test`
-5. Run bandwidth analysis: `cd refc && make bandwidth` (reports ext_mem access count/pattern)
+5. Run bandwidth analysis: `cd refc && make bandwidth`
+   (reports ext_mem access count/pattern + estimated cycle counts per block
+    using MEM_LATENCY_INTERNAL=1, MEM_LATENCY_EXTERNAL=500 defaults)
 6. Fix any mismatches (iterate until all vectors pass)
 7. Run independent review via ref-model-reviewer (algorithm fidelity, numeric precision, UB/memory safety)
 8. Write conformance_report.json with pass/fail per vector and JM/HM version
@@ -156,6 +158,8 @@ typedef struct {
     uint64_t total_writes;
     uint64_t total_read_bytes;
     uint64_t total_write_bytes;
+    uint64_t estimated_read_cycles;   /* total_reads * MEM_LATENCY_EXTERNAL */
+    uint64_t estimated_write_cycles;  /* total_writes * MEM_LATENCY_EXTERNAL */
 } ext_mem_stats_t;
 
 void ext_mem_read(uint32_t addr, void *buf, uint32_t size);

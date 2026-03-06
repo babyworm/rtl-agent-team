@@ -2,6 +2,8 @@
 name: rtl-p5s-uvm-verify
 description: "This skill should be used when running UVM-based verification requiring commercial simulators (VCS/Questa/Xcelium)."
 user-invocable: true
+argument-hint: "[module-name]"
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
 <Purpose>
@@ -31,109 +33,19 @@ When a commercial simulator is available, UVM delivers constrained-random covera
 closure that directed testing cannot match for large state spaces.
 </Why_This_Exists>
 
-<Coding_Convention_Requirements>
-UVM environment code MUST follow the project coding conventions (CLAUDE.md):
-- DUT port connections in driver/monitor: `i_` prefix for inputs, `o_` prefix for outputs
-- Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
-- Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
-- DUT instance in top-level wrapper: `u_dut` with `u_` prefix
-- UVM class member handles: `m_` prefix (e.g., `m_agent`, `m_scoreboard`, `m_driver`, `m_monitor`)
-- Use `logic` in all SV declarations (NOT `reg`/`wire`)
-- Interface signal names must match RTL ports exactly (e.g., `i_data`, `o_valid`)
-</Coding_Convention_Requirements>
+## Prerequisites
 
-<Execution_Policy>
-- testbench-dev writes UVM environment (agent, sequencer, driver, monitor, scoreboard)
-- eda-runner compiles and runs with commercial simulator via Bash CLI
-- Coverage collected via simulator's native UVM coverage
-- If simulator not found, halt immediately with clear error
-</Execution_Policy>
+Commercial simulator required:
+- One of VCS, Questa (vsim), or Xcelium (xrun) must be available
 
-<Steps>
-1. eda-runner checks simulator availability via Bash CLI: `which vcs || which vsim || which xrun`
-2. If not found: halt with error message listing required simulator
-3. testbench-dev writes sim/uvm/{module}_env.sv (agent, sequences, scoreboard)
-   - Use `templates/uvm-agent-template.sv` for agent/driver/monitor scaffold
-   - Use `templates/uvm-test-template.sv` for env/top-level scaffold
-   - See `examples/uvm-scoreboard-example.sv` for scoreboard with reference model comparison
-   - Driver uses `i_`/`o_` port prefixes, `sys_clk`/`sys_rst_n`
-   - DUT wrapped with `u_dut` instance name
-   - Interface signals match RTL port names exactly
-4. eda-runner compiles via Bash CLI:
-   `vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv sim/uvm/*.sv -o simv`
-5. eda-runner runs via Bash CLI:
-   `./simv +UVM_TESTNAME={test} +ntb_random_seed={seed}`
-6. Capture results to sim/uvm/results/run_summary.log
-7. Extract coverage to sim/uvm/coverage/uvm_coverage.xml
-</Steps>
+If prerequisite is missing: WARNING — commercial simulator not found.
+Use `/rtl-agent-team:rtl-p5s-func-verify` (cocotb/Verilator) instead.
 
-<Tool_Usage>
-```
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Check commercial simulator availability via Bash CLI: which vcs || which vsim || which xrun. Report which simulator is available or HALT if none found.")
+## Execution
 
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Write UVM verification environment for dma_controller in sim/uvm/. Use i_/o_ port prefixes, sys_clk/sys_rst_n, u_dut instance name per CLAUDE.md conventions. Include: UVM agent with driver/monitor, scoreboard comparing DMA transfers, base_test and directed_test sequences.")
+Task(subagent_type="rtl-agent-team:p5s-uvm-orchestrator",
+     prompt="Execute UVM verification. User input: $ARGUMENTS")
 
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Compile and run UVM environment via Bash CLI with VCS: vcs -full64 -sverilog -ntb_opts uvm rtl/*/*.sv sim/uvm/*.sv -o simv && ./simv +UVM_TESTNAME=directed_test. Report pass/fail and capture results to sim/uvm/results/run_summary.log.")
-
-Task(subagent_type="rtl-agent-team:waveform-analyzer",
-     prompt="Analyze UVM scoreboard mismatch waveform. Identify divergence between DUT o_data and expected value from reference model.")
-```
-</Tool_Usage>
-
-<Examples>
-<Good>
-Questa available; testbench-dev writes 200-line UVM env with scoreboard using `sys_clk`, `sys_rst_n`,
-`i_`/`o_` port naming; func-verifier runs 10 constrained-random tests; 9 pass; 1 fails scoreboard check;
-waveform captured for analysis.
-</Good>
-<Bad>
-Attempting to run UVM with Icarus Verilog — UVM is not supported by Icarus.
-Must check for commercial simulator first.
-Using `clk_i`, `data_o` in UVM driver — violates project conventions and causes port binding errors.
-</Bad>
-</Examples>
-
-<Escalation_And_Stop_Conditions>
-- No commercial simulator found → HALT immediately, report which simulators are supported
-- UVM compilation errors → report exact errors to user, do not attempt workarounds
-- Scoreboard mismatch → capture waveform, invoke waveform-analyzer for root cause
-- UVM env uses wrong naming convention → testbench-dev must rewrite before compilation
-</Escalation_And_Stop_Conditions>
-
-<Final_Checklist>
-- [ ] Commercial simulator availability verified via Bash CLI before any work
-- [ ] UVM environment uses correct naming (`i_`/`o_` prefix, `sys_clk`/`sys_rst_n`, `m_` UVM member prefix, `u_` RTL instance prefix)
-- [ ] UVM environment compiles without errors
-- [ ] All tests run to completion (no crashes)
-- [ ] sim/uvm/results/run_summary.log written
-- [ ] sim/uvm/coverage/uvm_coverage.xml generated
-- [ ] Pass/fail reported per test
-</Final_Checklist>
-
-<Advanced>
-UVM component naming conventions (aligned with project style):
-- Agent member handles: `m_agent`, `m_axi_agent`, `m_apb_agent` (m_ prefix for UVM class members)
-- Driver/monitor inside agent: `m_driver`, `m_monitor` (m_ prefix for UVM class members)
-- DUT wrapper instance: `u_dut` (u_ prefix for RTL instances only)
-- All SV code uses `logic` (never `reg`/`wire`)
-
-Simulator-specific flags:
-```bash
-# VCS with coverage
-vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/*/*.sv sim/uvm/*.sv -o simv
-./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} -cm line+cond+fsm+tgl
-
-# Questa with coverage
-vlog -sv +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv
-vsim -c -coverage opt_tb +UVM_TESTNAME={test} -do "coverage save -onexit cov.ucdb; run -all"
-
-# Xcelium with coverage
-xrun -sv -uvm -coverage all rtl/*/*.sv sim/uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
-```
-
-See `references/uvm-architecture.md` for complete UVM class hierarchy, phase order,
-and common UVM mistakes to avoid.
-</Advanced>
+Do not perform any work directly.
+The orchestrator agent manages simulator availability checking, UVM environment
+generation, compilation, test execution, and coverage collection.

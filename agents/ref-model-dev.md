@@ -60,6 +60,11 @@ color: green
     - Internal memory (SRAM/register): model as local arrays or struct members (e.g., `ctx->sram[SIZE]`)
     - External memory: ALL accesses through `ext_mem_read(addr, buf, size)` / `ext_mem_write(addr, buf, size)`
     - Datapath width: parameterize via `#define PARALLEL_LANES` for throughput exploration
+    - Memory access latency parameterizable for block-level cycle estimation:
+      `#define MEM_LATENCY_INTERNAL  1`    — SRAM, register file: 1 cycle (default)
+      `#define MEM_LATENCY_EXTERNAL  500`  — DDR/HBM: 500 cycles (default, design-adjustable)
+    - bandwidth_report.json must include per-block estimated cycle counts accounting for memory access patterns
+    - ext_mem_read/ext_mem_write accumulate estimated cycle cost using these latency values
     - If spec requires saturation arithmetic, implement it explicitly — do not rely on overflow
     - Every function must have a comment describing inputs, outputs, and behavior
     - Makefile must support: make build, make test, make vectors, make bandwidth, make clean
@@ -68,7 +73,10 @@ color: green
 
   <Investigation_Protocol>
     1. Read requirements.json and io_definition.json from the project root.
-    2. Read timing_constraints.json to understand pipeline depth (model must be cycle-accurate).
+    2. Read timing_constraints.json to understand per-block latency budgets and throughput targets.
+       The model is NOT cycle-accurate — it provides block-level cycle count estimates.
+       Memory access latency defaults: internal (SRAM/register) = 1 cycle, external (DDR/HBM) = 500 cycles.
+       These are parameterizable via MEM_LATENCY_INTERNAL / MEM_LATENCY_EXTERNAL defines.
     3. Identify the mathematical/logical transformation the block performs.
     4. Implementation language: C (preferred for DPI-C). No C++ features.
     5. Define the model interface as function arguments matching io_definition.json exactly.
@@ -125,9 +133,13 @@ color: green
         uint16_t reg_accumulator;  /* models internal register */
     } ref_model_ctx_t;
 
-    /* External memory access abstraction — tracks bandwidth */
-    void ext_mem_read(uint32_t addr, void *buf, uint32_t size);
+    /* External memory access abstraction — tracks bandwidth + latency */
+    #define MEM_LATENCY_INTERNAL  1    /* SRAM/register: 1 cycle default */
+    #define MEM_LATENCY_EXTERNAL  500  /* DDR/HBM: 500 cycles default */
+
+    void ext_mem_read(uint32_t addr, void *buf, uint32_t size);   /* costs MEM_LATENCY_EXTERNAL cycles */
     void ext_mem_write(uint32_t addr, const void *buf, uint32_t size);
+    ext_mem_stats_t ext_mem_get_stats(void);  /* includes estimated_total_cycles */
 
     /* Pure functional — no clock, no reset, no valid/ready */
     void ref_model_init(ref_model_ctx_t *ctx);  /* initialize context (not reset!) */
@@ -228,6 +240,14 @@ color: green
 
       vectors: build
           ./$(BUILD)/ref_model_test --generate-vectors vectors/test_vectors.json
+
+      bandwidth: build
+          ./$(BUILD)/ref_model_test --bandwidth-report vectors/bandwidth_report.json
+
+      sanitize: src/ref_model.c test/test_ref_model.c
+          mkdir -p $(BUILD)
+          $(CC) $(CFLAGS) -fsanitize=address,undefined $^ -o $(BUILD)/ref_model_sanitize
+          ./$(BUILD)/ref_model_sanitize
 
       clean:
           rm -rf $(BUILD)

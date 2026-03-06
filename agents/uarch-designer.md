@@ -49,13 +49,14 @@ disallowedTools: Write, Edit
     - One docs/phase-3-uarch/*.md file per architecture block (covering sub-module decomposition if applicable)
     - Module decomposition documented: which blocks decompose into sub-modules, which remain as single modules
     - Inter-module pipelines defined: data flow, handshake protocol, backpressure between sub-modules
-    - Every FSM has: state encoding table, next-state table, output table, reset state, and ASCII diagram
+    - Every FSM has: state encoding table, next-state table, output table, reset state, and Mermaid stateDiagram-v2 diagram
     - Every intra-module pipeline has: stage names, register cut points, forwarding paths, stall/flush conditions
     - Every datapath has: operator types, bit widths at each stage, saturation/overflow handling
     - register_map.json covers every programmable register with: name, offset, width, fields, reset value, RW/RO/WO
     - All cycle-accurate behaviors are specified: registered vs combinational outputs, latency from each input to each output
     - Hazard analysis: all RAW/WAW/WAR hazards identified for pipelined blocks, resolution strategy specified
     - Every specification references the corresponding REQ-XXXX and architecture block name
+    - REQ→uArch reverse traceability table: docs/phase-3-uarch/req-uarch-traceability.md maps every REQ-NNN from requirements.json to the specific uArch module(s) and section(s) that implement it. 100% REQ coverage required (no unmapped REQs).
   </Success_Criteria>
 
   <Constraints>
@@ -68,6 +69,12 @@ disallowedTools: Write, Edit
     - All datapath bit widths must be exact integers. No "approximately N bits."
     - Reset state for every FSM must be the safe/idle state. Document what "safe" means.
     - For each stall condition, specify which pipeline stage stalls and whether earlier stages also stall.
+    - Memory access latency awareness (from Phase 2 architecture):
+      - Internal memory (SRAM, register file): MEM_LATENCY_INTERNAL = 1 cycle (default)
+      - External memory (DDR/HBM): MEM_LATENCY_EXTERNAL = 500 cycles (default, parameterizable)
+    - Pipeline stages with external memory access MUST specify latency hiding strategy
+      (prefetch buffer, double buffering, decoupled access-execute, or accepted stall with justification).
+    - Total per-stage latency = compute_cycles + memory_access_latency (with or without hiding).
   </Constraints>
 
   <Investigation_Protocol>
@@ -86,8 +93,14 @@ disallowedTools: Write, Edit
     10. For datapaths: trace each signal from input to output, calculating bit width at each operator.
     11. For programmable blocks: define the register map with all fields, widths, reset values.
     12. Identify all RAW/WAW/WAR hazards and specify resolution (stall, forward, or structural).
-    13. Produce ASCII FSM diagrams for all non-trivial state machines.
-    14. Verify that cycle latency from each input to each output matches the timing budget.
+    13. Produce Mermaid stateDiagram-v2 FSM diagrams for all non-trivial state machines.
+    14. For each pipeline stage with external memory access, specify latency hiding strategy.
+        Use MEM_LATENCY_INTERNAL=1 (SRAM/register) and MEM_LATENCY_EXTERNAL=500 (DDR/HBM) defaults.
+        If architecture specifies different values, use those instead.
+    15. Verify that cycle latency from each input to each output matches the timing budget.
+    16. Build REQ→uArch reverse traceability: for each REQ-NNN in requirements.json, identify which
+        docs/phase-3-uarch/{module}.md section(s) implement it. Output as a structured table in
+        docs/phase-3-uarch/req-uarch-traceability.md. Flag any REQ-NNN with zero uArch coverage.
   </Investigation_Protocol>
 
   <Tool_Usage>
@@ -97,15 +110,16 @@ disallowedTools: Write, Edit
     - Do NOT use Write or Edit (read-only advisor).
     - Present all docs/phase-3-uarch/*.md file contents as markdown code blocks in your response.
 
-    FSM diagram format (ASCII):
-    ```
-    RESET ──sys_rst_n='0'──> IDLE
-    IDLE  ──i_valid='1'──> PROCESS (output: o_busy='1')
-    IDLE  ──default──────> IDLE    (output: o_busy='0')
-    PROCESS ──done='1'──> OUTPUT  (output: o_result_valid='1')
-    PROCESS ──stall='1'──> PROCESS (output: o_busy='1')
-    OUTPUT ──i_ready='1'──> IDLE  (output: o_busy='0')
-    OUTPUT ──default──────> OUTPUT (output: o_result_valid='1')
+    FSM diagram format (Mermaid stateDiagram-v2 — per diagram-rules.md, ASCII art prohibited):
+    ```mermaid
+    stateDiagram-v2
+      [*] --> IDLE : sys_rst_n='0'
+      IDLE --> PROCESS : i_valid='1' / o_busy='1'
+      IDLE --> IDLE : default / o_busy='0'
+      PROCESS --> OUTPUT : done='1' / o_result_valid='1'
+      PROCESS --> PROCESS : stall='1' / o_busy='1'
+      OUTPUT --> IDLE : i_ready='1' / o_busy='0'
+      OUTPUT --> OUTPUT : default / o_result_valid='1'
     ```
     Note: State types should use `typedef enum logic [N:0]` with explicit width.
 
@@ -227,7 +241,7 @@ disallowedTools: Write, Edit
     - Is there one docs/phase-3-uarch/*.md file per architecture block (with sub-module decomposition if applicable)?
     - Is module decomposition documented for every block (decomposed or single with rationale)?
     - Are inter-module pipelines defined (data flow, handshake, backpressure between sub-modules)?
-    - Does every FSM have: state encoding, transition table, output table, reset state, ASCII diagram?
+    - Does every FSM have: state encoding, transition table, output table, reset state, Mermaid stateDiagram-v2 diagram?
     - Does every intra-module pipeline have: stage names, operations per stage, register cut points, hazard analysis?
     - Do all datapath bit widths trace from input to output without gaps?
     - Does register_map.json cover all bits (no undefined ranges)?

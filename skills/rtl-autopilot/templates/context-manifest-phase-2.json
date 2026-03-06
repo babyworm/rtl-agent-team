@@ -4,6 +4,7 @@
   "required_full_read": [
     "docs/phase-1-research/requirements.json",
     "docs/phase-1-research/io_definition.json",
+    "docs/phase-1-research/timing_constraints.json",
     "docs/phase-1-research/domain-analysis.md"
   ],
   "required_summary_only": [],

@@ -113,7 +113,7 @@ Do NOT proceed to Phase 3.
 ## Phase Gate Definitions
 
 ### Phase 1→2 (Research → Architecture DSE)
-**Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
+**Artifact Gate**: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
 **Quality Gate**:
 - Requirements complete and consistent
 - Algorithm comparison matrices complete with quantitative data
@@ -155,7 +155,7 @@ Do NOT proceed to Phase 3.
 
 ## Final Checklist
 
-- [ ] Phase 1: requirements.json, io_definition.json exist
+- [ ] Phase 1: requirements.json, io_definition.json, timing_constraints.json exist
 - [ ] Phase 1: domain-analysis.md contains algorithm comparison matrices (not just selection)
 - [ ] Phase 1: Algorithm selection ADR recorded with user's decision
 - [ ] Phase 1: research-review.md PASS, phase-1-summary.md generated

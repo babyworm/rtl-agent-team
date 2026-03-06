@@ -26,6 +26,9 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 - **+1 conditional reviewer**:
   (d) ref-model-reviewer: independent C model quality gate (algorithm fidelity, numerical precision,
       undefined behavior/build warning risk) when ref model is newly created or substantially revised
+- **ref-model-reviewer activation threshold**: Invoke when ref model is newly created OR
+  >30% of source lines changed from prior version. Both sequential and team orchestrators
+  use this same threshold. Skip review tasks when ref model is unchanged.
 - Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for issues → targeted revision (rejections recorded in per-round artifact)
 - Round 3 mandatory even if converged: cross-block interface audit + memory conflict analysis
 - After 3 rounds if not converged → escalate to user via AskUserQuestion
@@ -36,11 +39,31 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 - Interface descriptions: data width, protocol type, direction — NOT RTL port naming
 - RTL naming conventions (i_/o_ prefix, clock/reset naming) applied in Phase 4, not here
 
+## HW Candidate Review Format
+
+`docs/phase-2-architecture/hw-candidate-review.md` must contain:
+1. Per functional area: candidate list with algorithm description
+2. Comparison matrix columns: gate count, critical path depth, SRAM requirements,
+   external memory BW, throughput at target freq, memory latency impact, implementation risk
+3. Selected candidate per area with REQ-NNN justification
+4. User decision record (AskUserQuestion response summary)
+
 ## Bandwidth Analysis Workflow
 
 - ref-model produces bandwidth_report.json during Step 3
 - arch-designer consumes bandwidth_report.json during Step 4 (after synchronization)
 - If bandwidth exceeds limits → adjust block partitioning or PARALLEL_LANES before review
+
+## Memory Access Latency Awareness
+
+Architecture review must verify:
+- Per-block latency budget distinguishes compute cycles vs memory access cycles
+- Default assumptions: internal memory = 1 cycle, external memory = 500 cycles
+- MEM_LATENCY_EXTERNAL is parameterizable (design-specific, technology-dependent)
+- Blocks with heavy external memory access have documented latency hiding strategy
+  (prefetch, double buffering, pipelining, or accepted latency penalty with justification)
+- bandwidth_report.json estimated cycle counts validated against timing_constraints.json budgets
+- Comparison of estimated latency WITH and WITHOUT latency hiding, to quantify strategy benefit
 
 ## Escalation & Stop Conditions
 

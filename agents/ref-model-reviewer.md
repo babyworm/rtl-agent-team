@@ -114,7 +114,7 @@ disallowedTools: Edit
     - Date: YYYY-MM-DD
     - Reviewer: ref-model-reviewer
     - Upper Spec: requirements.json, specs/
-    - Language: C++ / Python
+    - Language: C / C++ / Python
     - Verdict: PASS | FAIL
 
     ## Algorithm Fidelity

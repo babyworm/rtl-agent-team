@@ -36,17 +36,22 @@ If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion 
 
 ### Upstream Artifact Scan (E1: soft entry gate)
 
-Scan for upstream artifacts needed by Phase 4. Missing artifacts produce WARNING, not BLOCK.
+Dual-scanning: spawn-context.json provides structured metadata; Globs below provide
+defense-in-depth when manifest is missing or stale.
 
 ```
+# Required (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+
+# Optional (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/clock-domain-map.md")     # Clock domain map
 Glob("docs/phase-3-uarch/protocol-assignments.md") # Protocol assignments
-Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
-Glob("refc/**/*.c")                                # C reference model
+Glob("docs/phase-2-architecture/architecture.md")   # Architecture reference
+Glob("refc/**/*.c")                                # C reference model (DPI-C comparison)
 ```
 
-For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
 ## Step 1: Analysis

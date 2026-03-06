@@ -48,17 +48,22 @@ If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion 
 
 ### Upstream Artifact Scan (E1: soft entry gate)
 
-Scan for upstream artifacts needed by Phase 4. Missing artifacts produce WARNING, not BLOCK.
+Dual-scanning: spawn-context.json provides structured metadata; Globs below provide
+defense-in-depth when manifest is missing or stale.
 
 ```
+# Required (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+
+# Optional (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/clock-domain-map.md")     # Clock domain map
 Glob("docs/phase-3-uarch/protocol-assignments.md") # Protocol assignments
-Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
-Glob("refc/**/*.c")                                # C reference model
+Glob("docs/phase-2-architecture/architecture.md")   # Architecture reference
+Glob("refc/**/*.c")                                # C reference model (DPI-C comparison)
 ```
 
-For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
 ## Step 1: Preparation
@@ -210,7 +215,9 @@ During Waves 1-6, generate Stream B early verification artifacts:
 
 ## Step 6: Phase 4 Gate
 
-After all Wave 9 tasks (and conditional W9b) complete and integration passes:
+After all Wave 9 tasks (and conditional W9b) complete and integration passes.
+**ALL items must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
+
 1. Verify all modules have lint PASS
 2. Verify all modules have code review PASS (0 critical/major findings)
 3. Verify all modules have unit test PASS
@@ -218,8 +225,11 @@ After all Wave 9 tasks (and conditional W9b) complete and integration passes:
 5. Verify all bus-interface modules have protocol PASS (no-bus: auto-skip)
 6. Verify equivalence-checker report exists for all logic-touching refactors (per policy)
 7. Generate `reviews/phase-4-rtl/lint-report.md`
-8. Generate `docs/phase-4-rtl/module-descriptions.md`
-9. Verify Stream B artifacts exist
+8. Generate `reviews/phase-4-rtl/functional-completeness.md` (every REQ-NNN mapped to RTL)
+9. Generate `reviews/phase-4-rtl/design-review.md` (rtl-critic verdict)
+10. Generate `docs/phase-4-rtl/module-descriptions.md`
+11. Generate `docs/phase-4-rtl/phase-4-summary.md`
+12. Verify Stream B artifacts exist
 
 ## Step 7: Cleanup
 

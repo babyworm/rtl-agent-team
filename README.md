@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 77 specialized AI agents + 76 skills automate the 6-Phase pipeline:
+> 85 specialized AI agents + 85 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 77 specialized AI agents + 76 skills + 13 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 85 specialized AI agents + 85 skills + 13 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 77-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.5.0 |
+| **rtl-agent-team** | 85-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.5.0 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.0 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -132,7 +132,7 @@ Creates the project directory structure, verifies EDA tool installation, and **a
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 76 skills.
+See the `skills/` directory for the full list of 85 skills.
 
 ## Project Artifact Structure
 
@@ -163,10 +163,10 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 77 agents (design/verification/review/EDA/domain/orchestrators)
+├── agents/                     # 85 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 76 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 85 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rtl-setup/
 │   │   ├── scripts/
@@ -185,9 +185,9 @@ rtl-agent-team/
 │       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
 │       └── ...                     # + 9 more (CDC, UVM, Yosys, SDC, etc.)
-├── hooks/                      # Event-driven enforcement (10 hooks)
+├── hooks/                      # Event-driven enforcement (11 hooks)
 │   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup check + template bootstrap
-│   └── ...                     # + 9 more (routing inject, verify gate, cascade, etc.)
+│   └── ...                     # + 10 more (routing inject, verify gate, cascade, etc.)
 ├── docker/                     # EDA tool Docker image
 │   └── Dockerfile              # Open-source EDA full bundle
 └── domain-packages/            # Domain knowledge packages
@@ -206,7 +206,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## Agent Team
 
-### Agent Composition (77 agents, all Opus)
+### Agent Composition (85 agents, all Opus)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
@@ -323,8 +323,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (77)
-├── skills/                              # rtl-agent-team skills (56, with 13 reference docs)
+├── agents/                              # rtl-agent-team agents (85)
+├── skills/                              # rtl-agent-team skills (85, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

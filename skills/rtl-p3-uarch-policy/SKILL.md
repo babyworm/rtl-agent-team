@@ -17,6 +17,23 @@ Each module document MUST contain:
 6. **Inter/intra-module pipeline**: data flow, handshake, backpressure, hazard analysis
 7. **Signal naming**: compliant with conventions below
 
+## REQ→uArch Reverse Traceability
+
+Every P3 run MUST produce `docs/phase-3-uarch/req-uarch-traceability.md` mapping each REQ-NNN
+from `docs/phase-1-research/requirements.json` to the uArch module(s) and section(s) implementing it.
+
+Format:
+```
+| REQ ID   | uArch Module(s)         | Section(s)                  | Status   |
+|----------|-------------------------|-----------------------------|----------|
+| REQ-001  | intra_pred              | 3.2 Mode Decision FSM       | MAPPED   |
+| REQ-002  | deblock_filter, sao     | 2.1 Pipeline, 4.3 SAO Ctrl  | MAPPED   |
+| REQ-003  | —                       | —                           | UNMAPPED |
+```
+
+- **100% coverage required**: every REQ-NNN must appear. UNMAPPED REQs block the Phase 3 gate.
+- **Staleness detection**: when P1 `requirements.json` changes after P3 completion, this table identifies which uArch sections need re-design. The P3 orchestrator uses mtime comparison to detect staleness.
+
 ## Clock Domain Assignment Rules
 
 - Every sub-block MUST have an assigned clock domain
@@ -77,14 +94,16 @@ Each module document MUST contain:
 ## 3-Round Review Protocol (5 parallel reviewers)
 
 Mandatory 3 rounds, coordinated by rtl-architect:
-- **5 parallel reviewers each round**:
+- **4 mandatory + 1 conditional parallel reviewers each round**:
   1. rtl-architect: feature preservation, block boundary, interface, protocol consistency
   2. timing-advisor: critical paths at target frequency, pipeline balance, clock domain feasibility
-  3. vcodec-architecture-expert: algorithm/memory/interface optimization
+  3. (conditional) domain architecture expert: algorithm/memory/interface optimization
+     — invoke when `domain-packages/{domain}/` exists (e.g., vcodec-architecture-expert for video codec).
+     When no domain expert available, rtl-architect covers algorithm consistency in its scope.
   4. ref-model-dev: model consistency (behavior, data widths, fixed-point, I/O log alignment)
   5. bfm-dev: BFM simulation results, I/O logging correctness, protocol behavior
 
-- Round 1-2: review → targeted feedback → revision (only experts with findings re-run)
+- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for accepted issues → targeted revision (rejections recorded in per-round artifact)
 - Round 3 mandatory: cross-module interface audit, clock domain map consistency,
   memory conflict analysis, model consistency matrix, BFM final pass, μArch code review
 - After 3 rounds if not converged → escalate to user via AskUserQuestion
@@ -162,13 +181,35 @@ PASS | FAIL: [reason]
 - [ ] Naming conventions enforced (i_/o_, {domain}_clk, u_, logic only)
 - [ ] rtl-architect verdict PASS
 - [ ] timing-advisor no blockers
-- [ ] vcodec-architecture-expert approved
+- [ ] Domain architecture expert approved (when applicable)
+
+**Rebuttal & per-round artifacts:**
+- [ ] reviews/phase-3-uarch/uarch-review-r1.md with rebuttal section (accept/reject + rationale)
+- [ ] reviews/phase-3-uarch/uarch-review-r2.md with rebuttal section (accept/reject + rationale)
+- [ ] reviews/phase-3-uarch/uarch-review-r3.md (mandatory final pass)
 
 **Artifacts saved:**
-- [ ] reviews/phase-3-uarch/uarch-review-r1.md, r2.md, r3.md
 - [ ] reviews/phase-3-uarch/feature-preservation.md
 - [ ] reviews/phase-3-uarch/uarch-review.md (consolidated)
-- [ ] reviews/phase-3-uarch/pipeline-diagram.md (Mermaid)
+- [ ] reviews/phase-3-uarch/pipeline-diagram.md (Mermaid — see format below)
 - [ ] docs/phase-3-uarch/clock-domain-map.md
 - [ ] docs/phase-3-uarch/protocol-assignments.md
 - [ ] docs/phase-3-uarch/phase-3-summary.md
+- [ ] docs/phase-3-uarch/req-uarch-traceability.md (100% REQ coverage)
+
+## Mermaid Pipeline Diagram Format
+
+Per diagram-rules.md: use Mermaid for pipeline/flow diagrams (ASCII art prohibited).
+
+```mermaid
+flowchart LR
+  S0[S0: Fetch] -->|"data[31:0]"| S1[S1: Decode]
+  S1 -->|"op[7:0], operands"| S2[S2: Execute]
+  S2 -->|"result[47:0]"| S3[S3: Writeback]
+
+  S0 -.->|stall| S0
+  S2 -.->|forward| S1
+```
+
+Each stage node: `SN[SN: stage_name]`. Edges: data width annotation.
+Stall/forward paths: dashed arrows (`-.->`).

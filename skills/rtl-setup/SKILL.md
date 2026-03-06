@@ -168,6 +168,11 @@ This skill ensures everything is in place before design work begins.
    Per-module cocotb Makefiles are created in `sim/{module}/Makefile` during Phase 4-5.
    Supports icarus, verilator, vcs, xcelium, questa with per-simulator compile args.
 
+6.6. **Deploy Phase 6 PDF Makefile** (if reviews/phase-6-review/ has no Makefile):
+   Copy `skills/rtl-setup/templates/phase6-pdf-makefile` to `reviews/phase-6-review/Makefile`.
+   Enables `make pdf` for design note PDF generation with pandoc + xelatex.
+   Optional D2/Mermaid diagram pre-rendering when tools are available.
+
 6.5. **Generate SV testbench template** (inform user):
    Reference `skills/rtl-p4s-unit-test/templates/sv-testbench-template.sv` for Tier 2 unit tests.
    Replace `{{MODULE_NAME}}` and `{{DOMAIN}}` placeholders when creating per-module TBs.
@@ -299,6 +304,7 @@ Bash: cp skills/rtl-setup/templates/cocotb-makefile sim/top/Makefile
 Bash: cp skills/rtl-setup/templates/run_lint.sh lint/scripts/run_lint.sh
 Bash: cp skills/rtl-setup/templates/run_syn.sh syn/scripts/run_syn.sh
 Bash: cp skills/rtl-setup/templates/run_cdc.sh sim/cdc/run_cdc.sh
+Bash: mkdir -p reviews/phase-6-review && cp -n skills/rtl-setup/templates/phase6-pdf-makefile reviews/phase-6-review/Makefile
 Bash: chmod +x lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh
 Bash: chmod +x scripts/run_sim.sh
 # Hook-safe bootstrap (non-destructive, idempotent)

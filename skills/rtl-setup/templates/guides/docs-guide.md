@@ -7,7 +7,12 @@ docs/
 ├── phase-1-research/          # → Input for Phase 2
 │   ├── requirements.json      # Requirements list
 │   ├── io_definition.json     # I/O port spec
-│   ├── domain-analysis.md     # Domain analysis (algorithms, standards)
+│   ├── timing_constraints.json # Rough timing estimates per block
+│   ├── domain-analysis.md     # Domain analysis (algorithms, standards, per-block timing targets)
+│   ├── candidate-comparison.md # Pareto-optimal candidate comparison matrix
+│   ├── selected-approach.md   # Selected candidate with rationale
+│   ├── literature-survey.md   # HW architecture pattern survey
+│   ├── solution-tree.json     # Solution path tree (structured)
 │   └── phase-1-summary.md     # Compressed summary (auto-generated)
 ├── phase-2-architecture/      # → Input for Phase 3
 │   ├── architecture.md        # Block architecture (module hierarchy, datapath, timing)

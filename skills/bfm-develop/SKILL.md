@@ -5,9 +5,10 @@ user-invocable: true
 ---
 
 <Purpose>
-Implement SystemC TLM 2.0 BFMs that model the RTL design at transaction level using AT (Approximately
-Timed) non-blocking transport with ARM AMBA protocol extensions (AXI/AHB/APB/ACE).
-Outputs: bfm/ directory with SystemC models, build scripts, and initial smoke test results.
+Implement SystemC TLM 2.0 BFMs that model the RTL design at transaction level using LT (Loosely
+Timed) blocking transport by default, with ARM AMBA protocol extensions (AXI/AHB/APB/ACE).
+Switch to AT (Approximately Timed) non-blocking transport only when explicitly requested for
+timing accuracy. Outputs: bfm/ directory with SystemC models, build scripts, and initial smoke test results.
 Runs in parallel with rtl-p3-uarch-design during Phase 3.
 </Purpose>
 
@@ -34,7 +35,8 @@ that LT blocking transport cannot capture.
 </Why_This_Exists>
 
 <Execution_Policy>
-- bfm-dev implements SystemC TLM models using AT non-blocking transport by default
+- bfm-dev implements SystemC TLM models using LT blocking transport by default
+- Switch to AT non-blocking transport only when explicitly requested for timing accuracy
 - AMBA protocol selection: AXI by default, AHB/APB/ACE per architecture spec
 - Memory Manager (tlm_mm_interface) required for payload pooling
 - PEQ (peq_with_cb_and_phase) required for AT phase scheduling
@@ -45,7 +47,8 @@ that LT blocking transport cannot capture.
 <Steps>
 1. Read architecture.md, io_definition.json, and identify AMBA protocol requirements
 2. bfm-dev implements bfm/src/*.cpp: one TLM module per architectural block
-   - **AT non-blocking** (nb_transport_fw/bw) as default transport style
+   - **LT blocking** (b_transport) as default transport style
+   - **AT non-blocking** (nb_transport_fw/bw) only when explicitly requested for timing accuracy
    - **AXI protocol** with amba_pv::axi_extension as default (unless AHB/APB/ACE specified)
    - **Memory Manager** (tlm_mm_interface) for payload pooling
    - **PEQ** (peq_with_cb_and_phase) for AT phase scheduling
@@ -62,7 +65,7 @@ that LT blocking transport cannot capture.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:bfm-dev",
-     prompt="Implement SystemC TLM 2.0 BFMs at bfm/src/ from architecture.md. Use AT non-blocking transport (nb_transport_fw/bw) with 4-phase protocol. Use AXI protocol with amba_pv extensions. Include Memory Manager (tlm_mm_interface) and PEQ (peq_with_cb_and_phase). One module per block. Include CMakeLists.txt. Interface signal names must match io_definition.json exactly (i_/o_ prefix convention, {domain}_clk/{domain}_rst_n).")
+     prompt="Implement SystemC TLM 2.0 BFMs at bfm/src/ from architecture.md. Use LT blocking transport (b_transport) by default. Use AXI protocol with amba_pv extensions. Include Memory Manager (tlm_mm_interface). One module per block. Include CMakeLists.txt. Interface signal names must match io_definition.json exactly (i_/o_ prefix convention, {domain}_clk/{domain}_rst_n). Switch to AT non-blocking only if explicitly requested.")
 
 Task(subagent_type="rtl-agent-team:video-processing-expert",
      prompt="Review bfm/src/ datapath models for signal processing accuracy vs requirements.json.")
@@ -75,9 +78,9 @@ Bash: cd bfm/build && ./smoke_test
 
 <Examples>
 <Good>
-bfm-dev produces 5 AT TLM modules with AXI extensions and memory manager;
-all modules use nb_transport_fw/bw with 4-phase handshake;
-smoke test passes (1 AXI burst transaction end-to-end in AT mode);
+bfm-dev produces 5 LT TLM modules with AXI extensions and memory manager;
+all modules use b_transport with proper latency annotation;
+smoke test passes (1 AXI burst transaction end-to-end in LT mode);
 bfm/smoke_test_result.txt records PASS with latency numbers.
 </Good>
 <Bad>
@@ -97,8 +100,8 @@ No Memory Manager — payload leaks accumulate during simulation.
 <Final_Checklist>
 - [ ] bfm/src/*.cpp compiles without errors
 - [ ] One TLM module per architectural block
-- [ ] AT non-blocking transport used by default (nb_transport_fw/bw)
-- [ ] 4-phase handshake complete (BEGIN_REQ, END_REQ, BEGIN_RESP, END_RESP)
+- [ ] LT blocking transport used by default (b_transport)
+- [ ] If AT requested: 4-phase handshake complete (BEGIN_REQ, END_REQ, BEGIN_RESP, END_RESP)
 - [ ] AMBA protocol extensions set correctly (AXI burst/cache/prot)
 - [ ] Memory Manager (tlm_mm_interface) used for payload pooling
 - [ ] PEQ (peq_with_cb_and_phase) used for phase scheduling
@@ -108,8 +111,8 @@ No Memory Manager — payload leaks accumulate during simulation.
 </Final_Checklist>
 
 <Advanced>
-Use TLM 2.0 AT non-blocking coding style for timing-accurate performance modeling.
-Use LT loosely-timed coding style only for fast SW development simulation.
+Use TLM 2.0 LT blocking coding style by default for fast functional validation and I/O logging.
+Use AT non-blocking coding style only when explicitly requested for timing-accurate performance modeling.
 BFM interfaces must match io_definition.json port list exactly for rtl-p5s-perf-verify compatibility.
 AMBA protocol extensions must match architecture spec for protocol-level verification.
 </Advanced>

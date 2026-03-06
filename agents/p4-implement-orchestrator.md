@@ -37,17 +37,22 @@ If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion 
 
 ### Upstream Artifact Scan (E1: soft entry gate)
 
-Scan for upstream artifacts needed by Phase 4. Missing artifacts produce WARNING, not BLOCK.
+Dual-scanning: spawn-context.json provides structured metadata; Globs below provide
+defense-in-depth when manifest is missing or stale.
 
 ```
+# Required (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+
+# Optional (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/clock-domain-map.md")     # Clock domain map
 Glob("docs/phase-3-uarch/protocol-assignments.md") # Protocol assignments
-Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
-Glob("refc/**/*.c")                                # C reference model
+Glob("docs/phase-2-architecture/architecture.md")   # Architecture reference
+Glob("refc/**/*.c")                                # C reference model (DPI-C comparison)
 ```
 
-For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
 ## Wave 0: Preparation
@@ -64,7 +69,7 @@ Read("docs/phase-1-research/io_definition.json")
 - Identify module dependency order (leaf modules first, then composite)
 - Create per-module TODO list (TaskCreate per module with wave dependencies)
 - Initialize per-module state tracker (schema in policy skill)
-- `mkdir -p reviews/phase-4-rtl .rtl-agent-team/scratch/phase-4`
+- `mkdir -p docs/phase-4-rtl reviews/phase-4-rtl .rtl-agent-team/scratch/phase-4`
 
 ## Wave 1: Write All (parallel)
 
@@ -249,6 +254,16 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Generate cocotb TB skeletons from docs/phase-3-uarch/*.md.
 Output to docs/phase-4-rtl/stream-b-tb-skeletons.md.",
      run_in_background=true)
+
+Task(subagent_type="rtl-agent-team:eda-runner",
+     prompt="Stream B synthesis smoke test: for each module in rtl/*/,
+run sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v &&
+yosys -p 'read_verilog rtl/{module}/{module}_v2v.v; synth -top {module}; stat' 2>&1.
+Check for: (1) inferred latches (CRITICAL), (2) unmappable constructs (CRITICAL),
+(3) gross cell count anomalies. Do NOT run full PPA with liberty file -- this is a
+quick smoke test only. Save summary to docs/phase-4-rtl/stream-b-synth-estimate.md
+with per-module cell count and any CRITICAL findings.",
+     run_in_background=true)
 ```
 
 ### On Functional Coverage FAIL
@@ -260,7 +275,8 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 
 ### Phase 4 Gate Check
 
-Verify ALL criteria per policy skill checklist. ALL must pass before Phase 5.
+**ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
+Verify ALL criteria per policy skill checklist.
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
 # Wave Overlap Rules

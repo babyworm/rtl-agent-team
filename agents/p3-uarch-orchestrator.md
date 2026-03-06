@@ -45,6 +45,12 @@ Glob("docs/phase-2-architecture/architecture.md")  # Architecture spec
 Glob("refc/**/*.c")                                # C reference model
 Glob("docs/phase-1-research/requirements.json")    # Requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+Glob("docs/phase-1-research/timing_constraints.json")  # Timing estimates per block
+Glob("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation
+
+# P1 Staleness Detection: if requirements.json mtime is newer than existing docs/phase-3-uarch/*.md,
+# flag affected uArch sections using req-uarch-traceability.md (if exists from prior P3 run).
+# Output: WARNING listing affected modules/sections for targeted re-design.
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -54,6 +60,10 @@ Adjust execution plan based on available artifacts.
 
 ```
 Read("docs/phase-2-architecture/architecture.md")
+Read("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation from P2
+Read("docs/phase-1-research/timing_constraints.json")     # Per-block timing targets
+# Read bandwidth_report.json if available (from ref-model-dev, saved during Phase 2)
+Glob("docs/phase-2-architecture/bandwidth_report.json")
 # P2 memory classification (internal SRAM vs external DRAM/cache)
 # Block diagram is embedded within architecture.md
 ```
@@ -78,12 +88,21 @@ Task(subagent_type="rtl-agent-team:rtl-planner",
 
 # Trigger B: Clock architecture risk (multi-root clocks, generated clocks, muxing/gating complexity)
 Task(subagent_type="rtl-agent-team:clock-architect",
-     prompt="Review clock tree/gating/mux strategy from docs/phase-3-uarch/*.md.
-     Validate domain relationships and generated clock assumptions.
+     prompt="Review clock tree/gating/mux strategy and reset tree design from docs/phase-3-uarch/*.md.
+     Validate domain relationships, generated clock assumptions, and reset synchronization strategy.
      Save report to reviews/phase-3-uarch/clock-architecture-review.md and propose updates to clock-domain-map.md.")
+
+# Trigger C: Power risk (large register banks, multipliers, memory-heavy design, multi-clock domains)
+Task(subagent_type="rtl-agent-team:power-analyzer",
+     prompt="Early power feasibility check (ballpark estimation) from docs/phase-3-uarch/*.md.
+     Focus on: clock gating opportunities per sub-block, operand isolation candidates
+     (multipliers, complex arithmetic), memory power budget (SRAM sizing × access frequency),
+     and estimated dynamic power breakdown by module.
+     This is a P3 shift-left review — ballpark numbers (±30-50%) are acceptable.
+     Save report to reviews/phase-3-uarch/power-feasibility-review.md.")
 ```
 
-Apply planner/clock findings before Step 3 and carry unresolved risk items into Round 1 review.
+Apply planner/clock/power findings before Step 3 and carry unresolved risk items into Round 1 review.
 
 ## Step 3: Parallel uarch Design + BFM Development
 
@@ -99,7 +118,8 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
      5. Register/SRAM/FSM allocation
      6. Inter/intra-module pipeline, FSM spec, register map, memory map
      7. Signal naming: i_/o_/io_ prefix, {domain}_clk, u_ instance, UPPER_SNAKE_CASE params
-     Also produce: clock-domain-map.md and protocol-assignments.md")
+     8. REQ→uArch reverse traceability table: map every REQ-NNN to specific module(s)/section(s)
+     Also produce: clock-domain-map.md, protocol-assignments.md, and req-uarch-traceability.md")
 
 # Stream B: BFM development (parallel with uarch)
 Task(subagent_type="rtl-agent-team:bfm-dev",
@@ -140,8 +160,11 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 Task(subagent_type="rtl-agent-team:timing-advisor",
      prompt="Review Round 1: Critical path at target frequency, pipeline balance, clock domain feasibility.")
 
+# Reviewer #3: conditional on domain — use domain expert if available, else rtl-architect covers
+# If domain-packages/{domain}/ exists:
 Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
      prompt="Review Round 1: Algorithm ↔ μArch consistency, memory optimization, protocol adequacy.")
+# Else: rtl-architect (already reviewer #1) includes algorithm consistency in its scope
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Review Round 1: Model consistency (behavior, data widths, fixed-point, I/O log alignment).")
@@ -155,8 +178,21 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Save to reviews/phase-3-uarch/uarch-review-r1.md.
      Output targeted feedback per expert/module needing revision.")
 
+# Rebuttal Round 1: uarch-designer evaluates each finding
+Task(subagent_type="rtl-agent-team:uarch-designer",
+     prompt="Rebuttal Round 1: For each finding in uarch-review-r1.md,
+     accept or reject with rationale. Accepted findings proceed to tree exploration.
+     Rejected findings are recorded with justification.
+     Present rebuttal section for orchestrator to update uarch-review-r1.md.")
+
+# Tree exploration: spawn parallel agents per ACCEPTED issue to evaluate resolution alternatives
+# Select best resolution per issue → uarch-designer applies → bfm-dev re-validates if needed
+
 # Targeted revision: only experts/modules with findings
 # Round 2: same pattern → save to uarch-review-r2.md
+# Rebuttal Round 2: uarch-designer accept/reject each finding with rationale
+#   → update uarch-review-r2.md with rebuttal section
+#   → tree exploration for accepted findings → uarch-designer applies resolutions
 # Round 3 (mandatory): cross-module interfaces, clock domain map, memory conflicts,
 #   model consistency matrix, BFM final pass, μArch code review
 # Conditional reviewers (invoke when trigger still active):
@@ -167,11 +203,28 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 # On boundary violation → escalate to Phase 2 (p2-arch-design)
 ```
 
-## Step 6: Finalize
+## Step 6: Phase 3 Gate (MANDATORY — matches team orchestrator)
+
+After Step 5 review completes, verify all gate items:
+1. Verify `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
+2. Verify `reviews/phase-3-uarch/feature-preservation.md` has 100% preserved
+3. Verify `docs/phase-3-uarch/clock-domain-map.md` exists
+4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
+5. Verify `docs/phase-3-uarch/req-uarch-traceability.md` exists with 100% REQ coverage (every REQ-NNN in requirements.json mapped to at least one uArch section)
+6. Verify pipeline diagram exists
+7. Per-round artifacts (enforces 3-round review protocol):
+   - `reviews/phase-3-uarch/uarch-review-r1.md` — Round 1 findings + rebuttal
+   - `reviews/phase-3-uarch/uarch-review-r2.md` — Round 2 findings + rebuttal
+   - `reviews/phase-3-uarch/uarch-review-r3.md` — Round 3 mandatory final pass
+   FAIL if any missing.
+8. Rebuttal evidence in R1 and R2: verify each round artifact contains a rebuttal section
+   with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
+9. Generate `docs/phase-3-uarch/phase-3-summary.md`
 
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Finalize: Consolidate r1-r3 into uarch-review.md.
+     prompt="Phase 3 Gate: Verify all 9 gate items. Verify req-uarch-traceability.md has 100% REQ coverage.
+     Consolidate r1-r3 into uarch-review.md.
      Save Mermaid pipeline diagram to pipeline-diagram.md.
      Verify clock-domain-map.md and protocol-assignments.md complete.
      Generate phase-3-summary.md for Phase 4.

@@ -63,7 +63,7 @@ Do NOT proceed to Phase 4.
 ## Phase Gate Definitions
 
 ### Phase 1→2 (Research → Architecture)
-**Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
+**Artifact Gate**: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
 **Quality Gate**:
 - 3-round chief review converged (or gaps escalated and user-approved)
 - spec-analyst self-reviews requirements.json (completeness, consistency)
@@ -141,7 +141,7 @@ Do NOT proceed to Phase 4.
 
 ## Final Checklist
 
-- [ ] Phase 1: requirements.json, io_definition.json, domain-analysis.md exist
+- [ ] Phase 1: requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md exist
 - [ ] Phase 1: research-review.md verdict=PASS, per-round reviews (r1-r3) saved, phase-1-summary.md generated
 - [ ] Phase 2: architecture.md with proper naming, refc/*/*.c exist
 - [ ] Phase 2: architecture-review.md PASS, per-round reviews (r1-r3) saved, feature-coverage.md 100%

@@ -113,7 +113,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 ## Phase Gate Definitions
 
 ### Phase 1→2 (Research → Architecture)
-**Artifact Gate**: requirements.json + io_definition.json + domain-analysis.md exist
+**Artifact Gate**: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
 **Quality Gate**:
 - 3-round chief review converged (or gaps escalated and user-approved)
 - spec-analyst self-reviews requirements.json for completeness and internal consistency

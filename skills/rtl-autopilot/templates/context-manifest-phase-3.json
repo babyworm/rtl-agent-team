@@ -10,6 +10,7 @@
   "optional_on_demand": [
     "docs/phase-1-research/requirements.json",
     "docs/phase-1-research/io_definition.json",
+    "docs/phase-1-research/timing_constraints.json",
     "docs/phase-1-research/domain-analysis.md",
     "refc/*.c",
     "docs/decisions/ADR-*.md"

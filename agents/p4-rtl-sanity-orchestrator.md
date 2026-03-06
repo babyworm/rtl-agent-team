@@ -21,9 +21,42 @@ State contract:
 
 ## Workflow
 
-### Step 0: Setup prerequisite
-- Ensure `.claude/rules/rtl-coding-conventions.md` exists.
-- If missing, run `Skill(skill="rtl-agent-team:rtl-setup")`.
+### Step 0: Context Bootstrap (MANDATORY)
+
+```
+Read(".rtl-agent-team/state/spawn-context.json")
+```
+
+**If file found and valid** — use manifest data:
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- Otherwise proceed with context loaded (phase, staleness, team info available)
+
+**If file NOT found** — fallback to legacy check:
+```
+Glob(".claude/rules/rtl-coding-conventions.md")
+```
+If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+
+### Upstream Artifact Scan (E1: soft entry gate)
+
+Dual-scanning: spawn-context.json provides structured metadata; Globs below provide
+defense-in-depth when manifest is missing or stale.
+
+```
+# Required (per artifact-map.sh Phase 4)
+Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
+
+# Optional (per artifact-map.sh Phase 4)
+Glob("docs/phase-3-uarch/clock-domain-map.md")     # Clock domain map
+Glob("docs/phase-3-uarch/protocol-assignments.md") # Protocol assignments
+Glob("docs/phase-2-architecture/architecture.md")   # Architecture reference
+Glob("refc/**/*.c")                                # C reference model (DPI-C comparison)
+```
+
+For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+Adjust execution plan based on available artifacts.
 
 ### Step 0.5: Initialize or resume state
 1. If `.rtl-agent-team/state/p4-state.json` exists, resume from its `current_stage`.

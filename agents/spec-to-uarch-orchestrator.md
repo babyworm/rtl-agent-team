@@ -91,7 +91,7 @@ Bash("mkdir -p reviews/phase-1-research")
 Invoke p1-spec-research skill:
 ```
 Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
-     prompt="Execute Phase 1 spec research. Context: Specs at specs/. Produce requirements.json, io_definition.json, domain-analysis.md.")
+     prompt="Execute Phase 1 spec research. Context: Specs at specs/. Produce requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md.")
 ```
 
 **Phase 1→2 Quality Gate** (criteria in policy):
@@ -113,9 +113,10 @@ verdict: PASS or FAIL + findings[]")
 ```
 Glob("docs/phase-1-research/requirements.json")    # Structured requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
+Glob("docs/phase-1-research/timing_constraints.json")  # Rough timing estimates per block
 Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
 ```
-All three files must exist. If any missing: FAIL + list specific missing files.
+All four files must exist. If any missing: FAIL + list specific missing files.
 
 On PASS: generate Phase 1 summary:
 ```
@@ -132,6 +133,7 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 **Context Preload**: Verify required upstream files exist before starting Phase 2:
 - `docs/phase-1-research/requirements.json`
 - `docs/phase-1-research/io_definition.json`
+- `docs/phase-1-research/timing_constraints.json`
 - `docs/phase-1-research/domain-analysis.md`
 STOP if any missing.
 
@@ -188,6 +190,11 @@ Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
 ```
+
+**Phase 3 Artifact Gate** (criteria in policy):
+- Check: `docs/phase-3-uarch/*.md` exists (at least one μArch spec file)
+- Check: `bfm/` directory exists
+- STOP if either missing — Phase 3 artifacts incomplete.
 
 **Phase 3 Quality Gate** (criteria in policy):
 - Check: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS

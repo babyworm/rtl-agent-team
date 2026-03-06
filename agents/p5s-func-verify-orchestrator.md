@@ -61,8 +61,17 @@ Adjust execution plan based on available artifacts.
 ```
 Bash("mkdir -p reviews/phase-5-verify sim/regression sim/coverage")
 Glob("rtl/*/")       # Enumerate modules
-Read("requirements.json")  # For traceability matrix
+Read("docs/phase-1-research/requirements.json")  # For traceability matrix
 ```
+
+## Module Scope
+
+Determine which modules to process before proceeding:
+
+- **If the task prompt contains a specific module name** (e.g., "for module {module}" or "run functional verification for {module}"): operate on ONLY that single module. Skip the `Glob("rtl/*/")` enumeration — use the specified module name directly.
+- **If NO specific module is given** (standalone invocation via skill): enumerate all modules via `Glob("rtl/*/")` as done in Step 1 and iterate over every discovered module.
+
+This prevents N×N duplicate execution when the parent p5-verify-orchestrator spawns this sub-orchestrator once per module.
 
 ## Step 2: Pipelined TB Generation + Execution (per-module parallel)
 
@@ -140,10 +149,10 @@ Report early coverage gaps to guide additional test generation.")
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge multi-seed coverage: bash skills/rtl-regression-run/scripts/merge_coverage.sh
---format verilator --output sim/coverage/merged.info.
+     prompt="Merge multi-seed coverage for module {module}: bash skills/rtl-regression-run/scripts/merge_coverage.sh
+--format verilator --output sim/coverage/{module}_merged.info.
 Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%.
-Report gaps and suggest additional test vectors.")
+Report module-scoped coverage gaps and suggest additional test vectors.")
 ```
 
 Below target: testbench-dev generates additional tests → re-run regression.
@@ -162,18 +171,20 @@ After ALL regression completes:
 
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read requirements.json and all sim/regression/*_result.json.
-Map each REQ-NNN to the test(s) that verify it. Output a Requirement Traceability Matrix.
-Save to reviews/phase-5-verify/requirement-traceability.md in standard review Markdown format:
-  # Phase 5 Review: Requirement Traceability
+     prompt="Read requirements.json and sim/regression/*{module}*_results.json.
+Map each REQ-NNN to the test(s) that verify it for module {module}. Output a MODULE-LEVEL Requirement Traceability fragment.
+Save MODULE-LEVEL traceability to reviews/phase-5-verify/requirement-traceability-{module}.md in standard review Markdown format:
+  # Phase 5 Review: Requirement Traceability — {module}
   - Date: (today)
   - Reviewer: func-verifier
+  - Module: {module}
   - Upper Spec: requirements.json
   - Verdict: PASS | FAIL
   ## Feature Coverage Checklist
   | REQ ID | Test Name | Result | Status |
   ## Findings
   ## Verdict
+The master p5-verify-orchestrator will merge per-module fragments into the final unified traceability matrix.
 For any REQ with NO TEST COVERAGE, write additional cocotb tests.
 Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.")
 ```

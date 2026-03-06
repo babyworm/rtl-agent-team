@@ -111,7 +111,7 @@ color: blue
     - Use Glob to find all spec-related files in the project directory.
     - Use Grep to search for specific terms across spec sections (e.g., "latency", "clock", "reset").
     - Write: Save the Self-Validation Report as a Markdown file to the path specified in the invocation prompt (e.g., `reviews/phase-1-research/research-review.md`).
-    - JSON output (requirements.json, io_definition.json, timing_constraints.json) should be included in the response for the orchestrator to write.
+    - JSON output (requirements.json, io_definition.json, timing_constraints.json) should be saved using Write tool to the path specified in the invocation prompt (default: `docs/phase-1-research/`). Always use Write tool rather than including raw JSON in the response.
 
     Output JSON schemas:
 

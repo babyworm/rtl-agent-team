@@ -1,6 +1,6 @@
 ---
 name: rtl-p6-design-review-policy
-description: "Policy rules, design note requirements, consistency check protocol, PDF generation pipeline, Phase 7 exploration mode, escalation rules, and checklists for Phase 6 design review. Pure reference — no orchestration."
+description: "Policy rules, design note requirements, consistency check protocol, PDF generation pipeline, escalation rules, and checklists for Phase 6 design review. Pure reference — no orchestration."
 user-invocable: false
 ---
 
@@ -115,18 +115,7 @@ make check-deps # Verify required tools
 
 **Pipeline**: Discover design-note*.md → extract D2/Mermaid → render PNGs → replace blocks → combine → pandoc + xelatex → PDF with TOC
 
-## Phase 7 Exploration Mode
-
-When invoked with exploration mode (user requests "Phase 7", "exploration"):
-- **Entry**: Phase 6 completion recommended but NOT required (Phase 7 exempt from pipeline gates)
-- **Guard Rails**:
-  - Pipeline absolute rules do NOT apply — free exploration allowed
-  - Existing `rtl/` files must NOT be directly modified (use exploration branch)
-  - Results stored in `docs/phase-7-exploration/exploration-notes.md`
-  - Successful exploration → ADR creation + formal pipeline integration proposal
-  - Scope: algorithm alternatives, optimization experiments, technology evaluation
-  - Prohibited: production RTL changes, verification bypass, feature additions without spec change
-- **Output**: `reviews/phase-7-exploration/exploration-review.md`
+**Phase 7 Exploration**: For free exploration mode, see `rtl-p7-exploration-policy`.
 
 ## Escalation & Stop Conditions
 

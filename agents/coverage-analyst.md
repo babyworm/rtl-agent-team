@@ -123,6 +123,11 @@ disallowedTools: Write, Edit
     | G01 | cg_input.cp_data.overflow | Functional | Critical | REQ-0042 | Drive i_data=MAX+1 with i_valid=1 |
     | G02 | axi_ctrl.sv:234 | Branch | High | REQ-0018 | Assert i_error while i_valid=1 |
 
+    ## Directed Test Guidance (CDTG Feedback for testbench-dev)
+    | Gap ID | Uncovered Bin | Constraint | Sequence | Expected Behavior |
+    |--------|--------------|------------|----------|-------------------|
+    | G01 | cg_input.cp_data[overflow] | i_data >= 2^(WIDTH-1) | i_valid=1 → wait 1 → check o_overflow | o_overflow asserted within 2 cycles |
+
     ## Waive Recommendations
     | ID | Bin/Location | Reason | Evidence |
     |----|-------------|--------|---------|

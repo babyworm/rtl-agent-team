@@ -9,7 +9,12 @@
   "outputs": [
     "docs/phase-1-research/requirements.json",
     "docs/phase-1-research/io_definition.json",
+    "docs/phase-1-research/timing_constraints.json",
     "docs/phase-1-research/domain-analysis.md",
+    "docs/phase-1-research/candidate-comparison.md",
+    "docs/phase-1-research/selected-approach.md",
+    "docs/phase-1-research/literature-survey.md",
+    "docs/phase-1-research/solution-tree.json",
     "docs/phase-1-research/phase-1-summary.md"
   ]
 }

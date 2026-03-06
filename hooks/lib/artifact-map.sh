@@ -17,13 +17,13 @@ EOF
 docs/phase-1-research/requirements.json|p1-requirements
 docs/phase-1-research/io_definition.json|p1-io-definition
 docs/phase-1-research/domain-analysis.md|p1-domain-analysis
+docs/phase-1-research/timing_constraints.json|p1-timing-constraints
 EOF
       ;;
     3)
       cat <<'EOF'
 docs/phase-2-architecture/architecture.md|p2-architecture
 refc|p2-ref-model
-docs/phase-2-architecture/bandwidth_report.json|p2-bandwidth
 EOF
       ;;
     4)
@@ -42,6 +42,9 @@ EOF
 reviews/phase-5-verify/final-compliance.md|p5-compliance
 EOF
       ;;
+    7)
+      # Phase 7 exploration — no required upstream artifacts (exempt from pipeline gates)
+      ;;
   esac
 }
 
@@ -51,6 +54,7 @@ artmap_optional() {
       cat <<'EOF'
 docs/phase-1-research/requirements.json|p1-requirements
 docs/phase-1-research/io_definition.json|p1-io-definition
+docs/phase-2-architecture/bandwidth_report.json|p2-bandwidth
 EOF
       ;;
     4)
@@ -58,6 +62,7 @@ EOF
 docs/phase-3-uarch/clock-domain-map.md|p3-clock-domain-map
 docs/phase-3-uarch/protocol-assignments.md|p3-protocol-assignments
 docs/phase-2-architecture/architecture.md|p2-architecture
+refc/**/*.c|p4-refc-reference
 EOF
       ;;
     5)
@@ -71,6 +76,13 @@ EOF
     6)
       cat <<'EOF'
 docs/phase-4-rtl/module-descriptions.md|p4-module-descriptions
+EOF
+      ;;
+    7)
+      # Phase 7 exploration — optional context from prior phases
+      cat <<'EOF'
+reviews/phase-6-review/improvements.md|p6-improvements
+docs/phase-2-architecture/architecture.md|p2-architecture
 EOF
       ;;
   esac

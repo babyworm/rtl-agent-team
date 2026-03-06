@@ -208,11 +208,22 @@ A module graduates when ALL its V1-V9 tasks are completed successfully.
 Track graduation in `reviews/phase-5-verify/module-graduation.md`.
 
 ### Feedback Loop (Phase 5 → Phase 4)
-If V5 functional tests FAIL and the root cause is an RTL bug:
-1. Create a bugfix task
-2. Delegate to rtl-p4s-bugfix skill
-3. After fix, re-run failed verification tasks
-4. Maximum 2 feedback loops per module (escalate to user after that)
+On any verification category FAIL where the root cause is an RTL bug:
+1. Create a bugfix task: `TaskCreate(subject="Bugfix: {module} {category} failure")`
+2. Delegate to rtl-p4s-bugfix skill: `feedback_origin={category}`
+3. After fix, re-run ONLY the failed verification categories (not all V1-V9)
+4. Maximum 2 feedback loops per module per category (escalate to user after that)
+
+Category-specific guidance:
+- V1 (lint): typically naming/style — targeted fix, no full bugfix loop
+- V2 (formal): counterexample may indicate RTL logic bug → bugfix loop
+- V3 (CDC): often architecture-level — targeted fix or escalate to clock-architect
+- V4 (protocol): handshake/timing bug → bugfix loop
+- V5 (functional): regression failure → bugfix loop
+- V6 (coverage): gap in testbench, not RTL bug — extend TB, no bugfix loop
+- V7 (performance): throughput/latency miss → bugfix loop or design escalation
+- V8 (synthesis): area/timing miss → targeted optimization, no bugfix loop
+- V9 (code review): quality findings → refactor via rtl-p4s-refactor, no bugfix loop
 
 ## Step 6: Stage 2 — Top-Level Verification (after ALL modules graduate)
 

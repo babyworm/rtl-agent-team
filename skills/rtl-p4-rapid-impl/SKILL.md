@@ -23,6 +23,7 @@ This phase optimizes for fast detection of functional breakage and interface mis
 - Requirements/architecture are not stable yet
 - Need full functional closure or top exactness verification (use rtl-p5a-functional-closure / rtl-p5b-silicon-validation)
 - Need full 10-Wave Phase-4 pipeline with detailed review/refactor/integration artifacts (use rtl-p4-implement)
+- Need full 10-Wave pipeline with code review, protocol checks, refactoring, and Stream B artifacts (use rtl-p4-implement instead)
 </Do_Not_Use_When>
 
 ## Execution

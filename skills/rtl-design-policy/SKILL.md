@@ -20,6 +20,13 @@ user-invocable: false
 - `templates/p4-state.json` initializes `modules` as an empty map.
 - The orchestrator populates concrete module keys at runtime from discovered targets.
 
+## Rapid-Mode Gate Scope
+
+The 4 gates above (lint, CDC, smoke, block sanity) are a minimal subset of the full
+10-Wave pipeline defined in `rtl-p4-implement-policy`. The rapid-mode orchestrator
+intentionally skips Waves 4-5 (code review), Wave 8 (protocol), Wave 9 (refactoring),
+and Stream B artifact generation. Use `rtl-p4-implement` for the full pipeline.
+
 ## Failure Handling
 - Prefer smallest-scope fix and re-run.
 - If repeated failure on same category, escalate with root-cause summary.

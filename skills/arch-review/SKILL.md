@@ -8,6 +8,10 @@ user-invocable: true
 Review RTL architecture for consistency with the microarchitecture spec, timing feasibility,
 and code quality. All agents operate READ-ONLY — no modifications are made.
 Outputs: reviews/phase-2-architecture/architecture-review.md with findings per reviewer.
+
+Note: This skill intentionally saves to `reviews/phase-2-architecture/` because it
+re-validates the Phase 2 architecture after RTL implementation. It updates (not replaces)
+the existing Phase 2 review artifacts with post-RTL findings per Hierarchical Spec Compliance.
 </Purpose>
 
 <Use_When>

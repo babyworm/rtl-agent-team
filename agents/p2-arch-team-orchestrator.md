@@ -69,6 +69,7 @@ Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING
 Glob("docs/phase-1-research/requirements.json")    # Structured requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
 Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
+Glob("docs/phase-1-research/timing_constraints.json")  # Rough timing estimates per block
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -80,6 +81,7 @@ Adjust execution plan based on available artifacts.
 # Read P1 artifacts
 Read("docs/phase-1-research/requirements.json")
 Read("docs/phase-1-research/io_definition.json")
+Read("docs/phase-1-research/timing_constraints.json")  # Per-block timing targets (rough estimates from P1)
 Read("docs/phase-1-research/domain-analysis.md")
 Read("docs/phase-1-research/candidate-comparison.md")
 
@@ -119,7 +121,7 @@ for i, candidate in enumerate(candidates):
 Create T2 (selection) blocked by all T1 tasks:
 ```python
 t2 = TaskCreate(subject="T2: Candidate selection + AskUserQuestion",
-                description="Build per-block comparison matrix from all HW evaluations. Select best candidates. Present to user via AskUserQuestion. NOTE: Leader handles AskUserQuestion directly.")
+                description="Build per-block comparison matrix from all HW evaluations. Select best candidates. Present to user via AskUserQuestion. Save evaluation matrix to docs/phase-2-architecture/hw-candidate-review.md with per-area candidates, comparison metrics (gate count, critical path, SRAM, BW, throughput, memory latency impact), selected candidate rationale, and user decision record. NOTE: Leader handles AskUserQuestion directly.")
 TaskUpdate(taskId=t2, addBlockedBy=[all_t1_ids])
 ```
 
@@ -206,16 +208,17 @@ Leader handles all user interaction:
 
 After T13 (final consolidation) completes:
 1. Verify `docs/phase-2-architecture/architecture.md` exists
-2. Verify `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
-3. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
-4. Verify `refc/` has compilable C reference model
-5. Generate `docs/phase-2-architecture/phase-2-summary.md`
-6. **Per-round artifacts** (enforces 3-round review protocol per p2-arch-design-policy):
+2. Verify `docs/phase-2-architecture/hw-candidate-review.md` exists
+3. Verify `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
+4. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
+5. Verify `refc/` has compilable C reference model
+6. Generate `docs/phase-2-architecture/phase-2-summary.md`
+7. **Per-round artifacts** (enforces 3-round review protocol per p2-arch-design-policy):
    - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
    - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal
    - `reviews/phase-2-architecture/architecture-review-r3.md` — Round 3 mandatory final pass
    FAIL if any missing.
-7. **Rebuttal evidence** in R1 and R2: verify each round artifact contains a rebuttal section
+8. **Rebuttal evidence** in R1 and R2: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 
 ## Step 7: Cleanup

@@ -39,6 +39,7 @@ case "$SHORT_NAME" in
   p3-uarch-orchestrator)          SKILL_NAME="rtl-p3-uarch-design" ;;
   p4-implement-orchestrator)      SKILL_NAME="rtl-p4-implement" ;;
   p4s-bugfix-orchestrator)        SKILL_NAME="rtl-p4s-bugfix" ;;
+  p4s-refactor-orchestrator)      SKILL_NAME="rtl-p4s-refactor" ;;
   p4s-unit-test-orchestrator)     SKILL_NAME="rtl-p4s-unit-test" ;;
   p4-rtl-sanity-orchestrator)     SKILL_NAME="rtl-p4-rapid-impl" ;;
   p5-verify-orchestrator)         SKILL_NAME="rtl-p5-verify" ;;
@@ -46,7 +47,14 @@ case "$SHORT_NAME" in
   p5b-silicon-validation-orchestrator) SKILL_NAME="rtl-p5b-silicon-validation" ;;
   p5s-func-verify-orchestrator)   SKILL_NAME="rtl-p5s-func-verify" ;;
   p5s-integration-orchestrator)   SKILL_NAME="rtl-p5s-integration-test" ;;
+  p5s-sva-orchestrator)           SKILL_NAME="rtl-p5s-sva-check" ;;
+  p5s-cdc-orchestrator)           SKILL_NAME="rtl-p5s-cdc-verify" ;;
+  p5s-protocol-orchestrator)      SKILL_NAME="rtl-p5s-protocol-verify" ;;
+  p5s-perf-orchestrator)          SKILL_NAME="rtl-p5s-perf-verify" ;;
+  p5s-coverage-orchestrator)      SKILL_NAME="rtl-p5s-coverage-analyze" ;;
+  p5s-uvm-orchestrator)           SKILL_NAME="rtl-p5s-uvm-verify" ;;
   p6-review-orchestrator)         SKILL_NAME="rtl-p6-design-review" ;;
+  p7-exploration-orchestrator)    SKILL_NAME="rtl-p7-exploration" ;;
   review-refactor-orchestrator)   SKILL_NAME="rtl-review-refactor" ;;
   autopilot-orchestrator)         SKILL_NAME="rtl-autopilot" ;;
   spec-to-uarch-orchestrator)     SKILL_NAME="rtl-spec-to-uarch" ;;

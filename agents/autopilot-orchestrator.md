@@ -134,11 +134,11 @@ Bash("mkdir -p reviews/phase-1-research")
 
 # If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
-     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, domain-analysis.md.")
+     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md.")
 
 # If execution_mode == "sequential":
 Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
-     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce requirements.json, io_definition.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
+     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
 ```
 
 The orchestrator (team or legacy) handles tree exploration, domain-consult, 3-round chief review,
@@ -159,6 +159,7 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 **Context Preload**: Verify required upstream files exist before starting Phase 2:
 - `docs/phase-1-research/requirements.json`
 - `docs/phase-1-research/io_definition.json`
+- `docs/phase-1-research/timing_constraints.json`
 - `docs/phase-1-research/domain-analysis.md`
 STOP if any missing.
 
@@ -219,6 +220,11 @@ Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Execute Phase 3 uArch design. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
 ```
+
+**Phase 3→4 Artifact Gate** (criteria in policy skill):
+- Check: `docs/phase-3-uarch/*.md` exists (at least one μArch spec file)
+- Check: `bfm/` directory exists
+- STOP if either missing — Phase 3 artifacts incomplete.
 
 **Phase 3→4 Quality Gate** (criteria in policy skill):
 - Check: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
@@ -297,105 +303,12 @@ Branch on `execution_mode` from state file:
 Task(subagent_type="rtl-agent-team:p5-verify-team-orchestrator",
      prompt="Execute Phase 5 verification using native teams. Context: Phase 4 artifacts complete. Read docs/phase-4-rtl/ for implementation summary and Stream B artifacts.")
 
-# If execution_mode == "sequential": use sub-phase approach below
+# If execution_mode == "sequential":
+Task(subagent_type="rtl-agent-team:p5-verify-orchestrator",
+     prompt="Execute Phase 5 verification (sequential mode). Context: Phase 4 artifacts complete. Read docs/phase-4-rtl/ for implementation summary and Stream B artifacts. Run full 9-category verification (V1-V9) with module graduation gates and feedback loops.")
 ```
 
-### Sub-phase 5a: SVA + Formal (parallel with 5b/5c)
-```
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Complete SVA properties using Stream B skeletons (sim/formal/, docs/phase-4-rtl/stream-b-sva-skeletons.md) + actual RTL (rtl/*/*.sv). Add RTL-specific signal bindings to skeletons. Follow systemverilog-assertion conventions.")
-
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run SymbiYosys formal verification on all SVA bind files in sim/formal/. Report counterexamples if any. Save results to reviews/phase-5-verify/formal-review.md in standard review Markdown format. verdict: PASS or FAIL + counterexamples[]")
-```
-
-### Sub-phase 5b: CDC Analysis (parallel with 5a/5c)
-```
-Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Update preliminary CDC report (docs/phase-4-rtl/stream-b-cdc-preliminary.md) with final RTL (rtl/*/*.sv). Compare Stream B CDC predictions vs actual implementation. Verify synchronizers exist where Stream B identified crossing points. Save to reviews/phase-5-verify/cdc-report.md in standard review Markdown format. verdict: PASS or FAIL + findings[]")
-```
-
-### Sub-phase 5c: Integration TB + Ref Model (parallel with 5a/5b)
-```
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Complete cocotb TB skeletons from Stream B (docs/phase-4-rtl/stream-b-tb-skeletons.md) with actual test logic. Create integration testbench at sim/top/. Test end-to-end data flow through all modules. Include ref_model comparison for bitexact verification.")
-
-Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb integration tests with per-module parallelism and multi-seed (seeds: 1, 42, 123, 1337, 65536) against ref_model. Each module runs as an independent parallel task with run_in_background=true. 5 seeds × N modules = up to 5N parallel sim tasks.
-After regression completes, produce a Requirement Traceability Matrix and save it to
-reviews/phase-5-verify/requirement-traceability.md in this format:
-  # Phase 5 Review: Requirement Traceability
-  - Date: (today)
-  - Reviewer: func-verifier
-  - Upper Spec: requirements.json
-  - Verdict: PASS | FAIL
-  ## Feature Coverage Checklist
-  | REQ ID | Test Name | Result | Status |
-  |--------|-----------|--------|--------|
-  ## Findings
-  ## Verdict
-  PASS | FAIL: [reason]
-verdict: PASS or FAIL + findings[]")
-```
-
-### Sub-phase 5d: Coverage Analysis (after 5a-5c)
-```
-Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Analyze line/toggle/FSM coverage from simulation results. Identify coverage gaps below target. Save to reviews/phase-5-verify/coverage-report.md in standard review Markdown format. If coverage < target, list specific uncovered areas for testbench-dev to address. verdict: PASS or FAIL + gap list[]")
-```
-
-### Sub-phase 5e: Final Compliance Review (after 5a-5d)
-```
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY final spec compliance review. Read requirements.json, io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results (formal-review.md, cdc-report.md, requirement-traceability.md, coverage-report.md).
-Perform the FINAL end-to-end audit:
-1. **Final Compliance Matrix**: For EVERY requirement in requirements.json, confirm:
-   - (a) It is implemented in RTL (cite module and mechanism)
-   - (b) At least one verification test covers it (cite test name)
-   - (c) That test PASSED in the latest run
-   Mark each requirement: VERIFIED / IMPLEMENTED-BUT-UNTESTED / MISSING.
-   Any MISSING or IMPLEMENTED-BUT-UNTESTED → FAIL.
-2. **Interface completeness**: All io_definition.json ports present and connected?
-3. **Untested paths**: Any RTL functionality without verification coverage?
-4. **Spec fidelity**: Has implementation drifted from original spec?
-Save to reviews/phase-5-verify/final-compliance.md in standard review Markdown format.
-
-5. **End-to-End Traceability Matrix**: Read and unify the 4 segmented traceability artifacts:
-   - reviews/phase-2-architecture/feature-coverage.md (REQ → Arch)
-   - reviews/phase-3-uarch/feature-preservation.md (Arch → μArch)
-   - reviews/phase-4-rtl/functional-completeness.md (REQ → μArch → RTL)
-   - reviews/phase-5-verify/requirement-traceability.md (REQ → Test → Result)
-   Produce a unified matrix with columns:
-   | REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
-   Save to reviews/phase-5-verify/e2e-traceability.md in standard review Markdown format.
-   Any row with a gap (empty cell) in the chain → flag as TRACEABILITY_GAP.
-
-verdict: PASS or FAIL + findings[]")
-```
-
-### Phase 5→4 Feedback Loop
-
-Collect ALL FAIL results from 5a, 5b, 5c. Classify per policy (UNIT_FIX / INTEGRATION_FIX / DESIGN_FIX).
-
-**Parallel UNIT_FIX** (different modules):
-```
-# Example: 5a FAIL in module_a, 5c FAIL in module_b → parallel fix
-Task(subagent_type="rtl-agent-team:p4s-bugfix-orchestrator",
-     prompt="Phase 5a formal FAIL in module_a. Counterexample: [details]. feedback_origin=5a-formal",
-     run_in_background=true)
-Task(subagent_type="rtl-agent-team:p4s-bugfix-orchestrator",
-     prompt="Phase 5c cocotb FAIL in module_b. Assertion: [details]. feedback_origin=5c-integration",
-     run_in_background=true)
-# After both fix: re-run ONLY affected sub-phases (5a + 5c) in parallel
-```
-
-**INTEGRATION_FIX**: always sequential (cross-module dependencies).
-**DESIGN_FIX**: IMMEDIATE STOP, escalate to user (see policy: Escalation).
-
-Track feedback loop state in `.rtl-agent-team/state/feedback-loop-state.json`.
-Max 2 loops per sub-phase, then escalate.
-
-After successful fix: record lesson in `docs/lessons-learned.md`.
+Both paths produce `reviews/phase-5-verify/final-compliance.md` with verdict=PASS/FAIL.
 
 On Phase 5 gate PASS: generate Phase 5 summary:
 ```

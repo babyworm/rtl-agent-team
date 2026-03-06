@@ -83,7 +83,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | **--- Phase 6: Design Note ---** | | |
 | "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | **--- Phase 7: Exploration (optional) ---** | | |
-| "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) | Action Skill |
+| "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
 | **--- Other Verification ---** | | |
 | "LLM code review", "safe refactor", "review and refactor workflow" | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` | Action Skill |
@@ -107,14 +107,22 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p4-implement-team` | `p4-implement-team-orchestrator` | `rtl-p4-implement-policy` |
 | `rtl-p4-rapid-impl` | `p4-rtl-sanity-orchestrator` | `rtl-design-policy` |
 | `rtl-p4s-bugfix` | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
+| `rtl-p4s-refactor` | `p4s-refactor-orchestrator` | `rtl-p4s-refactor-policy` |
 | `rtl-p4s-unit-test` | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
 | `rtl-p5-verify` | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
 | `rtl-p5-verify-team` | `p5-verify-team-orchestrator` | `rtl-p5-verify-policy` |
 | `rtl-p5a-functional-closure` | `p5a-functional-closure-orchestrator` | `rtl-functional-verify-policy` |
 | `rtl-p5b-silicon-validation` | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | `rtl-p5s-func-verify` | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
+| `rtl-p5s-sva-check` | `p5s-sva-orchestrator` | `rtl-p5s-sva-policy` |
+| `rtl-p5s-cdc-verify` | `p5s-cdc-orchestrator` | `rtl-p5s-cdc-policy` |
+| `rtl-p5s-protocol-verify` | `p5s-protocol-orchestrator` | `rtl-p5s-protocol-policy` |
+| `rtl-p5s-perf-verify` | `p5s-perf-orchestrator` | `rtl-p5s-perf-policy` |
+| `rtl-p5s-coverage-analyze` | `p5s-coverage-orchestrator` | `rtl-p5s-coverage-policy` |
+| `rtl-p5s-uvm-verify` | `p5s-uvm-orchestrator` | `rtl-p5s-uvm-policy` |
 | `rtl-p5s-integration-test` | `p5s-integration-orchestrator` | `rtl-p5s-integration-test-policy` |
 | `rtl-p6-design-review` | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
+| `rtl-p7-exploration` | `p7-exploration-orchestrator` | `rtl-p7-exploration-policy` |
 | `rtl-review-refactor` | `review-refactor-orchestrator` | `code-review-policy`, `refactor-policy`, `verification-recheck-policy` |
 | `rtl-dse` | `dse-orchestrator` | `rtl-dse-policy` |
 | `rtl-p1-research-team` | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
@@ -201,6 +209,12 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 5B: Silicon Validation | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | Phase 5: Func Verify | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
 | Phase 5: Integration | `p5s-integration-orchestrator` | `rtl-p5s-integration-test-policy` |
+| Phase 5: SVA/Formal | `p5s-sva-orchestrator` | `rtl-p5s-sva-policy` |
+| Phase 5: CDC | `p5s-cdc-orchestrator` | `rtl-p5s-cdc-policy` |
+| Phase 5: Protocol | `p5s-protocol-orchestrator` | `rtl-p5s-protocol-policy` |
+| Phase 5: Performance | `p5s-perf-orchestrator` | `rtl-p5s-perf-policy` |
+| Phase 5: Coverage | `p5s-coverage-orchestrator` | `rtl-p5s-coverage-policy` |
+| Phase 5: UVM | `p5s-uvm-orchestrator` | `rtl-p5s-uvm-policy` |
 | Phase 6: Design Review | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
 | LLM Review + Refactor | `review-refactor-orchestrator` | `code-review-policy` + `refactor-policy` + `verification-recheck-policy` |
 | DSE | `dse-orchestrator` | `rtl-dse-policy` |
@@ -535,7 +549,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | bug reproduction, waveform debug | `/rtl-agent-team:rtl-bug-repro` | Action Skill |
 | model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
-| exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p6-design-review` (exploration mode) | Action Skill |
+| exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
 | LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
 | `.sv/.sva` assertion work | `systemverilog-assertion` (auto-applied) | Convention |

@@ -41,7 +41,9 @@ AskUserQuestion MUST cover these areas (skip items already provided by user):
 
 ## 3-Round Chief Review Protocol
 
-Mandatory 3 rounds, coordinated by vcodec-chief-standard-expert:
+Mandatory 3 rounds, coordinated by rtl-architect (domain-agnostic default).
+If a domain chief exists (e.g., vcodec-chief-standard-expert for video-codec domain),
+invoke both rtl-architect AND domain chief for domain-specific validation:
 - **Round 1**: Cross-block data flow completeness, dependencies, performance constraints,
   fixed-point constraints, cross-block issues, [AMBIGUITY]/[CONFLICT] status
   Save: `reviews/phase-1-research/research-review-r1.md`
@@ -105,23 +107,24 @@ PASS | FAIL: [reason]
 
 ## Final Checklist
 
-- [ ] requirements.json exists and is valid JSON
+- [ ] `docs/phase-1-research/requirements.json` exists and is valid JSON
 - [ ] Every requirement has unique `"id": "REQ-NNN"` field
-- [ ] io_definition.json exists and is valid JSON
+- [ ] `docs/phase-1-research/io_definition.json` exists and is valid JSON
 - [ ] io_definition.json port names use `i_`/`o_`/`io_` prefix (NOT suffix)
 - [ ] io_definition.json clocks use `{domain}_clk`, resets use `{domain}_rst_n`
-- [ ] domain-analysis.md exists with cross-block dependency matrix
+- [ ] `docs/phase-1-research/timing_constraints.json` exists with per-block timing targets (rough estimates)
+- [ ] `docs/phase-1-research/domain-analysis.md` exists with cross-block dependency matrix and per-block timing targets
 - [ ] No unresolved requirement conflicts
-- [ ] vcodec-chief-standard-expert declared Architecture-Ready (or gaps escalated)
+- [ ] Review coordinator (rtl-architect, or domain chief if available) declared Architecture-Ready (or gaps escalated)
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED)
 - [ ] Spec feature count vs requirements.json count documented
-- [ ] reviews/phase-1-research/research-review.md saved (consolidated)
+- [ ] `reviews/phase-1-research/research-review.md` saved (consolidated)
 - [ ] Per-round review artifacts saved: research-review-r1.md, r2.md, r3.md
-- [ ] docs/phase-1-research/solution-tree.md exists
-- [ ] docs/phase-1-research/candidate-comparison.md exists
-- [ ] docs/phase-1-research/selected-approach.md exists
-- [ ] docs/phase-1-research/literature-survey.md exists
-- [ ] Tree exploration used maximum parallel agents (8-20 leaf + 4 cross-cutting)
+- [ ] `docs/phase-1-research/solution-tree.json` exists (structured JSON)
+- [ ] `docs/phase-1-research/candidate-comparison.md` exists
+- [ ] `docs/phase-1-research/selected-approach.md` exists
+- [ ] `docs/phase-1-research/literature-survey.md` exists
+- [ ] Tree exploration used maximum parallel agents (8-20 leaf + cross-cutting)
 - [ ] domain-consult invoked at least once
 - [ ] Algorithm/tool candidates presented with trade-offs (NOT pre-selected)
 - [ ] AskUserQuestion used at every ambiguity point (no unresolved assumptions)

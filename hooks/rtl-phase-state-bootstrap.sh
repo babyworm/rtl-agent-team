@@ -107,9 +107,11 @@ case "$SHORT_NAME" in
     fi
 
     # Staleness guard: if tracked RTL files were modified after P5A PASS, re-run P5A.
-    TRACK_FILE="$CWD/.rtl-agent-team/state/rtl-modified-files.txt"
+    # Aggregate all tracking files: global + session-specific (team mode) + fallback
+    _P5B_STATE_DIR="$CWD/.rtl-agent-team/state"
+    _P5B_COMBINED=$(cat "$_P5B_STATE_DIR"/rtl-modified-files*.txt 2>/dev/null | sort -u)
     P5A_MTIME=$(get_file_mtime_epoch "$P5A_STATE")
-    if [ -n "$P5A_MTIME" ] && [ -f "$TRACK_FILE" ] && [ -s "$TRACK_FILE" ]; then
+    if [ -n "$P5A_MTIME" ] && [ -n "$_P5B_COMBINED" ]; then
       LATEST_RTL_MTIME=""
       while IFS= read -r TRACKED_PATH; do
         [ -z "$TRACKED_PATH" ] && continue
@@ -124,7 +126,9 @@ case "$SHORT_NAME" in
         if [ -z "$LATEST_RTL_MTIME" ] || [ "$RTL_MTIME" -gt "$LATEST_RTL_MTIME" ]; then
           LATEST_RTL_MTIME="$RTL_MTIME"
         fi
-      done < "$TRACK_FILE"
+      done <<_P5B_TRACK_EOF
+$_P5B_COMBINED
+_P5B_TRACK_EOF
 
       if [ -n "$LATEST_RTL_MTIME" ] && [ "$LATEST_RTL_MTIME" -gt "$P5A_MTIME" ]; then
         MSG="[P5B Gate BLOCKED] RTL changes detected after P5A PASS (stale functional closure). Re-run /rtl-agent-team:rtl-p5a-functional-closure to refresh functional closure."

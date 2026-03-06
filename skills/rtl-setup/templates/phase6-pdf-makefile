@@ -1,0 +1,60 @@
+# Phase 6 Design Note PDF Generation Makefile
+# Deployed by rtl-setup to reviews/phase-6-review/Makefile
+#
+# Required tools:
+#   pandoc          - sudo apt install pandoc
+#   xelatex         - sudo apt install texlive-xetex texlive-fonts-recommended
+# Optional tools:
+#   d2              - curl -fsSL https://d2lang.com/install.sh | sh -s --
+#   mmdc            - npm install -g @mermaid-js/mermaid-cli
+
+SOURCES := $(wildcard design-note*.md)
+PDF_OUT := design-note.pdf
+COMBINED := .combined-design-note.md
+
+.PHONY: pdf clean check-deps
+
+pdf: check-deps $(PDF_OUT)
+
+$(PDF_OUT): $(SOURCES)
+	@echo "Combining $(words $(SOURCES)) design note file(s)..."
+	@cat $(SOURCES) > $(COMBINED)
+	@if command -v d2 >/dev/null 2>&1; then \
+		echo "Rendering D2 diagrams..."; \
+		mkdir -p .d2-out; \
+		i=0; \
+		grep -n '```d2' $(COMBINED) | while IFS=: read -r line _; do \
+			i=$$((i+1)); \
+			sed -n "$$((line+1)),/^\`\`\`$$/{ /^\`\`\`$$/d; p; }" $(COMBINED) \
+				> .d2-out/diagram_$$i.d2; \
+			d2 .d2-out/diagram_$$i.d2 .d2-out/diagram_$$i.png 2>/dev/null || true; \
+		done; \
+	fi
+	@if command -v mmdc >/dev/null 2>&1; then \
+		echo "Rendering Mermaid diagrams..."; \
+		mmdc -i $(COMBINED) -o $(COMBINED) -e png 2>/dev/null || true; \
+	fi
+	@echo "Generating PDF..."
+	pandoc $(COMBINED) \
+		-o $(PDF_OUT) \
+		--pdf-engine=xelatex \
+		--toc \
+		--toc-depth=3 \
+		-V geometry:margin=2.5cm \
+		-V fontsize=11pt \
+		-V documentclass=article \
+		--highlight-style=tango
+	@rm -f $(COMBINED)
+	@echo "Generated $(PDF_OUT)"
+
+clean:
+	rm -f $(PDF_OUT) $(COMBINED)
+	rm -rf .d2-out
+
+check-deps:
+	@ok=true; \
+	command -v pandoc  >/dev/null 2>&1 || { echo "MISSING: pandoc  - sudo apt install pandoc"; ok=false; }; \
+	command -v xelatex >/dev/null 2>&1 || { echo "MISSING: xelatex - sudo apt install texlive-xetex texlive-fonts-recommended"; ok=false; }; \
+	command -v d2      >/dev/null 2>&1 || echo "OPTIONAL: d2   - curl -fsSL https://d2lang.com/install.sh | sh -s --"; \
+	command -v mmdc    >/dev/null 2>&1 || echo "OPTIONAL: mmdc - npm install -g @mermaid-js/mermaid-cli"; \
+	$$ok || { echo "Install required tools and retry."; exit 1; }
