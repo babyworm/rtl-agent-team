@@ -139,6 +139,30 @@ class TestRtlEditTracker:
         assert "rtl/top_level.sv" in tracked
         assert "rtl/nested_should_be_ignored.sv" not in tracked
 
+    def test_new_edit_invalidates_verify_done(self, tmp_project):
+        """New RTL edit must remove rtl-verify-done and rtl-verify-waiver markers."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        # Simulate previous verification
+        (state_dir / "rtl-verify-done").touch()
+        (state_dir / "rtl-verify-waiver").touch()
+        # New RTL edit
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/new_module.sv"})
+        assert not (state_dir / "rtl-verify-done").exists(), "verify-done must be invalidated on new RTL edit"
+        assert not (state_dir / "rtl-verify-waiver").exists(), "verify-waiver must be invalidated on new RTL edit"
+
+    def test_duplicate_edit_also_invalidates_verify_done(self, tmp_project):
+        """Re-editing an already-tracked file must still invalidate verify markers."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        # First edit — tracked
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/existing.sv"})
+        # Simulate verification
+        (state_dir / "rtl-verify-done").touch()
+        # Same file again — content changed, must invalidate
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/existing.sv"})
+        assert not (state_dir / "rtl-verify-done").exists(), "verify-done must be invalidated on any RTL edit"
+
 
 class TestSessionScopedState:
     """Tests for session-scoped state isolation in team mode (Phase A)."""
@@ -554,8 +578,8 @@ class TestRtlEditTrackerBash:
         assert "hookSpecificOutput" not in result
 
     def test_bash_command_with_svh_tracked(self, tmp_project):
-        """B1: Bash command containing .svh file should trigger tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "cat rtl/include/defines.svh"}
+        """B1: Bash write command containing .svh file should trigger tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/include/defines.svh"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
@@ -584,14 +608,24 @@ class TestRtlEditTrackerBash:
         assert "hookSpecificOutput" not in result
 
     def test_bash_multiple_sv_files_tracked(self, tmp_project):
-        """B1: Bash command with multiple RTL files should track all."""
-        stdin = {"cwd": str(tmp_project), "command": "cat rtl/a.sv rtl/b.sv"}
+        """B1: Bash write command with multiple RTL files should track all."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/a.sv rtl/b.sv"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
         content = track_file.read_text()
         assert "a.sv" in content
         assert "b.sv" in content
+
+    def test_bash_readonly_command_not_tracked(self, tmp_project):
+        """B1: Read-only commands (cat, grep, etc.) should not trigger RTL tracking."""
+        for cmd in ["cat rtl/top.sv", "grep pattern rtl/mod.sv", "head -20 rtl/block.svh",
+                     "diff rtl/a.sv rtl/b.sv", "wc -l rtl/top.sv"]:
+            stdin = {"cwd": str(tmp_project), "command": cmd}
+            result = run_hook(self.HOOK, stdin)
+            assert result["continue"] is True
+            ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+            assert "RTL Verify Gate" not in ctx, f"Read-only command should not trigger tracking: {cmd}"
 
     def test_bash_phase6_stale_on_rtl_command(self, tmp_project):
         """B1: Bash RTL command should mark Phase 6 stale if review exists."""

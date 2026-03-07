@@ -308,7 +308,7 @@ Time is NOT a constraint at upper levels. Spend extra review rounds perfecting a
 Exit gates are strict, entry gates are flexible.
 
 - **Exit gates** enforce artifact existence (e.g., Stream B files for P4→P5, requirements.json for P1→P2). Missing artifacts → FAIL with specific file list.
-- **Entry gates** scan upstream artifacts and emit WARNING for missing items, but proceed with adaptive scope reduction. Only `rtl-setup` is a hard entry block.
+- **Entry gates** scan upstream artifacts and emit WARNING for missing items, but proceed with adaptive scope reduction. Only `rtl-setup` is a hard entry block. Note: orchestrator "Context Preload" checks (verifying physical existence of input files a phase MUST read) use STOP, not WARNING — phases cannot function without their input data. This is distinct from entry gates which assess quality/completeness.
 - **Feedback loops** are capped (max 2 iterations for P5→P4), then escalate to user via AskUserQuestion.
 
 This ensures downstream phases never receive incomplete inputs, while allowing upstream-incomplete work to proceed with reduced scope.

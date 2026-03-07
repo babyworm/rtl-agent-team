@@ -520,6 +520,9 @@ class TestP5TeamFlowParity:
             assert re.search(rf"Stage\s+\d.*{stage_name}|{stage_name}", solo, re.IGNORECASE), (
                 f"Solo P5 missing stage: {stage_name}"
             )
+            assert re.search(rf"Stage\s+\d.*{stage_name}|{stage_name}", team, re.IGNORECASE), (
+                f"Team P5 missing stage: {stage_name}"
+            )
 
 
 class TestSpecToUarchTeamGateParity:

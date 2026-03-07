@@ -31,6 +31,15 @@ if [ -z "$FILE_PATH" ]; then
     printf '{"continue":true}'
     exit 0
   fi
+  # Filter read-only commands to avoid false positives (fail-closed: unknown commands are tracked)
+  FIRST_CMD=$(printf '%s' "$COMMAND" | sed 's/^[[:space:]]*//' | awk '{print $1}')
+  FIRST_CMD_BASE=$(basename "$FIRST_CMD" 2>/dev/null || printf '%s' "$FIRST_CMD")
+  case "$FIRST_CMD_BASE" in
+    cat|head|tail|less|more|grep|egrep|fgrep|rg|wc|file|stat|ls|find|diff|cmp|strings|hexdump|od|readlink|md5sum|sha256sum|sha1sum|cksum)
+      printf '{"continue":true}'
+      exit 0
+      ;;
+  esac
   # Extract RTL file paths from command
   BASH_RTL_FILES=$(printf '%s' "$COMMAND" | grep -oE '[^ ;<>|"]+\.(sv|svh|v|vh)' 2>/dev/null | sort -u)
   if [ -z "$BASH_RTL_FILES" ]; then
@@ -47,6 +56,8 @@ if [ -z "$FILE_PATH" ]; then
       TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
     fi
   fi
+  # Invalidate previous verification evidence on any RTL edit (regardless of new/duplicate path)
+  rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
   if acquire_lock "$TRACK_FILE"; then
     printf '%s\n' "$BASH_RTL_FILES" | while IFS= read -r bf; do
       [ -z "$bf" ] && continue
@@ -93,6 +104,8 @@ case "$FILE_PATH" in
 
     # Add file if not already tracked (locked for concurrent access)
     # Fail-closed: if lock fails, append without lock to prevent gate bypass
+    # Invalidate previous verification evidence on any RTL edit (regardless of new/duplicate path)
+    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
     if acquire_lock "$TRACK_FILE"; then
       if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
         printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"

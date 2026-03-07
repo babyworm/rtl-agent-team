@@ -39,22 +39,17 @@ if [ -f "$CASCADE_DONE" ]; then
   REVIEW_DIR="$CWD/reviews/phase-6-review"
   STALE_MTIME=$(stat -c %Y "$STALE_MARKER" 2>/dev/null || stat -f %m "$STALE_MARKER" 2>/dev/null || echo 0)
   DOCS_STALE=false
-  DOCS_FOUND=false
+  # Both documents must exist AND be updated after the stale marker
   for doc in "$REVIEW_DIR/design-note.md" "$REVIEW_DIR/code-review.md"; do
-    if [ -f "$doc" ]; then
-      DOCS_FOUND=true
+    if [ ! -f "$doc" ]; then
+      DOCS_STALE=true
+    else
       DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
       if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
         DOCS_STALE=true
       fi
     fi
   done
-
-  # phase6-stale is only set when review docs exist (rtl-edit-tracker.sh guard).
-  # If docs are now absent, they were deleted — treat as stale.
-  if [ "$DOCS_FOUND" = "false" ]; then
-    DOCS_STALE=true
-  fi
 
   if [ "$DOCS_STALE" = "true" ]; then
     printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (design-note.md, code-review.md) were not found or not updated after RTL change.\\n\\nDocument mtime must be newer than the stale marker.\\n\\nAction: Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."}'
