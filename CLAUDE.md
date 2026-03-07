@@ -231,7 +231,7 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 
-## Native Team Mode (v0.6.3) — Orchestrator as Teammate Pattern
+## Native Team Mode (v0.6.4) — Orchestrator as Teammate Pattern
 
 Phases 1-5 support **Claude Code native team mode**
 using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution.
