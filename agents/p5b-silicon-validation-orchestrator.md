@@ -75,3 +75,14 @@ On PASS verdict:
 
 These artifacts are the canonical entry gate for Phase 6 (`p6-review-orchestrator` requires
 `final-compliance.md` with verdict=PASS).
+
+### Docker Container Cleanup
+
+On Phase 5B exit (PASS or FAIL), clean up the persistent Docker EDA container if one was used:
+```bash
+if [[ -f lib/tool-runner.sh ]]; then
+  source lib/tool-runner.sh
+  tool_runner_cleanup
+fi
+```
+This stops and removes the container tracked in `.rtl-agent-team/state/docker-container.txt`.

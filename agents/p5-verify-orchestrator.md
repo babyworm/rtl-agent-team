@@ -320,6 +320,17 @@ Collect all verification reports into `docs/phase-5-verify/`:
 - unit-test-report.md, integration-report.md, ref-rtl-model-consistency.md,
   lint-report.md, synthesis-estimate.md
 
+### Docker Container Cleanup
+
+On Phase 5 exit (PASS or FAIL), clean up the persistent Docker EDA container if one was used:
+```bash
+if [[ -f lib/tool-runner.sh ]]; then
+  source lib/tool-runner.sh
+  tool_runner_cleanup
+fi
+```
+This stops and removes the container tracked in `.rtl-agent-team/state/docker-container.txt`.
+
 # Examples
 
 **Good**: 6-module design:

@@ -11,6 +11,15 @@
 
 set -euo pipefail
 
+# Source Docker-aware tool runner (transparent fallback)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LIB_RUNNER="$(cd "$SCRIPT_DIR/../../lib" 2>/dev/null && pwd)/tool-runner.sh" 2>/dev/null || true
+if [[ -f "${_LIB_RUNNER:-}" ]]; then
+  source "$_LIB_RUNNER"
+else
+  run_tool() { "$@"; }
+fi
+
 # ─── Defaults ───────────────────────────────────────────────────────────────
 TOOL="yosys"
 TOP=""
@@ -143,7 +152,7 @@ case "$TOOL" in
     echo "Script: $SCRIPT"
     echo "CMD: yosys -s $SCRIPT"
     write_replay "yosys -s \"$SCRIPT\""
-    yosys -s "$SCRIPT" 2>&1 | tee "$REPORT"
+    run_tool yosys -s "$SCRIPT" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -187,12 +196,63 @@ case "$TOOL" in
     echo "Script: $SCRIPT"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "$CMD" 2>&1 | tee "$REPORT"
+    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
-  genus|vivado)
-    echo "ERROR: Commercial tool '$TOOL' requires project-specific configuration." >&2
+  genus)
+    REPORT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.log"
+    NETLIST="$OUTDIR/${TOP}_netlist.v"
+    AREA_RPT="$OUTDIR/${TOP}_area_${TIMESTAMP}.rpt"
+    TIMING_RPT="$OUTDIR/${TOP}_timing_${TIMESTAMP}.rpt"
+    SCRIPT="$SCRIPT_PATH"
+    if [[ -z "$SCRIPT" ]]; then
+      SCRIPT="${GENUS_SYN_TCL:-$OUTDIR/genus_syn_${TOP}_${TIMESTAMP}.tcl}"
+    fi
+
+    if [[ ! -f "$SCRIPT" ]]; then
+      {
+        echo "# Auto-generated Cadence Genus synthesis script"
+        echo "# Generated: $(date)"
+        echo ""
+        if [[ -n "$LIBERTY" ]]; then
+          echo "set_db init_lib_search_path ."
+          echo "set_db library [list \"$LIBERTY\"]"
+        fi
+        echo ""
+        for f in "${SRC_FILES[@]}"; do
+          echo "read_hdl -sv \"$f\""
+        done
+        echo ""
+        echo "elaborate $TOP"
+        echo "check_design -unresolved"
+        echo ""
+        if [[ $FLATTEN -eq 1 ]]; then
+          echo "ungroup -all -flatten"
+        fi
+        echo "syn_generic"
+        echo "syn_map"
+        echo "syn_opt"
+        echo ""
+        echo "report_area > \"$AREA_RPT\""
+        echo "report_timing -nworst 10 > \"$TIMING_RPT\""
+        echo "write_hdl -mapped > \"$NETLIST\""
+        echo ""
+        echo "exit"
+      } > "$SCRIPT"
+    fi
+
+    CMD="genus -64 -files \"$SCRIPT\""
+    echo "=== Cadence Genus Synthesis ==="
+    echo "Script: $SCRIPT"
+    echo "CMD: $CMD"
+    write_replay "$CMD"
+    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    EXIT_CODE=${PIPESTATUS[0]}
+    ;;
+
+  vivado)
+    echo "ERROR: Vivado requires project-specific configuration." >&2
     echo "Provide --script <tcl> and execute your project flow command manually." >&2
     exit 1
     ;;

@@ -121,19 +121,20 @@ This skill ensures everything is in place before design work begins.
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
    | make | `make --version` | Build system | Yes |
 
-3.5. **Check Docker EDA image** (if any required tool from Step 3 is NOT FOUND):
+3.5. **Check Docker EDA image** (informational, NOT required for setup):
+   Docker is used as a **transparent tool proxy** — when a local tool is missing, `run_tool()` in
+   `lib/tool-runner.sh` automatically falls back to `docker exec` on a persistent container.
+   This is primarily useful for Phase 5 (verification/silicon validation) commercial tools.
    - Check if `docker` CLI is available: `docker --version`
-   - If Docker is NOT available → skip this step (rely on manual install instructions in Step 8)
+   - If Docker is NOT available → note in report, skip (all open-source tools should be installed locally)
    - If Docker IS available, check if `rtl-eda-tools` image exists: `docker images -q rtl-eda-tools`
-     - **Image exists** → recommend running inside the container:
-       ```bash
-       docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
-       ```
-     - **Image does NOT exist** → recommend building it:
+     - **Image exists** → note as available for tool fallback
+     - **Image does NOT exist** → inform user they can build it later if needed:
        ```bash
        docker build -t rtl-eda-tools "${CLAUDE_PLUGIN_ROOT}/docker/"
        ```
    - Store the Docker status for the setup report in Step 8.
+   - **Do NOT block setup** on Docker availability — it is optional infrastructure.
 
 4. **Generate lessons-learned.md** (if docs/lessons-learned.md does not exist):
    Create `docs/lessons-learned.md` with initial header:
@@ -167,12 +168,15 @@ This skill ensures everything is in place before design work begins.
    This simulator-agnostic script supports iverilog, verilator, vcs, xrun, questa.
    All skill files reference this script instead of direct simulator invocations.
 
-5.7. **Install lint/syn/cdc scripts** (if script folders are empty):
-   Create `lint/scripts/run_lint.sh`, `syn/scripts/run_syn.sh`, and `sim/cdc/run_cdc.sh`.
+5.7. **Install EDA scripts** (if script folders are empty):
+   Create lint, synthesis, CDC, and equivalence checking scripts plus the shared tool runner library.
+   All scripts use `lib/tool-runner.sh` for transparent Docker fallback when local tools are missing.
    These scripts support replayable execution (`outdir/replay/run_*_latest.sh`) and both open-source and commercial tools:
-   - Lint: verilator/verible/slang + spyglass
-   - Synthesis: yosys + design compiler (`dc_shell`)
-   - CDC: structural quick check + spyglass/vc_cdc/questa_cdc
+   - **Tool runner**: `lib/tool-runner.sh` — `run_tool()` tries local binary first, falls back to persistent Docker container
+   - **Lint**: `lint/scripts/run_lint.sh` — verilator/verible/slang + spyglass
+   - **Synthesis**: `syn/scripts/run_syn.sh` — yosys + dc_shell (Synopsys) + genus (Cadence)
+   - **Equivalence checking**: `syn/scripts/run_formality.sh` (Synopsys Formality) + `syn/scripts/run_conformal.sh` (Cadence Conformal LEC)
+   - **CDC**: `sim/cdc/run_cdc.sh` — structural quick check + spyglass/vc_cdc/questa_cdc
    - Runtime hook integration: `hooks/rtl-skill-activation.sh` runs
      `skills/rtl-setup/scripts/install_project_templates.sh` automatically when `rtl-setup` starts.
      This ensures script deployment happens even if the agent omits copy commands.
@@ -225,11 +229,11 @@ This skill ensures everything is in place before design work begins.
      - Clock: {domain}_clk (e.g., sys_clk)
      - Reset: {domain}_rst_n (e.g., sys_rst_n)
    - Ready to start: Yes/No
-   - Docker EDA image: [Built / Not built / Docker not available]
+   - Docker EDA image: [Built / Not built / Docker not available] (optional, for tool fallback)
    ```
    If required tools are missing AND Docker is available:
-   - Image NOT built → append: "Required tools can be installed via Docker: `docker build -t rtl-eda-tools \"${CLAUDE_PLUGIN_ROOT}/docker/\"` then `docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools`"
-   - Image already built → append: "All tools are available in Docker. Run: `docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools`"
+   - Image NOT built → append: "EDA scripts use transparent Docker fallback via `lib/tool-runner.sh`. Build image when needed: `docker build -t rtl-eda-tools \"${CLAUDE_PLUGIN_ROOT}/docker/\"`"
+   - Image already built → append: "Docker tool fallback is active. Missing local tools will automatically execute inside a persistent container."
 
 9. **Docker EDA image build** (on user request):
    When the user requests "docker image", "EDA docker environment", etc., build the Docker image.
@@ -323,11 +327,14 @@ Bash: docker images -q rtl-eda-tools 2>/dev/null | head -1 || echo "NO_IMAGE"
 # Template generation (copy from plugin templates)
 Bash: cp skills/rtl-setup/templates/filelist.f rtl/filelist_top.f
 Bash: cp skills/rtl-setup/templates/cocotb-makefile sim/top/Makefile
+Bash: mkdir -p lib && cp skills/rtl-setup/templates/lib/tool-runner.sh lib/tool-runner.sh
 Bash: cp skills/rtl-setup/templates/run_lint.sh lint/scripts/run_lint.sh
 Bash: cp skills/rtl-setup/templates/run_syn.sh syn/scripts/run_syn.sh
 Bash: cp skills/rtl-setup/templates/run_cdc.sh sim/cdc/run_cdc.sh
+Bash: cp skills/rtl-setup/templates/run_formality.sh syn/scripts/run_formality.sh
+Bash: cp skills/rtl-setup/templates/run_conformal.sh syn/scripts/run_conformal.sh
 Bash: mkdir -p reviews/phase-6-review && cp -n skills/rtl-setup/templates/phase6-pdf-makefile reviews/phase-6-review/Makefile
-Bash: chmod +x lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh
+Bash: chmod +x lib/tool-runner.sh lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh syn/scripts/run_formality.sh syn/scripts/run_conformal.sh
 Bash: chmod +x scripts/run_sim.sh
 # Hook-safe bootstrap (non-destructive, idempotent)
 Bash: bash skills/rtl-setup/scripts/install_project_templates.sh "$PWD"

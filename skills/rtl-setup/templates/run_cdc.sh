@@ -14,6 +14,15 @@
 
 set -euo pipefail
 
+# Source Docker-aware tool runner (transparent fallback)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LIB_RUNNER="$(cd "$SCRIPT_DIR/../../lib" 2>/dev/null && pwd)/tool-runner.sh" 2>/dev/null || true
+if [[ -f "${_LIB_RUNNER:-}" ]]; then
+  source "$_LIB_RUNNER"
+else
+  run_tool() { "$@"; }
+fi
+
 TOOL="structural"
 TOP=""
 FILELIST=""
@@ -133,7 +142,7 @@ case "$TOOL" in
     echo "TCL: $CDC_TCL"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "$CMD" 2>&1 | tee "$REPORT"
+    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -147,7 +156,7 @@ case "$TOOL" in
     echo "=== VC CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "$CMD" 2>&1 | tee "$REPORT"
+    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -161,7 +170,7 @@ case "$TOOL" in
     echo "=== Questa CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "$CMD" 2>&1 | tee "$REPORT"
+    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 

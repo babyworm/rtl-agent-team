@@ -57,4 +57,19 @@ install_script_if_missing \
   "$WORKSPACE/sim/cdc/run_cdc.sh" \
   755
 
+install_script_if_missing \
+  "$PLUGIN_ROOT/skills/rtl-setup/templates/lib/tool-runner.sh" \
+  "$WORKSPACE/lib/tool-runner.sh" \
+  755
+
+install_script_if_missing \
+  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_formality.sh" \
+  "$WORKSPACE/syn/scripts/run_formality.sh" \
+  755
+
+install_script_if_missing \
+  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_conformal.sh" \
+  "$WORKSPACE/syn/scripts/run_conformal.sh" \
+  755
+
 echo "SETUP_TEMPLATE_INSTALL created=$CREATED skipped=$SKIPPED workspace=$WORKSPACE"
