@@ -19,7 +19,7 @@ json_escape() {
 emit_continue() {
   MSG="$1"
   if [ -n "$MSG" ]; then
-    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(json_escape "$MSG")"
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}' "$(json_escape "$MSG")"
   else
     printf '{"continue":true}'
   fi
@@ -70,7 +70,7 @@ case "$SHORT_NAME" in
     ;;
   *)
     if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
-      printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[SETUP REQUIRED] rtl-setup has not been run. Project rules (.claude/rules/), guides, and directory structure are missing — the pipeline may not function correctly. Run /rtl-agent-team:rtl-setup first."}}'
+      printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"[SETUP REQUIRED] rtl-setup has not been run. Project rules (.claude/rules/), guides, and directory structure are missing — the pipeline may not function correctly. Run /rtl-agent-team:rtl-setup first."}}'
       exit 0
     fi
     ;;
@@ -158,4 +158,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Skill Completion Loop ACTIVATED] Skill %s has started. Completion criteria: %s. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."}}' "$SHORT_NAME" "$CRITERIA"
+printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"[RTL Skill Completion Loop ACTIVATED] Skill %s has started. Completion criteria: %s. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."}}' "$SHORT_NAME" "$CRITERIA"

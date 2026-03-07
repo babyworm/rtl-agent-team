@@ -1259,7 +1259,7 @@ class TestPhaseStateBootstrap:
         self._setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "P5B Gate BLOCKED" in ctx
         assert "rtl-p5a-functional-closure" in ctx
         assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
@@ -1274,7 +1274,7 @@ class TestPhaseStateBootstrap:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "gates.p5a_exit.verdict=fail" in ctx
         assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
 
@@ -1308,7 +1308,7 @@ class TestPhaseStateBootstrap:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         assert result["continue"] is False
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "stale functional closure" in ctx
         assert not (state_dir / "p5b-state.json").exists()
 

@@ -46,4 +46,4 @@ audit_trace_append "$CWD" \
   "{\"event\":\"spawn_complete\",\"agent\":\"${_SAFE_AGENT}\",\"detail\":\"Agent ${_SAFE_AGENT} spawn completed\",\"status\":\"success\"}" \
   >/dev/null
 
-printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[SPAWN OK] %s"}}' "$SHORT_NAME"
+printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[SPAWN OK] %s"}}' "$SHORT_NAME"

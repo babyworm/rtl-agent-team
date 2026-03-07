@@ -82,7 +82,7 @@ if [ -z "$FILE_PATH" ]; then
     P6_MSG=" Phase 6 review documents marked as stale — update code-review and design-note after verification."
   fi
   SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
-  printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
+  printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
   exit 0
 fi
 
@@ -138,7 +138,7 @@ case "$FILE_PATH" in
     # Escape JSON-special characters in path/message variables
     SAFE_BASENAME=$(jsonu_escape "$BASENAME")
     SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
-    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"[RTL Verify Gate] %s modified (%s unverified RTL files). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. Lint alone cannot guarantee functional correctness. When done: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] %s modified (%s unverified RTL files). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. Lint alone cannot guarantee functional correctness. When done: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
     ;;
   */docs/*|*/reviews/*)
     # Audit: log artifact_write for design documents

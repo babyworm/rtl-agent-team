@@ -12,7 +12,7 @@ jsonu_detect_parser
 emit_continue() {
   MSG="$1"
   if [ -n "$MSG" ]; then
-    printf '{"continue":true,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(jsonu_escape "$MSG")"
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}' "$(jsonu_escape "$MSG")"
   else
     printf '{"continue":true}'
   fi
@@ -21,7 +21,7 @@ emit_continue() {
 
 emit_block() {
   MSG="$1"
-  printf '{"continue":false,"hookSpecificOutput":{"additionalContext":"%s"}}' "$(jsonu_escape "$MSG")"
+  printf '{"continue":false,"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}' "$(jsonu_escape "$MSG")"
   exit 0
 }
 
