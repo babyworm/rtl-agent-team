@@ -67,7 +67,7 @@ color: blue
 - [ ] `name:` 필드가 파일명과 일치하는가
 - [ ] `description:`이 에이전트의 전문성과 사용 시점을 설명하는가
 - [ ] CLAUDE.md 위임 테이블에 에이전트를 추가했는가
-- [ ] README.md 에이전트 카운트를 업데이트했는가
+- [ ] README.md, README_kr.md, CLAUDE.md의 에이전트 카운트를 업데이트했는가
 - [ ] marketplace.json의 에이전트 카운트 설명을 업데이트했는가
 
 ### 스킬 추가
@@ -124,7 +124,7 @@ skills/{skill-name}/
 **체크리스트**:
 - [ ] `description:`이 Claude의 자동 라우팅에 충분한 정보를 제공하는가
 - [ ] CLAUDE.md 스킬 호출 규칙 테이블에 패턴을 추가했는가
-- [ ] README.md 스킬 카운트를 업데이트했는가
+- [ ] README.md, README_kr.md, CLAUDE.md의 스킬 카운트를 업데이트했는가
 - [ ] 스킬이 review artifact를 생성하면 `review-checklist.md`에 추가했는가
 - [ ] 스킬이 Phase 입출력을 변경하면 해당 orchestrator의 Context Preload 섹션을 업데이트했는가
 
@@ -141,7 +141,7 @@ skills/{skill-name}/
 | `skills/rtl-orchestrate/SKILL.md` | 스킬 라우팅 테이블 + Action Skill→Orchestrator→Policy 매핑 + SessionStart export block (single source of truth) |
 | `scripts/sync_orchestrator_inject.sh` | `rtl-orchestrate`의 export block을 `hooks/rtl-orchestrator-inject.sh` generated block으로 동기화 |
 | `hooks/rtl-orchestrator-inject.sh` | SessionStart 축약 라우팅 (generated block 직접 수동 수정 금지) |
-| `README.md` | 에이전트/스킬 카운트, 에이전트 팀 테이블 |
+| `README.md`, `README_kr.md`, `CLAUDE.md` | 에이전트/스킬 카운트, 구조 설명, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
 | `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
 | `agents/*-orchestrator.md` (Context Preload 섹션) | Phase별 입출력 artifact 변경 시 inline preload 목록 업데이트 |

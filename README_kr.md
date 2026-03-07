@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 86 specialized AI agents + 85 skills automate the 6-Phase pipeline:
+> 86 specialized AI agents + 86 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-86개 전문 AI 에이전트 + 85개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+86개 전문 AI 에이전트 + 86개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -132,7 +132,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 85개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 86개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -166,7 +166,7 @@ rtl-agent-team/
 ├── agents/                     # 86개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 85개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 86개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── rtl-setup/
 │   │   ├── scripts/
