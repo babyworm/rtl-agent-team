@@ -121,6 +121,20 @@ This skill ensures everything is in place before design work begins.
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
    | make | `make --version` | Build system | Yes |
 
+3.5. **Check Docker EDA image** (if any required tool from Step 3 is NOT FOUND):
+   - Check if `docker` CLI is available: `docker --version`
+   - If Docker is NOT available → skip this step (rely on manual install instructions in Step 8)
+   - If Docker IS available, check if `rtl-eda-tools` image exists: `docker images -q rtl-eda-tools`
+     - **Image exists** → recommend running inside the container:
+       ```bash
+       docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+       ```
+     - **Image does NOT exist** → recommend building it:
+       ```bash
+       docker build -t rtl-eda-tools "${CLAUDE_PLUGIN_ROOT}/docker/"
+       ```
+   - Store the Docker status for the setup report in Step 8.
+
 4. **Generate lessons-learned.md** (if docs/lessons-learned.md does not exist):
    Create `docs/lessons-learned.md` with initial header:
    ```markdown
@@ -211,7 +225,11 @@ This skill ensures everything is in place before design work begins.
      - Clock: {domain}_clk (e.g., sys_clk)
      - Reset: {domain}_rst_n (e.g., sys_rst_n)
    - Ready to start: Yes/No
+   - Docker EDA image: [Built / Not built / Docker not available]
    ```
+   If required tools are missing AND Docker is available:
+   - Image NOT built → append: "Required tools can be installed via Docker: `docker build -t rtl-eda-tools \"${CLAUDE_PLUGIN_ROOT}/docker/\"` then `docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools`"
+   - Image already built → append: "All tools are available in Docker. Run: `docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools`"
 
 9. **Docker EDA image build** (on user request):
    When the user requests "docker image", "EDA docker environment", etc., build the Docker image.
@@ -294,6 +312,10 @@ Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 Bash: jq --version 2>&1 || echo "NOT_FOUND"
 Bash: pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && test -f "$SYSTEMC_HOME/lib-linux64/libsystemc.a" && echo "$SYSTEMC_HOME (found via SYSTEMC_HOME)") || echo "NOT_FOUND"
 Bash: g++ --version 2>&1 || echo "NOT_FOUND"
+
+# Docker EDA image check (run only if required tools are missing)
+Bash: docker --version 2>&1 || echo "NOT_FOUND"
+Bash: docker images -q rtl-eda-tools 2>/dev/null | head -1 || echo "NO_IMAGE"
 
 # Lessons learned initial file (if not exists)
 # Write: docs/lessons-learned.md — initial header (see Step 4)
@@ -394,5 +416,6 @@ docker build -t rtl-eda-tools docker/
 - [ ] Template files created for empty directories
 - [ ] Module template (rtl/include/template_module.sv) demonstrates naming conventions
 - [ ] Setup report includes coding convention summary (i_/o_ prefix, {domain}_clk/{domain}_rst_n)
+- [ ] Docker EDA image status checked when required tools are missing
 - [ ] Setup report displayed to user
 </Final_Checklist>
