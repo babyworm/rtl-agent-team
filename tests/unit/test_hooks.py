@@ -115,7 +115,7 @@ class TestRtlEditTracker:
         run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/a.sv"})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/b.sv"})
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "2" in ctx  # Should show 2 tracked files
+        assert "2 unverified" in ctx  # Should show 2 tracked files
 
     def test_empty_file_path(self, tmp_project):
         """Empty file_path should not crash."""
@@ -251,7 +251,7 @@ class TestSessionScopedState:
         assert result["continue"] is False
         ctx = result.get("reason", "")
         # Should mention both files (aggregated)
-        assert "2" in ctx  # 2 files total
+        assert "2 RTL files" in ctx  # 2 files total
 
     def test_verify_gate_cleanup_removes_session_files(self, tmp_project):
         """When verify-done exists, gate cleans up all session-scoped files."""
@@ -348,7 +348,7 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
         ctx = result.get("reason", "")
-        assert "3" in ctx  # 3 files
+        assert "3 RTL files" in ctx  # 3 files
 
     def test_fallback_file_blocks_exit(self, tmp_project):
         """Fallback entries from lock failure must block exit even without main track file."""
@@ -357,7 +357,7 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
         ctx = result.get("reason", "")
-        assert "1" in ctx
+        assert "1 RTL files" in ctx
 
     def test_fallback_merged_with_main_track(self, tmp_project):
         """Fallback and main track entries are both counted."""
@@ -367,7 +367,7 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
         ctx = result.get("reason", "")
-        assert "2" in ctx
+        assert "2 RTL files" in ctx
 
     def test_verify_done_cleans_fallback(self, tmp_project):
         """Verify-done should clean up fallback file too."""
@@ -626,6 +626,20 @@ class TestRtlEditTrackerBash:
             assert result["continue"] is True
             ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
             assert "RTL Verify Gate" not in ctx, f"Read-only command should not trigger tracking: {cmd}"
+        # Tracking file must not be created by read-only commands
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists(), "Read-only commands must not create tracking file"
+
+    def test_bash_write_invalidates_verify_done(self, tmp_project):
+        """B1: Bash write command must invalidate verify-done/waiver markers."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "rtl-verify-done").touch()
+        (state_dir / "rtl-verify-waiver").touch()
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/mod.sv"}
+        run_hook(self.HOOK, stdin)
+        assert not (state_dir / "rtl-verify-done").exists(), "Bash RTL write must invalidate verify-done"
+        assert not (state_dir / "rtl-verify-waiver").exists(), "Bash RTL write must invalidate verify-waiver"
 
     def test_bash_phase6_stale_on_rtl_command(self, tmp_project):
         """B1: Bash RTL command should mark Phase 6 stale if review exists."""

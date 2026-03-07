@@ -35,6 +35,8 @@ EOF
     5)
       cat <<'EOF'
 docs/phase-1-research/requirements.json|p1-requirements
+rtl|p4-rtl-sources
+docs/phase-4-rtl|p4-rtl-docs
 EOF
       ;;
     6)

@@ -328,7 +328,7 @@ After fixes: re-run ONLY affected sub-phases in parallel.
   → parallel bugfix → re-run 5a + 5c → PASS → continue to 5d, 5e.
 
 **Good**: Missing prerequisites:
-  docs/phase-3-uarch/ empty → STOP, suggest rtl-spec-to-uarch.
+  docs/phase-3-uarch/ empty → WARNING, suggest rtl-spec-to-uarch, proceed with adaptive scope reduction.
 
-**Bad**: Skipping prerequisite verification — NEVER proceed without all Phase 1-3 artifacts.
+**Bad**: Skipping prerequisite scan — always scan upstream artifacts and report missing items before proceeding.
 **Bad**: Proceeding to Phase 6 — this orchestrator STOPS after Phase 5.

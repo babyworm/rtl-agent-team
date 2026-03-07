@@ -39,20 +39,33 @@ if [ -f "$CASCADE_DONE" ]; then
   REVIEW_DIR="$CWD/reviews/phase-6-review"
   STALE_MTIME=$(stat -c %Y "$STALE_MARKER" 2>/dev/null || stat -f %m "$STALE_MARKER" 2>/dev/null || echo 0)
   DOCS_STALE=false
-  # Both documents must exist AND be updated after the stale marker
-  for doc in "$REVIEW_DIR/design-note.md" "$REVIEW_DIR/code-review.md"; do
-    if [ ! -f "$doc" ]; then
+  # code-review.md must exist and be updated
+  doc="$REVIEW_DIR/code-review.md"
+  if [ ! -f "$doc" ]; then
+    DOCS_STALE=true
+  else
+    DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
+    if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
       DOCS_STALE=true
-    else
-      DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
-      if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
-        DOCS_STALE=true
-      fi
+    fi
+  fi
+  # design-note*.md must have at least one file and all must be updated
+  # (supports split files per P6 policy: design-note-overview.md, design-note-{module}.md, etc.)
+  DN_FOUND=false
+  for doc in "$REVIEW_DIR"/design-note*.md; do
+    [ -f "$doc" ] || continue
+    DN_FOUND=true
+    DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
+    if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
+      DOCS_STALE=true
     fi
   done
+  if [ "$DN_FOUND" = "false" ]; then
+    DOCS_STALE=true
+  fi
 
   if [ "$DOCS_STALE" = "true" ]; then
-    printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (design-note.md, code-review.md) were not found or not updated after RTL change.\\n\\nDocument mtime must be newer than the stale marker.\\n\\nAction: Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."}'
+    printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (design-note*.md, code-review.md) were not found or not updated after RTL change.\\n\\nDocument mtime must be newer than the stale marker.\\n\\nAction: Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."}'
     exit 0
   fi
 
@@ -62,4 +75,4 @@ if [ -f "$CASCADE_DONE" ]; then
 fi
 
 # Phase 6 stale and cascade not yet confirmed — BLOCK exit
-printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified.\\n\\nRequired steps:\\n  1. Re-run lint (verilator --lint-only -Wall)\\n  2. Update code-review.md\\n  3. Update design-note.md\\n\\nWhen done: touch .rtl-agent-team/state/phase6-cascade-done"}'
+printf '{"continue":false,"decision":"block","reason":"[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified.\\n\\nRequired steps:\\n  1. Re-run lint (verilator --lint-only -Wall)\\n  2. Update code-review.md\\n  3. Update design-note*.md (single or split files per P6 policy)\\n\\nWhen done: touch .rtl-agent-team/state/phase6-cascade-done"}'
