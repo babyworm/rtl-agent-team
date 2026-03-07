@@ -8,8 +8,8 @@
 
 | 계층 | 디렉토리 | EDA 도구 필요 | 테스트 수 | 실행 시간 |
 |------|----------|:---:|:---:|:---:|
-| Unit | `tests/unit/` | X | 201 | ~5초 |
-| Integration | `tests/integration/` | O (Docker) | 12 | ~1분 |
+| Unit | `tests/unit/` | X | 804 | ~20초 |
+| Integration | `tests/integration/` | O (Docker/Yosys) | 45 | ~1분 |
 
 ## 빠른 시작
 

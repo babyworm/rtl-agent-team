@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 85-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.6.0 |
+| **rtl-agent-team** | 85-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.6.3 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.0 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -185,9 +185,9 @@ rtl-agent-team/
 │       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
 │       └── ...                     # + 9 more (CDC, UVM, Yosys, SDC, etc.)
-├── hooks/                      # Event-driven enforcement (11 hooks)
+├── hooks/                      # Event-driven enforcement (14 hook scripts / 17 registrations)
 │   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup check + template bootstrap
-│   └── ...                     # + 10 more (routing inject, verify gate, cascade, etc.)
+│   └── ...                     # + 13 more (routing inject, verify gate, cascade, etc.)
 ├── docker/                     # EDA tool Docker image
 │   └── Dockerfile              # Open-source EDA full bundle
 └── domain-packages/            # Domain knowledge packages
