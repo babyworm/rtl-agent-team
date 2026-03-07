@@ -7,6 +7,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-03-07
+
 ### Added
 - Added `rat-tutuorial`, a user-invocable interactive tutorial skill for the RTL Agent Team workflow.
 - Added dynamic domain expert discovery infrastructure for `domain-packages/*/manifest.json` and project-local `.claude/domain-experts/*.md`.
