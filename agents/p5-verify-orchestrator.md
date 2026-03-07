@@ -65,6 +65,23 @@ Glob("docs/phase-1-research/requirements.json")    # Requirements
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
+## Step 0.5: Domain Expert Discovery (CONDITIONAL)
+
+See `agents/lib/domain-expert-discovery-protocol.md` for the full protocol.
+
+```
+Glob("domain-packages/*/manifest.json")
+```
+
+If manifests found:
+1. Read each manifest's `agents` array
+2. Filter by current phase: `phase_intensity.verification` ∈ {"primary", "support", "review"}
+3. Build expert roster for use in conformance testing and domain-specific verification
+4. For `source: "plugin"` experts → spawn via `Task(subagent_type=plugin_id)`
+5. For `source: "local"` experts → read file, spawn via `Task(subagent_type="rtl-agent-team:domain-expert", prompt="<expert-definition>{content}</expert-definition><task>{task}</task>")`
+
+If no manifests found → proceed with hardcoded references (backward compatible).
+
 ## Stage 0: Preparation
 
 ```

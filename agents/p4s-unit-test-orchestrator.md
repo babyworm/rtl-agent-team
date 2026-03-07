@@ -56,6 +56,23 @@ Glob("refc/**/*.c")                                # C reference model (DPI-C co
 For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
+## Step 0.5: Domain Expert Discovery (CONDITIONAL)
+
+See `agents/lib/domain-expert-discovery-protocol.md` for the full protocol.
+
+```
+Glob("domain-packages/*/manifest.json")
+```
+
+If manifests found:
+1. Read each manifest's `agents` array
+2. Filter by current phase: `phase_intensity.rtl` ∈ {"primary", "support", "review"}
+3. Build expert roster for use in conformance-derived test vector generation (Step 5a)
+4. For `source: "plugin"` experts → spawn via `Task(subagent_type=plugin_id)`
+5. For `source: "local"` experts → read file, spawn via `Task(subagent_type="rtl-agent-team:domain-expert", prompt="<expert-definition>{content}</expert-definition><task>{task}</task>")`
+
+If no manifests found → proceed with hardcoded references (backward compatible).
+
 ## Step 1: Extract Features to Test
 
 Read `docs/phase-3-uarch/{module}.md` to extract key features per module:

@@ -53,6 +53,23 @@ If NO spec documents found: HALT and report to user —
 `"No specification documents found in specs/. Phase 1 cannot proceed without input specifications. Please provide spec documents and re-run."`
 If specs found: proceed normally.
 
+## Step 0.5: Domain Expert Discovery (CONDITIONAL)
+
+See `agents/lib/domain-expert-discovery-protocol.md` for the full protocol.
+
+```
+Glob("domain-packages/*/manifest.json")
+```
+
+If manifests found:
+1. Read each manifest's `agents` array
+2. Filter by current phase: `phase_intensity.research` ∈ {"primary", "support"}
+3. Build expert roster for use in Steps 2-4
+4. For `source: "plugin"` experts → spawn via `Task(subagent_type=plugin_id)`
+5. For `source: "local"` experts → read file, spawn via `Task(subagent_type="rtl-agent-team:domain-expert", prompt="<expert-definition>{content}</expert-definition><task>{task}</task>")`
+
+If no manifests found → proceed with hardcoded domain expert references below (backward compatible).
+
 ## Step 1: Requirement Clarification and Information Gathering
 
 ```
