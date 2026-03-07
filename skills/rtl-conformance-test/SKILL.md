@@ -95,4 +95,11 @@ Using `data_i` (suffix convention) in conformance testbench — violates project
 <Advanced>
 Run both encoder conformance (RTL encodes, JM decodes) and decoder conformance (JM encodes, RTL decodes) if design includes both paths.
 Conformance vectors can be parallelized: each vector runs in independent simulation via Bash CLI.
+
+**Block-level conformance for decoders**: When the design is a video codec decoder,
+read `domain-packages/video-codec/knowledge/block-level-conformance.md` for the cross-phase
+verification chain. In addition to end-to-end bitexact comparison, verify that each RTL
+processing block (CABAC, inverse TQ, prediction, reconstruction, deblocking, SAO) produces
+output matching the C reference model at block boundaries. This catches bugs localized to
+specific pipeline stages that end-to-end comparison alone may mask through error cancellation.
 </Advanced>

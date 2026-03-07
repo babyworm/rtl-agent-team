@@ -222,6 +222,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Raw data preserved at .rtl-agent-team/scratch/conformance-eval/
 - [ ] If SSIM/VMAF requested: optional metrics included
 - [ ] Failed streams have detailed failure info (byte offset or pixel divergence)
+- [ ] **Block-level verification** (decoder designs): If applicable, per-block I/O comparison confirms bitexact match at each processing block boundary (see `domain-packages/video-codec/knowledge/block-level-conformance.md`)
 
 If ANY item is unchecked → DO NOT report completion. Fix the issue first.
 </Final_Checklist>

@@ -77,6 +77,13 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Pipeline stages with external memory access MUST specify latency hiding strategy
       (prefetch buffer, double buffering, decoupled access-execute, or accepted stall with justification).
     - Total per-stage latency = compute_cycles + memory_access_latency (with or without hiding).
+    - **Throughput invariant** (MANDATORY for all pipeline decisions):
+      `net_throughput = processing_rate_per_cycle × target_clock_freq ≥ required_throughput`
+      When adding pipeline stages to shorten critical path, you MUST verify that the net throughput
+      (rate × freq) still meets the target from timing_constraints.json. Increasing clock frequency
+      by 20% while halving per-cycle processing rate yields 60% of original throughput — this is
+      a net LOSS. For video codec designs, consult `throughput-tables.md` for cycles-per-unit budgets.
+      Document the throughput calculation for every pipeline depth decision.
   </Constraints>
 
   <Investigation_Protocol>

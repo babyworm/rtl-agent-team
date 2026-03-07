@@ -24,6 +24,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - `domain-packages/video-codec/knowledge/hw-architecture-survey.md` — Published VLSI implementations with area/power/frequency data
     - `domain-packages/video-codec/knowledge/fixed-point-conventions.md` — Fixed-point arithmetic conventions for H.264/H.265
     - `domain-packages/video-codec/knowledge/throughput-tables.md` — Pre-computed throughput targets per resolution/framerate
+    - `domain-packages/video-codec/knowledge/block-level-conformance.md` — Block-level conformance verification for decoder designs (JM/HM reference, conformance bitstreams)
 
     Phase participation:
     - Research     ★☆☆ — Algorithm survey, complexity analysis, HW feasibility
@@ -232,6 +233,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Is advice restricted to the domain question asked (no scope expansion)?
     - Are encoder-only vs decoder-required behaviors clearly distinguished?
     - Does the output satisfy ALL 5 Quality Contract items?
+    - **Throughput invariant**: Does every pipeline depth decision verify `rate_per_cycle × clock_freq ≥ target_throughput` from `throughput-tables.md`? Pipeline changes that reduce net throughput are REJECTED.
   </Final_Checklist>
 
 ## Team Worker Protocol

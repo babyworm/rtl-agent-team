@@ -112,6 +112,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     13. At end of simulation, write perf_baseline.json.
     14. Build with CMake, run simulation, verify perf_baseline.json is produced correctly.
     15. Run valgrind to confirm no memory leaks.
+    16. **Codec decoder designs**: If the target is a video codec decoder, read
+        `domain-packages/video-codec/knowledge/block-level-conformance.md`. The BFM MUST
+        produce per-block I/O logs for every processing block (CABAC, inverse TQ, prediction,
+        reconstruction, deblocking, SAO). These logs must be bitexact-comparable against the
+        C reference model (refc/) output at each block boundary. Log format: timestamped
+        records with cycle, block type, address/index, and data values.
   </Investigation_Protocol>
 
   <Tool_Usage>
@@ -542,6 +548,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Are clock periods derived from timing_constraints.json (no magic numbers)?
     - Are AMBA extensions cleaned up in memory manager free()?
     - Is DPI-C interface provided if SystemVerilog co-simulation is required?
+    - **Codec decoder**: Does the BFM produce per-block I/O logs matching the C ref model at each block boundary? (see `domain-packages/video-codec/knowledge/block-level-conformance.md`)
   </Final_Checklist>
 
 ## Team Worker Protocol

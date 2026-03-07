@@ -118,6 +118,15 @@ Generate `sim/{module}/{module}_unit_results.json` per module with per-feature s
 Report pass/fail summary with reference comparison status.
 Gate: all unit tests pass AND reference comparison has zero mismatches.
 
+## Step 5a: Codec Decoder Block-Level Conformance (conditional)
+
+If the design is a video codec decoder (H.264/H.265), read
+`domain-packages/video-codec/knowledge/block-level-conformance.md` and ensure:
+- Unit test vectors for each RTL module include conformance-derived inputs extracted
+  from JM/HM trace output at the corresponding block boundary
+- Each RTL module output is compared against the C ref model block output for the same input
+- A mismatch at any block boundary is a hard FAIL (no tolerance)
+
 # Examples
 
 **Good**: 6 modules, 6 testbenches written in parallel; each targets 3-5 uarch features;

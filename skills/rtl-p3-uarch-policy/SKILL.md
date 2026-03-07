@@ -148,6 +148,7 @@ PASS | FAIL: [reason]
 - [ ] docs/phase-3-uarch/*.md exists for each block in architecture.md
 - [ ] Module decomposition documented for every block
 - [ ] Inter/intra-module pipelines defined
+- [ ] **Throughput invariant verified**: every pipeline depth decision documents `rate_per_cycle × clock_freq ≥ target_throughput`. Pipeline changes that reduce net throughput below target are rejected.
 - [ ] All block boundaries preserved (no unauthorized merges/splits)
 - [ ] All functional responsibilities present
 

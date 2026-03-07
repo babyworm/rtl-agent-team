@@ -88,6 +88,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     8. Generate test vectors by sweeping input space and saving results.
     9. Build and run: confirm zero compilation warnings, all self-tests pass.
     10. Cross-check model output against any spec-provided examples or tables.
+    11. **Codec decoder designs**: If the target is a video codec decoder (H.264/H.265/AV1/VVC),
+        read `domain-packages/video-codec/knowledge/block-level-conformance.md` and implement
+        per-block I/O dump capability. Each processing block (CABAC, inverse TQ, prediction,
+        reconstruction, deblocking, SAO) MUST produce intermediate output that can be compared
+        against JM (H.264) or HM (H.265) reference software at block boundaries.
+        Use conformance bitstreams as test inputs. A mismatch at any block boundary is a hard failure.
   </Investigation_Protocol>
 
   <Tool_Usage>
@@ -275,6 +281,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Are overflow and saturation cases explicitly handled?
     - Is every arithmetic assumption documented with a REQ-XXXX reference?
     - Are boundary conditions (0, max, alternating bits) included in test vectors?
+    - **Codec decoder**: Does the model produce per-block I/O dumps matching JM/HM at each block boundary? (see `domain-packages/video-codec/knowledge/block-level-conformance.md`)
   </Final_Checklist>
 
 ## Team Worker Protocol
