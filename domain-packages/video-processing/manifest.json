@@ -50,6 +50,8 @@
   "agents": [
     {
       "id": "vproc-color-format-expert",
+      "source": "plugin",
+      "plugin_id": "rtl-agent-team:vproc-color-format-expert",
       "file": "agents/vproc-color-format-expert.md",
       "model": "claude-opus-4-6",
       "role": "Color format conversion — RGB/YUV/Bayer, BT.601/709/2020, chroma subsampling, bit-depth conversion (8/10/12-bit)",
@@ -82,6 +84,8 @@
     },
     {
       "id": "vproc-denoise-expert",
+      "source": "plugin",
+      "plugin_id": "rtl-agent-team:vproc-denoise-expert",
       "file": "agents/vproc-denoise-expert.md",
       "model": "claude-opus-4-6",
       "role": "Video denoising — spatial NR (bilateral, NLM), temporal NR (3DNR, motion-adaptive), noise modeling, filter HW implementation",
@@ -110,6 +114,8 @@
     },
     {
       "id": "vproc-image-processing-expert",
+      "source": "plugin",
+      "plugin_id": "rtl-agent-team:vproc-image-processing-expert",
       "file": "agents/vproc-image-processing-expert.md",
       "model": "claude-opus-4-6",
       "role": "Image/video signal processing — HDR tone mapping (PQ/HLG), gamma correction, scaling/resampling, edge enhancement, ISP pipeline architecture",

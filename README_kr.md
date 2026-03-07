@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 85 specialized AI agents + 85 skills automate the 6-Phase pipeline:
+> 86 specialized AI agents + 85 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-85개 전문 AI 에이전트 + 85개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+86개 전문 AI 에이전트 + 85개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -18,7 +18,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 85-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.6.3 |
+| **rtl-agent-team** | 86-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.6.3 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.0 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
@@ -163,7 +163,7 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 85개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
+├── agents/                     # 86개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
 ├── skills/                     # 85개 스킬 (SKILL.md + templates/ + examples/)
@@ -323,7 +323,7 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (85개)
+├── agents/                              # rtl-agent-team 에이전트 (86개)
 ├── skills/                              # rtl-agent-team 스킬 (85개, 13개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)

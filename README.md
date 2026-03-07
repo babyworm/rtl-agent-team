@@ -163,7 +163,7 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 85 agents (design/verification/review/EDA/domain/orchestrators)
+├── agents/                     # 86 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
 ├── skills/                     # 85 skills (SKILL.md + templates/ + examples/)
@@ -206,7 +206,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## Agent Team
 
-### Agent Composition (85 agents, all Opus)
+### Agent Composition (86 agents, all Opus)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|

@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 85 specialized agents, 85 skills, 11 hooks,
+When installed as a plugin, it provides 86 specialized agents, 85 skills, 11 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
