@@ -113,8 +113,8 @@ Create initial parallel streams (T1, T2):
 t1 = TaskCreate(subject="T1: Per-block uArch design",
                 description="Produce microarchitecture docs at .rtl-agent-team/scratch/phase-3/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec. Also produce clock-domain-map.md and protocol-assignments.md. (Write-restricted — orchestrator will copy to final location at docs/phase-3-uarch/.)")
 
-t2 = TaskCreate(subject="T2: BFM development",
-                description="Build TLM-based BFM from architecture.md. Default blocking transport (LT). Per-block I/O logging MANDATORY. Compare against C reference model (refc/). Archive I/O logs for Phase 4-5.")
+t2 = TaskCreate(subject="T2: BFM development (SystemC C++, NOT SystemVerilog)",
+                description="Build SystemC TLM-2.0 BFM in C++ at bfm/src/*.cpp from architecture.md. CRITICAL: Output MUST be C++ (.cpp/.h) files, NOT SystemVerilog (.sv). If SystemC is not installed, use pure C timing model as fallback. Default LT blocking transport. Per-block I/O logging MANDATORY. Compare against C reference model (refc/). Archive I/O logs at bfm/logs/ for Phase 4-5.")
 # T1 and T2 have no dependencies — they run in parallel
 ```
 

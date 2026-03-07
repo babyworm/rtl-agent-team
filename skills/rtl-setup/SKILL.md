@@ -115,7 +115,7 @@ This skill ensures everything is in place before design work begins.
    | slang | `slang --version` | Advanced lint | Optional |
    | slang-server | `slang-server --version` | SV Language Server (LSP) | Optional |
    | gtkwave | `gtkwave --version` | Waveform viewer | Optional |
-   | systemc | `pkg-config --modversion systemc` or check `$SYSTEMC_HOME` | SystemC/TLM-2.0 library (ref model, BFM) | Optional |
+   | systemc | `pkg-config --modversion systemc` or check `$SYSTEMC_HOME` | SystemC/TLM-2.0 library (ref model, BFM) | Yes |
    | python3 | `python3 --version` | cocotb runtime | Yes |
    | jq | `jq --version` | Hook JSON parser (robust state gating) | Recommended |
    | gcc/g++ | `g++ --version` | Reference model build | Yes |
@@ -408,7 +408,7 @@ docker build -t rtl-eda-tools docker/
 </Install_Instructions>
 
 <Escalation_And_Stop_Conditions>
-- Required tool not found (verilator, verible, yosys, cocotb, gcc, make) → report with install commands, do NOT proceed to design
+- Required tool not found (verilator, verible, yosys, cocotb, systemc, gcc, make) → report with install commands, do NOT proceed to design
 - `jq` not found → report as recommended install (hooks fall back to python/sed, but robust JSON gating prefers jq)
 - Directory creation permission denied → report error, suggest user fix permissions
 - Existing project detected (rtl/ has .sv files in subdirectories) → warn user, ask whether to skip template generation

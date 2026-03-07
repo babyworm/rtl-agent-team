@@ -65,7 +65,7 @@ that LT blocking transport cannot capture.
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:bfm-dev",
-     prompt="Implement SystemC TLM 2.0 BFMs at bfm/src/ from architecture.md. Use LT blocking transport (b_transport) by default. Use AXI protocol with amba_pv extensions. Include Memory Manager (tlm_mm_interface). One module per block. Include CMakeLists.txt. Interface signal names must match io_definition.json exactly (i_/o_ prefix convention, {domain}_clk/{domain}_rst_n). Switch to AT non-blocking only if explicitly requested.")
+     prompt="Implement SystemC TLM 2.0 BFMs in C++ at bfm/src/*.cpp from architecture.md. CRITICAL: Output MUST be C++ (.cpp/.h) files using SystemC, NOT SystemVerilog (.sv). If SystemC is not installed, write a pure C timing model as fallback. Use LT blocking transport (b_transport) by default. Use AXI protocol with amba_pv extensions. Include Memory Manager (tlm_mm_interface). One module per block. Include CMakeLists.txt. Interface signal names must match io_definition.json exactly (i_/o_ prefix convention, {domain}_clk/{domain}_rst_n). Switch to AT non-blocking only if explicitly requested.")
 
 Task(subagent_type="rtl-agent-team:video-processing-expert",
      prompt="Review bfm/src/ datapath models for signal processing accuracy vs requirements.json.")

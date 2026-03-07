@@ -124,12 +124,16 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
      Also produce: clock-domain-map.md, protocol-assignments.md, and req-uarch-traceability.md")
 
 # Stream B: BFM development (parallel with uarch)
+# BFM MUST produce C++ files (bfm/src/*.cpp, bfm/include/*.h), NOT SystemVerilog.
+# If SystemC is unavailable, use pure C timing model as fallback — never SV.
 Task(subagent_type="rtl-agent-team:bfm-dev",
-     prompt="Build TLM-based BFM from architecture.md and docs/phase-3-uarch/.
-     Default: blocking transport (LT). AT on request.
+     prompt="Build SystemC TLM-2.0 BFM in C++ at bfm/src/*.cpp from architecture.md and docs/phase-3-uarch/.
+     CRITICAL: Output MUST be C++ (.cpp/.h) files using SystemC, NOT SystemVerilog (.sv).
+     If SystemC is not installed, write a pure C timing model (bfm/src/*.c, bfm/include/*.h) as fallback.
+     Default: LT blocking transport. AT on explicit request only.
      Per-block I/O logging MANDATORY: timestamped transaction records.
      Compare against C reference model (refc/).
-     Archive I/O logs for Phase 4-5 RTL unit verification.")
+     Archive I/O logs at bfm/logs/ for Phase 4-5 RTL unit verification.")
 ```
 
 ## Step 4: BFM Validation Gate
