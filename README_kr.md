@@ -34,7 +34,7 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 /plugin install systemverilog-lsp   # (선택) SV LSP
 
 # 3. 환경 점검
-/rtl-agent-team:rtl-setup
+/rtl-agent-team:rat-setup
 
 # 4. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
 /rtl-agent-team:rtl-autopilot
@@ -116,7 +116,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 ### 프로젝트 초기화
 
 ```
-/rtl-agent-team:rtl-setup
+/rtl-agent-team:rat-setup
 ```
 
 프로젝트 디렉토리 구조 생성, EDA 도구 설치 확인, 그리고 **EDA wrapper 스크립트 자동 배포**(`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`)를 수행합니다. Hook-driven bootstrap으로 기존 스크립트는 절대 덮어쓰지 않습니다 (non-destructive 정책).
@@ -168,7 +168,7 @@ rtl-agent-team/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
 ├── skills/                     # 86개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
-│   ├── rtl-setup/
+│   ├── rat-setup/
 │   │   ├── scripts/
 │   │   │   └── install_project_templates.sh  # Hook-driven 템플릿 자동 설치
 │   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + 기타 템플릿
@@ -273,7 +273,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | dc_shell (Design Compiler) | 상용 합성 | 선택 |
 | vc_cdc / questa_cdc | 상용 CDC 분석 | 선택 |
 
-`/rtl-agent-team:rtl-setup`으로 도구 설치 상태를 확인할 수 있습니다.
+`/rtl-agent-team:rat-setup`으로 도구 설치 상태를 확인할 수 있습니다.
 
 ### EDA Wrapper 스크립트
 
@@ -287,7 +287,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in) |
 
-스크립트는 `rtl-setup` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.
+스크립트는 `rat-setup` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.
 
 Regression runner는 기본 `--mode local`에 `max(1, nproc-2)` 병렬로 동작합니다. AWS Batch는 명시적 opt-in이 필요합니다 (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
@@ -312,7 +312,7 @@ docker build -t rtl-eda-tools \
 
 포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
 
-Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rtl-setup` 실행 후 Docker 옵션 선택.
+Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rat-setup` 실행 후 Docker 옵션 선택.
 
 ## Marketplace 구조
 

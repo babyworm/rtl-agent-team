@@ -61,8 +61,8 @@ Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver 
 | Layer | Mechanism | When Loaded | Content |
 |-------|-----------|-------------|---------|
 | 1 | `hooks/rtl-orchestrator-inject.sh` | Every RTL session | Routing, rules, principles |
-| 2 | `.claude/rules/*` (deployed by rtl-setup) | .sv/.svh/.v/.vh access | Coding conventions, verification gates |
-| 3 | Subdirectory CLAUDE.md (deployed by rtl-setup) | Directory entry | Phase guides, tool usage |
+| 2 | `.claude/rules/*` (deployed by rat-setup) | .sv/.svh/.v/.vh access | Coding conventions, verification gates |
+| 3 | Subdirectory CLAUDE.md (deployed by rat-setup) | Directory entry | Phase guides, tool usage |
 | 4 | Skill frontmatter | Session start (all) | Name + description (~2 lines each) |
 | 5 | Skill SKILL.md body | Skill invocation | Full workflow (50-300 lines) |
 | 6 | Agent prompt | Agent spawn | Role, constraints, output format |
@@ -106,9 +106,9 @@ When modifying this plugin:
 3. **Hook enforcement** — Quality gates MUST be enforced by hooks (Stop/PreToolUse/PostToolUse), never by LLM instruction compliance alone
 4. **Skill completion criteria** — Every action skill must define criteria in `.rtl-agent-team/skill-completion-criteria.json`
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
-6. **Non-destructive deployment** — `rtl-setup` deploys rules/guides only if files don't already exist
+6. **Non-destructive deployment** — `rat-setup` deploys rules/guides only if files don't already exist
 7. **POSIX shell compatibility** — Hook scripts are invoked with `sh`, not `bash`. Use `[` not `[[`
-8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rtl-setup` is a hard block
+8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-setup` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
 11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
@@ -122,7 +122,7 @@ rtl-agent-team/                          # Plugin root
 ├── agents/                              # 86 specialized agent definitions (.md)
 ├── skills/                              # 86 skills: 48 action entry-points + 28 policies + 4 tool profiles + 4 conventions + 2 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
-│   ├── rtl-setup/templates/             #   Rules + guides deployed to user projects
+│   ├── rat-setup/templates/             #   Rules + guides deployed to user projects
 │   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project
 │   │   └── guides/ (6 files)            #     → {dir}/CLAUDE.md in user project
 │   └── {skill-name}/SKILL.md            #   Phase-specific workflow
@@ -217,7 +217,7 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
-| `rtl-project-init-advisor.sh` | SessionStart | Advise `rtl-setup` if project not initialized |
+| `rtl-project-init-advisor.sh` | SessionStart | Advise `rat-setup` if project not initialized |
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |

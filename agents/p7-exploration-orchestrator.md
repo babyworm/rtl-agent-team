@@ -27,14 +27,14 @@ Read(".rtl-agent-team/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
-- `setup.completed == false` → `Skill(skill="rtl-agent-team:rtl-setup")`, wait for completion, then re-read manifest
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-setup")`, wait for completion, then re-read manifest
 - Otherwise proceed with context loaded
 
 **If file NOT found** — fallback to legacy check:
 ```
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
-If NOT found → `Skill(skill="rtl-agent-team:rtl-setup")`. Wait for completion before proceeding.
+If NOT found → `Skill(skill="rtl-agent-team:rat-setup")`. Wait for completion before proceeding.
 
 **NOTE**: Phase 7 is exempt from pipeline absolute rules. Do NOT check Phase 5/6 gate artifacts.
 No upstream artifact scan (E1) — exploration has no required upstream artifacts.

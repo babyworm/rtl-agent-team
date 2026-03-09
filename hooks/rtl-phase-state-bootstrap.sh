@@ -52,7 +52,7 @@ esac
 
 SETUP_HINT=""
 if [ "$JSONU_PARSER_MODE" = "sed" ]; then
-  SETUP_HINT="[ENV WARNING] No jq/python JSON parser available — running in fallback (sed) mode. For stability, run /rtl-agent-team:rtl-setup and ensure jq or python3 is available."
+  SETUP_HINT="[ENV WARNING] No jq/python JSON parser available — running in fallback (sed) mode. For stability, run /rtl-agent-team:rat-setup and ensure jq or python3 is available."
 fi
 
 # Write spawn context manifest for agent context handoff.

@@ -6,9 +6,9 @@ from pathlib import Path
 from tests.conftest import SCRIPTS_DIR, SKILLS_DIR, run_script
 
 RUN_SIM = SCRIPTS_DIR / "run_sim.sh"
-RUN_LINT = SKILLS_DIR / "rtl-setup" / "templates" / "run_lint.sh"
-RUN_SYN = SKILLS_DIR / "rtl-setup" / "templates" / "run_syn.sh"
-RUN_CDC = SKILLS_DIR / "rtl-setup" / "templates" / "run_cdc.sh"
+RUN_LINT = SKILLS_DIR / "rat-setup" / "templates" / "run_lint.sh"
+RUN_SYN = SKILLS_DIR / "rat-setup" / "templates" / "run_syn.sh"
+RUN_CDC = SKILLS_DIR / "rat-setup" / "templates" / "run_cdc.sh"
 
 
 def _make_fake_tool(bin_dir: Path, name: str, body: str) -> Path:

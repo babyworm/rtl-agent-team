@@ -80,7 +80,7 @@ impact_summary: "New algorithm requires spec update + architecture re-partition"
 - Orchestrators already check upstream artifact mtimes in Step 0 (E1 entry gate)
 - When an ADR is adopted and upstream docs are updated, downstream orchestrators
   will detect mtime staleness and flag affected sections for targeted re-design
-- No rtl-setup modification needed — existing staleness detection handles re-entry naturally
+- No rat-setup modification needed — existing staleness detection handles re-entry naturally
 
 ## Output Artifacts
 

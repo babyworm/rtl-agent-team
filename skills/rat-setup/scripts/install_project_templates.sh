@@ -43,32 +43,32 @@ install_script_if_missing \
   755
 
 install_script_if_missing \
-  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_lint.sh" \
+  "$PLUGIN_ROOT/skills/rat-setup/templates/run_lint.sh" \
   "$WORKSPACE/lint/scripts/run_lint.sh" \
   755
 
 install_script_if_missing \
-  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_syn.sh" \
+  "$PLUGIN_ROOT/skills/rat-setup/templates/run_syn.sh" \
   "$WORKSPACE/syn/scripts/run_syn.sh" \
   755
 
 install_script_if_missing \
-  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_cdc.sh" \
+  "$PLUGIN_ROOT/skills/rat-setup/templates/run_cdc.sh" \
   "$WORKSPACE/sim/cdc/run_cdc.sh" \
   755
 
 install_script_if_missing \
-  "$PLUGIN_ROOT/skills/rtl-setup/templates/lib/tool-runner.sh" \
+  "$PLUGIN_ROOT/skills/rat-setup/templates/lib/tool-runner.sh" \
   "$WORKSPACE/lib/tool-runner.sh" \
   755
 
 install_script_if_missing \
-  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_formality.sh" \
+  "$PLUGIN_ROOT/skills/rat-setup/templates/run_formality.sh" \
   "$WORKSPACE/syn/scripts/run_formality.sh" \
   755
 
 install_script_if_missing \
-  "$PLUGIN_ROOT/skills/rtl-setup/templates/run_conformal.sh" \
+  "$PLUGIN_ROOT/skills/rat-setup/templates/run_conformal.sh" \
   "$WORKSPACE/syn/scripts/run_conformal.sh" \
   755
 

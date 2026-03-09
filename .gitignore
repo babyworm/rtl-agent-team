@@ -29,3 +29,6 @@ ref_model/
 
 # Python cache
 __pycache__/
+.venv/
+.pytest_vendor/
+.omx/

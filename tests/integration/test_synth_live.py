@@ -10,7 +10,7 @@ import pytest
 from tests.conftest import SKILLS_DIR, run_script
 from tests.integration.conftest import requires_yosys
 
-SYNTH_SCRIPT = SKILLS_DIR / "rtl-setup" / "templates" / "run_syn.sh"
+SYNTH_SCRIPT = SKILLS_DIR / "rat-setup" / "templates" / "run_syn.sh"
 PARSE_SCRIPT = (
     Path(__file__).resolve().parent.parent.parent
     / "skills" / "rtl-synth-check" / "scripts" / "parse_yosys_stat.py"

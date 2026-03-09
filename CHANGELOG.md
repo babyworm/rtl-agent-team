@@ -18,7 +18,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ### Changed
 - Integrated domain expert discovery into Phase 1 through Phase 5 orchestrators.
 - Updated `README.md`, `README_kr.md`, `CLAUDE.md`, `CONTRIBUTING.md`, and marketplace metadata for current agent/skill counts and naming consistency.
-- Aligned the tutorial project structure with the actual directories and helper scripts created by `rtl-setup`.
+- Aligned the tutorial project structure with the actual directories and helper scripts created by `rat-setup`.
 
 ### Fixed
 - Fixed tutorial command examples to use the plugin namespace consistently: `/rtl-agent-team:<skill>`.
@@ -38,7 +38,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ### Changed
 - Enforced SystemC C++ output for Phase 3 BFM generation and tightened prompts to prevent SystemVerilog fallback.
-- Promoted SystemC from optional tooling to a required dependency in `rtl-setup`.
+- Promoted SystemC from optional tooling to a required dependency in `rat-setup`.
 - Added a pure-C timing-model fallback path when SystemC is unavailable.
 
 ## [0.6.5] - 2026-03-07
@@ -50,7 +50,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ### Changed
 - Updated `run_lint.sh`, `run_syn.sh`, and `run_cdc.sh` to use the shared tool-runner abstraction.
-- Updated `install_project_templates.sh` and `rtl-setup` to deploy the new helper scripts and Docker-aware workflow.
+- Updated `install_project_templates.sh` and `rat-setup` to deploy the new helper scripts and Docker-aware workflow.
 - Added Docker cleanup handling to Phase 5 verification exits.
 
 ## [0.6.4] - 2026-03-07

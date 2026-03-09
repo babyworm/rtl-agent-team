@@ -1,5 +1,5 @@
 ---
-name: rtl-setup
+name: rat-setup
 description: "This skill should be used when initializing a new RTL project, setting up directory structure, or verifying EDA toolchain installation. Triggers on 'setup', 'initialize', 'init project'."
 user-invocable: true
 ---
@@ -86,20 +86,20 @@ This skill ensures everything is in place before design work begins.
    ```bash
    mkdir -p .claude/rules
    # Copy only if target does not exist (non-destructive)
-   [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rtl-setup/templates/rules/rtl-coding-conventions.md .claude/rules/
-   [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rtl-setup/templates/rules/rtl-verification-gate.md .claude/rules/
-   [ ! -f .claude/rules/diagram-rules.md ] && cp skills/rtl-setup/templates/rules/diagram-rules.md .claude/rules/
+   [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rat-setup/templates/rules/rtl-coding-conventions.md .claude/rules/
+   [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rat-setup/templates/rules/rtl-verification-gate.md .claude/rules/
+   [ ! -f .claude/rules/diagram-rules.md ] && cp skills/rat-setup/templates/rules/diagram-rules.md .claude/rules/
    ```
 
 2b. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
    ```bash
    # Copy guide files as CLAUDE.md into each artifact directory (non-destructive)
-   [ ! -f rtl/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/rtl-guide.md rtl/CLAUDE.md
-   [ ! -f sim/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/sim-guide.md sim/CLAUDE.md
-   [ ! -f docs/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/docs-guide.md docs/CLAUDE.md
-   [ ! -f reviews/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/reviews-guide.md reviews/CLAUDE.md
-   [ ! -f refc/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/refc-guide.md refc/CLAUDE.md
-   [ ! -f syn/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/syn-guide.md syn/CLAUDE.md
+   [ ! -f rtl/CLAUDE.md ] && cp skills/rat-setup/templates/guides/rtl-guide.md rtl/CLAUDE.md
+   [ ! -f sim/CLAUDE.md ] && cp skills/rat-setup/templates/guides/sim-guide.md sim/CLAUDE.md
+   [ ! -f docs/CLAUDE.md ] && cp skills/rat-setup/templates/guides/docs-guide.md docs/CLAUDE.md
+   [ ! -f reviews/CLAUDE.md ] && cp skills/rat-setup/templates/guides/reviews-guide.md reviews/CLAUDE.md
+   [ ! -f refc/CLAUDE.md ] && cp skills/rat-setup/templates/guides/refc-guide.md refc/CLAUDE.md
+   [ ! -f syn/CLAUDE.md ] && cp skills/rat-setup/templates/guides/syn-guide.md syn/CLAUDE.md
    ```
 
 3. **Check EDA tool availability** (via `which` or `--version`):
@@ -150,7 +150,7 @@ This skill ensures everything is in place before design work begins.
    ```
 
 5. **Generate filelist templates** (if rtl/ has no .f files):
-   - Copy `skills/rtl-setup/templates/filelist.f` to `rtl/filelist_top.f` as starting point.
+   - Copy `skills/rat-setup/templates/filelist.f` to `rtl/filelist_top.f` as starting point.
    - Per-module filelists (`rtl/filelist_{module}.f`) are created during Phase 4 when modules are coded.
    - Filelists support all simulators via run_sim.sh (+incdir+ auto-converted for iverilog).
    - **Filelist convention (3 types):**
@@ -178,16 +178,16 @@ This skill ensures everything is in place before design work begins.
    - **Equivalence checking**: `syn/scripts/run_formality.sh` (Synopsys Formality) + `syn/scripts/run_conformal.sh` (Cadence Conformal LEC)
    - **CDC**: `sim/cdc/run_cdc.sh` — structural quick check + spyglass/vc_cdc/questa_cdc
    - Runtime hook integration: `hooks/rtl-skill-activation.sh` runs
-     `skills/rtl-setup/scripts/install_project_templates.sh` automatically when `rtl-setup` starts.
+     `skills/rat-setup/scripts/install_project_templates.sh` automatically when `rat-setup` starts.
      This ensures script deployment happens even if the agent omits copy commands.
 
 6. **Generate cocotb Makefile template** (if sim/ has no Makefile):
-   Copy `skills/rtl-setup/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
+   Copy `skills/rat-setup/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
    Per-module cocotb Makefiles are created in `sim/{module}/Makefile` during Phase 4-5.
    Supports icarus, verilator, vcs, xcelium, questa with per-simulator compile args.
 
 6.6. **Deploy Phase 6 PDF Makefile** (if reviews/phase-6-review/ has no Makefile):
-   Copy `skills/rtl-setup/templates/phase6-pdf-makefile` to `reviews/phase-6-review/Makefile`.
+   Copy `skills/rat-setup/templates/phase6-pdf-makefile` to `reviews/phase-6-review/Makefile`.
    Enables `make pdf` for design note PDF generation with pandoc + xelatex.
    Optional D2/Mermaid diagram pre-rendering when tools are available.
 
@@ -294,17 +294,17 @@ Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include 
 
 # Rules deployment (non-destructive)
 Bash: mkdir -p .claude/rules
-Bash: [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rtl-setup/templates/rules/rtl-coding-conventions.md .claude/rules/ || true
-Bash: [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rtl-setup/templates/rules/rtl-verification-gate.md .claude/rules/ || true
-Bash: [ ! -f .claude/rules/diagram-rules.md ] && cp skills/rtl-setup/templates/rules/diagram-rules.md .claude/rules/ || true
+Bash: [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rat-setup/templates/rules/rtl-coding-conventions.md .claude/rules/ || true
+Bash: [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rat-setup/templates/rules/rtl-verification-gate.md .claude/rules/ || true
+Bash: [ ! -f .claude/rules/diagram-rules.md ] && cp skills/rat-setup/templates/rules/diagram-rules.md .claude/rules/ || true
 
 # Guide deployment (non-destructive, copy as CLAUDE.md)
-Bash: [ ! -f rtl/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/rtl-guide.md rtl/CLAUDE.md || true
-Bash: [ ! -f sim/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/sim-guide.md sim/CLAUDE.md || true
-Bash: [ ! -f docs/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/docs-guide.md docs/CLAUDE.md || true
-Bash: [ ! -f reviews/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/reviews-guide.md reviews/CLAUDE.md || true
-Bash: [ ! -f refc/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/refc-guide.md refc/CLAUDE.md || true
-Bash: [ ! -f syn/CLAUDE.md ] && cp skills/rtl-setup/templates/guides/syn-guide.md syn/CLAUDE.md || true
+Bash: [ ! -f rtl/CLAUDE.md ] && cp skills/rat-setup/templates/guides/rtl-guide.md rtl/CLAUDE.md || true
+Bash: [ ! -f sim/CLAUDE.md ] && cp skills/rat-setup/templates/guides/sim-guide.md sim/CLAUDE.md || true
+Bash: [ ! -f docs/CLAUDE.md ] && cp skills/rat-setup/templates/guides/docs-guide.md docs/CLAUDE.md || true
+Bash: [ ! -f reviews/CLAUDE.md ] && cp skills/rat-setup/templates/guides/reviews-guide.md reviews/CLAUDE.md || true
+Bash: [ ! -f refc/CLAUDE.md ] && cp skills/rat-setup/templates/guides/refc-guide.md refc/CLAUDE.md || true
+Bash: [ ! -f syn/CLAUDE.md ] && cp skills/rat-setup/templates/guides/syn-guide.md syn/CLAUDE.md || true
 
 # Tool checks via Bash CLI (run in parallel, NOT MCP)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"
@@ -325,19 +325,19 @@ Bash: docker images -q rtl-eda-tools 2>/dev/null | head -1 || echo "NO_IMAGE"
 # Write: docs/lessons-learned.md — initial header (see Step 4)
 
 # Template generation (copy from plugin templates)
-Bash: cp skills/rtl-setup/templates/filelist.f rtl/filelist_top.f
-Bash: cp skills/rtl-setup/templates/cocotb-makefile sim/top/Makefile
-Bash: mkdir -p lib && cp skills/rtl-setup/templates/lib/tool-runner.sh lib/tool-runner.sh
-Bash: cp skills/rtl-setup/templates/run_lint.sh lint/scripts/run_lint.sh
-Bash: cp skills/rtl-setup/templates/run_syn.sh syn/scripts/run_syn.sh
-Bash: cp skills/rtl-setup/templates/run_cdc.sh sim/cdc/run_cdc.sh
-Bash: cp skills/rtl-setup/templates/run_formality.sh syn/scripts/run_formality.sh
-Bash: cp skills/rtl-setup/templates/run_conformal.sh syn/scripts/run_conformal.sh
-Bash: mkdir -p reviews/phase-6-review && cp -n skills/rtl-setup/templates/phase6-pdf-makefile reviews/phase-6-review/Makefile
+Bash: cp skills/rat-setup/templates/filelist.f rtl/filelist_top.f
+Bash: cp skills/rat-setup/templates/cocotb-makefile sim/top/Makefile
+Bash: mkdir -p lib && cp skills/rat-setup/templates/lib/tool-runner.sh lib/tool-runner.sh
+Bash: cp skills/rat-setup/templates/run_lint.sh lint/scripts/run_lint.sh
+Bash: cp skills/rat-setup/templates/run_syn.sh syn/scripts/run_syn.sh
+Bash: cp skills/rat-setup/templates/run_cdc.sh sim/cdc/run_cdc.sh
+Bash: cp skills/rat-setup/templates/run_formality.sh syn/scripts/run_formality.sh
+Bash: cp skills/rat-setup/templates/run_conformal.sh syn/scripts/run_conformal.sh
+Bash: mkdir -p reviews/phase-6-review && cp -n skills/rat-setup/templates/phase6-pdf-makefile reviews/phase-6-review/Makefile
 Bash: chmod +x lib/tool-runner.sh lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh syn/scripts/run_formality.sh syn/scripts/run_conformal.sh
 Bash: chmod +x scripts/run_sim.sh
 # Hook-safe bootstrap (non-destructive, idempotent)
-Bash: bash skills/rtl-setup/scripts/install_project_templates.sh "$PWD"
+Bash: bash skills/rat-setup/scripts/install_project_templates.sh "$PWD"
 Write: rtl/include/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
 ```
 
@@ -347,14 +347,14 @@ Write: rtl/include/template_module.sv — convention reference template (i_/o_ p
 <Examples>
 <Good>
 User: "I want to start a new FPGA project"
-→ Run rtl-setup. Create directories, check tools, report what's missing.
+→ Run rat-setup. Create directories, check tools, report what's missing.
 
-User: "setup" or "rtl-setup"
+User: "setup" or "rat-setup"
 → Same as above.
 </Good>
 <Bad>
 User: "Create an AXI slave module"
-→ Do NOT run rtl-setup. Use rtl-p4-implement skill directly.
+→ Do NOT run rat-setup. Use rtl-p4-implement skill directly.
 </Bad>
 </Examples>
 

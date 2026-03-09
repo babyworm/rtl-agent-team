@@ -13,7 +13,7 @@ from tests.integration.conftest import (
 )
 
 # Template lint script (may not be installed as executable yet)
-LINT_SCRIPT = SKILLS_DIR / "rtl-setup" / "templates" / "run_lint.sh"
+LINT_SCRIPT = SKILLS_DIR / "rat-setup" / "templates" / "run_lint.sh"
 
 
 @requires_verilator

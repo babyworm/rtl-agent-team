@@ -242,9 +242,9 @@ sctx_write_manifest() {
 
   SCTX_PHASE=$(sctx_skill_to_phase "$SCTX_SKILL")
   if [ -z "$SCTX_PHASE" ]; then
-    # No direct phase mapping. If skill is rtl-setup and a manifest exists,
+    # No direct phase mapping. If skill is rat-setup and a manifest exists,
     # refresh it using the previously stored skill context (setup marker may have changed).
-    if [ "$SCTX_SKILL" = "rtl-setup" ] && [ -f "$SCTX_MANIFEST" ]; then
+    if [ "$SCTX_SKILL" = "rat-setup" ] && [ -f "$SCTX_MANIFEST" ]; then
       _PREV_SKILL=$(jsonu_get_file_path_string "$SCTX_MANIFEST" "pipeline.skill_invoked")
       if [ -n "$_PREV_SKILL" ]; then
         SCTX_SKILL="$_PREV_SKILL"
@@ -292,7 +292,7 @@ MANIFEST_EOF
 }
 
 # Return a 1-line summary for additionalContext.
-# Reads from the written manifest to ensure accuracy (handles rtl-setup refresh case).
+# Reads from the written manifest to ensure accuracy (handles rat-setup refresh case).
 sctx_summary() {
   SCTX_S_CWD="$1"
   SCTX_S_MANIFEST="$SCTX_S_CWD/.rtl-agent-team/state/spawn-context.json"

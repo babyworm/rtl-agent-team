@@ -34,7 +34,7 @@ Additional plugins (domain knowledge packages, MCP servers, specialized skills, 
 /plugin install systemverilog-lsp   # (optional) SV LSP
 
 # 3. Check environment
-/rtl-agent-team:rtl-setup
+/rtl-agent-team:rat-setup
 
 # 4. Full automation (or "Design an H.264 TQ subsystem")
 /rtl-agent-team:rtl-autopilot
@@ -116,7 +116,7 @@ If `rtl-autopilot` is interrupted, progress is saved automatically. Re-run the s
 ### Project initialization
 
 ```
-/rtl-agent-team:rtl-setup
+/rtl-agent-team:rat-setup
 ```
 
 Creates the project directory structure, verifies EDA tool installation, and **auto-installs EDA wrapper scripts** (`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`) into the project via a hook-driven bootstrap. Existing scripts are never overwritten (non-destructive policy).
@@ -168,7 +168,7 @@ rtl-agent-team/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
 ├── skills/                     # 86 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
-│   ├── rtl-setup/
+│   ├── rat-setup/
 │   │   ├── scripts/
 │   │   │   └── install_project_templates.sh  # Hook-driven template auto-installer
 │   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + other templates
@@ -273,7 +273,7 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 | dc_shell (Design Compiler) | Commercial synthesis | Optional |
 | vc_cdc / questa_cdc | Commercial CDC analysis | Optional |
 
-Use `/rtl-agent-team:rtl-setup` to check tool installation status.
+Use `/rtl-agent-team:rat-setup` to check tool installation status.
 
 ### EDA Wrapper Scripts
 
@@ -287,7 +287,7 @@ All EDA operations use replayable wrapper scripts that generate timestamped + `_
 | `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb regression (local-first, AWS opt-in) |
 
-Scripts are auto-installed by the `rtl-setup` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.
+Scripts are auto-installed by the `rat-setup` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.
 
 Regression runner defaults to `--mode local` with `max(1, nproc-2)` parallel jobs. AWS Batch requires explicit opt-in (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
@@ -312,7 +312,7 @@ docker build -t rtl-eda-tools \
 
 Included tools: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
 
-You can also build from Claude Code: "Build the EDA Docker image" or run `/rtl-agent-team:rtl-setup` and select the Docker option.
+You can also build from Claude Code: "Build the EDA Docker image" or run `/rtl-agent-team:rat-setup` and select the Docker option.
 
 ## Marketplace Structure
 

@@ -30,7 +30,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 |-----------|------------|------|
 | **--- Full Pipeline ---** | | |
 | "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` | Action Skill |
-| "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rtl-setup` | Action Skill |
+| "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rat-setup` | Action Skill |
 | **--- Phase 1: Research ---** | | |
 | "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` | Action Skill |
 | "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` | Action Skill |
@@ -308,7 +308,7 @@ Time is NOT a constraint at upper levels. Spend extra review rounds perfecting a
 Exit gates are strict, entry gates are flexible.
 
 - **Exit gates** enforce artifact existence (e.g., Stream B files for P4→P5, requirements.json for P1→P2). Missing artifacts → FAIL with specific file list.
-- **Entry gates** scan upstream artifacts and emit WARNING for missing items, but proceed with adaptive scope reduction. Only `rtl-setup` is a hard entry block. Note: orchestrator "Context Preload" checks (verifying physical existence of input files a phase MUST read) use STOP, not WARNING — phases cannot function without their input data. This is distinct from entry gates which assess quality/completeness.
+- **Entry gates** scan upstream artifacts and emit WARNING for missing items, but proceed with adaptive scope reduction. Only `rat-setup` is a hard entry block. Note: orchestrator "Context Preload" checks (verifying physical existence of input files a phase MUST read) use STOP, not WARNING — phases cannot function without their input data. This is distinct from entry gates which assess quality/completeness.
 - **Feedback loops** are capped (max 2 iterations for P5→P4), then escalate to user via AskUserQuestion.
 
 This ensures downstream phases never receive incomplete inputs, while allowing upstream-incomplete work to proceed with reduced scope.
@@ -445,7 +445,7 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 | Hook | Event | Purpose |
 |------|-------|---------|
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and absolute rules |
-| `rtl-project-init-advisor.sh` | SessionStart | Advise rtl-setup if project not initialized |
+| `rtl-project-init-advisor.sh` | SessionStart | Advise rat-setup if project not initialized |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track RTL file modifications |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop + same-skill re-invocation counter reset |
 | `stop-gate.sh` | Stop | Autopilot escalation ladder enforcement + dynamic prompt injection |
@@ -504,7 +504,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | Pattern | Route To | Type |
 |---|---|---|
 | RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` | Action Skill |
-| setup, initialize, project start | `/rtl-agent-team:rtl-setup` | Action Skill |
+| setup, initialize, project start | `/rtl-agent-team:rat-setup` | Action Skill |
 | spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` | Action Skill |
 | codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Action Skill |
 | architecture design (RTL context) | `/rtl-agent-team:p2-arch-design` | Action Skill |

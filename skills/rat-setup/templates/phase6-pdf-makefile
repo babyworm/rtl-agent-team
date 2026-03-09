@@ -1,5 +1,5 @@
 # Phase 6 Design Note PDF Generation Makefile
-# Deployed by rtl-setup to reviews/phase-6-review/Makefile
+# Deployed by rat-setup to reviews/phase-6-review/Makefile
 #
 # Required tools:
 #   pandoc          - sudo apt install pandoc
