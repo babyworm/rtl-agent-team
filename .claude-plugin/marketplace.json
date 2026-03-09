@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "RTL design and verification automation agents for Claude Code",
-    "version": "0.6.8"
+    "version": "0.6.9"
   },
   "plugins": [
     {
       "name": "rtl-agent-team",
       "source": "./",
       "description": "86-agent RTL design pipeline with 86 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
-      "version": "0.6.8",
+      "version": "0.6.9",
       "author": {
         "name": "babyworm"
       },
@@ -39,7 +39,7 @@
       "name": "systemverilog-lsp",
       "source": "./plugins/systemverilog-lsp",
       "description": "SystemVerilog/Verilog language server for Claude Code, powered by slang-server (hudson-trading). Provides diagnostics, hover, completion, go-to-definition, references, rename, and inlay hints for .sv/.svh/.v/.vh files.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "RTL Agent Team contributors"
       },

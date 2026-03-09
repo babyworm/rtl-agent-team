@@ -7,6 +7,16 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.9] - 2026-03-09
+
+### Added
+- Added a `SessionStart` readiness hook for the optional `systemverilog-lsp` plugin to detect missing `slang-server` and guide `local` / `global` / `skip` installation choices.
+- Added a dedicated `plugins/systemverilog-lsp/scripts/install-slang-server.sh` helper and execution-based runtime contract tests for the new readiness flow.
+
+### Changed
+- Bumped `rtl-agent-team` to `0.6.9` and `systemverilog-lsp` to `1.1.1` across plugin manifests, marketplace metadata, and installer metadata.
+- Updated `README.md` and `README_kr.md` to reflect the current plugin versions and the `systemverilog-lsp` readiness/install guidance.
+
 ## [0.6.8] - 2026-03-07
 
 ### Added
