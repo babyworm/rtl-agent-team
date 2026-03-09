@@ -7,7 +7,9 @@ These tests focus on runtime behavior as a Claude Code plugin:
 """
 
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -31,6 +33,10 @@ LINT_TOOL_PROFILES = SKILLS_DIR / "lint-tool-profiles" / "SKILL.md"
 CDC_TOOL_PROFILES = SKILLS_DIR / "cdc-tool-profiles" / "SKILL.md"
 SYN_TOOL_PROFILES = SKILLS_DIR / "syn-tool-profiles" / "SKILL.md"
 RAT_SETUP_SKILL = SKILLS_DIR / "rat-setup" / "SKILL.md"
+SV_LSP_PLUGIN_JSON = REPO_ROOT / "plugins" / "systemverilog-lsp" / ".claude-plugin" / "plugin.json"
+SV_LSP_HOOKS_JSON = REPO_ROOT / "plugins" / "systemverilog-lsp" / "hooks" / "hooks.json"
+SV_LSP_CHECK_HOOK = REPO_ROOT / "plugins" / "systemverilog-lsp" / "hooks" / "slang-server-check.sh"
+SV_LSP_INSTALL_SCRIPT = REPO_ROOT / "plugins" / "systemverilog-lsp" / "scripts" / "install-slang-server.sh"
 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
 SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
@@ -183,6 +189,142 @@ class TestPluginManifestRuntimeContract:
         lsp_path = (REPO_ROOT / plugin_data["lspServers"]).resolve()
         assert skills_path.is_dir(), f"skills path does not exist: {skills_path}"
         assert lsp_path.exists(), f"lspServers path does not exist: {lsp_path}"
+
+    def test_systemverilog_lsp_subplugin_manifest_exists(self):
+        assert SV_LSP_PLUGIN_JSON.exists()
+
+
+class TestSystemVerilogLspPluginContract:
+    """Validate SessionStart readiness checks for the optional SV LSP sub-plugin."""
+
+    @staticmethod
+    def _run_sv_lsp_hook(home: Path, *, path: str, cwd: Path | None = None):
+        return subprocess.run(
+            ["sh", str(SV_LSP_CHECK_HOOK)],
+            capture_output=True,
+            text=True,
+            input=json.dumps({"cwd": str(cwd or home)}),
+            env={**os.environ, "HOME": str(home), "PATH": path},
+            timeout=10,
+        )
+
+    @staticmethod
+    def _run_sv_lsp_installer(home: Path, *args: str, path: str):
+        return subprocess.run(
+            ["bash", str(SV_LSP_INSTALL_SCRIPT), *args],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "HOME": str(home), "PATH": path},
+            timeout=10,
+        )
+
+    def test_sv_lsp_has_sessionstart_hook_config(self):
+        hooks = json.loads(SV_LSP_HOOKS_JSON.read_text())
+        assert set(hooks["hooks"].keys()) == {"SessionStart"}
+        entries = hooks["hooks"]["SessionStart"]
+        assert len(entries) == 1
+        assert entries[0]["matcher"] == "*"
+        commands = [h["command"] for h in entries[0]["hooks"]]
+        assert commands == ['sh "${CLAUDE_PLUGIN_ROOT}/hooks/slang-server-check.sh"']
+
+    def test_sv_lsp_hook_and_installer_exist(self):
+        assert SV_LSP_CHECK_HOOK.exists()
+        assert SV_LSP_INSTALL_SCRIPT.exists()
+
+    def test_sv_lsp_hook_guides_global_local_skip(self):
+        content = SV_LSP_CHECK_HOOK.read_text()
+        assert "global" in content
+        assert "local" in content
+        assert "skip" in content
+        assert "~/.local/bin" in content
+        assert "scripts/install-slang-server.sh" in content
+
+    def test_sv_lsp_install_script_supports_mode_selection(self):
+        content = SV_LSP_INSTALL_SCRIPT.read_text()
+        assert "--mode local|global|skip" in content
+        assert 'MODE="local"' in content
+        assert 'INSTALL_PREFIX_LOCAL="${HOME}/.local"' in content
+        assert 'INSTALL_PREFIX_GLOBAL="/usr/local"' in content
+
+    def test_sv_lsp_hook_is_silent_when_slang_server_is_on_path(self, tmp_path):
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        fake_server = bin_dir / "slang-server"
+        fake_server.write_text("#!/bin/sh\nexit 0\n")
+        fake_server.chmod(0o755)
+
+        result = self._run_sv_lsp_hook(tmp_path, path=f"{bin_dir}:/usr/bin:/bin")
+
+        assert result.returncode == 0
+        assert result.stdout == ""
+        assert result.stderr == ""
+
+    def test_sv_lsp_hook_reports_local_binary_missing_from_path(self, tmp_path):
+        local_bin = tmp_path / ".local" / "bin"
+        local_bin.mkdir(parents=True)
+        fake_server = local_bin / "slang-server"
+        fake_server.write_text("#!/bin/sh\nexit 0\n")
+        fake_server.chmod(0o755)
+
+        result = self._run_sv_lsp_hook(tmp_path, path="/usr/bin:/bin")
+
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        message = payload["hookSpecificOutput"]["additionalContext"]
+        assert str(fake_server) in message
+        assert 'export PATH="$HOME/.local/bin:$PATH"' in message
+
+    def test_sv_lsp_hook_prompts_for_install_modes_when_missing(self, tmp_path):
+        result = self._run_sv_lsp_hook(tmp_path, path="/usr/bin:/bin")
+
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        message = payload["hookSpecificOutput"]["additionalContext"]
+        assert "slang-server is not installed" in message
+        assert "`local`" in message
+        assert "`global`" in message
+        assert "`skip`" in message
+        assert "scripts/install-slang-server.sh" in message
+
+    def test_sv_lsp_install_script_check_reports_missing(self, tmp_path):
+        result = self._run_sv_lsp_installer(tmp_path, "check", path="/usr/bin:/bin")
+
+        assert result.returncode == 0
+        assert result.stdout.strip() == "slang-server: not installed"
+
+    def test_sv_lsp_install_script_check_reports_local_binary_missing_from_path(self, tmp_path):
+        local_bin = tmp_path / ".local" / "bin"
+        local_bin.mkdir(parents=True)
+        fake_server = local_bin / "slang-server"
+        fake_server.write_text("#!/bin/sh\necho fake-version\n")
+        fake_server.chmod(0o755)
+
+        result = self._run_sv_lsp_installer(tmp_path, "check", path="/usr/bin:/bin")
+
+        assert result.returncode == 0
+        assert str(fake_server) in result.stdout
+        assert "PATH is missing ~/.local/bin" in result.stdout
+
+    def test_sv_lsp_install_script_check_reports_path_binary(self, tmp_path):
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        fake_server = bin_dir / "slang-server"
+        fake_server.write_text("#!/bin/sh\necho fake-version\n")
+        fake_server.chmod(0o755)
+
+        result = self._run_sv_lsp_installer(tmp_path, "check", path=f"{bin_dir}:/usr/bin:/bin")
+
+        assert result.returncode == 0
+        lines = result.stdout.strip().splitlines()
+        assert lines[0] == f"slang-server: {fake_server}"
+        assert "fake-version" in lines[1]
+
+    def test_sv_lsp_install_script_skip_mode_is_noop(self, tmp_path):
+        result = self._run_sv_lsp_installer(tmp_path, "install", "--mode", "skip", path="/usr/bin:/bin")
+
+        assert result.returncode == 0
+        assert result.stdout.strip() == "Skipping slang-server installation."
+        assert not (tmp_path / ".local" / "src" / "slang-server").exists()
 
 
 class TestSessionStartRoutingBlockContract:

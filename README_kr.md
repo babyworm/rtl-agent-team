@@ -40,6 +40,8 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 /rtl-agent-team:rtl-autopilot
 ```
 
+`systemverilog-lsp`가 설치되어 있지만 `slang-server`가 없으면, 서브플러그인이 `SessionStart`에서 이를 점검하고 `local`(`~/.local/bin`, 권장), `global`, `skip` 중 하나를 고르도록 안내합니다.
+
 ## 설치
 
 ### Claude Code 대화창에서 설치 (권장)

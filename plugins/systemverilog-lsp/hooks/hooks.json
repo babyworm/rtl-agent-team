@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/slang-server-check.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

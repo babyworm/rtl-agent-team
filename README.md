@@ -40,6 +40,8 @@ Additional plugins (domain knowledge packages, MCP servers, specialized skills, 
 /rtl-agent-team:rtl-autopilot
 ```
 
+If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
+
 ## Installation
 
 ### Install from Claude Code chat (recommended)
