@@ -35,6 +35,8 @@ This skill ensures everything is in place before design work begins.
 - Report tool status honestly: installed version or "NOT FOUND" with install instructions
 - Create only the directories that don't already exist
 - Generate a setup report at the end
+- If any **required** tool is missing, mark setup as **NOT READY** and explicitly require installation before proceeding
+- When `sudo` or system-wide install is unavailable, prefer user-local installs under `~/.local/bin`, `~/.local`, or `~/tools`
 </Execution_Policy>
 
 <Steps>
@@ -223,17 +225,36 @@ This skill ensures everything is in place before design work begins.
    - Directory structure: [N] directories created, [M] already existed
    - Required tools: [X/Y] installed
    - Optional tools: [A/B] installed
-   - Missing required: [list with install commands]
+   - Missing required: [list with install commands; prefer no-sudo/user-local commands first]
    - Coding conventions: lowRISC SV Style + project overrides
      - Port prefix: i_/o_/io_ (NOT suffix _i/_o)
      - Clock: {domain}_clk (e.g., sys_clk)
      - Reset: {domain}_rst_n (e.g., sys_rst_n)
-   - Ready to start: Yes/No
+   - Ready to start: Yes/No (**No** if any required tool is missing)
    - Docker EDA image: [Built / Not built / Docker not available] (optional, for tool fallback)
    ```
    If required tools are missing AND Docker is available:
    - Image NOT built → append: "EDA scripts use transparent Docker fallback via `lib/tool-runner.sh`. Build image when needed: `docker build -t rtl-eda-tools \"${CLAUDE_PLUGIN_ROOT}/docker/\"`"
    - Image already built → append: "Docker tool fallback is active. Missing local tools will automatically execute inside a persistent container."
+
+8.5. **Required tool remediation**:
+   If one or more **required** tools are missing:
+   - Stop after setup/reporting and tell the user installation is required before real design work
+   - Ask the user **before attempting installation** whether they want:
+     - `global` — system-wide install (e.g. `sudo apt install ...`)
+     - `local` — user-local install with executables exposed from `~/.local/bin`
+     - `skip` — do not install now; report that the project is not ready
+   - Use a concise plain-text question if interactive choice UI is unavailable
+   - Recommended default order: `local` first when sudo/global access is uncertain, otherwise `global`
+   - **Actively look up the latest stable version** from official upstream sources before giving install commands for fast-moving tools such as Verilator and SystemC
+   - Prefer official documentation / release announcements / upstream tags over distro package versions
+   - In the setup report, include the **exact version chosen** and the **official source URL** used to justify it
+   - Provide **exact commands** for each missing tool
+   - Prefer **no-sudo / user-local** installation commands first, and make sure local executables resolve from `~/.local/bin`
+   - If a system package manager is available, include that as a secondary option
+   - Remind the user to add `~/.local/bin` (and tool-specific local bin dirs) to `PATH` when using local installs
+   - If Docker fallback can cover a missing tool, mention it as a fallback rather than the primary recommendation
+   - If the user chooses `skip`, clearly list the blocked required tools and end with `Ready to start: No`
 
 9. **Docker EDA image build** (on user request):
    When the user requests "docker image", "EDA docker environment", etc., build the Docker image.
@@ -362,21 +383,77 @@ User: "Create an AXI slave module"
 When tools are missing, provide these installation commands:
 
 ```bash
+# NOTE:
+# For Verilator and SystemC, avoid `sudo apt install verilator` and
+# `sudo apt install libsystemc-dev` when the goal is a recent/current version.
+# Distro packages often lag behind upstream releases.
+# Before proposing install commands, first verify the latest stable version from official sources.
+
+# ===== Upstream version discovery (run first for fast-moving tools) =====
+# Verilator official sources:
+# - https://verilator.org/guide/latest/install.html
+# - https://github.com/verilator/verilator-announce/issues
+# - https://github.com/verilator/verilator
+# SystemC official sources:
+# - https://github.com/accellera-official/systemc
+# - https://raw.githubusercontent.com/accellera-official/systemc/main/INSTALL.md
+# - https://raw.githubusercontent.com/accellera-official/systemc/main/RELEASENOTES.md
+#
+# If network/tooling permits, resolve the concrete stable version before proceeding:
+VERILATOR_LATEST_TAG="$(git ls-remote --tags --refs https://github.com/verilator/verilator.git 'v*' | awk -F/ '{print $3}' | sort -V | tail -1)"
+SYSTEMC_LATEST_TAG="$(git ls-remote --tags --refs https://github.com/accellera-official/systemc.git | awk -F/ '{print $3}' | sort -V | tail -1)"
+echo "Verilator latest stable candidate: ${VERILATOR_LATEST_TAG}"
+echo "SystemC latest stable candidate: ${SYSTEMC_LATEST_TAG}"
+# Cross-check the discovered version against the official documentation / announcement page before installation.
+
+# ===== User-local PATH bootstrap (recommended when sudo/global install is unavailable) =====
+mkdir -p "$HOME/.local/bin" "$HOME/.local/lib" "$HOME/tools"
+export PATH="$HOME/.local/bin:$PATH"
+# Add the PATH line above to ~/.bashrc (or ~/.zshrc) for persistence
+
+# ===== Verilator (prefer official repo/source install for recent versions) =====
+# Official docs recommend Git/source install when you want the most recent version.
+sudo apt install git help2man perl python3 make autoconf g++ flex bison ccache libfl2 libfl-dev zlib1g zlib1g-dev
+git clone https://github.com/verilator/verilator.git "$HOME/tools/verilator-src"
+cd "$HOME/tools/verilator-src"
+git fetch --tags
+# Prefer a concrete verified stable tag when you have one; otherwise use the official stable branch.
+git checkout "${VERILATOR_LATEST_TAG:-stable}"
+autoconf
+./configure --prefix="$HOME/.local"
+make -j"$(nproc)"
+make install
+verilator --version
+
 # ===== Recommended: OSS CAD Suite (Yosys + SymbiYosys + solvers, no sudo) =====
 # https://github.com/YosysHQ/oss-cad-suite-build
 # Single tarball: yosys, sby, boolector, z3, yices2, bitwuzla, abc
 curl -fsSL "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2025-02-01/oss-cad-suite-linux-x64-20250201.tgz" -o oss-cad-suite.tgz
 tar xzf oss-cad-suite.tgz -C ~/tools  # or /opt
-export PATH="$PATH:$HOME/tools/oss-cad-suite/bin"
-# Add the export to ~/.bashrc for persistence
+ln -sf "$HOME/tools/oss-cad-suite/bin/yosys" "$HOME/.local/bin/yosys"
+ln -sf "$HOME/tools/oss-cad-suite/bin/sby" "$HOME/.local/bin/sby"
+# Add ~/.local/bin to PATH for persistence
 
-# ===== Ubuntu/Debian =====
-sudo apt install verilator iverilog gtkwave build-essential python3-pip jq
+# ===== Python packages (user-local, no sudo) =====
+python3 -m pip install --user cocotb
+export PATH="$HOME/.local/bin:$PATH"
+
+# ===== Ubuntu/Debian base packages (keep toolchain current via upstream for Verilator/SystemC) =====
+sudo apt install iverilog gtkwave build-essential python3-pip jq cmake
 pip3 install cocotb
 
 # Verible (GitHub Releases)
 # See: https://github.com/chipsalliance/verible/releases
-# Download prebuilt binary for your platform and add to PATH
+# Download prebuilt binary for your platform and expose it via ~/.local/bin
+mkdir -p "$HOME/tools/verible"
+tar xzf verible-*.tar.gz -C "$HOME/tools/verible" --strip-components=1
+ln -sf "$HOME/tools/verible/bin/verible-verilog-lint" "$HOME/.local/bin/verible-verilog-lint"
+ln -sf "$HOME/tools/verible/bin/verible-verilog-format" "$HOME/.local/bin/verible-verilog-format"
+
+# Verilator (example local source install with ~/.local/bin exposure)
+# Build steps may vary by distro/version
+# ./configure --prefix="$HOME/.local" && make -j$(nproc) && make install
+# Result binary should be available at: $HOME/.local/bin/verilator
 
 # macOS (Homebrew)
 brew install verilator icarus-verilog gtkwave jq
@@ -391,16 +468,20 @@ pip3 install cocotb
 bash scripts/install-slang-server.sh install
 # Or manually: https://github.com/hudson-trading/slang-server
 
-# SystemC/TLM-2.0 (for reference models and BFMs)
-# Option 1: apt (Ubuntu 22.04+)
-sudo apt install libsystemc-dev
+# SystemC/TLM-2.0 (prefer official Accellera source/release install for recent versions)
+git clone https://github.com/accellera-official/systemc.git "$HOME/tools/systemc-src"
+cd "$HOME/tools/systemc-src"
+git fetch --tags
+git checkout "${SYSTEMC_LATEST_TAG}"
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+cmake --build build -j"$(nproc)"
+cmake --install build
+export SYSTEMC_HOME="$HOME/.local"
+export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$PKG_CONFIG_PATH"
+pkg-config --modversion systemc || true
 
-# Option 2: from source (recommended for specific version)
-wget https://github.com/accellera-official/systemc/archive/refs/tags/3.0.2.tar.gz
-tar xzf 3.0.2.tar.gz && cd systemc-3.0.2
-mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
-make -j$(nproc) && sudo make install
+# If the user explicitly prefers distro convenience over recency:
+# sudo apt install libsystemc-dev
 
 # Option 3: Docker EDA image (includes all tools via OSS CAD Suite)
 docker build -t rtl-eda-tools docker/
@@ -408,7 +489,10 @@ docker build -t rtl-eda-tools docker/
 </Install_Instructions>
 
 <Escalation_And_Stop_Conditions>
-- Required tool not found (verilator, verible, yosys, cocotb, systemc, gcc, make) → report with install commands, do NOT proceed to design
+- Required tool not found (verilator, verible, yosys, cocotb, systemc, gcc, make) → report with install commands, require installation, do NOT proceed to design
+- When global/sudo install is unavailable → provide user-local fallback commands and ensure the resulting executable is reachable from `~/.local/bin`
+- Before installing missing required tools → ask user whether to use `global`, `local`, or `skip`
+- Before installing fast-moving required tools (especially Verilator, SystemC) → verify the latest stable version from official sources and cite the source used
 - `jq` not found → report as recommended install (hooks fall back to python/sed, but robust JSON gating prefers jq)
 - Directory creation permission denied → report error, suggest user fix permissions
 - Existing project detected (rtl/ has .sv files in subdirectories) → warn user, ask whether to skip template generation
@@ -420,9 +504,13 @@ docker build -t rtl-eda-tools docker/
 - [ ] All required directories exist
 - [ ] Tool availability checked via Bash CLI and reported
 - [ ] Missing tools listed with install instructions
+- [ ] Missing required tools include a no-sudo/user-local install path when applicable
+- [ ] Missing required tools trigger a user choice: global / local / skip
+- [ ] Fast-moving tools (Verilator, SystemC) are version-pinned from an official latest-stable source when installation guidance is given
 - [ ] Template files created for empty directories
 - [ ] Module template (rtl/include/template_module.sv) demonstrates naming conventions
 - [ ] Setup report includes coding convention summary (i_/o_ prefix, {domain}_clk/{domain}_rst_n)
+- [ ] Setup report marks Ready to start = No when required tools are missing
 - [ ] Docker EDA image status checked when required tools are missing
 - [ ] Setup report displayed to user
 </Final_Checklist>

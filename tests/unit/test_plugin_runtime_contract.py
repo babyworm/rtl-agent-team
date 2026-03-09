@@ -30,6 +30,7 @@ SIM_TOOL_PROFILES = SKILLS_DIR / "sim-tool-profiles" / "SKILL.md"
 LINT_TOOL_PROFILES = SKILLS_DIR / "lint-tool-profiles" / "SKILL.md"
 CDC_TOOL_PROFILES = SKILLS_DIR / "cdc-tool-profiles" / "SKILL.md"
 SYN_TOOL_PROFILES = SKILLS_DIR / "syn-tool-profiles" / "SKILL.md"
+RAT_SETUP_SKILL = SKILLS_DIR / "rat-setup" / "SKILL.md"
 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
 SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
@@ -349,6 +350,43 @@ class TestToolProfileRuntimeContract:
         content = SYN_TOOL_PROFILES.read_text()
         assert "syn/scripts/run_syn.sh --tool yosys" in content
         assert "Gate Criteria" in content
+
+
+class TestRatSetupRuntimeContract:
+    """Lock required-tool remediation guidance for rat-setup."""
+
+    def test_rat_setup_requires_install_when_required_tools_missing(self):
+        content = RAT_SETUP_SKILL.read_text()
+        assert "Required tool remediation" in content
+        assert "installation is required before real design work" in content
+        assert "Ready to start: Yes/No (**No** if any required tool is missing)" in content
+
+    def test_rat_setup_includes_user_local_install_fallback(self):
+        content = RAT_SETUP_SKILL.read_text()
+        assert "~/.local/bin" in content
+        assert "python3 -m pip install --user cocotb" in content
+        assert 'CMAKE_INSTALL_PREFIX="$HOME/.local"' in content
+        assert 'ln -sf "$HOME/tools/oss-cad-suite/bin/yosys" "$HOME/.local/bin/yosys"' in content
+
+    def test_rat_setup_prompts_for_global_local_or_skip(self):
+        content = RAT_SETUP_SKILL.read_text()
+        assert "global" in content
+        assert "local" in content
+        assert "skip" in content
+        assert "Before installing missing required tools" in content
+        assert "executables exposed from `~/.local/bin`" in content
+
+    def test_rat_setup_prefers_upstream_install_for_recent_verilator_and_systemc(self):
+        content = RAT_SETUP_SKILL.read_text()
+        assert "avoid `sudo apt install verilator`" in content
+        assert "Actively look up the latest stable version" in content
+        assert "VERILATOR_LATEST_TAG" in content
+        assert "SYSTEMC_LATEST_TAG" in content
+        assert 'git checkout "${VERILATOR_LATEST_TAG:-stable}"' in content
+        assert "git clone https://github.com/verilator/verilator.git" in content
+        assert "verilator.org/guide/latest/install.html" in content
+        assert "git clone https://github.com/accellera-official/systemc.git" in content
+        assert "RELEASENOTES.md" in content
 
 
 class TestFlockUtilContract:
