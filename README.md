@@ -37,7 +37,7 @@ Additional plugins (domain knowledge packages, MCP servers, specialized skills, 
 /rtl-agent-team:rat-setup
 
 # 4. Full automation (or "Design an H.264 TQ subsystem")
-/rtl-agent-team:rtl-autopilot
+/rtl-agent-team:rat-auto-design
 ```
 
 If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
@@ -73,7 +73,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 ### Routing contract
 
-- Route user intent to **Action Skills first** (for example, `/rtl-agent-team:rtl-autopilot`, `/rtl-agent-team:rtl-p5-verify`).
+- Route user intent to **Action Skills first** (for example, `/rtl-agent-team:rat-auto-design`, `/rtl-agent-team:rtl-p5-verify`).
 - Orchestrator agents are internal execution units and are spawned by Action Skills via `Task(...)`.
 - Policy skills are loaded by orchestrators via `skills: [*-policy]`.
 - `rtl-orchestrate` is an internal routing reference skill (`user-invocable: false`), not a user slash command.
@@ -81,14 +81,14 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ### Full automation
 
 ```
-/rtl-agent-team:rtl-autopilot
+/rtl-agent-team:rat-auto-design
 ```
 
 Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
 
 ### Autopilot escalation ladder
 
-`rtl-autopilot` gates use a per-gate retry ladder:
+`rat-auto-design` gates use a per-gate retry ladder:
 - `1..N`: primary strategy
 - `N+1..2N`: fallback strategy (scope split + agent composition switch)
 - `2N+1`: last-chance alternative (one automatic attempt)
@@ -113,7 +113,7 @@ Split the pipeline for human review between design and implementation:
 
 ### Resume interrupted pipeline
 
-If `rtl-autopilot` is interrupted, progress is saved automatically. Re-run the same command to resume from the last incomplete step — completed phases are skipped.
+If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the same command to resume from the last incomplete step — completed phases are skipped.
 
 ### Project initialization
 

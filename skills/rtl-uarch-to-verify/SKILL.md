@@ -21,7 +21,7 @@ with feedback loops, stopping before Phase 6 Design Note.
 <Do_Not_Use_When>
 - Phase 3 μArch specs are not complete (run rtl-spec-to-uarch first)
 - Only need RTL implementation without verification (use rtl-p4-implement)
-- Need the full pipeline from spec (use rtl-autopilot)
+- Need the full pipeline from spec (use rat-auto-design)
 </Do_Not_Use_When>
 
 ## Prerequisites

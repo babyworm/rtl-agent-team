@@ -1,10 +1,10 @@
 ---
-name: rtl-autopilot-policy
+name: rat-auto-design-policy
 description: "Policy rules, phase gate definitions, quality criteria, feedback loop classification, and checklists for the RTL autopilot 6-phase pipeline. Pure reference — no orchestration."
 user-invocable: false
 ---
 
-# RTL Autopilot Policy
+# RTL Auto-Design Policy
 
 ## Core Principles
 
@@ -46,7 +46,7 @@ Document flow:
   docs/phase-3-uarch/*.md → rtl-coder reads
   reviews/phase-N/ → Quality Gate reads → next phase proceeds or fails
 
-State is persisted at `.rtl-agent-team/state/rtl-autopilot-state.json` for resumability.
+State is persisted at `.rtl-agent-team/state/rat-auto-design-state.json` for resumability.
 
 ## Execution Rules
 
@@ -83,8 +83,8 @@ When entering fallback or last-chance stages, orchestrator writes:
 - `orchestration_control.dynamic_prompt` metadata (`source`, `strategy_tag`, `used`)
 
 Fallback templates are available in:
-- `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/escalation-prompts.json` (plugin runtime)
-- `skills/rtl-autopilot/templates/escalation-prompts.json` (development repo context)
+- `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/escalation-prompts.json` (plugin runtime)
+- `skills/rat-auto-design/templates/escalation-prompts.json` (development repo context)
 
 Use templates only when LLM-generated prompt text is unavailable.
 If both paths are unreadable, orchestrator MUST use built-in defaults and still write

@@ -220,7 +220,7 @@ Include ADR-001-algorithm-selection, ADR-002-architecture-selection, plus 2-3 mo
   → bitexact equivalence verified → STOP.
 
 **Good**: Simple design, DSE not needed:
-  Suggest rtl-autopilot instead. DSE is for complex designs with algorithmic alternatives.
+  Suggest rat-auto-design instead. DSE is for complex designs with algorithmic alternatives.
 
 **Bad**: Skipping user decision points — AskUserQuestion is mandatory for algorithm/architecture selection.
 **Bad**: Proceeding to Phase 3 — this orchestrator STOPS after Phase 2.

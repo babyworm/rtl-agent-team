@@ -21,7 +21,7 @@ Produces all design documents needed for RTL coding.
 
 <Do_Not_Use_When>
 - Already have uarch docs and need RTL implementation (use rtl-uarch-to-verify)
-- Need the full pipeline including RTL (use rtl-autopilot)
+- Need the full pipeline including RTL (use rat-auto-design)
 - Only need a single phase (use the phase-specific skill)
 </Do_Not_Use_When>
 

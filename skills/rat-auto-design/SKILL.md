@@ -1,5 +1,5 @@
 ---
-name: rtl-autopilot
+name: rat-auto-design
 description: "This skill should be used when starting a full RTL design pipeline from spec to verification. Orchestrates 6-phase flow (Research → Architecture → μArch → RTL → Verify → Design Note) with dual-layer phase gates and hierarchical spec compliance."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
@@ -38,7 +38,7 @@ if TEAM_MODE:
     # ═══ TEAM MODE: Skill sequences phases directly ═══
 
     # State management
-    Write(".rtl-agent-team/state/rtl-autopilot-state.json",
+    Write(".rtl-agent-team/state/rat-auto-design-state.json",
       { "schema_version": "3.0", "status": "running",
         "current_phase": 1, "execution_mode": "team",
         "phases": { "1": {"status":"pending"}, "2": {"status":"pending"},
@@ -72,9 +72,9 @@ if TEAM_MODE:
 
     # Mark completed (stop-gate.sh reads top-level "status" to allow exit)
     # Write completed status BEFORE cleanup so stop hook sees it
-    Bash("sed -i 's/\"status\": \"running\"/\"status\": \"completed\"/' .rtl-agent-team/state/rtl-autopilot-state.json")
+    Bash("sed -i 's/\"status\": \"running\"/\"status\": \"completed\"/' .rtl-agent-team/state/rat-auto-design-state.json")
     # Cleanup state
-    Bash("rm -f .rtl-agent-team/state/rtl-autopilot-state.json")
+    Bash("rm -f .rtl-agent-team/state/rat-auto-design-state.json")
 
 else:
     # ═══ SEQUENTIAL MODE: Delegate to autopilot-orchestrator ═══

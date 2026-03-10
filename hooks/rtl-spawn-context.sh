@@ -56,7 +56,7 @@ case "$SHORT_NAME" in
   p6-review-orchestrator)         SKILL_NAME="rtl-p6-design-review" ;;
   p7-exploration-orchestrator)    SKILL_NAME="rtl-p7-exploration" ;;
   review-refactor-orchestrator)   SKILL_NAME="rtl-review-refactor" ;;
-  autopilot-orchestrator)         SKILL_NAME="rtl-autopilot" ;;
+  autopilot-orchestrator)         SKILL_NAME="rat-auto-design" ;;
   spec-to-uarch-orchestrator)     SKILL_NAME="rtl-spec-to-uarch" ;;
   uarch-to-verify-orchestrator)   SKILL_NAME="rtl-uarch-to-verify" ;;
   dse-orchestrator)               SKILL_NAME="rtl-dse" ;;

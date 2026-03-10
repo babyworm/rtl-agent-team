@@ -122,7 +122,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ## [0.2.0] - 2026-03-03
 
 ### Added
-- Added escalation ladders for `rtl-autopilot` and skill completion gates.
+- Added escalation ladders for `rat-auto-design` and skill completion gates.
 - Added plugin runtime contract tests for hooks, manifests, and routing.
 - Added replayable EDA wrapper workflows, commercial tool support, and hook-driven project template bootstrap.
 

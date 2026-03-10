@@ -66,7 +66,7 @@ Phase 7 (Exploration) is optional and has no pipeline rules.
 
 | Command | Description |
 |---------|-------------|
-| `/rtl-agent-team:rtl-autopilot` | Run the entire P1→P6 pipeline automatically |
+| `/rtl-agent-team:rat-auto-design` | Run the entire P1→P6 pipeline automatically |
 | `/rtl-agent-team:rtl-spec-to-uarch` | Run P1→P3 (design documents only, no RTL) |
 | `/rtl-agent-team:rtl-uarch-to-verify` | Run P4→P5 (RTL implementation + verification) |
 

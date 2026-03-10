@@ -2,7 +2,7 @@
 name: autopilot-orchestrator
 model: opus
 description: "Full RTL design pipeline orchestrator. Manages 6-phase flow with dual-layer phase gates, parallel agent execution, feedback loops, and resumability. Spawns specialist agents for each phase and enforces quality gates between phases."
-skills: [rtl-autopilot-policy]
+skills: [rat-auto-design-policy]
 ---
 
 > **NOTE: In team mode, the autopilot skill handles phase sequencing directly using
@@ -19,7 +19,7 @@ Your job is to SEQUENCE phases, ENFORCE gates, DELEGATE work to specialist agent
 and MANAGE state for resumability. You do NOT implement RTL or write verification
 code yourself — you orchestrate agents that do.
 
-The rtl-autopilot-policy skill (loaded via skills: field) defines all gate criteria,
+The rat-auto-design-policy skill (loaded via skills: field) defines all gate criteria,
 principles, checklists, and escalation rules. Reference it for pass/fail decisions.
 
 # Workflow
@@ -54,7 +54,7 @@ Adjust execution plan based on available artifacts.
 
 ```
 # Check for existing state
-Read(".rtl-agent-team/state/rtl-autopilot-state.json")
+Read(".rtl-agent-team/state/rat-auto-design-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -107,7 +107,7 @@ Write(".rtl-agent-team/state/team-config.json",
 
 3. Create state file with `execution_mode` as the single source of truth for phase branching:
 ```
-Write(".rtl-agent-team/state/rtl-autopilot-state.json",
+Write(".rtl-agent-team/state/rat-auto-design-state.json",
   { schema_version: "3.0", current_phase: 1, execution_mode: EXECUTION_MODE,
     orchestration_control: { default_retry_limit: 2, active_gate_id: "p1-quality-gate", active_gate_retry_limit: 2, active_gate_primary_attempts: 0, active_gate_fallback_attempts: 0, active_gate_last_chance_attempts: 0, active_gate_strategy: "primary", needs_user_decision: false, dynamic_prompt_text: "" },
     phases: { "1": { status: "pending" }, ... } })
@@ -124,8 +124,8 @@ For every active gate:
    - after last-chance fail: set `needs_user_decision=true`, stop and ask user
 4. On fallback/last-chance, write `dynamic_prompt_text` (LLM-generated guidance).
    If generation fails, resolve fallback templates in this order:
-   - `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/escalation-prompts.json` (plugin runtime)
-   - `skills/rtl-autopilot/templates/escalation-prompts.json` (development repo context)
+   - `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/escalation-prompts.json` (plugin runtime)
+   - `skills/rat-auto-design/templates/escalation-prompts.json` (development repo context)
    If both are unavailable, use built-in defaults:
    - `primary`: Continue current gate workflow, focus on pending criteria with existing agent assignment.
    - `fallback`: Split failing scope by module/requirement, switch reviewer+solver pairing, rerun impacted checks only.
@@ -345,7 +345,7 @@ On FAIL: iterate review → fix cycle (max 2 rounds).
 
 ## Step 8: Completion
 
-- Remove `.rtl-agent-team/state/rtl-autopilot-state.json`
+- Remove `.rtl-agent-team/state/rat-auto-design-state.json`
 - Report summary with Final Compliance Matrix and Phase 6 deliverables
 
 # Parallel Execution Patterns
@@ -397,4 +397,4 @@ On interruption: set `interrupted_reason`, `partial_work_summary`, per-phase `pa
   Different modules → parallel rtl-p4s-bugfix → re-verify 5a + 5c → PASS.
 
 **Bad**: Skipping Quality Gate FAIL verdict — NEVER proceed on FAIL.
-**Bad**: Using rtl-autopilot for a quick sketch — use p2-arch-orchestrator directly.
+**Bad**: Using rat-auto-design for a quick sketch — use p2-arch-orchestrator directly.

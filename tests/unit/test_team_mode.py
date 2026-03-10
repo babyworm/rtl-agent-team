@@ -415,7 +415,7 @@ class TestTeamIntegrationInfrastructure:
         assert "Native Team Mode" in claude_md
 
     def test_autopilot_skill_documents_team_mode(self):
-        skill = SKILLS_DIR / "rtl-autopilot" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
         content = skill.read_text()
         assert "--no-team" in content or "team mode" in content.lower()
 
@@ -862,7 +862,7 @@ class TestAutopilotP1P3TeamAwareness:
 
     def test_autopilot_skill_sequences_team_skills(self):
         """In team mode, autopilot skill invokes phase team skills."""
-        skill = SKILLS_DIR / "rtl-autopilot" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
         content = skill.read_text()
         assert "rtl-p1-research-team" in content
         assert "rtl-p2-arch-team" in content

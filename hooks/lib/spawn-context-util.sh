@@ -23,7 +23,7 @@ sctx_skill_to_phase() {
     rtl-p5s-sva-check|rtl-p5s-cdc-verify|rtl-p5s-protocol-verify|rtl-p5s-perf-verify|rtl-p5s-coverage-analyze|rtl-p5s-uvm-verify) echo 5 ;;
     rtl-p6-design-review) echo 6 ;;
     rtl-p7-exploration) echo 7 ;;
-    rtl-autopilot|rtl-spec-to-uarch|rtl-spec-to-uarch-team|rtl-dse) echo 1 ;;
+    rat-auto-design|rtl-spec-to-uarch|rtl-spec-to-uarch-team|rtl-dse) echo 1 ;;
     rtl-uarch-to-verify) echo 4 ;;
     *) echo "" ;;
   esac

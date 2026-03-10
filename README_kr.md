@@ -37,7 +37,7 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 /rtl-agent-team:rat-setup
 
 # 4. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
-/rtl-agent-team:rtl-autopilot
+/rtl-agent-team:rat-auto-design
 ```
 
 `systemverilog-lsp`가 설치되어 있지만 `slang-server`가 없으면, 서브플러그인이 `SessionStart`에서 이를 점검하고 `local`(`~/.local/bin`, 권장), `global`, `skip` 중 하나를 고르도록 안내합니다.
@@ -73,7 +73,7 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 
 ### 라우팅 계약
 
-- 사용자 요청은 **Action Skill 우선**으로 라우팅합니다 (예: `/rtl-agent-team:rtl-autopilot`, `/rtl-agent-team:rtl-p5-verify`).
+- 사용자 요청은 **Action Skill 우선**으로 라우팅합니다 (예: `/rtl-agent-team:rat-auto-design`, `/rtl-agent-team:rtl-p5-verify`).
 - Orchestrator Agent는 사용자 직접 호출 대상이 아니며, Action Skill이 `Task(...)`로 내부 스폰합니다.
 - Policy Skill은 Orchestrator의 `skills: [*-policy]`를 통해 로드됩니다.
 - `rtl-orchestrate`는 내부 라우팅 참조 스킬(`user-invocable: false`)이며 사용자 slash-command가 아닙니다.
@@ -81,14 +81,14 @@ ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ### 전체 자동화
 
 ```
-/rtl-agent-team:rtl-autopilot
+/rtl-agent-team:rat-auto-design
 ```
 
 6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
 
 ### Autopilot 에스컬레이션 래더
 
-`rtl-autopilot`의 gate 재시도는 gate별 `N` 기준으로 동작합니다:
+`rat-auto-design`의 gate 재시도는 gate별 `N` 기준으로 동작합니다:
 - `1..N`: 기본 전략
 - `N+1..2N`: fallback 전략 (실패 범위 분해 + 에이전트 조합 전환)
 - `2N+1`: last-chance 대안 전략 1회 자동 실행
@@ -113,7 +113,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 
 ### 중단된 파이프라인 재개
 
-`rtl-autopilot` 실행 중 중단되면 진행 상태가 자동 저장됩니다. 동일 명령을 다시 실행하면 완료된 Phase를 건너뛰고 마지막 미완료 단계부터 재개합니다.
+`rat-auto-design` 실행 중 중단되면 진행 상태가 자동 저장됩니다. 동일 명령을 다시 실행하면 완료된 Phase를 건너뛰고 마지막 미완료 단계부터 재개합니다.
 
 ### 프로젝트 초기화
 

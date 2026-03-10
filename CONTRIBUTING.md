@@ -143,7 +143,7 @@ skills/{skill-name}/
 | `hooks/rtl-orchestrator-inject.sh` | SessionStart 축약 라우팅 (generated block 직접 수동 수정 금지) |
 | `README.md`, `README_kr.md`, `CLAUDE.md` | 에이전트/스킬 카운트, 구조 설명, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
-| `skills/rtl-autopilot/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
+| `skills/rat-auto-design/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
 | `agents/*-orchestrator.md` (Context Preload 섹션) | Phase별 입출력 artifact 변경 시 inline preload 목록 업데이트 |
 
 라우팅/위임 변경 시 반드시 아래를 실행하세요:

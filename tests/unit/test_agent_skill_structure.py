@@ -264,7 +264,7 @@ class TestCrossReferences:
     def test_action_skill_to_orchestrator_policy_chain(self):
         """Action Skill → Orchestrator Agent → Policy Skill mapping must be intact."""
         chains = [
-            ("rtl-autopilot", "autopilot-orchestrator", "rtl-autopilot-policy"),
+            ("rat-auto-design", "autopilot-orchestrator", "rat-auto-design-policy"),
             ("p1-spec-research", "p1-research-orchestrator", "p1-spec-research-policy"),
             ("p2-arch-design", "p2-arch-orchestrator", "p2-arch-design-policy"),
             ("rtl-p3-uarch-design", "p3-uarch-orchestrator", "rtl-p3-uarch-policy"),
@@ -470,7 +470,7 @@ class TestCrossReferences:
     def test_key_skills_exist(self, skill_names):
         """Core skills listed in CLAUDE.md skill table must exist."""
         core_skills = [
-            "rtl-autopilot", "rtl-p4-implement", "rtl-p4s-bugfix",
+            "rat-auto-design", "rtl-p4-implement", "rtl-p4s-bugfix",
             "rtl-p5s-func-verify", "rtl-lint-check", "rtl-synth-check",
             "p1-spec-research", "p2-arch-design", "rtl-p3-uarch-design",
             "systemverilog", "uvm",

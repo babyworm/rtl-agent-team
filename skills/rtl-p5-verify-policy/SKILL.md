@@ -180,9 +180,9 @@ Independent UNIT_FIX failures in different modules: fix in parallel.
 Same-module failures: fix sequentially within a single task.
 INTEGRATION_FIX: always sequential (cross-module dependencies).
 
-## Integration with rtl-autopilot
+## Integration with rat-auto-design
 
-When invoked from rtl-autopilot, state is tracked in `.rtl-agent-team/state/rtl-autopilot-state.json`:
+When invoked from rat-auto-design, state is tracked in `.rtl-agent-team/state/rat-auto-design-state.json`:
 ```json
 {
   "current_phase": 5,

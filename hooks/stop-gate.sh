@@ -1,5 +1,5 @@
 #!/bin/sh
-# Stop Gate: block session exit while rtl-autopilot is running.
+# Stop Gate: block session exit while rat-auto-design is running.
 # Supports escalation ladder:
 #   primary attempts (<=N) -> fallback strategy (N+1..2N) -> last chance (2N+1) -> user escalation.
 
@@ -15,7 +15,7 @@ jsonu_detect_parser
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 
-STATE_FILE="$CWD/.rtl-agent-team/state/rtl-autopilot-state.json"
+STATE_FILE="$CWD/.rtl-agent-team/state/rat-auto-design-state.json"
 
 json_escape() {
   jsonu_escape "$1"
@@ -51,7 +51,7 @@ fi
 
 UPPER_SPEC_BLOCKING=$(get_path_bool "upper_spec_blocking")
 if [ "$UPPER_SPEC_BLOCKING" = "true" ]; then
-  MSG="[RTL Autopilot STOP] Upper-spec violation is unresolved. Resolve violation or obtain user approval before proceeding."
+  MSG="[RAT Auto-Design STOP] Upper-spec violation is unresolved. Resolve violation or obtain user approval before proceeding."
   printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$MSG")"
   exit 0
 fi
@@ -81,23 +81,23 @@ FALLBACK_END=$((RETRY_LIMIT * 2))
 
 if [ "$TOTAL_PHASE_ATTEMPTS" -le "$RETRY_LIMIT" ]; then
   [ -z "$STRATEGY" ] && STRATEGY="primary"
-  MSG="[RTL Autopilot Loop ${ACTIVE_GATE_ID}] primary strategy (${TOTAL_PHASE_ATTEMPTS}/${RETRY_LIMIT}). Continue agent loop and satisfy the gate conditions."
+  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] primary strategy (${TOTAL_PHASE_ATTEMPTS}/${RETRY_LIMIT}). Continue agent loop and satisfy the gate conditions."
 elif [ "$TOTAL_PHASE_ATTEMPTS" -le "$FALLBACK_END" ]; then
   [ -z "$STRATEGY" ] && STRATEGY="fallback"
-  MSG="[RTL Autopilot Loop ${ACTIVE_GATE_ID}] fallback strategy (${TOTAL_PHASE_ATTEMPTS}/${FALLBACK_START}-${FALLBACK_END}). Split failure scope and switch agent composition."
+  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] fallback strategy (${TOTAL_PHASE_ATTEMPTS}/${FALLBACK_START}-${FALLBACK_END}). Split failure scope and switch agent composition."
   if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
     MSG="${MSG} Dynamic prompt: ${DYNAMIC_PROMPT_TEXT}"
   fi
 elif [ "$LAST_CHANCE_ATTEMPTS" -lt 1 ]; then
   [ -z "$STRATEGY" ] && STRATEGY="last_chance"
-  MSG="[RTL Autopilot Loop ${ACTIVE_GATE_ID}] reached 2x retry budget. Execute one last-chance alternative strategy now."
+  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] reached 2x retry budget. Execute one last-chance alternative strategy now."
   if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
     MSG="${MSG} Dynamic prompt: ${DYNAMIC_PROMPT_TEXT}"
   fi
 else
   NEEDS_USER_DECISION=true
   [ -z "$STRATEGY" ] && STRATEGY="user_escalated"
-  MSG="[RTL Autopilot Loop ${ACTIVE_GATE_ID}] last-chance attempt exhausted. Ask user for direction before further retries."
+  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] last-chance attempt exhausted. Ask user for direction before further retries."
 fi
 
 if [ "$NEEDS_USER_DECISION" = "true" ]; then

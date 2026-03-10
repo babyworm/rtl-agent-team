@@ -25,7 +25,7 @@ class TestRtlOrchestratorInject:
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         output = result.get("raw_stdout", "")
         assert "# RTL Agent Team — Active Project Rules" in output
-        assert "/rtl-agent-team:rtl-autopilot" in output
+        assert "/rtl-agent-team:rat-auto-design" in output
         assert "Action Skills first" in output
 
     def test_docs_dir_triggers_injection(self, tmp_path):
@@ -413,7 +413,7 @@ class TestStopGate:
     HOOK = HOOKS_DIR / "stop-gate.sh"
 
     def _write_autopilot_state(self, tmp_project, payload):
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
+        state_file = tmp_project / ".rtl-agent-team" / "state" / "rat-auto-design-state.json"
         state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_text(json.dumps(payload, indent=2))
         return state_file
@@ -426,7 +426,7 @@ class TestStopGate:
         self._write_autopilot_state(tmp_project, {"phase": 3})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
-        assert "Autopilot" in result.get("reason", "")
+        assert "Auto-Design" in result.get("reason", "")
 
     def test_completed_state_allows_exit(self, tmp_project):
         self._write_autopilot_state(tmp_project, {"status": "completed"})
@@ -1480,7 +1480,7 @@ class TestTeamAwarenessGuard:
             "active_gate_primary_attempts": 0, "active_gate_fallback_attempts": 0,
             "active_gate_last_chance_attempts": 0, "needs_user_decision": False
         }}
-        (state_dir / "rtl-autopilot-state.json").write_text(json.dumps(state))
+        (state_dir / "rat-auto-design-state.json").write_text(json.dumps(state))
         # Worker session (no CLAUDE_SESSION_ID or different from leader)
         result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is True
@@ -1494,7 +1494,7 @@ class TestTeamAwarenessGuard:
             "active_gate_primary_attempts": 0, "active_gate_fallback_attempts": 0,
             "active_gate_last_chance_attempts": 0, "needs_user_decision": False
         }}
-        (state_dir / "rtl-autopilot-state.json").write_text(json.dumps(state))
+        (state_dir / "rat-auto-design-state.json").write_text(json.dumps(state))
         # Simulate leader session via env
         import subprocess
         env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
@@ -1662,7 +1662,7 @@ class TestSedFallbackContract:
     def test_stop_gate_fallback_blocks_active(self, tmp_project):
         """Active autopilot state → continue=false under sed fallback."""
         state_dir = tmp_project / ".rtl-agent-team" / "state"
-        state_file = state_dir / "rtl-autopilot-state.json"
+        state_file = state_dir / "rat-auto-design-state.json"
         state_file.write_text(json.dumps({"status": "in_progress", "phase": 3}, indent=2))
         result = run_hook(
             self.HOOKS["stop-gate"],
@@ -2318,7 +2318,7 @@ class TestSpawnContextStructuralContracts:
         "rtl-p5s-uvm-verify": 5,
         "rtl-p6-design-review": 6,
         "rtl-p7-exploration": 7,
-        "rtl-autopilot": 1,
+        "rat-auto-design": 1,
         "rtl-spec-to-uarch": 1,
         "rtl-spec-to-uarch-team": 1,
         "rtl-dse": 1,
@@ -2370,7 +2370,7 @@ class TestSpawnContextStructuralContracts:
         "p5s-uvm-orchestrator": "rtl-p5s-uvm-verify",
         "p6-review-orchestrator": "rtl-p6-design-review",
         "p7-exploration-orchestrator": "rtl-p7-exploration",
-        "autopilot-orchestrator": "rtl-autopilot",
+        "autopilot-orchestrator": "rat-auto-design",
         "spec-to-uarch-orchestrator": "rtl-spec-to-uarch",
         "uarch-to-verify-orchestrator": "rtl-uarch-to-verify",
         "dse-orchestrator": "rtl-dse",

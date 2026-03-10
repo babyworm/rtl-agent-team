@@ -129,7 +129,7 @@ class TestAutopilotStateTemplate:
     @pytest.fixture
     def state_template(self):
         # Prefer the canonical template under skills/ over runtime state files
-        template = REPO_ROOT / "skills" / "rtl-autopilot" / "templates" / "autopilot-state.json"
+        template = REPO_ROOT / "skills" / "rat-auto-design" / "templates" / "autopilot-state.json"
         if template.exists():
             return json.loads(template.read_text())
         candidates = list(REPO_ROOT.rglob("autopilot-state.json"))

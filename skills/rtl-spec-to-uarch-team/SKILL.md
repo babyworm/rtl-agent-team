@@ -21,7 +21,7 @@ for parallel execution. Inter-phase quality gates are enforced between phases.
 <Do_Not_Use_When>
 - Only need a single phase (use the phase-specific team skill)
 - Want sequential execution (use rtl-spec-to-uarch)
-- Want to proceed through Phase 4-5 as well (use rtl-autopilot)
+- Want to proceed through Phase 4-5 as well (use rat-auto-design)
 </Do_Not_Use_When>
 
 ## Prerequisites

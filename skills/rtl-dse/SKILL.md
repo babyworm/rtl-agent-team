@@ -21,7 +21,7 @@ multiple architecture candidates, user decision points, and optional C model tra
 
 <Do_Not_Use_When>
 - Already have architecture decided (use p2-arch-design or rtl-p4-implement)
-- Need the full pipeline including RTL and verification (use rtl-autopilot)
+- Need the full pipeline including RTL and verification (use rat-auto-design)
 - Only need spec research without architecture exploration (use p1-spec-research)
 </Do_Not_Use_When>
 

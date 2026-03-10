@@ -43,7 +43,7 @@ cat << 'RULES_EOF'
 Always route user intent to Action Skills first. Orchestrators are internal and spawned by skills.
 | Pattern | Route To | Type |
 |---|---|---|
-| RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` | Action Skill |
+| RTL design, chip design, full pipeline | `/rtl-agent-team:rat-auto-design` | Action Skill |
 | setup, initialize, project start | `/rtl-agent-team:rat-setup` | Action Skill |
 | spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` | Action Skill |
 | codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Action Skill |

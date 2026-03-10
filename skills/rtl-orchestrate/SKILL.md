@@ -29,7 +29,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | Pattern Detected | Route To | Type |
 |-----------|------------|------|
 | **--- Full Pipeline ---** | | |
-| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rtl-autopilot" | `/rtl-agent-team:rtl-autopilot` | Action Skill |
+| "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rat-auto-design" | `/rtl-agent-team:rat-auto-design` | Action Skill |
 | "setup", "initialize", "project start", "init", "docker image", "EDA docker" | `/rtl-agent-team:rat-setup` | Action Skill |
 | **--- Phase 1: Research ---** | | |
 | "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` | Action Skill |
@@ -99,7 +99,7 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 
 | Action Skill | Orchestrator Agent | Policy Skill |
 |--------------|--------------------|-------------|
-| `rtl-autopilot` | `autopilot-orchestrator` | `rtl-autopilot-policy` |
+| `rat-auto-design` | `autopilot-orchestrator` | `rat-auto-design-policy` |
 | `p1-spec-research` | `p1-research-orchestrator` | `p1-spec-research-policy` |
 | `p2-arch-design` | `p2-arch-orchestrator` | `p2-arch-design-policy` |
 | `rtl-p3-uarch-design` | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
@@ -191,7 +191,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 ### Orchestrator Agents (pipeline coordinators)
 | Pipeline | Agent | Policy Skill |
 |----------|-------|-------------|
-| Full pipeline (P1→P6) | `autopilot-orchestrator` | `rtl-autopilot-policy` |
+| Full pipeline (P1→P6) | `autopilot-orchestrator` | `rat-auto-design-policy` |
 | Phase 1: Research | `p1-research-orchestrator` | `p1-spec-research-policy` |
 | Phase 2: Architecture | `p2-arch-orchestrator` | `p2-arch-design-policy` |
 | Phase 3: μArch | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
@@ -458,8 +458,8 @@ Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → 
 ## State Files
 
 Hook-enforced (quality gates):
-- `.rtl-agent-team/state/rtl-autopilot-state.json` — Full pipeline progress (stop-gate)
-- `.rtl-agent-team/state/rtl-autopilot-state.json::orchestration_control` — Active gate counters/strategy (`N→2N→last-chance`) and dynamic prompt payload
+- `.rtl-agent-team/state/rat-auto-design-state.json` — Full pipeline progress (stop-gate)
+- `.rtl-agent-team/state/rat-auto-design-state.json::orchestration_control` — Active gate counters/strategy (`N→2N→last-chance`) and dynamic prompt payload
 - `.rtl-agent-team/state/rtl-verify-done` — RTL verification completion gate (rtl-verify-stop-gate)
 - `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver (rtl-verify-stop-gate)
 - `.rtl-agent-team/state/skill-active.json` — Skill completion loop state (rtl-skill-activation, rtl-skill-completion-gate)
@@ -475,8 +475,8 @@ Agent-managed (orchestrator resumability):
 - `.rtl-agent-team/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker
 
 Templates:
-- `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/autopilot-state.json` (or `skills/rtl-autopilot/templates/autopilot-state.json` in repo context) — v3.0 state schema with `orchestration_control`
-- `${CLAUDE_PLUGIN_ROOT}/skills/rtl-autopilot/templates/escalation-prompts.json` (or `skills/rtl-autopilot/templates/escalation-prompts.json` in repo context) — fallback prompt templates for ladder transitions
+- `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/autopilot-state.json` (or `skills/rat-auto-design/templates/autopilot-state.json` in repo context) — v3.0 state schema with `orchestration_control`
+- `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/escalation-prompts.json` (or `skills/rat-auto-design/templates/escalation-prompts.json` in repo context) — fallback prompt templates for ladder transitions
 
 ---
 
@@ -503,7 +503,7 @@ This block is the single source for SessionStart routing injection.
 Always route user intent to Action Skills first. Orchestrators are internal and spawned by skills.
 | Pattern | Route To | Type |
 |---|---|---|
-| RTL design, chip design, full pipeline | `/rtl-agent-team:rtl-autopilot` | Action Skill |
+| RTL design, chip design, full pipeline | `/rtl-agent-team:rat-auto-design` | Action Skill |
 | setup, initialize, project start | `/rtl-agent-team:rat-setup` | Action Skill |
 | spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` | Action Skill |
 | codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Action Skill |
