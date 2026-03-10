@@ -516,11 +516,12 @@ class TestRatSetupRuntimeContract:
         assert "local" in content
         assert "skip" in content
         assert "Before installing missing required tools" in content
-        assert "executables exposed from `~/.local/bin`" in content
+        assert "LLM executes directly" in content
+        assert "sudo commands for user to run manually" in content
 
     def test_rat_setup_prefers_upstream_install_for_recent_verilator_and_systemc(self):
         content = RAT_SETUP_SKILL.read_text()
-        assert "avoid `sudo apt install verilator`" in content
+        assert "distro packages are often outdated" in content
         assert "Actively look up the latest stable version" in content
         assert "VERILATOR_LATEST_TAG" in content
         assert "SYSTEMC_LATEST_TAG" in content
@@ -528,7 +529,6 @@ class TestRatSetupRuntimeContract:
         assert "git clone https://github.com/verilator/verilator.git" in content
         assert "verilator.org/guide/latest/install.html" in content
         assert "git clone https://github.com/accellera-official/systemc.git" in content
-        assert "RELEASENOTES.md" in content
 
 
 class TestFlockUtilContract:
