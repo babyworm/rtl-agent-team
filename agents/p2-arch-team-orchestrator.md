@@ -210,6 +210,13 @@ After T13 (final consolidation) completes:
 8. **Rebuttal evidence** in R1 and R2: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 
+On PASS: generate ADRs:
+```
+Bash("mkdir -p docs/decisions")
+Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
+     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
+```
+
 # Error Handling
 
 - **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).

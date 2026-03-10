@@ -197,6 +197,7 @@ PASS | FAIL: [reason]
 - [ ] docs/phase-3-uarch/protocol-assignments.md
 - [ ] docs/phase-3-uarch/phase-3-summary.md
 - [ ] docs/phase-3-uarch/req-uarch-traceability.md (100% REQ coverage)
+- [ ] docs/decisions/ADR-*.md generated (3-5 key μArch decisions)
 
 ## Mermaid Pipeline Diagram Format
 

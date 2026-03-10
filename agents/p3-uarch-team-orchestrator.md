@@ -269,6 +269,13 @@ After T10 (final consolidation) completes, verify all gate items:
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 8. Generate `docs/phase-3-uarch/phase-3-summary.md`
 
+On PASS: generate ADRs:
+```
+Bash("mkdir -p docs/decisions")
+Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
+     prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
+```
+
 # Error Handling
 
 - **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).

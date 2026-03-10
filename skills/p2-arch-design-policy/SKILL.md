@@ -92,3 +92,4 @@ Architecture review must verify:
 - [ ] reviews/phase-2-architecture/feature-coverage.md saved
 - [ ] reviews/phase-2-architecture/architecture-review.md saved (consolidated)
 - [ ] reviews/phase-2-architecture/architecture-diagram.md saved (D2)
+- [ ] docs/decisions/ADR-*.md generated (3-5 key architectural decisions)

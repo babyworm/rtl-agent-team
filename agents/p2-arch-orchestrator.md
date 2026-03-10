@@ -205,6 +205,13 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Verdict: PASS or FAIL.")
 ```
 
+On PASS: generate ADRs:
+```
+Bash("mkdir -p docs/decisions")
+Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
+     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
+```
+
 # Parallel Execution Patterns
 
 - Step 2: All per-candidate HW evaluation agents in parallel (run_in_background=true)

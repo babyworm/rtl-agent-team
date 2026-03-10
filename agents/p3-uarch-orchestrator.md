@@ -254,6 +254,13 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Verdict: PASS or FAIL.")
 ```
 
+On PASS: generate ADRs:
+```
+Bash("mkdir -p docs/decisions")
+Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
+     prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
+```
+
 # Parallel Execution Patterns
 
 - Step 3: uarch-designer + bfm-dev in parallel
