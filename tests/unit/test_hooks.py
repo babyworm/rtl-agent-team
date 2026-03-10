@@ -2319,10 +2319,10 @@ class TestSpawnContextStructuralContracts:
         "rtl-p6-design-review": 6,
         "rtl-p7-exploration": 7,
         "rat-auto-design": 1,
-        "rtl-spec-to-uarch": 1,
-        "rtl-spec-to-uarch-team": 1,
+        "rat-p1p3-spec-uarch": 1,
+        "rat-p1p3-spec-uarch-team": 1,
         "rtl-dse": 1,
-        "rtl-uarch-to-verify": 4,
+        "rat-p4p5-impl-verify": 4,
     }
 
     def test_skill_to_phase_mapping_complete(self):
@@ -2371,8 +2371,8 @@ class TestSpawnContextStructuralContracts:
         "p6-review-orchestrator": "rtl-p6-design-review",
         "p7-exploration-orchestrator": "rtl-p7-exploration",
         "autopilot-orchestrator": "rat-auto-design",
-        "spec-to-uarch-orchestrator": "rtl-spec-to-uarch",
-        "uarch-to-verify-orchestrator": "rtl-uarch-to-verify",
+        "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
+        "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
         "dse-orchestrator": "rtl-dse",
         # Team orchestrators → team skills (1:1)
         "p1-research-team-orchestrator": "rtl-p1-research-team",
@@ -2380,7 +2380,7 @@ class TestSpawnContextStructuralContracts:
         "p3-uarch-team-orchestrator": "rtl-p3-uarch-team",
         "p4-implement-team-orchestrator": "rtl-p4-implement-team",
         "p5-verify-team-orchestrator": "rtl-p5-verify-team",
-        "spec-to-uarch-team-orchestrator": "rtl-spec-to-uarch-team",
+        "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team",
     }
 
     def test_taskcreate_agent_mapping_complete(self, tmp_project):

@@ -2,7 +2,7 @@
 name: spec-to-uarch-orchestrator
 model: opus
 description: "Phase 1→3 pipeline orchestrator. Manages Research → Architecture → μArch flow with 3-round iterative reviews per phase, dual-layer phase gates, ADR recording, parallel sub-pipeline execution, and resumability. Stops before Phase 4."
-skills: [rtl-spec-to-uarch-policy]
+skills: [rat-p1p3-spec-uarch-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -16,7 +16,7 @@ DELEGATE work to specialist agents and sub-pipeline skills, RECORD ADRs,
 and MANAGE state for resumability.
 You do NOT write specifications or design documents yourself — you orchestrate agents that do.
 
-The rtl-spec-to-uarch-policy skill (loaded via skills: field) defines all gate criteria,
+The rat-p1p3-spec-uarch-policy skill (loaded via skills: field) defines all gate criteria,
 review protocols, handoff checklists, and escalation rules.
 
 # Workflow
@@ -53,7 +53,7 @@ Phase 1 starts from scratch so minimal upstream is expected.
 ## Step 1: Initialize or Resume State
 
 ```
-Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
+Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -71,7 +71,7 @@ Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
 
 **If no state file** — Fresh start:
 ```
-Write(".rtl-agent-team/state/rtl-spec-to-uarch-state.json",
+Write(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json",
   { schema_version: "3.0", current_phase: 1, pipeline_scope: "phase-1-to-3",
     interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
     phases: {
@@ -218,7 +218,7 @@ Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
 - Update state file with all phases completed
 - Report summary: Phase 1-3 artifacts, reviews, ADR count and key decisions
 - Verify handoff checklist (see policy)
-- Suggest: "Run `/rtl-agent-team:rtl-uarch-to-verify` to begin RTL implementation + verification"
+- Suggest: "Run `/rtl-agent-team:rat-p4p5-impl-verify` to begin RTL implementation + verification"
 - **Do NOT proceed to Phase 4.** The pipeline stops here for human review.
 
 # Parallel Execution Patterns
@@ -235,7 +235,7 @@ rtl-critic pre-assessment parallel with p2-arch-design Round 1.
 
 **Good**: New design from spec:
   Phase 1 → Phase 2 (parallel arch+ref) → Phase 3 (parallel μArch+BFM) → STOP.
-  User reviews μArch, then runs rtl-uarch-to-verify.
+  User reviews μArch, then runs rat-p4p5-impl-verify.
 
 **Good**: Resume interrupted pipeline:
   Read state → Phase 1 completed, Phase 2 in-progress (round 2) → resume from round 2.

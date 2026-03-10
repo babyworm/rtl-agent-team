@@ -57,8 +57,8 @@ case "$SHORT_NAME" in
   p7-exploration-orchestrator)    SKILL_NAME="rtl-p7-exploration" ;;
   review-refactor-orchestrator)   SKILL_NAME="rtl-review-refactor" ;;
   autopilot-orchestrator)         SKILL_NAME="rat-auto-design" ;;
-  spec-to-uarch-orchestrator)     SKILL_NAME="rtl-spec-to-uarch" ;;
-  uarch-to-verify-orchestrator)   SKILL_NAME="rtl-uarch-to-verify" ;;
+  spec-to-uarch-orchestrator)     SKILL_NAME="rat-p1p3-spec-uarch" ;;
+  uarch-to-verify-orchestrator)   SKILL_NAME="rat-p4p5-impl-verify" ;;
   dse-orchestrator)               SKILL_NAME="rtl-dse" ;;
   # Team orchestrators → team skills (1:1 mapping)
   p1-research-team-orchestrator)  SKILL_NAME="rtl-p1-research-team" ;;
@@ -66,7 +66,7 @@ case "$SHORT_NAME" in
   p3-uarch-team-orchestrator)     SKILL_NAME="rtl-p3-uarch-team" ;;
   p4-implement-team-orchestrator) SKILL_NAME="rtl-p4-implement-team" ;;
   p5-verify-team-orchestrator)    SKILL_NAME="rtl-p5-verify-team" ;;
-  spec-to-uarch-team-orchestrator) SKILL_NAME="rtl-spec-to-uarch-team" ;;
+  spec-to-uarch-team-orchestrator) SKILL_NAME="rat-p1p3-spec-uarch-team" ;;
   *)
     printf '{"continue":true}'
     exit 0

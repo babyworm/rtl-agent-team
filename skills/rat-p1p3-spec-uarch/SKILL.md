@@ -1,5 +1,5 @@
 ---
-name: rtl-spec-to-uarch
+name: rat-p1p3-spec-uarch
 description: "This skill should be used when completing design documents from spec through microarchitecture (Phase 1→3). Produces research artifacts, block architecture, reference model, microarchitecture specs, and BFM with full quality gates and 3-round iterative reviews — stopping before RTL implementation for human review."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
@@ -20,7 +20,7 @@ Produces all design documents needed for RTL coding.
 </Use_When>
 
 <Do_Not_Use_When>
-- Already have uarch docs and need RTL implementation (use rtl-uarch-to-verify)
+- Already have uarch docs and need RTL implementation (use rat-p4p5-impl-verify)
 - Need the full pipeline including RTL (use rat-auto-design)
 - Only need a single phase (use the phase-specific skill)
 </Do_Not_Use_When>

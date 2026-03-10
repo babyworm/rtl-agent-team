@@ -288,11 +288,11 @@ class TestCrossReferences:
             ("rtl-p7-exploration", "p7-exploration-orchestrator", "rtl-p7-exploration-policy"),
             ("rtl-review-refactor", "review-refactor-orchestrator", "code-review-policy"),
             ("rtl-dse", "dse-orchestrator", "rtl-dse-policy"),
-            ("rtl-spec-to-uarch", "spec-to-uarch-orchestrator", "rtl-spec-to-uarch-policy"),
-            ("rtl-uarch-to-verify", "uarch-to-verify-orchestrator", "rtl-uarch-to-verify-policy"),
+            ("rat-p1p3-spec-uarch", "spec-to-uarch-orchestrator", "rat-p1p3-spec-uarch-policy"),
+            ("rat-p4p5-impl-verify", "uarch-to-verify-orchestrator", "rat-p4p5-impl-verify-policy"),
             # P1-P5 team mode orchestrators (v0.6.0) — use Agent(team_name=...) not Task()
             # Tested separately below in team-specific delegation check
-            # rtl-spec-to-uarch-team uses Skill() phase sequencing, not Task() delegation
+            # rat-p1p3-spec-uarch-team uses Skill() phase sequencing, not Task() delegation
             # (tested in test_pipeline_skill_phase_sequencing below)
         ]
 
@@ -328,7 +328,7 @@ class TestCrossReferences:
     def test_pipeline_skill_phase_sequencing(self):
         """Pipeline skills that sequence phases via Skill() instead of Task() delegation."""
         pipeline_skills = {
-            "rtl-spec-to-uarch-team": [
+            "rat-p1p3-spec-uarch-team": [
                 "rtl-p1-research-team",
                 "rtl-p2-arch-team",
                 "rtl-p3-uarch-team",

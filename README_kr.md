@@ -102,14 +102,14 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:rtl-dse              # Phase 1→2: 심층 알고리즘 + 아키텍처 탐색 (DSE)
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate 평가 (알고리즘 비교)
 /rtl-agent-team:codec-conformance-eval  # 디코더 conformance 평가 (JVET/JCTVC/3rd party)
-/rtl-agent-team:rtl-spec-to-uarch    # Phase 1→3: Spec → μArch 설계 문서 완성
-/rtl-agent-team:rtl-uarch-to-verify  # Phase 4→5: μArch → RTL 구현 + 검증
+/rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch 설계 문서 완성
+/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: μArch → RTL 구현 + 검증
 ```
 
 설계와 구현 사이에 인간 리뷰를 위해 파이프라인을 분할합니다:
 - `rtl-dse`: 심층 Design Space Exploration — 여러 알고리즘과 아키텍처 후보를 정량적 trade-off로 비교합니다. 기존 functional C model을 architectural reference model로 변환할 수도 있습니다. Phase 2에서 리뷰를 위해 멈춥니다.
-- `rtl-spec-to-uarch`: 표준 Phase 1→3 — μArch까지 설계 문서를 완성합니다. RTL 구현 전 리뷰를 위해 멈춥니다.
-- `rtl-uarch-to-verify`: Phase 4→5 — 승인된 μArch 문서로부터 RTL 구현 및 전체 검증을 수행합니다.
+- `rat-p1p3-spec-uarch`: 표준 Phase 1→3 — μArch까지 설계 문서를 완성합니다. RTL 구현 전 리뷰를 위해 멈춥니다.
+- `rat-p4p5-impl-verify`: Phase 4→5 — 승인된 μArch 문서로부터 RTL 구현 및 전체 검증을 수행합니다.
 
 ### 중단된 파이프라인 재개
 

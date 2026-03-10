@@ -2,7 +2,7 @@
 name: uarch-to-verify-orchestrator
 model: opus
 description: "Phase 4→5 pipeline orchestrator. Manages RTL implementation (dual-stream) and verification (5 sub-phases) with prerequisite checks, dual-layer phase gates, Phase 5→4 feedback loops, and resumability. Stops before Phase 6."
-skills: [rtl-uarch-to-verify-policy]
+skills: [rat-p4p5-impl-verify-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -15,7 +15,7 @@ Your job is to VERIFY prerequisites, SEQUENCE phases, ENFORCE gates, DELEGATE wo
 specialist agents, MANAGE feedback loops, and PERSIST state for resumability.
 You do NOT implement RTL or write verification code yourself — you orchestrate agents that do.
 
-The rtl-uarch-to-verify-policy skill (loaded via skills: field) defines all gate criteria,
+The rat-p4p5-impl-verify-policy skill (loaded via skills: field) defines all gate criteria,
 prerequisite checks, feedback classification, checklists, and escalation rules.
 
 # Workflow
@@ -68,7 +68,7 @@ Glob("refc/*/*.c")                    # At least one C reference model source
 Read("docs/phase-3-uarch/phase-3-summary.md")
 ```
 
-**On missing artifacts**: WARNING — report missing artifacts, suggest `/rtl-agent-team:rtl-spec-to-uarch`.
+**On missing artifacts**: WARNING — report missing artifacts, suggest `/rtl-agent-team:rat-p1p3-spec-uarch`.
 Proceed with adaptive planning: use available artifacts + user intent to infer missing context.
 Reduced-scope execution: skip sub-phases that require missing artifacts.
 
@@ -87,7 +87,7 @@ Read("docs/phase-2-architecture/phase-2-summary.md")
 ## Step 2: Initialize or Resume State
 
 ```
-Read(".rtl-agent-team/state/rtl-uarch-to-verify-state.json")
+Read(".rtl-agent-team/state/rat-p4p5-impl-verify-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -104,7 +104,7 @@ Read(".rtl-agent-team/state/rtl-uarch-to-verify-state.json")
 
 **If no state file** — Fresh start:
 ```
-Write(".rtl-agent-team/state/rtl-uarch-to-verify-state.json",
+Write(".rtl-agent-team/state/rat-p4p5-impl-verify-state.json",
   { schema_version: "3.0", current_phase: 4, current_phase_name: "rtl_implementation",
     pipeline_scope: "phase-4-to-5",
     interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
@@ -328,7 +328,7 @@ After fixes: re-run ONLY affected sub-phases in parallel.
   → parallel bugfix → re-run 5a + 5c → PASS → continue to 5d, 5e.
 
 **Good**: Missing prerequisites:
-  docs/phase-3-uarch/ empty → WARNING, suggest rtl-spec-to-uarch, proceed with adaptive scope reduction.
+  docs/phase-3-uarch/ empty → WARNING, suggest rat-p1p3-spec-uarch, proceed with adaptive scope reduction.
 
 **Bad**: Skipping prerequisite scan — always scan upstream artifacts and report missing items before proceeding.
 **Bad**: Proceeding to Phase 6 — this orchestrator STOPS after Phase 5.

@@ -57,9 +57,9 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | Phase 1 team, research team, parallel research | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
-| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rtl-spec-to-uarch-team` | Action Skill |
-| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rtl-spec-to-uarch` | Action Skill |
-| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
+| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rat-p1p3-spec-uarch-team` | Action Skill |
+| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rat-p1p3-spec-uarch` | Action Skill |
+| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
 | RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Action Skill |
 | decoder conformance, conformance stream | `/rtl-agent-team:codec-conformance-eval` | Action Skill |
 | rapid rtl, P4 rapid, sanity integration, fast implementation loop | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |

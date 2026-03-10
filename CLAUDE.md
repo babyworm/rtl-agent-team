@@ -262,7 +262,7 @@ Skill (main session = leader)
 | `skills/rtl-p3-uarch-team/SKILL.md` | Team leader: dual-stream uArch + BFM (coordinator + 3 workers) |
 | `skills/rtl-p4-implement-team/SKILL.md` | Team leader: 10-wave pipeline (coordinator + 4 workers) |
 | `skills/rtl-p5-verify-team/SKILL.md` | Team leader: 9-category verification (coordinator + 4 workers) |
-| `skills/rtl-spec-to-uarch-team/SKILL.md` | Pipeline: sequences P1→P2→P3 team skills |
+| `skills/rat-p1p3-spec-uarch-team/SKILL.md` | Pipeline: sequences P1→P2→P3 team skills |
 | `agents/p1-research-team-orchestrator.md` | Coordination teammate: task graph + SendMessage |
 | `agents/p2-arch-team-orchestrator.md` | Coordination teammate: dual-stream tasks |
 | `agents/p3-uarch-team-orchestrator.md` | Coordination teammate: uArch + BFM tasks |

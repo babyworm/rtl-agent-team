@@ -1,5 +1,5 @@
 ---
-name: rtl-uarch-to-verify
+name: rat-p4p5-impl-verify
 description: "This skill should be used when implementing RTL and running verification from existing microarchitecture documents (Phase 4→5). Requires completed Phase 1-3 artifacts as prerequisites. Produces RTL code, unit tests, and full verification with Phase 5→4 feedback loops — stopping before Design Note phase."
 user-invocable: true
 argument-hint: "[resume or module-name]"
@@ -19,7 +19,7 @@ with feedback loops, stopping before Phase 6 Design Note.
 </Use_When>
 
 <Do_Not_Use_When>
-- Phase 3 μArch specs are not complete (run rtl-spec-to-uarch first)
+- Phase 3 μArch specs are not complete (run rat-p1p3-spec-uarch first)
 - Only need RTL implementation without verification (use rtl-p4-implement)
 - Need the full pipeline from spec (use rat-auto-design)
 </Do_Not_Use_When>
@@ -31,7 +31,7 @@ Phase 3 completion with review required:
 - `reviews/phase-3-uarch/uarch-review.md` must exist
 
 If prerequisites are missing: WARNING — recommend completing Phase 1-3
-(via `/rtl-agent-team:rtl-spec-to-uarch`). Proceed with available artifacts — orchestrator will adapt scope.
+(via `/rtl-agent-team:rat-p1p3-spec-uarch`). Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
 

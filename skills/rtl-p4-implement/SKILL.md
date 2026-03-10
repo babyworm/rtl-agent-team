@@ -23,7 +23,7 @@ UnitTest → CDC → Protocol → Refactor → IntegrationGate.
 <Do_Not_Use_When>
 - Phase 3 μArch specs are not complete (run rtl-p3-uarch-design first)
 - Only need a single module bug fix (use rtl-p4s-bugfix)
-- Need RTL + verification together from uarch (use rtl-uarch-to-verify)
+- Need RTL + verification together from uarch (use rat-p4p5-impl-verify)
 - Need a faster minimal Phase-4 sanity loop first (use rtl-p4-rapid-impl)
 </Do_Not_Use_When>
 

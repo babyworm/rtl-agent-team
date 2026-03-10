@@ -2,10 +2,10 @@
 name: spec-to-uarch-team-orchestrator
 model: opus
 description: "Phase 1-3 pipeline orchestrator (sequential mode only). Manages Research, Architecture, uArch sequentially with inter-phase quality gates, ADR recording, and resumability. In team mode, the skill handles phase sequencing directly. Stops before Phase 4."
-skills: [rtl-spec-to-uarch-policy]
+skills: [rat-p1p3-spec-uarch-policy]
 ---
 
-> **NOTE: Sequential mode only.** In team mode, the `rtl-spec-to-uarch-team` skill
+> **NOTE: Sequential mode only.** In team mode, the `rat-p1p3-spec-uarch-team` skill
 > directly sequences phases using phase-specific team skills. This orchestrator is
 > only invoked in sequential/fallback mode.
 
@@ -23,7 +23,7 @@ and MANAGE state for resumability.
 **This orchestrator is NOT a team itself.** It invokes phase-specific team skills,
 each of which creates a team with a coordinator teammate and workers.
 
-The rtl-spec-to-uarch-policy skill (loaded via skills: field) defines all gate criteria,
+The rat-p1p3-spec-uarch-policy skill (loaded via skills: field) defines all gate criteria,
 review protocols, handoff checklists, and escalation rules.
 
 # Workflow
@@ -57,7 +57,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Initialize or Resume State
 
 ```
-Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
+Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -75,7 +75,7 @@ Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
 
 **If no state file** — Fresh start:
 ```
-Write(".rtl-agent-team/state/rtl-spec-to-uarch-state.json",
+Write(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json",
   { schema_version: "3.0", current_phase: 1, pipeline_scope: "phase-1-to-3",
     execution_mode: "team",
     interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
@@ -211,7 +211,7 @@ Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
 - Update state file with all phases completed
 - Report summary: Phase 1-3 artifacts, reviews, ADR count and key decisions
 - Verify handoff checklist (see policy)
-- Suggest: "Run `/rtl-agent-team:rtl-uarch-to-verify` to begin RTL implementation + verification"
+- Suggest: "Run `/rtl-agent-team:rat-p4p5-impl-verify` to begin RTL implementation + verification"
 - **Do NOT proceed to Phase 4.** The pipeline stops here for human review.
 
 # Parallel Execution Patterns
@@ -227,7 +227,7 @@ Inter-phase execution is sequential (P1→P2→P3) with quality gates.
 
 **Good**: New design from spec with team parallelism:
   Phase 1 (team) → P1→P2 gate → Phase 2 (team: arch ∥ RefC) → P2→P3 gate →
-  Phase 3 (team: uArch ∥ BFM) → STOP. User reviews, then runs rtl-uarch-to-verify.
+  Phase 3 (team: uArch ∥ BFM) → STOP. User reviews, then runs rat-p4p5-impl-verify.
 
 **Good**: Resume interrupted pipeline:
   Read state → Phase 1 completed, Phase 2 in-progress → resume Phase 2 team orchestrator.

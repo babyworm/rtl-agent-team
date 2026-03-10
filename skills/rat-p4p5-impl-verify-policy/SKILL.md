@@ -1,5 +1,5 @@
 ---
-name: rtl-uarch-to-verify-policy
+name: rat-p4p5-impl-verify-policy
 description: "Policy rules, prerequisite definitions, phase gate criteria, feedback loop classification, and checklists for the Phase 4→5 pipeline. Pure reference — no orchestration."
 user-invocable: false
 ---
@@ -22,7 +22,7 @@ RTL must faithfully implement the μArch design. Verification must validate agai
 ### Document-as-Memory
 Phase 4 reads Phase 1-3 documents as input context. Phase 5 reads Phase 4 artifacts.
 No agent needs to "remember" another agent's output — it reads the document.
-State is persisted at `.rtl-agent-team/state/rtl-uarch-to-verify-state.json` for resumability.
+State is persisted at `.rtl-agent-team/state/rat-p4p5-impl-verify-state.json` for resumability.
 
 ## Execution Rules
 
@@ -61,7 +61,7 @@ Do NOT proceed to Phase 6.
 | `refc/*/*.c` | At least one C reference model source exists |
 | `docs/phase-3-uarch/phase-3-summary.md` | File exists (Phase 3 summary for context) |
 
-### Intake Checklist (from rtl-spec-to-uarch)
+### Intake Checklist (from rat-p1p3-spec-uarch)
 - [ ] Phase 3 summary exists: `docs/phase-3-uarch/phase-3-summary.md`
 - [ ] All μArch specs exist: `docs/phase-3-uarch/{module}.md` for each module
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
@@ -167,7 +167,7 @@ After each successful feedback fix:
 
 ## Escalation & Stop Conditions
 
-- Prerequisites not met → report missing artifacts, suggest rtl-spec-to-uarch
+- Prerequisites not met → report missing artifacts, suggest rat-p1p3-spec-uarch
 - Phase 4 Quality Gate fails after 2 retries → ask user for RTL implementation direction
 - Phase 5 sub-phase fails after 2 feedback loops → escalate to user
 - DESIGN_FIX detected → STOP immediately, report upper-spec violation to user

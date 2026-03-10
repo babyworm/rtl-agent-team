@@ -1,5 +1,5 @@
 ---
-name: rtl-spec-to-uarch-team
+name: rat-p1p3-spec-uarch-team
 description: "Phase 1-3 pipeline using native teams for parallel execution within each phase. Sequences P1 research team, P2 architecture team, P3 uArch team with inter-phase quality gates."
 user-invocable: true
 argument-hint: "[spec-path or --resume]"
@@ -20,7 +20,7 @@ for parallel execution. Inter-phase quality gates are enforced between phases.
 
 <Do_Not_Use_When>
 - Only need a single phase (use the phase-specific team skill)
-- Want sequential execution (use rtl-spec-to-uarch)
+- Want sequential execution (use rat-p1p3-spec-uarch)
 - Want to proceed through Phase 4-5 as well (use rat-auto-design)
 </Do_Not_Use_When>
 
@@ -33,14 +33,14 @@ Specification documents should be available in `specs/` directory.
 
 ```python
 # Initialize or resume state
-state = Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")  # may not exist
+state = Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")  # may not exist
 
 if state and state.current_phase > 1:
     # Resume: skip completed phases
     pass
 else:
     # Fresh start
-    Write(".rtl-agent-team/state/rtl-spec-to-uarch-state.json",
+    Write(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json",
       { "schema_version": "3.0", "current_phase": 1, "pipeline_scope": "phase-1-to-3",
         "execution_mode": "team",
         "phases": {
@@ -90,7 +90,7 @@ if phases["3"]["status"] != "completed":
 
 # ── Completion ────────────────────────────────────────────────
 # Report: Phase 1-3 artifacts, reviews, ADR count
-# Suggest: "Run /rtl-agent-team:rtl-uarch-to-verify to begin RTL implementation"
+# Suggest: "Run /rtl-agent-team:rat-p4p5-impl-verify to begin RTL implementation"
 # Do NOT proceed to Phase 4
 ```
 

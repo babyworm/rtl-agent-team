@@ -67,8 +67,8 @@ Phase 7 (Exploration) is optional and has no pipeline rules.
 | Command | Description |
 |---------|-------------|
 | `/rtl-agent-team:rat-auto-design` | Run the entire P1→P6 pipeline automatically |
-| `/rtl-agent-team:rtl-spec-to-uarch` | Run P1→P3 (design documents only, no RTL) |
-| `/rtl-agent-team:rtl-uarch-to-verify` | Run P4→P5 (RTL implementation + verification) |
+| `/rtl-agent-team:rat-p1p3-spec-uarch` | Run P1→P3 (design documents only, no RTL) |
+| `/rtl-agent-team:rat-p4p5-impl-verify` | Run P4→P5 (RTL implementation + verification) |
 
 #### Individual Phase Commands
 
@@ -132,7 +132,7 @@ Team mode uses Claude Code native teams for true parallel execution with multipl
 | `/rtl-agent-team:rtl-p3-uarch-team` | P3 with 3 parallel workers |
 | `/rtl-agent-team:rtl-p4-implement-team` | P4 with 4 parallel workers (10-wave pipeline) |
 | `/rtl-agent-team:rtl-p5-verify-team` | P5 with 4 parallel workers (9-category) |
-| `/rtl-agent-team:rtl-spec-to-uarch-team` | P1→P3 pipeline using teams |
+| `/rtl-agent-team:rat-p1p3-spec-uarch-team` | P1→P3 pipeline using teams |
 
 **How team mode works:**
 1. The skill creates a team with a coordinator + N workers

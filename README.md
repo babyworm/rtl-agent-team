@@ -102,14 +102,14 @@ Dynamic fallback guidance is injected through state (`orchestration_control.dyna
 /rtl-agent-team:rtl-dse              # Phase 1→2: Deep algorithm + architecture exploration (DSE)
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate evaluation for algorithm comparison
 /rtl-agent-team:codec-conformance-eval  # Decoder conformance evaluation (JVET/JCTVC/3rd party)
-/rtl-agent-team:rtl-spec-to-uarch    # Phase 1→3: Spec → μArch design documents
-/rtl-agent-team:rtl-uarch-to-verify  # Phase 4→5: μArch → RTL implementation + verification
+/rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch design documents
+/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: μArch → RTL implementation + verification
 ```
 
 Split the pipeline for human review between design and implementation:
 - `rtl-dse`: Deep Design Space Exploration — compare multiple algorithms and architecture candidates with quantitative trade-offs. Can also transform an existing functional C model into an architectural reference model. Stops at Phase 2 for review.
-- `rtl-spec-to-uarch`: Standard Phase 1→3 — produce design documents through μArch. Stops for review before RTL.
-- `rtl-uarch-to-verify`: Phase 4→5 — implement RTL and run full verification from approved μArch documents.
+- `rat-p1p3-spec-uarch`: Standard Phase 1→3 — produce design documents through μArch. Stops for review before RTL.
+- `rat-p4p5-impl-verify`: Phase 4→5 — implement RTL and run full verification from approved μArch documents.
 
 ### Resume interrupted pipeline
 

@@ -788,17 +788,17 @@ class TestSpecToUarchTeamStructure:
         assert "p3-uarch-team-orchestrator" in content
 
     def test_skill_exists(self):
-        skill = SKILLS_DIR / "rtl-spec-to-uarch-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-p1p3-spec-uarch-team" / "SKILL.md"
         assert skill.exists()
 
     def test_skill_is_user_invocable(self):
-        skill = SKILLS_DIR / "rtl-spec-to-uarch-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-p1p3-spec-uarch-team" / "SKILL.md"
         content = skill.read_text()
         assert "user-invocable: true" in content
 
     def test_skill_sequences_phase_team_skills(self):
         """Pipeline skill should invoke phase team skills via Skill() calls."""
-        skill = SKILLS_DIR / "rtl-spec-to-uarch-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-p1p3-spec-uarch-team" / "SKILL.md"
         content = skill.read_text()
         assert "rtl-p1-research-team" in content
         assert "rtl-p2-arch-team" in content

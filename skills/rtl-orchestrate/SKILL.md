@@ -47,9 +47,9 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
-| "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rtl-spec-to-uarch-team` | Action Skill |
-| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rtl-spec-to-uarch` | Action Skill |
-| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
+| "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rat-p1p3-spec-uarch-team` | Action Skill |
+| "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rat-p1p3-spec-uarch` | Action Skill |
+| "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
 | "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` | Action Skill |
 | "decoder conformance", "conformance stream", "conformance test", "decoder verify" | `/rtl-agent-team:codec-conformance-eval` | Action Skill |
 | **--- Coding Conventions (auto-applied by extension/Phase) ---** | | |
@@ -129,9 +129,9 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p1-research-team` | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
 | `rtl-p2-arch-team` | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
 | `rtl-p3-uarch-team` | `p3-uarch-team-orchestrator` | `rtl-p3-uarch-policy` |
-| `rtl-spec-to-uarch` | `spec-to-uarch-orchestrator` | `rtl-spec-to-uarch-policy` |
-| `rtl-spec-to-uarch-team` | `spec-to-uarch-team-orchestrator` | `rtl-spec-to-uarch-policy` |
-| `rtl-uarch-to-verify` | `uarch-to-verify-orchestrator` | `rtl-uarch-to-verify-policy` |
+| `rat-p1p3-spec-uarch` | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
+| `rat-p1p3-spec-uarch-team` | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
+| `rat-p4p5-impl-verify` | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
 
 ---
 
@@ -219,9 +219,9 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 6: Design Review | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
 | LLM Review + Refactor | `review-refactor-orchestrator` | `code-review-policy` + `refactor-policy` + `verification-recheck-policy` |
 | DSE | `dse-orchestrator` | `rtl-dse-policy` |
-| Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rtl-spec-to-uarch-policy` |
-| Spec→μArch (P1-3 Team) | `spec-to-uarch-team-orchestrator` | `rtl-spec-to-uarch-policy` |
-| μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rtl-uarch-to-verify-policy` |
+| Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
+| Spec→μArch (P1-3 Team) | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
+| μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
 
 ### EDA/Infrastructure Agents
 | Task Type | Agent | Model |
@@ -469,8 +469,8 @@ Hook-enforced (quality gates):
 - `.rtl-agent-team/state/rtl-modified-files.txt` — Modified RTL file tracking (rtl-edit-tracker, rtl-verify-stop-gate)
 
 Agent-managed (orchestrator resumability):
-- `.rtl-agent-team/state/rtl-spec-to-uarch-state.json` — Spec-to-μArch pipeline progress
-- `.rtl-agent-team/state/rtl-uarch-to-verify-state.json` — μArch-to-Verify pipeline progress
+- `.rtl-agent-team/state/rat-p1p3-spec-uarch-state.json` — Spec-to-μArch pipeline progress
+- `.rtl-agent-team/state/rat-p4p5-impl-verify-state.json` — μArch-to-Verify pipeline progress
 - `.rtl-agent-team/state/rtl-dse-state.json` — DSE pipeline progress
 - `.rtl-agent-team/state/feedback-loop-state.json` — Phase 5→4 feedback loop tracking
 - `.rtl-agent-team/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker
@@ -518,9 +518,9 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | Phase 1 team, research team, parallel research | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
-| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rtl-spec-to-uarch-team` | Action Skill |
-| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rtl-spec-to-uarch` | Action Skill |
-| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rtl-uarch-to-verify` | Action Skill |
+| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rat-p1p3-spec-uarch-team` | Action Skill |
+| spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rat-p1p3-spec-uarch` | Action Skill |
+| uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
 | RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` | Action Skill |
 | decoder conformance, conformance stream | `/rtl-agent-team:codec-conformance-eval` | Action Skill |
 | rapid rtl, P4 rapid, sanity integration, fast implementation loop | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |

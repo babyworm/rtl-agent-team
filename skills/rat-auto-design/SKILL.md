@@ -21,7 +21,7 @@ for parallel execution. In sequential mode (--no-team), delegates to autopilot-o
 <Do_Not_Use_When>
 - Only need a specific phase (use the phase-specific skill instead)
 - Only need design space exploration (use rtl-dse)
-- Only need design documents without RTL (use rtl-spec-to-uarch)
+- Only need design documents without RTL (use rat-p1p3-spec-uarch)
 </Do_Not_Use_When>
 
 ## Prerequisites

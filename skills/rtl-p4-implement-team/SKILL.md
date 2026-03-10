@@ -24,7 +24,7 @@ task graph and directs workers via SendMessage.
 - Phase 3 uArch specs are not complete (run rtl-p3-uarch-design first)
 - Single module only (use rtl-p4-implement for simpler flow)
 - Only need a single module bug fix (use rtl-p4s-bugfix)
-- Need RTL + verification together from uarch (use rtl-uarch-to-verify)
+- Need RTL + verification together from uarch (use rat-p4p5-impl-verify)
 </Do_Not_Use_When>
 
 ## Prerequisites

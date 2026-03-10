@@ -1,5 +1,5 @@
 ---
-name: rtl-spec-to-uarch-policy
+name: rat-p1p3-spec-uarch-policy
 description: "Policy rules, phase gate definitions, cascading quality protocol, handoff checklist, and ADR requirements for the Phase 1→3 pipeline. Pure reference — no orchestration."
 user-invocable: false
 ---
@@ -33,7 +33,7 @@ Principle: **refine thoroughly at the top, execute efficiently at the bottom.**
 
 ### Document-as-Memory
 Design artifacts serve as persistent memory. Each phase reads upstream documents and writes
-downstream documents. State at `.rtl-agent-team/state/rtl-spec-to-uarch-state.json`.
+downstream documents. State at `.rtl-agent-team/state/rat-p1p3-spec-uarch-state.json`.
 
 ## Execution Rules
 
@@ -116,7 +116,7 @@ Do NOT proceed to Phase 4.
 
 **Summary + ADR**: phase-3-summary.md + 3-5 ADRs in docs/decisions/
 
-## Handoff Checklist (to rtl-uarch-to-verify)
+## Handoff Checklist (to rat-p4p5-impl-verify)
 - [ ] Phase 3 summary exists: `docs/phase-3-uarch/phase-3-summary.md`
 - [ ] All μArch specs exist: `docs/phase-3-uarch/{module}.md` for each module
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS

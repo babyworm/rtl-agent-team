@@ -206,7 +206,7 @@ Include ADR-001-algorithm-selection, ADR-002-architecture-selection, plus 2-3 mo
 - Report: algorithm candidates per block, architecture candidates compared,
   ref C model status (created/transformed + bitexact verified), reviews, ADRs
 - Suggest: "Run `/rtl-agent-team:rtl-p3-uarch-design` for Phase 3 μArch,
-  or `/rtl-agent-team:rtl-spec-to-uarch` (will skip completed Phase 1-2)"
+  or `/rtl-agent-team:rat-p1p3-spec-uarch` (will skip completed Phase 1-2)"
 - **Do NOT proceed to Phase 3.** The pipeline stops here for human review.
 
 # Examples
