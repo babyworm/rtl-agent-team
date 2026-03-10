@@ -263,11 +263,16 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 | Tool | Purpose | Required |
 |------|---------|----------|
 | verilator | Simulation + Lint | Required |
-| verible | Style Lint + Formatting | Required |
-| yosys | Synthesis | Required |
+| verible | Style Lint + Formatting | Required (at least one of verible/slang) |
+| slang | IEEE 1800 semantic Lint | Required (at least one of verible/slang) |
+| slang-server | SV Language Server (LSP) | Recommended |
 | cocotb (Python) | Functional verification | Required |
-| iverilog | Alternative simulator | Optional |
-| slang | IEEE 1800 semantic Lint | Optional |
+| python3 | cocotb runtime | Required |
+| g++ | Reference model build | Required |
+| make | Build system | Required |
+| systemc | SystemC/TLM-2.0 (ref model, BFM) | Required |
+| iverilog | Fallback simulator | Optional (if verilator installed) |
+| yosys | Synthesis (Phase 5B+) | Optional |
 | sby (SymbiYosys) | Formal verification | Optional |
 | gtkwave | Waveform viewer | Optional |
 | vcs / xrun / questa | Commercial simulators | Optional |

@@ -39,7 +39,8 @@ if TEAM_MODE:
 
     # State management
     Write(".rtl-agent-team/state/rtl-autopilot-state.json",
-      { "schema_version": "3.0", "current_phase": 1, "execution_mode": "team",
+      { "schema_version": "3.0", "status": "running",
+        "current_phase": 1, "execution_mode": "team",
         "phases": { "1": {"status":"pending"}, "2": {"status":"pending"},
                     "3": {"status":"pending"}, "4": {"status":"pending"},
                     "5": {"status":"pending"}, "6": {"status":"pending"} } })
@@ -69,6 +70,9 @@ if TEAM_MODE:
     Task(subagent_type="rtl-agent-team:p6-review-orchestrator",
          prompt="Execute Phase 6 design review. Context: Phase 5 PASS.")
 
+    # Mark completed (stop-gate.sh reads top-level "status" to allow exit)
+    # Write completed status BEFORE cleanup so stop hook sees it
+    Bash("sed -i 's/\"status\": \"running\"/\"status\": \"completed\"/' .rtl-agent-team/state/rtl-autopilot-state.json")
     # Cleanup state
     Bash("rm -f .rtl-agent-team/state/rtl-autopilot-state.json")
 
