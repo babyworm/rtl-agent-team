@@ -7,6 +7,18 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.10] - 2026-03-10
+
+### Added
+- Added `rat-plugin-debug` skill for plugin diagnostics (version, EDA tool status, state files, hook health).
+
+### Changed
+- Reclassified EDA tool requirements: yosys moved to Optional (Phase 5B+), slang promoted to Required (at least one of verible/slang needed).
+- Separated local/global install modes in `rat-setup` — LLM executes local installs directly; global mode prints sudo script for user.
+- Renamed `rtl-autopilot` to `rat-auto-design` to avoid OMC keyword collision.
+- Fixed autopilot state schema: added top-level `status` field for stop-gate.sh compatibility.
+- Bumped `rtl-agent-team` to `0.6.10`.
+
 ## [0.6.9] - 2026-03-09
 
 ### Added

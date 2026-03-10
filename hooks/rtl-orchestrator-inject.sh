@@ -45,6 +45,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 |---|---|---|
 | RTL design, chip design, full pipeline | `/rtl-agent-team:rat-auto-design` | Action Skill |
 | setup, initialize, project start | `/rtl-agent-team:rat-setup` | Action Skill |
+| debug, diagnostics, plugin status | `/rtl-agent-team:rat-plugin-debug` | Action Skill |
 | spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` | Action Skill |
 | codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` | Action Skill |
 | architecture design (RTL context) | `/rtl-agent-team:p2-arch-design` | Action Skill |
