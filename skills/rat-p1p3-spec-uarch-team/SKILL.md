@@ -32,6 +32,13 @@ Specification documents should be available in `specs/` directory.
 ## Execution
 
 ```python
+# Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
+legacy = Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")  # may not exist
+if legacy:
+    new_exists = Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")  # check new file
+    if not new_exists:
+        Bash("mv .rtl-agent-team/state/rtl-spec-to-uarch-state.json .rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
+
 # Initialize or resume state
 state = Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")  # may not exist
 

@@ -53,6 +53,11 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Initialize or Resume
 
 ```
+# Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
+Read(".rtl-agent-team/state/rtl-autopilot-state.json")
+# If legacy file exists AND new file does NOT exist, rename it:
+Bash("[ ! -f .rtl-agent-team/state/rat-auto-design-state.json ] && mv .rtl-agent-team/state/rtl-autopilot-state.json .rtl-agent-team/state/rat-auto-design-state.json || true")
+
 # Check for existing state
 Read(".rtl-agent-team/state/rat-auto-design-state.json")
 ```

@@ -53,6 +53,11 @@ Phase 1 starts from scratch so minimal upstream is expected.
 ## Step 1: Initialize or Resume State
 
 ```
+# Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
+Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
+# If legacy file exists AND new file does NOT exist, rename it:
+Bash("[ ! -f .rtl-agent-team/state/rat-p1p3-spec-uarch-state.json ] && mv .rtl-agent-team/state/rtl-spec-to-uarch-state.json .rtl-agent-team/state/rat-p1p3-spec-uarch-state.json || true")
+
 Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
 ```
 

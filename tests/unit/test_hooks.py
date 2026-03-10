@@ -422,6 +422,33 @@ class TestStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
+    def test_legacy_state_file_migrated_and_blocks(self, tmp_project):
+        """Pre-0.6.10 state file (rtl-autopilot-state.json) should be migrated and still block exit."""
+        legacy_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
+        legacy_file.parent.mkdir(parents=True, exist_ok=True)
+        legacy_file.write_text(json.dumps({"phase": 3}))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["continue"] is False
+        # Legacy file should have been migrated to new name
+        new_file = tmp_project / ".rtl-agent-team" / "state" / "rat-auto-design-state.json"
+        assert new_file.exists()
+        assert not legacy_file.exists()
+
+    def test_legacy_and_new_both_exist_preserves_new(self, tmp_project):
+        """When both legacy and new state files exist, new file wins (legacy is not moved)."""
+        # Write new state first (completed)
+        self._write_autopilot_state(tmp_project, {"status": "completed"})
+        # Write legacy state (active run)
+        legacy_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
+        legacy_file.write_text(json.dumps({"phase": 3}))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        # New file says completed → should allow exit (legacy must not overwrite)
+        assert result["continue"] is True
+        # New file should be unchanged
+        new_file = tmp_project / ".rtl-agent-team" / "state" / "rat-auto-design-state.json"
+        new_data = json.loads(new_file.read_text())
+        assert new_data["status"] == "completed"
+
     def test_state_file_exists_blocks_exit(self, tmp_project):
         self._write_autopilot_state(tmp_project, {"phase": 3})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})

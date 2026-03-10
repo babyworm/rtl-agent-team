@@ -17,6 +17,12 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 
 STATE_FILE="$CWD/.rtl-agent-team/state/rat-auto-design-state.json"
 
+# Legacy migration: rename old state file from pre-0.6.10 naming convention
+LEGACY_STATE_FILE="$CWD/.rtl-agent-team/state/rtl-autopilot-state.json"
+if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
+  mv "$LEGACY_STATE_FILE" "$STATE_FILE"
+fi
+
 json_escape() {
   jsonu_escape "$1"
 }
