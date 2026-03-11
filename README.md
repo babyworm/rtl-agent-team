@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 86 specialized AI agents + 86 skills automate the 6-Phase pipeline:
+> 87 specialized AI agents + 88 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 86 specialized AI agents + 86 skills + 13 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 87 specialized AI agents + 88 skills + 13 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 86-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.6.10 |
+| **rtl-agent-team** | 87-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.6.11 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.1 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -134,7 +134,7 @@ Creates the project directory structure, verifies EDA tool installation, and **a
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 86 skills.
+See the `skills/` directory for the full list of 88 skills.
 
 ## Project Artifact Structure
 
@@ -165,10 +165,10 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 86 agents (design/verification/review/EDA/domain/orchestrators)
+├── agents/                     # 87 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 86 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 88 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rat-setup/
 │   │   ├── scripts/
@@ -208,17 +208,17 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## Agent Team
 
-### Agent Composition (86 agents, all Opus)
+### Agent Composition (87 agents, all Opus)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
 | Design | 8 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer |
 | Verification | 7 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer |
-| Specialized Review | 13 | cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer |
+| Specialized Review | 14 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer |
 | Phase 6 Design Note | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
 | EDA/Synthesis | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
 | Infrastructure | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| Domain Experts | 10 | vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
+| Domain Experts | 11 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
 | Orchestrators | 32 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator, and 25 more (team/sub-phase variants) |
 
 Model policy:
@@ -330,8 +330,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (85)
-├── skills/                              # rtl-agent-team skills (85, with 13 reference docs)
+├── agents/                              # rtl-agent-team agents (87)
+├── skills/                              # rtl-agent-team skills (88, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

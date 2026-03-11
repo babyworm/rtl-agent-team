@@ -7,6 +7,23 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.11] - 2026-03-11
+
+### Added
+- Added Codex CLI cross-review as mandatory 2nd reviewer for all phase orchestrators (P1-P6), with `codex-cross-reviewer` agent and `codex-cross-review` skill.
+- Added ADR (Architecture Decision Record) generation to all orchestrator paths and synced policy checklists.
+
+### Changed
+- Renamed `rtl-spec-to-uarch` to `rat-p1p3-spec-uarch` and `rtl-uarch-to-verify` to `rat-p4p5-impl-verify` for consistent `rat-*` prefix naming.
+- Added legacy state file migration for `rat-*` renames to ensure backward compatibility.
+- Updated agent/skill counts across documentation (87 agents, 88 skills, 14 hook scripts).
+- Bumped `rtl-agent-team` to `0.6.11`.
+
+### Fixed
+- Fixed Round 2+ Codex CLI execution to match Step 2b timeout and fallback behavior.
+- Fixed tmux timeout handling, completion marker substitution, and related test coverage.
+- Fixed cross-review findings: auto-detect ordering, artifact names, re-validation flow, and tests.
+
 ## [0.6.10] - 2026-03-10
 
 ### Added
