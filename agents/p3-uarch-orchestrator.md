@@ -261,6 +261,26 @@ Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
      prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
 ```
 
+## Step 7: Codex Cross-Review (MANDATORY — after gate PASS + ADR generation)
+
+Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
+fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 3 Microarchitecture.
+     Phase intent: μArch design with sub-block decomposition, pipeline design, clock domain mapping, BFM development.
+     Input artifacts: docs/phase-2-architecture/ (architecture.md), refc/ (C reference model).
+     Output artifacts: docs/phase-3-uarch/ (per-module uarch specs, clock-domain-map.md, protocol-assignments.md, req-uarch-traceability.md, pipeline diagram).
+     Review verdicts: reviews/phase-3-uarch/ (uarch-review.md, feature-preservation.md).
+     ADRs: docs/decisions/ADR-*.md.
+     Focus: pipeline correctness, clock domain safety, protocol assignments, feature preservation, BFM consistency.")
+```
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-3/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 3 complete
+
 # Parallel Execution Patterns
 
 - Step 3: uarch-designer + bfm-dev in parallel

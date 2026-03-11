@@ -333,6 +333,24 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Generate compressed Phase 5 summary. Read all Phase 5 artifacts. Write docs/phase-5-verify/phase-5-summary.md (max 200 lines). Include: verification results per module, coverage metrics, performance vs spec, synthesis estimates, outstanding issues.")
 ```
 
+### Codex Cross-Review (MANDATORY — after Stage 3 final compliance)
+
+Invoke Codex CLI as independent 2nd reviewer after final compliance verdict.
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 5 Verification.
+     Phase intent: Comprehensive verification — unit tests, functional regression, formal SVA, CDC, protocol, coverage, integration, performance, synthesis.
+     Input artifacts: rtl/*/*.sv (RTL), docs/phase-1-research/requirements.json (spec).
+     Output artifacts: docs/phase-5-verify/ (phase-5-summary.md), sim/ (test results).
+     Review verdicts: reviews/phase-5-verify/ (final-compliance.md, traceability-audit.md, requirement-traceability.md, e2e-traceability.md).
+     Focus: verification completeness, requirement traceability gaps, coverage adequacy, test quality.")
+```
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-5/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 5 complete
+
 Collect all verification reports into `docs/phase-5-verify/`:
 - unit-test-report.md, integration-report.md, ref-rtl-model-consistency.md,
   lint-report.md, synthesis-estimate.md

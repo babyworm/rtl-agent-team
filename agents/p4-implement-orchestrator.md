@@ -281,6 +281,26 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 Verify ALL criteria per policy skill checklist.
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
+### Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
+
+Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
+fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 4 RTL Implementation.
+     Phase intent: SystemVerilog RTL coding, lint, unit test, CDC, protocol check, integration.
+     Input artifacts: docs/phase-3-uarch/ (per-module uarch specs).
+     Output artifacts: rtl/*/*.sv (RTL modules), sim/*/ (unit tests), docs/phase-4-rtl/ (phase-4-summary.md, stream-b artifacts).
+     Review verdicts: reviews/phase-4-rtl/ (lint-report.md, functional-completeness.md, design-review.md).
+     Changed files: all rtl/**/*.sv files.
+     Focus: RTL correctness vs uarch spec, coding convention compliance, synthesizability, integration correctness.")
+```
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-4/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 4 complete
+
 # Wave Overlap Rules
 
 Modules progress through waves independently. A fast module can start Wave 6 while

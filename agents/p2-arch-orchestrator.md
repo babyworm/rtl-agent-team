@@ -212,6 +212,26 @@ Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
      prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
+## Step 7: Codex Cross-Review (MANDATORY — after gate PASS + ADR generation)
+
+Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
+fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 2 Architecture.
+     Phase intent: Architecture design, HW candidate selection, C reference model development.
+     Input artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json).
+     Output artifacts: docs/phase-2-architecture/ (architecture.md, hw-candidate-review.md, phase-2-summary.md), refc/ (C reference model).
+     Review verdicts: reviews/phase-2-architecture/ (architecture-review.md, feature-coverage.md, ref-model-review.md).
+     ADRs: docs/decisions/ADR-*.md.
+     Focus: architecture soundness, ref model correctness, feature coverage completeness, spec compliance.")
+```
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-2/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 2 complete
+
 # Parallel Execution Patterns
 
 - Step 2: All per-candidate HW evaluation agents in parallel (run_in_background=true)

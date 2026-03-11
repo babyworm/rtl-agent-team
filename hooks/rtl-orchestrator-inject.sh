@@ -92,6 +92,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
 | LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
+| cross-review, codex review, 2nd reviewer, second opinion | `/rtl-agent-team:codex-cross-review` | Action Skill |
 | `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
 | `.sv/.sva` assertion work | `systemverilog-assertion` (auto-applied) | Convention |
 | UVM testbench generation | `uvm` (auto-applied) | Convention |

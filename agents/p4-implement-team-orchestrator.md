@@ -210,6 +210,23 @@ After all Wave 9 tasks (and conditional W9b) complete and integration passes.
 11. Generate `docs/phase-4-rtl/phase-4-summary.md`
 12. Verify Stream B artifacts exist
 
+## Step 5: Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 4 RTL Implementation.
+     Phase intent: SystemVerilog RTL coding, lint, unit test, CDC, protocol check, integration.
+     Input artifacts: docs/phase-3-uarch/ (per-module uarch specs).
+     Output artifacts: rtl/*/*.sv (RTL modules), sim/*/ (unit tests), docs/phase-4-rtl/ (phase-4-summary.md, stream-b artifacts).
+     Review verdicts: reviews/phase-4-rtl/ (lint-report.md, functional-completeness.md, design-review.md).
+     Changed files: all rtl/**/*.sv files.
+     Focus: RTL correctness vs uarch spec, coding convention compliance, synthesizability, integration correctness.")
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-4/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 4 complete
+```
+
 # Error Handling
 
 - **Worker crash**: Re-spawn worker, re-assign in-progress task.

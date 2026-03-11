@@ -260,6 +260,25 @@ Read("reviews/phase-1-research/research-review-r2.md")
 # Check for accept/reject entries — if absent, re-invoke review coordinator to produce rebuttal
 ```
 
+## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)
+
+Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
+fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 1 Research.
+     Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
+     Input artifacts: user-provided spec documents.
+     Output artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
+     Review verdicts: reviews/phase-1-research/ (research-review-r1.md, r2.md, r3.md, research-review.md).
+     Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
+```
+
+# Explicit verdict check — read report and verify consensus
+Read(".rtl-agent-team/cross-review/phase-1/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 1 complete
+
 # Parallel Execution Patterns
 
 - Step 2 Phase B: ALL leaf candidates + cross-cutting agents in parallel (run_in_background=true)

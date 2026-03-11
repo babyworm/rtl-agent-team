@@ -94,3 +94,21 @@ FAIL path:
 - Emit failure class, root cause, and minimal rerun plan.
 - Suggest next action (`rtl-p4s-bugfix` or focused recode loop).
 - Persist terminal verdict in `.rtl-agent-team/state/p4-state.json`.
+
+### Step 4: Codex Cross-Review (MANDATORY — after gate PASS)
+
+Invoke Codex CLI as independent 2nd reviewer on PASS verdict only.
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 4 Rapid RTL Implementation.
+     Phase intent: Rapid RTL coding with per-module lint/CDC/smoke loop and block sanity integration.
+     Input artifacts: docs/phase-3-uarch/ (uarch specs).
+     Output artifacts: rtl/*/*.sv (RTL modules), block sanity test results.
+     Changed files: all rtl/**/*.sv files.
+     Focus: RTL correctness, lint cleanliness, CDC safety, block integration correctness.")
+```
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-4/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 4 complete

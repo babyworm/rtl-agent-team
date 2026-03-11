@@ -262,6 +262,25 @@ After T12 (final verification + artifacts) completes:
 12. **Rebuttal evidence** in R2: verify R2 artifact contains accept/reject entries with rationale
    for each R1 finding (not just a "converged" statement). FAIL if rebuttal section absent.
 
+## Step 5: Codex Cross-Review (MANDATORY — after gate PASS)
+
+Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
+fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 1 Research.
+     Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
+     Input artifacts: user-provided spec documents.
+     Output artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
+     Review verdicts: reviews/phase-1-research/ (research-review-r1.md, r2.md, r3.md, research-review.md).
+     Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
+
+# Explicit verdict check — read report and verify consensus
+Read(".rtl-agent-team/cross-review/phase-1/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 1 complete
+```
+
 # Error Handling
 
 - **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).

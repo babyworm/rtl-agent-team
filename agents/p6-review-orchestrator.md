@@ -156,13 +156,30 @@ Verify all deliverables exist. Verify code-review.md and design-review.md contai
 On FAIL: iterate review → fix cycle (max 2 rounds, re-run Wave 1 → CC1 → Wave 2 → CC2).
 On agent failure: retry once, then escalate to user.
 
-## Step 7: PDF Generation (optional, on user request)
+## Step 7: Codex Cross-Review (MANDATORY — after Completion Quality Gate PASS)
+
+Invoke Codex CLI as independent 2nd reviewer after quality gate passes.
+
+```
+Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
+     prompt="Cross-review Phase 6 Design Review.
+     Phase intent: Final design documentation, code quality review, design quality review, improvement analysis.
+     Input artifacts: all docs/phase-*/ and rtl/*/*.sv.
+     Output artifacts: reviews/phase-6-review/ (code-review.md, design-review.md, design-note.md, improvements.md).
+     Focus: documentation accuracy, code review thoroughness, design note completeness, consistency across all phases.")
+```
+
+# Explicit verdict check
+Read(".rtl-agent-team/cross-review/phase-6/cross-review-report.md")
+# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 6 complete
+
+## Step 8: PDF Generation (optional, on user request)
 
 ```
 Bash("cd reviews/phase-6-review && make pdf")
 ```
 
-## Step 8: Final Summary Report
+## Step 9: Final Summary Report
 
 Report: code quality avg score + worst modules, design quality consistency status,
 design note page count, improvement quick win count, CC1/CC2 correction count.

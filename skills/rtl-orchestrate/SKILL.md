@@ -92,6 +92,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` | Action Skill |
 | "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` | Action Skill |
 | "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
+| "cross-review", "codex review", "2nd reviewer", "second opinion", "cross check" | `/rtl-agent-team:codex-cross-review` | Action Skill |
 | "routing help", "which skill to use", "routing reference" | `rtl-orchestrate` (internal context only) | Internal Reference |
 
 ### Action Skill → Orchestrator Agent Mapping (internal)
@@ -125,6 +126,7 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p6-design-review` | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
 | `rtl-p7-exploration` | `p7-exploration-orchestrator` | `rtl-p7-exploration-policy` |
 | `rtl-review-refactor` | `review-refactor-orchestrator` | `code-review-policy`, `refactor-policy`, `verification-recheck-policy` |
+| `codex-cross-review` | `codex-cross-reviewer` | — (self-contained) |
 | `rtl-dse` | `dse-orchestrator` | `rtl-dse-policy` |
 | `rtl-p1-research-team` | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
 | `rtl-p2-arch-team` | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
@@ -553,6 +555,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
 | LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
+| cross-review, codex review, 2nd reviewer, second opinion | `/rtl-agent-team:codex-cross-review` | Action Skill |
 | `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
 | `.sv/.sva` assertion work | `systemverilog-assertion` (auto-applied) | Convention |
 | UVM testbench generation | `uvm` (auto-applied) | Convention |
