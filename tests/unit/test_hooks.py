@@ -1326,11 +1326,13 @@ class TestPhaseStateBootstrap:
         state_dir.mkdir(parents=True, exist_ok=True)
         p5a_state = state_dir / "p5a-state.json"
         p5a_state.write_text(json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2))
+        # Use explicit mtime to avoid flaky time.sleep
+        os.utime(str(p5a_state), (1000000, 1000000))
 
-        time.sleep(1.1)
         rtl_dir = tmp_project / "rtl"
         rtl_dir.mkdir(parents=True, exist_ok=True)
         (rtl_dir / "top.sv").write_text("module top; endmodule\n")
+        os.utime(str(rtl_dir / "top.sv"), (1000002, 1000002))
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
@@ -1348,10 +1350,12 @@ class TestPhaseStateBootstrap:
         rtl_dir.mkdir(parents=True, exist_ok=True)
         (rtl_dir / "top.sv").write_text("module top; endmodule\n")
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        os.utime(str(rtl_dir / "top.sv"), (1000000, 1000000))
 
-        time.sleep(1.1)
         p5a_state = state_dir / "p5a-state.json"
         p5a_state.write_text(json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2))
+        # Use explicit mtime: p5a newer than RTL
+        os.utime(str(p5a_state), (1000002, 1000002))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         assert result["continue"] is True
@@ -2494,3 +2498,53 @@ class TestSpawnContextStructuralContracts:
         m3 = json.loads(mpath.read_text())
         assert m3["pipeline"]["current_phase"] == 4  # Preserved
         assert m3["setup"]["completed"] is True
+
+
+# ── Team progress hook behavioral tests ─────────────────────────────────────
+
+
+class TestTeamProgressHook:
+    """Behavioral tests for rtl-team-progress.sh PostToolUse:TaskUpdate hook."""
+
+    HOOK = HOOKS_DIR / "rtl-team-progress.sh"
+
+    def test_noop_without_team_config(self, tmp_project):
+        """When no team-config.json exists, hook outputs JSON and exits cleanly."""
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result.get("continue") is True
+
+    def test_noop_when_team_mode_false(self, tmp_project):
+        """When team_mode is false, hook outputs JSON and exits cleanly."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "team-config.json").write_text(
+            json.dumps({"team_mode": False, "team_name": "test"})
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result.get("continue") is True
+
+    def test_noop_without_progress_file(self, tmp_project):
+        """When team mode is active but no progress file, hook exits cleanly."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "team-config.json").write_text(
+            json.dumps({"team_mode": True, "team_name": "test-team"})
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result.get("continue") is True
+
+    def test_updates_timestamp_in_progress_file(self, tmp_project):
+        """When team mode is active and progress file exists, last_updated is refreshed."""
+        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "team-config.json").write_text(
+            json.dumps({"team_mode": True, "team_name": "test-team"})
+        )
+        progress = {"last_updated": "2020-01-01T00:00:00Z", "tasks_completed": 0}
+        (state_dir / "team-progress.json").write_text(json.dumps(progress))
+
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result.get("continue") is True
+
+        updated = json.loads((state_dir / "team-progress.json").read_text())
+        assert updated["last_updated"] != "2020-01-01T00:00:00Z"

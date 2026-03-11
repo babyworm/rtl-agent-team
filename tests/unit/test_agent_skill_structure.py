@@ -640,3 +640,65 @@ class TestPluginJson:
     def test_has_description(self, plugin_data):
         assert "description" in plugin_data
         assert len(plugin_data["description"]) > 10
+
+
+# ── ADR template and domain-expert structural tests ─────────────────────────
+
+
+class TestADRTemplate:
+    """Validate ADR template structure and orchestrator references."""
+
+    ADR_TEMPLATE = REPO_ROOT / "skills" / "rat-auto-design" / "templates" / "adr-template.md"
+
+    def test_adr_template_exists(self):
+        assert self.ADR_TEMPLATE.exists(), "ADR template must exist"
+
+    def test_adr_template_has_required_sections(self):
+        content = self.ADR_TEMPLATE.read_text()
+        for section in ["Status", "Context", "Decision", "Consequences"]:
+            assert section in content, f"ADR template missing '{section}' section"
+
+    def test_orchestrators_reference_adr(self):
+        """At least 5 phase orchestrators should mention ADR generation."""
+        agents_dir = REPO_ROOT / "agents"
+        adr_count = 0
+        for agent_file in sorted(agents_dir.glob("*-orchestrator.md")):
+            content = agent_file.read_text()
+            if "ADR" in content or "adr" in content or "decision record" in content.lower():
+                adr_count += 1
+        assert adr_count >= 5, f"Only {adr_count} orchestrators reference ADR, expected >= 5"
+
+
+class TestDomainExpertAgent:
+    """Validate the generic domain-expert runner agent."""
+
+    AGENT_FILE = REPO_ROOT / "agents" / "domain-expert.md"
+
+    def test_domain_expert_exists(self):
+        assert self.AGENT_FILE.exists()
+
+    def test_domain_expert_has_prompt_contract(self):
+        content = self.AGENT_FILE.read_text()
+        for marker in ["expert-definition", "knowledge-files", "task"]:
+            assert marker in content, f"domain-expert agent missing '{marker}' in prompt contract"
+
+    def test_domain_expert_is_read_only(self):
+        content = self.AGENT_FILE.read_text()
+        assert "disallowedTools" in content or "Write" in content, \
+            "domain-expert agent should restrict write tools"
+
+
+class TestTutorialSkillRename:
+    """Validate tutorial skill was properly renamed from rat-tutuorial."""
+
+    def test_rat_tutorial_exists(self):
+        assert (SKILLS_DIR / "rat-tutorial" / "SKILL.md").exists()
+
+    def test_rat_tutuorial_removed(self):
+        assert not (SKILLS_DIR / "rat-tutuorial").exists(), \
+            "Old rat-tutuorial directory should not exist"
+
+    def test_tutorial_name_in_frontmatter(self):
+        content = (SKILLS_DIR / "rat-tutorial" / "SKILL.md").read_text()
+        assert "name: rat-tutorial" in content
+        assert "rat-tutuorial" not in content

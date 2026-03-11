@@ -15,6 +15,22 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"
 
+# Phase 6 stale detection helper (shared by Bash and Edit/Write paths)
+_check_p6_stale() {
+  _P6_CWD="$1"
+  _P6_STATE="$2"
+  _P6_REVIEW_DIR="$_P6_CWD/reviews/phase-6-review"
+  if [ -d "$_P6_REVIEW_DIR" ] && ls "$_P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
+    if acquire_lock "$_P6_STATE/phase6-stale"; then
+      touch "$_P6_STATE/phase6-stale"
+      release_lock "$_P6_STATE/phase6-stale"
+    else
+      touch "$_P6_STATE/phase6-stale"
+    fi
+    printf '%s' " Phase 6 review documents marked as stale — update code-review and design-note after verification."
+  fi
+}
+
 # Extract file_path from tool input
 FILE_PATH=$(jsonu_get_input_string "$INPUT" "file_path")
 
@@ -70,17 +86,7 @@ if [ -z "$FILE_PATH" ]; then
     printf '%s\n' "$BASH_RTL_FILES" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
   fi
   COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
-  P6_MSG=""
-  P6_REVIEW_DIR="$CWD/reviews/phase-6-review"
-  if [ -d "$P6_REVIEW_DIR" ] && ls "$P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
-    if acquire_lock "$STATE_DIR/phase6-stale"; then
-      touch "$STATE_DIR/phase6-stale"
-      release_lock "$STATE_DIR/phase6-stale"
-    else
-      touch "$STATE_DIR/phase6-stale"
-    fi
-    P6_MSG=" Phase 6 review documents marked as stale — update code-review and design-note after verification."
-  fi
+  P6_MSG=$(_check_p6_stale "$CWD" "$STATE_DIR")
   SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
   printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
   exit 0
@@ -120,20 +126,7 @@ case "$FILE_PATH" in
     COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
     BASENAME=$(basename "$FILE_PATH")
 
-    # Phase 6 stale detection: if a completed Phase 6 review exists, mark it stale
-    # Protected by flock to prevent concurrent worker race conditions in team mode
-    P6_MSG=""
-    P6_REVIEW_DIR="$CWD/reviews/phase-6-review"
-    if [ -d "$P6_REVIEW_DIR" ] && ls "$P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
-      if acquire_lock "$STATE_DIR/phase6-stale"; then
-        touch "$STATE_DIR/phase6-stale"
-        release_lock "$STATE_DIR/phase6-stale"
-      else
-        # Fail-closed: mark stale even if lock acquisition fails
-        touch "$STATE_DIR/phase6-stale"
-      fi
-      P6_MSG=" Phase 6 review documents marked as stale — update code-review and design-note after verification."
-    fi
+    P6_MSG=$(_check_p6_stale "$CWD" "$STATE_DIR")
 
     # Escape JSON-special characters in path/message variables
     SAFE_BASENAME=$(jsonu_escape "$BASENAME")

@@ -279,10 +279,10 @@ if [[ "$TOOL" == "yosys" && -f "$REPORT" ]]; then
   grep -A 30 "Number of cells:" "$REPORT" 2>/dev/null || echo "(no cell stats found)"
   echo ""
   echo "--- Flip-flops ---"
-  grep -i "flip-flop\|DFF\|\\$_DFF_" "$REPORT" 2>/dev/null || echo "(no FF stats found)"
+  grep -i 'flip-flop\|DFF\|\$_DFF_' "$REPORT" 2>/dev/null || echo "(no FF stats found)"
   echo ""
   # Check for unmapped cells
-  UNMAPPED=$(grep -c "UNMAP\|\\$_.*_\$" "$REPORT" 2>/dev/null || echo 0)
+  UNMAPPED=$(grep -c 'UNMAP\|\$_.*_\$' "$REPORT" 2>/dev/null || echo 0)
   echo "Unmapped cells: $UNMAPPED"
   echo "Netlist: $NETLIST"
 fi

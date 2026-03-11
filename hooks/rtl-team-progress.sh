@@ -6,11 +6,13 @@
 # Shows progress summary in hook output.
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/flock-util.sh"
+jsonu_detect_parser
 
 # Extract CWD from hook input (consistent with peer hooks)
 INPUT=$(cat)
-CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 STATE_DIR="$CWD/.rtl-agent-team/state"
@@ -19,17 +21,19 @@ PROGRESS_FILE="$STATE_DIR/team-progress.json"
 
 # Only active during team mode
 if [ ! -f "$TEAM_CONFIG" ]; then
+  printf '{"continue":true}'
   exit 0
 fi
 
-# Check team_mode is true (consistent sed pattern with peer hooks)
-_TEAM_MODE=$(sed -n 's/.*"team_mode"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' "$TEAM_CONFIG" | head -n 1)
+# Check team_mode is true
+_TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
 if [ "$_TEAM_MODE" != "true" ]; then
+  printf '{"continue":true}'
   exit 0
 fi
 
 # Extract team name for display
-_TEAM_NAME=$(sed -n 's/.*"team_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TEAM_CONFIG" | head -n 1)
+_TEAM_NAME=$(jsonu_get_file_path_string "$TEAM_CONFIG" "team_name")
 
 # Update timestamp in progress file (locked to prevent concurrent write races)
 if [ -f "$PROGRESS_FILE" ]; then
@@ -44,4 +48,5 @@ if [ -f "$PROGRESS_FILE" ]; then
   fi
 fi
 
+printf '{"continue":true}'
 exit 0

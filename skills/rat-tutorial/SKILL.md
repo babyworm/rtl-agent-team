@@ -1,6 +1,6 @@
 ---
-name: rat-tutuorial
-description: "Interactive tutorial for RTL Agent Team. Explains key commands, 6-Phase pipeline, domain expert extension, and team mode. Append a language name to get the tutorial in that language (e.g., /rtl-agent-team:rat-tutuorial Korean)."
+name: rat-tutorial
+description: "Interactive tutorial for RTL Agent Team. Explains key commands, 6-Phase pipeline, domain expert extension, and team mode. Append a language name to get the tutorial in that language (e.g., /rtl-agent-team:rat-tutorial Korean)."
 user-invocable: true
 ---
 
@@ -11,8 +11,8 @@ Present the tutorial content below in an educational, easy-to-follow format.
 
 ## Language Handling
 
-If the user appends a language name after the skill command (e.g., `/rtl-agent-team:rat-tutuorial Korean`,
-`/rtl-agent-team:rat-tutuorial Japanese`, `/rtl-agent-team:rat-tutuorial Chinese`), present the ENTIRE tutorial in that language.
+If the user appends a language name after the skill command (e.g., `/rtl-agent-team:rat-tutorial Korean`,
+`/rtl-agent-team:rat-tutorial Japanese`, `/rtl-agent-team:rat-tutorial Chinese`), present the ENTIRE tutorial in that language.
 Technical terms and command names remain in English, but all explanations and descriptions
 are translated. Default language is English if no language is specified.
 

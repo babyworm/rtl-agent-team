@@ -3,7 +3,7 @@
 # Supports parser preference: jq -> python3/python -> sed fallback.
 
 jsonu_escape() {
-  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' ' ' | tr '\r' ' '
 }
 
 jsonu_detect_parser() {
