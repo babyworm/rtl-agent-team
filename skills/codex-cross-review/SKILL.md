@@ -45,8 +45,7 @@ Codex Config: model={model}, reasoning_effort={effort}
 ### Phase Auto-Detection
 If no phase number is provided, detect the current phase from:
 1. Most recently modified `docs/phase-N-*/` directory
-2. `.rtl-agent-team/state/current-phase` if it exists
-3. Ask user if ambiguous
+2. Ask user if ambiguous
 
 ### Spawn Cross-Reviewer Agent
 

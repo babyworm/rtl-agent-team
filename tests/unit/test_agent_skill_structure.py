@@ -421,17 +421,18 @@ class TestCrossReferences:
             "codex-cross-reviewer must include re-validation step after fixes"
         )
 
-        # 5b. ALL codex exec paths have timeout protection (Step 2b AND Step 4b)
-        # Must appear at least twice: once for initial round, once for subsequent rounds
+        # 5b. Step 2b has timeout protection; Step 4b reuses Step 2b procedure
         timeout_count = agent_content.count("timeout 300")
-        assert timeout_count >= 4, (
-            f"codex-cross-reviewer must have timeout 300 in both Step 2b and Step 4b "
-            f"(expected >=4 occurrences for Mode A+B in each step, found {timeout_count})"
+        assert timeout_count >= 3, (
+            f"codex-cross-reviewer Step 2b must have timeout 300 in Mode A, fallback, and Mode B "
+            f"(expected >=3 occurrences, found {timeout_count})"
         )
-        fallback_count = agent_content.count("Falling back to Mode B")
-        assert fallback_count >= 2, (
-            f"codex-cross-reviewer must have Mode B fallback in both Step 2b and Step 4b "
-            f"(expected >=2 occurrences, found {fallback_count})"
+        assert "Falling back to Mode B" in agent_content, (
+            "codex-cross-reviewer Step 2b must have Mode B fallback"
+        )
+        # Step 4b must reference Step 2b procedure (DRY)
+        assert "reuse Step 2b" in agent_content or "same" in agent_content.split("4b")[1][:200].lower(), (
+            "codex-cross-reviewer Step 4b must reference Step 2b procedure"
         )
 
         # 5c. Completion marker uses ${N} substitution, not literal N
@@ -465,6 +466,11 @@ class TestCrossReferences:
             assert "cross-review-report.md" in orch_content, (
                 f"{orch} must include explicit verdict check (Read cross-review-report.md)"
             )
+
+        # 6b. Phase auto-detection must not reference dead current-phase fallback
+        assert "current-phase" not in skill_content, (
+            "codex-cross-review skill must not reference dead current-phase state file"
+        )
 
         # 7. Routing table includes codex-cross-review
         orchestrate_file = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
