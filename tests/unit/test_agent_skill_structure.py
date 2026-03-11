@@ -421,12 +421,17 @@ class TestCrossReferences:
             "codex-cross-reviewer must include re-validation step after fixes"
         )
 
-        # 5b. tmux path has timeout protection (not infinite polling)
-        assert "timeout 300" in agent_content, (
-            "codex-cross-reviewer tmux path must have hard timeout"
+        # 5b. ALL codex exec paths have timeout protection (Step 2b AND Step 4b)
+        # Must appear at least twice: once for initial round, once for subsequent rounds
+        timeout_count = agent_content.count("timeout 300")
+        assert timeout_count >= 4, (
+            f"codex-cross-reviewer must have timeout 300 in both Step 2b and Step 4b "
+            f"(expected >=4 occurrences for Mode A+B in each step, found {timeout_count})"
         )
-        assert "Falling back to Mode B" in agent_content or "fall back" in agent_content, (
-            "codex-cross-reviewer tmux path must fall back on timeout"
+        fallback_count = agent_content.count("Falling back to Mode B")
+        assert fallback_count >= 2, (
+            f"codex-cross-reviewer must have Mode B fallback in both Step 2b and Step 4b "
+            f"(expected >=2 occurrences, found {fallback_count})"
         )
 
         # 5c. Completion marker uses ${N} substitution, not literal N

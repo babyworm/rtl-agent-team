@@ -321,18 +321,48 @@ For previously raised items, use resolved_items array:
 New issues go in the findings array with new IDs.
 ```
 
-### 4b. Execute and Parse (same mode selection as Step 2b)
+### 4b. Execute and Parse (same mode selection + timeout as Step 2b)
 
 Use Mode A (tmux) or Mode B (Bash) based on Step 0c detection.
+**Both modes MUST apply the same timeout 300 + fallback logic as Step 2b.**
+
+**Mode A — tmux (substitute R for round number):**
 ```bash
-# Mode A (tmux): tmux split-window with tee to log + output file
-# Mode B (Bash): direct codex exec
-codex exec \
+ROUND_OUT="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/round-${R}.json"
+ROUND_LOG="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/round-${R}-log.txt"
+tmux split-window -v "timeout 300 codex exec \
+  -s read-only \
+  --output-schema $(pwd)/.rtl-agent-team/cross-review/review-schema.json \
+  -o ${ROUND_OUT} \
+  \"$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-${R}.txt)\" \
+  2>&1 | tee ${ROUND_LOG}; \
+  echo \"EXIT_CODE=\$?\" >> ${ROUND_LOG}; \
+  sleep 3"
+# Poll with 330s ceiling, fallback to Mode B on timeout
+SECONDS_WAITED=0
+while [ ! -f "${ROUND_OUT}" ] && [ ${SECONDS_WAITED} -lt 330 ]; do
+  sleep 10
+  SECONDS_WAITED=$((SECONDS_WAITED + 10))
+done
+if [ ! -f "${ROUND_OUT}" ]; then
+  echo "WARN: tmux codex exec timed out for round ${R}. Falling back to Mode B."
+  timeout 300 codex exec \
+    -s read-only \
+    --output-schema .rtl-agent-team/cross-review/review-schema.json \
+    -o .rtl-agent-team/cross-review/phase-${N}/round-${R}.json \
+    "$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-${R}.txt)"
+fi
+```
+
+**Mode B — no tmux:**
+```bash
+timeout 300 codex exec \
   -s read-only \
   --output-schema .rtl-agent-team/cross-review/review-schema.json \
-  -o .rtl-agent-team/cross-review/phase-{N}/round-N.json \
-  "$(cat .rtl-agent-team/cross-review/phase-{N}/prompt-round-N.txt)"
+  -o .rtl-agent-team/cross-review/phase-${N}/round-${R}.json \
+  "$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-${R}.txt)"
 ```
+
 After parsing, output the round progress summary (same format as Step 2c) and
 Claude's response summary (same format as Step 3).
 
