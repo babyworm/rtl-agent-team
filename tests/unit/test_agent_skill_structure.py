@@ -389,6 +389,72 @@ class TestCrossReferences:
                 f"Policy skill must not be user-invocable: {policy}"
             )
 
+    def test_codex_cross_review_skill_agent_contract(self):
+        """codex-cross-review: action skill + agent exist, skill delegates to agent,
+        agent has phase-scoped artifacts, and all phase orchestrators (solo+team) reference it."""
+        # 1. Skill exists and is user-invocable
+        skill_file = SKILLS_DIR / "codex-cross-review" / "SKILL.md"
+        assert skill_file.exists(), "Missing action skill: codex-cross-review"
+        skill_fm = _read_frontmatter(skill_file)
+        assert re.search(r"^user-invocable:\s*true\s*$", skill_fm, re.MULTILINE), (
+            "codex-cross-review must be user-invocable"
+        )
+
+        # 2. Agent exists
+        agent_file = AGENTS_DIR / "codex-cross-reviewer.md"
+        assert agent_file.exists(), "Missing agent: codex-cross-reviewer"
+
+        # 3. Skill delegates to agent
+        skill_content = skill_file.read_text()
+        assert re.search(
+            r'Task\(subagent_type="rtl-agent-team:codex-cross-reviewer"', skill_content
+        ), "codex-cross-review skill must delegate to codex-cross-reviewer agent"
+
+        # 4. Agent uses phase-scoped paths (not bare cross-review/)
+        agent_content = agent_file.read_text()
+        assert "cross-review/phase-{N}/" in agent_content, (
+            "codex-cross-reviewer must use phase-scoped artifact paths"
+        )
+
+        # 5. Agent includes re-validation step
+        assert re.search(r"Re-Validation", agent_content), (
+            "codex-cross-reviewer must include re-validation step after fixes"
+        )
+
+        # 6. All phase orchestrators (solo + team) reference codex-cross-reviewer
+        orchestrators = [
+            "p1-research-orchestrator",
+            "p1-research-team-orchestrator",
+            "p2-arch-orchestrator",
+            "p2-arch-team-orchestrator",
+            "p3-uarch-orchestrator",
+            "p3-uarch-team-orchestrator",
+            "p4-implement-orchestrator",
+            "p4-implement-team-orchestrator",
+            "p4-rtl-sanity-orchestrator",
+            "p5-verify-orchestrator",
+            "p5-verify-team-orchestrator",
+            "p6-review-orchestrator",
+        ]
+        for orch in orchestrators:
+            orch_file = AGENTS_DIR / f"{orch}.md"
+            assert orch_file.exists(), f"Missing orchestrator: {orch}"
+            orch_content = orch_file.read_text()
+            assert re.search(
+                r'Task\(subagent_type="rtl-agent-team:codex-cross-reviewer"', orch_content
+            ), f"{orch} must invoke codex-cross-reviewer"
+            # Explicit verdict check
+            assert "cross-review-report.md" in orch_content, (
+                f"{orch} must include explicit verdict check (Read cross-review-report.md)"
+            )
+
+        # 7. Routing table includes codex-cross-review
+        orchestrate_file = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
+        orchestrate_content = orchestrate_file.read_text()
+        assert "codex-cross-review" in orchestrate_content, (
+            "rtl-orchestrate routing table must include codex-cross-review"
+        )
+
     def test_p4_state_module_population_contract_is_explicit(self):
         p4_template = SKILLS_DIR / "rtl-design-policy" / "templates" / "p4-state.json"
         assert p4_template.exists(), "Missing p4-state template"

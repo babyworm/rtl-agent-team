@@ -271,7 +271,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
      Input artifacts: user-provided spec documents.
      Output artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
-     Review verdicts: reviews/phase-1-research/ (research-review-r1.md, r2.md, r3.md, research-review.md).
+     Review verdicts: reviews/phase-1-research/ (research-review-r1.md, research-review-r2.md, research-review-r3.md, research-review.md).
      Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
 ```
 

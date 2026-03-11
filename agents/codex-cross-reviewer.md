@@ -43,13 +43,7 @@ Store result for Step 2 execution mode selection:
 - **TMUX_AVAILABLE=true**: Run codex in a split pane (user sees real-time progress)
 - **TMUX_AVAILABLE=false**: Run codex in Bash (user sees round summaries only)
 
-### 0d. Create Working Directory
-Determine the phase number N from $ARGUMENTS (or auto-detect in Step 1).
-```bash
-mkdir -p .rtl-agent-team/cross-review/phase-${N}
-```
-
-### 0e. Write JSON Schema for Structured Output
+### 0d. Write JSON Schema for Structured Output
 Write the shared review schema (one copy, reused across phases):
 
 ```bash
@@ -101,7 +95,24 @@ SCHEMA_EOF
 
 Determine the phase being reviewed (from $ARGUMENTS or auto-detect from recent artifacts).
 
-### 1a. Identify Phase Artifacts
+### 1a. Resolve Phase Number and Create Working Directory
+
+If `$ARGUMENTS` contains a phase number (e.g., "Phase 2", "P3", or just "2"), use it directly.
+Otherwise, auto-detect by finding the most recently modified `docs/phase-N-*/` directory:
+```bash
+# Auto-detect: find most recently modified phase directory
+ls -td docs/phase-*/ 2>/dev/null | head -1
+# Extract N from "docs/phase-N-*/"
+```
+
+Once N is resolved, create the phase-scoped working directory:
+```bash
+mkdir -p .rtl-agent-team/cross-review/phase-${N}
+```
+
+**STOP if N cannot be resolved.** Use AskUserQuestion to ask which phase to review.
+
+### 1b. Identify Phase Artifacts
 For the target phase N, locate:
 - **Input artifacts**: `docs/phase-{N-1}-*/` (upstream specs)
 - **Output artifacts**: `docs/phase-{N}-*/` (produced documents)
@@ -114,7 +125,7 @@ ls docs/phase-*/ 2>/dev/null
 git diff --name-only HEAD~5 -- rtl/ refc/ sim/ docs/ 2>/dev/null | head -50
 ```
 
-### 1b. Generate Phase Summary
+### 1c. Generate Phase Summary
 Write a structured summary to `.rtl-agent-team/cross-review/phase-{N}/phase-summary.md`:
 
 ```markdown
