@@ -103,4 +103,4 @@ Cross-review artifacts are phase-scoped for traceability:
 - `.rtl-agent-team/cross-review/phase-{N}/cross-review-report.md` — final summary report
 - `.rtl-agent-team/cross-review/phase-{N}/escalation-summary.md` — generated if user escalation needed
 
-Completion marker: `.rtl-agent-team/state/cross-review-phase-N-done`
+Completion marker: `.rtl-agent-team/state/cross-review-phase-${N}-done` (e.g., `cross-review-phase-2-done`)

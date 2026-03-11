@@ -182,32 +182,51 @@ Use verdict:
 
 **Mode A — tmux available (real-time visibility for user):**
 ```bash
-# Run codex in a horizontal split pane; user watches progress in real-time
-# Output is captured to file for Claude to read after completion
-tmux split-window -v "codex exec \
+# Run codex in a horizontal split pane with 300s hard timeout
+# User watches progress in real-time; output captured to file
+ROUND_OUT="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/round-1.json"
+ROUND_LOG="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/round-1-log.txt"
+tmux split-window -v "timeout 300 codex exec \
   -s read-only \
   --output-schema $(pwd)/.rtl-agent-team/cross-review/review-schema.json \
-  -o $(pwd)/.rtl-agent-team/cross-review/phase-{N}/round-1.json \
-  \"$(cat .rtl-agent-team/cross-review/phase-{N}/prompt-round-1.txt)\" \
-  2>&1 | tee $(pwd)/.rtl-agent-team/cross-review/phase-{N}/round-1-log.txt; \
-  echo '=== CODEX ROUND 1 COMPLETE ===' >> $(pwd)/.rtl-agent-team/cross-review/phase-{N}/round-1-log.txt; \
+  -o ${ROUND_OUT} \
+  \"$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-1.txt)\" \
+  2>&1 | tee ${ROUND_LOG}; \
+  echo \"EXIT_CODE=\$?\" >> ${ROUND_LOG}; \
   sleep 3"
-# Wait for completion by polling output file
-# Check every 10s: while [ ! -f .rtl-agent-team/cross-review/phase-{N}/round-1.json ]; do sleep 10; done
+```
+
+**Mode A — Wait with timeout (MANDATORY):**
+Poll for output file with a hard 330s ceiling (300s codex + 30s buffer).
+If the file does not appear, **fall back to Mode B** instead of hanging.
+```bash
+SECONDS_WAITED=0
+while [ ! -f "${ROUND_OUT}" ] && [ ${SECONDS_WAITED} -lt 330 ]; do
+  sleep 10
+  SECONDS_WAITED=$((SECONDS_WAITED + 10))
+done
+if [ ! -f "${ROUND_OUT}" ]; then
+  echo "WARN: tmux codex exec timed out or failed. Falling back to Mode B."
+  # Fallback: run directly in Bash
+  timeout 300 codex exec \
+    -s read-only \
+    --output-schema .rtl-agent-team/cross-review/review-schema.json \
+    -o .rtl-agent-team/cross-review/phase-${N}/round-1.json \
+    "$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-1.txt)"
+fi
 ```
 
 **Mode B — no tmux (Bash execution with round summaries):**
 ```bash
-codex exec \
+timeout 300 codex exec \
   -s read-only \
   --output-schema .rtl-agent-team/cross-review/review-schema.json \
-  -o .rtl-agent-team/cross-review/phase-{N}/round-1.json \
-  "$(cat .rtl-agent-team/cross-review/phase-{N}/prompt-round-1.txt)"
+  -o .rtl-agent-team/cross-review/phase-${N}/round-1.json \
+  "$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-1.txt)"
 ```
 
-**Timeout**: Allow up to 5 minutes (`timeout 300`).
-
 Choose Mode A if `TMUX_AVAILABLE=true` (from Step 0c), otherwise Mode B.
+Both modes apply a **hard 300s timeout** via the `timeout` command.
 
 ### 2c. Parse Results and Report Progress
 Read `.rtl-agent-team/cross-review/phase-{N}/round-1.json` and parse the structured findings.
@@ -426,10 +445,11 @@ Generate `.rtl-agent-team/cross-review/phase-{N}/cross-review-report.md`:
 [List of all code/doc changes made during cross-review]
 ```
 
-Write the phase cross-review completion marker:
+Write the phase cross-review completion marker (substitute actual phase number):
 ```bash
-touch .rtl-agent-team/state/cross-review-phase-N-done
+touch .rtl-agent-team/state/cross-review-phase-${N}-done
 ```
+Example: Phase 2 produces `.rtl-agent-team/state/cross-review-phase-2-done`.
 
 ## Important Rules
 

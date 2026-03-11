@@ -421,6 +421,19 @@ class TestCrossReferences:
             "codex-cross-reviewer must include re-validation step after fixes"
         )
 
+        # 5b. tmux path has timeout protection (not infinite polling)
+        assert "timeout 300" in agent_content, (
+            "codex-cross-reviewer tmux path must have hard timeout"
+        )
+        assert "Falling back to Mode B" in agent_content or "fall back" in agent_content, (
+            "codex-cross-reviewer tmux path must fall back on timeout"
+        )
+
+        # 5c. Completion marker uses ${N} substitution, not literal N
+        assert "cross-review-phase-${N}-done" in agent_content, (
+            "codex-cross-reviewer completion marker must use ${N} substitution"
+        )
+
         # 6. All phase orchestrators (solo + team) reference codex-cross-reviewer
         orchestrators = [
             "p1-research-orchestrator",
