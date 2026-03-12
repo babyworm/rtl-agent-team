@@ -19,6 +19,31 @@ _AUDIT_SESSION_ID_CACHE=""
 AUDIT_MAX_SESSIONS=${AUDIT_MAX_SESSIONS:-10}
 AUDIT_MAX_SIZE_MB=${AUDIT_MAX_SIZE_MB:-50}
 
+# Validate session ID against strict allowlist to prevent path traversal.
+# Only allows alphanumeric, hyphen, underscore, and dot characters.
+_audit_validate_session_id() {
+  _AVSI_RAW="$1"
+  # Strip any path separators or traversal segments
+  _AVSI_CLEAN=$(printf '%s' "$_AVSI_RAW" | tr -cd 'A-Za-z0-9._-')
+  # Reject empty, changed, or path-traversal tokens (., .., leading/trailing dots)
+  _AVSI_VALID=true
+  if [ -z "$_AVSI_CLEAN" ] || [ "$_AVSI_CLEAN" != "$_AVSI_RAW" ]; then
+    _AVSI_VALID=false
+  fi
+  # Block "." and ".." explicitly
+  case "$_AVSI_CLEAN" in
+    .|..) _AVSI_VALID=false ;;
+  esac
+  # Block IDs starting or ending with dots (prevents hidden dirs and traversal variants)
+  case "$_AVSI_CLEAN" in
+    .*|*.) _AVSI_VALID=false ;;
+  esac
+  if [ "$_AVSI_VALID" = "false" ]; then
+    _AVSI_CLEAN="$(date +%Y%m%d_%H%M%S)_$$"
+  fi
+  printf '%s' "$_AVSI_CLEAN"
+}
+
 # Return the current session ID (cached after first call).
 audit_session_id() {
   _ASI_CWD="$1"
@@ -29,14 +54,15 @@ audit_session_id() {
 
   _ASI_ID_FILE="$_ASI_CWD/.rtl-agent-team/audit/session-id.txt"
   if [ -f "$_ASI_ID_FILE" ]; then
-    _AUDIT_SESSION_ID_CACHE=$(cat "$_ASI_ID_FILE" 2>/dev/null)
+    _ASI_RAW=$(cat "$_ASI_ID_FILE" 2>/dev/null)
+    _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$_ASI_RAW")
     printf '%s' "$_AUDIT_SESSION_ID_CACHE"
     return 0
   fi
 
   # Generate new ID
   if [ -n "${CLAUDE_SESSION_ID:-}" ]; then
-    _AUDIT_SESSION_ID_CACHE="$CLAUDE_SESSION_ID"
+    _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$CLAUDE_SESSION_ID")
   else
     _AUDIT_SESSION_ID_CACHE="$(date +%Y%m%d_%H%M%S)_$$"
   fi
@@ -130,9 +156,13 @@ audit_save_prompt() {
   _ASP_DIR="$_ASP_CWD/.rtl-agent-team/audit/$_ASP_ID/prompts"
   mkdir -p "$_ASP_DIR"
 
+  # Sanitize agent name to prevent path traversal (strip to basename-safe token)
+  _ASP_SAFE_AGENT=$(printf '%s' "$_ASP_AGENT" | tr -cd 'A-Za-z0-9._-')
+  [ -z "$_ASP_SAFE_AGENT" ] && _ASP_SAFE_AGENT="unknown-agent"
+
   # Zero-pad seq to 3 digits
   _ASP_PAD=$(printf '%03d' "$_ASP_SEQ" 2>/dev/null || printf '%s' "$_ASP_SEQ")
-  _ASP_FILE="$_ASP_DIR/${_ASP_PAD}_${_ASP_AGENT}.md"
+  _ASP_FILE="$_ASP_DIR/${_ASP_PAD}_${_ASP_SAFE_AGENT}.md"
 
   printf '%s\n' "$_ASP_CONTENT" > "$_ASP_FILE"
 }

@@ -640,8 +640,8 @@ class TestRtlEditTrackerBash:
     HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
 
     def test_bash_command_with_sv_file_tracked(self, tmp_project):
-        """B1: Bash command containing .sv file should trigger RTL tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/module/top.sv"}
+        """B1: Bash write command containing .sv file should trigger RTL tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/old/new/' rtl/module/top.sv"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
@@ -650,12 +650,130 @@ class TestRtlEditTrackerBash:
         assert track_file.exists()
         assert "top.sv" in track_file.read_text()
 
+    def test_bash_lint_only_not_tracked(self, tmp_project):
+        """B1: verilator --lint-only is read-only and should NOT trigger RTL tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/module/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists()
+
+    def test_bash_verible_lint_not_tracked(self, tmp_project):
+        """B1: verible-verilog-lint is read-only and should NOT trigger RTL tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "verible-verilog-lint rtl/module/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists()
+
+    def test_bash_backgrounded_lint_not_tracked(self, tmp_project):
+        """B1: Backgrounded lint-only command should NOT trigger RTL tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv &"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists()
+
     def test_bash_command_without_rtl_passthrough(self, tmp_project):
         """B1: Bash command without RTL extensions should pass through silently."""
         stdin = {"cwd": str(tmp_project), "command": "ls -la docs/"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         assert "hookSpecificOutput" not in result
+
+    def test_bash_mixed_command_lint_plus_write_tracked(self, tmp_project):
+        """B1: Mixed command with lint AND write must still trigger RTL tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/top.sv && verilator --lint-only rtl/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+
+    def test_bash_background_ampersand_mixed_tracked(self, tmp_project):
+        """B1: Background & separating lint and write must still trigger tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/top.sv & sed -i 's/x/y/' rtl/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+
+    def test_bash_lint_substring_in_sed_still_tracked(self, tmp_project):
+        """B1: sed command containing 'verilator --lint-only' in quoted text must be tracked."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/verilator --lint-only/x/' rtl/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+
+    def test_bash_adjacent_ampersand_rtl_extracted(self, tmp_project):
+        """B1: RTL path adjacent to && should still be extracted by awk tokenizer."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/top.sv&&echo done"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+
+    def test_bash_readonly_prefix_with_write_tracked(self, tmp_project):
+        """B1: Read-only prefix (grep) followed by write via && must be tracked."""
+        stdin = {"cwd": str(tmp_project), "command": "grep foo rtl/top.sv && sed -i 's/x/y/' rtl/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+
+    def test_bash_redirect_to_rtl_file_tracked(self, tmp_project):
+        """B1: Output redirection to RTL file must be tracked even with read-only prefix."""
+        stdin = {"cwd": str(tmp_project), "command": "cat /dev/null > rtl/top.sv"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
+
+    def test_bash_lint_redirect_to_log_not_tracked(self, tmp_project):
+        """B1: Lint redirecting to non-RTL log file should NOT be tracked."""
+        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv > lint.log"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists()
+
+    def test_bash_pipe_readonly_not_tracked(self, tmp_project):
+        """B1: Pipe from grep to wc is read-only — should NOT be tracked."""
+        stdin = {"cwd": str(tmp_project), "command": "grep foo rtl/top.sv | wc -l"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists()
+
+    def test_bash_lint_stderr_redirect_not_tracked(self, tmp_project):
+        """B1: Lint with 2>&1 is read-only — should NOT be tracked."""
+        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv > lint.log 2>&1"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert not track_file.exists()
+
+    def test_bash_quoted_rtl_path_tracked(self, tmp_project):
+        """B1: Bash command with quoted RTL path should still trigger tracking."""
+        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' 'rtl/top.sv'"}
+        result = run_hook(self.HOOK, stdin)
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "RTL Verify Gate" in ctx
+        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track_file.exists()
 
     def test_bash_command_with_svh_tracked(self, tmp_project):
         """B1: Bash write command containing .svh file should trigger tracking."""
@@ -722,10 +840,13 @@ class TestRtlEditTrackerBash:
         assert not (state_dir / "rtl-verify-waiver").exists(), "Bash RTL write must invalidate verify-waiver"
 
     def test_bash_phase6_stale_on_rtl_command(self, tmp_project):
-        """B1: Bash RTL command should mark Phase 6 stale if review exists."""
+        """B1: Bash RTL command should mark Phase 6 stale if full review set exists."""
         p6_dir = tmp_project / "reviews" / "phase-6-review"
         p6_dir.mkdir(parents=True)
+        (p6_dir / "code-review.md").write_text("# Code Review")
+        (p6_dir / "design-review.md").write_text("# Design Review")
         (p6_dir / "design-note.md").write_text("# Design Note")
+        (p6_dir / "improvements.md").write_text("# Improvements")
         stdin = {"cwd": str(tmp_project), "command": "sed -i 's/foo/bar/' rtl/mod.sv"}
         result = run_hook(self.HOOK, stdin)
         stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
@@ -745,10 +866,13 @@ class TestRtlEditTrackerPhase6:
         assert not stale.exists()
 
     def test_phase6_exists_creates_stale_marker(self, tmp_project):
-        """Phase 6 review with .md files → stale marker created on RTL edit."""
+        """Phase 6 review with full deliverable set → stale marker created on RTL edit."""
         p6_dir = tmp_project / "reviews" / "phase-6-review"
         p6_dir.mkdir(parents=True)
         (p6_dir / "code-review.md").write_text("# Code Review\nverdict: PASS")
+        (p6_dir / "design-review.md").write_text("# Design Review")
+        (p6_dir / "design-note.md").write_text("# Design Note")
+        (p6_dir / "improvements.md").write_text("# Improvements")
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
         run_hook(self.HOOK, stdin)
         stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
@@ -763,11 +887,24 @@ class TestRtlEditTrackerPhase6:
         stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
         assert not stale.exists()
 
+    def test_phase6_partial_deliverables_no_stale(self, tmp_project):
+        """Phase 6 with only some deliverables (in-progress) → no stale marker."""
+        p6_dir = tmp_project / "reviews" / "phase-6-review"
+        p6_dir.mkdir(parents=True)
+        (p6_dir / "code-review.md").write_text("# Partial — P6 in progress")
+        stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
+        run_hook(self.HOOK, stdin)
+        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        assert not stale.exists(), "Partial P6 deliverables should not trigger staleness"
+
     def test_phase6_stale_message_in_output(self, tmp_project):
         """Phase 6 stale detection should include message in output."""
         p6_dir = tmp_project / "reviews" / "phase-6-review"
         p6_dir.mkdir(parents=True)
+        (p6_dir / "code-review.md").write_text("# Code Review")
+        (p6_dir / "design-review.md").write_text("# Design Review")
         (p6_dir / "design-note.md").write_text("# Design Note")
+        (p6_dir / "improvements.md").write_text("# Improvements")
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
         result = run_hook(self.HOOK, stdin)
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
@@ -805,6 +942,9 @@ class TestRtlEditTrackerPhase6:
         p6_dir = tmp_project / "reviews" / "phase-6-review"
         p6_dir.mkdir(parents=True)
         (p6_dir / "code-review.md").write_text("# Review")
+        (p6_dir / "design-review.md").write_text("# Design Review")
+        (p6_dir / "design-note.md").write_text("# Design Note")
+        (p6_dir / "improvements.md").write_text("# Improvements")
         # Pre-create lock dir to simulate a held lock (causes acquire_lock timeout)
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
@@ -847,9 +987,11 @@ class TestP6CascadeGate:
         # Stale marker with old mtime
         (state_dir / "phase6-stale").touch()
         os.utime(state_dir / "phase6-stale", (1000, 1000))
-        # Docs with current (newer) mtime
+        # Full P6 deliverable set with current (newer) mtime
         (review_dir / "design-note.md").write_text("# Updated")
         (review_dir / "code-review.md").write_text("# Updated")
+        (review_dir / "design-review.md").write_text("# Updated")
+        (review_dir / "improvements.md").write_text("# Updated")
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
@@ -864,23 +1006,27 @@ class TestP6CascadeGate:
         # Stale marker with old mtime
         stale.touch()
         os.utime(stale, (1000, 1000))
-        # Docs with current (newer) mtime
+        # Full P6 deliverable set with current (newer) mtime
         (review_dir / "design-note.md").write_text("# Updated")
         (review_dir / "code-review.md").write_text("# Updated")
+        (review_dir / "design-review.md").write_text("# Updated")
+        (review_dir / "improvements.md").write_text("# Updated")
         done.touch()
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert not stale.exists()
         assert not done.exists()
 
     def test_block_message_content(self, tmp_project):
-        """Block message should mention lint, code-review, design-note."""
+        """Block message should mention lint and all 4 P6 deliverables."""
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         ctx = result.get("reason", "")
         assert "lint" in ctx.lower()
         assert "code-review" in ctx.lower() or "code_review" in ctx.lower()
+        assert "design-review" in ctx.lower() or "design_review" in ctx.lower()
         assert "design-note" in ctx.lower() or "design_note" in ctx.lower()
+        assert "improvements" in ctx.lower()
 
     def test_p6_cascade_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-p6-cascade-gate.sh").read_text()
@@ -894,10 +1040,13 @@ class TestP6CascadeGate:
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         review_dir = tmp_project / "reviews" / "phase-6-review"
         review_dir.mkdir(parents=True)
-        # Create documents with explicitly old mtime
+        # Create full P6 deliverable set with explicitly old mtime
         (review_dir / "design-note.md").write_text("# Old Design Note")
         (review_dir / "code-review.md").write_text("# Old Code Review")
-        for doc in [review_dir / "design-note.md", review_dir / "code-review.md"]:
+        (review_dir / "design-review.md").write_text("# Old Design Review")
+        (review_dir / "improvements.md").write_text("# Old Improvements")
+        for doc in [review_dir / "design-note.md", review_dir / "code-review.md",
+                     review_dir / "design-review.md", review_dir / "improvements.md"]:
             os.utime(doc, (1000, 1000))
         # Stale marker gets current time (much newer than docs)
         (state_dir / "phase6-stale").touch()
@@ -915,9 +1064,11 @@ class TestP6CascadeGate:
         # Stale marker with explicitly old mtime
         (state_dir / "phase6-stale").touch()
         os.utime(state_dir / "phase6-stale", (1000, 1000))
-        # Documents get current time (much newer than stale marker)
+        # Full P6 deliverable set with current time (much newer than stale marker)
         (review_dir / "design-note.md").write_text("# Updated Design Note")
         (review_dir / "code-review.md").write_text("# Updated Code Review")
+        (review_dir / "design-review.md").write_text("# Updated Design Review")
+        (review_dir / "improvements.md").write_text("# Updated Improvements")
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True

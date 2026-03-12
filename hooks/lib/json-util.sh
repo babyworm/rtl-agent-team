@@ -113,6 +113,13 @@ PY
       ;;
     *)
       # Last-resort fallback when jq/python are unavailable.
+      # Fail-closed for nested paths: sed can only reliably handle single-level keys.
+      case "$JSONU_KEY_PATH" in
+        *.*)
+          printf ''
+          return 0
+          ;;
+      esac
       JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
       sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$JSONU_FILE" | head -n 1
       ;;
@@ -159,6 +166,13 @@ PY
       ;;
     *)
       # Last-resort fallback when jq/python are unavailable.
+      # Fail-closed for nested paths: sed can only reliably handle single-level keys.
+      case "$JSONU_KEY_PATH" in
+        *.*)
+          printf ''
+          return 0
+          ;;
+      esac
       # Two-pass approach for POSIX BRE compatibility (avoids GNU sed \| extension).
       JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
       JSONU_BOOL_VAL=$(sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*true.*/true/p" "$JSONU_FILE" | head -n 1)
@@ -215,6 +229,13 @@ PY
       ;;
     *)
       # Last-resort fallback when jq/python are unavailable.
+      # Fail-closed for nested paths: sed can only reliably handle single-level keys.
+      case "$JSONU_KEY_PATH" in
+        *.*)
+          printf ''
+          return 0
+          ;;
+      esac
       JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
       sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$JSONU_FILE" | head -n 1
       ;;

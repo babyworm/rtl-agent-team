@@ -20,9 +20,14 @@ _check_p6_stale() {
   _P6_CWD="$1"
   _P6_STATE="$2"
   _P6_REVIEW_DIR="$_P6_CWD/reviews/phase-6-review"
-  if [ -d "$_P6_REVIEW_DIR" ] && ls "$_P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
+  # Only mark stale when Phase 6 was fully completed (explicit completion marker),
+  # not just when any .md exists (which happens during in-progress P6 runs).
+  _P6_DONE_MARKER="$_P6_STATE/cross-review-phase-6-done"
+  if [ -f "$_P6_DONE_MARKER" ] || \
+     { [ -f "$_P6_REVIEW_DIR/code-review.md" ] && [ -f "$_P6_REVIEW_DIR/design-review.md" ] && \
+       ls "$_P6_REVIEW_DIR"/design-note*.md >/dev/null 2>&1 && [ -f "$_P6_REVIEW_DIR/improvements.md" ]; }; then
     touch "$_P6_STATE/phase6-stale"
-    printf '%s' " Phase 6 review documents marked as stale — update code-review and design-note after verification."
+    printf '%s' " Phase 6 review documents marked as stale — update code-review, design-review, design-note, and improvements after verification."
   fi
 }
 
@@ -42,17 +47,71 @@ if [ -z "$FILE_PATH" ]; then
     printf '{"continue":true}'
     exit 0
   fi
-  # Filter read-only commands to avoid false positives (fail-closed: unknown commands are tracked)
+  # Extract first command and strip trailing & for classification.
   FIRST_CMD=$(printf '%s' "$COMMAND" | sed 's/^[[:space:]]*//' | awk '{print $1}')
   FIRST_CMD_BASE=$(basename "$FIRST_CMD" 2>/dev/null || printf '%s' "$FIRST_CMD")
-  case "$FIRST_CMD_BASE" in
-    cat|head|tail|less|more|grep|egrep|fgrep|rg|wc|file|stat|ls|find|diff|cmp|strings|hexdump|od|readlink|md5sum|sha256sum|sha1sum|cksum)
-      printf '{"continue":true}'
-      exit 0
-      ;;
+  LINT_CHECK_CMD=$(printf '%s' "$COMMAND" | sed 's/[[:space:]]*&[[:space:]]*$//')
+  # Mixed-command / write-intent check FIRST: skip all exemptions when detected.
+  # This prevents read-only/lint prefixes from masking write operations.
+  # Note: pipes (|) are NOT treated as mixed — both sides of a pipe are read-only
+  # for RTL tracking purposes. fd redirections (2>&1) are stripped before & check.
+  IS_MIXED=false
+  case "$LINT_CHECK_CMD" in
+    *"&&"*|*"||"*|*";"*) IS_MIXED=true ;;
   esac
-  # Extract RTL file paths from command
-  BASH_RTL_FILES=$(printf '%s' "$COMMAND" | grep -oE '[^ ;<>|"]+\.(sv|svh|v|vh)' 2>/dev/null | sort -u)
+  # Check for background & separately after stripping fd redirections (N>&M)
+  if [ "$IS_MIXED" = "false" ]; then
+    AMPERSAND_CHECK=$(printf '%s' "$LINT_CHECK_CMD" | sed 's/[0-9]*>&[0-9]*/  /g')
+    case "$AMPERSAND_CHECK" in
+      *"&"*) IS_MIXED=true ;;
+    esac
+  fi
+  # Output redirection to RTL files is a write even from read-only commands
+  # (e.g., cat /dev/null > rtl/top.sv). Check only when not already mixed.
+  if [ "$IS_MIXED" = "false" ]; then
+    case "$LINT_CHECK_CMD" in
+      *">"*)
+        if printf '%s' "$LINT_CHECK_CMD" | awk 'BEGIN{rc=1} />[> ]*[^ ]*\.(sv|svh|v|vh)([^a-zA-Z0-9_]|$)/{rc=0} END{exit rc}'; then
+          IS_MIXED=true
+        fi ;;
+    esac
+  fi
+  if [ "$IS_MIXED" = "false" ]; then
+    # Filter read-only commands (fail-closed: unknown commands are tracked).
+    # find excluded: find -exec/-delete can write. Only safe single-command reads here.
+    case "$FIRST_CMD_BASE" in
+      cat|head|tail|less|more|grep|egrep|fgrep|rg|wc|file|stat|ls|diff|cmp|strings|hexdump|od|readlink|md5sum|sha256sum|sha1sum|cksum)
+        printf '{"continue":true}'
+        exit 0
+        ;;
+    esac
+    # Token-aware lint-only exemption: only when first command IS a lint tool.
+    case "$FIRST_CMD_BASE" in
+      verilator)
+        case "$LINT_CHECK_CMD" in *--lint-only*)
+          printf '{"continue":true}'
+          exit 0
+        esac ;;
+      verible-verilog-lint)
+        printf '{"continue":true}'
+        exit 0
+        ;;
+      slang)
+        case "$LINT_CHECK_CMD" in *--lint-only*|*-W*)
+          printf '{"continue":true}'
+          exit 0
+        esac ;;
+    esac
+  fi
+  # Extract RTL file paths from command (POSIX-safe: awk tokenizer, no grep -oE or GNU sed)
+  BASH_RTL_FILES=$(printf '%s' "$COMMAND" | awk '{
+    gsub(/[;&<>|"'\''"]/, " ")
+    n = split($0, tokens, " ")
+    for (i = 1; i <= n; i++) {
+      t = tokens[i]
+      if (t ~ /\.(sv|svh|v|vh)$/) print t
+    }
+  }' | sort -u)
   if [ -z "$BASH_RTL_FILES" ]; then
     printf '{"continue":true}'
     exit 0

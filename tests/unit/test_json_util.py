@@ -222,12 +222,12 @@ class TestJsonuGetFilePathString:
         result = _file_string(tmp_path, {"a": {"b": {"c": "deep"}}}, "a.b.c", {})
         assert result == "deep"
 
-    def test_nested_key_sed_uses_leaf(self, tmp_path):
-        # sed fallback only uses the leaf key name ("unique_leaf")
+    def test_nested_key_sed_fails_closed(self, tmp_path):
+        # sed fallback returns empty for nested paths (fail-closed: prevents shadowed key risk)
         data = {"wrapper": {"unique_leaf": "found"}}
         result = _file_string(tmp_path, data, "wrapper.unique_leaf",
                               {"RTL_FORCE_JSON_FALLBACK": "1"})
-        assert result == "found"
+        assert result == ""
 
 
 # ── TestJsonuGetFilePathBool ──────────────────────────────────────────────────
@@ -256,11 +256,12 @@ class TestJsonuGetFilePathBool:
         result = _file_bool(tmp_path, {"team": {"active": True}}, "team.active", {})
         assert result == "true"
 
-    def test_nested_bool_sed_uses_leaf(self, tmp_path):
+    def test_nested_bool_sed_fails_closed(self, tmp_path):
+        # sed fallback returns empty for nested paths (fail-closed: prevents shadowed key risk)
         data = {"team": {"team_enabled": True}}
         result = _file_bool(tmp_path, data, "team.team_enabled",
                             {"RTL_FORCE_JSON_FALLBACK": "1"})
-        assert result == "true"
+        assert result == ""
 
 
 # ── TestJsonuGetFilePathNum ───────────────────────────────────────────────────
@@ -298,8 +299,9 @@ class TestJsonuGetFilePathNum:
         result = _file_num(tmp_path, {"phase": {"step": 3}}, "phase.step", {})
         assert result == "3"
 
-    def test_nested_num_sed_uses_leaf(self, tmp_path):
+    def test_nested_num_sed_fails_closed(self, tmp_path):
+        # sed fallback returns empty for nested paths (fail-closed: prevents shadowed key risk)
         data = {"phase": {"phase_step": 7}}
         result = _file_num(tmp_path, data, "phase.phase_step",
                            {"RTL_FORCE_JSON_FALLBACK": "1"})
-        assert result == "7"
+        assert result == ""
