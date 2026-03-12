@@ -100,7 +100,6 @@ Cross-review artifacts are phase-scoped for traceability:
 - `.rtl-agent-team/cross-review/phase-{N}/round-R.json` — Codex's structured response each round
 - `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json` — running resolution tracker
 - `.rtl-agent-team/cross-review/phase-{N}/cross-review-report.md` — final summary report
-- `.rtl-agent-team/cross-review/phase-{N}/codex-session-id.txt` — Codex session ID for resume rounds
 - `.rtl-agent-team/cross-review/phase-{N}/escalation-summary.md` — generated if user escalation needed
 
 Completion marker: `.rtl-agent-team/state/cross-review-phase-${N}-done` (e.g., `cross-review-phase-2-done`)

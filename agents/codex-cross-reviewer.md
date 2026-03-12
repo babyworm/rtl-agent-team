@@ -123,8 +123,8 @@ For the target phase N, locate:
 ```bash
 # Example: list phase artifacts
 ls docs/phase-*/ 2>/dev/null
-# Find merge-base with main/master, or use --all for shallow repos
-DIFF_BASE=$(git merge-base HEAD main 2>/dev/null || git merge-base HEAD master 2>/dev/null || git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
+# Find merge-base: local branch → remote tracking → root commit (last resort)
+DIFF_BASE=$(git merge-base HEAD main 2>/dev/null || git merge-base HEAD master 2>/dev/null || git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD origin/master 2>/dev/null || git rev-list --max-parents=0 HEAD 2>/dev/null | head -1)
 git diff --name-only ${DIFF_BASE}..HEAD -- rtl/ refc/ sim/ docs/ 2>/dev/null | head -50
 ```
 
@@ -232,15 +232,6 @@ timeout 300 codex exec \
 Choose Mode A if `TMUX_AVAILABLE=true` (from Step 0c), otherwise Mode B.
 Both modes apply a **hard 300s timeout** via the `timeout` command.
 
-After executing codex (either Mode A or Mode B), capture the session ID for potential resume:
-```bash
-# Capture Codex session ID from the output for potential resume in rebuttal rounds
-CODEX_SESSION_ID=$(codex --last-session-id 2>/dev/null || echo "")
-if [ -n "$CODEX_SESSION_ID" ]; then
-  echo "$CODEX_SESSION_ID" > .rtl-agent-team/cross-review/phase-${N}/codex-session-id.txt
-fi
-```
-
 ### 2c. Parse Results and Report Progress
 Read `.rtl-agent-team/cross-review/phase-{N}/round-1.json` and parse the structured findings.
 
@@ -334,42 +325,10 @@ For previously raised items, use resolved_items array:
 New issues go in the findings array with new IDs.
 ```
 
-**Note on resume mode:** When using `codex exec resume`, Codex retains the full conversation history from prior rounds. The prompt can be more concise — focus on what changed (fixes applied, new rebuttals) rather than repeating the full previous findings JSON. However, always include the full prompt for traceability in the prompt file, even if resume mode makes some of it redundant.
+### 4b. Execute and Parse (reuse Step 2b procedure)
 
-### 4b. Execute Round 2+ (Resume-Aware)
-
-**Determine execution mode based on Claude's response:**
-- If ANY rebuttals were made (DISAGREE path items exist) → use `codex exec resume` to preserve Codex's reasoning context during the debate
-- If ALL findings were agreed/fixed (no rebuttals) → use fresh `codex exec` for unbiased re-review of changes
-
-**Resume mode (rebuttal round):**
-```bash
-CODEX_SESSION_ID=$(cat .rtl-agent-team/cross-review/phase-${N}/codex-session-id.txt 2>/dev/null)
-if [ -n "$CODEX_SESSION_ID" ]; then
-  timeout 300 codex exec resume "$CODEX_SESSION_ID" \
-    -s read-only \
-    --output-schema .rtl-agent-team/cross-review/review-schema.json \
-    -o .rtl-agent-team/cross-review/phase-${N}/round-${R}.json \
-    "$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-${R}.txt)"
-  # Update session ID for next round
-  NEW_SESSION_ID=$(codex --last-session-id 2>/dev/null || echo "")
-  [ -n "$NEW_SESSION_ID" ] && echo "$NEW_SESSION_ID" > .rtl-agent-team/cross-review/phase-${N}/codex-session-id.txt
-else
-  # Fallback to fresh exec if session ID unavailable
-  timeout 300 codex exec \
-    -s read-only \
-    --output-schema .rtl-agent-team/cross-review/review-schema.json \
-    -o .rtl-agent-team/cross-review/phase-${N}/round-${R}.json \
-    "$(cat .rtl-agent-team/cross-review/phase-${N}/prompt-round-${R}.txt)"
-fi
-```
-
-**Fresh mode (re-review after all fixes):**
-Follow the exact same execution procedure as Step 2b (Mode A/B selection, 300s timeout, fresh `codex exec`).
-
-For tmux (Mode A), apply the same resume-aware logic inside the tmux command. For Mode B, use the bash commands above directly.
-
-Substitutions for all modes:
+Follow the **exact same execution procedure as Step 2b** (Mode A/B selection, 300s timeout,
+330s poll ceiling, Mode B fallback on tmux timeout), substituting:
 - Round number: `round-1` → `round-${R}`
 - Prompt file: `prompt-round-1.txt` → `prompt-round-${R}.txt`
 - Output file: `round-1.json` → `round-${R}.json`
