@@ -40,8 +40,8 @@ If codex is not found, STOP and report: "Codex CLI not installed. Run: npm insta
 command -v tmux >/dev/null 2>&1 && [ -n "$TMUX" ] && echo "TMUX_AVAILABLE=true" || echo "TMUX_AVAILABLE=false"
 ```
 Store result for Step 2 execution mode selection:
-- **TMUX_AVAILABLE=true**: Run codex in a split pane (user sees real-time progress)
-- **TMUX_AVAILABLE=false**: Run codex in Bash (user sees round summaries only)
+- **TMUX_AVAILABLE=true**: tmux binary found AND running inside a tmux session — run codex in a split pane (user sees real-time progress)
+- **TMUX_AVAILABLE=false**: tmux missing or not in a session — run codex in Bash (user sees round summaries only)
 
 ### 0d. Write JSON Schema for Structured Output
 Write the shared review schema (one copy, reused across phases):
@@ -295,11 +295,13 @@ Maintain `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json`:
 
 ## Step 4: Subsequent Rounds (Round 2–5)
 
+Let `R` denote the current round number (2, 3, 4, or 5). `N` remains the phase number throughout.
+
 ### 4a. Construct Follow-up Prompt
-Write to `.rtl-agent-team/cross-review/phase-{N}/prompt-round-N.txt`:
+Write to `.rtl-agent-team/cross-review/phase-{N}/prompt-round-${R}.txt`:
 
 ```text
-You are continuing a cross-review dialogue. This is round N.
+You are continuing a cross-review dialogue. This is round R.
 
 ## Previous Findings
 [Insert previous round's findings JSON]
@@ -334,16 +336,17 @@ Follow the **exact same execution procedure as Step 2b** (Mode A/B selection, 30
 - Output file: `round-1.json` → `round-${R}.json`
 - Log file: `round-1-log.txt` → `round-${R}-log.txt`
 
-After parsing, output the round progress summary (same format as Step 2c) and
+After parsing, **repeat the full Step 3 process** (AGREE/fix or DISAGREE/rebut for each finding),
+then output the round progress summary (same format as Step 2c) and
 Claude's response summary (same format as Step 3).
 
 ### 4c. Check Consensus and Report
 After each round, output consensus status:
 ```
-═══ Consensus Check (Round N) ══════════════════════════
+═══ Consensus Check (Round R) ══════════════════════════
   Resolved: X/{total} | Still disputed: Y | New: Z
   Codex verdict: {verdict}
-  → {CONSENSUS REACHED — proceeding to report | CONTINUING — N rounds remaining | ESCALATING to user}
+  → {CONSENSUS REACHED — proceeding to report | CONTINUING — (5-R) rounds remaining | ESCALATING to user}
 ═════════════════════════════════════════════════════════
 ```
 
