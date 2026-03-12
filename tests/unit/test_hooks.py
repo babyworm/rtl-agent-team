@@ -1142,10 +1142,8 @@ class TestSkillActivation:
         """rtl-agent-team skill with criteria should create state file."""
         self._setup_marker(tmp_project)
         # Create criteria config
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
@@ -1161,10 +1159,8 @@ class TestSkillActivation:
     def test_rtl_skill_no_criteria_no_state(self, tmp_project):
         """rtl-agent-team skill without criteria in config should not create state."""
         self._setup_marker(tmp_project)
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:systemverilog"}
         result = run_hook(self.HOOK, stdin)
@@ -1183,10 +1179,8 @@ class TestSkillActivation:
     def test_different_skill_state_not_overridden(self, tmp_project):
         """G6: Different skill invocation should NOT override existing state."""
         self._setup_marker(tmp_project)
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
@@ -1203,10 +1197,8 @@ class TestSkillActivation:
     def test_same_skill_reinvocation_resets_counter(self, tmp_project):
         """G6: Re-invoking the same skill should reset iteration counter."""
         self._setup_marker(tmp_project)
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
@@ -1223,10 +1215,8 @@ class TestSkillActivation:
     def test_activation_message(self, tmp_project):
         """Activation should include skill name in additionalContext."""
         self._setup_marker(tmp_project)
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
@@ -1265,10 +1255,8 @@ class TestSkillActivation:
 
     def test_parser_uses_top_level_skill_key(self, tmp_project):
         self._setup_marker(tmp_project)
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
         raw_input = json.dumps(
             {

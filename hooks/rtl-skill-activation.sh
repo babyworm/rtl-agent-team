@@ -1,7 +1,7 @@
 #!/bin/sh
 # RTL Skill Activation Hook: PreToolUse:Skill
 # Auto-creates completion state when an rtl-agent-team skill is invoked.
-# Reads completion criteria from .rtl-agent-team/skill-completion-criteria.json.
+# Reads completion criteria from skill-completion-criteria.json (plugin root).
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -65,7 +65,7 @@ esac
 
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
-CRITERIA_FILE="$PLUGIN_ROOT/.rtl-agent-team/skill-completion-criteria.json"
+CRITERIA_FILE="$PLUGIN_ROOT/skill-completion-criteria.json"
 
 # Team mode: worker sessions skip skill state management (leader only)
 TEAM_CONFIG="$STATE_DIR/team-config.json"

@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import extract_marked_block
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AGENTS_DIR = REPO_ROOT / "agents"
 SKILLS_DIR = REPO_ROOT / "skills"
@@ -29,23 +31,6 @@ def _read_frontmatter(path: Path) -> str:
     parts = content.split("---", 2)
     assert len(parts) >= 3, f"Missing YAML frontmatter: {path}"
     return parts[1]
-
-
-def _extract_marked_block(path: Path, start_marker: str, end_marker: str) -> str:
-    lines = path.read_text().splitlines()
-    in_block = False
-    out = []
-
-    for line in lines:
-        if line == start_marker:
-            in_block = True
-            continue
-        if in_block and line == end_marker:
-            return "\n".join(out).strip()
-        if in_block:
-            out.append(line)
-
-    raise AssertionError(f"Markers not found in {path}: {start_marker} ... {end_marker}")
 
 
 # ── Agent definition tests ──────────────────────────────────────────────────
@@ -530,12 +515,12 @@ class TestCrossReferences:
         assert re.search(r"P1\s*-\s*P6|P1-P6", content)
 
     def test_rtl_orchestrate_hook_export_is_synced(self):
-        skill_block = _extract_marked_block(
+        skill_block = extract_marked_block(
             RTL_ORCHESTRATE_SKILL,
             "<!-- SESSIONSTART_HOOK_EXPORT_START -->",
             "<!-- SESSIONSTART_HOOK_EXPORT_END -->",
         )
-        hook_block = _extract_marked_block(
+        hook_block = extract_marked_block(
             ORCHESTRATOR_INJECT_HOOK,
             "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh",
             "# END GENERATED ROUTING BLOCK",

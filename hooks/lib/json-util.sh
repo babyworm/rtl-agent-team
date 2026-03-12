@@ -159,8 +159,11 @@ PY
       ;;
     *)
       # Last-resort fallback when jq/python are unavailable.
+      # Two-pass approach for POSIX BRE compatibility (avoids GNU sed \| extension).
       JSONU_LEAF_KEY=${JSONU_KEY_PATH##*.}
-      sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p" "$JSONU_FILE" | head -n 1
+      _BOOL_VAL=$(sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*true.*/true/p" "$JSONU_FILE" | head -n 1)
+      [ -z "$_BOOL_VAL" ] && _BOOL_VAL=$(sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*false.*/false/p" "$JSONU_FILE" | head -n 1)
+      printf '%s' "$_BOOL_VAL"
       ;;
   esac
 }

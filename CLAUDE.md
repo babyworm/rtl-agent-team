@@ -104,7 +104,7 @@ When modifying this plugin:
 1. **Prompt injection efficiency** — Minimize always-on context (hook output), maximize on-demand loading (skills, rules, guides)
 2. **Agent specialization** — Each agent has a focused, single-responsibility role. Avoid general-purpose agents
 3. **Hook enforcement** — Quality gates MUST be enforced by hooks (Stop/PreToolUse/PostToolUse), never by LLM instruction compliance alone
-4. **Skill completion criteria** — Every action skill must define criteria in `.rtl-agent-team/skill-completion-criteria.json`
+4. **Skill completion criteria** — Action skills with completion enforcement must be listed in `skill-completion-criteria.json` (plugin root)
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
 6. **Non-destructive deployment** — `rat-setup` deploys rules/guides only if files don't already exist
 7. **POSIX shell compatibility** — Hook scripts (`hooks/*.sh`) are invoked with `sh`, not `bash`. Use `[` not `[[`. Scripts in `scripts/` may use `bash` when specified via shebang
@@ -125,6 +125,10 @@ rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
 ├── agents/                              # 87 specialized agent definitions (.md)
+│   └── lib/                             #   Shared agent protocols (team-worker-preamble.md,
+│                                        #     team-worker-protocol.md, team-fallback.md,
+│                                        #     domain-expert-discovery-protocol.md,
+│                                        #     audit-output-protocol.md)
 ├── skills/                              # 88 skills: 50 action entry-points + 28 policies + 4 tool profiles + 4 conventions + 2 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-setup/templates/             #   Rules + guides deployed to user projects
@@ -142,13 +146,24 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
 │   ├── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
+│   ├── rtl-audit-init.sh                #   PostToolUse:TaskCreate: audit session initialization
+│   ├── rtl-audit-subagent.sh            #   PostToolUse:Task: per-subagent audit capture
+│   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:TaskCreate: audit spawn completion
 │   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest (experimental)
-│   └── rtl-team-progress.sh            #   PostToolUse:TaskUpdate: team progress tracking
-├── domain-packages/video-codec/         # H.264/H.265 domain knowledge
+│   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
+│   └── lib/                             #   8 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
+│                                        #     hook-output-util.sh, spawn-context-util.sh,
+│                                        #     team-gate-util.sh, audit-util.sh, artifact-map.sh)
+├── domain-packages/
+│   ├── video-codec/                     #   H.264/H.265 domain knowledge
+│   └── video-processing/                #   Video processing domain knowledge
 ├── docker/Dockerfile                    # EDA environment container
 ├── plugins/systemverilog-lsp/           # SV LSP sub-plugin
 ├── tests/                               # Unit + integration test suite
-├── scripts/post-install.sh              # One-time EDA environment check
+├── scripts/                             # Utility scripts
+│   ├── post-install.sh                  #   One-time EDA environment check
+│   ├── sync_orchestrator_inject.sh      #   Regenerate condensed routing block in hook
+│   └── ...                              #   (other helper scripts)
 └── .rtl-agent-team/                     # Runtime state (gitignored, created per-project)
 ```
 

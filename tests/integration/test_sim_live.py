@@ -148,11 +148,6 @@ module clean (
     else        o_data <= i_data;
 endmodule
 """)
-        from tests.conftest import run_script as rs
-        result = rs(
-            Path("/usr/bin/env"), "verilator", "--lint-only", "-Wall", str(sv),
-        )
-        # verilator might not exist as /usr/bin/env script, use subprocess directly
         import subprocess
         result = subprocess.run(
             ["verilator", "--lint-only", "-Wall", str(sv)],

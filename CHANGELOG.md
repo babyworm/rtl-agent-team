@@ -7,6 +7,22 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Fixed
+- Fixed codex cross-reviewer: mkdir safety, shell-safe tmux expansion via `$PROMPT_FILE`, merge-base diff range, and session resume logic.
+- Reverted codex session resume (CLI flags incompatible); improved merge-base fallback chain (local → origin → root commit).
+- Fixed codex cross-reviewer consistency: N/R variable scoping, round-loop context, Step 3 repetition wording, Mode A tmux requirement.
+- Fixed DRY hook violations, pipe-subshell bug, and race condition found in quality review.
+
+### Added
+- Added `test_json_util.py` (50 tests): direct unit tests for all `json-util.sh` parser functions across default and sed-fallback modes.
+- Added behavioral tests for `rtl-project-init-advisor.sh`.
+
+### Changed
+- Deduplicated codex cross-reviewer Step 4b: replaced duplicated execution block with explicit reference to Step 2b procedure.
+- Removed dead current-phase fallback from codex cross-reviewer agent.
+- Wired 4 tool-profile skills to matching specialist agents.
+- Updated CLAUDE.md: added 3 audit hooks to enforcement table, clarified POSIX sh scope, documented intentional design decisions.
+
 ## [0.6.11] - 2026-03-11
 
 ### Added

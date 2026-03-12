@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import REPO_ROOT
+from tests.conftest import REPO_ROOT, extract_marked_block
 
 HOOKS_JSON = REPO_ROOT / "hooks" / "hooks.json"
 PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
@@ -41,22 +41,6 @@ SV_LSP_INSTALL_SCRIPT = REPO_ROOT / "plugins" / "systemverilog-lsp" / "scripts" 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
 SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
 
-
-def _extract_block(path: Path, start_marker: str, end_marker: str) -> str:
-    lines = path.read_text().splitlines()
-    in_block = False
-    out = []
-
-    for line in lines:
-        if line == start_marker:
-            in_block = True
-            continue
-        if in_block and line == end_marker:
-            return "\n".join(out)
-        if in_block:
-            out.append(line)
-
-    raise AssertionError(f"Markers not found in {path}: {start_marker} ... {end_marker}")
 
 
 def _skill_user_invocable(skill_name: str) -> bool:
@@ -332,7 +316,7 @@ class TestSessionStartRoutingBlockContract:
 
     @pytest.fixture
     def generated_block(self):
-        block = _extract_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
+        block = extract_marked_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
         assert block.strip(), "Generated SessionStart block must not be empty"
         return block
 

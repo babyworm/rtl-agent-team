@@ -197,6 +197,26 @@ def rd_results_sample(tmp_path):
     return path
 
 
+# ── Shared text extraction helper ────────────────────────────────────────────
+
+def extract_marked_block(path: Path, start_marker: str, end_marker: str) -> str:
+    """Extract lines between start_marker and end_marker (exclusive) from path."""
+    lines = path.read_text().splitlines()
+    in_block = False
+    out = []
+
+    for line in lines:
+        if line == start_marker:
+            in_block = True
+            continue
+        if in_block and line == end_marker:
+            return "\n".join(out).strip()
+        if in_block:
+            out.append(line)
+
+    raise AssertionError(f"Markers not found in {path}: {start_marker} ... {end_marker}")
+
+
 # ── Helper to run shell scripts ───────────────────────────────────────────────
 
 def run_script(script_path, *args, stdin_data=None, env=None, cwd=None, timeout=30):

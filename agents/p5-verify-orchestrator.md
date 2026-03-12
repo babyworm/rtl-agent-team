@@ -333,7 +333,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Generate compressed Phase 5 summary. Read all Phase 5 artifacts. Write docs/phase-5-verify/phase-5-summary.md (max 200 lines). Include: verification results per module, coverage metrics, performance vs spec, synthesis estimates, outstanding issues.")
 ```
 
-### Codex Cross-Review (MANDATORY — after Stage 3 final compliance)
+## Stage 4: Codex Cross-Review (MANDATORY — after Stage 3 final compliance)
 
 Invoke Codex CLI as independent 2nd reviewer after final compliance verdict.
 

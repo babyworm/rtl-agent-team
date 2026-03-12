@@ -281,7 +281,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 Verify ALL criteria per policy skill checklist.
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
-### Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
+## Wave 11: Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
 
 Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
 fixes, and rebuttals until consensus (max 5 rounds, then user escalation).

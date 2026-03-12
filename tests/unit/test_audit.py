@@ -10,7 +10,6 @@ Validates:
 
 import json
 import os
-import time
 from pathlib import Path
 
 import pytest
@@ -175,13 +174,13 @@ jsonu_detect_parser
     def test_prune_removes_old_sessions(self, tmp_project):
         audit_dir = tmp_project / ".rtl-agent-team" / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
-        # Create 12 session dirs
+        # Create 12 session dirs with deterministic mtimes
+        base_time = 1000000000  # fixed epoch
         for i in range(12):
             d = audit_dir / f"session-{i:03d}"
             d.mkdir()
             (d / "trace.jsonl").write_text(f'{{"seq":{i}}}\n')
-            # Stagger mtime slightly
-            time.sleep(0.05)
+            os.utime(str(d), (base_time + i * 10, base_time + i * 10))
 
         self._source_and_run(
             tmp_project,
@@ -414,10 +413,8 @@ class TestSkillActivationTrace:
     def test_skill_invoke_logged_when_criteria_present(self, tmp_project):
         self._setup(tmp_project)
         # Create criteria file
-        criteria_dir = tmp_project / ".rtl-agent-team"
-        criteria_dir.mkdir(parents=True, exist_ok=True)
         criteria = {"arch-review": "review_report_complete"}
-        (criteria_dir / "skill-completion-criteria.json").write_text(
+        (tmp_project / "skill-completion-criteria.json").write_text(
             json.dumps(criteria)
         )
 

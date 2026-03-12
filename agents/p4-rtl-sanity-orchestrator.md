@@ -95,7 +95,7 @@ FAIL path:
 - Suggest next action (`rtl-p4s-bugfix` or focused recode loop).
 - Persist terminal verdict in `.rtl-agent-team/state/p4-state.json`.
 
-### Step 4: Codex Cross-Review (MANDATORY — after gate PASS)
+## Step 4: Codex Cross-Review (MANDATORY — after gate PASS)
 
 Invoke Codex CLI as independent 2nd reviewer on PASS verdict only.
 
