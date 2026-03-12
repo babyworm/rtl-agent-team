@@ -260,6 +260,41 @@ Read("reviews/phase-1-research/research-review-r2.md")
 # Check for accept/reject entries — if absent, re-invoke review coordinator to produce rebuttal
 ```
 
+## Step 7.5: Ambiguity Gate
+
+After self-verification, assess overall specification ambiguity:
+
+```
+# 1. Review spec-analyst output for Ambiguity_Assessment section
+Read("docs/phase-1-research/requirements.json")
+# Check if spec-analyst included Ambiguity_Assessment in its output
+
+# 2. If no assessment exists, instruct spec-analyst to generate one
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     prompt="Generate Ambiguity_Assessment for the current requirements. Score on 3 axes:
+     Goal Ambiguity (40%), Constraint Ambiguity (30%), AC Ambiguity (30%).
+     Each axis: 0.0=fully clear, 1.0=fully ambiguous.
+     Compute ambiguity_score = weighted_average(axes).
+     Save assessment to docs/phase-1-research/ambiguity-assessment.md using Write tool.")
+
+# 3. Gate criteria
+Read("docs/phase-1-research/ambiguity-assessment.md")
+# - ambiguity_score ≤ 0.3 → PASS (proceed to Step 8)
+# - ambiguity_score 0.3–0.5 → CONDITIONAL PASS (log warnings, proceed with caution flag)
+# - ambiguity_score > 0.5 → FAIL (use AskUserQuestion to resolve top-3 ambiguous items, then re-score)
+
+# 4. On FAIL: resolve ambiguities via user interaction
+# AskUserQuestion("Specification ambiguity score is {score} (threshold: 0.3).
+#   Top ambiguous items requiring clarification:
+#   1. {item_1}
+#   2. {item_2}
+#   3. {item_3}
+#   Please clarify these items so we can proceed.")
+# After user response: re-run spec-analyst Ambiguity_Assessment, re-check gate
+```
+
+Gate decision is recorded in `docs/phase-1-research/ambiguity-assessment.md`.
+
 ## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)
 
 Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,

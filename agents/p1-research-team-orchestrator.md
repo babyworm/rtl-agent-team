@@ -241,9 +241,30 @@ This happens at:
 - T5: Candidate selection from comparison matrix
 - Review rounds: If chief review escalates unresolved issues
 
+## Step 3.5: Ambiguity Gate
+
+After T12 completes, before the Phase 1 Gate:
+
+```python
+# 1. Check if spec-analyst included Ambiguity_Assessment in its output
+# 2. If no assessment exists, create task to generate one
+t_ambiguity = TaskCreate(subject="Ambiguity assessment",
+                         description="Generate Ambiguity_Assessment for the current requirements. Score on 3 axes:
+                         Goal Ambiguity (40%), Constraint Ambiguity (30%), AC Ambiguity (30%).
+                         Each axis: 0.0=fully clear, 1.0=fully ambiguous.
+                         Compute ambiguity_score = weighted_average(axes).
+                         Save to docs/phase-1-research/ambiguity-assessment.md using Write tool.")
+TaskUpdate(taskId=t_ambiguity, addBlockedBy=[t12])
+
+# 3. Gate criteria:
+#    - ambiguity_score ≤ 0.3 → PASS
+#    - ambiguity_score 0.3–0.5 → CONDITIONAL PASS (log warnings)
+#    - ambiguity_score > 0.5 → FAIL (AskUserQuestion to resolve top-3 ambiguous items, then re-score)
+```
+
 ## Step 4: Phase 1 Gate
 
-After T12 (final verification + artifacts) completes:
+After T12 (final verification + artifacts) AND ambiguity gate completes:
 1. Verify `docs/phase-1-research/requirements.json` exists and is valid JSON
 2. Verify `docs/phase-1-research/io_definition.json` exists with i_/o_/io_ port prefixes
 3. Verify `docs/phase-1-research/timing_constraints.json` exists with per-block timing targets
@@ -254,7 +275,8 @@ After T12 (final verification + artifacts) completes:
 8. Verify `docs/phase-1-research/solution-tree.json` exists
 9. Verify `reviews/phase-1-research/research-review.md` exists (consolidated)
 10. Count spec features vs REQ items — flag suspected omissions
-11. **Per-round artifacts** (enforces 3-round review protocol per p1-spec-research-policy):
+11. Verify `docs/phase-1-research/ambiguity-assessment.md` exists with ambiguity_score ≤ 0.5
+12. **Per-round artifacts** (enforces 3-round review protocol per p1-spec-research-policy):
    - `reviews/phase-1-research/research-review-r1.md` — Round 1 findings with [severity] tags
    - `reviews/phase-1-research/research-review-r2.md` — Round 2 rebuttal + convergence assessment
    - `reviews/phase-1-research/research-review-r3.md` — Round 3 mandatory final quality pass

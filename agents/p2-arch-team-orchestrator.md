@@ -1,7 +1,7 @@
 ---
 name: p2-arch-team-orchestrator
 model: opus
-description: "Phase 2 architecture team coordination teammate. Coordinates dual-stream architecture design + C reference model development, 3-round iterative review with tree exploration for issues via TaskCreate/TaskList/TaskUpdate/SendMessage."
+description: "Phase 2 architecture team coordination teammate. Coordinates dual-stream architecture design + C reference model development, dynamic convergence-based iterative review with wonder tracking via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [p2-arch-design-policy]
 ---
 
@@ -140,38 +140,66 @@ Determine whether to activate ref-model-reviewer tasks by checking:
   2. ref-model-reviewer evaluates: algorithm fidelity, numerical precision, undefined behavior/build warning risk
 - If ref model is unchanged: skip T6d/T10d/T12d tasks entirely
 
-## Step 3: Monitor Loop + Dynamic Task Creation
+## Step 3: Monitor Loop + Dynamic Task Creation (Dynamic Convergence)
+
+### Dynamic Round Creation
+
+Instead of pre-creating fixed R1/R2/R3 tasks, use convergence-based loop:
+
+**Parameters**: min_rounds=2, max_rounds=5
+
+1. Create Round 1 tasks (always)
+2. After Round 1 completion + wonder step, evaluate convergence criteria
+3. If not converged AND round < max_rounds: create Round N+1 tasks
+4. If converged OR round >= max_rounds: proceed to artifact finalization
+
+Use SendMessage to notify workers: "Round {N} complete. Convergence: {status}. {Next action}."
+
+### Convergence Criteria
+
+After each round >= min_rounds, check:
+- `finding_delta < 0.1`: < 10% new findings compared to previous round
+- `all_critical_resolved`: All Critical/High findings addressed
+- `wonder_stability`: No new High-risk assumptions in wonder log
+All three must be true for convergence.
 
 ```python
-while not all_tasks_complete:
+round_num = 0
+converged = False
+
+while not converged and round_num < max_rounds:
+    round_num += 1
     task_list = TaskList()
 
     # === After T2 (selection): create T3 + T4 parallel streams ===
     # T3: arch-design writes architecture.md (via scratch directory)
     # T4: refmodel writes refc/ code directly
 
-    # === After T5 (bandwidth integration): create review rounds ===
-    # T6a-c: 3 parallel reviewers for Round 1
-    # T7: aggregation
+    # === After T5 (bandwidth integration): create review round N ===
+    # Create reviewer tasks for current round (T6a-c pattern)
+    # Create aggregation task (T7 pattern)
 
-    # === After T7 (R1 aggregate): rebuttal + dynamic tree exploration ===
-    # T7b: arch-designer rebuts each R1 finding (accept/reject with rationale)
-    # t7b = TaskCreate(subject="T7b: Rebuttal R1",
-    #                  description="Accept or reject each R1 finding with rationale. Save rebuttal section to reviews/phase-2-architecture/architecture-review-r1.md.")
-    # TaskUpdate(taskId=t7b, addBlockedBy=[t7])
-    # For each ACCEPTED issue, spawn exploration task:
-    # t8_N = TaskCreate(subject=f"T8{N}: Explore resolution for {issue}",
-    #                   description=f"Evaluate 2-3 alternative resolutions for: {issue_details}")
-    # TaskUpdate(taskId=t8_N, addBlockedBy=[t7b])
+    # === After aggregation: Wonder Step ===
+    # TaskCreate: "Wonder — Round {round_num}: Identify unvalidated assumptions about
+    #   bandwidth, interface protocols, timing. Record in wonder-log.md"
 
-    # === T9: apply best resolutions (arch-designer) ===
-    # === T10a-c, T11: Review R2 (same pattern as R1) ===
-    # === After T11 (R2 aggregate): T11b rebuttal (same pattern as T7b) ===
-    # === T12a-c (blockedBy: T11b), T13: Review R3 (MANDATORY) ===
+    # === After aggregation: rebuttal + dynamic tree exploration ===
+    # Rebuttal: arch-designer accepts/rejects each finding with rationale
+    # For each ACCEPTED issue, spawn exploration task
+    # Apply best resolutions
+
+    # === Convergence check (if round_num >= min_rounds) ===
+    # Count new findings vs previous round
+    # Check critical resolution status
+    # Check wonder log stability
+    # if all criteria met: converged = True
 
     # === Write-restricted agent handling ===
     # Check .rtl-agent-team/scratch/phase-2/ for completed scratch files
     # Copy to final location
+
+# If not converged after max_rounds: escalate to user via AskUserQuestion
+# SendMessage to leader: "Review complete. Rounds: {round_num}. Converged: {converged}."
 ```
 
 ### Write-Restricted Agent Handling
@@ -202,12 +230,13 @@ After T13 (final consolidation) completes:
 4. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
 5. Verify `refc/` has compilable C reference model
 6. Generate `docs/phase-2-architecture/phase-2-summary.md`
-7. **Per-round artifacts** (enforces 3-round review protocol per p2-arch-design-policy):
+7. **Per-round artifacts** (enforces dynamic convergence review protocol per p2-arch-design-policy):
    - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
    - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal
-   - `reviews/phase-2-architecture/architecture-review-r3.md` — Round 3 mandatory final pass
-   FAIL if any missing.
-8. **Rebuttal evidence** in R1 and R2: verify each round artifact contains a rebuttal section
+   - Additional round artifacts if convergence required more rounds (up to r5)
+   FAIL if fewer than 2 round artifacts exist.
+8. `docs/phase-2-architecture/wonder-log.md` exists with all High-risk assumptions resolved
+9. **Rebuttal evidence** in each round: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 
 On PASS: generate ADRs:

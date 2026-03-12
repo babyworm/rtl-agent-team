@@ -1,7 +1,7 @@
 ---
 name: p3-uarch-team-orchestrator
 model: opus
-description: "Phase 3 uArch design team coordination teammate. Coordinates dual-stream uArch design + BFM development, BFM validation gate, and 5-reviewer 3-round iterative review via TaskCreate/TaskList/TaskUpdate/SendMessage."
+description: "Phase 3 uArch design team coordination teammate. Coordinates dual-stream uArch design + BFM development, BFM validation gate, wonder tracking, dynamic convergence-based review, and upstream feedback report via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [rtl-p3-uarch-policy]
 ---
 
@@ -45,11 +45,13 @@ T4c: Review R1 — algorithm consistency (vcodec-architecture-expert, blockedBy:
 T4d: Review R1 — model consistency (ref-model-dev, blockedBy: T3)
 T4e: Review R1 — BFM correctness (bfm-dev, blockedBy: T3)
 T5:  Aggregate R1 (rtl-architect, blockedBy: ALL T4*)
-T6:  Revision (DYNAMIC — created only if T5 finds issues, blockedBy: T5)
-T7a-e: Review R2 (selective — only reviewers with findings, blockedBy: T6 or T5)
+T5w: Wonder — R1 (after T5, identify unvalidated assumptions, blockedBy: T5)
+T6:  Revision (DYNAMIC — created only if T5 finds issues, blockedBy: T5w)
+T7a-e: Review R2 (selective — only reviewers with findings, blockedBy: T6 or T5w)
 T8:  Aggregate R2 (rtl-architect, blockedBy: ALL T7*)
-T9a-e: Review R3 (MANDATORY — all 5 reviewers, blockedBy: T8)
-T10: Final consolidation + pipeline diagram (rtl-architect, blockedBy: ALL T9*)
+T8w: Wonder — R2 (after T8, compare R1 vs R2 assumptions, blockedBy: T8)
+T9+: Review RN (DYNAMIC — convergence-based, min 2 rounds, max 5)
+T_final: Final consolidation + pipeline diagram + feedback report (blockedBy: last review round)
 ```
 
 # Workflow
@@ -160,42 +162,113 @@ t5 = TaskCreate(subject="T5: Aggregate R1 findings",
 TaskUpdate(taskId=t5, addBlockedBy=t5_deps)
 ```
 
-R2 and R3 review tasks created dynamically in Step 3.
+Wonder and subsequent review tasks created dynamically in Step 3.
 
-## Step 3: Monitor Loop + Dynamic Task Creation
+#### T5w: Wonder — Round 1 (after T5 review aggregation)
+
+After Round 1 review results are collected:
+```python
+t5w = TaskCreate(subject="T5w: Wonder — Round 1",
+                 description="Analyze Round 1 findings and identify unvalidated assumptions about:
+                 (a) Pipeline throughput calculations
+                 (b) Clock domain crossing assumptions
+                 (c) Protocol timing margin assumptions
+                 Record in docs/phase-3-uarch/wonder-log.md
+                 Format: | Round | Assumption | Domain | Risk(H/M/L) | Resolution |")
+TaskUpdate(taskId=t5w, addBlockedBy=[t5])
+```
+
+#### T8w: Wonder — Round 2 (after T8 review aggregation)
+
+After Round 2 review results are collected:
+```python
+t8w = TaskCreate(subject="T8w: Wonder — Round 2",
+                 description="Compare Round 1 vs Round 2 wonder logs. Identify:
+                 (a) Which assumptions were resolved?
+                 (b) What new assumptions emerged?
+                 (c) Are any assumptions oscillating (flagged → resolved → re-flagged)?
+                 Update docs/phase-3-uarch/wonder-log.md")
+TaskUpdate(taskId=t8w, addBlockedBy=[t8])
+```
+
+## Step 3: Monitor Loop + Dynamic Task Creation (Dynamic Convergence)
+
+### Dynamic Round Creation
+
+Instead of pre-creating fixed R1/R2/R3 tasks, use convergence-based loop:
+
+**Parameters**: min_rounds=2, max_rounds=5
+
+1. Create Round 1 tasks (always)
+2. After Round 1 completion + Wonder step (T5w), evaluate convergence criteria
+3. If not converged AND round < max_rounds: create Round N+1 tasks
+4. If converged OR round >= max_rounds: proceed to artifact finalization + feedback report
+
+Use SendMessage to notify workers: "Round {N} complete. Convergence: {status}. {Next action}."
+
+### Convergence Criteria
+
+After each round >= min_rounds, check:
+- `finding_delta < 0.1`: < 10% new findings compared to previous round
+- `all_critical_resolved`: All Critical/High findings addressed
+- `wonder_stability`: No new High-risk assumptions in wonder log
+All three must be true for convergence.
 
 ```python
-while not all_tasks_complete:
+round_num = 0
+converged = False
+
+while not converged and round_num < max_rounds:
+    round_num += 1
     task_list = TaskList()
 
     # === T3 (BFM validation gate): Leader validates directly ===
     # Check BFM compiles, sim results, I/O logs exist
     # If fail: create fix tasks for uarch-design and/or bfm-worker
 
-    # === After T5 (R1 aggregate): rebuttal + revision + R2 ===
-    # Rebuttal R1: uarch-designer evaluates each finding (accept/reject with rationale)
-    #   t5r = TaskCreate(subject="T5r: Rebuttal R1", description="For each finding in
-    #     uarch-review-r1.md, accept or reject with rationale. Accepted → tree exploration.
-    #     Rejected → record justification. Update uarch-review-r1.md with rebuttal section.")
-    #   TaskUpdate(taskId=t5r, addBlockedBy=[t5])
+    # === Round N review tasks ===
+    # Create reviewer tasks (T4a-e pattern for R1, T7a-e for R2, etc.)
+    # Create aggregation task
+    # Create Wonder task (T5w/T8w pattern)
+
+    # === After aggregation + wonder: rebuttal + revision ===
+    # Rebuttal: uarch-designer evaluates each finding (accept/reject with rationale)
     # Tree exploration for accepted issues → resolution alternatives
-    # If findings exist after rebuttal:
-    #   t6 = TaskCreate(subject="T6: Revision R1", description="Apply accepted R1 fixes...")
-    #   TaskUpdate(taskId=t6, addBlockedBy=[t5r])
-    # Create T7a-e (R2) blocked by T6 (or T5r if no revision needed)
-    # Only create review tasks for reviewers that had findings (selective)
+    # If findings exist after rebuttal: create revision task
+    # Only create review tasks for reviewers that had findings (selective in R2+)
 
-    # === After T8 (R2 aggregate): rebuttal R2 + revision + R3 ===
-    # Rebuttal R2: same pattern as R1 — accept/reject with rationale
-    #   Update uarch-review-r2.md with rebuttal section
-
-    # === After R2 rebuttal: create R3 (MANDATORY) ===
-    # T9a-e: All 5 reviewers (or 4 if no domain expert), blocked by R2 rebuttal/revision
-    # T10: Final consolidation, blocked by ALL T9*
+    # === Convergence check (if round_num >= min_rounds) ===
+    # Count new findings vs previous round → finding_delta
+    # Check critical resolution status → all_critical_resolved
+    # Check wonder log stability → wonder_stability
+    # if all criteria met: converged = True
 
     # === Write-restricted agent handling ===
     # Check .rtl-agent-team/scratch/phase-3/ for completed scratch files
     # Copy to final location
+
+# If not converged after max_rounds: escalate to user via AskUserQuestion
+# SendMessage to leader: "Review complete. Rounds: {round_num}. Converged: {converged}."
+```
+
+### Feedback Report Generation (after final review round)
+
+Before declaring Phase 3 complete:
+
+```python
+t_feedback = TaskCreate(subject="T_feedback: Upstream feedback report",
+                        description="Review all round findings and identify any that indicate
+                        Phase 1 requirement gaps or Phase 2 architecture assumptions that proved wrong.
+                        Aggregate into docs/phase-3-uarch/upstream-feedback-report.md:
+                        ## P1 Requirement Gaps
+                        - [REQ-ID]: [description of gap] — [reviewer who identified]
+                        ## P2 Architecture Assumptions Invalidated
+                        - [assumption]: [why invalid] — [evidence from P3 analysis]
+                        ## Recommended Actions
+                        - MODIFY REQ-XXX: [reason]
+                        - ADD REQ-XXX: [new requirement description]
+                        This report feeds into spec-to-uarch-orchestrator Step 4.5.")
+TaskUpdate(taskId=t_feedback, addBlockedBy=[last_review_aggregate])
 ```
 
 ### Write-Restricted Agent Handling
@@ -260,14 +333,16 @@ After T10 (final consolidation) completes, verify all gate items:
 3. Verify `docs/phase-3-uarch/clock-domain-map.md` exists
 4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
 5. Verify pipeline diagram exists
-6. Per-round artifacts (enforces 3-round review protocol):
+6. Per-round artifacts (enforces dynamic convergence review protocol):
    - `reviews/phase-3-uarch/uarch-review-r1.md` — Round 1 findings + rebuttal
    - `reviews/phase-3-uarch/uarch-review-r2.md` — Round 2 findings + rebuttal
-   - `reviews/phase-3-uarch/uarch-review-r3.md` — Round 3 mandatory final pass
-   FAIL if any missing.
-7. Rebuttal evidence in R1 and R2: verify each round artifact contains a rebuttal section
+   - Additional round artifacts if convergence required more rounds (up to r5)
+   FAIL if fewer than 2 round artifacts exist.
+7. `docs/phase-3-uarch/wonder-log.md` exists with all High-risk assumptions resolved
+8. `docs/phase-3-uarch/upstream-feedback-report.md` generated
+9. Rebuttal evidence in each round: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
-8. Generate `docs/phase-3-uarch/phase-3-summary.md`
+10. Generate `docs/phase-3-uarch/phase-3-summary.md`
 
 On PASS: generate ADRs:
 ```

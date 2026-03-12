@@ -1,7 +1,7 @@
 ---
 name: p3-uarch-orchestrator
 model: opus
-description: "Phase 3 μArch design pipeline orchestrator. Manages parallel uarch design + BFM development, BFM validation gate, 5-reviewer 3-round iterative review, domain consultation for design patterns, and artifact finalization with clock domain map, protocol assignments, and pipeline diagrams."
+description: "Phase 3 μArch design pipeline orchestrator. Manages parallel uarch design + BFM development, BFM validation gate, dynamic convergence-based review with wonder tracking, upstream feedback report, domain consultation for design patterns, and artifact finalization with clock domain map, protocol assignments, and pipeline diagrams."
 skills: [rtl-p3-uarch-policy]
 ---
 
@@ -172,7 +172,21 @@ If no logs at all: FAIL + "BFM logs required for Phase 4 unit test generation. R
 
 If BFM fails: iterate uarch-designer ↔ bfm-dev (max 2 iterations before escalation to user via AskUserQuestion).
 
-## Step 5: 3-Round Iterative Review (5 parallel reviewers)
+## Step 5: Iterative Review with Dynamic Convergence (5 parallel reviewers)
+
+### Review Round Structure (Dynamic Convergence)
+
+Review rounds use convergence-based loop instead of fixed 3 rounds:
+
+**Parameters**: min_rounds=2, max_rounds=5
+
+**Round N completion → convergence check**:
+1. `finding_delta`: Round N new findings / Round N-1 total findings (< 0.1 = stable)
+2. `all_critical_resolved`: All Critical/High severity findings resolved?
+3. `wonder_stability`: No new High-risk assumptions in Wonder log?
+
+**Convergence condition** (ALL must be true, checked after round >= min_rounds):
+- finding_delta < 0.1, all_critical_resolved = true, wonder_stability = true
 
 ```
 # Round 1: 5 parallel reviewers
@@ -212,18 +226,47 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
 # Select best resolution per issue → uarch-designer applies → bfm-dev re-validates if needed
 
 # Targeted revision: only experts/modules with findings
-# Round 2: same pattern → save to uarch-review-r2.md
-# Rebuttal Round 2: uarch-designer accept/reject each finding with rationale
-#   → update uarch-review-r2.md with rebuttal section
+
+# Wonder Step (after each round aggregation):
+# Ask: "What assumptions are we making that we haven't validated?"
+# Probe: pipeline throughput, clock domain crossing, protocol timing margins
+# Record in docs/phase-3-uarch/wonder-log.md
+# Format: | Round | Assumption | Domain | Risk(H/M/L) | Resolution |
+# Wonder stability feeds into convergence check
+
+# Round 2+: same pattern → save to uarch-review-rN.md
+# Rebuttal Round N: uarch-designer accept/reject each finding with rationale
+#   → update uarch-review-rN.md with rebuttal section
 #   → tree exploration for accepted findings → uarch-designer applies resolutions
-# Round 3 (mandatory): cross-module interfaces, clock domain map, memory conflicts,
-#   model consistency matrix, BFM final pass, μArch code review
+# Convergence check after round >= min_rounds (2):
+#   finding_delta < 0.1, all critical resolved, wonder stable → converged
+# Last round (converged or max): cross-module interfaces, clock domain map,
+#   memory conflicts, model consistency matrix, BFM final pass, μArch code review
 # Conditional reviewers (invoke when trigger still active):
 #   - clock-architect: clocking or CDC feasibility remains unresolved
 #   - rtl-planner: dependency/scheduling risk still blocking closure
-#   → save to uarch-review-r3.md
-# If not converged → escalate to user via AskUserQuestion
+# If round >= max_rounds and not converged → escalate to user via AskUserQuestion
 # On boundary violation → escalate to Phase 2 (p2-arch-design)
+```
+
+### Feedback Report Generation (after final review round)
+
+Before declaring Phase 3 complete:
+
+```
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Review all round findings and identify any that indicate Phase 1 requirement gaps
+     or Phase 2 architecture assumptions that proved wrong. Generate:
+     docs/phase-3-uarch/upstream-feedback-report.md with sections:
+     ## P1 Requirement Gaps
+     - [REQ-ID]: [description of gap] — [reviewer who identified]
+     ## P2 Architecture Assumptions Invalidated
+     - [assumption]: [why invalid] — [evidence from P3 analysis]
+     ## Recommended Actions
+     - MODIFY REQ-XXX: [reason]
+     - ADD REQ-XXX: [new requirement description]
+     - DROP REQ-XXX: [infeasibility reason]
+     This report feeds into spec-to-uarch-orchestrator Step 4.5.")
 ```
 
 ## Step 6: Phase 3 Gate (MANDATORY — matches team orchestrator)
@@ -235,14 +278,16 @@ After Step 5 review completes, verify all gate items:
 4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
 5. Verify `docs/phase-3-uarch/req-uarch-traceability.md` exists with 100% REQ coverage (every REQ-NNN in requirements.json mapped to at least one uArch section)
 6. Verify pipeline diagram exists
-7. Per-round artifacts (enforces 3-round review protocol):
+7. Per-round artifacts (enforces dynamic convergence review protocol):
    - `reviews/phase-3-uarch/uarch-review-r1.md` — Round 1 findings + rebuttal
    - `reviews/phase-3-uarch/uarch-review-r2.md` — Round 2 findings + rebuttal
-   - `reviews/phase-3-uarch/uarch-review-r3.md` — Round 3 mandatory final pass
-   FAIL if any missing.
-8. Rebuttal evidence in R1 and R2: verify each round artifact contains a rebuttal section
+   - Additional round artifacts if convergence required more rounds (up to r5)
+   FAIL if fewer than 2 round artifacts exist.
+8. `docs/phase-3-uarch/wonder-log.md` exists with all High-risk assumptions resolved
+9. `docs/phase-3-uarch/upstream-feedback-report.md` generated
+10. Rebuttal evidence in each round: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
-9. Generate `docs/phase-3-uarch/phase-3-summary.md`
+11. Generate `docs/phase-3-uarch/phase-3-summary.md`
 
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",

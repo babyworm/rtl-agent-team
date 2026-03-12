@@ -16,9 +16,9 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 - Achievable throughput at target frequency (pixels/cycle, blocks/cycle)
 - Implementation risk (tool support, verification complexity, proven vs novel)
 
-## Architecture Review Criteria (3-Round Protocol)
+## Architecture Review Criteria (Dynamic Convergence Protocol)
 
-3-round mandatory, coordinated by rtl-architect:
+Dynamic convergence review (min 2, max 5 rounds), coordinated by rtl-architect:
 - **3 mandatory parallel reviewers each round**:
   (a) rtl-architect: spec compliance (Feature Coverage Checklist) + structural review
   (b) vcodec-architecture-expert: memory access patterns, performance analysis
@@ -29,9 +29,10 @@ For each functional area's candidates from P1's domain-analysis.md, evaluate:
 - **ref-model-reviewer activation threshold**: Invoke when ref model is newly created OR
   >30% of source lines changed from prior version. Both sequential and team orchestrators
   use this same threshold. Skip review tasks when ref model is unchanged.
-- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for issues → targeted revision (rejections recorded in per-round artifact)
-- Round 3 mandatory even if converged: cross-block interface audit + memory conflict analysis
-- After 3 rounds if not converged → escalate to user via AskUserQuestion
+- Each round: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for issues → targeted revision (rejections recorded in per-round artifact)
+- Last round (converged or max reached): cross-block interface audit + memory conflict analysis
+- Convergence check after round >= min_rounds: finding_delta < 0.1, all critical resolved, wonder stable
+- After max_rounds if not converged → escalate to user via AskUserQuestion
 
 ## Architecture Naming Conventions
 
@@ -65,9 +66,37 @@ Architecture review must verify:
 - bandwidth_report.json estimated cycle counts validated against timing_constraints.json budgets
 - Comparison of estimated latency WITH and WITHOUT latency hiding, to quantify strategy benefit
 
+## Wonder Log (Required)
+
+Each review round MUST produce a wonder-log entry:
+- File: `docs/phase-2-architecture/wonder-log.md`
+- Format: Markdown table with columns: Round, Assumption, Domain, Risk(H/M/L), Resolution
+- Purpose: Track unvalidated assumptions across rounds
+- Exit gate: All High-risk assumptions must be resolved or explicitly accepted before phase completion
+
+## Review Convergence Criteria
+
+Review rounds use dynamic convergence instead of fixed 3 rounds:
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| min_rounds | 2 | Minimum for meaningful review |
+| max_rounds | 5 | Prevent infinite loops |
+| finding_delta_threshold | 0.1 | < 10% new findings = stable |
+| critical_resolution | ALL | All Critical/High must be resolved |
+| wonder_stability | true | No new High-risk assumptions |
+
+**Early exit** (round 2): When findings converge quickly (simple designs)
+**Extended review** (rounds 4-5): For complex designs with emergent issues
+
+This is inspired by Ouroboros's ConvergenceCriteria:
+- Stability signal: finding_delta < threshold
+- Stagnation detection: same findings repeated across rounds
+- Oscillation detection: finding toggling resolved↔reopened
+
 ## Escalation & Stop Conditions
 
-- 3-round review completed but issues remain → escalate to user via AskUserQuestion
+- max_rounds reached but issues remain → escalate to user via AskUserQuestion
 - Domain constraint conflict → document conflict, ask user for priority
 - Memory access infeasible (bandwidth exceeds technology) → escalate, propose alternative
 - Architecture ↔ ref model fundamental mismatch → escalate, may require ref model rewrite
@@ -79,7 +108,7 @@ Architecture review must verify:
 - [ ] architecture.md exists with all blocks and data paths
 - [ ] architecture.md includes D2 block diagram
 - [ ] Every REQ-NNN mapped to at least one architecture block
-- [ ] 3-round iterative review completed (or gaps escalated and approved)
+- [ ] Dynamic convergence review completed (min 2 rounds, or gaps escalated and approved)
 - [ ] Memory access patterns reviewed for all large blocks
 - [ ] Architecture ↔ ref model consistency verified
 - [ ] Ref model code reviewed for quality and bitexact correctness
@@ -88,8 +117,11 @@ Architecture review must verify:
 - [ ] Internal vs external memory classified per block
 - [ ] C model executed and verified — architecture produces correct results
 - [ ] Tree exploration used for issue resolution in each review round
-- [ ] Per-round review artifacts saved (r1.md, r2.md, r3.md)
+- [ ] Per-round review artifacts saved (r1.md, r2.md, and additional rounds if needed)
 - [ ] reviews/phase-2-architecture/feature-coverage.md saved
 - [ ] reviews/phase-2-architecture/architecture-review.md saved (consolidated)
 - [ ] reviews/phase-2-architecture/architecture-diagram.md saved (D2)
 - [ ] docs/decisions/ADR-*.md generated (3-5 key architectural decisions)
+- [ ] `docs/phase-2-architecture/wonder-log.md` exists with per-round assumption tracking
+- [ ] All High-risk assumptions in wonder-log resolved or explicitly accepted
+- [ ] Per-round review artifacts saved (r1.md through rN.md, minimum 2 rounds)

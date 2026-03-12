@@ -105,6 +105,27 @@ PASS | FAIL: [reason]
 - Chief not converged after 3 rounds → escalate remaining gaps to user with specific questions
 - Sub-domain expert returns [DOMAIN_UNCERTAINTY] → AskUserQuestion before proceeding
 
+## Ambiguity Score Protocol
+
+Every Phase 1 completion MUST include an ambiguity assessment:
+
+1. spec-analyst produces `Ambiguity_Assessment` with per-axis scores
+2. Ambiguity Gate enforced by both orchestrators:
+   - p1-research-orchestrator: Step 7.5
+   - p1-research-team-orchestrator: Step 3.5
+3. Score is recorded in `docs/phase-1-research/ambiguity-assessment.md`
+4. Phase 2 entry reads this score — if > 0.3, phase 2 reviewers prioritize clarifying those axes
+
+This is inspired by Ouroboros's AmbiguityScorer pattern:
+- Goal Ambiguity (40%): Is the design objective ambiguous? (0.0=clear, 1.0=ambiguous)
+- Constraint Ambiguity (30%): Are timing/area/power/protocol constraints missing? (0.0=explicit, 1.0=missing)
+- AC Ambiguity (30%): Are acceptance criteria untestable? (0.0=testable, 1.0=untestable)
+
+Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = worse
+- ≤ 0.3: PASS — proceed to Phase 2
+- 0.3–0.5: CONDITIONAL PASS — log warnings, Phase 2 reviewers focus on flagged axes
+- \> 0.5: BLOCK — resolve top ambiguities via AskUserQuestion before proceeding
+
 ## Final Checklist
 
 - [ ] `docs/phase-1-research/requirements.json` exists and is valid JSON
@@ -128,3 +149,5 @@ PASS | FAIL: [reason]
 - [ ] domain-consult invoked at least once
 - [ ] Algorithm/tool candidates presented with trade-offs (NOT pre-selected)
 - [ ] AskUserQuestion used at every ambiguity point (no unresolved assumptions)
+- [ ] `docs/phase-1-research/ambiguity-assessment.md` saved with per-axis scores and overall ambiguity_score
+- [ ] Ambiguity Gate passed (score ≤ 0.3 for PASS, 0.3–0.5 for CONDITIONAL PASS)

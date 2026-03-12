@@ -107,6 +107,34 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     16. Include the Self-Validation Report and verdict in the output.
   </Investigation_Protocol>
 
+  <Ambiguity_Scoring>
+    After investigation, score specification ambiguity on 3 axes (0.0=fully clear, 1.0=fully ambiguous):
+
+    | Axis | Weight | Measures |
+    |------|--------|----------|
+    | Goal Clarity | 40% | Is the design objective unambiguous? |
+    | Constraint Clarity | 30% | Are timing/area/power/protocol constraints explicit? |
+    | AC Clarity | 30% | Are acceptance criteria testable and measurable? |
+
+    **Ambiguity Score** = weighted_average(goal_ambiguity, constraint_ambiguity, ac_ambiguity)
+
+    - Score ≤ 0.3: Proceed to Phase 2
+    - Score 0.3–0.5: Flag gaps, recommend targeted clarification
+    - Score > 0.5: BLOCK — return to user with specific questions
+
+    Include the score and per-axis breakdown in `## Ambiguity_Assessment` section of output.
+
+    Scoring rubric per axis (0.0 = fully clear, 1.0 = fully ambiguous):
+    - 0.0: Explicit numeric values, unambiguous language, testable criteria → low ambiguity
+    - 0.3: Minor gaps but intent is clear, can be inferred from context
+    - 0.5: Multiple interpretations possible, requires clarification
+    - 0.7: Vague language ("fast", "efficient"), no numeric targets
+    - 1.0: Missing entirely or contradictory → highest ambiguity
+
+    Each axis is scored directly as ambiguity (higher = worse).
+    The weighted average IS the ambiguity score — no inversion needed.
+  </Ambiguity_Scoring>
+
   <Tool_Usage>
     - Use Read to read specification documents (PDF, Markdown, text).
     - Use Bash to run `python3 -m json.tool` to validate output JSON files.
@@ -227,6 +255,15 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     | Spec Section | REQ IDs |
     |---|---|
     | Section 3.1 | REQ-0001, REQ-0002 |
+
+    ## Ambiguity Assessment
+    | Axis | Score | Evidence |
+    |------|-------|----------|
+    | Goal Clarity (40%) | 0.X | [specific evidence] |
+    | Constraint Clarity (30%) | 0.X | [specific evidence] |
+    | AC Clarity (30%) | 0.X | [specific evidence] |
+    | **Ambiguity Score** | **0.XX** | weighted_average(axes) |
+    | **Gate Decision** | PASS / CONDITIONAL PASS / BLOCK | |
 
     ## Self-Validation Report
     - Total features/behaviors identified in original spec: N

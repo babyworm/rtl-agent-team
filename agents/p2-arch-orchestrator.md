@@ -1,7 +1,7 @@
 ---
 name: p2-arch-orchestrator
 model: opus
-description: "Phase 2 architecture pipeline orchestrator. Manages P1 algorithm candidate HW review, parallel architecture design + C reference model development, 3-round iterative review with tree exploration for issues, and artifact finalization."
+description: "Phase 2 architecture pipeline orchestrator. Manages P1 algorithm candidate HW review, parallel architecture design + C reference model development, dynamic convergence-based iterative review with wonder tracking, and artifact finalization."
 skills: [p2-arch-design-policy]
 ---
 
@@ -135,7 +135,32 @@ Task(subagent_type="rtl-agent-team:ref-model-reviewer",
 - If ref-model-reviewer verdict is FAIL: route findings to ref-model-dev, re-run reviewer.
 - If PASS: arch-designer revises architecture using bandwidth_report.json.
 
-## Step 5: 3-Round Iterative Review
+## Step 5: Iterative Review (Dynamic Convergence)
+
+### Review Round Structure (Dynamic Convergence)
+
+Review rounds use convergence-based loop instead of fixed 3 rounds:
+
+**Parameters**:
+- min_rounds = 2 (minimum 2 rounds always executed)
+- max_rounds = 5 (hard cap to prevent infinite loops)
+
+**Round N completion → convergence check**:
+1. `finding_delta`: Round N new findings / Round N-1 total findings (< 0.1 = stable)
+2. `all_critical_resolved`: All Critical/High severity findings resolved?
+3. `wonder_stability`: No new High-risk assumptions in Wonder log?
+
+**Convergence condition** (ALL must be true):
+- round >= min_rounds
+- finding_delta < 0.1
+- all_critical_resolved = true
+- wonder_stability = true
+
+**Finding Deduplication**: Before counting new findings each round, compare against
+all previous rounds. Same file + same issue type + overlapping scope = duplicate.
+Only genuinely new findings count toward finding_delta.
+
+**Non-convergence**: round < max_rounds → next round. round >= max_rounds → force stop + log unresolved.
 
 ```
 # Round 1: 3 parallel reviewers
@@ -174,10 +199,30 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 # Rebuttal Round 2: arch-designer accept/reject each finding with rationale
 #   → update architecture-review-r2.md with rebuttal section
 # Tree exploration for accepted findings → arch-designer applies resolutions
-# Round 3 (mandatory): cross-block interface audit, memory conflict analysis, ref model code review
-#   → save to architecture-review-r3.md
-# If not converged → escalate to user via AskUserQuestion
+# Round 3+: continue if not converged (up to max_rounds=5)
+#   Each round: cross-block interface audit, memory conflict analysis, ref model code review
+#   → save to architecture-review-rN.md
+# Convergence check after each round >= min_rounds (2)
+# If converged → proceed to Step 6
+# If round >= max_rounds AND not converged → escalate to user via AskUserQuestion
 ```
+
+### Wonder Step (after Round N aggregation)
+
+After aggregating reviewer findings for each round, before proceeding to the next:
+
+1. Ask: "What assumptions are we making about this architecture that we haven't validated?"
+2. Specifically probe:
+   - Bandwidth assumptions: Are memory BW calculations based on verified data?
+   - Interface assumptions: Are protocol choices validated against actual IP constraints?
+   - Timing assumptions: Are pipeline depth estimates realistic for target frequency?
+3. Record unvalidated assumptions in `docs/phase-2-architecture/wonder-log.md`
+4. If critical assumptions found: flag for resolution before next round
+
+Format: `| Round | Assumption | Domain | Risk(H/M/L) | Resolution |`
+
+Wonder log feeds into convergence check: new High-risk assumptions in Round N
+prevent convergence (wonder_stability = false).
 
 ## Step 6: Phase 2 Gate (MANDATORY — matches team orchestrator)
 
@@ -188,12 +233,13 @@ After Step 5 review completes, verify all gate items:
 4. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
 5. Verify `refc/` has compilable C reference model
 6. Verify `reviews/phase-2-architecture/ref-model-review.md` exists with verdict
-7. Per-round artifacts (enforces 3-round review protocol):
+7. Per-round artifacts (enforces dynamic convergence review protocol):
    - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
    - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal
-   - `reviews/phase-2-architecture/architecture-review-r3.md` — Round 3 mandatory final pass
-   FAIL if any missing.
-8. Rebuttal evidence in R1 and R2: verify each round artifact contains a rebuttal section
+   - Additional round artifacts if convergence required more rounds (up to r5)
+   FAIL if fewer than 2 round artifacts exist.
+8. `docs/phase-2-architecture/wonder-log.md` exists with all High-risk assumptions resolved
+9. Rebuttal evidence in each round: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 9. Generate `docs/phase-2-architecture/phase-2-summary.md`
 

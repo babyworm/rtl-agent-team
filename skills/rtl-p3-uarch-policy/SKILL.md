@@ -104,9 +104,10 @@ Mandatory 3 rounds, coordinated by rtl-architect:
   5. bfm-dev: BFM simulation results, I/O logging correctness, protocol behavior
 
 - Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for accepted issues → targeted revision (rejections recorded in per-round artifact)
-- Round 3 mandatory: cross-module interface audit, clock domain map consistency,
+- Last round (converged or max reached): cross-module interface audit, clock domain map consistency,
   memory conflict analysis, model consistency matrix, BFM final pass, μArch code review
-- After 3 rounds if not converged → escalate to user via AskUserQuestion
+- Convergence check after round >= min_rounds: finding_delta < 0.1, all critical resolved, wonder stable
+- After max_rounds if not converged → escalate to user via AskUserQuestion
 - Conditional reviewers:
   - clock-architect: multi-clock/generated-clock/gating risk present
   - rtl-planner: schedule/dependency risk dominates convergence delays
@@ -130,6 +131,34 @@ Save to `reviews/phase-3-uarch/feature-preservation.md`:
 ## Verdict
 PASS | FAIL: [reason]
 ```
+
+## Wonder Log (Required)
+
+Each review round MUST produce a wonder-log entry:
+- File: `docs/phase-3-uarch/wonder-log.md`
+- Format: Markdown table with columns: Round, Assumption, Domain, Risk(H/M/L), Resolution
+- Purpose: Track unvalidated assumptions across rounds
+- Exit gate: All High-risk assumptions must be resolved or explicitly accepted before phase completion
+
+## Review Convergence Criteria
+
+Review rounds use dynamic convergence instead of fixed 3 rounds:
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| min_rounds | 2 | Minimum for meaningful review |
+| max_rounds | 5 | Prevent infinite loops |
+| finding_delta_threshold | 0.1 | < 10% new findings = stable |
+| critical_resolution | ALL | All Critical/High must be resolved |
+| wonder_stability | true | No new High-risk assumptions |
+
+**Early exit** (round 2): When findings converge quickly (simple designs)
+**Extended review** (rounds 4-5): For complex designs with emergent issues
+
+This is inspired by Ouroboros's ConvergenceCriteria:
+- Stability signal: finding_delta < threshold
+- Stagnation detection: same findings repeated across rounds
+- Oscillation detection: finding toggling resolved↔reopened
 
 ## Escalation & Stop Conditions
 
@@ -176,7 +205,7 @@ PASS | FAIL: [reason]
 - [ ] No deadlocks or protocol violations
 
 **Review & compliance:**
-- [ ] 3-round review completed (or gaps escalated and approved)
+- [ ] Dynamic convergence review completed (min 2 rounds, or gaps escalated and approved)
 - [ ] Cross-module interfaces reviewed
 - [ ] μArch ↔ ref model consistency verified
 - [ ] Naming conventions enforced (i_/o_, {domain}_clk, u_, logic only)
@@ -187,7 +216,7 @@ PASS | FAIL: [reason]
 **Rebuttal & per-round artifacts:**
 - [ ] reviews/phase-3-uarch/uarch-review-r1.md with rebuttal section (accept/reject + rationale)
 - [ ] reviews/phase-3-uarch/uarch-review-r2.md with rebuttal section (accept/reject + rationale)
-- [ ] reviews/phase-3-uarch/uarch-review-r3.md (mandatory final pass)
+- [ ] Additional round artifacts (r3-r5) if convergence required more rounds
 
 **Artifacts saved:**
 - [ ] reviews/phase-3-uarch/feature-preservation.md
@@ -198,6 +227,11 @@ PASS | FAIL: [reason]
 - [ ] docs/phase-3-uarch/phase-3-summary.md
 - [ ] docs/phase-3-uarch/req-uarch-traceability.md (100% REQ coverage)
 - [ ] docs/decisions/ADR-*.md generated (3-5 key μArch decisions)
+- [ ] `docs/phase-3-uarch/wonder-log.md` exists with per-round assumption tracking
+- [ ] All High-risk assumptions in wonder-log resolved or explicitly accepted
+- [ ] `docs/phase-3-uarch/upstream-feedback-report.md` generated (P1/P2 gap analysis)
+- [ ] `docs/phase-3-uarch/requirement-delta.md` generated (REQ implementability scan)
+- [ ] Per-round review artifacts saved (r1.md through rN.md, minimum 2 rounds)
 
 ## Mermaid Pipeline Diagram Format
 
