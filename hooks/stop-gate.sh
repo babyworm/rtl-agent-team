@@ -23,22 +23,6 @@ if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
   mv "$LEGACY_STATE_FILE" "$STATE_FILE"
 fi
 
-json_escape() {
-  jsonu_escape "$1"
-}
-
-get_path_string() {
-  jsonu_get_file_path_string "$STATE_FILE" "$1"
-}
-
-get_path_bool() {
-  jsonu_get_file_path_bool "$STATE_FILE" "$1"
-}
-
-get_path_num() {
-  jsonu_get_file_path_num "$STATE_FILE" "$1"
-}
-
 if teamu_should_skip_gate "$CWD/.rtl-agent-team/state"; then
   printf '{"continue":true}'
   exit 0
@@ -49,37 +33,37 @@ if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
-STATUS=$(get_path_string "status")
+STATUS=$(jsonu_get_file_path_string "$STATE_FILE" "status")
 if [ "$STATUS" = "completed" ]; then
   printf '{"continue":true}'
   exit 0
 fi
 
-UPPER_SPEC_BLOCKING=$(get_path_bool "upper_spec_blocking")
+UPPER_SPEC_BLOCKING=$(jsonu_get_file_path_bool "$STATE_FILE" "upper_spec_blocking")
 if [ "$UPPER_SPEC_BLOCKING" = "true" ]; then
   MSG="[RAT Auto-Design STOP] Upper-spec violation is unresolved. Resolve violation or obtain user approval before proceeding."
-  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$MSG")"
+  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"
   exit 0
 fi
 
-ACTIVE_GATE_ID=$(get_path_string "orchestration_control.active_gate_id")
+ACTIVE_GATE_ID=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.active_gate_id")
 [ -z "$ACTIVE_GATE_ID" ] && ACTIVE_GATE_ID="phase-gate"
 
-RETRY_LIMIT=$(get_path_num "orchestration_control.active_gate_retry_limit")
-[ -z "$RETRY_LIMIT" ] && RETRY_LIMIT=$(get_path_num "orchestration_control.default_retry_limit")
+RETRY_LIMIT=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_retry_limit")
+[ -z "$RETRY_LIMIT" ] && RETRY_LIMIT=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.default_retry_limit")
 [ -z "$RETRY_LIMIT" ] && RETRY_LIMIT=2
 
-PRIMARY_ATTEMPTS=$(get_path_num "orchestration_control.active_gate_primary_attempts")
+PRIMARY_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_primary_attempts")
 [ -z "$PRIMARY_ATTEMPTS" ] && PRIMARY_ATTEMPTS=0
-FALLBACK_ATTEMPTS=$(get_path_num "orchestration_control.active_gate_fallback_attempts")
+FALLBACK_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_fallback_attempts")
 [ -z "$FALLBACK_ATTEMPTS" ] && FALLBACK_ATTEMPTS=0
-LAST_CHANCE_ATTEMPTS=$(get_path_num "orchestration_control.active_gate_last_chance_attempts")
+LAST_CHANCE_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_last_chance_attempts")
 [ -z "$LAST_CHANCE_ATTEMPTS" ] && LAST_CHANCE_ATTEMPTS=0
 
-NEEDS_USER_DECISION=$(get_path_bool "orchestration_control.needs_user_decision")
+NEEDS_USER_DECISION=$(jsonu_get_file_path_bool "$STATE_FILE" "orchestration_control.needs_user_decision")
 [ -z "$NEEDS_USER_DECISION" ] && NEEDS_USER_DECISION=false
-DYNAMIC_PROMPT_TEXT=$(get_path_string "orchestration_control.dynamic_prompt_text")
-STRATEGY=$(get_path_string "orchestration_control.active_gate_strategy")
+DYNAMIC_PROMPT_TEXT=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.dynamic_prompt_text")
+STRATEGY=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.active_gate_strategy")
 
 TOTAL_PHASE_ATTEMPTS=$((PRIMARY_ATTEMPTS + FALLBACK_ATTEMPTS))
 FALLBACK_START=$((RETRY_LIMIT + 1))
@@ -113,4 +97,4 @@ if [ "$NEEDS_USER_DECISION" = "true" ]; then
 fi
 
 MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})"
-printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$MSG")"
+printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"

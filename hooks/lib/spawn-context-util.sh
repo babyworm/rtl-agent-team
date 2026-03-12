@@ -106,7 +106,7 @@ _sctx_build_artifact_array() {
   fi
 
   if [ -n "$_BA_LINES" ]; then
-    echo "$_BA_LINES" | while IFS='|' read -r _ba_path _ba_role; do
+    while IFS='|' read -r _ba_path _ba_role; do
       [ -z "$_ba_path" ] && continue
       if [ "$_BA_FIRST" -eq 1 ]; then
         _BA_FIRST=0
@@ -114,7 +114,9 @@ _sctx_build_artifact_array() {
         printf ','
       fi
       _sctx_artifact_entry "$_ba_path" "$_ba_role" "$_BA_CWD"
-    done
+    done <<BA_EOF
+$_BA_LINES
+BA_EOF
   fi
   printf ']'
 }

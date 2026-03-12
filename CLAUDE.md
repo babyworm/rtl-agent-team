@@ -107,11 +107,16 @@ When modifying this plugin:
 4. **Skill completion criteria** — Every action skill must define criteria in `.rtl-agent-team/skill-completion-criteria.json`
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
 6. **Non-destructive deployment** — `rat-setup` deploys rules/guides only if files don't already exist
-7. **POSIX shell compatibility** — Hook scripts are invoked with `sh`, not `bash`. Use `[` not `[[`
+7. **POSIX shell compatibility** — Hook scripts (`hooks/*.sh`) are invoked with `sh`, not `bash`. Use `[` not `[[`. Scripts in `scripts/` may use `bash` when specified via shebang
 8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-setup` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
 11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
+
+### Intentional Design Decisions (Do Not Flag in Reviews)
+
+1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
+2. **Step 0 Context Bootstrap duplicated across 29 orchestrators** — Each orchestrator agent contains an identical ~12-line Step 0 block. This is intentional: agent prompts must be self-contained (no `#include`), the protocol is stable (unchanged since v0.6.8), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. Bulk updates are achievable via `sed` or scripted replacement if the protocol ever changes.
 
 ### File Architecture
 
@@ -215,6 +220,8 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 ## Hook-Based Enforcement
 
+All 14 hook scripts and their enforcement responsibilities are listed below.
+
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
 | `rtl-project-init-advisor.sh` | SessionStart | Advise `rat-setup` if project not initialized |
@@ -228,6 +235,9 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
 | `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns (experimental) |
 | `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |
+| `rtl-audit-init.sh` | SessionStart | Initialize audit session directory and trace log |
+| `rtl-audit-subagent.sh` | SubagentStart/SubagentStop | Log subagent lifecycle events to audit trace |
+| `rtl-audit-spawn-complete.sh` | PostToolUse:TaskCreate | Log spawn completion events to audit trace |
 
 **State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
 

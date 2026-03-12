@@ -14,6 +14,7 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
@@ -37,14 +38,16 @@ fi
 # If cascade work is confirmed done, verify documents were actually updated (G5: mtime check)
 if [ -f "$CASCADE_DONE" ]; then
   REVIEW_DIR="$CWD/reviews/phase-6-review"
-  STALE_MTIME=$(stat -c %Y "$STALE_MARKER" 2>/dev/null || stat -f %m "$STALE_MARKER" 2>/dev/null || echo 0)
+  STALE_MTIME=$(get_mtime_epoch "$STALE_MARKER")
+  [ -z "$STALE_MTIME" ] && STALE_MTIME=0
   DOCS_STALE=false
   # code-review.md must exist and be updated
   doc="$REVIEW_DIR/code-review.md"
   if [ ! -f "$doc" ]; then
     DOCS_STALE=true
   else
-    DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
+    DOC_MTIME=$(get_mtime_epoch "$doc")
+    [ -z "$DOC_MTIME" ] && DOC_MTIME=0
     if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
       DOCS_STALE=true
     fi
@@ -55,7 +58,8 @@ if [ -f "$CASCADE_DONE" ]; then
   for doc in "$REVIEW_DIR"/design-note*.md; do
     [ -f "$doc" ] || continue
     DN_FOUND=true
-    DOC_MTIME=$(stat -c %Y "$doc" 2>/dev/null || stat -f %m "$doc" 2>/dev/null || echo 0)
+    DOC_MTIME=$(get_mtime_epoch "$doc")
+    [ -z "$DOC_MTIME" ] && DOC_MTIME=0
     if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
       DOCS_STALE=true
     fi

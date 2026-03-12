@@ -6,25 +6,12 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-
-json_escape() {
-  jsonu_escape "$1"
-}
-
-emit_continue() {
-  MSG="$1"
-  if [ -n "$MSG" ]; then
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}' "$(json_escape "$MSG")"
-  else
-    printf '{"continue":true}'
-  fi
-  exit 0
-}
 
 # Extract skill name from tool input
 SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
@@ -83,7 +70,6 @@ CRITERIA_FILE="$PLUGIN_ROOT/.rtl-agent-team/skill-completion-criteria.json"
 # Team mode: worker sessions skip skill state management (leader only)
 TEAM_CONFIG="$STATE_DIR/team-config.json"
 if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
-  . "$SCRIPT_DIR/lib/json-util.sh" 2>/dev/null
   TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
   if [ "$TEAM_MODE" = "true" ]; then
     LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")

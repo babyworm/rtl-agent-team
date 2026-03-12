@@ -21,12 +21,7 @@ _check_p6_stale() {
   _P6_STATE="$2"
   _P6_REVIEW_DIR="$_P6_CWD/reviews/phase-6-review"
   if [ -d "$_P6_REVIEW_DIR" ] && ls "$_P6_REVIEW_DIR"/*.md 2>/dev/null | grep -q .; then
-    if acquire_lock "$_P6_STATE/phase6-stale"; then
-      touch "$_P6_STATE/phase6-stale"
-      release_lock "$_P6_STATE/phase6-stale"
-    else
-      touch "$_P6_STATE/phase6-stale"
-    fi
+    touch "$_P6_STATE/phase6-stale"
     printf '%s' " Phase 6 review documents marked as stale — update code-review and design-note after verification."
   fi
 }
@@ -73,8 +68,8 @@ if [ -z "$FILE_PATH" ]; then
     fi
   fi
   # Invalidate previous verification evidence on any RTL edit (regardless of new/duplicate path)
-  rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
   if acquire_lock "$TRACK_FILE"; then
+    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
     printf '%s\n' "$BASH_RTL_FILES" | while IFS= read -r bf; do
       [ -z "$bf" ] && continue
       if ! grep -qxF "$bf" "$TRACK_FILE" 2>/dev/null; then
@@ -83,6 +78,7 @@ if [ -z "$FILE_PATH" ]; then
     done
     release_lock "$TRACK_FILE"
   else
+    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
     printf '%s\n' "$BASH_RTL_FILES" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
   fi
   COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
@@ -111,13 +107,14 @@ case "$FILE_PATH" in
     # Add file if not already tracked (locked for concurrent access)
     # Fail-closed: if lock fails, append without lock to prevent gate bypass
     # Invalidate previous verification evidence on any RTL edit (regardless of new/duplicate path)
-    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
     if acquire_lock "$TRACK_FILE"; then
+      rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
       if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
         printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
       fi
       release_lock "$TRACK_FILE"
     else
+      rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
       # Fail-closed: append to lock-free fallback queue (deduped at gate time)
       printf '%s\n' "$FILE_PATH" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
     fi
@@ -137,7 +134,6 @@ case "$FILE_PATH" in
     # Audit: log artifact_write for design documents
     _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
     if [ -f "$_AUDIT_LIB" ]; then
-      . "$SCRIPT_DIR/lib/flock-util.sh"
       . "$_AUDIT_LIB"
       _ART_SID=$(audit_session_id "$CWD")
       if [ -n "$_ART_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_ART_SID" ]; then

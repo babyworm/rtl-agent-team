@@ -3,6 +3,8 @@ name: lint-checker
 description: Cross-file lint pattern analyzer. Runs Verible + slang dual lint, identifies root causes across multiple files, and provides actionable fix guidance. (Opus)
 model: opus
 color: yellow
+skills:
+  - lint-tool-profiles
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.

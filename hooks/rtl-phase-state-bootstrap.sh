@@ -6,35 +6,10 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/spawn-context-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 
 jsonu_detect_parser
-
-emit_continue() {
-  MSG="$1"
-  if [ -n "$MSG" ]; then
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}' "$(jsonu_escape "$MSG")"
-  else
-    printf '{"continue":true}'
-  fi
-  exit 0
-}
-
-emit_block() {
-  MSG="$1"
-  printf '{"continue":false,"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}' "$(jsonu_escape "$MSG")"
-  exit 0
-}
-
-get_file_mtime_epoch() {
-  TARGET_FILE="$1"
-  if [ ! -e "$TARGET_FILE" ]; then
-    printf ''
-    return 0
-  fi
-  stat -c %Y "$TARGET_FILE" 2>/dev/null \
-    || stat -f %m "$TARGET_FILE" 2>/dev/null \
-    || printf ''
-}
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
@@ -110,7 +85,7 @@ case "$SHORT_NAME" in
     # Aggregate all tracking files: global + session-specific (team mode) + fallback
     _P5B_STATE_DIR="$CWD/.rtl-agent-team/state"
     _P5B_COMBINED=$(cat "$_P5B_STATE_DIR"/rtl-modified-files*.txt 2>/dev/null | sort -u)
-    P5A_MTIME=$(get_file_mtime_epoch "$P5A_STATE")
+    P5A_MTIME=$(get_mtime_epoch "$P5A_STATE")
     if [ -n "$P5A_MTIME" ] && [ -n "$_P5B_COMBINED" ]; then
       LATEST_RTL_MTIME=""
       while IFS= read -r TRACKED_PATH; do
@@ -120,7 +95,7 @@ case "$SHORT_NAME" in
           *) RTL_FILE="$CWD/$TRACKED_PATH" ;;
         esac
         [ -f "$RTL_FILE" ] || continue
-        RTL_MTIME=$(get_file_mtime_epoch "$RTL_FILE")
+        RTL_MTIME=$(get_mtime_epoch "$RTL_FILE")
         [ -z "$RTL_MTIME" ] && continue
 
         if [ -z "$LATEST_RTL_MTIME" ] || [ "$RTL_MTIME" -gt "$LATEST_RTL_MTIME" ]; then

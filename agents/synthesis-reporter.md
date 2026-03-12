@@ -3,6 +3,8 @@ name: synthesis-reporter
 description: Yosys synthesis report parser. Extracts area, timing, and power metrics. Produces summary tables and identifies unmapped cells.
 model: opus
 color: green
+skills:
+  - syn-tool-profiles
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.

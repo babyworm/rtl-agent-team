@@ -3,6 +3,8 @@ name: eda-runner
 description: Runs Verilator, Yosys, SymbiYosys, cocotb via Bash CLI. Parses logs, classifies errors, suggests fixes.
 model: opus
 color: green
+skills:
+  - sim-tool-profiles
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.

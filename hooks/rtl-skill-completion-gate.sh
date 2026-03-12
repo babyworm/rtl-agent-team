@@ -23,10 +23,6 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
-json_escape() {
-  jsonu_escape "$1"
-}
-
 if teamu_should_skip_gate "$STATE_DIR"; then
   printf '{"continue":true}'
   exit 0
@@ -146,4 +142,4 @@ case "$STAGE" in
     ;;
 esac
 
-printf '{"continue":false,"decision":"block","reason":"%s"}' "$(json_escape "$STAGE_MSG")"
+printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$STAGE_MSG")"

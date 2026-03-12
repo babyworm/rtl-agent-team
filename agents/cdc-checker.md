@@ -4,6 +4,8 @@ description: CDC static analysis specialist. Detects clock domain crossings, ver
 model: opus
 color: yellow
 disallowedTools: Write, Edit
+skills:
+  - cdc-tool-profiles
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
