@@ -7,15 +7,26 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.13] - 2026-03-13
+
+### Fixed
+- Fixed LSP config: removed unrecognized `"name"` key from `.lsp.json` files that caused plugin load errors in Claude Code.
+
+## [0.6.12] - 2026-03-13
+
 ### Fixed
 - Fixed codex cross-reviewer: mkdir safety, shell-safe tmux expansion via `$PROMPT_FILE`, merge-base diff range, and session resume logic.
 - Reverted codex session resume (CLI flags incompatible); improved merge-base fallback chain (local → origin → root commit).
 - Fixed codex cross-reviewer consistency: N/R variable scoping, round-loop context, Step 3 repetition wording, Mode A tmux requirement.
 - Fixed DRY hook violations, pipe-subshell bug, and race condition found in quality review.
+- Fixed 8 Claude-Codex consensus review findings.
+- Fixed 21 Claude-Codex cross-review findings across 10 rounds.
+- Fixed 10 Claude-Codex Phase 2 cross-review findings across 7 rounds.
 
 ### Added
 - Added `test_json_util.py` (50 tests): direct unit tests for all `json-util.sh` parser functions across default and sed-fallback modes.
 - Added behavioral tests for `rtl-project-init-advisor.sh`.
+- Integrated Ouroboros evolutionary patterns into Phase 1-3 pipeline.
 
 ### Changed
 - Increased Codex cross-review execution timeout from 300s to 1200s, with the tmux poll ceiling raised to 1230s.
@@ -23,6 +34,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 - Removed dead current-phase fallback from codex cross-reviewer agent.
 - Wired 4 tool-profile skills to matching specialist agents.
 - Updated CLAUDE.md: added 3 audit hooks to enforcement table, clarified POSIX sh scope, documented intentional design decisions.
+- Improved codex-cross-reviewer: file-first data exchange pattern.
+- Renamed `_BOOL_VAL` to `JSONU_BOOL_VAL` for naming convention consistency.
 
 ## [0.6.11] - 2026-03-11
 
