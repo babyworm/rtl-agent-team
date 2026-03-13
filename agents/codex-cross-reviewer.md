@@ -153,16 +153,23 @@ Write a structured summary to `.rtl-agent-team/cross-review/phase-{N}/phase-summ
 ## Step 2: Initial Review Round (Round 1)
 
 ### 2a. Construct Codex Review Prompt
-Write the prompt to `.rtl-agent-team/cross-review/phase-{N}/prompt-round-1.txt`:
+Write the prompt to `.rtl-agent-team/cross-review/phase-{N}/prompt-round-1.txt`.
+
+**IMPORTANT — Prompt Size Discipline:**
+- Do NOT embed file contents in the prompt. Reference file paths and let Codex read them via `-s read-only`.
+- Keep prompts under 4KB. If the file list exceeds 20 entries, write them to a manifest file and reference it.
+- This avoids shell ARG_MAX limits and Codex input token pressure.
 
 ```text
 You are a senior hardware design reviewer conducting an independent cross-review.
 
 ## Context
-[Insert phase-summary.md content here]
+Read the phase summary at: .rtl-agent-team/cross-review/phase-{N}/phase-summary.md
+
+## Files to Review
+[List file paths only — do NOT embed contents. Codex reads them directly.]
 
 ## Your Task
-Review ALL output artifacts and changed files listed above.
 Read each file directly and assess:
 
 1. **Correctness** — Does the implementation match the spec/intent?
@@ -298,20 +305,24 @@ Maintain `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json`:
 Let `R` denote the current round number (2, 3, 4, or 5). `N` remains the phase number throughout.
 
 ### 4a. Construct Follow-up Prompt
-Write to `.rtl-agent-team/cross-review/phase-{N}/prompt-round-${R}.txt`:
+Write to `.rtl-agent-team/cross-review/phase-{N}/prompt-round-${R}.txt`.
+
+**IMPORTANT — Reference, Don't Embed:**
+- Reference previous round's JSON by path, not inline: `Read .rtl-agent-team/cross-review/phase-{N}/round-${PREV_R}.json`
+- Summarize fixes/rebuttals concisely (file:line + one-line description). Do NOT paste full diffs.
+- Keep the prompt under 4KB. If context is large, write a `round-${R}-context.md` file and reference it.
 
 ```text
 You are continuing a cross-review dialogue. This is round R.
 
-## Previous Findings
-[Insert previous round's findings JSON]
+## Previous Round
+Read previous findings at: .rtl-agent-team/cross-review/phase-{N}/round-{R-1}.json
 
-## Claude's Response
-### Fixes Applied:
-[List of fixes with file:line references]
+## Fixes Applied (Round {R-1})
+[One-line per fix: finding ID, file:line, what changed]
 
-### Rebuttals:
-[List of rebuttals with evidence]
+## Rebuttals (Round {R-1})
+[One-line per rebuttal: finding ID, why, key evidence reference]
 
 ## Your Task
 1. Verify each fix is adequate (read the updated files)
@@ -463,5 +474,7 @@ Example: Phase 2 produces `.rtl-agent-team/state/cross-review-phase-2-done`.
 4. **Preserve review artifacts** — all prompts, responses, and state files stay in `.rtl-agent-team/cross-review/phase-{N}/` for traceability
 5. **No modifications during Codex's turn** — do not edit files while waiting for Codex response
 6. **Respect Codex config** — always read `~/.codex/config.toml` to use the user's configured model and effort; never override with `-m` or `-c` flags
+7. **Prompt size discipline** — keep prompts under 4KB. Reference file paths instead of embedding content. For large artifact lists, write a manifest file and reference it. This prevents shell ARG_MAX limits and token truncation at both producer (Codex output) and consumer (Claude input) boundaries
+8. **File-first data exchange** — large results go to files (`-o`), LLM-to-LLM transfer uses compact summaries/pointers only. Read results selectively with `jq` or `grep` rather than loading entire JSON into conversation context
 
 </Agent_Prompt>
