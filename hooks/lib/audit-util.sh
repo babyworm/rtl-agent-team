@@ -52,6 +52,14 @@ audit_session_id() {
     return 0
   fi
 
+  # CLAUDE_SESSION_ID takes priority over cached file to prevent cross-session contamination.
+  if [ -n "${CLAUDE_SESSION_ID:-}" ]; then
+    _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$CLAUDE_SESSION_ID")
+    printf '%s' "$_AUDIT_SESSION_ID_CACHE"
+    return 0
+  fi
+
+  # Fallback: read from cached file (for environments without CLAUDE_SESSION_ID)
   _ASI_ID_FILE="$_ASI_CWD/.rtl-agent-team/audit/session-id.txt"
   if [ -f "$_ASI_ID_FILE" ]; then
     _ASI_RAW=$(cat "$_ASI_ID_FILE" 2>/dev/null)
@@ -60,12 +68,8 @@ audit_session_id() {
     return 0
   fi
 
-  # Generate new ID
-  if [ -n "${CLAUDE_SESSION_ID:-}" ]; then
-    _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$CLAUDE_SESSION_ID")
-  else
-    _AUDIT_SESSION_ID_CACHE="$(date +%Y%m%d_%H%M%S)_$$"
-  fi
+  # Last resort: generate timestamp-based ID
+  _AUDIT_SESSION_ID_CACHE="$(date +%Y%m%d_%H%M%S)_$$"
   printf '%s' "$_AUDIT_SESSION_ID_CACHE"
 }
 

@@ -71,7 +71,11 @@ case "$SHORT_NAME" in
       emit_block "$MSG"
     fi
 
+    # Try nested path (jq/python). sed fallback: grep for "verdict":"pass" pattern.
     P5A_VERDICT=$(jsonu_get_file_path_string "$P5A_STATE" "gates.p5a_exit.verdict")
+    if [ -z "$P5A_VERDICT" ] && [ -f "$P5A_STATE" ]; then
+      P5A_VERDICT=$(sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$P5A_STATE" | tail -n 1)
+    fi
     if [ "$P5A_VERDICT" != "pass" ]; then
       [ -z "$P5A_VERDICT" ] && P5A_VERDICT="unknown"
       MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict=$P5A_VERDICT. Complete P5A with PASS verdict before running P5B."

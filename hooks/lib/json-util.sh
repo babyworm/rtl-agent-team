@@ -3,7 +3,17 @@
 # Supports parser preference: jq -> python3/python -> sed fallback.
 
 jsonu_escape() {
-  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' ' ' | tr '\r' ' '
+  # Escape JSON-special characters and control bytes (U+0000–U+001F).
+  # Tiered: jq (full) → python (full) → sed+tr (best-effort fallback).
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$1" | jq -Rs '.' 2>/dev/null | sed 's/^"//; s/"$//' | tr -d '\n'
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$1" | python3 -c 'import json,sys; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end="")' 2>/dev/null
+  elif command -v python >/dev/null 2>&1; then
+    printf '%s' "$1" | python -c 'import json,sys; s=sys.stdin.read(); sys.stdout.write(json.dumps(s)[1:-1])' 2>/dev/null
+  else
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' ' ' | tr '\r' ' ' | tr '\b' ' ' | tr '\f' ' '
+  fi
 }
 
 jsonu_detect_parser() {

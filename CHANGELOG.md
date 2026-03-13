@@ -18,6 +18,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 - Added behavioral tests for `rtl-project-init-advisor.sh`.
 
 ### Changed
+- Increased Codex cross-review execution timeout from 300s to 1200s, with the tmux poll ceiling raised to 1230s.
 - Deduplicated codex cross-reviewer Step 4b: replaced duplicated execution block with explicit reference to Step 2b procedure.
 - Removed dead current-phase fallback from codex cross-reviewer agent.
 - Wired 4 tool-profile skills to matching specialist agents.

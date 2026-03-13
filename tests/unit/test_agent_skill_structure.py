@@ -407,9 +407,9 @@ class TestCrossReferences:
         )
 
         # 5b. Step 2b has timeout protection; Step 4b reuses Step 2b procedure
-        timeout_count = agent_content.count("timeout 300")
+        timeout_count = agent_content.count("timeout 1200")
         assert timeout_count >= 3, (
-            f"codex-cross-reviewer Step 2b must have timeout 300 in Mode A, fallback, and Mode B "
+            f"codex-cross-reviewer Step 2b must have timeout 1200 in Mode A, fallback, and Mode B "
             f"(expected >=3 occurrences, found {timeout_count})"
         )
         assert "Falling back to Mode B" in agent_content, (

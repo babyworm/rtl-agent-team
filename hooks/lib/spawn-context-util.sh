@@ -217,14 +217,18 @@ _sctx_quality_gates_json() {
 
   _QG_P4="false"
   if [ -d "$_QG_CWD/rtl" ]; then
-    _QG_P4_COUNT=$(find "$_QG_CWD/rtl" -name '*.sv' 2>/dev/null | head -n 1)
+    _QG_P4_COUNT=$(find "$_QG_CWD/rtl" \( -name '*.sv' -o -name '*.svh' -o -name '*.v' -o -name '*.vh' \) 2>/dev/null | head -n 1)
     [ -n "$_QG_P4_COUNT" ] && _QG_P4="true"
   fi
 
   _QG_P5A="null"
   _QG_P5A_STATE="$_QG_CWD/.rtl-agent-team/state/p5a-state.json"
   if [ -f "$_QG_P5A_STATE" ]; then
+    # Try nested path (jq/python). sed fallback: grep for "verdict":"..." pattern.
     _QG_P5A_RAW=$(jsonu_get_file_path_string "$_QG_P5A_STATE" "gates.p5a_exit.verdict")
+    if [ -z "$_QG_P5A_RAW" ] && [ -f "$_QG_P5A_STATE" ]; then
+      _QG_P5A_RAW=$(sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_QG_P5A_STATE" | tail -n 1)
+    fi
     if [ -n "$_QG_P5A_RAW" ]; then
       _QG_P5A="\"$_QG_P5A_RAW\""
     fi

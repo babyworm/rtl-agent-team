@@ -185,12 +185,12 @@ Use verdict:
 
 **Mode A — tmux available (real-time visibility for user):**
 ```bash
-# Run codex in a horizontal split pane with 300s hard timeout
+# Run codex in a horizontal split pane with 1200s hard timeout
 # User watches progress in real-time; output captured to file
 ROUND_OUT="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/round-1.json"
 ROUND_LOG="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/round-1-log.txt"
 PROMPT_FILE="$(pwd)/.rtl-agent-team/cross-review/phase-${N}/prompt-round-1.txt"
-tmux split-window -v "timeout 300 codex exec \
+tmux split-window -v "timeout 1200 codex exec \
   -s read-only \
   --output-schema $(pwd)/.rtl-agent-team/cross-review/review-schema.json \
   -o ${ROUND_OUT} \
@@ -201,18 +201,18 @@ tmux split-window -v "timeout 300 codex exec \
 ```
 
 **Mode A — Wait with timeout (MANDATORY):**
-Poll for output file with a hard 330s ceiling (300s codex + 30s buffer).
+Poll for output file with a hard 1230s ceiling (1200s codex + 30s buffer).
 If the file does not appear, **fall back to Mode B** instead of hanging.
 ```bash
 SECONDS_WAITED=0
-while [ ! -f "${ROUND_OUT}" ] && [ ${SECONDS_WAITED} -lt 330 ]; do
+while [ ! -f "${ROUND_OUT}" ] && [ ${SECONDS_WAITED} -lt 1230 ]; do
   sleep 10
   SECONDS_WAITED=$((SECONDS_WAITED + 10))
 done
 if [ ! -f "${ROUND_OUT}" ]; then
   echo "WARN: tmux codex exec timed out or failed. Falling back to Mode B."
   # Fallback: run directly in Bash
-  timeout 300 codex exec \
+  timeout 1200 codex exec \
     -s read-only \
     --output-schema .rtl-agent-team/cross-review/review-schema.json \
     -o .rtl-agent-team/cross-review/phase-${N}/round-1.json \
@@ -222,7 +222,7 @@ fi
 
 **Mode B — no tmux (Bash execution with round summaries):**
 ```bash
-timeout 300 codex exec \
+timeout 1200 codex exec \
   -s read-only \
   --output-schema .rtl-agent-team/cross-review/review-schema.json \
   -o .rtl-agent-team/cross-review/phase-${N}/round-1.json \
@@ -230,7 +230,7 @@ timeout 300 codex exec \
 ```
 
 Choose Mode A if `TMUX_AVAILABLE=true` (from Step 0c), otherwise Mode B.
-Both modes apply a **hard 300s timeout** via the `timeout` command.
+Both modes apply a **hard 1200s timeout** via the `timeout` command.
 
 ### 2c. Parse Results and Report Progress
 Read `.rtl-agent-team/cross-review/phase-{N}/round-1.json` and parse the structured findings.
@@ -329,8 +329,8 @@ New issues go in the findings array with new IDs.
 
 ### 4b. Execute and Parse (reuse Step 2b procedure)
 
-Follow the **exact same execution procedure as Step 2b** (Mode A/B selection, 300s timeout,
-330s poll ceiling, Mode B fallback on tmux timeout), substituting:
+Follow the **exact same execution procedure as Step 2b** (Mode A/B selection, 1200s timeout,
+1230s poll ceiling, Mode B fallback on tmux timeout), substituting:
 - Round number: `round-1` → `round-${R}`
 - Prompt file: `prompt-round-1.txt` → `prompt-round-${R}.txt`
 - Output file: `round-1.json` → `round-${R}.json`

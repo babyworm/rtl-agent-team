@@ -54,22 +54,38 @@ check_tool() {
 
 echo "Required Tools:"
 check_tool "verilator" "verilator --version" "yes" "Simulation + Lint"
-check_tool "verible" "verible-verilog-lint --version" "yes" "Style Lint"
-check_tool "yosys" "yosys -V" "yes" "Synthesis"
 check_tool "cocotb" "python3 -c 'import cocotb; print(cocotb.__version__)'" "yes" "Functional verification"
 check_tool "python3" "python3 --version" "yes" "cocotb runtime"
 check_tool "gcc/g++" "g++ --version" "yes" "Ref model build"
 check_tool "make" "make --version" "yes" "Build system"
+_check_systemc() {
+  pkg-config --modversion systemc 2>/dev/null && return 0
+  if [ -n "${SYSTEMC_HOME:-}" ] && [ -d "${SYSTEMC_HOME:-}" ]; then
+    echo "found via SYSTEMC_HOME"
+    return 0
+  fi
+  return 1
+}
+check_tool "systemc" "_check_systemc" "yes" "SystemC/TLM-2.0 (ref model + BFM)"
+
+echo ""
+echo "Lint Tools (at least one required):"
+check_tool "verible" "verible-verilog-lint --version" "no" "Style Lint"
+check_tool "slang" "slang --version" "no" "Lint + parsing"
+# Combined lint gate: fail only when both are missing
+if ! command -v verible-verilog-lint >/dev/null 2>&1 && ! command -v slang >/dev/null 2>&1; then
+  printf "  ${RED}[!!]${NC}  %-20s %s\n" "LINT GATE" "FAILED: install at least one of verible or slang"
+  MISSING_REQUIRED+=("verible/slang (at least one lint tool)")
+fi
 
 echo ""
 echo "Optional Tools:"
+check_tool "yosys" "yosys -V" "no" "Synthesis (Phase 5B+)"
 check_tool "iverilog" "iverilog -V" "no" "Alternative simulator"
 check_tool "sby" "sby --help" "no" "Formal verification"
-check_tool "slang" "slang --version" "no" "Advanced lint"
 check_tool "slang-server" "slang-server --version" "no" "SV Language Server"
 check_tool "gtkwave" "gtkwave --version" "no" "Waveform viewer"
 check_tool "sv2v" "sv2v --version" "no" "SV to Verilog conversion"
-check_tool "systemc" "pkg-config --modversion systemc" "no" "SystemC/TLM-2.0"
 
 echo ""
 echo "=========================================="
