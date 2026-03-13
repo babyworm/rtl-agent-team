@@ -10,7 +10,11 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ## [0.6.13] - 2026-03-13
 
 ### Fixed
-- Fixed LSP config: removed unrecognized `"name"` key from `.lsp.json` files that caused plugin load errors in Claude Code.
+- Fixed LSP config: removed unrecognized `"name"` key from `.lsp.json` files (including `scripts/install-slang-server.sh` template) that caused plugin load errors in Claude Code.
+
+### Changed
+- Added version bump checklist (item #12) to Plugin Development Best Practices in CLAUDE.md.
+- Synced README.md and README_kr.md Marketplace table versions to 0.6.13.
 
 ## [0.6.12] - 2026-03-13
 

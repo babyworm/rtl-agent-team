@@ -112,7 +112,7 @@ When modifying this plugin:
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
 11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
-12. **Version bump checklist** — When bumping the plugin version, update ALL of the following in a single commit:
+12. **Version bump checklist** — When bumping the plugin version, update ALL of the following in a single release-prep batch:
     - `package.json` (`version`)
     - `.claude-plugin/plugin.json` (`version`)
     - `.claude-plugin/marketplace.json` (`metadata.version` + `plugins[0].version`)

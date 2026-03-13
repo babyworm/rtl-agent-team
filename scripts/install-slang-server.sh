@@ -223,7 +223,6 @@ PLUGIN_EOF
     cat > "${plugin_dir}/.lsp.json" << 'LSP_EOF'
 {
   "systemverilog": {
-    "name": "Slang Server (SystemVerilog/Verilog LSP)",
     "command": "slang-server",
     "args": [],
     "extensionToLanguage": {
