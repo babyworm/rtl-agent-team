@@ -1,5 +1,5 @@
 #!/bin/sh
-# RTL Audit Subagent: SubagentStart/SubagentStop diagnostic hook (EXPERIMENTAL)
+# RTL Audit Subagent: SubagentStart/SubagentStop diagnostic hook
 # Records SubagentStart and SubagentStop events to a diagnostic log.
 # If these events are not supported by the Claude Code version, this hook
 # simply never fires (registered but inactive — no harm).

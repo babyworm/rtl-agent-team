@@ -19,7 +19,7 @@ user-invocable: false
   - `sim/cdc/run_cdc.sh --tool structural --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
 - Functional smoke/regression:
   - `scripts/run_sim.sh --sim verilator --top <tb_top> -f rtl/filelist_top.f --outdir sim/reports`
-  - `bash skills/rtl-regression-run/scripts/run_regression.sh --mode local --seeds "1 42 123 1337 65536" --sim verilator`
+  - `bash skills/rtl-p5s-func-verify/scripts/run_regression.sh --mode local --seeds "1 42 123 1337 65536" --sim verilator`
 - Synthesis/timing recheck:
   - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f --outdir syn/reports`
   - If STA wrapper exists: `syn/scripts/run_sta.sh --tool opensta --top <top> --outdir syn/reports`

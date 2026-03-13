@@ -114,7 +114,7 @@ class TestHookRuntimeContract:
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in entries]
-        assert matchers == ["Edit", "Write", "Bash", "TaskUpdate", "TaskCreate"]
+        assert matchers == ["Edit|Write|Bash", "TaskUpdate", "TaskCreate"]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]

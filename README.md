@@ -174,8 +174,8 @@ rtl-agent-team/
 │   │   ├── scripts/
 │   │   │   └── install_project_templates.sh  # Hook-driven template auto-installer
 │   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + other templates
-│   ├── rtl-regression-run/
-│   │   └── scripts/
+│   ├── rtl-p5s-func-verify/
+│   │   ├── scripts/            # run_regression.sh, merge_coverage.sh
 │   │       └── run_regression.sh  # Multi-seed regression runner (local-first)
 │   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)

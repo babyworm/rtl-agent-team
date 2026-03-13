@@ -174,8 +174,8 @@ rtl-agent-team/
 │   │   ├── scripts/
 │   │   │   └── install_project_templates.sh  # Hook-driven 템플릿 자동 설치
 │   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + 기타 템플릿
-│   ├── rtl-regression-run/
-│   │   └── scripts/
+│   ├── rtl-p5s-func-verify/
+│   │   ├── scripts/            # run_regression.sh, merge_coverage.sh
 │   │       └── run_regression.sh  # Multi-seed 회귀 테스트 (local-first)
 │   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)

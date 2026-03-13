@@ -156,7 +156,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-audit-init.sh                #   PostToolUse:TaskCreate: audit session initialization
 │   ├── rtl-audit-subagent.sh            #   PostToolUse:Task: per-subagent audit capture
 │   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:TaskCreate: audit spawn completion
-│   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest (experimental)
+│   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest
 │   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
 │   └── lib/                             #   8 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
 │                                        #     hook-output-util.sh, spawn-context-util.sh,
@@ -255,7 +255,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
-| `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns (experimental) |
+| `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns |
 | `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |
 | `rtl-audit-init.sh` | SessionStart | Initialize audit session directory and trace log |
 | `rtl-audit-subagent.sh` | SubagentStart/SubagentStop | Log subagent lifecycle events to audit trace |

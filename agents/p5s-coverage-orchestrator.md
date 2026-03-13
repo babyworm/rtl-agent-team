@@ -160,7 +160,7 @@ Do not add tests for waived bins.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run final regression with all test files.
-Merge coverage: bash skills/rtl-regression-run/scripts/merge_coverage.sh
+Merge coverage: bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
   --format verilator --output sim/{module}/coverage/merged.info
 Regenerate final coverage to sim/{module}/coverage/coverage_final.xml.
 Report final coverage percentages.",

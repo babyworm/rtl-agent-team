@@ -12,7 +12,7 @@
 **Progression rules:**
 - Each tier must PASS before proceeding to the next
 - On FAIL: fix via `rtl-p4s-bugfix`, re-verify at the failing tier
-- Tier 3 absorbs the former `rtl-regression-run` skill (deprecated)
+- Tier 3 provides multi-seed regression via `rtl-p5s-func-verify`
 - Coverage targets (Tier 3): line >= 90%, toggle >= 80%, FSM >= 70%
 - **SVA/Coverpoint 3+ iteration rule**: Min 3 rounds of refinement (Draft → Strengthen → Harden)
 

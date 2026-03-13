@@ -1,5 +1,5 @@
 #!/bin/sh
-# RTL Edit Tracker: PostToolUse:Edit/Write hook
+# RTL Edit Tracker: PostToolUse:Edit/Write/Bash hook
 # Tracks modified .sv/.svh/.v/.vh files for verification enforcement.
 # When an RTL file is edited, records it in a tracking file and injects
 # a reminder that functional verification (not just lint) is required.
@@ -15,7 +15,9 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"
 
-# Phase 6 stale detection helper (shared by Bash and Edit/Write paths)
+# --- Shared helpers (used by both Bash and Edit/Write paths) ---
+
+# Phase 6 stale detection helper
 _check_p6_stale() {
   _P6_CWD="$1"
   _P6_STATE="$2"
@@ -30,6 +32,49 @@ _check_p6_stale() {
     printf '%s' " Phase 6 review documents marked as stale — update code-review, design-review, design-note, and improvements after verification."
   fi
 }
+
+# Set up STATE_DIR and TRACK_FILE with team mode awareness.
+# Sets globals: STATE_DIR, TRACK_FILE
+_setup_tracking() {
+  STATE_DIR="$CWD/.rtl-agent-team/state"
+  mkdir -p "$STATE_DIR"
+  TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
+  _ST_TEAM_CONFIG="$STATE_DIR/team-config.json"
+  if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$_ST_TEAM_CONFIG" ]; then
+    _ST_TEAM_MODE=$(jsonu_get_file_path_bool "$_ST_TEAM_CONFIG" "team_mode")
+    if [ "$_ST_TEAM_MODE" = "true" ]; then
+      TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
+    fi
+  fi
+}
+
+# Track file(s) with locking and verify marker invalidation.
+# Accepts newline-separated file paths via $1.
+_track_and_invalidate() {
+  _TI_FILES="$1"
+  if acquire_lock "$TRACK_FILE"; then
+    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
+    printf '%s\n' "$_TI_FILES" | while IFS= read -r _ti_f; do
+      [ -z "$_ti_f" ] && continue
+      if ! grep -qxF "$_ti_f" "$TRACK_FILE" 2>/dev/null; then
+        printf '%s\n' "$_ti_f" >> "$TRACK_FILE"
+      fi
+    done
+    release_lock "$TRACK_FILE"
+  else
+    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
+    printf '%s\n' "$_TI_FILES" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
+  fi
+}
+
+# Compute count and P6 stale message. Sets globals: COUNT, P6_MSG, SAFE_STATE_DIR
+_prepare_gate_output() {
+  COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
+  P6_MSG=$(_check_p6_stale "$CWD" "$STATE_DIR")
+  SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
+}
+
+# --- End shared helpers ---
 
 # Extract file_path from tool input
 FILE_PATH=$(jsonu_get_input_string "$INPUT" "file_path")
@@ -116,33 +161,9 @@ if [ -z "$FILE_PATH" ]; then
     printf '{"continue":true}'
     exit 0
   fi
-  STATE_DIR="$CWD/.rtl-agent-team/state"
-  mkdir -p "$STATE_DIR"
-  TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
-  TEAM_CONFIG="$STATE_DIR/team-config.json"
-  if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
-    TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
-    if [ "$TEAM_MODE" = "true" ]; then
-      TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
-    fi
-  fi
-  # Invalidate previous verification evidence on any RTL edit (regardless of new/duplicate path)
-  if acquire_lock "$TRACK_FILE"; then
-    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
-    printf '%s\n' "$BASH_RTL_FILES" | while IFS= read -r bf; do
-      [ -z "$bf" ] && continue
-      if ! grep -qxF "$bf" "$TRACK_FILE" 2>/dev/null; then
-        printf '%s\n' "$bf" >> "$TRACK_FILE"
-      fi
-    done
-    release_lock "$TRACK_FILE"
-  else
-    rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
-    printf '%s\n' "$BASH_RTL_FILES" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
-  fi
-  COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
-  P6_MSG=$(_check_p6_stale "$CWD" "$STATE_DIR")
-  SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
+  _setup_tracking
+  _track_and_invalidate "$BASH_RTL_FILES"
+  _prepare_gate_output
   printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
   exit 0
 fi
@@ -150,43 +171,10 @@ fi
 # Check if the file is an RTL file
 case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
-    STATE_DIR="$CWD/.rtl-agent-team/state"
-    mkdir -p "$STATE_DIR"
-
-    # Session-scoped tracking in team mode to prevent cross-worker file pollution
-    TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
-    TEAM_CONFIG="$STATE_DIR/team-config.json"
-    if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
-      TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
-      if [ "$TEAM_MODE" = "true" ]; then
-        TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
-      fi
-    fi
-
-    # Add file if not already tracked (locked for concurrent access)
-    # Fail-closed: if lock fails, append without lock to prevent gate bypass
-    # Invalidate previous verification evidence on any RTL edit (regardless of new/duplicate path)
-    if acquire_lock "$TRACK_FILE"; then
-      rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
-      if ! grep -qxF "$FILE_PATH" "$TRACK_FILE" 2>/dev/null; then
-        printf '%s\n' "$FILE_PATH" >> "$TRACK_FILE"
-      fi
-      release_lock "$TRACK_FILE"
-    else
-      rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
-      # Fail-closed: append to lock-free fallback queue (deduped at gate time)
-      printf '%s\n' "$FILE_PATH" >> "$STATE_DIR/rtl-modified-files-fallback.txt"
-    fi
-
-    # Count tracked files
-    COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
-    BASENAME=$(basename "$FILE_PATH")
-
-    P6_MSG=$(_check_p6_stale "$CWD" "$STATE_DIR")
-
-    # Escape JSON-special characters in path/message variables
-    SAFE_BASENAME=$(jsonu_escape "$BASENAME")
-    SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
+    _setup_tracking
+    _track_and_invalidate "$FILE_PATH"
+    _prepare_gate_output
+    SAFE_BASENAME=$(jsonu_escape "$(basename "$FILE_PATH")")
     printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] %s modified (%s unverified RTL files). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. Lint alone cannot guarantee functional correctness. When done: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
     ;;
   */docs/*|*/reviews/*)

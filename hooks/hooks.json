@@ -24,27 +24,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
-            "timeout": 3
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
-            "timeout": 3
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
+        "matcher": "Edit|Write|Bash",
         "hooks": [
           {
             "type": "command",

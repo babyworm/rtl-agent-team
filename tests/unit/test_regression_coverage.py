@@ -7,8 +7,8 @@ import pytest
 
 from tests.conftest import SKILLS_DIR, run_script
 
-RUN_REGRESSION = SKILLS_DIR / "rtl-regression-run" / "scripts" / "run_regression.sh"
-MERGE_COVERAGE = SKILLS_DIR / "rtl-regression-run" / "scripts" / "merge_coverage.sh"
+RUN_REGRESSION = SKILLS_DIR / "rtl-p5s-func-verify" / "scripts" / "run_regression.sh"
+MERGE_COVERAGE = SKILLS_DIR / "rtl-p5s-func-verify" / "scripts" / "merge_coverage.sh"
 
 
 def _expected_default_parallel() -> int:

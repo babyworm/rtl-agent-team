@@ -110,7 +110,7 @@ After initial single-seed sim passes for a module, launch full multi-seed regres
 ```
 # Option A: Automated regression script (preferred)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full multi-seed regression: bash skills/rtl-regression-run/scripts/run_regression.sh
+     prompt="Run full multi-seed regression: bash skills/rtl-p5s-func-verify/scripts/run_regression.sh
 --mode local --seeds '1 42 123 1337 65536' --sim verilator.
 Do not force --parallel unless user requested an override (script default is max(1, nproc-2)).
 Report per-seed pass/fail, capture .vcd on failure.
@@ -151,7 +151,7 @@ Report early coverage gaps to guide additional test generation.")
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge multi-seed coverage for module {module}: bash skills/rtl-regression-run/scripts/merge_coverage.sh
+     prompt="Merge multi-seed coverage for module {module}: bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
 --format verilator --output sim/coverage/{module}_merged.info.
 Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%.
 Report module-scoped coverage gaps and suggest additional test vectors.")

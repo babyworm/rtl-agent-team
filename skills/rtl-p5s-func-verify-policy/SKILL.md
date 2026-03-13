@@ -72,19 +72,19 @@ verilator_coverage --write-info merged.info seed_*/coverage.dat
 genhtml sim/coverage/merged.info -o sim/coverage/html/ --title "Regression Coverage"
 ```
 
-## Regression Scripts (absorbed from rtl-regression-run)
+## Regression Scripts
 
 ```bash
 # Automated multi-seed regression
-bash skills/rtl-regression-run/scripts/run_regression.sh \
+bash skills/rtl-p5s-func-verify/scripts/run_regression.sh \
   --mode local --seeds "1 42 123 1337 65536" --sim verilator
 
 # Optional override when user explicitly asks
-bash skills/rtl-regression-run/scripts/run_regression.sh \
+bash skills/rtl-p5s-func-verify/scripts/run_regression.sh \
   --mode local --parallel "$(($(nproc)-2))" --seeds "1 42 123 1337 65536" --sim verilator
 
 # Coverage merge
-bash skills/rtl-regression-run/scripts/merge_coverage.sh \
+bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh \
   --format verilator --output sim/coverage/merged.info
 ```
 

@@ -578,8 +578,11 @@ class TestHooksJson:
 
     def test_post_tool_use_tracks_edit_and_write(self, hooks_data):
         matchers = [h["matcher"] for h in hooks_data["hooks"]["PostToolUse"]]
-        assert "Edit" in matchers
-        assert "Write" in matchers
+        # Edit/Write/Bash may be registered separately or consolidated via regex (e.g. "Edit|Write|Bash")
+        has_edit = any("Edit" in m for m in matchers)
+        has_write = any("Write" in m for m in matchers)
+        assert has_edit, f"No matcher covers Edit tool: {matchers}"
+        assert has_write, f"No matcher covers Write tool: {matchers}"
 
     def test_stop_hooks_have_both_gates(self, hooks_data):
         """Stop hooks should include both stop-gate and rtl-verify-stop-gate."""
