@@ -7,6 +7,16 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.14] - 2026-03-13
+
+### Fixed
+- Fixed remaining `"name"` key in `scripts/install-slang-server.sh` LSP template.
+- Completed 0.6.12 CHANGELOG entries for `f0bb002` (hook robustness, rat-tutorial rename, syn script fix, 13 new tests).
+
+### Changed
+- Relaxed version bump checklist wording from "single commit" to "single release-prep batch".
+- Scoped version bump grep to active release files only (excludes CHANGELOG and artifacts).
+
 ## [0.6.13] - 2026-03-13
 
 ### Fixed
