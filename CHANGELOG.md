@@ -7,6 +7,15 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.6.15] - 2026-03-13
+
+### Changed
+- Removed deprecated `rtl-regression-run` skill; migrated scripts to `rtl-p5s-func-verify/scripts/`.
+- Removed `(EXPERIMENTAL)` tags from stable hooks (`rtl-spawn-context`, `rtl-audit-subagent`).
+- Consolidated 3 PostToolUse hook entries into single `Edit|Write|Bash` regex matcher.
+- Extracted 3 shared helpers in `rtl-edit-tracker.sh` (211→199 lines, zero output change).
+- Created `sync_step0.sh` + `step0-template.md` for Step 0 bootstrap management.
+
 ## [0.6.14] - 2026-03-13
 
 ### Fixed
