@@ -23,6 +23,9 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 - Reverted codex session resume (CLI flags incompatible); improved merge-base fallback chain (local → origin → root commit).
 - Fixed codex cross-reviewer consistency: N/R variable scoping, round-loop context, Step 3 repetition wording, Mode A tmux requirement.
 - Fixed DRY hook violations, pipe-subshell bug, and race condition found in quality review.
+- Fixed `rat-tutuorial` typo → renamed to `rat-tutorial` with routing entry update.
+- Fixed hook robustness: `jsonu_escape` tab/newline handling, `rtl-team-progress.sh` JSON output on all exit paths, `rtl-edit-tracker.sh` Phase 6 stale detection deduplication.
+- Fixed unbound variable `$_DFF_` in `run_syn.sh` grep patterns.
 - Fixed 8 Claude-Codex consensus review findings.
 - Fixed 21 Claude-Codex cross-review findings across 10 rounds.
 - Fixed 10 Claude-Codex Phase 2 cross-review findings across 7 rounds.
@@ -30,6 +33,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ### Added
 - Added `test_json_util.py` (50 tests): direct unit tests for all `json-util.sh` parser functions across default and sed-fallback modes.
 - Added behavioral tests for `rtl-project-init-advisor.sh`.
+- Added 13 tests: team-progress hook behavioral (4), ADR template structural (3), domain-expert agent (3), tutorial rename (3).
 - Integrated Ouroboros evolutionary patterns into Phase 1-3 pipeline.
 
 ### Changed

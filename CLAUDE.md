@@ -118,7 +118,7 @@ When modifying this plugin:
     - `.claude-plugin/marketplace.json` (`metadata.version` + `plugins[0].version`)
     - `README.md` + `README_kr.md` (Marketplace table version)
     - `CHANGELOG.md` (move `[Unreleased]` items into new versioned section with date)
-    - Verify no stale version references remain: `grep -r '0\.OLD\.VER'`
+    - Verify no stale version references remain: `grep -r '0\.OLD\.VER' package.json .claude-plugin/ README.md README_kr.md`
 
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
