@@ -137,6 +137,18 @@ class TestAgentDefinitions:
         assert "DECISION" in content
         assert "USER_CONFIRMED" in content
 
+    def test_compliance_checker_agent(self):
+        """Verify compliance-checker agent has required sections."""
+        agent = AGENTS_DIR / "compliance-checker.md"
+        assert agent.exists(), "compliance-checker.md agent must exist"
+        content = agent.read_text()
+        assert "name: compliance-checker" in content, "Must have name in frontmatter"
+        assert "upstream_iron" in content, "Must reference upstream iron requirements"
+        assert "VIOLATION" in content, "Must define VIOLATION verdict"
+        assert "UNCERTAIN" in content, "Must define UNCERTAIN verdict"
+        assert "UNCERTAIN ratio" in content or "anti-rationalization" in content.lower(), "Must include anti-rationalization rules"
+        assert "Do not trust" in content, "Must enforce context isolation"
+
 
 # ── Skill definition tests ──────────────────────────────────────────────────
 
