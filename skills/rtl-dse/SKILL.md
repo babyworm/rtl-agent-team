@@ -111,7 +111,7 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
                         '{worktree_path}/docs/phase-3-uarch/clock-domain-map.md',
                         '{worktree_path}/docs/phase-3-uarch/protocol-assignments.md']
      Read only the above files using ABSOLUTE PATHS (worktree location).
-     Save report to .rtl-agent-team/state/compliance-report-new.json""")
+     Save report to {worktree_path}/.rtl-agent-team/state/compliance-report-new.json""")
 ```
 
 Then use rtl-architect to produce a structured comparison using both reports
@@ -123,7 +123,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Trial A (current best): read artifacts from current working directory
        - Compliance report: .rtl-agent-team/state/compliance-report-current.json
      Trial B (new trial): read artifacts from {worktree_path}/
-       - Compliance report: .rtl-agent-team/state/compliance-report-new.json
+       - Compliance report: {worktree_path}/.rtl-agent-team/state/compliance-report-new.json
      Produce comparison table: iron requirement count, acceptance_criteria
      measurability, compliance verdicts, ambiguity scores, open item
      resolution quality, self-critique HIGH findings remaining.
