@@ -62,12 +62,59 @@ Review criteria per round:
 
 User may override round count: "set iterations to N" → N rounds (minimum 1).
 
-## Requirements JSON Schema
+## Iron/Open Requirement Taxonomy
 
-Each requirement MUST have:
-- `"id": "REQ-NNN"` — unique, sequential from REQ-001
-- Spec section reference for traceability
-- Both functional and non-functional requirements receive IDs
+Phase 1 produces TWO requirement files instead of a single requirements.json:
+
+### iron-requirements.json — Settled Rules (Authority = 1)
+
+Located at `docs/phase-1-research/iron-requirements.json`. Contains functional and
+performance requirements that are absolute rules for ALL downstream phases.
+
+Each iron requirement MUST have:
+- `"id"`: `"REQ-F-NNN"` (functional) or `"REQ-P-NNN"` (performance) — unique, sequential
+- `"type"`: `"functional"` or `"performance"`
+- `"description"`: what the requirement is
+- `"priority"`: `"must"` | `"should"` | `"may"`
+- `"source"`: `{"document": "...", "section": "...", "line": N}` for traceability
+- `"acceptance_criteria"`: array of **measurable** criteria (reject vague terms like "should support", "adequate", "sufficient")
+- `"violation_policy"`: `"user_escalation"` (all P1 iron requirements use this)
+
+### open-requirements.json — Research Homework for Phase 2
+
+Located at `docs/phase-1-research/open-requirements.json`. Contains research topics
+that Phase 2 must investigate and resolve into architecture decisions.
+
+Each open item MUST have:
+- `"id"`: `"OPEN-1-NNN"` — sequential
+- `"topic"`: what needs to be investigated
+- `"context"`: why this is an open question
+- `"candidates"`: array of ≥ 2 candidates (single candidate = not a research topic)
+- `"evaluation_criteria"`: metrics Phase 2 should use for comparison
+- `"related_iron"`: array of REQ-F/REQ-P IDs that constrain this research
+- `"resolution_expected"`: how this should be resolved in Phase 2
+
+### Classification Rules
+
+- Functional/performance requirements with clear, measurable acceptance_criteria → **iron**
+- Architecture/implementation choices needing further investigation → **open**
+- Items with ambiguity score > 0.5 → CANNOT become iron until clarified
+- A requirement cannot become iron until its ambiguity score passes (reproducibility check)
+
+## Iron/Open Classification Verification
+
+After iron/open files are produced, verify:
+
+**FAIL conditions** (must fix before exit):
+- acceptance_criteria contains vague terms ("should support", "adequate", "sufficient")
+- open item missing evaluation_criteria
+- open item has candidates.length ≤ 1
+- iron item missing violation_policy
+
+**WARN conditions** (log and proceed):
+- iron ratio < 30% (most items pushed to open — weakens Phase 1 value)
+- open item related_iron is empty
+- CONDITIONAL PASS ambiguity axis linked to an iron-classified REQ
 
 ## Port Naming Conventions (io_definition.json)
 
@@ -128,7 +175,8 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 
 ## Final Checklist
 
-- [ ] `docs/phase-1-research/requirements.json` exists and is valid JSON
+- [ ] `docs/phase-1-research/iron-requirements.json` exists and is valid JSON
+- [ ] `docs/phase-1-research/open-requirements.json` exists and is valid JSON
 - [ ] Every requirement has unique `"id": "REQ-NNN"` field
 - [ ] `docs/phase-1-research/io_definition.json` exists and is valid JSON
 - [ ] io_definition.json port names use `i_`/`o_`/`io_` prefix (NOT suffix)
@@ -138,7 +186,7 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 - [ ] No unresolved requirement conflicts
 - [ ] Review coordinator (rtl-architect, or domain chief if available) declared Architecture-Ready (or gaps escalated)
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED)
-- [ ] Spec feature count vs requirements.json count documented
+- [ ] Spec feature count vs iron-requirements.json + open-requirements.json count documented
 - [ ] `reviews/phase-1-research/research-review.md` saved (consolidated)
 - [ ] Per-round review artifacts saved: research-review-r1.md, r2.md, r3.md
 - [ ] `docs/phase-1-research/solution-tree.json` exists (structured JSON)
@@ -151,3 +199,8 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 - [ ] AskUserQuestion used at every ambiguity point (no unresolved assumptions)
 - [ ] `docs/phase-1-research/ambiguity-assessment.md` saved with per-axis scores and overall ambiguity_score
 - [ ] Ambiguity Gate passed (score ≤ 0.3 for PASS, 0.3–0.5 for CONDITIONAL PASS)
+- [ ] Every iron requirement has measurable acceptance_criteria (no vague terms)
+- [ ] Every iron requirement has `"violation_policy": "user_escalation"`
+- [ ] Every open item has ≥ 2 candidates and evaluation_criteria
+- [ ] Every open item has target_phase specified
+- [ ] Iron/open classification verification passed (no FAIL conditions)
