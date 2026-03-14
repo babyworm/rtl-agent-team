@@ -118,11 +118,26 @@ Bash("mkdir -p reviews/phase-2-architecture")
 
 # Parallel stream A: architecture design
 Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Design system architecture from iron-requirements.json, open-requirements.json, and io_definition.json. Resolve OPEN-1-* items into architectural decisions (REQ-A-*) in iron-requirements.json. Produce architecture.md with D2 block diagram embedded. Block names in snake_case. Memory classification per block (local SRAM vs external).")
+     prompt="Design system architecture from iron-requirements.json, open-requirements.json, and io_definition.json. For each OPEN-1-* item, propose architectural resolution with rationale, rejected alternatives, and upstream compliance assessment. Produce architecture.md with D2 block diagram embedded. Block names in snake_case. Memory classification per block (local SRAM vs external).")
 
 # Parallel stream B: C reference model
 Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate docs/phase-2-architecture/bandwidth_report.json.")
+```
+
+### Iron/Open Artifact Production (orchestrator responsibility)
+
+After arch-designer completes, the ORCHESTRATOR writes the iron/open artifacts based on architectural decisions:
+
+```
+# arch-designer is READ-ONLY (disallowedTools: Write, Edit), so the orchestrator
+# produces iron-requirements.json from the architecture decisions in its output.
+Write("docs/phase-2-architecture/iron-requirements.json")
+# - Convert each resolved OPEN-1-* into REQ-A-* entries with:
+#   resolved_from, resolution_rationale, rejected_alternatives, upstream_compliance,
+#   violation_policy: "agent_retry", acceptance_criteria
+# If P2 has unresolved research topics for P3:
+Write("docs/phase-2-architecture/open-requirements.json")  # OPEN-2-* items (optional)
 ```
 
 ## Step 4: Ref Model Quality Gate + Bandwidth Feasibility Check

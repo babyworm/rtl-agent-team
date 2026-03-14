@@ -309,7 +309,7 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
      1. Every iron REQ has measurable acceptance_criteria (reject vague terms: 'should support', 'adequate', 'sufficient')
      2. Every iron REQ has violation_policy: 'user_escalation'
      3. Every open item has >= 2 candidates and evaluation_criteria
-     4. Every open item has target_phase = 'phase-2-architecture'
+     4. File-level target_phase = 'phase-2-architecture' in open-requirements.json
      5. Iron ratio >= 30% of total items (WARN if most items pushed to open)
      6. No CONDITIONAL PASS ambiguity axis items classified as iron
      If FAIL conditions detected: fix and re-classify.

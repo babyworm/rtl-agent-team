@@ -202,5 +202,5 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 - [ ] Every iron requirement has measurable acceptance_criteria (no vague terms)
 - [ ] Every iron requirement has `"violation_policy": "user_escalation"`
 - [ ] Every open item has ≥ 2 candidates and evaluation_criteria
-- [ ] Every open item has target_phase specified
+- [ ] File-level target_phase specified in open-requirements.json
 - [ ] Iron/open classification verification passed (no FAIL conditions)

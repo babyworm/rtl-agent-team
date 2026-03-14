@@ -141,8 +141,23 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
      5. Register/SRAM/FSM allocation
      6. Inter/intra-module pipeline, FSM spec, register map, memory map
      7. Signal naming: i_/o_/io_ prefix, {domain}_clk, u_ instance, UPPER_SNAKE_CASE params
-     8. REQ→uArch reverse traceability table: map every REQ-NNN to specific module(s)/section(s)
+     8. REQ→uArch reverse traceability table: map every REQ to specific module(s)/section(s)
+     For each OPEN-2-* item, propose μArch resolution with rationale, rejected alternatives, and upstream compliance.
      Also produce: clock-domain-map.md, protocol-assignments.md, and req-uarch-traceability.md")
+
+### Iron Artifact Production (orchestrator responsibility)
+
+After uarch-designer completes, the ORCHESTRATOR writes iron artifacts:
+
+```
+# uarch-designer is READ-ONLY, so the orchestrator produces iron-requirements.json
+# from the μArch decisions in its output.
+Write("docs/phase-3-uarch/iron-requirements.json")
+# - Convert each resolved OPEN-2-* into REQ-U-* entries with:
+#   resolved_from, resolution_rationale, rejected_alternatives, upstream_compliance,
+#   violation_policy: "agent_retry", acceptance_criteria
+# Phase 3 MUST NOT produce open-requirements.json (zero-opens invariant)
+```
 
 # Stream B: BFM development (parallel with uarch)
 # BFM MUST produce C++ files (bfm/src/*.cpp, bfm/include/*.h), NOT SystemVerilog.
