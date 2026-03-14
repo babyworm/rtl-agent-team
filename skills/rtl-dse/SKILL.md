@@ -43,8 +43,8 @@ Task(subagent_type="rtl-agent-team:dse-orchestrator",
      prompt="Execute DSE Trial 1. User input: $ARGUMENTS")
 
 # After orchestrator completes Trial 1 (including self-critique + re-run):
-# Commit all Trial 1 artifacts as the "current best"
-Bash("git add docs/ reviews/ refc/ bfm/ .rtl-agent-team/state/ && git commit -m 'dse: Trial 1 complete'")
+# Commit only DSE-produced artifacts as the "current best" (avoid sweeping unrelated work)
+Bash("git add docs/phase-1-research/ docs/phase-2-architecture/ docs/phase-3-uarch/ docs/decisions/ reviews/phase-1-research/ reviews/phase-2-architecture/ reviews/phase-3-uarch/ reviews/dse-self-critique.md refc/ bfm/ .rtl-agent-team/state/rtl-dse-state.json .rtl-agent-team/state/compliance-report.json && git commit -m 'dse: Trial 1 complete'")
 ```
 
 The orchestrator runs Phase 1→3, performs self-critique, re-runs with findings,
@@ -95,7 +95,9 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
      upstream_iron: ['docs/phase-1-research/iron-requirements.json',
                      'docs/phase-2-architecture/iron-requirements.json']
      target_artifacts: ['docs/phase-3-uarch/iron-requirements.json',
-                        'docs/phase-3-uarch/req-uarch-traceability.md']
+                        'docs/phase-3-uarch/req-uarch-traceability.md',
+                        'docs/phase-3-uarch/clock-domain-map.md',
+                        'docs/phase-3-uarch/protocol-assignments.md']
      Read only the above files from the CURRENT WORKING DIRECTORY.
      Save report to .rtl-agent-team/state/compliance-report-current.json""")
 
@@ -105,7 +107,9 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
      upstream_iron: ['{worktree_path}/docs/phase-1-research/iron-requirements.json',
                      '{worktree_path}/docs/phase-2-architecture/iron-requirements.json']
      target_artifacts: ['{worktree_path}/docs/phase-3-uarch/iron-requirements.json',
-                        '{worktree_path}/docs/phase-3-uarch/req-uarch-traceability.md']
+                        '{worktree_path}/docs/phase-3-uarch/req-uarch-traceability.md',
+                        '{worktree_path}/docs/phase-3-uarch/clock-domain-map.md',
+                        '{worktree_path}/docs/phase-3-uarch/protocol-assignments.md']
      Read only the above files using ABSOLUTE PATHS (worktree location).
      Save report to .rtl-agent-team/state/compliance-report-new.json""")
 ```

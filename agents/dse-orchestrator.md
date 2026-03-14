@@ -270,9 +270,13 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 Incorporate self-critique findings and re-run the full pipeline.
 
 **Re-run rules:**
-- **User decisions are preserved**: Do NOT re-ask algorithm/architecture selection
-  (ADR-001, ADR-002). These were user choices and remain valid unless a critique
-  finding explicitly invalidates them (e.g., "selected algorithm cannot meet REQ-P-001").
+- **User decisions are preserved by default**: Do NOT re-ask algorithm/architecture
+  selection (ADR-001, ADR-002) unless a critique finding explicitly invalidates them.
+- **If a user decision IS invalidated** (e.g., "selected algorithm cannot meet REQ-P-001"):
+  1. Re-generate candidates for the invalidated decision
+  2. AskUserQuestion to present updated candidates with the infeasibility evidence
+  3. Record updated decision in the corresponding ADR
+  4. Propagate the change through downstream phases
 - **HIGH findings MUST be addressed**: fix spec gaps, revise architecture, redesign μArch
 - **MEDIUM findings SHOULD be addressed**: improve where practical
 - **LOW findings**: note only, no action required
