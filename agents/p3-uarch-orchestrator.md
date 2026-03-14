@@ -300,7 +300,7 @@ Glob("docs/phase-3-uarch/open-requirements.json")
 Task(subagent_type="rtl-agent-team:compliance-checker",
      prompt="Compliance check: verify Phase 3 artifacts against Phase 1 and Phase 2 iron requirements.
      upstream_iron: ['docs/phase-1-research/iron-requirements.json', 'docs/phase-2-architecture/iron-requirements.json']
-     target_artifacts: [Phase 3 output artifact paths - docs/phase-3-uarch/*.md, docs/phase-3-uarch/iron-requirements.json]
+     target_artifacts: ['docs/phase-3-uarch/iron-requirements.json', 'docs/phase-3-uarch/clock-domain-map.md', 'docs/phase-3-uarch/protocol-assignments.md', 'docs/phase-3-uarch/req-uarch-traceability.md']
      Read only the above files and compare directly. Do not trust implementer explanations.")
 
 Read(".rtl-agent-team/state/compliance-report.json")

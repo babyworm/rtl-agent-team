@@ -159,7 +159,11 @@ if acquire_lock "$SKILL_STATE"; then
   # Build sed script file for single atomic read→transform→mv
   _SED_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/skill-gate-sed.XXXXXX" 2>/dev/null || echo "$SKILL_STATE.sed")
   printf 's/"iteration"[[:space:]]*:[[:space:]]*[0-9]*/"iteration": %s/\n' "$NEXT_ITER" > "$_SED_SCRIPT"
-  if grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
+  # Preserve upstream_challenge strategy if set by compliance pre-processing
+  _CURRENT_STRATEGY=$(jsonu_get_file_path_string "$SKILL_STATE" "strategy")
+  if [ "$_CURRENT_STRATEGY" = "upstream_challenge" ]; then
+    : # Do not overwrite upstream_challenge with ladder stage
+  elif grep -q '"strategy"' "$SKILL_STATE" 2>/dev/null; then
     printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "%s"/\n' "$STAGE" >> "$_SED_SCRIPT"
   fi
   # One-time migration: legacy states with ladder disabled are forced to ladder mode.
@@ -175,7 +179,7 @@ fi
 
 # Generate stage message outside lock (read-only, uses values determined above)
 MAX_ITER=${MAX_ITER:-5}
-TWO_X_LIMIT=$((MAX_ITER * 2))
+TWO_X_LIMIT=${FALLBACK_LIMIT:-$((MAX_ITER * 2))}
 case "$STAGE" in
   primary)
     STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary strategy iteration. Remaining criteria: ${PENDING}."
