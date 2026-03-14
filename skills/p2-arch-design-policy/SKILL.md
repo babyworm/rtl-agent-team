@@ -101,13 +101,60 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 - Memory access infeasible (bandwidth exceeds technology) → escalate, propose alternative
 - Architecture ↔ ref model fundamental mismatch → escalate, may require ref model rewrite
 
+## Open Resolution Protocol
+
+Phase 2 receives `docs/phase-1-research/open-requirements.json` containing OPEN-1-* research topics.
+For each OPEN-1-* item, the architecture team must:
+
+1. Conduct architecture research using the item's `candidates` and `evaluation_criteria`
+2. Select a winner with quantitative justification (gate count, throughput, area, etc.)
+3. Record the decision in `docs/phase-2-architecture/iron-requirements.json` (REQ-A-*) with:
+   - `resolved_from`: the OPEN-1-* ID that was resolved
+   - `resolution_rationale`: why this candidate was selected
+   - `rejected_alternatives`: all non-selected candidates with rejection reasons
+   - `upstream_compliance`: verification that new REQ-A-* does not violate P1 iron
+   - `violation_policy`: `"agent_retry"` (authority=2)
+   - `acceptance_criteria`: measurable criteria for the architectural decision
+4. Verify: ALL OPEN-1-* items must be resolved before Phase 2 exit
+
+Phase 2 may also produce `docs/phase-2-architecture/open-requirements.json` (OPEN-2-*) for
+research topics to be resolved by Phase 3 (e.g., micro-architecture choices).
+
+## Compliance Check Procedure
+
+After `docs/phase-2-architecture/iron-requirements.json` (REQ-A-*) is finalized:
+
+1. Invoke compliance-checker agent with:
+   - `upstream_iron`: `["docs/phase-1-research/iron-requirements.json"]`
+   - `target_artifacts`: Phase 2 output artifacts
+2. Gate: compliance-report.json verdict must be PASS
+3. On VIOLATION: enter authority-differentiated escalation ladder
+   - Authority 1 (P1 functional): Custom budget: Primary 3 + Fallback 2 + Last-chance 1
+   - Authority 2 (P2 architecture): Custom budget: Primary 4 + Fallback 3 + Last-chance 1
+
+## Upstream Challenge Protocol
+
+If compliance VIOLATION persists after Primary stage and is technically infeasible:
+1. Orchestrator produces infeasibility assessment with quantitative evidence
+2. Compliance-checker validates the infeasibility claim
+3. If validated: produce upstream challenge report with PPA estimates
+   - Required fields: frequency_mhz, area_gate_count, pixel_rate_mpps, achievable_fps
+4. Present challenge to user via AskUserQuestion with comparison table
+
+## Ambiguity Gate (Phase 2)
+
+Apply ambiguity scoring to all new REQ-A-* decisions:
+- "Would re-evaluating this architecture produce the same conclusion?"
+- Score ≤ 0.5 required before REQ-A-* becomes iron
+- Ambiguous decisions cannot be iron
+
 ## Final Checklist
 
 - [ ] docs/phase-2-architecture/hw-candidate-review.md exists with per-block selection + HW rationale
 - [ ] P1 algorithm candidates reviewed from HW perspective
 - [ ] architecture.md exists with all blocks and data paths
 - [ ] architecture.md includes D2 block diagram
-- [ ] Every REQ-NNN mapped to at least one architecture block
+- [ ] Every REQ (REQ-F-*, REQ-P-*, REQ-A-*) mapped to at least one architecture block
 - [ ] Dynamic convergence review completed (min 2 rounds, or gaps escalated and approved)
 - [ ] Memory access patterns reviewed for all large blocks
 - [ ] Architecture ↔ ref model consistency verified
@@ -125,3 +172,8 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 - [ ] `docs/phase-2-architecture/wonder-log.md` exists with per-round assumption tracking
 - [ ] All High-risk assumptions in wonder-log resolved or explicitly accepted
 - [ ] Per-round review artifacts saved (r1.md through rN.md, minimum 2 rounds)
+- [ ] All OPEN-1-* items from P1 resolved with rationale and rejected_alternatives
+- [ ] `docs/phase-2-architecture/iron-requirements.json` exists with REQ-A-* entries and resolved_from tracking
+- [ ] Compliance check against P1 iron: verdict = PASS
+- [ ] Ambiguity score ≤ 0.5 for all new REQ-A-* requirements
+- [ ] `docs/phase-2-architecture/open-requirements.json` (OPEN-2-*) created for Phase 3 homework (if any)

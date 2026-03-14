@@ -19,8 +19,9 @@ Each module document MUST contain:
 
 ## REQ→uArch Reverse Traceability
 
-Every P3 run MUST produce `docs/phase-3-uarch/req-uarch-traceability.md` mapping each REQ-NNN
-from `docs/phase-1-research/requirements.json` to the uArch module(s) and section(s) implementing it.
+Every P3 run MUST produce `docs/phase-3-uarch/req-uarch-traceability.md` mapping each requirement
+from `docs/phase-1-research/iron-requirements.json` (REQ-F-*, REQ-P-*) and
+`docs/phase-2-architecture/iron-requirements.json` (REQ-A-*) to the uArch module(s) and section(s) implementing it.
 
 Format:
 ```
@@ -218,6 +219,53 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 - [ ] reviews/phase-3-uarch/uarch-review-r2.md with rebuttal section (accept/reject + rationale)
 - [ ] Additional round artifacts (r3-r5) if convergence required more rounds
 
+## Open Resolution Protocol
+
+Phase 3 receives `docs/phase-2-architecture/open-requirements.json` containing OPEN-2-* research topics.
+For each OPEN-2-* item, the μArch team must:
+
+1. Conduct μArch analysis using the item's `candidates` and `evaluation_criteria`
+2. Select a winner with quantitative justification
+3. Record the decision in `docs/phase-3-uarch/iron-requirements.json` (REQ-U-*) with:
+   - `resolved_from`: the OPEN-2-* ID that was resolved
+   - `resolution_rationale`: why this candidate was selected
+   - `rejected_alternatives`: all non-selected candidates with rejection reasons
+   - `upstream_compliance`: verification that new REQ-U-* does not violate P1+P2 iron
+   - `violation_policy`: `"agent_retry"` (authority=3)
+   - `acceptance_criteria`: measurable criteria for the μArch decision
+4. Verify: ALL OPEN-2-* items must be resolved before Phase 3 exit
+
+### Zero-Opens Invariant
+
+Phase 3 MUST NOT produce an open-requirements.json. All research topics must be resolved here.
+If unresolved items remain at Phase 3 exit → EXIT GATE FAIL.
+P4 (Implementation) requires all requirements to be iron — no open items may remain.
+
+## Compliance Check Procedure
+
+After `docs/phase-3-uarch/iron-requirements.json` (REQ-U-*) is finalized:
+
+1. Invoke compliance-checker agent with:
+   - `upstream_iron`: `["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json"]`
+   - `target_artifacts`: Phase 3 output artifacts
+2. Gate: compliance-report.json verdict must be PASS
+3. On VIOLATION: enter authority-differentiated escalation ladder
+   - Authority 1 (P1 functional): Primary 3 + Fallback 2 + Last-chance 1
+   - Authority 2 (P2 architecture): Primary 4 + Fallback 3 + Last-chance 1
+   - Authority 3 (P3 μArch): Existing ladder N=5, Primary 5 + Fallback 5 + Last-chance 1
+
+## Upstream Challenge Protocol
+
+Same as Phase 2, but challenges may target P1 or P2 iron requirements.
+Challenge report must identify which upstream authority is being challenged.
+PPA estimates required with mandatory fields: frequency_mhz, area_gate_count, pixel_rate_mpps, achievable_fps.
+
+## Ambiguity Gate (Phase 3)
+
+Apply ambiguity scoring to all new REQ-U-* decisions:
+- "Would re-analyzing this micro-architecture produce the same design?"
+- Score ≤ 0.5 required before REQ-U-* becomes iron
+
 **Artifacts saved:**
 - [ ] reviews/phase-3-uarch/feature-preservation.md
 - [ ] reviews/phase-3-uarch/uarch-review.md (consolidated)
@@ -232,6 +280,12 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 - [ ] `docs/phase-3-uarch/upstream-feedback-report.md` generated (P1/P2 gap analysis)
 - [ ] `docs/phase-3-uarch/requirement-delta.md` generated (REQ implementability scan)
 - [ ] Per-round review artifacts saved (r1.md through rN.md, minimum 2 rounds)
+
+- [ ] All OPEN-2-* items from P2 resolved with rationale and rejected_alternatives
+- [ ] Zero remaining open items (P4 entry invariant — no open-requirements.json produced)
+- [ ] `docs/phase-3-uarch/iron-requirements.json` exists with REQ-U-* entries and resolved_from tracking
+- [ ] Compliance check against P1+P2 iron: verdict = PASS
+- [ ] Ambiguity score ≤ 0.5 for all new REQ-U-* requirements
 
 ## Mermaid Pipeline Diagram Format
 
