@@ -234,8 +234,10 @@ prevent convergence (wonder_stability = false).
 ## Step 5.5: Open Resolution Verification
 
 ```
-# Verify all P1 open items have been resolved
-Read("docs/phase-1-research/open-requirements.json")
+# Verify all P1 open items have been resolved (skip if no open items exist)
+Glob("docs/phase-1-research/open-requirements.json")
+# If found: Read and verify resolution. If not found: skip (all P1 items were iron).
+# Read("docs/phase-1-research/open-requirements.json")  — only if Glob matched
 Read("docs/phase-2-architecture/iron-requirements.json")
 
 # For each OPEN-1-* item:

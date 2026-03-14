@@ -30,7 +30,7 @@ and directs workers via SendMessage.
 
 Phase 1 completion required:
 - `docs/phase-1-research/iron-requirements.json` must exist
-- `docs/phase-1-research/open-requirements.json` must exist
+- `docs/phase-1-research/open-requirements.json` (optional — absent if P1 had no open items)
 - `docs/phase-1-research/io_definition.json` must exist
 
 If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:p1-spec-research`.
