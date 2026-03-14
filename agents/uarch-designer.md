@@ -88,7 +88,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
   <Investigation_Protocol>
     1. Read architecture.md to get the block list, interface definitions, timing budget.
-    2. Read requirements.json for functional behavior requirements per block.
+    2. Read iron-requirements.json (or legacy requirements.json if unavailable) for functional behavior requirements per block.
     3. Read timing_constraints.json for cycle budgets per pipeline stage.
     4. Read io_definition.json for port list of each block.
     5. For each block, decide: does it need sub-module decomposition?
@@ -107,13 +107,13 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
         Use MEM_LATENCY_INTERNAL=1 (SRAM/register) and MEM_LATENCY_EXTERNAL=500 (DDR/HBM) defaults.
         If architecture specifies different values, use those instead.
     15. Verify that cycle latency from each input to each output matches the timing budget.
-    16. Build REQ→uArch reverse traceability: for each REQ-NNN in requirements.json, identify which
-        docs/phase-3-uarch/{module}.md section(s) implement it. Output as a structured table in
-        docs/phase-3-uarch/req-uarch-traceability.md. Flag any REQ-NNN with zero uArch coverage.
+    16. Build REQ→uArch reverse traceability: for each requirement in iron-requirements.json (REQ-F-*, REQ-P-*, REQ-A-*),
+        identify which docs/phase-3-uarch/{module}.md section(s) implement it. Output as a structured table in
+        docs/phase-3-uarch/req-uarch-traceability.md. Flag any REQ with zero uArch coverage.
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Use Read to read architecture.md, requirements.json, timing_constraints.json, io_definition.json.
+    - Use Read to read architecture.md, iron-requirements.json (or requirements.json), timing_constraints.json, io_definition.json.
     - Use Grep to search architecture.md for specific block names or interface definitions.
     - Use Glob to find existing docs/phase-3-uarch/*.md files to avoid duplication.
     - Do NOT use Write or Edit (read-only advisor).
