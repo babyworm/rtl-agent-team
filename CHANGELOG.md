@@ -7,6 +7,31 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-15
+
+### Added
+- **Cascading Requirements with Iron/Open Taxonomy**: Phase-gated requirement lifecycle system
+  - `iron-requirements.json` (settled rules) + `open-requirements.json` (research homework) per phase
+  - Authority hierarchy: P1(functional) > P2(architecture) > P3(micro-architecture)
+  - `compliance-checker` agent (Opus): independent upstream iron requirement verification
+  - Upstream Challenge Protocol: infeasibility detection with quantitative PPA evidence
+  - Authority-differentiated escalation budgets in skill-completion-gate
+  - Iron Requirements Protocol injected via SessionStart hook
+- New compliance-state.json bootstrap in `rtl-phase-state-bootstrap.sh`
+- Upstream iron paths propagated through spawn-context manifests
+- 5 new completion criteria: `iron-open-classified`, `ambiguity-pass`, `open-resolved`, `zero-remaining-opens`, `compliance-pass`
+- Schema validation tests for iron/open/compliance JSON structures
+
+### Changed
+- `spec-analyst` produces `iron-requirements.json` + `open-requirements.json` (replaces flat `requirements.json`)
+- P1/P2/P3 orchestrators: open resolution steps, compliance check steps, ambiguity gate references
+- P1/P2/P3 policies: iron/open schema definitions, classification verification rules
+- `arch-designer` and `uarch-designer` updated to reference `iron-requirements.json`
+- P2 `open-requirements.json` made optional throughout (Glob-first conditional Read)
+- `skill-completion-criteria.json`: new criteria for P1-P3 base skills
+- `rtl-orchestrate/SKILL.md`: Iron Requirements Protocol added to routing source of truth
+- 10 action skills (P1-P5 base + team) updated with iron/open and compliance references
+
 ## [0.6.15] - 2026-03-13
 
 ### Changed
