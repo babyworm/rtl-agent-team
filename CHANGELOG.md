@@ -7,6 +7,22 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-03-15
+
+### Added
+- Extended rtl-dse to Phase 1→3 with self-critique loop and trial iteration
+- Phase 3 produces C/SystemC BFM (not RTL), with DPI bridge template
+- Self-critique: agent reviews P1→P3 output, re-runs with findings
+- User-controlled trial iteration via git worktrees with compliance-based comparison
+- ADR invalidation recovery: re-generate candidates + re-ask user
+- P1 ambiguity gate in DSE orchestrator
+
+### Changed
+- compliance-checker: supports custom output path via prompt
+- P3 orchestrator: open-requirements.json intake fully conditional
+- DSE policy: Phase 3 gate definition, trial comparison protocol, self-critique protocol
+
+
 ## [0.7.0] - 2026-03-15
 
 ### Added
