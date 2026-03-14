@@ -204,7 +204,7 @@ _sctx_quality_gates_json() {
   _QG_CWD="$1"
 
   _QG_P1="false"
-  [ -f "$_QG_CWD/docs/phase-1-research/requirements.json" ] && _QG_P1="true"
+  { [ -f "$_QG_CWD/docs/phase-1-research/iron-requirements.json" ] || [ -f "$_QG_CWD/docs/phase-1-research/requirements.json" ]; } && _QG_P1="true"
 
   _QG_P2="false"
   [ -f "$_QG_CWD/docs/phase-2-architecture/architecture.md" ] && _QG_P2="true"

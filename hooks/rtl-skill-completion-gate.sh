@@ -76,16 +76,19 @@ if echo "$PENDING" | grep -q "compliance-pass"; then
       _CR_AUTH=$(jsonu_get_file_path_num "$_CR_REPORT" "summary.max_violation_authority")
       _CR_INFEASIBLE=$(jsonu_get_file_path_string "$_CR_REPORT" "summary.infeasibility_detected")
       [ -z "$_CR_AUTH" ] && _CR_AUTH=3
+      # Compute authority-specific budgets
       case "$_CR_AUTH" in
-        1) _CR_TAG="[CRITICAL — UPSTREAM REQUIREMENT VIOLATION]" ;;
-        2) _CR_TAG="[WARNING — HIGH]" ;;
-        *) _CR_TAG="[WARNING]" ;;
+        1) _CR_TAG="[CRITICAL — UPSTREAM REQUIREMENT VIOLATION]"; _CR_MAX_P=3; _CR_MAX_F=2 ;;
+        2) _CR_TAG="[WARNING — HIGH]"; _CR_MAX_P=4; _CR_MAX_F=3 ;;
+        *) _CR_TAG="[WARNING]"; _CR_MAX_P=5; _CR_MAX_F=5 ;;
       esac
       _CR_DYN_MSG="$_CR_TAG Compliance violation (authority=$_CR_AUTH). Fix violated requirements before proceeding. Re-read upstream iron-requirements.json."
-      # Write authority and dynamic prompt via sed
+      # Write authority, budgets, and dynamic prompt via sed
       if acquire_lock "$SKILL_STATE"; then
         _CR_SED=$(mktemp "${TMPDIR:-/tmp}/cr-sed.XXXXXX" 2>/dev/null || echo "$SKILL_STATE.cr-sed")
         printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,]*/"compliance_authority": %s/\n' "$_CR_AUTH" > "$_CR_SED"
+        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,]*/"max_primary": %s/\n' "$_CR_MAX_P" >> "$_CR_SED"
+        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,]*/"max_fallback": %s/\n' "$_CR_MAX_F" >> "$_CR_SED"
         printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CR_DYN_MSG" | sed 's/[&/\]/\\&/g')" >> "$_CR_SED"
         # If infeasibility validated and past primary stage, switch strategy
         if [ "$_CR_INFEASIBLE" = "true" ]; then

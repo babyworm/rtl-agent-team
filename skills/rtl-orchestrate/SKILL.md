@@ -503,6 +503,13 @@ This block is the single source for SessionStart routing injection.
 8. No Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required)
 9. Phase 7 is exempt — free exploration allowed without pipeline Gate
 
+## Iron Requirements Protocol
+- Each phase produces iron-requirements.json (absolute rules) and open-requirements.json (homework for next phase)
+- Iron requirements from upper phases MUST NOT be violated
+- Authority hierarchy: P1(functional) > P2(architecture) > P3(micro-arch)
+- Violation triggers graduated escalation; infeasibility triggers Upstream Challenge with quantitative PPA evidence
+- Phase exit requires compliance-checker PASS against all upstream iron
+
 ## Routing (key patterns → Action Skill)
 Always route user intent to Action Skills first. Orchestrators are internal and spawned by skills.
 | Pattern | Route To | Type |
