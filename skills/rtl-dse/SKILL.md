@@ -57,7 +57,7 @@ If the orchestrator reports the user is NOT satisfied:
 1. Collect user feedback from the orchestrator's report
 2. Create a new trial in an isolated worktree (preserves current best on main)
 3. Run the orchestrator again with user feedback
-4. Run independent compliance check on new trial
+4. Run independent compliance checks on BOTH trials (current best + new)
 5. Compare trials via rtl-architect structured comparison
 6. Present comparison, user selects the better trial
 7. If new trial selected → merge worktree; if current best selected → discard worktree
@@ -68,7 +68,8 @@ If the orchestrator reports the user is NOT satisfied:
 trial_number = 2
 user_feedback = "<feedback from previous trial>"
 
-Task(subagent_type="rtl-agent-team:dse-orchestrator",
+# Agent(isolation="worktree") returns worktree_path and worktree_branch in its result
+trial_result = Task(subagent_type="rtl-agent-team:dse-orchestrator",
      isolation="worktree",
      prompt=f"""Execute DSE Trial {trial_number}.
      Previous trial feedback: {user_feedback}
@@ -76,46 +77,47 @@ Task(subagent_type="rtl-agent-team:dse-orchestrator",
      Address the user's specific concerns in this iteration.
      User input: $ARGUMENTS""")
 
-# After Trial N completes in worktree:
-# The Agent tool with isolation="worktree" returns the worktree path and branch.
-# If no changes were made, worktree is auto-cleaned.
-# If changes were made, compare against current best before merging.
+# Capture the worktree path from the agent result for subsequent comparison steps
+worktree_path = trial_result.worktree_path  # e.g., "/path/to/repo-worktree-abc123"
 ```
 
 ### Trial Comparison
 
-After Trial N completes, run independent compliance checks on BOTH trials
-(not peer comparison — compliance-checker validates upstream→downstream):
+After Trial N completes, run independent compliance checks on BOTH trials.
+**CRITICAL**: Use explicit absolute paths so each check reads the correct trial's artifacts.
 
 ```python
-# Run compliance-checker on CURRENT BEST trial (on main branch)
+# Run compliance-checker on CURRENT BEST trial (main branch, current working directory)
 Task(subagent_type="rtl-agent-team:compliance-checker",
      prompt="""Compliance check for current best trial.
      upstream_iron: ['docs/phase-1-research/iron-requirements.json',
                      'docs/phase-2-architecture/iron-requirements.json']
      target_artifacts: ['docs/phase-3-uarch/iron-requirements.json',
                         'docs/phase-3-uarch/req-uarch-traceability.md']
-     Read only the above files and compare directly.
+     Read only the above files from the CURRENT WORKING DIRECTORY.
      Save report to .rtl-agent-team/state/compliance-report-current.json""")
 
-# Run compliance-checker on NEW trial (in worktree — paths from worktree)
+# Run compliance-checker on NEW trial (worktree — use absolute paths from worktree_path)
 Task(subagent_type="rtl-agent-team:compliance-checker",
-     prompt="""Compliance check for new trial.
-     upstream_iron: ['docs/phase-1-research/iron-requirements.json',
-                     'docs/phase-2-architecture/iron-requirements.json']
-     target_artifacts: ['docs/phase-3-uarch/iron-requirements.json',
-                        'docs/phase-3-uarch/req-uarch-traceability.md']
-     Read only the above files and compare directly.
+     prompt=f"""Compliance check for new trial.
+     upstream_iron: ['{worktree_path}/docs/phase-1-research/iron-requirements.json',
+                     '{worktree_path}/docs/phase-2-architecture/iron-requirements.json']
+     target_artifacts: ['{worktree_path}/docs/phase-3-uarch/iron-requirements.json',
+                        '{worktree_path}/docs/phase-3-uarch/req-uarch-traceability.md']
+     Read only the above files using ABSOLUTE PATHS (worktree location).
      Save report to .rtl-agent-team/state/compliance-report-new.json""")
 ```
 
-Then use rtl-architect to produce a structured comparison:
+Then use rtl-architect to produce a structured comparison using both reports
+and artifacts from both locations:
 
 ```python
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="""Compare DSE Trial results.
-     Trial A (current best): read artifacts from main branch
-     Trial B (new trial): read artifacts from worktree
+     prompt=f"""Compare DSE Trial results.
+     Trial A (current best): read artifacts from current working directory
+       - Compliance report: .rtl-agent-team/state/compliance-report-current.json
+     Trial B (new trial): read artifacts from {worktree_path}/
+       - Compliance report: .rtl-agent-team/state/compliance-report-new.json
      Produce comparison table: iron requirement count, acceptance_criteria
      measurability, compliance verdicts, ambiguity scores, open item
      resolution quality, self-critique HIGH findings remaining.
