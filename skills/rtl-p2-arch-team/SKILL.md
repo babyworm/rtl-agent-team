@@ -113,5 +113,5 @@ Bash("rm -rf .rtl-agent-team/scratch/phase-2/")
 ## Workflow Notes
 
 - Open Resolution: resolve all OPEN-1-* items from Phase 1 `open-requirements.json`
-- Compliance Check: verify REQ-A-* architecture requirements against P1 iron requirements
-- Exit gate includes `compliance-pass` — architecture must not contradict any iron requirement
+- Exit gate includes `open-resolved` and `ambiguity-pass`
+- Note: `compliance-pass` will be added when team orchestrator is updated to invoke compliance-checker
