@@ -44,7 +44,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | **--- Phase 3: μArch ---** | | |
 | "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
 | **--- Pipeline Composition ---** | | |
-| "DSE", "design space exploration", "algorithm study", "architecture comparison" | `/rtl-agent-team:rtl-dse` | Action Skill |
+| "DSE", "design space exploration", "algorithm study", "architecture comparison", "iterative exploration" | `/rtl-agent-team:rtl-dse` | Action Skill |
 | "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |

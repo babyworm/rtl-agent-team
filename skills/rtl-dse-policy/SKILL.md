@@ -1,20 +1,22 @@
 ---
 name: rtl-dse-policy
-description: "Policy rules, DSE methodology, comparison matrix formats, C model transformation rules, and gate criteria for the Design Space Exploration pipeline (Phase 1→2). Pure reference — no orchestration."
+description: "Policy rules, DSE methodology, comparison matrix formats, C model transformation rules, self-critique protocol, trial comparison, and gate criteria for the iterative Design Space Exploration pipeline (Phase 1→3). Pure reference — no orchestration."
 user-invocable: false
 ---
 
 # DSE Policy
 
-## What Makes DSE Different from Standard Phase 1→2
+## What Makes DSE Different from Standard Phase 1→3
 
-| Aspect | Standard (p1-spec-research + p2-arch-design) | rtl-dse |
+| Aspect | Standard (p1 + p2 + p3 sequential) | rtl-dse |
 |--------|------------------------------------------|---------|
 | Algorithm study | Select best, justify | Explore N candidates, quantitative comparison |
 | Architecture | Single architecture from requirements | Multiple candidates, trade-off matrix, user selects |
+| μArch + BFM | Single-pass μArch design | Iterative μArch with self-critique and re-exploration |
 | Ref C model | Build from scratch | Accept functional model as input, transform to architectural model |
 | Fixed-point | Identify precision requirements | Simulate effects, precision vs area trade-off curves |
-| Output | Ready for Phase 3 | Ready for Phase 3, with DSE rationale documented |
+| Iteration | One-shot per phase | Self-critique → re-run → user review → trial comparison |
+| Output | Ready for Phase 4 | Pre-implementation package with DSE rationale, ready for Phase 4 |
 
 ## Design Priority Order
 1. Functional Correctness (highest) — Every required feature works exactly
@@ -99,16 +101,16 @@ Output: refc/*.c (restructured), refc/include/*.h. C11, no clock/reset, DPI-C co
 ## Execution Rules
 
 ### Dual-Layer Phase Gates
-Phase 1→2 and Phase 2 completion require BOTH Artifact Gate + Quality Gate.
-Quality Gate verdicts: `PASS` or `FAIL + findings[]`. Max 2 retries.
+Phase 1→2, Phase 2→3, and Phase 3 completion require BOTH Artifact Gate + Quality Gate.
+Quality Gate verdicts: `PASS` or `FAIL + findings[]`. Max 2 retries per gate.
 
 ### Scratchpad Convention
 `.rtl-agent-team/scratch/phase-{N}/round-{R}-{agent}.md`
 On gate PASS: consolidate to reviews/, clean scratch.
 
 ### Termination
-After Phase 2 Quality Gate PASS, generate summary + ADR, then STOP.
-Do NOT proceed to Phase 3.
+After Phase 3 Quality Gate PASS + self-critique re-run, present results to user.
+Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user review.
 
 ## Phase Gate Definitions
 
@@ -153,19 +155,122 @@ Do NOT proceed to Phase 3.
 - Port prefix: `i_`, `o_`, `io_`. Clock: `{domain}_clk`. Reset: `{domain}_rst_n`
 - C ref model: C11, no clock/reset, ext_mem abstraction, DPI-C compatible
 
+## Phase 3 Gate Definition
+
+### Phase 2→3 (Architecture DSE → μArch + BFM)
+**Artifact Gate**: architecture.md + refc/*.c + iron-requirements.json (P1+P2) exist
+**Quality Gate**:
+- Architecture review converged (or user-approved)
+- Ref C model verified (bitexact if transform mode)
+
+### Phase 3 Completion (μArch + BFM → Self-Critique)
+**Artifact Gate**: docs/phase-3-uarch/*.md + bfm/src/*.cpp (or bfm/src/*.c) + iron-requirements.json (P3) exist
+**Quality Gate**:
+- μArch review converged (min 2 rounds)
+- BFM compiles and simulates, outputs match ref C model
+- REQ→μArch traceability 100% coverage
+- Clock domain map and protocol assignments complete
+- **Verdict**: PASS if all above satisfied
+
+**Note**: Phase 3 produces C/SystemC BFM, NOT SystemVerilog RTL.
+BFM is the executable μArch model. DPI bridge template is prepared for
+future RTL comparison in Phase 4, but no RTL is written in DSE.
+
+## Self-Critique Protocol
+
+After Phase 3 Quality Gate PASS, the orchestrator performs self-critique
+BEFORE presenting results to the user:
+
+1. **Critique agent** reviews the complete P1→P3 output:
+   - Spec completeness: any requirements missed or vague?
+   - Architecture soundness: any structural weakness, bottleneck, or over-engineering?
+   - μArch feasibility: pipeline depths realistic? memory bandwidth achievable?
+   - BFM correctness: any untested paths? ref model coverage gaps?
+   - Iron/open quality: acceptance_criteria measurable? resolution rationale substantive?
+   - Cross-phase consistency: do P3 decisions contradict P1/P2 iron requirements?
+
+2. **Output**: `reviews/dse-self-critique.md` with findings rated HIGH/MEDIUM/LOW
+
+3. **Re-run**: Run Phase 1→3 again incorporating all critique findings
+   - HIGH findings: must be addressed (fix spec, revise architecture, redesign μArch)
+   - MEDIUM findings: should be addressed
+   - LOW findings: note for user, no action required
+
+4. **Result**: Second pass produces refined pre-implementation package
+
+## Trial Comparison Protocol
+
+When the user requests another iteration (not satisfied with results),
+a new trial is created in a git worktree:
+
+### Trial Management
+- **Trial 1**: runs on current branch, results committed
+- **Trial N (N≥2)**: created via `Agent(isolation="worktree")` with user feedback
+- Each trial produces a complete P1→P3 artifact set
+
+### Comparison Method
+After Trial N completes, compare against the current best trial:
+
+1. **Compliance comparison**: invoke compliance-checker on both trials' iron-requirements
+   - Which trial covers more acceptance_criteria?
+   - Which trial has fewer UNCERTAIN/VIOLATION items?
+   - Which trial's iron requirements are more measurable?
+
+2. **Quantitative comparison table** (presented to user):
+
+| Metric | Current Best (Trial K) | New Trial (Trial N) |
+|--------|----------------------|---------------------|
+| Iron requirements count | | |
+| Open items remaining | | |
+| Ambiguity score (P1) | | |
+| Architecture candidates explored | | |
+| μArch modules defined | | |
+| BFM ↔ RefC match | | |
+| Compliance verdict (P1+P2→P3) | | |
+| Self-critique HIGH findings | | |
+
+3. **Selection**: user chooses which trial to keep
+   - If Trial N selected → merge worktree changes into main branch
+   - If current best selected → discard Trial N worktree
+
+### Iteration Loop
+```
+repeat:
+  AskUserQuestion("결과가 만족스러운가? (yes/no)")
+  if yes → done (pre-implementation package ready for Phase 4)
+  if no  → collect user feedback
+         → create new trial (worktree)
+         → run P1→P3 with feedback
+         → compare trials
+         → user selects better trial
+```
+
 ## Final Checklist
 
-- [ ] Phase 1: requirements.json, io_definition.json, timing_constraints.json exist
+- [ ] Phase 1: iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json exist
 - [ ] Phase 1: domain-analysis.md contains algorithm comparison matrices (not just selection)
 - [ ] Phase 1: Algorithm selection ADR recorded with user's decision
 - [ ] Phase 1: research-review.md PASS, phase-1-summary.md generated
+- [ ] Phase 1: Ambiguity score ≤ 0.5
 - [ ] Phase 2: architecture-candidates.md contains 2+ candidates with quantitative comparison
 - [ ] Phase 2: Architecture selection ADR recorded with user's decision
 - [ ] Phase 2: architecture.md exists (refined from selected candidate)
+- [ ] Phase 2: iron-requirements.json (REQ-A-*) with resolved_from tracking
 - [ ] Phase 2: refc/*.c exists
 - [ ] Phase 2: If transform mode — bitexact equivalence verified
 - [ ] Phase 2: architecture-review.md PASS, feature-coverage.md 100%
-- [ ] Phase 2: phase-2-summary.md generated, ADRs recorded
+- [ ] Phase 2: Compliance check against P1 iron: PASS
+- [ ] Phase 3: docs/phase-3-uarch/*.md per-module specs exist
+- [ ] Phase 3: iron-requirements.json (REQ-U-*) with resolved_from tracking
+- [ ] Phase 3: BFM (bfm/src/*.cpp or bfm/src/*.c) compiles and matches ref C model
+- [ ] Phase 3: clock-domain-map.md, protocol-assignments.md exist
+- [ ] Phase 3: req-uarch-traceability.md with 100% REQ coverage
+- [ ] Phase 3: Compliance check against P1+P2 iron: PASS
+- [ ] Phase 3: Zero remaining open items
+- [ ] Self-critique: reviews/dse-self-critique.md produced
+- [ ] Self-critique: Phase 1→3 re-run with critique findings incorporated
+- [ ] User satisfaction check performed
+- [ ] If multiple trials: comparison table presented, better trial selected
 - [ ] Scratch directories cleaned
 - [ ] State file updated with all phases completed
-- [ ] Pipeline did NOT proceed to Phase 3
+- [ ] Pipeline did NOT proceed to Phase 4
