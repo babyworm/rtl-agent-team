@@ -84,19 +84,29 @@ Task(subagent_type="rtl-agent-team:dse-orchestrator",
 
 ### Trial Comparison
 
-After Trial N completes, compare against the current best using independent
-compliance checks on each trial (not peer comparison — compliance-checker
-validates upstream→downstream, not trial-vs-trial):
+After Trial N completes, run independent compliance checks on BOTH trials
+(not peer comparison — compliance-checker validates upstream→downstream):
 
 ```python
-# Run compliance-checker on the NEW trial's own P1→P3 chain
+# Run compliance-checker on CURRENT BEST trial (on main branch)
 Task(subagent_type="rtl-agent-team:compliance-checker",
-     prompt="""Compliance check for Trial N.
+     prompt="""Compliance check for current best trial.
      upstream_iron: ['docs/phase-1-research/iron-requirements.json',
                      'docs/phase-2-architecture/iron-requirements.json']
      target_artifacts: ['docs/phase-3-uarch/iron-requirements.json',
                         'docs/phase-3-uarch/req-uarch-traceability.md']
-     Read only the above files and compare directly.""")
+     Read only the above files and compare directly.
+     Save report to .rtl-agent-team/state/compliance-report-current.json""")
+
+# Run compliance-checker on NEW trial (in worktree — paths from worktree)
+Task(subagent_type="rtl-agent-team:compliance-checker",
+     prompt="""Compliance check for new trial.
+     upstream_iron: ['docs/phase-1-research/iron-requirements.json',
+                     'docs/phase-2-architecture/iron-requirements.json']
+     target_artifacts: ['docs/phase-3-uarch/iron-requirements.json',
+                        'docs/phase-3-uarch/req-uarch-traceability.md']
+     Read only the above files and compare directly.
+     Save report to .rtl-agent-team/state/compliance-report-new.json""")
 ```
 
 Then use rtl-architect to produce a structured comparison:

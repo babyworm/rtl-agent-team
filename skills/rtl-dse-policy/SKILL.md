@@ -214,10 +214,10 @@ a new trial is created in a git worktree:
 ### Comparison Method
 After Trial N completes, compare against the current best trial:
 
-1. **Compliance comparison**: invoke compliance-checker on both trials' iron-requirements
-   - Which trial covers more acceptance_criteria?
-   - Which trial has fewer UNCERTAIN/VIOLATION items?
-   - Which trial's iron requirements are more measurable?
+1. **Independent compliance checks**: invoke compliance-checker separately on EACH trial's P1→P3 chain
+   - Run compliance-checker on current best trial → compliance-report-current.json
+   - Run compliance-checker on new trial → compliance-report-new.json
+   - Compare: which trial covers more acceptance_criteria? fewer VIOLATION items? more measurable iron?
 
 2. **Quantitative comparison table** (presented to user):
 
