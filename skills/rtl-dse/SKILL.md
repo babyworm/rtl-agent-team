@@ -44,7 +44,7 @@ Task(subagent_type="rtl-agent-team:dse-orchestrator",
 
 # After orchestrator completes Trial 1 (including self-critique + re-run):
 # Commit only DSE-produced artifacts as the "current best" (avoid sweeping unrelated work)
-Bash("git add docs/phase-1-research/ docs/phase-2-architecture/ docs/phase-3-uarch/ docs/decisions/ reviews/phase-1-research/ reviews/phase-2-architecture/ reviews/phase-3-uarch/ reviews/dse-self-critique.md refc/ bfm/ .rtl-agent-team/state/rtl-dse-state.json .rtl-agent-team/state/compliance-report.json && git commit -m 'dse: Trial 1 complete'")
+Bash("git add -f docs/phase-1-research/ docs/phase-2-architecture/ docs/phase-3-uarch/ docs/decisions/ reviews/phase-1-research/ reviews/phase-2-architecture/ reviews/phase-3-uarch/ reviews/dse-self-critique.md refc/ bfm/ .rtl-agent-team/state/rtl-dse-state.json .rtl-agent-team/state/compliance-report.json && git commit -m 'dse: Trial 1 complete'")
 ```
 
 The orchestrator runs Phase 1→3, performs self-critique, re-runs with findings,
