@@ -221,7 +221,10 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Review all expert outputs for remaining [AMBIGUITY] and [CONFLICT] flags. List each unresolved item for orchestrator to resolve via AskUserQuestion. Then merge results into docs/phase-1-research/requirements.json (all REQ-NNN with unique IDs). Save merged artifacts using Write tool to docs/phase-1-research/.")
+     prompt="Review all expert outputs for remaining [AMBIGUITY] and [CONFLICT] flags. List each unresolved item for orchestrator to resolve via AskUserQuestion. Then classify and merge results into:
+     - docs/phase-1-research/iron-requirements.json (settled REQ-F-NNN functional and REQ-P-NNN performance requirements with measurable acceptance_criteria and violation_policy: user_escalation)
+     - docs/phase-1-research/open-requirements.json (research topics as OPEN-1-NNN with candidates, evaluation_criteria, related_iron, target_phase: phase-2-architecture)
+     Save merged artifacts using Write tool to docs/phase-1-research/.")
 
 # Use AskUserQuestion to resolve each ambiguity/conflict before final merge
 ```
@@ -231,15 +234,16 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="Self-verification of all Phase 1 artifacts:
-1. Count spec features vs docs/phase-1-research/requirements.json items — flag suspected omissions
+1. Count spec features vs docs/phase-1-research/iron-requirements.json + open-requirements.json items — flag suspected omissions
 2. Verify docs/phase-1-research/io_definition.json port names comply with i_/o_/io_ prefix convention
 3. Verify docs/phase-1-research/timing_constraints.json exists with per-block timing targets (rough estimates)
 4. Produce docs/phase-1-research/domain-analysis.md with candidate survey, comparison tables, cross-block dependencies, and per-block timing targets
-5. Validate all JSON files are well-formed (requirements.json, io_definition.json, timing_constraints.json)
+5. Validate all JSON files are well-formed (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json)
 Save all artifacts using Write tool to docs/phase-1-research/.")
 
 # Verify all required files exist — FAIL if any missing
-Glob("docs/phase-1-research/requirements.json")
+Glob("docs/phase-1-research/iron-requirements.json")
+Glob("docs/phase-1-research/open-requirements.json")
 Glob("docs/phase-1-research/io_definition.json")
 Glob("docs/phase-1-research/timing_constraints.json")
 Glob("docs/phase-1-research/domain-analysis.md")
@@ -260,13 +264,13 @@ Read("reviews/phase-1-research/research-review-r2.md")
 # Check for accept/reject entries — if absent, re-invoke review coordinator to produce rebuttal
 ```
 
-## Step 7.5: Ambiguity Gate
+## Step 7.5a: Ambiguity Gate
 
 After self-verification, assess overall specification ambiguity:
 
 ```
 # 1. Review spec-analyst output for Ambiguity_Assessment section
-Read("docs/phase-1-research/requirements.json")
+Read("docs/phase-1-research/iron-requirements.json")
 # Check if spec-analyst included Ambiguity_Assessment in its output
 
 # 2. If no assessment exists, instruct spec-analyst to generate one
@@ -295,6 +299,30 @@ Read("docs/phase-1-research/ambiguity-assessment.md")
 
 Gate decision is recorded in `docs/phase-1-research/ambiguity-assessment.md`.
 
+## Step 7.5b: Iron/Open Classification Verification
+
+Verify that iron/open classification is correct before proceeding to cross-review:
+
+```
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     prompt="Verify iron/open classification in Phase 1 artifacts:
+     1. Every iron REQ has measurable acceptance_criteria (reject vague terms: 'should support', 'adequate', 'sufficient')
+     2. Every iron REQ has violation_policy: 'user_escalation'
+     3. Every open item has >= 2 candidates and evaluation_criteria
+     4. Every open item has target_phase = 'phase-2-architecture'
+     5. Iron ratio >= 30% of total items (WARN if most items pushed to open)
+     6. No CONDITIONAL PASS ambiguity axis items classified as iron
+     If FAIL conditions detected: fix and re-classify.
+     If WARN conditions detected: log and proceed.
+     Save final versions:
+     - docs/phase-1-research/iron-requirements.json
+     - docs/phase-1-research/open-requirements.json")
+
+# Verify files exist after classification
+Glob("docs/phase-1-research/iron-requirements.json")
+Glob("docs/phase-1-research/open-requirements.json")
+```
+
 ## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)
 
 Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
@@ -305,7 +333,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 1 Research.
      Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
      Input artifacts: user-provided spec documents.
-     Output artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
+     Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
      Review verdicts: reviews/phase-1-research/ (research-review-r1.md, research-review-r2.md, research-review-r3.md, research-review.md).
      Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
 ```
