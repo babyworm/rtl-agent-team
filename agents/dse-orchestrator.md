@@ -84,7 +84,7 @@ Bash("mkdir -p reviews/phase-1-research docs/decisions")
 ### Step 3a: Requirement Extraction
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Analyze spec at specs/ and produce iron-requirements.json (REQ-F-*, REQ-P-* with measurable acceptance_criteria, violation_policy: user_escalation) and open-requirements.json (OPEN-1-* research topics with candidates, evaluation_criteria, target_phase: phase-2-architecture). Also produce io_definition.json.
+     prompt="Analyze spec at specs/ and produce iron-requirements.json (REQ-F-*, REQ-P-* with measurable acceptance_criteria, violation_policy: user_escalation), open-requirements.json (OPEN-1-* research topics with candidates, evaluation_criteria, target_phase: phase-2-architecture), io_definition.json, and timing_constraints.json (clock domains, latency budgets, throughput targets).
 Port names: i_/o_/io_ prefix, {domain}_clk, {domain}_rst_n.")
 ```
 
@@ -263,36 +263,57 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 ## Step 7: Re-run Phase 1→3 with Critique
 
-Incorporate self-critique findings and re-run the full pipeline:
+Incorporate self-critique findings and re-run the full pipeline.
+
+**Re-run rules:**
+- **User decisions are preserved**: Do NOT re-ask algorithm/architecture selection
+  (ADR-001, ADR-002). These were user choices and remain valid unless a critique
+  finding explicitly invalidates them (e.g., "selected algorithm cannot meet REQ-P-001").
+- **HIGH findings MUST be addressed**: fix spec gaps, revise architecture, redesign μArch
+- **MEDIUM findings SHOULD be addressed**: improve where practical
+- **LOW findings**: note only, no action required
+- **All quality gates must be re-run** after refinement (Phase 1→2, Phase 2→3, Phase 3)
+- **Summaries and ADRs regenerated** if underlying decisions changed
 
 ```
 # Read critique findings
 Read("reviews/dse-self-critique.md")
 
-# Re-run Phase 1 with critique-driven refinements
-# (Steps 3a-3c with additional context from critique)
+# Re-run Phase 1: refine requirements based on critique
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="Refine iron-requirements.json and open-requirements.json.
      Address self-critique findings from reviews/dse-self-critique.md.
      HIGH findings MUST be fixed. MEDIUM findings SHOULD be addressed.
-     Preserve existing REQ IDs where content is unchanged.")
+     Preserve existing REQ IDs where content is unchanged.
+     Preserve user's algorithm selection (ADR-001) unless critique invalidates it.
+     Re-generate timing_constraints.json if timing-related findings exist.")
 
-# Re-run Phase 2 with refined requirements
-# (Steps 4a-4d with refined inputs)
+# Re-run Phase 1→2 Quality Gate
+# (same gate checks as Step 3, verify PASS)
+
+# Re-run Phase 2: refine architecture based on critique
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Refine Phase 2 architecture. Self-critique findings available at
      reviews/dse-self-critique.md. Address architectural weaknesses identified.
-     Update iron-requirements.json (REQ-A-*) and architecture.md accordingly.")
+     Preserve user's architecture selection (ADR-002) unless critique invalidates it.
+     Update iron-requirements.json (REQ-A-*) and architecture.md accordingly.
+     Re-run compliance check against P1 iron.")
 
-# Re-run Phase 3 with refined architecture
+# Re-run Phase 2→3 Quality Gate
+
+# Re-run Phase 3: refine μArch and BFM based on critique
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
      prompt="Refine Phase 3 μArch and BFM. Self-critique findings available at
      reviews/dse-self-critique.md. Address μArch feasibility issues identified.
      Update iron-requirements.json (REQ-U-*) and BFM accordingly.
-     Ensure BFM matches ref C model after changes.")
+     Ensure BFM matches ref C model after changes.
+     Re-run compliance check against P1+P2 iron.")
+
+# Re-run Phase 3 Quality Gate
 ```
 
 After re-run, verify all Phase 1-3 quality gates pass again.
+If any gate fails, address within max 2 retries per gate (per policy).
 
 ## Step 8: Present Results + User Satisfaction
 

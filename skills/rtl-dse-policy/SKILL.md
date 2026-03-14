@@ -115,9 +115,10 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 ## Phase Gate Definitions
 
 ### Phase 1→2 (Research → Architecture DSE)
-**Artifact Gate**: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
+**Artifact Gate**: iron-requirements.json + open-requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
 **Quality Gate**:
-- Requirements complete and consistent
+- Iron/open requirements complete and consistent
+- Ambiguity score ≤ 0.5 for all iron requirements
 - Algorithm comparison matrices complete with quantitative data
 - Algorithm selection ADR recorded with user's decision
 - Save: `reviews/phase-1-research/research-review.md`
@@ -125,19 +126,21 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 
 **Summary Validation**: `docs/phase-1-research/phase-1-summary.md`
 
-### Phase 2 Completion (Architecture DSE → Human Review)
-**Artifact Gate**: architecture.md + architecture-candidates.md + refc/*.c exist
+### Phase 2→3 (Architecture DSE → μArch + BFM)
+**Artifact Gate**: architecture.md + architecture-candidates.md + refc/*.c + iron-requirements.json (P2, REQ-A-*) exist
 **Quality Gate**:
 - 3-round iterative review converged (or user-approved)
-- Feature Coverage: 100% REQ-NNN mapped to architecture blocks
+- Feature Coverage: 100% REQ (REQ-F-*, REQ-P-*, REQ-A-*) mapped to architecture blocks
   - Save: `reviews/phase-2-architecture/feature-coverage.md`
+- All OPEN-1-* resolved with rationale in iron-requirements.json (REQ-A-*)
+- Compliance check against P1 iron: PASS
 - Architecture candidates document with quantitative comparison
 - Architecture selection ADR with user's decision and rationale
 - Ref C model architecturally structured (block boundaries match architecture.md)
 - If transformed: bitexact equivalence verified
 - Architecture Diagram saved
 - Save: `reviews/phase-2-architecture/architecture-review.md`
-- **Verdict**: PASS if 100% coverage AND architecture selected AND ref model consistent
+- **Verdict**: PASS if 100% coverage AND architecture selected AND ref model consistent AND compliance PASS
 
 **Summary + ADR**: phase-2-summary.md + ADRs (including algorithm + architecture selection)
 
