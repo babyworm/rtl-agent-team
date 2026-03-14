@@ -69,9 +69,11 @@ trial_number = 2
 user_feedback = "<feedback from previous trial>"
 
 # Agent(isolation="worktree") returns worktree_path and worktree_branch in its result
+# CRITICAL: Reset state file so orchestrator does a fresh start, not resume
 trial_result = Task(subagent_type="rtl-agent-team:dse-orchestrator",
      isolation="worktree",
-     prompt=f"""Execute DSE Trial {trial_number}.
+     prompt=f"""Execute DSE Trial {trial_number}. THIS IS A NEW TRIAL — ignore any
+     existing rtl-dse-state.json (delete it and fresh-start).
      Previous trial feedback: {user_feedback}
      Previous trial artifacts are available as starting point.
      Address the user's specific concerns in this iteration.

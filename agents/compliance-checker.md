@@ -49,7 +49,8 @@ For EACH requirement in the upstream iron list:
 
 ### Step 4: Generate Compliance Report
 
-Write a JSON compliance report to `.rtl-agent-team/state/compliance-report.json`:
+Write a JSON compliance report to the path specified in the prompt (default: `.rtl-agent-team/state/compliance-report.json`).
+If the prompt includes "Save report to <path>", use that path instead of the default:
 
 ```json
 {

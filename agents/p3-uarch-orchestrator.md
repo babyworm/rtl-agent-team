@@ -86,9 +86,10 @@ Glob("docs/phase-2-architecture/bandwidth_report.json")
 # P2 memory classification (internal SRAM vs external DRAM/cache)
 # Block diagram is embedded within architecture.md
 
-# Open Requirements Intake
-Read("docs/phase-2-architecture/open-requirements.json")
-# Parse OPEN-2-* items → build μArch research task list from candidates and evaluation_criteria
+# Open Requirements Intake (conditional — file may not exist if P2 had no open items)
+Glob("docs/phase-2-architecture/open-requirements.json")
+# If found: Read and parse OPEN-2-* items → build μArch research task list
+# If absent: skip open resolution (all P2 items were settled as iron)
 ```
 
 ## Step 2: Domain Consultation for Design Patterns

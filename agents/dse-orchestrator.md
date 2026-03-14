@@ -57,7 +57,8 @@ Adjust execution plan based on available artifacts.
 Read(".rtl-agent-team/state/rtl-dse-state.json")
 ```
 
-**If state file exists** — Resume: skip completed phases/steps, resume from last action.
+**If state file exists AND prompt says "THIS IS A NEW TRIAL"** — Delete state file and fresh-start.
+**If state file exists (normal)** — Resume: skip completed phases/steps, resume from last action.
 **If no state file** — Fresh start:
 ```
 Write(".rtl-agent-team/state/rtl-dse-state.json",
@@ -191,6 +192,9 @@ Skill(skill="rtl-agent-team:ref-model")
 ### Phase 2 Quality Gate (criteria in policy)
 - Check: `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
 - Check: `reviews/phase-2-architecture/feature-coverage.md` 100% coverage
+- Check: `docs/phase-2-architecture/iron-requirements.json` exists (REQ-A-* with resolved_from)
+- Check: All OPEN-1-* resolved with rationale
+- Check: Compliance against P1 iron: invoke compliance-checker, verdict=PASS
 - Check: architecture-candidates.md exists with quantitative comparison
 - Check: algorithm and architecture selection ADRs recorded
 - If transform mode: bitexact equivalence verified
