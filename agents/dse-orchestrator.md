@@ -328,9 +328,10 @@ Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      Re-run compliance check against P1 iron.")
 
 # If ADR-002 invalidated: re-run Step 4a (candidate exploration) + Step 4b (AskUserQuestion)
+# If architecture changed: re-run Step 4d (ref C model rebuild/re-transform to match updated blocks)
 # Otherwise: skip architecture re-selection
 
-# Re-run Phase 2→3 Quality Gate
+# Re-run Phase 2→3 Quality Gate (including ref C model ↔ architecture consistency)
 
 # Re-run Phase 3: refine μArch and BFM based on critique
 Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",

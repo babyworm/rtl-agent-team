@@ -160,11 +160,9 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 
 ## Phase 3 Gate Definition
 
-### Phase 2→3 (Architecture DSE → μArch + BFM)
-**Artifact Gate**: architecture.md + refc/*.c + iron-requirements.json (P1+P2) exist
-**Quality Gate**:
-- Architecture review converged (or user-approved)
-- Ref C model verified (bitexact if transform mode)
+### Phase 3 Entry (requires Phase 2 completion)
+**Artifact Gate**: architecture.md + refc/*.c + iron-requirements.json (P2, REQ-A-*) exist
+**Quality Gate**: Phase 2→3 gate above must have passed (compliance PASS, all OPEN-1-* resolved)
 
 ### Phase 3 Completion (μArch + BFM → Self-Critique)
 **Artifact Gate**: docs/phase-3-uarch/*.md + bfm/src/*.cpp (or bfm/src/*.c) + iron-requirements.json (P3) exist
