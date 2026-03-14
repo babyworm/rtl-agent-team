@@ -43,3 +43,9 @@ Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages module enumeration, 10-Wave sequencing,
 parallel task dispatch, and phase gate verification.
+
+## Compliance Notes
+
+- After each implementation wave completes (lint + unit test), invoke compliance-checker against P1+P2+P3 iron requirements
+- RTL implementation must comply with all upstream iron requirements
+- Per-wave compliance ensures regressions are caught before the integration gate (W10)

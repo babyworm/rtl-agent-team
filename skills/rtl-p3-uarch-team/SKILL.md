@@ -113,3 +113,10 @@ TeamDelete()
 Bash("rm -f .rtl-agent-team/state/team-config.json")
 Bash("rm -rf .rtl-agent-team/scratch/phase-3/")
 ```
+
+## Workflow Notes
+
+- Open Resolution: resolve all OPEN-2-* items from Phase 2 `open-requirements.json`
+- Zero-Opens Invariant: no unresolved OPEN-* items may pass to Phase 4
+- Compliance Check: verify REQ-U-* uarch requirements against P1+P2 iron requirements
+- Exit gate includes `compliance-pass` and `zero-remaining-opens`

@@ -127,3 +127,10 @@ TeamDelete()
 Bash("rm -f .rtl-agent-team/state/team-config.json")
 Bash("rm -rf .rtl-agent-team/scratch/phase-1/")
 ```
+
+## Output Artifacts
+
+- `docs/phase-1-research/iron-requirements.json` — settled functional/performance requirements (REQ-F-*, REQ-P-*)
+- `docs/phase-1-research/open-requirements.json` — research topics deferred to Phase 2 (OPEN-1-*)
+- `docs/phase-1-research/io_definition.json` — I/O interface definitions
+- Classification verification step confirms each requirement is tagged as either iron (acceptance_criteria defined) or open (research_needed).

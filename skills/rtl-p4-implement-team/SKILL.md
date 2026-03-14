@@ -117,3 +117,9 @@ TeamDelete()
 Bash("rm -f .rtl-agent-team/state/team-config.json")
 Bash("rm -rf .rtl-agent-team/scratch/phase-4/")
 ```
+
+## Compliance Notes
+
+- After each implementation wave completes (lint + unit test), invoke compliance-checker against P1+P2+P3 iron requirements
+- RTL implementation must comply with all upstream iron requirements
+- Per-wave compliance ensures regressions are caught before the integration gate (W10)

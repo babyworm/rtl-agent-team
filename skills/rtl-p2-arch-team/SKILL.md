@@ -29,7 +29,8 @@ and directs workers via SendMessage.
 ## Prerequisites
 
 Phase 1 completion required:
-- `docs/phase-1-research/requirements.json` must exist
+- `docs/phase-1-research/iron-requirements.json` must exist
+- `docs/phase-1-research/open-requirements.json` must exist
 - `docs/phase-1-research/io_definition.json` must exist
 
 If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:p1-spec-research`.
@@ -108,3 +109,9 @@ TeamDelete()
 Bash("rm -f .rtl-agent-team/state/team-config.json")
 Bash("rm -rf .rtl-agent-team/scratch/phase-2/")
 ```
+
+## Workflow Notes
+
+- Open Resolution: resolve all OPEN-1-* items from Phase 1 `open-requirements.json`
+- Compliance Check: verify REQ-A-* architecture requirements against P1 iron requirements
+- Exit gate includes `compliance-pass` — architecture must not contradict any iron requirement

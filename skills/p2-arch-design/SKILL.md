@@ -27,7 +27,8 @@ reference C model in parallel, and iterates with 3-round review.
 ## Prerequisites
 
 Phase 1 completion required:
-- `docs/phase-1-research/requirements.json` must exist
+- `docs/phase-1-research/iron-requirements.json` must exist
+- `docs/phase-1-research/open-requirements.json` must exist
 - `docs/phase-1-research/io_definition.json` must exist
 
 If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:p1-spec-research`.
@@ -49,3 +50,9 @@ Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages P1 candidate HW review, parallel architecture
 design + ref model, 3-round iterative review, and artifact finalization.
+
+## Workflow Notes
+
+- Open Resolution: resolve all OPEN-1-* items from Phase 1 `open-requirements.json`
+- Compliance Check: verify REQ-A-* architecture requirements against P1 iron requirements
+- Exit gate includes `compliance-pass` — architecture must not contradict any iron requirement

@@ -40,3 +40,10 @@ Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages domain consultation, parallel uarch design + BFM
 development, BFM validation gate, and 5-reviewer 3-round review.
+
+## Workflow Notes
+
+- Open Resolution: resolve all OPEN-2-* items from Phase 2 `open-requirements.json`
+- Zero-Opens Invariant: no unresolved OPEN-* items may pass to Phase 4
+- Compliance Check: verify REQ-U-* uarch requirements against P1+P2 iron requirements
+- Exit gate includes `compliance-pass` and `zero-remaining-opens`

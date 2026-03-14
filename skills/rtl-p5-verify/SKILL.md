@@ -51,3 +51,9 @@ Task(subagent_type="rtl-agent-team:p5-verify-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages all stages, module graduation,
 parallel agent spawning, and compliance review.
+
+## Compliance Notes
+
+- Verification must confirm all iron requirement `acceptance_criteria` are met
+- Final compliance check compares test results against P1+P2+P3 `acceptance_criteria`
+- Phase 5 PASS requires zero unmet iron requirements across all verification categories

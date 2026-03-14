@@ -37,3 +37,10 @@ Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages spec refinement, solution tree exploration,
 sub-domain expert coordination, and 3-round chief review.
+
+## Output Artifacts
+
+- `docs/phase-1-research/iron-requirements.json` — settled functional/performance requirements (REQ-F-*, REQ-P-*)
+- `docs/phase-1-research/open-requirements.json` — research topics deferred to Phase 2 (OPEN-1-*)
+- `docs/phase-1-research/io_definition.json` — I/O interface definitions
+- Classification verification step confirms each requirement is tagged as either iron (acceptance_criteria defined) or open (research_needed).

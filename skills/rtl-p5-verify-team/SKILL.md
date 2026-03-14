@@ -118,3 +118,9 @@ TeamDelete()
 Bash("rm -f .rtl-agent-team/state/team-config.json")
 Bash("rm -rf .rtl-agent-team/scratch/phase-5/")
 ```
+
+## Compliance Notes
+
+- Verification must confirm all iron requirement `acceptance_criteria` are met
+- Final compliance check compares test results against P1+P2+P3 `acceptance_criteria`
+- Phase 5 PASS requires zero unmet iron requirements across all verification categories
