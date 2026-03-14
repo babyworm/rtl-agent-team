@@ -117,6 +117,9 @@ cat > "$SKILL_STATE.tmp" << SKILLEOF
   "dynamic_prompt": "",
   "pending": "${CRITERIA}",
   "all_complete": false,
+  "compliance_authority": null,
+  "max_primary": null,
+  "max_fallback": null,
   "started_at": "${TIMESTAMP}"
 }
 SKILLEOF

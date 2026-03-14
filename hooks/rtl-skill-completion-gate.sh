@@ -56,6 +56,51 @@ SKILL_NAME=$(jsonu_get_file_path_string "$SKILL_STATE" "skill")
 COMPLETED=$(jsonu_get_file_path_bool "$SKILL_STATE" "all_complete")
 PENDING=$(jsonu_get_file_path_string "$SKILL_STATE" "pending")
 
+# Compliance-pass auto-resolution: if compliance-report exists with PASS, remove from pending
+if echo "$PENDING" | grep -q "compliance-pass"; then
+  _CR_REPORT="$STATE_DIR/compliance-report.json"
+  if [ -f "$_CR_REPORT" ]; then
+    _CR_VERDICT=$(jsonu_get_file_path_string "$_CR_REPORT" "summary.verdict")
+    if [ "$_CR_VERDICT" = "PASS" ]; then
+      # Auto-satisfy compliance-pass by removing it from pending
+      _CR_NEW_PENDING=$(echo "$PENDING" | sed 's/compliance-pass//' | sed 's/||/|/g' | sed 's/^|//' | sed 's/|$//')
+      if acquire_lock "$SKILL_STATE"; then
+        sed "s|\"pending\"[[:space:]]*:[[:space:]]*\"[^\"]*\"|\"pending\": \"$_CR_NEW_PENDING\"|" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null \
+          && mv "$SKILL_STATE.tmp" "$SKILL_STATE" \
+          || rm -f "$SKILL_STATE.tmp" 2>/dev/null
+        release_lock "$SKILL_STATE"
+      fi
+      PENDING="$_CR_NEW_PENDING"
+    else
+      # Compliance FAIL — inject authority-specific dynamic prompt
+      _CR_AUTH=$(jsonu_get_file_path_num "$_CR_REPORT" "summary.max_violation_authority")
+      _CR_INFEASIBLE=$(jsonu_get_file_path_string "$_CR_REPORT" "summary.infeasibility_detected")
+      [ -z "$_CR_AUTH" ] && _CR_AUTH=3
+      case "$_CR_AUTH" in
+        1) _CR_TAG="[CRITICAL — UPSTREAM REQUIREMENT VIOLATION]" ;;
+        2) _CR_TAG="[WARNING — HIGH]" ;;
+        *) _CR_TAG="[WARNING]" ;;
+      esac
+      _CR_DYN_MSG="$_CR_TAG Compliance violation (authority=$_CR_AUTH). Fix violated requirements before proceeding. Re-read upstream iron-requirements.json."
+      # Write authority and dynamic prompt via sed
+      if acquire_lock "$SKILL_STATE"; then
+        _CR_SED=$(mktemp "${TMPDIR:-/tmp}/cr-sed.XXXXXX" 2>/dev/null || echo "$SKILL_STATE.cr-sed")
+        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,]*/"compliance_authority": %s/\n' "$_CR_AUTH" > "$_CR_SED"
+        printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CR_DYN_MSG" | sed 's/[&/\]/\\&/g')" >> "$_CR_SED"
+        # If infeasibility validated and past primary stage, switch strategy
+        if [ "$_CR_INFEASIBLE" = "true" ]; then
+          printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "upstream_challenge"/\n' >> "$_CR_SED"
+        fi
+        sed -f "$_CR_SED" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null \
+          && mv "$SKILL_STATE.tmp" "$SKILL_STATE" \
+          || rm -f "$SKILL_STATE.tmp" 2>/dev/null
+        rm -f "$_CR_SED" 2>/dev/null
+        release_lock "$SKILL_STATE"
+      fi
+    fi
+  fi
+fi
+
 # If all complete, clean up and allow exit
 if [ "$COMPLETED" = "true" ]; then
   rm -f "$SKILL_STATE"
