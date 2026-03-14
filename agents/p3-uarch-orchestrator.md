@@ -292,6 +292,10 @@ Glob("docs/phase-3-uarch/open-requirements.json")
 # 3. Count check: every OPEN-2-* has a matching resolved_from
 # unresolved = OPEN-2-* items without matching REQ-U-* resolved_from
 # If unresolved > 0 → EXIT GATE FAIL (list unresolved items)
+
+# Ambiguity Gate (Phase 3): verify all new REQ-U-* pass reproducibility check
+# "Would re-analyzing this micro-architecture produce the same design?"
+# Apply ambiguity scoring per rtl-p3-uarch-policy. Score ≤ 0.5 required for iron.
 ```
 
 ## Step 6: Compliance Check
@@ -345,7 +349,9 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Verdict: PASS or FAIL.")
 
 Glob("docs/phase-3-uarch/iron-requirements.json")
-Glob("docs/phase-3-uarch/open-requirements.json")
+# Zero-opens invariant: open-requirements.json MUST NOT exist in P3
+# If this Glob finds a file → FAIL (all items should be resolved into iron)
+Glob("docs/phase-3-uarch/open-requirements.json")  # expect: NO MATCH
 Read(".rtl-agent-team/state/compliance-report.json")
 # Verify verdict == "PASS"
 ```

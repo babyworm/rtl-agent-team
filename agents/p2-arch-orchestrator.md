@@ -243,6 +243,10 @@ Read("docs/phase-2-architecture/iron-requirements.json")
 #
 # If any OPEN-1-* unresolved:
 #   → AskUserQuestion to resolve OR upstream feedback to P1
+
+# Ambiguity Gate (Phase 2): verify all new REQ-A-* pass reproducibility check
+# "Would re-evaluating this architecture produce the same conclusion?"
+# Apply ambiguity scoring per p2-arch-design-policy. Score ≤ 0.5 required for iron.
 ```
 
 ## Step 6: Compliance Check

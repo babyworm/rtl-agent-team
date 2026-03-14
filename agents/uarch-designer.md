@@ -58,7 +58,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - All cycle-accurate behaviors are specified: registered vs combinational outputs, latency from each input to each output
     - Hazard analysis: all RAW/WAW/WAR hazards identified for pipelined blocks, resolution strategy specified
     - Every specification references the corresponding REQ-XXXX and architecture block name
-    - REQ→uArch reverse traceability table: docs/phase-3-uarch/req-uarch-traceability.md maps every REQ-NNN from requirements.json to the specific uArch module(s) and section(s) that implement it. 100% REQ coverage required (no unmapped REQs).
+    - REQ→uArch reverse traceability table: docs/phase-3-uarch/req-uarch-traceability.md maps every requirement from iron-requirements.json (REQ-F-*, REQ-P-*, REQ-A-*) to the specific uArch module(s) and section(s) that implement it. 100% REQ coverage required (no unmapped REQs).
   </Success_Criteria>
 
   <Constraints>

@@ -69,7 +69,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read requirements.json: understand all functional requirements and their priorities.
+    1. Read iron-requirements.json (or legacy requirements.json if iron version unavailable): understand all functional requirements and their priorities.
     2. Read io_definition.json: understand all external ports that define the top-level interface.
     3. Read timing_constraints.json: note all clock domains, latency budgets, throughput targets.
     4. Group requirements by functional affinity to identify natural block boundaries.
