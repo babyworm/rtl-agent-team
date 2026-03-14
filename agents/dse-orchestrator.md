@@ -58,11 +58,13 @@ Read(".rtl-agent-team/state/rtl-dse-state.json")
 ```
 
 **If state file exists AND prompt says "THIS IS A NEW TRIAL"** — Delete state file and fresh-start.
+  Extract trial number from prompt (e.g., "Trial 2" → trial: 2).
 **If state file exists (normal)** — Resume: skip completed phases/steps, resume from last action.
 **If no state file** — Fresh start:
 ```
+# Extract trial number from prompt if specified (default: 1)
 Write(".rtl-agent-team/state/rtl-dse-state.json",
-  { phase: 1, sub_phase: "algorithm_exploration", pipeline_scope: "dse-phase-1-to-3", trial: 1 })
+  { phase: 1, sub_phase: "algorithm_exploration", pipeline_scope: "dse-phase-1-to-3", trial: <N from prompt or 1> })
 ```
 
 ## Step 2: Input Mode Detection
