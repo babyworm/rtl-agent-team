@@ -180,3 +180,37 @@ class TestP4P5StateTemplates:
         assert "schema_version" in data
         assert "phase" in data
         assert "gates" in data
+
+
+class TestSkillCompletionCriteriaNewEntries:
+    """Validate new cascading requirements criteria."""
+
+    @pytest.fixture
+    def criteria(self):
+        path = REPO_ROOT / "skill-completion-criteria.json"
+        return json.loads(path.read_text())
+
+    @pytest.mark.parametrize("skill", ["p1-spec-research", "rtl-p1-research-team"])
+    def test_p1_has_iron_open_classified(self, criteria, skill):
+        assert "iron-open-classified" in criteria[skill]
+        assert "ambiguity-pass" in criteria[skill]
+
+    @pytest.mark.parametrize("skill", [
+        "p2-arch-design", "rtl-p2-arch-team",
+        "rtl-p3-uarch-design", "rtl-p3-uarch-team",
+    ])
+    def test_p2_p3_has_compliance_pass(self, criteria, skill):
+        assert "open-resolved" in criteria[skill]
+        assert "compliance-pass" in criteria[skill]
+        assert "ambiguity-pass" in criteria[skill]
+
+    @pytest.mark.parametrize("skill", ["rtl-p3-uarch-design", "rtl-p3-uarch-team"])
+    def test_p3_has_zero_remaining_opens(self, criteria, skill):
+        assert "zero-remaining-opens" in criteria[skill]
+
+    @pytest.mark.parametrize("skill", [
+        "rtl-p4-implement", "rtl-p4-implement-team",
+        "rtl-p5-verify", "rtl-p5-verify-team",
+    ])
+    def test_p4_p5_has_compliance_pass(self, criteria, skill):
+        assert "compliance-pass" in criteria[skill]
