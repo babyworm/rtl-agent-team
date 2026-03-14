@@ -43,6 +43,7 @@ Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING
 
 ```
 Glob("docs/phase-1-research/iron-requirements.json")  # Structured requirements
+Glob("docs/phase-1-research/open-requirements.json")  # Research homework for P2 (optional)
 Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
 Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
 Glob("docs/phase-1-research/timing_constraints.json")  # Rough timing estimates per block
@@ -80,9 +81,11 @@ Read("docs/phase-1-research/io_definition.json")
 Read("docs/phase-1-research/timing_constraints.json")  # Per-block timing targets (rough estimates from P1)
 # Domain knowledge (agents auto-load their own via <Knowledge_Base>)
 
-# Open Requirements Intake
-Read("docs/phase-1-research/open-requirements.json")
-# Parse OPEN-1-* items → build architecture research task list from candidates and evaluation_criteria
+# Open Requirements Intake (conditional — file may not exist if P1 had no open items)
+# If open-requirements.json exists: parse OPEN-1-* items → build research task list
+# If absent: skip open resolution (all P1 requirements were settled as iron)
+Glob("docs/phase-1-research/open-requirements.json")
+# If found: Read("docs/phase-1-research/open-requirements.json")
 ```
 
 ## Step 2: P1 Algorithm Candidate HW Review (MANDATORY)
