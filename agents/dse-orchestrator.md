@@ -122,8 +122,13 @@ Record selections in `docs/decisions/ADR-001-algorithm-selection.md`.
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="Self-review iron-requirements.json and open-requirements.json. Verify completeness,
 consistency, iron/open classification correctness, acceptance_criteria measurability,
-algorithm selection rationale. Save to reviews/phase-1-research/research-review.md.
-verdict: PASS or FAIL")
+algorithm selection rationale. Generate ambiguity score (3-axis: Goal 40%, Constraint 30%, AC 30%).
+Save ambiguity-assessment.md to docs/phase-1-research/.
+Save review to reviews/phase-1-research/research-review.md. verdict: PASS or FAIL")
+
+# Ambiguity gate: score must be ≤ 0.5 for iron requirements
+Read("docs/phase-1-research/ambiguity-assessment.md")
+# If ambiguity_score > 0.5 → FAIL (resolve via AskUserQuestion, then re-score)
 
 Task(subagent_type="rtl-agent-team:arch-designer",
      prompt="Feasibility review. Evaluate selected algorithms for RTL implementability.
@@ -289,25 +294,41 @@ Incorporate self-critique findings and re-run the full pipeline.
 # Read critique findings
 Read("reviews/dse-self-critique.md")
 
+# Check if critique invalidates any user decision (ADR-001 or ADR-002)
+# If critique says "selected algorithm cannot meet REQ-P-001" or similar:
+#   → Re-generate algorithm candidates (Step 3b)
+#   → AskUserQuestion with updated candidates + infeasibility evidence
+#   → Record updated decision in ADR-001
+# If critique says "selected architecture is infeasible":
+#   → Re-generate architecture candidates (Step 4a)
+#   → AskUserQuestion with updated candidates
+#   → Record updated decision in ADR-002
+
 # Re-run Phase 1: refine requirements based on critique
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="Refine iron-requirements.json and open-requirements.json.
      Address self-critique findings from reviews/dse-self-critique.md.
      HIGH findings MUST be fixed. MEDIUM findings SHOULD be addressed.
      Preserve existing REQ IDs where content is unchanged.
-     Preserve user's algorithm selection (ADR-001) unless critique invalidates it.
-     Re-generate timing_constraints.json if timing-related findings exist.")
+     If critique invalidates algorithm selection (ADR-001): flag for re-selection.
+     Re-generate timing_constraints.json if timing-related findings exist.
+     Re-check ambiguity score — must remain ≤ 0.5 for all iron requirements.")
 
-# Re-run Phase 1→2 Quality Gate
-# (same gate checks as Step 3, verify PASS)
+# If ADR-001 invalidated: re-run Step 3b (algorithm exploration) + Step 3c (AskUserQuestion)
+# Otherwise: skip algorithm re-selection
+
+# Re-run Phase 1→2 Quality Gate (including ambiguity score check)
 
 # Re-run Phase 2: refine architecture based on critique
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
      prompt="Refine Phase 2 architecture. Self-critique findings available at
      reviews/dse-self-critique.md. Address architectural weaknesses identified.
-     Preserve user's architecture selection (ADR-002) unless critique invalidates it.
+     If critique invalidates architecture selection (ADR-002): flag for re-selection.
      Update iron-requirements.json (REQ-A-*) and architecture.md accordingly.
      Re-run compliance check against P1 iron.")
+
+# If ADR-002 invalidated: re-run Step 4a (candidate exploration) + Step 4b (AskUserQuestion)
+# Otherwise: skip architecture re-selection
 
 # Re-run Phase 2→3 Quality Gate
 
