@@ -289,10 +289,20 @@ sctx_write_manifest() {
   # Quality gates
   SCTX_GATES=$(_sctx_quality_gates_json "$SCTX_CWD")
 
+  # Compliance context — read from compliance-state.json if exists
+  _sctx_cs="$SCTX_CWD/.rtl-agent-team/state/compliance-state.json"
+  _sctx_upstream="[]"
+  _sctx_open=""
+  if [ -f "$_sctx_cs" ]; then
+    _sctx_upstream=$(jsonu_get_file_path_string "$_sctx_cs" "upstream_iron_paths")
+    [ -z "$_sctx_upstream" ] && _sctx_upstream="[]"
+    _sctx_open=$(jsonu_get_file_path_string "$_sctx_cs" "open_requirements_path")
+  fi
+
   # Atomic write
   mkdir -p "$(dirname "$SCTX_MANIFEST")"
   cat > "$SCTX_MANIFEST.tmp" <<MANIFEST_EOF
-{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES}
+{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open"}
 MANIFEST_EOF
   mv "$SCTX_MANIFEST.tmp" "$SCTX_MANIFEST"
 }
