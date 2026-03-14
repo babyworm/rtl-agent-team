@@ -92,7 +92,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Use Read to read requirements.json, io_definition.json, timing_constraints.json.
+    - Use Read to read iron-requirements.json (or requirements.json), io_definition.json, timing_constraints.json.
     - Use Grep to search for specific requirements by category or keyword.
     - Use Glob to discover any existing architecture documents to avoid duplication.
     - Do NOT use Write or Edit (read-only advisor role).
