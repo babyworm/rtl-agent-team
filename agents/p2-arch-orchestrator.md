@@ -316,7 +316,9 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Output artifacts: docs/phase-2-architecture/ (architecture.md, hw-candidate-review.md, phase-2-summary.md), refc/ (C reference model).
      Review verdicts: reviews/phase-2-architecture/ (architecture-review.md, feature-coverage.md, ref-model-review.md).
      ADRs: docs/decisions/ADR-*.md.
-     Focus: architecture soundness, ref model correctness, feature coverage completeness, spec compliance.")
+     Compliance report: .rtl-agent-team/state/compliance-report.json (include in review if exists).
+     Upstream iron: docs/phase-1-research/iron-requirements.json.
+     Focus: architecture soundness, ref model correctness, feature coverage completeness, spec compliance, iron requirement compliance.")
 ```
 
 # Explicit verdict check

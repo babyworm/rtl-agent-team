@@ -370,7 +370,9 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Output artifacts: docs/phase-3-uarch/ (per-module uarch specs, clock-domain-map.md, protocol-assignments.md, req-uarch-traceability.md, pipeline diagram).
      Review verdicts: reviews/phase-3-uarch/ (uarch-review.md, feature-preservation.md).
      ADRs: docs/decisions/ADR-*.md.
-     Focus: pipeline correctness, clock domain safety, protocol assignments, feature preservation, BFM consistency.")
+     Compliance report: .rtl-agent-team/state/compliance-report.json (include in review if exists).
+     Upstream iron: docs/phase-1-research/iron-requirements.json, docs/phase-2-architecture/iron-requirements.json.
+     Focus: pipeline correctness, clock domain safety, protocol assignments, feature preservation, BFM consistency, iron requirement compliance.")
 ```
 
 # Explicit verdict check

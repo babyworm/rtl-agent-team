@@ -90,8 +90,11 @@ if echo "$PENDING" | grep -q "compliance-pass"; then
         printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,]*/"max_primary": %s/\n' "$_CR_MAX_P" >> "$_CR_SED"
         printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,]*/"max_fallback": %s/\n' "$_CR_MAX_F" >> "$_CR_SED"
         printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CR_DYN_MSG" | sed 's/[&/\]/\\&/g')" >> "$_CR_SED"
-        # If infeasibility validated and past primary stage, switch strategy
-        if [ "$_CR_INFEASIBLE" = "true" ]; then
+        # If infeasibility validated AND past primary stage, switch strategy
+        # Read current iteration to enforce "after Primary exhaustion" rule
+        _CR_ITER=$(jsonu_get_file_path_num "$SKILL_STATE" "iteration")
+        _CR_ITER=${_CR_ITER:-1}
+        if [ "$_CR_INFEASIBLE" = "true" ] && [ "$_CR_ITER" -gt "$_CR_MAX_P" ]; then
           printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "upstream_challenge"/\n' >> "$_CR_SED"
         fi
         sed -f "$_CR_SED" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null \
@@ -182,7 +185,8 @@ MAX_ITER=${MAX_ITER:-5}
 TWO_X_LIMIT=${FALLBACK_LIMIT:-$((MAX_ITER * 2))}
 case "$STAGE" in
   primary)
-    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${MAX_ITER}] ${SKILL_NAME} primary strategy iteration. Remaining criteria: ${PENDING}."
+    _MSG_PRIMARY=${PRIMARY_LIMIT:-$MAX_ITER}
+    STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${_MSG_PRIMARY}] ${SKILL_NAME} primary strategy iteration. Remaining criteria: ${PENDING}."
     ;;
   fallback)
     STAGE_MSG="[RTL Skill Completion Loop - ${ITERATION}/${TWO_X_LIMIT}] ${SKILL_NAME} fallback strategy iteration. Apply failure area decomposition + agent combination switching. Remaining criteria: ${PENDING}."
