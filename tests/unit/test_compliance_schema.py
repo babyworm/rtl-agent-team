@@ -19,8 +19,7 @@ REQUIRED_SUMMARY_FIELDS = {"verdict", "total", "pass", "violation", "uncertain",
 VALID_VERDICTS = {"PASS", "FAIL"}
 VALID_RESULT_VERDICTS = {"PASS", "VIOLATION", "UNCERTAIN"}
 
-REQUIRED_STATE_FIELDS = {"phase", "upstream_iron_paths", "open_requirements_path", "compliance_status", "compliance_authority", "challenge_count", "last_check_timestamp"}
-VALID_STATUSES = {"pending", "pass", "violation", "challenge_pending"}
+REQUIRED_STATE_FIELDS = {"phase", "upstream_iron_paths", "open_requirements_path"}
 
 
 class TestIronRequirementsSchema:
@@ -139,18 +138,9 @@ class TestComplianceStateSchema:
         state = {
             "phase": "",
             "upstream_iron_paths": [],
-            "open_requirements_path": "",
-            "compliance_status": "pending",
-            "compliance_authority": None,
-            "challenge_count": 0,
-            "last_check_timestamp": None
+            "open_requirements_path": ""
         }
         assert REQUIRED_STATE_FIELDS.issubset(state.keys())
-        assert state["compliance_status"] in VALID_STATUSES
-
-    def test_all_valid_statuses(self):
-        for status in VALID_STATUSES:
-            assert status in {"pending", "pass", "violation", "challenge_pending"}
 
     def test_compliance_state_template_matches_schema(self):
         """Verify the actual template file matches expected schema."""
@@ -158,4 +148,3 @@ class TestComplianceStateSchema:
         if template_path.exists():
             state = json.loads(template_path.read_text())
             assert REQUIRED_STATE_FIELDS.issubset(state.keys())
-            assert state["compliance_status"] in VALID_STATUSES

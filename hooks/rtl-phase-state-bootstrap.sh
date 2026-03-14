@@ -81,11 +81,7 @@ if [ ! -f "$_CS_FILE" ] || [ "$_cs_current_phase" != "$SHORT_NAME" ]; then
 {
   "phase": "$SHORT_NAME",
   "upstream_iron_paths": $_cs_upstream,
-  "open_requirements_path": "$_cs_open",
-  "compliance_status": "pending",
-  "compliance_authority": null,
-  "challenge_count": 0,
-  "last_check_timestamp": null
+  "open_requirements_path": "$_cs_open"
 }
 _CS_EOF
   fi
