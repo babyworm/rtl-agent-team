@@ -292,8 +292,10 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 ## Step 5.5: Open Resolution + Zero-Opens Verification
 
 ```
-# 1. Verify all OPEN-2-* resolved
-Read("docs/phase-2-architecture/open-requirements.json")
+# 1. Verify all OPEN-2-* resolved (skip if P2 had no open items)
+Glob("docs/phase-2-architecture/open-requirements.json")
+# If found: Read and verify resolution. If not found: skip (all P2 items were iron).
+# Read("docs/phase-2-architecture/open-requirements.json")  — only if Glob matched
 Read("docs/phase-3-uarch/iron-requirements.json")
 
 # For each OPEN-2-* item:
