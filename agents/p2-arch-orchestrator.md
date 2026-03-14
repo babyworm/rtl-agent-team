@@ -42,7 +42,7 @@ If NOT found → `Skill(skill="rtl-agent-team:rat-setup")`. Wait for completion 
 Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING, not BLOCK.
 
 ```
-Glob("docs/phase-1-research/requirements.json")    # Structured requirements
+Glob("docs/phase-1-research/iron-requirements.json")  # Structured requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
 Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
 Glob("docs/phase-1-research/timing_constraints.json")  # Rough timing estimates per block
@@ -75,10 +75,14 @@ If no manifests found → proceed with hardcoded domain expert references below 
 Read("docs/phase-1-research/domain-analysis.md")
 Read("docs/phase-1-research/candidate-comparison.md")
 Read("docs/phase-1-research/selected-approach.md")
-Read("docs/phase-1-research/requirements.json")
+Read("docs/phase-1-research/iron-requirements.json")
 Read("docs/phase-1-research/io_definition.json")
 Read("docs/phase-1-research/timing_constraints.json")  # Per-block timing targets (rough estimates from P1)
 # Domain knowledge (agents auto-load their own via <Knowledge_Base>)
+
+# Open Requirements Intake
+Read("docs/phase-1-research/open-requirements.json")
+# Parse OPEN-1-* items → build architecture research task list from candidates and evaluation_criteria
 ```
 
 ## Step 2: P1 Algorithm Candidate HW Review (MANDATORY)
@@ -224,7 +228,43 @@ Format: `| Round | Assumption | Domain | Risk(H/M/L) | Resolution |`
 Wonder log feeds into convergence check: new High-risk assumptions in Round N
 prevent convergence (wonder_stability = false).
 
-## Step 6: Phase 2 Gate (MANDATORY — matches team orchestrator)
+## Step 5.5: Open Resolution Verification
+
+```
+# Verify all P1 open items have been resolved
+Read("docs/phase-1-research/open-requirements.json")
+Read("docs/phase-2-architecture/iron-requirements.json")
+
+# For each OPEN-1-* item:
+#   → Verify a REQ-A-* exists with resolved_from == OPEN-1-* id
+#   → Verify resolution_rationale is present and substantive
+#   → Verify rejected_alternatives lists all non-selected candidates
+#   → Verify upstream_compliance shows P1 iron check results
+#
+# If any OPEN-1-* unresolved:
+#   → AskUserQuestion to resolve OR upstream feedback to P1
+```
+
+## Step 6: Compliance Check
+
+```
+Task(subagent_type="rtl-agent-team:compliance-checker",
+     prompt="Compliance check: verify Phase 2 artifacts against Phase 1 iron requirements.
+     upstream_iron: ['docs/phase-1-research/iron-requirements.json']
+     target_artifacts: ['docs/phase-2-architecture/architecture.md', 'docs/phase-2-architecture/iron-requirements.json', 'docs/phase-2-architecture/hw-candidate-review.md']
+     Read only the above files and compare directly. Do not trust implementer explanations.")
+
+Read(".rtl-agent-team/state/compliance-report.json")
+# If verdict == "FAIL":
+#   → Check max_violation_authority
+#   → Enter authority-appropriate escalation ladder
+#   → If infeasibility detected after Primary exhaustion:
+#      → Produce upstream challenge report with PPA estimates
+#      → Re-invoke compliance-checker with validate_infeasibility: true
+#      → Present challenge to user via AskUserQuestion
+```
+
+## Step 6.5: Phase 2 Gate (MANDATORY — matches team orchestrator)
 
 After Step 5 review completes, verify all gate items:
 1. Verify `docs/phase-2-architecture/architecture.md` exists
@@ -249,6 +289,11 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Save Feature Coverage Checklist to feature-coverage.md. Save D2 block diagram to
      architecture-diagram.md. Verify reviews/phase-2-architecture/ref-model-review.md exists with verdict.
      Verdict: PASS or FAIL.")
+
+Glob("docs/phase-2-architecture/iron-requirements.json")
+Glob("docs/phase-2-architecture/open-requirements.json")
+Read(".rtl-agent-team/state/compliance-report.json")
+# Verify verdict == "PASS"
 ```
 
 On PASS: generate ADRs:
@@ -267,7 +312,7 @@ fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 2 Architecture.
      Phase intent: Architecture design, HW candidate selection, C reference model development.
-     Input artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json).
+     Input artifacts: docs/phase-1-research/ (iron-requirements.json, io_definition.json, timing_constraints.json).
      Output artifacts: docs/phase-2-architecture/ (architecture.md, hw-candidate-review.md, phase-2-summary.md), refc/ (C reference model).
      Review verdicts: reviews/phase-2-architecture/ (architecture-review.md, feature-coverage.md, ref-model-review.md).
      ADRs: docs/decisions/ADR-*.md.

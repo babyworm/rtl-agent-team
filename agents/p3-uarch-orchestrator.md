@@ -45,12 +45,12 @@ Scan for upstream artifacts needed by Phase 3. Missing artifacts produce WARNING
 # Phase 3 upstream artifacts
 Glob("docs/phase-2-architecture/architecture.md")  # Architecture spec
 Glob("refc/**/*.c")                                # C reference model
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/iron-requirements.json")  # Requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
 Glob("docs/phase-1-research/timing_constraints.json")  # Timing estimates per block
 Glob("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation
 
-# P1 Staleness Detection: if requirements.json mtime is newer than existing docs/phase-3-uarch/*.md,
+# P1 Staleness Detection: if iron-requirements.json mtime is newer than existing docs/phase-3-uarch/*.md,
 # flag affected uArch sections using req-uarch-traceability.md (if exists from prior P3 run).
 # Output: WARNING listing affected modules/sections for targeted re-design.
 ```
@@ -85,6 +85,10 @@ Read("docs/phase-1-research/timing_constraints.json")     # Per-block timing tar
 Glob("docs/phase-2-architecture/bandwidth_report.json")
 # P2 memory classification (internal SRAM vs external DRAM/cache)
 # Block diagram is embedded within architecture.md
+
+# Open Requirements Intake
+Read("docs/phase-2-architecture/open-requirements.json")
+# Parse OPEN-2-* items → build μArch research task list from candidates and evaluation_criteria
 ```
 
 ## Step 2: Domain Consultation for Design Patterns
@@ -269,14 +273,56 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      This report feeds into spec-to-uarch-orchestrator Step 4.5.")
 ```
 
-## Step 6: Phase 3 Gate (MANDATORY — matches team orchestrator)
+## Step 5.5: Open Resolution + Zero-Opens Verification
+
+```
+# 1. Verify all OPEN-2-* resolved
+Read("docs/phase-2-architecture/open-requirements.json")
+Read("docs/phase-3-uarch/iron-requirements.json")
+
+# For each OPEN-2-* item:
+#   → Verify a REQ-U-* exists with resolved_from == OPEN-2-* id
+#   → Verify resolution_rationale is present
+#   → Verify rejected_alternatives lists all non-selected candidates
+
+# 2. Zero-opens invariant: no P3 open-requirements.json should exist
+Glob("docs/phase-3-uarch/open-requirements.json")
+#   → If exists → EXIT GATE FAIL ("P4 requires all requirements to be iron")
+
+# 3. Count check: every OPEN-2-* has a matching resolved_from
+# unresolved = OPEN-2-* items without matching REQ-U-* resolved_from
+# If unresolved > 0 → EXIT GATE FAIL (list unresolved items)
+```
+
+## Step 6: Compliance Check
+
+```
+Task(subagent_type="rtl-agent-team:compliance-checker",
+     prompt="Compliance check: verify Phase 3 artifacts against Phase 1 and Phase 2 iron requirements.
+     upstream_iron: ['docs/phase-1-research/iron-requirements.json', 'docs/phase-2-architecture/iron-requirements.json']
+     target_artifacts: [Phase 3 output artifact paths - docs/phase-3-uarch/*.md, docs/phase-3-uarch/iron-requirements.json]
+     Read only the above files and compare directly. Do not trust implementer explanations.")
+
+Read(".rtl-agent-team/state/compliance-report.json")
+# If verdict == "FAIL":
+#   → Check max_violation_authority
+#   → Enter authority-appropriate escalation ladder (authority 3: N=5, Primary 5 + Fallback 5 + Last-chance 1 = 11)
+#   → If infeasibility detected after Primary exhaustion:
+#      → Produce upstream challenge report with PPA estimates:
+#        - Required fields: frequency_mhz, area_gate_count, pixel_rate_mpps, achievable_fps
+#        - Must identify which upstream authority is challenged (P1 or P2)
+#      → Re-invoke compliance-checker with validate_infeasibility: true
+#      → Present challenge to user via AskUserQuestion with comparison table
+```
+
+## Step 6.5: Phase 3 Gate (MANDATORY — matches team orchestrator)
 
 After Step 5 review completes, verify all gate items:
 1. Verify `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 2. Verify `reviews/phase-3-uarch/feature-preservation.md` has 100% preserved
 3. Verify `docs/phase-3-uarch/clock-domain-map.md` exists
 4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
-5. Verify `docs/phase-3-uarch/req-uarch-traceability.md` exists with 100% REQ coverage (every REQ-NNN in requirements.json mapped to at least one uArch section)
+5. Verify `docs/phase-3-uarch/req-uarch-traceability.md` exists with 100% REQ coverage (every REQ-NNN in iron-requirements.json mapped to at least one uArch section)
 6. Verify pipeline diagram exists
 7. Per-round artifacts (enforces dynamic convergence review protocol):
    - `reviews/phase-3-uarch/uarch-review-r1.md` — Round 1 findings + rebuttal
@@ -297,6 +343,11 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Verify clock-domain-map.md and protocol-assignments.md complete.
      Generate phase-3-summary.md for Phase 4.
      Verdict: PASS or FAIL.")
+
+Glob("docs/phase-3-uarch/iron-requirements.json")
+Glob("docs/phase-3-uarch/open-requirements.json")
+Read(".rtl-agent-team/state/compliance-report.json")
+# Verify verdict == "PASS"
 ```
 
 On PASS: generate ADRs:
@@ -315,7 +366,7 @@ fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 3 Microarchitecture.
      Phase intent: μArch design with sub-block decomposition, pipeline design, clock domain mapping, BFM development.
-     Input artifacts: docs/phase-2-architecture/ (architecture.md), refc/ (C reference model).
+     Input artifacts: docs/phase-2-architecture/ (architecture.md, iron-requirements.json), refc/ (C reference model).
      Output artifacts: docs/phase-3-uarch/ (per-module uarch specs, clock-domain-map.md, protocol-assignments.md, req-uarch-traceability.md, pipeline diagram).
      Review verdicts: reviews/phase-3-uarch/ (uarch-review.md, feature-preservation.md).
      ADRs: docs/decisions/ADR-*.md.
