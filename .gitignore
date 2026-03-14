@@ -14,6 +14,10 @@ specs/
 docs/
 architecture.md
 
+# Plugin development docs (tracked)
+!plugin_docs/
+!plugin_docs/**
+
 # EDA simulation artifacts
 *.vcd
 *.fst
