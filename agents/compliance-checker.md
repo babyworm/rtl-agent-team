@@ -4,6 +4,7 @@ model: opus
 description: Independent compliance verification agent — compares downstream artifacts against upstream iron requirements
 tools:
   - Read
+  - Write
   - Glob
   - Grep
 ---

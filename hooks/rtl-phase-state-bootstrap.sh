@@ -51,8 +51,13 @@ if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
 fi
 
 # Compliance state bootstrap — iron requirement paths per phase
+# Overwrite if phase changed (prevents stale upstream paths from prior phase)
 _CS_FILE="$CWD/.rtl-agent-team/state/compliance-state.json"
-if [ ! -f "$_CS_FILE" ]; then
+_cs_current_phase=""
+if [ -f "$_CS_FILE" ]; then
+  _cs_current_phase=$(jsonu_get_file_path_string "$_CS_FILE" "phase")
+fi
+if [ ! -f "$_CS_FILE" ] || [ "$_cs_current_phase" != "$SHORT_NAME" ]; then
   _cs_upstream=""
   _cs_open=""
   case "$SHORT_NAME" in

@@ -125,20 +125,33 @@ if acquire_lock "$SKILL_STATE"; then
   MAX_ITER=${MAX_ITER:-5}
   LADDER_ENABLED=${LADDER_ENABLED:-true}
 
-  TWO_X_LIMIT=$((MAX_ITER * 2))
-  LAST_CHANCE_INDEX=$((TWO_X_LIMIT + 1))
+  # Authority-differentiated budgets: if max_primary/max_fallback are set
+  # (written by compliance-pass pre-processing), use them instead of default N/2N
+  _CUSTOM_PRIMARY=$(jsonu_get_file_path_num "$SKILL_STATE" "max_primary")
+  _CUSTOM_FALLBACK=$(jsonu_get_file_path_num "$SKILL_STATE" "max_fallback")
+  if [ -n "$_CUSTOM_PRIMARY" ] && [ "$_CUSTOM_PRIMARY" != "null" ]; then
+    PRIMARY_LIMIT=$_CUSTOM_PRIMARY
+    FALLBACK_LIMIT=$((_CUSTOM_PRIMARY + _CUSTOM_FALLBACK))
+  else
+    PRIMARY_LIMIT=$MAX_ITER
+    FALLBACK_LIMIT=$((MAX_ITER * 2))
+  fi
+  LAST_CHANCE_INDEX=$((FALLBACK_LIMIT + 1))
   NEXT_ITER=$((ITERATION + 1))
 
-  # Determine escalation stage
-  if [ "$ITERATION" -le "$MAX_ITER" ]; then
+  # Determine escalation stage using authority-aware limits
+  if [ "$ITERATION" -le "$PRIMARY_LIMIT" ]; then
     STAGE="primary"
-  elif [ "$ITERATION" -le "$TWO_X_LIMIT" ]; then
+  elif [ "$ITERATION" -le "$FALLBACK_LIMIT" ]; then
     STAGE="fallback"
   elif [ "$ITERATION" -eq "$LAST_CHANCE_INDEX" ]; then
     STAGE="last_chance"
   else
     STAGE="user_escalated"
   fi
+
+  # Preserve TWO_X_LIMIT for stage message (backward compat)
+  TWO_X_LIMIT=$FALLBACK_LIMIT
 
   # Build sed script file for single atomic read→transform→mv
   _SED_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/skill-gate-sed.XXXXXX" 2>/dev/null || echo "$SKILL_STATE.sed")
