@@ -539,7 +539,7 @@ If Codex re-raises a settled item WITHOUT new evidence:
 
 ## Stability Criterion
 
-**Consensus requires 2+ consecutive rounds of agreement**, not just a single APPROVE verdict.
+**Consensus requires 2+ consecutive rounds where Codex verdict == APPROVE**, not just a single APPROVE verdict.
 
 - **stability_streak**: counter tracking consecutive rounds where Codex verdict == APPROVE
   AND no new critical/major findings AND no `still_disagree` on existing items

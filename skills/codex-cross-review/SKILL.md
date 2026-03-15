@@ -95,7 +95,7 @@ Max 5 rounds → AskUserQuestion escalation to user
 
 - **Agreement Ledger**: settled items are injected into each follow-up prompt to prevent context-reset re-raises
 - **Anti-Oscillation**: re-raised settled items without new evidence are rejected automatically
-- **Stability Criterion**: consensus requires 2+ consecutive stable rounds, not single-round APPROVE
+- **Stability Criterion**: consensus requires 2+ consecutive rounds with verdict==APPROVE, not single-round APPROVE
 - **Oscillation Detection**: tracked in resolution-state.json for diagnostics
 
 ## Artifacts
