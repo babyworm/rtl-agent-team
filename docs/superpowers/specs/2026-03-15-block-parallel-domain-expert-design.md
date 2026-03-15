@@ -145,7 +145,10 @@ prerequisites:
 
 > **DPB and Reconstruction ownership**: DPB (Decoded Picture Buffer) and the reconstruction
 > path (prediction + residual combining) are implemented in the `block/filter` worktree.
-> `vcodec-filter-recon-expert` covers this scope (deblocking, SAO, reconstruction, DPB).
+> `vcodec-filter-recon-expert` covers the **physical implementation** scope (deblocking, SAO,
+> reconstruction, DPB SRAM). DPB **management logic** (reference picture marking, bumping
+> process, reference picture set construction) remains under `vcodec-syntax-entropy-expert`
+> advisory scope — the filter worktree implements what syntax-entropy specifies.
 > Consequently, `recon_filter_if.sv` is an **internal interface** within the filter worktree,
 > while `filter_dpb_if.sv`, `dpb_me_if.sv`, and `dpb_mc_if.sv` are **cross-block interfaces**
 > owned by the filter worktree's output boundary.
