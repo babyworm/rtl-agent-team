@@ -87,6 +87,7 @@ if state:
                     break
 
     if state:
+        # === RESUME PATH ===
         # Restore runtime variables from saved state
         blocks = list(state["blocks"].keys())
         merge_order = blocks  # Same as blocks — upstream-first order
@@ -96,141 +97,97 @@ if state:
 
         print(f"Resuming block-parallel from phase: {state['phase']}, "
               f"blocks completed: {sum(1 for b in state['blocks'].values() if b['status'] == 'merged')}/6")
-        # Resume: skip Steps 3-6 (directories, state init, worktrees, task graph already exist)
-        # Jump directly to Step 1 (Team Creation) → Step 7-9 (spawn agents + monitor)
-```
 
-## Design Freeze Snapshot
+        # Resume skips directly to Team Creation (Steps 3-6 already completed in prior run)
 
-Capture a hash of all frozen artifacts before starting parallel work:
+    else:
+        # === FRESH START PATH ===
 
-```python
-# Generate frozen hash from interface + uArch artifacts
-frozen_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1").strip()
-base_commit = Bash("git rev-parse HEAD").strip()
+        ## Design Freeze Snapshot
+        frozen_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1").strip()
+        base_commit = Bash("git rev-parse HEAD").strip()
+        project_root = Bash("git rev-parse --show-toplevel").strip()
 
-# Save design freeze state
-Write(".rtl-agent-team/state/design-freeze.json", json.dumps({
-    "frozen_hash": frozen_hash,
-    "base_commit": base_commit,
-    "frozen_paths": ["rtl/pkg/", "rtl/intf/", "docs/phase-3-uarch/"],
-    "created_at": ISO_TIMESTAMP
-}))
-```
+        Write(".rtl-agent-team/state/design-freeze.json", json.dumps({
+            "frozen_hash": frozen_hash,
+            "base_commit": base_commit,
+            "frozen_paths": ["rtl/pkg/", "rtl/intf/", "docs/phase-3-uarch/"],
+            "created_at": ISO_TIMESTAMP
+        }))
 
-## Execution
+        ## Step 3: Prepare Directories
+        Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
 
-### Step 1: Team Creation
+        ## Step 4: Initialize State
+        blocks = ["entropy", "tq", "me", "mc", "intra", "filter"]
+        merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
 
-```python
-# ALL-OR-NOTHING: if TeamCreate fails, fall back entirely to sequential
-try:
-    TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
-except:
-    # Per team-fallback.md: NO hybrid worktree+main mix
-    print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
-    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
-    return
-```
+        state = {
+            "phase": "implement",
+            "created_at": ISO_TIMESTAMP,
+            "leader_session_id": "<current_session_id>",
+            "base_commit": base_commit,
+            "frozen_hash": frozen_hash,
+            "merge_frontier_commit": base_commit,
+            "blocks": {
+                block: {
+                    "status": "pending",
+                    "worktree_path": None,
+                    "worktree_branch": None,
+                    "lint_pass": false,
+                    "unit_test_pass": false,
+                    "contract_test_pass": false,
+                    "merge_commit": None
+                } for block in blocks
+            },
+            "merge_order": merge_order,
+            "current_merge_index": 0
+        }
 
-### Step 2: Write team-config.json
+        Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
-```python
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
-    "team_mode": true,
-    "team_name": "p4-block-parallel",
-    "leader_session_id": "<current_session_id>",
-    "coordinator_name": "coordinator",
-    "worker_count": 6,
-    "phase": "p4",
-    "created_at": ISO_TIMESTAMP
-}))
-```
+        ## Step 5: Create Worktrees
+        # ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
+        worktree_ok = True
+        for block in blocks:
+            branch = f"p4-block-{block}"
+            wt_path = f"{project_root}/.worktrees/p4-{block}"  # Absolute path
+            Bash(f"mkdir -p \"{project_root}/.worktrees\"")
+            result = Bash(f"git worktree add -b {branch} \"{wt_path}\" HEAD 2>&1")
+            if result.returncode != 0:
+                worktree_ok = False
+                break
+            state["blocks"][block]["worktree_path"] = wt_path
+            state["blocks"][block]["worktree_branch"] = branch
+            state["blocks"][block]["status"] = "worktree-ready"
 
-### Step 3: Prepare Directories
+        if not worktree_ok:
+            for block in blocks:
+                if state["blocks"][block].get("worktree_path"):
+                    Bash(f"git worktree remove --force \"{state['blocks'][block]['worktree_path']}\" 2>/dev/null")
+            Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
+            TeamDelete()
+            Bash("rm -f .rtl-agent-team/state/team-config.json")
+            print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement (sequential, non-team).")
+            Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
+            return
 
-```python
-Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
-```
+        Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
-### Step 4: Initialize State
+        ## Step 6: Initial Task Graph
+        # Create task graph BEFORE spawning agents so tasks exist when workers start
+        for block in blocks:
+            TaskCreate(
+                subject=f"Implement: {block}",
+                description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
+                            f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
+                            f"delegate to rtl-coder, run lint, create unit tests. "
+                            f"Report ready-for-merge when complete.",
+                owner=f"worker-{block}"
+            )
 
-```python
-blocks = ["entropy", "tq", "me", "mc", "intra", "filter"]
-merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
-
-state = {
-    "phase": "implement",
-    "created_at": ISO_TIMESTAMP,
-    "leader_session_id": "<current_session_id>",
-    "base_commit": base_commit,
-    "frozen_hash": frozen_hash,
-    "merge_frontier_commit": base_commit,
-    "blocks": {
-        block: {
-            "status": "pending",
-            "worktree_path": None,
-            "worktree_branch": None,
-            "lint_pass": false,
-            "unit_test_pass": false,
-            "contract_test_pass": false,
-            "merge_commit": None
-        } for block in blocks
-    },
-    "merge_order": merge_order,
-    "current_merge_index": 0
-}
-
-Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
-```
-
-### Step 5: Create Worktrees
-
-```python
-# ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
-project_root = Bash("git rev-parse --show-toplevel").strip()
-worktree_ok = True
-for block in blocks:
-    branch = f"p4-block-{block}"
-    wt_path = f"{project_root}/.worktrees/p4-{block}"  # Absolute path
-    Bash(f"mkdir -p \"{project_root}/.worktrees\"")
-    result = Bash(f"git worktree add -b {branch} \"{wt_path}\" HEAD 2>&1")
-    if result.returncode != 0:
-        worktree_ok = False
-        break
-    state["blocks"][block]["worktree_path"] = wt_path
-    state["blocks"][block]["worktree_branch"] = branch
-    state["blocks"][block]["status"] = "worktree-ready"
-
-if not worktree_ok:
-    # Clean up any created worktrees
-    for block in blocks:
-        if state["blocks"][block].get("worktree_path"):
-            Bash(f"git worktree remove --force \"{state['blocks'][block]['worktree_path']}\" 2>/dev/null")
-    Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
-    TeamDelete()
-    Bash("rm -f .rtl-agent-team/state/team-config.json")
-    print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement (sequential, non-team).")
-    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
-    return
-
-Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
-```
-
-### Step 6: Initial Task Graph
-
-```python
-# Create task graph BEFORE spawning agents so tasks exist when workers start
-# 6 parallel implementation tasks (pre-assigned to specific workers via owner)
-for block in blocks:
-    TaskCreate(
-        subject=f"Implement: {block}",
-        description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
-                    f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
-                    f"delegate to rtl-coder, run lint, create unit tests. "
-                    f"Report ready-for-merge when complete.",
-        owner=f"worker-{block}"   # Pre-assigned to specific worker
-    )
+    # === END fresh-start / resume branch ===
+    # From here on, both paths converge: team creation → spawn agents → monitor
 ```
 
 ### Step 7: Spawn Coordinator
