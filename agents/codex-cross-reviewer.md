@@ -334,11 +334,11 @@ Read previous findings at: .rtl-agent-team/cross-review/phase-{N}/round-{R-1}.js
 [One-line per rebuttal: finding ID, why, key evidence reference]
 
 ## Pending Confirmation (Round {R-1} — awaiting your verdict)
-[Items from agreement_ledger with status=pending_confirmation:
+[Items from pending_confirmations list:
  finding ID, proposed resolution (fix/rebuttal). Please confirm or dispute.]
 
 ## Settled Items (DO NOT re-raise without NEW evidence)
-[Items from agreement_ledger with status=accepted_fix or accepted_rebuttal:
+[Items from agreement_ledger (confirmed-settled only):
  finding ID, status, settled round, consecutive agrees]
 
 ## Your Task
