@@ -132,10 +132,13 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 Present comparison to user via AskUserQuestion.
 User selects the better trial:
-- If Trial N selected → merge worktree changes into current branch
-- If current best selected → discard worktree
+- If Trial N selected → merge worktree changes into current branch, then commit as new baseline:
+  ```python
+  Bash("git merge <worktree_branch> && git add -f docs/ reviews/ refc/ bfm/ .rtl-agent-team/state/ && git commit -m 'dse: Trial N promoted to current best'")
+  ```
+- If current best selected → discard worktree (no changes to main branch)
 
-Repeat until user is satisfied.
+Repeat until user is satisfied. Each iteration compares against the latest committed baseline.
 
 ### Completion
 

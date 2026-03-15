@@ -257,8 +257,11 @@ This ensures the first result the user sees has already been refined.
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="CRITICAL SELF-REVIEW of DSE Phase 1→3 output. Be harsh and thorough.
-     Read ALL artifacts: iron-requirements.json (P1+P2+P3), open-requirements.json,
-     architecture.md, architecture-candidates.md, docs/phase-3-uarch/*.md, BFM source.
+     Read ALL artifacts:
+     - docs/phase-1-research/iron-requirements.json, docs/phase-1-research/open-requirements.json
+     - docs/phase-2-architecture/iron-requirements.json, docs/phase-2-architecture/open-requirements.json (if exists)
+     - docs/phase-3-uarch/iron-requirements.json
+     - architecture.md, architecture-candidates.md, docs/phase-3-uarch/*.md, BFM source (bfm/src/)
 
      Evaluate:
      1. Spec completeness: any requirements missed or vague?
@@ -346,6 +349,15 @@ Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
 
 After re-run, verify all Phase 1-3 quality gates pass again.
 If any gate fails, address within max 2 retries per gate (per policy).
+
+### Critique Closure Verification
+After re-run completes, verify all HIGH critique findings were resolved:
+```
+Read("reviews/dse-self-critique.md")
+# For each HIGH finding: verify the corresponding artifact was updated
+# If any HIGH finding remains unresolved → log as carried-forward with justification
+# All HIGH findings must be either RESOLVED or JUSTIFIED before presenting to user
+```
 
 ## Step 8: Present Results + User Satisfaction
 

@@ -366,9 +366,10 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      Generate phase-3-summary.md for Phase 4.
      Verdict: PASS or FAIL.")
 
-Glob("docs/phase-3-uarch/iron-requirements.json")
-# Zero-opens invariant: open-requirements.json MUST NOT exist in P3
-# If this Glob finds a file → FAIL (all items should be resolved into iron)
+Glob("docs/phase-3-uarch/iron-requirements.json")  # MUST exist (REQ-U-* decisions)
+
+# Zero-opens invariant check (separate from iron check above):
+# open-requirements.json MUST NOT exist in P3 — if found → FAIL
 Glob("docs/phase-3-uarch/open-requirements.json")  # expect: NO MATCH
 Read(".rtl-agent-team/state/compliance-report.json")
 # Verify verdict == "PASS"
