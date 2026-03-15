@@ -7,6 +7,24 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Added
+- 3-way prediction expert split: `vcodec-intra-pred-expert`, `vcodec-me-expert`, `vcodec-mc-expert`
+- 14 new knowledge files for deepened domain expertise (intra, ME, MC, entropy, TQ, filter)
+- Block-parallel Phase 4 RTL development (`rtl-p4-block-parallel` skill)
+- `rat-ultraloop` autonomous implement-review-improve loop with design freeze
+- Interface policy and contract test policy skills
+- `p4-block-parallel-coordinator` and `p4-block-worker` agents
+- `ultraloop-reviewer` READ-ONLY autonomous review agent
+
+### Changed
+- `vcodec-chief-standard-expert`: updated for 6 sub-domain experts (was 4)
+- `domain-consult`: 3-way prediction routing with keyword partition
+- `stop-gate.sh`: ultraloop state detection + 30-min auto-continue
+- `manifest.json`: updated agent_coverage, agent_coordination, 14 knowledge registrations
+
+### Removed
+- `vcodec-prediction-expert` (replaced by intra/ME/MC 3-way split)
+
 ## [0.7.3] - 2026-03-15
 
 ### Added
