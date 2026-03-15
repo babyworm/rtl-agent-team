@@ -46,15 +46,25 @@
 - `domain-packages/video-codec/knowledge/deblocking-boundary-strength.md`
 - `domain-packages/video-codec/knowledge/sao-classification.md`
 
-### Modified Files (7)
+### Modified Files (16)
 
 - `domain-packages/video-codec/manifest.json` — Remove prediction-expert, add 3 new experts, register 14 knowledge files, update agent_coverage and agent_coordination
-- `skills/rtl-orchestrate/SKILL.md` — Add new skills/agents to routing table
+- `skills/rtl-orchestrate/SKILL.md` — Add new skills/agents to routing table + Action Skill→Orchestrator mapping table
 - `skills/domain-consult/SKILL.md` — Split prediction routing → intra/ME/MC (Section 4.5 of spec)
 - `hooks/rtl-orchestrator-inject.sh` — Auto-regenerated via `sync_orchestrator_inject.sh`
-- `skill-completion-criteria.json` — Add `rtl-p4-block-parallel` entry
+- `hooks/stop-gate.sh` — Add ultraloop state detection + 30-min auto-continue timestamp check
+- `skill-completion-criteria.json` — Add `rtl-p4-block-parallel` and `rat-ultraloop` entries
 - `CLAUDE.md` — Update agent/skill counts
-- `agents/vcodec-chief-standard-expert.md` — Update cross-block review template (prediction → intra/ME/MC)
+- `agents/vcodec-chief-standard-expert.md` — Update cross-block review template + "4 sub-domain" → "6 sub-domain" prose
+- `agents/p1-research-orchestrator.md` — Update prediction-expert reference
+- `agents/p1-research-team-orchestrator.md` — Update task graph prediction references
+- `scripts/inject-worker-protocol.sh` — Update agent list + case statement
+- `tests/unit/test_expert_quality.py` — Update expert quality test lists
+- `tests/unit/test_team_mode.py` — Update team mode test assertions
+- `CONTRIBUTING.md` — Update expert listing
+- `README.md` — Update domain experts table + agent count
+- `README_kr.md` — Update domain experts table + agent count (Korean)
+- `CHANGELOG.md` — Add [Unreleased] entry for this feature
 
 ### Deleted Files (1)
 
@@ -462,6 +472,11 @@ Replace `#### To vcodec-prediction-expert:` with three separate feedback section
 - `#### To vcodec-me-expert:`
 - `#### To vcodec-mc-expert:`
 
+- [ ] **Step 3b: Update chief expert prose references**
+
+Run: `grep -n "4 sub-domain\|four sub-domain" agents/vcodec-chief-standard-expert.md`
+Update all instances to "6 sub-domain experts" (description line, Role section, checklist).
+
 - [ ] **Step 4: Delete prediction-expert agent**
 
 ```bash
@@ -476,7 +491,14 @@ Expected: all tests pass
 - [ ] **Step 6: Commit**
 
 ```bash
-git add -A
+git add agents/vcodec-chief-standard-expert.md \
+       skills/domain-consult/SKILL.md \
+       agents/p1-research-orchestrator.md \
+       agents/p1-research-team-orchestrator.md \
+       scripts/inject-worker-protocol.sh \
+       tests/unit/test_expert_quality.py \
+       tests/unit/test_team_mode.py \
+       CONTRIBUTING.md README.md README_kr.md
 git commit -m "refactor: delete prediction-expert, update all references to 3-way split"
 ```
 
@@ -570,7 +592,7 @@ skills: [rtl-block-interface-policy, rtl-block-contract-test-policy]
 ```
 
 Agent structure (follow `p4-implement-team-orchestrator.md` pattern):
-- Step 0: Context Bootstrap (standard pattern)
+- Step 0: Context Bootstrap — copy lines 53-89 from `agents/p4-implement-team-orchestrator.md` (from `Read(".rtl-agent-team/state/spawn-context.json")` through upstream artifact scan). This is the standard ~12-line block duplicated across all orchestrators per CLAUDE.md intentional design decision #2.
 - Coordination Teammate Role: FORBIDDEN (TeamCreate, TeamDelete), ALLOWED (TaskCreate, TaskList, TaskUpdate, SendMessage, Read, Bash, etc.)
 - 6-Block Pipeline (not 10-wave): entropy→TQ→ME→MC→intra→filter
 - Task graph: 6 parallel implement tasks, then sequential merge tasks with dependencies
@@ -604,7 +626,7 @@ description: "Per-block worktree execution worker for Phase 4 block-parallel dev
 ```
 
 Agent structure:
-- Step 0: Context Bootstrap
+- Step 0: Context Bootstrap — copy the standard ~12-line block from `agents/p4-implement-team-orchestrator.md` lines 53-89 (same pattern as coordinator)
 - Worker lifecycle: read μArch → spawn domain expert → spawn rtl-coder → lint → unit test → report
 - Domain expert mapping: block name → expert agent ID (6 mappings)
 - Interface freeze awareness: `rtl/pkg/` and `rtl/intf/` are read-only in worktree
@@ -636,6 +658,8 @@ Frontmatter:
 name: rtl-p4-block-parallel
 description: "Phase 4 block-parallel RTL implementation using 6 worktrees with Team coordination and upstream-first merge. Requires Phase 2 interfaces and Phase 3 μArch."
 user-invocable: true
+argument-hint: "[--all or specific block names]"
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
 ---
 ```
 
@@ -694,7 +718,7 @@ Agent structure:
 - Review scope: RTL quality, lint compliance, unit test coverage, interface conformance
 - Design freeze check: verify hash of frozen paths, report violations (do NOT revert)
 - Output: structured review with actionable improvements + freeze status
-- Constraints: READ-ONLY for frozen paths, write-capable for implementation improvements
+- Constraints: Strictly READ-ONLY (disallowedTools: Write, Edit). Reviewer produces improvement recommendations; the skill itself or a separate executor applies changes. This maintains separation of review and execution roles per plugin convention.
 
 - [ ] **Step 2: Commit**
 
@@ -750,7 +774,7 @@ git commit -m "skill: add rat-ultraloop (autonomous implement-review-improve loo
 **Files:**
 - Modify: `skills/rtl-orchestrate/SKILL.md`
 
-- [ ] **Step 1: Add new skills to routing table**
+- [ ] **Step 1: Add new skills to pattern→skill routing table**
 
 Add entries for:
 - `rtl-p4-block-parallel` — triggers: "block parallel", "worktree parallel", "6-block", "block-parallel Phase 4"
@@ -761,7 +785,15 @@ Add entries for new agents:
 - `p4-block-parallel-coordinator`, `p4-block-worker`
 - `ultraloop-reviewer`
 
-- [ ] **Step 2: Regenerate hook routing block**
+- [ ] **Step 2: Add to Action Skill → Orchestrator Agent mapping table**
+
+Add rows to the mapping table (lines ~99-138 of `rtl-orchestrate/SKILL.md`):
+- `rtl-p4-block-parallel | p4-block-parallel-coordinator | rtl-block-interface-policy, rtl-block-contract-test-policy`
+- `rat-ultraloop | ultraloop-reviewer | (self-contained)`
+
+Add `p4-block-parallel-coordinator` and `p4-block-worker` to the Orchestrator/Agent delegation tables.
+
+- [ ] **Step 3: Regenerate hook routing block**
 
 Run: `sh scripts/sync_orchestrator_inject.sh`
 Verify: `hooks/rtl-orchestrator-inject.sh` updated
@@ -778,10 +810,11 @@ git commit -m "routing: add block-parallel and ultraloop to orchestrate + hook"
 **Files:**
 - Modify: `skill-completion-criteria.json`
 
-- [ ] **Step 1: Add entry**
+- [ ] **Step 1: Add entries for both new action skills**
 
 ```json
-"rtl-p4-block-parallel": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged"
+"rtl-p4-block-parallel": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged",
+"rat-ultraloop": "target-skill-executed|design-freeze-intact|cycle-summary-written"
 ```
 
 - [ ] **Step 2: Validate JSON**
@@ -792,22 +825,56 @@ Run: `python3 -c "import json; json.load(open('skill-completion-criteria.json'))
 
 ```bash
 git add skill-completion-criteria.json
-git commit -m "config: add rtl-p4-block-parallel completion criteria"
+git commit -m "config: add rtl-p4-block-parallel and rat-ultraloop completion criteria"
 ```
 
-### Task 21: Update CLAUDE.md Counts
+### Task 21: Modify stop-gate.sh for Ultraloop Auto-Continue
+
+**Files:**
+- Modify: `hooks/stop-gate.sh`
+- Reference: `hooks/lib/posix-util.sh` (may need timestamp helper)
+
+- [ ] **Step 1: Read current stop-gate.sh**
+
+Understand existing autopilot state detection pattern (currently checks `rat-auto-design-state.json`).
+
+- [ ] **Step 2: Add ultraloop state detection**
+
+Add check for `.rtl-agent-team/state/ultraloop-state.json`:
+- If file exists and `mode == "ultraloop"`, apply ultraloop escalation
+- Compare `last_cycle_timestamp` with current time
+- If elapsed > 30 minutes (configurable), allow auto-continuation
+- POSIX shell only — use `[ ]` not `[[ ]]`, no bash-isms (CLAUDE.md rule 7)
+
+- [ ] **Step 3: Add portable timestamp helper if needed**
+
+If `hooks/lib/posix-util.sh` lacks timestamp comparison, add a `posix_elapsed_minutes()` function.
+
+- [ ] **Step 4: Validate POSIX compatibility**
+
+Run: `sh -n hooks/stop-gate.sh`
+Expected: no syntax errors
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add hooks/stop-gate.sh hooks/lib/posix-util.sh
+git commit -m "hook: add ultraloop state detection + 30-min auto-continue to stop-gate"
+```
+
+### Task 22: Update CLAUDE.md Counts
 
 **Files:**
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Count actual agents and skills**
 
-Run: `ls agents/*.md | wc -l` (expected: ~92, was 87 + 6 new - 1 deleted = 92)
-Run: `find skills -name "SKILL.md" | wc -l` (expected: ~92, was 88 + 4 new = 92)
+Run: `ls agents/*.md | wc -l` — use actual count (do NOT hardcode expected values)
+Run: `find skills -name "SKILL.md" | wc -l` — use actual count
 
 - [ ] **Step 2: Update counts in CLAUDE.md**
 
-Update the line "it provides 87 specialized agents, 88 skills, 14 hooks" with actual counts.
+Update the line "it provides N specialized agents, M skills, 14 hooks" with actual counts from Step 1.
 Update File Architecture comment counts if needed.
 
 - [ ] **Step 3: Commit**
@@ -817,7 +884,41 @@ git add CLAUDE.md
 git commit -m "docs: update agent/skill counts in CLAUDE.md"
 ```
 
-### Task 22: Run Full Test Suite
+### Task 23: Update CHANGELOG.md
+
+**Files:**
+- Modify: `CHANGELOG.md`
+
+- [ ] **Step 1: Add [Unreleased] entry**
+
+Add under `[Unreleased]` section:
+
+```markdown
+### Added
+- 3-way prediction expert split: `vcodec-intra-pred-expert`, `vcodec-me-expert`, `vcodec-mc-expert`
+- 14 new knowledge files for deepened domain expertise
+- Block-parallel Phase 4 RTL development (`rtl-p4-block-parallel` skill)
+- `rat-ultraloop` autonomous implement-review-improve loop
+- Interface policy and contract test policy skills
+- `p4-block-parallel-coordinator` and `p4-block-worker` agents
+
+### Changed
+- `vcodec-chief-standard-expert`: updated for 6 sub-domain experts
+- `domain-consult`: 3-way prediction routing
+- `stop-gate.sh`: ultraloop state detection
+
+### Removed
+- `vcodec-prediction-expert` (replaced by 3-way split)
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add CHANGELOG.md
+git commit -m "changelog: add block-parallel domain expert feature"
+```
+
+### Task 24: Run Full Test Suite
 
 **Files:**
 - Reference: `tests/`
