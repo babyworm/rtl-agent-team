@@ -809,7 +809,7 @@ class TestSpecToUarchTeamStructure:
 
 
 class TestP1P3AgentsHaveProtocol:
-    """Validate that all 14 P1-P3 specialist agents have Team Worker Protocol."""
+    """Validate that all 16 P1-P3 specialist agents have Team Worker Protocol."""
 
     P1_P3_AGENTS = [
         "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
@@ -1107,7 +1107,7 @@ class TestWorkerSubagentPattern:
             "Protocol must have DELEGATE step for Task() specialist spawning"
 
     def test_specialist_agents_have_team_worker_protocol_expanded(self):
-        """All 32 specialist agents (28 existing + 4 added) must have Team Worker Protocol."""
+        """All 34 specialist agents (28 existing + 6 added) must have Team Worker Protocol."""
         agents = [
             # Original 11 (P4-P5)
             "rtl-coder", "lint-checker", "rtl-critic", "testbench-dev", "eda-runner",
