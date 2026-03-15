@@ -66,22 +66,20 @@ The following directories are frozen at Phase 2 exit:
 
 ### Hash Verification Method
 
-At Phase 2 exit, generate a hash manifest:
-
-```bash
-# Generate freeze manifest
-find rtl/pkg/ rtl/intf/ -name '*.sv' -exec sha256sum {} \; | sort > .rtl-agent-team/state/interface-freeze-manifest.txt
-```
+The freeze hash is stored in `.rtl-agent-team/state/design-freeze.json` (created by the
+`rtl-p4-block-parallel` skill before parallel work begins). This file contains a `frozen_hash`
+computed over `rtl/pkg/`, `rtl/intf/`, and `docs/phase-3-uarch/`.
 
 At each merge point during Phase 4 block-parallel execution, verify the freeze:
 
 ```bash
-# Verify no frozen file was modified
-find rtl/pkg/ rtl/intf/ -name '*.sv' -exec sha256sum {} \; | sort > /tmp/current-manifest.txt
-diff .rtl-agent-team/state/interface-freeze-manifest.txt /tmp/current-manifest.txt
+# Recompute current hash and compare against design-freeze.json's frozen_hash
+current_hash=$(find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1)
+stored_hash=$(python3 -c "import json; print(json.load(open('.rtl-agent-team/state/design-freeze.json'))['frozen_hash'])")
+[ "$current_hash" = "$stored_hash" ] || echo "FREEZE VIOLATION: hash mismatch"
 ```
 
-If diff is non-empty, the merge MUST be rejected. The block worker that needs an
+If hash mismatch, the merge MUST be rejected. The block worker that needs an
 interface change must report to the coordinator, who escalates to the user.
 
 ### Freeze Violation Protocol

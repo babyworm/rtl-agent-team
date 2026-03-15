@@ -111,9 +111,8 @@ for cycle in range(1, max_cycles + 1):
         print(f"FREEZE VIOLATION detected in cycle {cycle}. Changes stashed.")
         print("Halting ultraloop. User review required.")
 
-        # Update state and report
-        ultraloop_state["phase"] = "frozen-violation"
-        Write(".rtl-agent-team/state/ultraloop-state.json", json.dumps(ultraloop_state))
+        # Clean up ultraloop state so stop-gate.sh stops blocking
+        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
         generate_user_report(cycle, "FREEZE_VIOLATION")
         break
 
@@ -127,18 +126,21 @@ for cycle in range(1, max_cycles + 1):
     all_contracts_pass = all(b["contract_test_pass"] for b in block_state["blocks"].values())
     if all_merged and all_contracts_pass:
         print("All blocks merged and contract tests PASS. Ultraloop complete.")
+        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
         generate_user_report(cycle, "COMPLETE")
         break
 
     # Condition 2: Clean review (no improvements found)
     if review_result.verdict == "CLEAN":
         print("Clean review — no further improvements needed. Ultraloop complete.")
+        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
         generate_user_report(cycle, "CLEAN")
         break
 
     # Condition 3: Max cycles reached
     if cycle == max_cycles:
         print(f"Max cycles ({max_cycles}) reached. Saving state for manual review.")
+        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
         generate_user_report(cycle, "MAX_CYCLES")
         break
 

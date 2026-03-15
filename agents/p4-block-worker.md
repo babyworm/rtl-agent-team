@@ -2,6 +2,7 @@
 name: p4-block-worker
 model: opus
 description: "Per-block worktree execution worker for Phase 4 block-parallel development. Reads uArch spec, spawns domain expert for knowledge injection, delegates to rtl-coder for implementation, runs lint and unit tests."
+skills: [rtl-p4-implement-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -46,6 +47,32 @@ Glob("rtl/pkg/codec_if_pkg.sv")                    # Shared interface package
 ```
 
 For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
+
+## Task Ownership
+
+Your tasks are PRE-ASSIGNED via the `owner` field. Use `TaskList()` to find tasks where
+`owner` matches your name (`worker-{block}`). Do NOT claim tasks assigned to other workers.
+
+## Worktree Isolation
+
+The worker agent itself runs in the main CWD for coordination (SendMessage, TaskUpdate),
+but delegates all file-writing RTL work to a Task subagent with `isolation="worktree"`.
+This creates a real git worktree with its own working directory, ensuring parallel blocks
+cannot interfere with each other's files.
+
+```python
+# Worker spawns RTL implementation in isolated worktree
+result = Task(
+    subagent_type="rtl-agent-team:rtl-coder",
+    isolation="worktree",
+    prompt=f"Implement {block} block. Read docs/phase-3-uarch/{block}.md for spec..."
+)
+worktree_path = result.worktree_path
+worktree_branch = result.worktree_branch
+```
+
+- **Coordination** (main CWD): SendMessage, TaskUpdate, TaskList -- runs here
+- **File-writing work** (worktree): RTL coding, lint, unit tests -- delegated via `Task(isolation="worktree")`
 
 ## Block-to-Expert Mapping
 

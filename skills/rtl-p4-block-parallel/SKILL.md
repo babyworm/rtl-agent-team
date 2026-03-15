@@ -39,14 +39,14 @@ Phase 2 interface freeze and Phase 3 uArch completion required:
 # Soft advisory check — WARNING + fallback, NOT hard block
 if not Glob("rtl/pkg/codec_if_pkg.sv"):
     print("WARNING: rtl/pkg/codec_if_pkg.sv not found — Phase 2 interfaces missing.")
-    print("Falling back to rtl-p4-implement-team (sequential).")
-    Skill(skill="rtl-agent-team:rtl-p4-implement-team", prompt=ARGUMENTS)
+    print("Falling back to rtl-p4-implement (sequential, non-team).")
+    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
     return
 
 if not Glob("docs/phase-3-uarch/*.md"):
     print("WARNING: docs/phase-3-uarch/ has no uArch specs — Phase 3 incomplete.")
-    print("Falling back to rtl-p4-implement-team (sequential).")
-    Skill(skill="rtl-agent-team:rtl-p4-implement-team", prompt=ARGUMENTS)
+    print("Falling back to rtl-p4-implement (sequential, non-team).")
+    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
     return
 ```
 
@@ -120,8 +120,8 @@ try:
     TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
 except:
     # Per team-fallback.md: NO hybrid worktree+main mix
-    print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement-team (sequential).")
-    Skill(skill="rtl-agent-team:rtl-p4-implement-team", prompt=ARGUMENTS)
+    print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
+    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
     return
 ```
 
@@ -200,8 +200,8 @@ if not worktree_ok:
     Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
     TeamDelete()
     Bash("rm -f .rtl-agent-team/state/team-config.json")
-    print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement-team (sequential).")
-    Skill(skill="rtl-agent-team:rtl-p4-implement-team", prompt=ARGUMENTS)
+    print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement (sequential, non-team).")
+    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
     return
 
 Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
@@ -241,8 +241,12 @@ for block in blocks:
           description=f"P4 block worker: {block}",
           prompt=f"Your assigned block: {block}. "
                  f"Description: {block_descriptions[block]} "
-                 f"Worktree path: {state['blocks'][block]['worktree_path']}. "
-                 f"Work ONLY within your assigned worktree. "
+                 f"Worktree path (coordination hint): {state['blocks'][block]['worktree_path']}. "
+                 f"Worktree branch: {state['blocks'][block]['worktree_branch']}. "
+                 f"IMPORTANT: Actual worktree isolation happens via Task(isolation='worktree') "
+                 f"inside your worker — see 'Worktree Isolation' section in your agent prompt. "
+                 f"You run in main CWD for coordination (SendMessage, TaskUpdate), but "
+                 f"delegate all file-writing RTL work to a Task subagent with isolation='worktree'. "
                  f"Read docs/phase-3-uarch/{block}.md for uArch spec. "
                  f"Read frozen interfaces from rtl/intf/ and rtl/pkg/codec_if_pkg.sv. "
                  f"DO NOT modify files under rtl/pkg/ or rtl/intf/ (frozen). "
@@ -253,14 +257,15 @@ for block in blocks:
 ### Step 8: Initial Task Graph
 
 ```python
-# 6 parallel implementation tasks
+# 6 parallel implementation tasks (pre-assigned to specific workers via owner)
 for block in blocks:
     TaskCreate(
         subject=f"Implement: {block}",
         description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
                     f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
                     f"delegate to rtl-coder, run lint, create unit tests. "
-                    f"Report ready-for-merge when complete."
+                    f"Report ready-for-merge when complete.",
+        owner=f"worker-{block}"   # Pre-assigned to specific worker
     )
 ```
 
@@ -361,8 +366,8 @@ State is updated by both the coordinator (block status) and the skill (merge pro
 ## Fallback
 
 **ALL-OR-NOTHING**: Per `agents/lib/team-fallback.md` contract:
-- If TeamCreate fails: fall back entirely to `rtl-p4-implement-team`
-- If ANY worktree creation fails: clean up all worktrees, fall back to `rtl-p4-implement-team`
+- If TeamCreate fails: fall back entirely to `rtl-p4-implement` (sequential, non-team)
+- If ANY worktree creation fails: clean up all worktrees, fall back to `rtl-p4-implement` (sequential, non-team)
 - NO hybrid worktree+main mix is allowed
 
 ## Compliance Notes

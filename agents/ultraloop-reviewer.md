@@ -81,10 +81,10 @@ Read(".rtl-agent-team/state/design-freeze.json")
 # Compute current hash
 Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1")
 
-# Compare: if mismatch, report FREEZE_VIOLATION with details
-# Use diff to identify which specific files changed
-Bash("find rtl/pkg/ rtl/intf/ -name '*.sv' -exec sha256sum {} \\; | sort > /tmp/current-manifest.txt")
-Bash("diff .rtl-agent-team/state/interface-freeze-manifest.txt /tmp/current-manifest.txt")
+# Compare: if current_hash != design-freeze.json's frozen_hash, report FREEZE_VIOLATION
+# The design-freeze.json frozen_hash covers rtl/pkg/ + rtl/intf/ + docs/phase-3-uarch/
+# If mismatch, identify which specific files changed:
+Bash("find rtl/pkg/ rtl/intf/ -name '*.sv' -exec sha256sum {} \\; | sort")
 ```
 
 ## Output Format

@@ -98,36 +98,37 @@ Read("docs/phase-3-uarch/clock-domain-map.md")
 Read("docs/phase-1-research/io_definition.json")
 
 # Verify interface freeze
-Read(".rtl-agent-team/state/interface-freeze-manifest.txt")
+Read(".rtl-agent-team/state/design-freeze.json")
 
 Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
 ```
 
 Enumerate all 6 blocks and verify interface freeze manifest exists.
 
-## Step 2: Task Graph Creation
+## Step 2: Discover Existing Tasks
 
-Create 6 parallel implementation tasks (one per block), then sequential merge tasks:
+The skill (leader) creates the initial `Implement:*` task graph. The coordinator discovers
+these tasks via `TaskList()` and manages them -- do NOT create duplicate `Implement:*` tasks.
 
 ```python
-# Phase A: Parallel Implementation (all 6 blocks in parallel)
-t_entropy = TaskCreate(subject="Implement: entropy", description="Implement entropy block in worktree. Read docs/phase-3-uarch/entropy.md, spawn domain expert, delegate to rtl-coder, lint, unit test.")
-t_tq      = TaskCreate(subject="Implement: tq", description="Implement transform/quant block in worktree.")
-t_me      = TaskCreate(subject="Implement: me", description="Implement motion estimation block in worktree.")
-t_mc      = TaskCreate(subject="Implement: mc", description="Implement motion compensation block in worktree.")
-t_intra   = TaskCreate(subject="Implement: intra", description="Implement intra prediction block in worktree.")
-t_filter  = TaskCreate(subject="Implement: filter", description="Implement deblocking filter block in worktree.")
+# Discover pre-created implementation tasks (created by the skill in Step 8)
+tasks = TaskList()
+implement_tasks = {t.subject: t for t in tasks if t.subject.startswith("Implement:")}
 
-# Phase B: Sequential Merge (upstream-first order, with contract tests)
-t_merge_entropy = TaskCreate(subject="Merge: entropy", description="Merge entropy block. Run contract tests, verify interface freeze.", blockedBy=[t_entropy])
-t_merge_tq      = TaskCreate(subject="Merge: tq", description="Merge tq block. Run contract + cross-block integration with entropy.", blockedBy=[t_tq, t_merge_entropy])
-t_merge_me      = TaskCreate(subject="Merge: me", description="Merge me block. Run contract tests, use dpb_stub for references.", blockedBy=[t_me, t_merge_tq])
-t_merge_mc      = TaskCreate(subject="Merge: mc", description="Merge mc block. Run contract + integration with me, use dpb_stub.", blockedBy=[t_mc, t_merge_me])
-t_merge_intra   = TaskCreate(subject="Merge: intra", description="Merge intra block. Run contract tests.", blockedBy=[t_intra, t_merge_mc])
-t_merge_filter  = TaskCreate(subject="Merge: filter", description="Merge filter block. Run contract + full integration.", blockedBy=[t_filter, t_merge_intra])
+# Verify all 6 blocks have tasks
+for block in ["entropy", "tq", "me", "mc", "intra", "filter"]:
+    assert f"Implement: {block}" in implement_tasks, f"Missing task for {block}"
+
+# Create merge tasks (coordinator's responsibility, NOT created by the skill)
+t_merge_entropy = TaskCreate(subject="Merge: entropy", description="Merge entropy block. Run contract tests, verify interface freeze.", owner="coordinator", blockedBy=[implement_tasks["Implement: entropy"].id])
+t_merge_tq      = TaskCreate(subject="Merge: tq", description="Merge tq block. Run contract + cross-block integration with entropy.", owner="coordinator", blockedBy=[implement_tasks["Implement: tq"].id, t_merge_entropy])
+t_merge_me      = TaskCreate(subject="Merge: me", description="Merge me block. Run contract tests, use dpb_stub for references.", owner="coordinator", blockedBy=[implement_tasks["Implement: me"].id, t_merge_tq])
+t_merge_mc      = TaskCreate(subject="Merge: mc", description="Merge mc block. Run contract + integration with me, use dpb_stub.", owner="coordinator", blockedBy=[implement_tasks["Implement: mc"].id, t_merge_me])
+t_merge_intra   = TaskCreate(subject="Merge: intra", description="Merge intra block. Run contract tests.", owner="coordinator", blockedBy=[implement_tasks["Implement: intra"].id, t_merge_mc])
+t_merge_filter  = TaskCreate(subject="Merge: filter", description="Merge filter block. Run contract + full integration.", owner="coordinator", blockedBy=[implement_tasks["Implement: filter"].id, t_merge_intra])
 
 # Phase C: Final Integration
-t_integration = TaskCreate(subject="Integration Gate", description="Run full regression on all merged blocks. Verify all contract tests pass. Generate phase-4 reports.", blockedBy=[t_merge_filter])
+t_integration = TaskCreate(subject="Integration Gate", description="Run full regression on all merged blocks. Verify all contract tests pass. Generate phase-4 reports.", owner="coordinator", blockedBy=[t_merge_filter])
 ```
 
 ## Step 3: Monitor Loop
@@ -148,9 +149,9 @@ while not all_tasks_complete:
     #   6. After 3 failures → mark MERGE_BLOCKED, notify leader
 
     # Design freeze verification at each merge point:
-    #   Bash("find rtl/pkg/ rtl/intf/ -name '*.sv' -exec sha256sum {} \\; | sort > /tmp/current-manifest.txt")
-    #   Bash("diff .rtl-agent-team/state/interface-freeze-manifest.txt /tmp/current-manifest.txt")
-    #   If diff non-empty → REJECT merge, notify worker
+    #   Read(".rtl-agent-team/state/design-freeze.json")  # get frozen_hash
+    #   current_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1")
+    #   If current_hash != frozen_hash → REJECT merge, notify worker
 
     # Also verify docs/phase-3-uarch/ not modified:
     #   Compare against known hashes from spawn-context or initial scan
