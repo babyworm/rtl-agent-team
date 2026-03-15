@@ -22,7 +22,7 @@ fi
 P4_P5_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier constraint-writer synthesis-reporter cdc-reviewer clock-architect protocol-reviewer equivalence-checker"
 
 # P1-P3 specialist agents that participate in team mode
-P1_P3_AGENTS="spec-analyst vcodec-chief-standard-expert rtl-architect vcodec-architecture-expert arch-designer power-analyzer vcodec-syntax-entropy-expert vcodec-prediction-expert vcodec-transform-quant-expert vcodec-filter-recon-expert video-processing-expert ref-model-dev bfm-dev timing-advisor"
+P1_P3_AGENTS="spec-analyst vcodec-chief-standard-expert rtl-architect vcodec-architecture-expert arch-designer power-analyzer vcodec-syntax-entropy-expert vcodec-intra-pred-expert vcodec-me-expert vcodec-mc-expert vcodec-transform-quant-expert vcodec-filter-recon-expert video-processing-expert ref-model-dev bfm-dev timing-advisor"
 
 DEFAULT_AGENTS="$P4_P5_AGENTS $P1_P3_AGENTS"
 
@@ -50,7 +50,9 @@ get_task_type() {
     arch-designer)    echo "P1 interconnect survey, P2 architecture design, or P2 gate review" ;;
     power-analyzer)   echo "P1 power survey" ;;
     vcodec-syntax-entropy-expert) echo "P1 syntax/entropy requirements" ;;
-    vcodec-prediction-expert) echo "P1 prediction requirements" ;;
+    vcodec-intra-pred-expert) echo "P1 intra prediction requirements" ;;
+    vcodec-me-expert) echo "P1 motion estimation/MV prediction requirements" ;;
+    vcodec-mc-expert) echo "P1 motion compensation requirements" ;;
     vcodec-transform-quant-expert) echo "P1 transform/quant requirements" ;;
     vcodec-filter-recon-expert) echo "P1 filter/recon requirements" ;;
     video-processing-expert) echo "P1 signal processing requirements" ;;

@@ -246,7 +246,9 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 |----------|-------|-------|
 | Codec chief expert | `vcodec-chief-standard-expert` | Opus |
 | Syntax/entropy expert | `vcodec-syntax-entropy-expert` | Opus |
-| Prediction expert | `vcodec-prediction-expert` | Opus |
+| Intra prediction expert | `vcodec-intra-pred-expert` | Opus |
+| Motion estimation expert | `vcodec-me-expert` | Opus |
+| Motion compensation expert | `vcodec-mc-expert` | Opus |
 | Transform/quantization expert | `vcodec-transform-quant-expert` | Opus |
 | Filter/reconstruction expert | `vcodec-filter-recon-expert` | Opus |
 | Codec architecture expert | `vcodec-architecture-expert` | Opus |

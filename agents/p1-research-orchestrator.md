@@ -173,8 +173,14 @@ Task(subagent_type="rtl-agent-team:power-analyzer", model="opus", run_in_backgro
 # Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
 #      prompt="Extract HLS and entropy coding requirements from spec at specs/. Cover NAL parsing, CABAC/CAVLC context models, DPB management. Output structured algorithm descriptions with standard clause citations.")
 #
-# Task(subagent_type="rtl-agent-team:vcodec-prediction-expert",
-#      prompt="Extract intra and inter prediction requirements from spec at specs/. Cover all prediction modes, sub-pixel interpolation filters, MV prediction. Output structured algorithm descriptions with standard clause citations.")
+# Task(subagent_type="rtl-agent-team:vcodec-intra-pred-expert",
+#      prompt="Extract intra prediction requirements from spec at specs/. Cover all intra modes, reference sample construction, mode-dependent filtering. Output structured algorithm descriptions with standard clause citations.")
+#
+# Task(subagent_type="rtl-agent-team:vcodec-me-expert",
+#      prompt="Extract motion estimation and MV prediction requirements from spec at specs/. Cover ME search algorithms, AMVP/merge candidate derivation, reference frame management. Output structured algorithm descriptions with standard clause citations.")
+#
+# Task(subagent_type="rtl-agent-team:vcodec-mc-expert",
+#      prompt="Extract motion compensation requirements from spec at specs/. Cover sub-pixel interpolation filters, bi-prediction weighting, weighted prediction. Output structured algorithm descriptions with standard clause citations.")
 #
 # Task(subagent_type="rtl-agent-team:vcodec-transform-quant-expert",
 #      prompt="Extract transform and quantization requirements from spec at specs/. Cover DCT/DST, quantization tables, RDOQ, fixed-point precision chain. Output structured algorithm descriptions with standard clause citations.")

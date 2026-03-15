@@ -814,7 +814,8 @@ class TestP1P3AgentsHaveProtocol:
     P1_P3_AGENTS = [
         "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
         "vcodec-architecture-expert", "arch-designer", "power-analyzer",
-        "vcodec-syntax-entropy-expert", "vcodec-prediction-expert",
+        "vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert",
+        "vcodec-me-expert", "vcodec-mc-expert",
         "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
         "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
     ]
@@ -1115,7 +1116,8 @@ class TestWorkerSubagentPattern:
             # P1-P3 (14)
             "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
             "vcodec-architecture-expert", "arch-designer", "power-analyzer",
-            "vcodec-syntax-entropy-expert", "vcodec-prediction-expert",
+            "vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert",
+        "vcodec-me-expert", "vcodec-mc-expert",
             "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
             "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
             # Domain/misc (3)

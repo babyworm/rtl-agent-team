@@ -333,14 +333,16 @@ codec 표준은 지식 파일 세트, 전문가 프롬프트 동기화, 라우�
 
 ### Expert 프롬프트 표준 스코프 동기화
 
-새 표준 추가 시 다음 6개 expert의 `<Domain_Knowledge>` 섹션을 업데이트해야 합니다:
+새 표준 추가 시 다음 8개 expert의 `<Domain_Knowledge>` 섹션을 업데이트해야 합니다:
 
 1. `vcodec-syntax-entropy-expert` — 새 표준의 entropy coding 알고리즘
-2. `vcodec-prediction-expert` — 새 표준의 prediction 알고리즘
-3. `vcodec-transform-quant-expert` — 새 표준의 transform/quant 알고리즘
-4. `vcodec-filter-recon-expert` — 새 표준의 in-loop filter 알고리즘
-5. `vcodec-chief-standard-expert` — cross-block 의존성에 새 표준 추가
-6. `vcodec-architecture-expert` — HW 아키텍처 패턴에 새 표준 추가
+2. `vcodec-intra-pred-expert` — 새 표준의 intra prediction 알고리즘
+3. `vcodec-me-expert` — 새 표준의 motion estimation/MV prediction 알고리즘
+4. `vcodec-mc-expert` — 새 표준의 motion compensation 알고리즘
+5. `vcodec-transform-quant-expert` — 새 표준의 transform/quant 알고리즘
+6. `vcodec-filter-recon-expert` — 새 표준의 in-loop filter 알고리즘
+7. `vcodec-chief-standard-expert` — cross-block 의존성에 새 표준 추가
+8. `vcodec-architecture-expert` — HW 아키텍처 패턴에 새 표준 추가
 
 ### 라우팅 동기화
 
