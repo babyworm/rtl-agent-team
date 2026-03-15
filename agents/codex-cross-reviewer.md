@@ -506,9 +506,9 @@ Maintain in `resolution-state.json`:
 {
   "round": 3,
   "agreement_ledger": {
-    "F-001": {"status": "accepted_fix", "settled_round": 1, "consecutive_agrees": 2},
-    "F-002": {"status": "accepted_rebuttal", "settled_round": 1, "consecutive_agrees": 2},
-    "F-003": {"status": "accepted_fix", "settled_round": 2, "consecutive_agrees": 1}
+    "F-001": {"status": "accepted_fix", "settled_round": 2, "consecutive_agrees": 2},
+    "F-002": {"status": "accepted_rebuttal", "settled_round": 2, "consecutive_agrees": 2},
+    "F-003": {"status": "accepted_fix", "settled_round": 3, "consecutive_agrees": 1}
   },
   "active_disputes": ["F-004"],
   "stability_streak": 1
@@ -521,9 +521,9 @@ In Step 4a follow-up prompts, add BEFORE the task description:
 ## Settled Items (DO NOT re-raise without NEW evidence)
 The following items were agreed upon in prior rounds. Re-raising them
 requires NEW evidence not available in the original round.
-- F-001: accepted_fix (Round 1, 2 consecutive agrees)
-- F-002: accepted_rebuttal (Round 1, 2 consecutive agrees)
-- F-003: accepted_fix (Round 2, 1 consecutive agree)
+- F-001: accepted_fix (settled Round 2, 2 consecutive agrees)
+- F-002: accepted_rebuttal (settled Round 2, 2 consecutive agrees)
+- F-003: accepted_fix (settled Round 3, 1 consecutive agree)
 ```
 
 ## Anti-Oscillation Rule

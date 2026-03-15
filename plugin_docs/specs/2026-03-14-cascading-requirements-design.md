@@ -36,7 +36,7 @@ This leads to:
 
 **Ambiguity Score as Reproducibility** — Applied at every phase where requirements are produced (not just Phase 1). Measures: "If this process were repeated, would the same requirements emerge?" A requirement cannot become iron until its ambiguity score passes (score <= 0.5).
 
-**Codex Cross-Review Stability** — Review is considered stable only after 2+ consecutive rounds where Codex verdict == APPROVE with no new critical/major findings. Single-round agreement is insufficient.
+**Codex Cross-Review Stability** — Review is considered stable only after 2+ consecutive rounds where Codex verdict == APPROVE with no new critical/major findings, no still_disagree items, and no oscillation. Single-round agreement is insufficient.
 
 ---
 
@@ -448,7 +448,7 @@ Additional verification:
   - Any implicit violations the compliance-checker missed?
 
 Stability criterion:
-  - 2+ consecutive rounds with verdict==APPROVE + no new findings = stabilized
+  - 2+ consecutive rounds with verdict==APPROVE + no new findings + no still_disagree + no oscillation = stabilized
   - Single-round agreement is insufficient
 ```
 
