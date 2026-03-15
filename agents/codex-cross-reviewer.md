@@ -182,6 +182,7 @@ Be thorough but fair. Only flag genuine issues, not style preferences.
 For each finding, provide actionable suggestions.
 
 Respond using the structured JSON schema provided via --output-schema.
+For Round 1: set resolved_items to an empty array [] (no prior items to resolve).
 Use verdict:
 - APPROVE if no critical/major issues remain
 - REQUEST_CHANGES if fixes are needed
