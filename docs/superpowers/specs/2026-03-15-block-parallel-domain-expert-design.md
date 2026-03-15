@@ -212,8 +212,12 @@ rtl/intf/entropy_tq_if.sv        ← entropy ↔ TQ coefficient exchange
 rtl/intf/me_mc_if.sv             ← ME → MC (MV + reference info)
 rtl/intf/mc_recon_if.sv          ← MC → reconstruction (inter prediction)
 rtl/intf/intra_recon_if.sv       ← intra → reconstruction (intra prediction)
-rtl/intf/recon_filter_if.sv      ← reconstruction → filter
 rtl/intf/filter_dpb_if.sv        ← filter → DPB (reference frame store)
+
+# NOTE: recon_filter_if.sv is NOT a Phase 2 shared interface.
+# Reconstruction → filter is internal to the block/filter worktree
+# (owned by vcodec-filter-recon-expert). It is defined and maintained
+# inside rtl/filter/ during Phase 4, not frozen at Phase 2.
 rtl/intf/dpb_me_if.sv            ← DPB → ME (reference frame read)
 rtl/intf/dpb_mc_if.sv            ← DPB → MC (reference block fetching)
 ```
@@ -320,14 +324,23 @@ User: /rat-ultraloop rtl-p4-block-parallel
 Per cycle end:
   current_hash = sha256(rtl/pkg/ + rtl/intf/ + docs/phase-3-uarch/)
   if current_hash != frozen_hash:
-      git checkout -- rtl/pkg/ rtl/intf/ docs/phase-3-uarch/
-      log("DESIGN FREEZE VIOLATION detected and reverted")
-      Record violation to prevent retry in subsequent cycles
-
-Note: This intentional destructive revert is the enforcement mechanism for design freeze
-violations. The same hash-based verification also applies during `rtl-p4-block-parallel`
-execution (not only ultraloop) to prevent worktree workers from modifying frozen interfaces.
+      # FAIL-CLOSED: halt cycle, do NOT destructively revert
+      log("DESIGN FREEZE VIOLATION detected — cycle halted")
+      git stash push -m "freeze-violation-cycle-N" -- rtl/pkg/ rtl/intf/ docs/phase-3-uarch/
+      Record violation details (which files changed, diff summary)
+      Halt autonomous loop → report to user for manual resolution
+      # User can: inspect stash, accept changes (update freeze hash), or drop stash
 ```
+
+**Design philosophy**: Follows the existing DSE pattern of "isolate then promote" — violations
+are quarantined (stashed), not destroyed. The user retains the ability to inspect and decide.
+This is consistent with `rtl-dse/SKILL.md`'s worktree comparison approach where both trial
+and baseline are preserved until the user makes an explicit selection.
+
+The same hash-based verification also applies during `rtl-p4-block-parallel` execution
+(not only ultraloop) to prevent worktree workers from modifying frozen interfaces. In the
+block-parallel context, a freeze violation in a worktree halts that worker and reports to
+the coordinator via SendMessage.
 
 ### 7.6 30-Minute Auto-Continue Mechanism
 
@@ -350,17 +363,27 @@ The 30-minute threshold is configurable in `ultraloop-state.json`.
 
 | Situation | Behavior |
 |-----------|----------|
-| Phase 2 interface not locked | Reject skill invocation with error; guide user to `rtl-p2-arch-design` |
-| Phase 3 μArch incomplete | Reject skill invocation with error; guide user to `rtl-p3-uarch-design` |
+| Phase 2 interface not locked | WARNING + guide to `rtl-p2-arch-design`; if user proceeds, fall back to `rtl-p4-implement-team` (sequential, no block-parallel) |
+| Phase 3 μArch incomplete | WARNING + guide to `rtl-p3-uarch-design`; if user proceeds, fall back to `rtl-p4-implement-team` (sequential) |
 | Partial μArch completion | WARNING + create worktrees only for completed blocks |
+
+> **Soft advisory contract**: Consistent with CLAUDE.md "action skills emit WARNING for missing
+> phase prerequisites but proceed with available artifacts." This skill never hard-blocks;
+> instead it degrades gracefully to sequential execution when prerequisites are insufficient
+> for safe parallel operation.
 
 ### 8.2 Worktree/Team Failures
 
 | Situation | Fallback |
 |-----------|----------|
-| `TeamCreate` failure | Fall back to existing `rtl-p4-implement-team` (sequential team mode) |
-| Individual worktree creation failure | Run that block sequentially on main; others remain in worktrees |
+| `TeamCreate` failure | Fall back entirely to `rtl-p4-implement-team` (sequential orchestrator) |
+| Individual worktree creation failure | Fall back entirely to `rtl-p4-implement-team` (sequential orchestrator) — no hybrid mix of worktree + main |
 | Worker crash/timeout | Coordinator detects → 1 retry → failure escalates to leader |
+
+> **All-or-nothing fallback**: Consistent with `agents/lib/team-fallback.md` contract —
+> partial worktree/main hybrids violate isolation guarantees and leave remaining worktrees
+> based on stale mainline without rebasing. If any infrastructure component (team or worktree)
+> fails, the entire execution degrades to the sequential non-team orchestrator.
 
 ### 8.3 Merge Failures
 
@@ -376,17 +399,33 @@ The 30-minute threshold is configurable in `ultraloop-state.json`.
 // .rtl-agent-team/state/block-parallel-state.json
 {
   "phase": "merge",
+  "created_at": "2026-03-15T14:30:00Z",
+  "leader_session_id": "session-abc123",
+  "base_commit": "90dd3e0",
+  "frozen_hash": "sha256:a1b2c3d4...",
+  "merge_frontier_commit": "def456",
   "blocks": {
-    "entropy": {"status": "merged", "commit": "abc123"},
-    "tq":      {"status": "merged", "commit": "def456"},
-    "me":      {"status": "worktree-ready", "branch": "block/me"},
-    "mc":      {"status": "in-progress", "branch": "block/mc"},
-    "intra":   {"status": "in-progress", "branch": "block/intra"},
-    "filter":  {"status": "in-progress", "branch": "block/filter"}
+    "entropy": {"status": "merged", "commit": "abc123", "worktree_path": null},
+    "tq":      {"status": "merged", "commit": "def456", "worktree_path": null},
+    "me":      {"status": "worktree-ready", "branch": "block/me", "worktree_path": "/path/to/repo-wt-me"},
+    "mc":      {"status": "in-progress", "branch": "block/mc", "worktree_path": "/path/to/repo-wt-mc"},
+    "intra":   {"status": "in-progress", "branch": "block/intra", "worktree_path": "/path/to/repo-wt-intra"},
+    "filter":  {"status": "in-progress", "branch": "block/filter", "worktree_path": "/path/to/repo-wt-filter"}
   },
   "merge_order": ["entropy","tq","me","mc","intra","filter"],
   "current_merge_index": 2
 }
+```
+
+**Resume safety contract**: On resume, the skill MUST verify:
+1. `frozen_hash` matches current state of `rtl/pkg/` + `rtl/intf/` + `docs/phase-3-uarch/`
+2. `base_commit` is an ancestor of current HEAD (no history rewrite)
+3. `merge_frontier_commit` matches actual HEAD (no external merges occurred)
+4. All `worktree_path` entries still exist on disk (worktrees not cleaned up)
+
+If any check fails, resume is rejected with a diagnostic message. This is consistent with
+`rtl-dse/SKILL.md`'s use of `worktree_path` and `worktree_branch` as explicit coordination
+state, and with `team-gate-util.sh`'s reliance on `leader_session_id` and `created_at`.
 ```
 
 - Session interruption → state file saved
@@ -403,7 +442,7 @@ The 30-minute threshold is configurable in `ultraloop-state.json`.
 | `agents/vcodec-me-expert.md` | Motion Estimation domain expert | opus |
 | `agents/vcodec-mc-expert.md` | Motion Compensation domain expert | opus |
 | `agents/p4-block-parallel-coordinator.md` | 6-block parallel coordination orchestrator | opus |
-| `agents/p4-block-worker.md` | Per-block worktree execution worker | sonnet |
+| `agents/p4-block-worker.md` | Per-block worktree execution worker | opus |
 | `agents/ultraloop-reviewer.md` | Autonomous review with freeze verification | opus |
 
 ### 9.2 New Skill Files
