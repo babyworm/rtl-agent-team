@@ -86,9 +86,32 @@ if state:
                     state = None
                     break
 
+    ## Common Step 1: Team Creation
+    # Runs BEFORE if/else branch — both resume and fresh paths need a team.
+    # ALL-OR-NOTHING: if TeamCreate fails, fall back entirely to sequential.
+    # At this point no worktrees or tasks exist, so cleanup is clean.
+    try:
+        TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
+    except:
+        print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
+        Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
+        return
+
+    ## Common Step 2: Write team-config.json
+    Write(".rtl-agent-team/state/team-config.json", json.dumps({
+        "team_mode": true,
+        "team_name": "p4-block-parallel",
+        "leader_session_id": "<current_session_id>",
+        "coordinator_name": "coordinator",
+        "worker_count": 6,
+        "phase": "p4",
+        "created_at": ISO_TIMESTAMP
+    }))
+
+    ## BRANCHED: Fresh vs Resume
     if state:
         # === RESUME PATH ===
-        # Restore runtime variables from saved state
+        # Restore runtime variables from saved state (worktrees/state/tasks already exist)
         blocks = list(state["blocks"].keys())
         merge_order = blocks  # Same as blocks — upstream-first order
         frozen_hash = state["frozen_hash"]
@@ -98,12 +121,10 @@ if state:
         print(f"Resuming block-parallel from phase: {state['phase']}, "
               f"blocks completed: {sum(1 for b in state['blocks'].values() if b['status'] == 'merged')}/6")
 
-        # Resume skips directly to Team Creation (Steps 3-6 already completed in prior run)
-
     else:
         # === FRESH START PATH ===
 
-        ## Design Freeze Snapshot
+        ## Step 3: Design Freeze Snapshot
         frozen_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1").strip()
         base_commit = Bash("git rev-parse HEAD").strip()
         project_root = Bash("git rev-parse --show-toplevel").strip()
@@ -115,10 +136,10 @@ if state:
             "created_at": ISO_TIMESTAMP
         }))
 
-        ## Step 3: Prepare Directories
+        ## Step 4: Prepare Directories
         Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
 
-        ## Step 4: Initialize State
+        ## Step 5: Initialize State
         blocks = ["entropy", "tq", "me", "mc", "intra", "filter"]
         merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
 
@@ -146,8 +167,9 @@ if state:
 
         Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
-        ## Step 5: Create Worktrees
+        ## Step 6: Create Worktrees
         # ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
+        # Team exists at this point, so TeamDelete is valid in cleanup
         worktree_ok = True
         for block in blocks:
             branch = f"p4-block-{block}"
@@ -174,8 +196,9 @@ if state:
 
         Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
-        ## Step 6: Initial Task Graph
-        # Create task graph BEFORE spawning agents so tasks exist when workers start
+        ## Step 7: Initial Task Graph
+        # Create task graph AFTER TeamCreate so team context is available,
+        # and BEFORE spawning agents so tasks exist when workers start
         for block in blocks:
             TaskCreate(
                 subject=f"Implement: {block}",
@@ -187,30 +210,10 @@ if state:
             )
 
     # === END fresh-start / resume branch ===
-    # From here on, both paths converge: team creation → spawn agents → monitor
-
-    ## Common Step 1: Team Creation
-    # ALL-OR-NOTHING: if TeamCreate fails, fall back entirely to sequential
-    try:
-        TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
-    except:
-        print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
-        Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
-        return
-
-    ## Common Step 2: Write team-config.json
-    Write(".rtl-agent-team/state/team-config.json", json.dumps({
-        "team_mode": true,
-        "team_name": "p4-block-parallel",
-        "leader_session_id": "<current_session_id>",
-        "coordinator_name": "coordinator",
-        "worker_count": 6,
-        "phase": "p4",
-        "created_at": ISO_TIMESTAMP
-    }))
+    # From here on, both paths converge: spawn agents → monitor
 ```
 
-### Step 7: Spawn Coordinator
+### Step 8: Spawn Coordinator
 
 ```python
 Agent(team_name="p4-block-parallel",
@@ -225,7 +228,7 @@ Agent(team_name="p4-block-parallel",
              "Signal leader when integration gate passes. User input: $ARGUMENTS")
 ```
 
-### Step 8: Spawn 6 Workers
+### Step 9: Spawn 6 Workers
 
 ```python
 block_descriptions = {
@@ -258,7 +261,7 @@ for block in blocks:
                  f"Naming: i_/o_ prefixes, snake_case, clk/{{domain}}_clk, rst_n/{{domain}}_rst_n.")
 ```
 
-### Step 9: Leader Monitoring Loop
+### Step 10: Leader Monitoring Loop
 
 ```python
 while True:
@@ -280,7 +283,7 @@ while True:
     # Continue polling
 ```
 
-### Step 10: Merge Phase
+### Step 11: Merge Phase
 
 The coordinator drives upstream-first merge sequence:
 ```
@@ -295,7 +298,7 @@ At each merge point:
 5. If PASS: update `merge_frontier_commit`, advance `current_merge_index`
 6. If FAIL: retry up to 3 times (per contract test policy), then MERGE_BLOCKED
 
-### Step 11: Cleanup
+### Step 12: Cleanup
 
 ```python
 # Remove worktrees
