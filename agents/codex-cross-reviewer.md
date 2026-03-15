@@ -52,7 +52,7 @@ cat > .rtl-agent-team/cross-review/review-schema.json << 'SCHEMA_EOF'
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["findings", "summary", "verdict"],
+  "required": ["findings", "resolved_items", "summary", "verdict"],
   "additionalProperties": false,
   "properties": {
     "findings": {
@@ -298,14 +298,15 @@ Maintain `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json`:
   "rebutted": ["F-002", "F-005"],
   "unresolved": ["F-004", "F-006", "F-007", "F-008"],
   "agreement_ledger": {
-    "F-001": {"status": "accepted_fix", "settled_round": 1, "consecutive_agrees": 0},
-    "F-002": {"status": "accepted_rebuttal", "settled_round": 1, "consecutive_agrees": 0}
+    "F-001": {"status": "pending_confirmation", "settled_round": null, "consecutive_agrees": 0},
+    "F-002": {"status": "pending_confirmation", "settled_round": null, "consecutive_agrees": 0}
   },
   "stability_streak": 0,
   "oscillation_count": 0
 }
 ```
 - `agreement_ledger`: settled items with their history (populated from resolved_items in Codex response)
+- Items move from `pending_confirmation` to `accepted_*` only after Codex confirms via `resolved_items` in the next round.
 - `stability_streak`: consecutive rounds with no new critical/major + no still_disagree
 - `oscillation_count`: times a settled item was re-raised without new evidence
 
@@ -332,6 +333,10 @@ Read previous findings at: .rtl-agent-team/cross-review/phase-{N}/round-{R-1}.js
 
 ## Rebuttals (Round {R-1})
 [One-line per rebuttal: finding ID, why, key evidence reference]
+
+## Settled Items (DO NOT re-raise without NEW evidence)
+[Inject agreement_ledger contents here — one line per settled item:
+ finding ID, status, settled round, consecutive agrees]
 
 ## Your Task
 1. Verify each fix is adequate (read the updated files)
@@ -374,7 +379,7 @@ After the status output, update stability tracking and evaluate:
 
 **Update stability_streak:**
 ```
-if (no new critical/major findings) AND (no still_disagree items) AND (no oscillation this round):
+if (Codex verdict == APPROVE) AND (no new critical/major findings) AND (no still_disagree items) AND (no oscillation this round):
   stability_streak += 1
   # Also increment consecutive_agrees for each settled item in agreement_ledger
 else:
@@ -382,10 +387,10 @@ else:
 ```
 
 **Consensus reached** if:
-- `stability_streak >= 2` (2+ consecutive rounds of stable agreement)
+- `stability_streak >= 2` AND latest verdict == APPROVE (2+ consecutive rounds of stable agreement)
 
 **Continue loop** if:
-- `stability_streak < 2` AND round <= 5
+- `stability_streak < 2` AND round < 5
 - Any `critical` or `major` findings with `still_disagree` or new
 
 **Note**: A single APPROVE verdict is necessary but NOT sufficient — stability must be confirmed
@@ -528,7 +533,7 @@ in Round N+1 unless the reviewer provides **new evidence** — specifically:
 **Simple re-phrasing or re-interpretation is NOT sufficient to re-open a settled item.**
 
 If Codex re-raises a settled item WITHOUT new evidence:
-1. Record as `oscillation_detected` in resolution state
+1. Increment `oscillation_count` in resolution state
 2. Respond: "This item was settled in Round {N}. No new evidence provided. Maintaining prior decision."
 3. Do NOT count the re-raise as a new finding
 
