@@ -55,71 +55,82 @@ if not Glob("docs/phase-3-uarch/*.md"):
 Before starting fresh, check for existing state:
 
 ```python
+# === Phase 0: Resume Check ===
 state_path = ".rtl-agent-team/state/block-parallel-state.json"
 state = Read(state_path)  # Returns None if not found
 
 if state:
     # Verify safety conditions for resume
-    # 1. Frozen hash must match current state of frozen paths
     current_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1")
     if current_hash != state["frozen_hash"]:
-        print("WARNING: Design freeze hash mismatch — frozen artifacts changed since last run.")
-        print("Cannot safely resume. Starting fresh.")
+        print("WARNING: Design freeze hash mismatch. Starting fresh.")
         state = None
 
-    # 2. Base commit must be ancestor of HEAD
     if state:
         base_ok = Bash(f"git merge-base --is-ancestor {state['base_commit']} HEAD && echo yes || echo no")
         if base_ok.strip() != "yes":
-            print("WARNING: Base commit is not ancestor of HEAD — history diverged.")
-            print("Cannot safely resume. Starting fresh.")
+            print("WARNING: Base commit not ancestor of HEAD. Starting fresh.")
             state = None
 
-    # 3. Worktrees must still exist
     if state:
         for block, info in state["blocks"].items():
             if info.get("worktree_path") and info["status"] != "merged":
                 wt_exists = Bash(f"test -d \"{info['worktree_path']}\" && echo yes || echo no")
                 if wt_exists.strip() != "yes":
-                    print(f"WARNING: Worktree for {block} missing at {info['worktree_path']}.")
-                    print("Cannot safely resume. Starting fresh.")
+                    print(f"WARNING: Worktree for {block} missing. Starting fresh.")
                     state = None
                     break
+```
 
-    ## Common Step 1: Team Creation
-    # Runs BEFORE if/else branch — both resume and fresh paths need a team.
-    # ALL-OR-NOTHING: if TeamCreate fails, fall back entirely to sequential.
-    # At this point no worktrees or tasks exist, so cleanup is clean.
-    try:
-        TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
-    except:
-        print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
-        Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
-        return
+### Common Step 1: Team Creation
 
-    ## Common Step 2: Write team-config.json
-    Write(".rtl-agent-team/state/team-config.json", json.dumps({
-        "team_mode": true,
-        "team_name": "p4-block-parallel",
-        "leader_session_id": "<current_session_id>",
-        "coordinator_name": "coordinator",
-        "worker_count": 6,
-        "phase": "p4",
-        "created_at": ISO_TIMESTAMP
-    }))
+Both resume and fresh paths need a team (teams are session-scoped, not persistent).
 
-    ## BRANCHED: Fresh vs Resume
-    if state:
-        # === RESUME PATH ===
-        # Restore runtime variables from saved state (worktrees/state/tasks already exist)
-        blocks = list(state["blocks"].keys())
-        merge_order = blocks  # Same as blocks — upstream-first order
-        frozen_hash = state["frozen_hash"]
-        base_commit = state["base_commit"]
-        project_root = Bash("git rev-parse --show-toplevel").strip()
+```python
+# ALL-OR-NOTHING: if TeamCreate fails, fall back entirely to sequential.
+# At this point no worktrees or tasks have been created in THIS session, so cleanup is clean.
+try:
+    TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
+except:
+    print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
+    Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
+    return
 
-        print(f"Resuming block-parallel from phase: {state['phase']}, "
-              f"blocks completed: {sum(1 for b in state['blocks'].values() if b['status'] == 'merged')}/6")
+## Common Step 2: Write team-config.json
+Write(".rtl-agent-team/state/team-config.json", json.dumps({
+    "team_mode": true,
+    "team_name": "p4-block-parallel",
+    "leader_session_id": "<current_session_id>",
+    "coordinator_name": "coordinator",
+    "worker_count": 6,
+    "phase": "p4",
+    "created_at": ISO_TIMESTAMP
+}))
+```
+
+### Branched: Fresh vs Resume
+
+```python
+if state:
+    # === RESUME PATH ===
+    # Restore runtime variables from saved state (worktrees already exist from prior session)
+    blocks = list(state["blocks"].keys())
+    merge_order = blocks
+    frozen_hash = state["frozen_hash"]
+    base_commit = state["base_commit"]
+    project_root = Bash("git rev-parse --show-toplevel").strip()
+
+    print(f"Resuming from phase: {state['phase']}, "
+          f"blocks completed: {sum(1 for b in state['blocks'].values() if b['status'] == 'merged')}/6")
+
+    # Re-create task graph (tasks are session-scoped, not persistent across sessions)
+    for block in blocks:
+        TaskCreate(
+            subject=f"Implement: {block}",
+            description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
+                        f"Status from prior session: {state['blocks'][block]['status']}.",
+            owner=f"worker-{block}"
+        )
 
     else:
         # === FRESH START PATH ===
