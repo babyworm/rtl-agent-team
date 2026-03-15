@@ -1117,7 +1117,7 @@ class TestWorkerSubagentPattern:
             "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
             "vcodec-architecture-expert", "arch-designer", "power-analyzer",
             "vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert",
-        "vcodec-me-expert", "vcodec-mc-expert",
+            "vcodec-me-expert", "vcodec-mc-expert",
             "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
             "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
             # Domain/misc (3)

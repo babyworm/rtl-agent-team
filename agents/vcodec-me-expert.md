@@ -3,6 +3,7 @@ name: vcodec-me-expert
 description: Video codec motion estimation expert (H.264/H.265). Interprets ME search algorithms (IME/FME), MV prediction (AMVP/merge), reference frame management, and search range constraints.
 model: opus
 color: blue
+disallowedTools: Write, Edit
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.

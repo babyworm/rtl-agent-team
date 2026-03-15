@@ -443,14 +443,14 @@
         "standard_version": null
       },
       {
-        "file": "deblocking-filter-algorithm.md",
-        "description": "Deblocking filter algorithm — boundary strength derivation, filter decision thresholds (alpha/beta/tC), strong/weak filter selection, and sample modification formulas",
+        "file": "deblocking-boundary-strength.md",
+        "description": "Deblocking filter boundary strength derivation, filter decision thresholds (alpha/beta/tC), strong/weak filter selection, and sample modification formulas",
         "standard_id": ["H.264", "H.265"],
         "standard_version": null
       },
       {
-        "file": "sao-algorithm.md",
-        "description": "Sample Adaptive Offset algorithm — edge offset classification, band offset grouping, CTU-level SAO parameter signaling, and merge modes",
+        "file": "sao-classification.md",
+        "description": "Sample Adaptive Offset classification — edge offset classification, band offset grouping, CTU-level SAO parameter signaling, and merge modes",
         "standard_id": "H.265",
         "standard_version": null
       },
@@ -461,29 +461,34 @@
         "standard_version": null
       },
       {
-        "file": "dpb-management.md",
-        "description": "Decoded Picture Buffer management — reference picture marking, bumping process, RPS derivation, output reordering, and maximum DPB size per level",
+        "file": "cavlc-coding-tables.md",
+        "description": "CAVLC coding tables — total zeros, run-before, and trailing ones tables for H.264 residual coding",
+        "standard_id": "H.264",
+        "standard_version": null
+      },
+      {
+        "file": "butterfly-operations.md",
+        "description": "Butterfly operations for DCT/DST transforms — H.264 4x4/8x8 and H.265 4x4/8x8/16x16/32x32 butterfly decomposition with exact integer values",
         "standard_id": ["H.264", "H.265"],
         "standard_version": null
       },
       {
-        "file": "transform-matrices.md",
-        "description": "Transform coefficient matrices — H.264 4x4/8x8 and H.265 4x4/8x8/16x16/32x32 DCT/DST core matrices with exact integer values and butterfly decomposition",
+        "file": "quantization-matrices.md",
+        "description": "Quantization matrices — QP-to-Qstep mapping, scaling factors, level scale arrays, and dequantization formulas for all transform sizes",
         "standard_id": ["H.264", "H.265"],
         "standard_version": null
       },
       {
-        "file": "quantization-tables.md",
-        "description": "Quantization parameter tables — QP-to-Qstep mapping, scaling factors, level scale arrays, and dequantization formulas for all transform sizes",
+        "file": "nal-unit-types.md",
+        "description": "NAL unit type definitions for H.264 and H.265 — type codes, semantics, and bitstream structure",
         "standard_id": ["H.264", "H.265"],
         "standard_version": null
       },
       {
-        "file": "hm-function-map.md",
-        "description": "HM reference software function-to-spec-clause mapping for H.265",
-        "standard_id": "H.265",
-        "standard_version": "V9",
-        "reference_sw": "HM 16.25"
+        "file": "rdoq-algorithm.md",
+        "description": "Rate-distortion optimized quantization algorithm — RDOQ cost model, level decision, and coefficient scanning order",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
       }
     ]
   },

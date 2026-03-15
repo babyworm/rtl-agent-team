@@ -18,9 +18,9 @@ rtl/pkg/codec_if_pkg.sv       # Shared types, parameters, enums for all interfac
 Interface files use the naming pattern `{source-block}_{destination-block}_if.sv`.
 The package file `codec_if_pkg.sv` defines all shared types referenced by interfaces.
 
-## Cross-Block Interface Inventory (8 Frozen Interfaces)
+## Cross-Block Interface Inventory (7 Frozen Cross-Block Interfaces)
 
-The following 8 interface files are frozen at Phase 2 exit and shared across blocks:
+The following 7 interface files are frozen at Phase 2 exit and shared across blocks:
 
 | File | Source | Destination | Purpose |
 |------|--------|-------------|---------|
@@ -31,10 +31,9 @@ The following 8 interface files are frozen at Phase 2 exit and shared across blo
 | `rtl/intf/filter_dpb_if.sv` | filter | dpb | Filtered frames to decoded picture buffer |
 | `rtl/intf/dpb_me_if.sv` | dpb | me | Reference frames from DPB to motion estimation |
 | `rtl/intf/dpb_mc_if.sv` | dpb | mc | Reference frames from DPB to motion compensation |
-| `rtl/intf/recon_filter_if.sv` | recon | filter | Reconstructed samples to deblocking filter |
 
-**NOTE**: `recon_filter_if.sv` connects reconstruction to the filter block's input.
-It is a frozen shared interface, NOT a filter-internal interface.
+**NOTE**: `recon_filter_if.sv` is filter-internal (not frozen). Defined inside `rtl/filter/` during Phase 4.
+Reconstruction-to-filter is an internal interface within the filter block/worktree, not a cross-block boundary.
 
 ## Timing Contract Format
 
@@ -63,7 +62,7 @@ The following directories are frozen at Phase 2 exit:
 | Directory | Contents | Freeze Scope |
 |-----------|----------|--------------|
 | `rtl/pkg/` | `codec_if_pkg.sv` — shared types and parameters | Full freeze |
-| `rtl/intf/` | All 8 `*_if.sv` files listed above | Full freeze |
+| `rtl/intf/` | All 7 `*_if.sv` files listed above | Full freeze |
 
 ### Hash Verification Method
 

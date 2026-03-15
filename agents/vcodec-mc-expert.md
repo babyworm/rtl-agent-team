@@ -3,6 +3,7 @@ name: vcodec-mc-expert
 description: Video codec motion compensation expert (H.264/H.265). Interprets sub-pixel interpolation filters, bi-prediction weighting, weighted prediction, and reference block fetching from normative standard text.
 model: opus
 color: blue
+disallowedTools: Write, Edit
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.

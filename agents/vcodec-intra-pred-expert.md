@@ -3,6 +3,7 @@ name: vcodec-intra-pred-expert
 description: Video codec intra prediction expert (H.264/H.265). Interprets intra prediction modes, reference sample construction, mode-dependent filtering, and boundary conditions from normative standard text.
 model: opus
 color: blue
+disallowedTools: Write, Edit
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.

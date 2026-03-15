@@ -56,13 +56,14 @@ target_skill = ARGUMENTS  # e.g., "rtl-p4-block-parallel"
 max_cycles = 10
 
 # Initialize ultraloop state
+# last_cycle_timestamp: Unix epoch seconds (date +%s)
 Write(".rtl-agent-team/state/ultraloop-state.json", json.dumps({
     "mode": "ultraloop",
     "target_skill": target_skill,
     "cycle": 0,
     "max_cycles": max_cycles,
     "frozen_hash": frozen_hash,
-    "last_cycle_timestamp": ISO_TIMESTAMP,
+    "last_cycle_timestamp": int(time.time()),
     "auto_continue_minutes": 30
 }))
 
@@ -71,7 +72,7 @@ for cycle in range(1, max_cycles + 1):
 
     # Update state
     ultraloop_state["cycle"] = cycle
-    ultraloop_state["last_cycle_timestamp"] = ISO_TIMESTAMP
+    ultraloop_state["last_cycle_timestamp"] = int(time.time())  # Unix epoch seconds (date +%s)
     Write(".rtl-agent-team/state/ultraloop-state.json", json.dumps(ultraloop_state))
 
     # --- (a) Execute/continue target skill ---
@@ -169,7 +170,7 @@ Maintained at `.rtl-agent-team/state/ultraloop-state.json`:
   "cycle": 3,
   "max_cycles": 10,
   "frozen_hash": "sha256:deadbeef...",
-  "last_cycle_timestamp": "2026-03-15T18:30:00Z",
+  "last_cycle_timestamp": 1742064600,
   "auto_continue_minutes": 30
 }
 ```
