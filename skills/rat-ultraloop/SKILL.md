@@ -159,7 +159,16 @@ The loop terminates when any of these conditions is met:
 2. **Clean review** -- ultraloop-reviewer reports no improvements needed
 3. **Max cycles reached** -- default 10 cycles, configurable via state
 4. **Freeze violation** -- frozen artifacts modified, stash + halt (FAIL-CLOSED)
-5. **Token exhaustion imminent** -- save state and exit gracefully
+5. **Token exhaustion imminent** -- clean up ultraloop state, save progress, exit gracefully
+
+On token exhaustion detection, the skill MUST remove `ultraloop-state.json` before exiting
+to prevent `stop-gate.sh` from treating the next session as an active ultraloop:
+```python
+Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+generate_user_report(cycle, "TOKEN_EXHAUSTION")
+```
+If the session terminates abruptly without cleanup, `stop-gate.sh` will detect a stale
+timestamp (elapsed > threshold) and allow normal stopping in the next session.
 
 ## State Persistence
 
