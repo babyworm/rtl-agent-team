@@ -1,0 +1,387 @@
+# Block-Parallel RTL Development with Enhanced Domain Experts
+
+**Date**: 2026-03-15
+**Status**: Approved
+**Scope**: RTL Agent Team plugin enhancement for video codec IP design
+
+## 1. Problem Statement
+
+The current RTL Agent Team plugin executes Phase 4 (RTL implementation) sequentially or via
+generic team mode. Video codec designs consist of 6 largely independent processing blocks
+(entropy, TQ, intra prediction, motion estimation, motion compensation, in-loop filter) that
+can be developed in parallel. Additionally, the existing 4 sub-domain experts lack the depth
+needed for block-level RTL guidance, and the prediction expert conflates two distinct hardware
+datapaths (intra vs inter).
+
+## 2. Goals
+
+1. **Domain expert enhancement** — Deepen knowledge base, split prediction expert 3-way, expand
+   expert role to include RTL implementation guidance (knowledge injection, not direct coding)
+2. **Worktree-based block-parallel development** — 6 independent git worktrees for maximum
+   parallelism with code isolation during Phase 4
+3. **Interface-First + Contract Test** — Phase 2 interface lock, Phase 3 timing verification,
+   contract tests at every merge point
+4. **Autonomous execution mode** — `rat-ultraloop` skill for unattended implement-review-improve
+   cycles with design freeze enforcement
+
+## 3. Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Prediction expert split | 3-way (intra, ME, MC) | ME architecture complexity warrants dedicated expert; intra/inter are separate HW datapaths |
+| Worktree granularity | 1:1 block mapping (6 worktrees) | Maximum parallelism, minimal merge conflict |
+| Execution mechanism | Team + Worktree hybrid | Team for coordination (SendMessage), worktree for code isolation |
+| Merge order | Upstream-first: entropy→TQ→ME→MC→intra→filter | Follows decoder data flow; full integration at final merge |
+| Phase mapping | Worktree branch at Phase 4 entry | Phase 2-3 complete interface + μArch on main first |
+| Interface management | Interface-First (Phase 2) + timing (Phase 3) + contract test (merge) | Minimizes cross-block mismatch risk |
+| Autonomous mode | Separate skill (`rat-ultraloop`) | Separates execution mode from workflow logic; reusable |
+| Design freeze | Hash-based verification per cycle | Prevents autonomous loops from altering architecture |
+
+## 4. Domain Expert Restructuring
+
+### 4.1 Prediction Expert 3-Way Split
+
+| Current | New | Core Domain |
+|---------|-----|-------------|
+| `vcodec-prediction-expert` (DELETE) | `vcodec-intra-pred-expert` | Angular/planar/DC modes, reference sample construction |
+| | `vcodec-me-expert` | IME/FME search algorithms, MV prediction (AMVP/merge), reference frame management |
+| | `vcodec-mc-expert` | Sub-pixel interpolation filters, bi-prediction, weighted prediction, reference block fetching |
+
+### 4.2 Updated Sub-Domain Expert Map (4 → 6)
+
+| # | Expert | Key Domain | Model |
+|---|--------|-----------|-------|
+| 1 | `vcodec-syntax-entropy-expert` | NAL, CABAC/CAVLC, DPB (existing) | opus |
+| 2 | `vcodec-intra-pred-expert` | Angular/planar/DC, reference samples (NEW) | opus |
+| 3 | `vcodec-me-expert` | IME/FME, MV prediction, AMVP/merge (NEW) | opus |
+| 4 | `vcodec-mc-expert` | Sub-pel interpolation, bi-prediction (NEW) | opus |
+| 5 | `vcodec-transform-quant-expert` | DCT/DST, quantization, RDOQ (existing) | opus |
+| 6 | `vcodec-filter-recon-expert` | Deblocking, SAO, reconstruction (existing) | opus |
+
+### 4.3 Knowledge Base Expansion (14 new files)
+
+```
+domain-packages/video-codec/knowledge/
+  # Intra prediction (NEW)
+  ├── intra-prediction-modes.md
+  ├── intra-reference-sample.md
+  # Motion estimation (NEW)
+  ├── me-search-algorithms.md
+  ├── mv-prediction.md
+  # Motion compensation (NEW)
+  ├── mc-interpolation-filters.md
+  ├── weighted-prediction.md
+  # Syntax/entropy deepening (NEW)
+  ├── cabac-context-tables.md
+  ├── cavlc-coding-tables.md
+  ├── nal-unit-types.md
+  # Transform/quantization deepening (NEW)
+  ├── butterfly-operations.md
+  ├── quantization-matrices.md
+  ├── rdoq-algorithm.md
+  # Filter/reconstruction deepening (NEW)
+  ├── deblocking-boundary-strength.md
+  └── sao-classification.md
+```
+
+### 4.4 Expert Role Expansion
+
+Experts remain READ-ONLY (`disallowedTools: Write, Edit`). The role expansion is conceptual:
+
+| Mode | Phases 1-3 | Phase 4 (in worktree) |
+|------|-----------|----------------------|
+| **Advisory** (existing) | Spec interpretation, algorithm analysis, architecture proposals | — |
+| **RTL Guide** (new) | — | μArch→RTL translation guidance, interface compliance verification, coding pattern suggestions |
+
+**Separation of concerns**: Experts inject **What/Why** (domain knowledge, implementation
+priorities, verification strategies). RTL agents execute **How** (actual .sv code writing).
+Phase 4 block-parallel implementation is fundamentally about injecting domain knowledge into
+implementation and verification specialists.
+
+## 5. Worktree-Based Block-Parallel Workflow
+
+### 5.1 New Skill: `rtl-p4-block-parallel`
+
+```yaml
+name: rtl-p4-block-parallel
+description: "Phase 4 block-parallel RTL implementation using 6 worktrees
+              with Team coordination and upstream-first merge"
+user-invocable: true
+prerequisites:
+  - Phase 2 interface locked (rtl/pkg/codec_if_pkg.sv exists)
+  - Phase 3 μArch + timing spec complete (docs/phase-3-uarch/ complete)
+```
+
+### 5.2 Worktree-to-Block Mapping
+
+| Worktree Branch | Block | Directory | Dedicated Expert | Merge Order |
+|----------------|-------|----------|-----------------|-------------|
+| `block/entropy` | Syntax + Entropy | `rtl/entropy/` | `vcodec-syntax-entropy-expert` | 1st |
+| `block/tq` | Transform + Quant | `rtl/tq/` | `vcodec-transform-quant-expert` | 2nd |
+| `block/me` | Motion Estimation | `rtl/me/` | `vcodec-me-expert` | 3rd |
+| `block/mc` | Motion Compensation | `rtl/mc/` | `vcodec-mc-expert` | 4th |
+| `block/intra` | Intra Prediction | `rtl/intra/` | `vcodec-intra-pred-expert` | 5th |
+| `block/filter` | Filter + Recon | `rtl/filter/` | `vcodec-filter-recon-expert` | 6th |
+
+### 5.3 Team Structure (Team + Worktree Hybrid)
+
+```
+Skill (leader session)
+  │
+  ├── TeamCreate("p4-block-parallel", workers=7)
+  │
+  ├── Coordinator (teammate: p4-block-parallel-coordinator)
+  │     Role:
+  │     - Monitor 6 worker progress (TaskList/SendMessage)
+  │     - Mediate cross-block interface questions
+  │     - Determine merge readiness
+  │     - Trigger contract tests
+  │
+  ├── Worker × 6 (teammate: general-purpose)
+  │     Each worker internally:
+  │     ├── Task(isolation="worktree")  ← code isolation
+  │     │     ├── domain expert (knowledge injection)
+  │     │     ├── rtl-coder (implementation)
+  │     │     ├── lint-checker (static analysis)
+  │     │     └── unit test authoring + execution
+  │     └── SendMessage → coordinator (completion/issue reports)
+  │
+  ├── Leader: merge loop
+  │     for block in [entropy, tq, me, mc, intra, filter]:
+  │       1. worktree branch → main merge
+  │       2. contract test execution
+  │       3. FAIL → request fix from worker
+  │       4. PASS → next block merge
+  │
+  └── TeamDelete + worktree cleanup
+```
+
+### 5.4 Worker Internal Execution Flow
+
+```
+1. Read μArch document (docs/phase-3-uarch/{block}/)
+2. Spawn domain expert → receive implementation guide
+   "Key implementation points for this block: [...]"
+   "Interface timing contract: [...]"
+3. Spawn rtl-coder → implement .sv files
+   - Reference expert guide + μArch document
+   - Shared interfaces (codec_if_pkg.sv) as read-only reference
+4. lint-checker → static analysis
+5. Unit test authoring + execution (block standalone verification)
+6. SendMessage(coordinator, "block/{name} ready for merge")
+```
+
+## 6. Interface-First + Contract Test Framework
+
+### 6.1 Phase 2 Interface Artifacts
+
+```
+rtl/pkg/codec_if_pkg.sv          ← common type/parameter definitions
+rtl/intf/entropy_tq_if.sv        ← entropy ↔ TQ coefficient exchange
+rtl/intf/me_mc_if.sv             ← ME → MC (MV + reference info)
+rtl/intf/mc_recon_if.sv          ← MC → reconstruction (inter prediction)
+rtl/intf/intra_recon_if.sv       ← intra → reconstruction (intra prediction)
+rtl/intf/recon_filter_if.sv      ← reconstruction → filter
+rtl/intf/filter_dpb_if.sv        ← filter → DPB (reference frame store)
+rtl/intf/dpb_me_if.sv            ← DPB → ME (reference frame read)
+rtl/intf/dpb_mc_if.sv            ← DPB → MC (reference block fetching)
+```
+
+### 6.2 Phase 3 Timing Contracts
+
+Each interface file includes cycle-level timing contracts as structured comments:
+
+```systemverilog
+// TIMING CONTRACT (Phase 3 locked):
+//   Handshake: valid/ready, 1-cycle latency
+//   Throughput: 1 coefficient/cycle sustained
+//   Backpressure: ready deassert → valid must hold stable
+//   Pipeline depth: 3 cycles from valid to downstream consumption
+```
+
+### 6.3 Contract Test Structure
+
+```
+sim/{block}/contract/
+  ├── {block}_if_contract_tb.sv    ← interface compliance verification
+  ├── {block}_timing_check.sv     ← timing contract assertions
+  └── {block}_stub.sv             ← counterpart block stub (mock)
+```
+
+**Merge-time execution order:**
+1. Target block's contract test
+2. Cross-block integration test with already-merged upstream blocks
+3. Both PASS → merge confirmed; FAIL → fix request to worker
+
+## 7. Autonomous Execution: `rat-ultraloop`
+
+### 7.1 Core Principle
+
+> **Implementation, review, and improvement iterate autonomously.
+> Design decisions (Phase 2-3 locked artifacts) are NEVER modified.**
+
+### 7.2 Design Freeze Boundary
+
+| Frozen (immutable) | Improvable |
+|---|---|
+| Interface definitions (`rtl/pkg/`, `rtl/intf/`) | RTL implementation code (`rtl/{block}/*.sv`) |
+| μArch documents (`docs/phase-3-uarch/`) | Testbenches (`sim/{block}/`) |
+| Timing contracts | Code quality (lint fixes, refactoring) |
+| Block partition structure | Unit test coverage expansion |
+| Merge order | Contract test reinforcement |
+
+### 7.3 Skill Definition
+
+```yaml
+name: rat-ultraloop
+description: "Autonomous implement-review-improve loop with 30-min
+              auto-continue. Design freeze enforced."
+user-invocable: true
+```
+
+### 7.4 Execution Flow
+
+```
+User: /rat-ultraloop rtl-p4-block-parallel
+  │
+  ├── 1. Design Freeze snapshot
+  │     - sha256 hash of rtl/pkg/, rtl/intf/, docs/phase-3-uarch/
+  │     → .rtl-agent-team/state/design-freeze.json
+  │
+  ├── 2. Autonomous loop
+  │     ┌─────────────────────────────────────┐
+  │     │  IMPLEMENT → REVIEW → IMPROVE       │
+  │     │       ↑                    │        │
+  │     │       └────────────────────┘        │
+  │     └─────────────────────────────────────┘
+  │
+  │     Per cycle:
+  │     ├── (a) Execute implementation/improvement
+  │     ├── (b) Dispatch code-reviewer (automated review)
+  │     ├── (c) Apply improvements from review results
+  │     ├── (d) Run contract tests
+  │     ├── (e) Design Freeze verification ← hash comparison
+  │     │       FAIL → immediate revert + WARNING logged
+  │     ├── (f) Output cycle summary
+  │     └── (g) Wait for user input (30 minutes)
+  │             ├── Response received → follow user direction
+  │             └── 30min timeout → start next cycle automatically
+  │
+  ├── 3. Auto-termination conditions
+  │     ├── All blocks merged + contract tests PASS
+  │     ├── No improvements found (clean review)
+  │     ├── Max cycles reached (default: 10)
+  │     └── Token exhaustion imminent → save state + exit
+  │
+  └── 4. User return
+        .rtl-agent-team/state/ultraloop-report.md:
+        "=== rat-ultraloop Results ===
+         Cycles executed: 4
+         Block status: entropy(merged) tq(merged) me(review-done) ...
+         Improvements applied: 12 lint warnings resolved, 3 unit tests added
+         Design Freeze: INTACT (no violations)
+         Pending decisions: ME block search range optimization (user judgment needed)"
+```
+
+### 7.5 Design Freeze Verification
+
+```
+Per cycle end:
+  current_hash = sha256(rtl/pkg/ + rtl/intf/ + docs/phase-3-uarch/)
+  if current_hash != frozen_hash:
+      git checkout -- rtl/pkg/ rtl/intf/ docs/phase-3-uarch/
+      log("DESIGN FREEZE VIOLATION detected and reverted")
+      Record violation to prevent retry in subsequent cycles
+```
+
+## 8. Error Handling and Fallback
+
+### 8.1 Prerequisite Failures
+
+| Situation | Behavior |
+|-----------|----------|
+| Phase 2 interface not locked | Block skill entry + guide to `rtl-p2-arch-design` |
+| Phase 3 μArch incomplete | Block skill entry + guide to `rtl-p3-uarch-design` |
+| Partial μArch completion | WARNING + create worktrees only for completed blocks |
+
+### 8.2 Worktree/Team Failures
+
+| Situation | Fallback |
+|-----------|----------|
+| `TeamCreate` failure | Fall back to existing `rtl-p4-implement-team` (sequential team mode) |
+| Individual worktree creation failure | Run that block sequentially on main; others remain in worktrees |
+| Worker crash/timeout | Coordinator detects → 1 retry → failure escalates to leader |
+
+### 8.3 Merge Failures
+
+| Situation | Behavior |
+|-----------|----------|
+| Merge conflict | Coordinator identifies conflicting files → worker fixes → retry |
+| Contract test FAIL | Send failure details to worker → fix in worktree → re-merge (max 3 attempts) |
+| 3+ failures | Leader escalates to user |
+
+### 8.4 Suspend and Resume
+
+```json
+// .rtl-agent-team/state/block-parallel-state.json
+{
+  "phase": "merge",
+  "blocks": {
+    "entropy": {"status": "merged", "commit": "abc123"},
+    "tq":      {"status": "merged", "commit": "def456"},
+    "me":      {"status": "worktree-ready", "branch": "block/me"},
+    "mc":      {"status": "in-progress", "branch": "block/mc"},
+    "intra":   {"status": "in-progress", "branch": "block/intra"},
+    "filter":  {"status": "in-progress", "branch": "block/filter"}
+  },
+  "merge_order": ["entropy","tq","me","mc","intra","filter"],
+  "current_merge_index": 2
+}
+```
+
+- Session interruption → state file saved
+- Re-execution (`/rtl-p4-block-parallel`) detects state file → resume
+- Worktree branches persist in git → reconnectable
+
+## 9. New Plugin Components Summary
+
+### 9.1 New Agent Files
+
+| File | Role | Model |
+|------|------|-------|
+| `agents/vcodec-intra-pred-expert.md` | Intra prediction domain expert | opus |
+| `agents/vcodec-me-expert.md` | Motion Estimation domain expert | opus |
+| `agents/vcodec-mc-expert.md` | Motion Compensation domain expert | opus |
+| `agents/p4-block-parallel-coordinator.md` | 6-block parallel coordination orchestrator | opus |
+| `agents/p4-block-worker.md` | Per-block worktree execution worker | sonnet |
+| `agents/ultraloop-reviewer.md` | Autonomous review with freeze verification | opus |
+
+### 9.2 New Skill Files
+
+| File | Type | Role |
+|------|------|------|
+| `skills/rtl-p4-block-parallel/SKILL.md` | Action | Entry point: team create → worktree branch → merge loop |
+| `skills/rtl-block-contract-test-policy/SKILL.md` | Policy | Contract test criteria and procedures |
+| `skills/rtl-block-interface-policy/SKILL.md` | Policy | Interface design rules + timing contract spec |
+| `skills/rat-ultraloop/SKILL.md` | Action | Autonomous implement-review-improve loop |
+
+### 9.3 New Knowledge Files
+
+14 files under `domain-packages/video-codec/knowledge/` (see Section 4.3).
+
+### 9.4 Modified Existing Files
+
+| File | Change |
+|------|--------|
+| `domain-packages/video-codec/manifest.json` | Remove prediction-expert, add 3 new experts, register 14 knowledge files |
+| `skills/rtl-orchestrate/SKILL.md` | Add new skills/agents to routing table |
+| `skills/domain-consult/SKILL.md` | Split prediction routing → intra/ME/MC |
+| `hooks/rtl-orchestrator-inject.sh` | Auto-regenerated via `sync_orchestrator_inject.sh` |
+| `skill-completion-criteria.json` | Add `rtl-p4-block-parallel` completion criteria |
+
+### 9.5 Explicitly Unchanged
+
+- `skills/rtl-p4-implement-team/` — Generic P4 team preserved for non-codec projects
+- `skills/rtl-dse/` — DSE skill unchanged
+- `agents/domain-expert.md` — Generic runner unchanged
+- 6+1 Phase pipeline structure — unchanged
