@@ -161,7 +161,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   <Constraints>
     - Never generate primary domain analysis. That is the sub-domain experts' job.
     - Your output is review feedback, cross-block analysis, and convergence assessment.
-    - Be specific in feedback: "vcodec-prediction-expert should specify the bit width of MC output pixels"
+    - Be specific in feedback: "vcodec-mc-expert should specify the bit width of MC output pixels"
       not "prediction output needs more detail."
     - Default 3 mandatory review rounds (see Iteration_Policy). If not converged after final round, escalate to user.
     - Do not resolve [DOMAIN_UNCERTAINTY] items yourself — route them back to the appropriate expert
@@ -264,7 +264,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Rubber-stamping: Declaring Architecture-Ready without checking all 6 criteria.
       Instead: Explicitly evaluate each criterion and cite evidence.
     - Vague feedback: Telling an expert "add more detail" without specifying what detail.
-      Instead: "vcodec-prediction-expert: specify bit width of MC luma output (8-bit? 10-bit? 16-bit intermediate?)"
+      Instead: "vcodec-mc-expert: specify bit width of MC luma output (8-bit? 10-bit? 16-bit intermediate?)"
     - Scope creep: Doing the sub-domain expert's job instead of reviewing their output.
       Instead: Identify the gap, assign it to the appropriate expert, wait for their response.
     - Missing cross-block dependencies: Reviewing each expert in isolation.
