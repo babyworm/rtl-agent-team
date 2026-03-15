@@ -39,7 +39,7 @@ if [ -f "$ULTRALOOP_STATE" ]; then
     [ -z "$UL_MINUTES" ] && UL_MINUTES=30
     UL_THRESHOLD=$((UL_MINUTES * 60))
     UL_ELAPSED=$(posix_elapsed_seconds "$UL_TIMESTAMP")
-    if [ "$UL_ELAPSED" -gt "$UL_THRESHOLD" ]; then
+    if [ "$UL_ELAPSED" -lt "$UL_THRESHOLD" ]; then
       MSG="[Ultraloop] auto-continue: ${UL_ELAPSED}s elapsed (threshold=${UL_THRESHOLD}s). Continuing autonomous loop."
       printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"
       exit 0
