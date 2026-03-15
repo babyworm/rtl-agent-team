@@ -387,7 +387,7 @@ Step 7.5: Iron/Open Classification Verification (NEW)
           -> Open items have target_phase specified
           -> Iron acceptance_criteria are measurable
           -> CONDITIONAL PASS axis items not classified as iron
-Step 8:   Codex cross-review with 2+ consecutive agreement stability (existing, enhanced)
+Step 8:   Codex cross-review with 2+ consecutive verdict==APPROVE stability (existing, enhanced)
 ```
 
 **Phase 2 (Architecture):**
