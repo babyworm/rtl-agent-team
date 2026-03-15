@@ -86,10 +86,17 @@ Orchestrators that integrate cross-review:
 
 ```
 Round 1: Claude → phase summary → Codex reviews → findings JSON
-Round 2+: Claude → fixes + rebuttals → Codex re-reviews → updated findings
-Consensus: verdict=APPROVE or no critical/major disputes
+Round 2+: Claude → fixes + rebuttals + agreement ledger → Codex re-reviews → updated findings
+Stability: 2+ consecutive rounds with no new critical/major + no still_disagree = CONSENSUS
 Max 5 rounds → AskUserQuestion escalation to user
 ```
+
+### Convergence Improvements (v0.7.2+)
+
+- **Agreement Ledger**: settled items are injected into each follow-up prompt to prevent context-reset re-raises
+- **Anti-Oscillation**: re-raised settled items without new evidence are rejected automatically
+- **Stability Criterion**: consensus requires 2+ consecutive stable rounds, not single-round APPROVE
+- **Oscillation Detection**: tracked in resolution-state.json for diagnostics
 
 ## Artifacts
 

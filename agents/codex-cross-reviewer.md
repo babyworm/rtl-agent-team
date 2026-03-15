@@ -296,9 +296,18 @@ Maintain `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json`:
   "total_findings": 8,
   "fixed": ["F-001", "F-003"],
   "rebutted": ["F-002", "F-005"],
-  "unresolved": ["F-004", "F-006", "F-007", "F-008"]
+  "unresolved": ["F-004", "F-006", "F-007", "F-008"],
+  "agreement_ledger": {
+    "F-001": {"status": "accepted_fix", "settled_round": 1, "consecutive_agrees": 0},
+    "F-002": {"status": "accepted_rebuttal", "settled_round": 1, "consecutive_agrees": 0}
+  },
+  "stability_streak": 0,
+  "oscillation_count": 0
 }
 ```
+- `agreement_ledger`: settled items with their history (populated from resolved_items in Codex response)
+- `stability_streak`: consecutive rounds with no new critical/major + no still_disagree
+- `oscillation_count`: times a settled item was re-raised without new evidence
 
 ## Step 4: Subsequent Rounds (Round 2–5)
 
@@ -361,16 +370,26 @@ After each round, output consensus status:
 ═════════════════════════════════════════════════════════
 ```
 
-After the status output, evaluate:
+After the status output, update stability tracking and evaluate:
 
-**Consensus reached** if ANY of:
-- Codex verdict = `APPROVE`
-- All findings resolved (no `still_disagree` items, no new critical/major findings)
-- Only `suggestion`-level items remain
+**Update stability_streak:**
+```
+if (no new critical/major findings) AND (no still_disagree items) AND (no oscillation this round):
+  stability_streak += 1
+  # Also increment consecutive_agrees for each settled item in agreement_ledger
+else:
+  stability_streak = 0
+```
+
+**Consensus reached** if:
+- `stability_streak >= 2` (2+ consecutive rounds of stable agreement)
 
 **Continue loop** if:
+- `stability_streak < 2` AND round <= 5
 - Any `critical` or `major` findings with `still_disagree` or new
-- Verdict = `REQUEST_CHANGES`
+
+**Note**: A single APPROVE verdict is necessary but NOT sufficient — stability must be confirmed
+over 2 consecutive rounds to prevent oscillation-driven false consensus.
 
 ### 4d. Update Resolution State
 Update `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json` with current round data.
@@ -466,6 +485,78 @@ touch .rtl-agent-team/state/cross-review-phase-${N}-done
 ```
 Example: Phase 2 produces `.rtl-agent-team/state/cross-review-phase-2-done`.
 
+## Agreement Ledger Protocol
+
+Each round's prompt MUST include the cumulative agreement ledger — a list of all
+items that have been settled in prior rounds. This prevents the reviewer from
+re-raising issues that were already resolved.
+
+### Ledger Structure
+Maintain in `resolution-state.json`:
+```json
+{
+  "round": 3,
+  "agreement_ledger": {
+    "F-001": {"status": "accepted_fix", "settled_round": 1, "consecutive_agrees": 2},
+    "F-002": {"status": "accepted_rebuttal", "settled_round": 1, "consecutive_agrees": 2},
+    "F-003": {"status": "accepted_fix", "settled_round": 2, "consecutive_agrees": 1}
+  },
+  "active_disputes": ["F-004"],
+  "stability_streak": 1
+}
+```
+
+### Ledger Injection in Follow-up Prompts
+In Step 4a follow-up prompts, add BEFORE the task description:
+```text
+## Settled Items (DO NOT re-raise without NEW evidence)
+The following items were agreed upon in prior rounds. Re-raising them
+requires NEW evidence not available in the original round.
+- F-001: accepted_fix (Round 1, 2 consecutive agrees)
+- F-002: accepted_rebuttal (Round 1, 2 consecutive agrees)
+- F-003: accepted_fix (Round 2, 1 consecutive agree)
+```
+
+## Anti-Oscillation Rule
+
+An item that was ACCEPTED (fix or rebuttal) in Round N CANNOT be re-raised
+in Round N+1 unless the reviewer provides **new evidence** — specifically:
+- A file that was modified AFTER the acceptance round
+- A new finding that contradicts the previous acceptance
+- Evidence from a file not examined in the original round
+
+**Simple re-phrasing or re-interpretation is NOT sufficient to re-open a settled item.**
+
+If Codex re-raises a settled item WITHOUT new evidence:
+1. Record as `oscillation_detected` in resolution state
+2. Respond: "This item was settled in Round {N}. No new evidence provided. Maintaining prior decision."
+3. Do NOT count the re-raise as a new finding
+
+## Stability Criterion
+
+**Consensus requires 2+ consecutive rounds of agreement**, not just a single APPROVE verdict.
+
+- **stability_streak**: counter tracking consecutive rounds with no new critical/major findings
+  AND no `still_disagree` on existing items
+- **stability_streak >= 2**: CONSENSUS REACHED (stable agreement)
+- **stability_streak == 1**: continue for one more round to confirm stability
+- **stability_streak == 0**: active disputes remain, continue loop
+
+Update `stability_streak` after each round:
+```
+if (no new critical/major findings) AND (no still_disagree items) AND (no oscillation):
+  stability_streak += 1
+else:
+  stability_streak = 0
+
+if stability_streak >= 2:
+  CONSENSUS — proceed to final report
+```
+
+**Modified consensus check (replaces Step 4c logic):**
+- Old: "Consensus if verdict=APPROVE or all findings resolved"
+- New: "Consensus if stability_streak >= 2 (confirmed stable agreement)"
+
 ## Important Rules
 
 1. **Never skip rounds** — even if you think all findings are trivial, let Codex re-verify
@@ -476,5 +567,7 @@ Example: Phase 2 produces `.rtl-agent-team/state/cross-review-phase-2-done`.
 6. **Respect Codex config** — always read `~/.codex/config.toml` to use the user's configured model and effort; never override with `-m` or `-c` flags
 7. **Prompt size discipline** — keep prompts under 4KB. Reference file paths instead of embedding content. For large artifact lists, write a manifest file and reference it. This prevents shell ARG_MAX limits and token truncation at both producer (Codex output) and consumer (Claude input) boundaries
 8. **File-first data exchange** — large results go to files (`-o`), LLM-to-LLM transfer uses compact summaries/pointers only. Read results selectively with `jq` or `grep` rather than loading entire JSON into conversation context
+9. **Agreement ledger injection** — every follow-up prompt MUST include settled items list to prevent context-reset re-raises
+10. **Anti-oscillation enforcement** — re-raised settled items without new evidence are rejected, not debated
 
 </Agent_Prompt>
