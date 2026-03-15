@@ -87,7 +87,7 @@ Orchestrators that integrate cross-review:
 ```
 Round 1: Claude → phase summary → Codex reviews → findings JSON
 Round 2+: Claude → fixes + rebuttals + agreement ledger → Codex re-reviews → updated findings
-Stability: 2+ consecutive rounds with no new critical/major + no still_disagree = CONSENSUS
+Stability: 2+ consecutive rounds with verdict==APPROVE + no new critical/major + no still_disagree = CONSENSUS
 Max 5 rounds → AskUserQuestion escalation to user
 ```
 
