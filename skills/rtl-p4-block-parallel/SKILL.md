@@ -89,7 +89,11 @@ if state:
     if state:
         print(f"Resuming block-parallel from phase: {state['phase']}, "
               f"blocks completed: {sum(1 for b in state['blocks'].values() if b['status'] == 'merged')}/6")
-        # Skip to appropriate phase based on state
+        # Resume: skip Steps 3-6 (directories, state init, worktrees, task graph already exist)
+        # Jump directly to Step 1 (Team Creation) → Step 7-9 (spawn agents + monitor)
+        frozen_hash = state["frozen_hash"]
+        base_commit = state["base_commit"]
+        # GOTO: Step 1 (Team Creation)
 ```
 
 ## Design Freeze Snapshot
@@ -180,10 +184,12 @@ Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
 ```python
 # ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
+project_root = Bash("git rev-parse --show-toplevel").strip()
 worktree_ok = True
 for block in blocks:
     branch = f"p4-block-{block}"
-    wt_path = f"../{project_name}-wt-{block}"
+    wt_path = f"{project_root}/.worktrees/p4-{block}"  # Absolute path
+    Bash(f"mkdir -p {project_root}/.worktrees")
     result = Bash(f"git worktree add -b {branch} {wt_path} HEAD 2>&1")
     if result.returncode != 0:
         worktree_ok = False
@@ -341,7 +347,7 @@ Full state is maintained at `.rtl-agent-team/state/block-parallel-state.json`:
   "blocks": {
     "entropy": {
       "status": "merged",
-      "worktree_path": "../project-wt-entropy",
+      "worktree_path": "/abs/path/to/project/.worktrees/p4-entropy",
       "worktree_branch": "p4-block-entropy",
       "lint_pass": true,
       "unit_test_pass": true,
@@ -350,7 +356,7 @@ Full state is maintained at `.rtl-agent-team/state/block-parallel-state.json`:
     },
     "tq": {
       "status": "implementing",
-      "worktree_path": "../project-wt-tq",
+      "worktree_path": "/abs/path/to/project/.worktrees/p4-tq",
       "worktree_branch": "p4-block-tq",
       "lint_pass": false,
       "unit_test_pass": false,

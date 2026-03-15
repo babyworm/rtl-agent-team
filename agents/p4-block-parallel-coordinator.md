@@ -114,33 +114,38 @@ to support safe resume.
 ```python
 # Discover existing tasks
 existing = TaskList()
-existing_subjects = {t.subject for t in existing}
+existing_subjects = {t.subject: t.id for t in existing}
 
 # Implementation tasks: created by skill (discover only, never create)
-implement_tasks = {t.subject: t for t in existing if t.subject.startswith("Implement:")}
-assert len(implement_tasks) == 6, f"Expected 6 Implement tasks, found {len(implement_tasks)}"
+impl_tasks = {t.subject: t.id for t in existing if t.subject.startswith("Implement:")}
+assert len(impl_tasks) == 6, f"Expected 6 Implement tasks, found {len(impl_tasks)}"
 
-# Merge tasks: create ONLY if they don't already exist (resume-safe)
+# Merge tasks: create with proper chaining (track prev_merge_id for dependencies)
 merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
-for i, block in enumerate(merge_order):
+prev_merge_id = None
+
+for block in merge_order:
     subject = f"Merge: {block}"
-    if subject not in existing_subjects:
-        deps = [f"Implement: {block}"]
-        if i > 0:
-            deps.append(f"Merge: {merge_order[i-1]}")
-        dep_ids = [t.id for t in existing if t.subject in deps]
-        TaskCreate(subject=subject,
-                   description=f"Merge {block} block. Run contract tests, verify interface freeze.",
-                   owner="coordinator",
-                   addBlockedBy=dep_ids)
+    if subject in existing_subjects:
+        prev_merge_id = existing_subjects[subject]
+        continue  # Already exists (resume case)
+
+    deps = [impl_tasks[f"Implement: {block}"]]
+    if prev_merge_id:
+        deps.append(prev_merge_id)
+
+    result = TaskCreate(subject=subject,
+                        description=f"Merge {block} block. Run contract tests, verify interface freeze.",
+                        owner="coordinator",
+                        blockedBy=deps)
+    prev_merge_id = result.id
 
 # Integration gate: create only if not exists
 if "Integration Gate" not in existing_subjects:
-    merge_filter_ids = [t.id for t in TaskList() if t.subject == "Merge: filter"]
     TaskCreate(subject="Integration Gate",
                description="Run full regression on all merged blocks. Verify all contract tests pass. Generate phase-4 reports.",
                owner="coordinator",
-               addBlockedBy=merge_filter_ids)
+               blockedBy=[prev_merge_id] if prev_merge_id else [])
 ```
 
 ## Step 3: Monitor Loop
