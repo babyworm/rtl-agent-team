@@ -297,16 +297,15 @@ Maintain `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json`:
   "fixed": ["F-001", "F-003"],
   "rebutted": ["F-002", "F-005"],
   "unresolved": ["F-004", "F-006", "F-007", "F-008"],
-  "agreement_ledger": {
-    "F-001": {"status": "pending_confirmation", "settled_round": null, "consecutive_agrees": 0},
-    "F-002": {"status": "pending_confirmation", "settled_round": null, "consecutive_agrees": 0}
-  },
+  "pending_confirmations": ["F-001", "F-002"],
+  "agreement_ledger": {},
   "stability_streak": 0,
   "oscillation_count": 0
 }
 ```
-- `agreement_ledger`: settled items with their history (populated from resolved_items in Codex response)
-- Items move from `pending_confirmation` to `accepted_*` only after Codex confirms via `resolved_items` in the next round.
+- `pending_confirmations`: items proposed (fix/rebuttal) in current round, awaiting Codex verdict in next round
+- `agreement_ledger`: ONLY confirmed-settled items (populated when Codex returns `accepted_fix`/`accepted_rebuttal` via `resolved_items`)
+- Items move from `pending_confirmations` → `agreement_ledger` only after Codex confirms. Items with `still_disagree` stay in active disputes.
 - `stability_streak`: consecutive rounds where Codex verdict == APPROVE + no new critical/major + no still_disagree
 - `oscillation_count`: times a settled item was re-raised without new evidence
 
@@ -334,8 +333,12 @@ Read previous findings at: .rtl-agent-team/cross-review/phase-{N}/round-{R-1}.js
 ## Rebuttals (Round {R-1})
 [One-line per rebuttal: finding ID, why, key evidence reference]
 
+## Pending Confirmation (Round {R-1} — awaiting your verdict)
+[Items from agreement_ledger with status=pending_confirmation:
+ finding ID, proposed resolution (fix/rebuttal). Please confirm or dispute.]
+
 ## Settled Items (DO NOT re-raise without NEW evidence)
-[Inject agreement_ledger contents here — one line per settled item:
+[Items from agreement_ledger with status=accepted_fix or accepted_rebuttal:
  finding ID, status, settled round, consecutive agrees]
 
 ## Your Task
