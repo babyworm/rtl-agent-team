@@ -207,7 +207,23 @@ if not worktree_ok:
 Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 ```
 
-### Step 6: Spawn Coordinator
+### Step 6: Initial Task Graph
+
+```python
+# Create task graph BEFORE spawning agents so tasks exist when workers start
+# 6 parallel implementation tasks (pre-assigned to specific workers via owner)
+for block in blocks:
+    TaskCreate(
+        subject=f"Implement: {block}",
+        description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
+                    f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
+                    f"delegate to rtl-coder, run lint, create unit tests. "
+                    f"Report ready-for-merge when complete.",
+        owner=f"worker-{block}"   # Pre-assigned to specific worker
+    )
+```
+
+### Step 7: Spawn Coordinator
 
 ```python
 Agent(team_name="p4-block-parallel",
@@ -222,7 +238,7 @@ Agent(team_name="p4-block-parallel",
              "Signal leader when integration gate passes. User input: $ARGUMENTS")
 ```
 
-### Step 7: Spawn 6 Workers
+### Step 8: Spawn 6 Workers
 
 ```python
 block_descriptions = {
@@ -241,32 +257,18 @@ for block in blocks:
           description=f"P4 block worker: {block}",
           prompt=f"Your assigned block: {block}. "
                  f"Description: {block_descriptions[block]} "
-                 f"Worktree path (coordination hint): {state['blocks'][block]['worktree_path']}. "
+                 f"Worktree path: {state['blocks'][block]['worktree_path']}. "
                  f"Worktree branch: {state['blocks'][block]['worktree_branch']}. "
-                 f"IMPORTANT: Actual worktree isolation happens via Task(isolation='worktree') "
-                 f"inside your worker — see 'Worktree Isolation' section in your agent prompt. "
+                 f"Use the worktree_path above as absolute path for ALL file operations "
+                 f"(RTL coding, lint, unit tests). cd into worktree_path or use absolute paths. "
                  f"You run in main CWD for coordination (SendMessage, TaskUpdate), but "
-                 f"delegate all file-writing RTL work to a Task subagent with isolation='worktree'. "
-                 f"Read docs/phase-3-uarch/{block}.md for uArch spec. "
-                 f"Read frozen interfaces from rtl/intf/ and rtl/pkg/codec_if_pkg.sv. "
+                 f"spawn rtl-coder/lint/test subagents with worktree_path in their prompt. "
+                 f"Read {state['blocks'][block]['worktree_path']}/docs/phase-3-uarch/{block}.md for uArch spec. "
+                 f"Read frozen interfaces from {state['blocks'][block]['worktree_path']}/rtl/intf/ and "
+                 f"{state['blocks'][block]['worktree_path']}/rtl/pkg/codec_if_pkg.sv. "
                  f"DO NOT modify files under rtl/pkg/ or rtl/intf/ (frozen). "
                  f"Report completion to coordinator via SendMessage. "
                  f"Naming: i_/o_ prefixes, snake_case, clk/{{domain}}_clk, rst_n/{{domain}}_rst_n.")
-```
-
-### Step 8: Initial Task Graph
-
-```python
-# 6 parallel implementation tasks (pre-assigned to specific workers via owner)
-for block in blocks:
-    TaskCreate(
-        subject=f"Implement: {block}",
-        description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
-                    f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
-                    f"delegate to rtl-coder, run lint, create unit tests. "
-                    f"Report ready-for-merge when complete.",
-        owner=f"worker-{block}"   # Pre-assigned to specific worker
-    )
 ```
 
 ### Step 9: Leader Monitoring Loop

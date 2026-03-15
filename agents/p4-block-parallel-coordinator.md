@@ -105,30 +105,42 @@ Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phas
 
 Enumerate all 6 blocks and verify interface freeze manifest exists.
 
-## Step 2: Discover Existing Tasks
+## Step 2: Discover or Create Task Graph
 
-The skill (leader) creates the initial `Implement:*` task graph. The coordinator discovers
-these tasks via `TaskList()` and manages them -- do NOT create duplicate `Implement:*` tasks.
+The skill (leader) creates the initial `Implement:*` task graph (Step 6) before spawning
+agents. The coordinator discovers these tasks and creates Merge tasks with deduplication
+to support safe resume.
 
 ```python
-# Discover pre-created implementation tasks (created by the skill in Step 8)
-tasks = TaskList()
-implement_tasks = {t.subject: t for t in tasks if t.subject.startswith("Implement:")}
+# Discover existing tasks
+existing = TaskList()
+existing_subjects = {t.subject for t in existing}
 
-# Verify all 6 blocks have tasks
-for block in ["entropy", "tq", "me", "mc", "intra", "filter"]:
-    assert f"Implement: {block}" in implement_tasks, f"Missing task for {block}"
+# Implementation tasks: created by skill (discover only, never create)
+implement_tasks = {t.subject: t for t in existing if t.subject.startswith("Implement:")}
+assert len(implement_tasks) == 6, f"Expected 6 Implement tasks, found {len(implement_tasks)}"
 
-# Create merge tasks (coordinator's responsibility, NOT created by the skill)
-t_merge_entropy = TaskCreate(subject="Merge: entropy", description="Merge entropy block. Run contract tests, verify interface freeze.", owner="coordinator", blockedBy=[implement_tasks["Implement: entropy"].id])
-t_merge_tq      = TaskCreate(subject="Merge: tq", description="Merge tq block. Run contract + cross-block integration with entropy.", owner="coordinator", blockedBy=[implement_tasks["Implement: tq"].id, t_merge_entropy])
-t_merge_me      = TaskCreate(subject="Merge: me", description="Merge me block. Run contract tests, use dpb_stub for references.", owner="coordinator", blockedBy=[implement_tasks["Implement: me"].id, t_merge_tq])
-t_merge_mc      = TaskCreate(subject="Merge: mc", description="Merge mc block. Run contract + integration with me, use dpb_stub.", owner="coordinator", blockedBy=[implement_tasks["Implement: mc"].id, t_merge_me])
-t_merge_intra   = TaskCreate(subject="Merge: intra", description="Merge intra block. Run contract tests.", owner="coordinator", blockedBy=[implement_tasks["Implement: intra"].id, t_merge_mc])
-t_merge_filter  = TaskCreate(subject="Merge: filter", description="Merge filter block. Run contract + full integration.", owner="coordinator", blockedBy=[implement_tasks["Implement: filter"].id, t_merge_intra])
+# Merge tasks: create ONLY if they don't already exist (resume-safe)
+merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
+for i, block in enumerate(merge_order):
+    subject = f"Merge: {block}"
+    if subject not in existing_subjects:
+        deps = [f"Implement: {block}"]
+        if i > 0:
+            deps.append(f"Merge: {merge_order[i-1]}")
+        dep_ids = [t.id for t in existing if t.subject in deps]
+        TaskCreate(subject=subject,
+                   description=f"Merge {block} block. Run contract tests, verify interface freeze.",
+                   owner="coordinator",
+                   addBlockedBy=dep_ids)
 
-# Phase C: Final Integration
-t_integration = TaskCreate(subject="Integration Gate", description="Run full regression on all merged blocks. Verify all contract tests pass. Generate phase-4 reports.", owner="coordinator", blockedBy=[t_merge_filter])
+# Integration gate: create only if not exists
+if "Integration Gate" not in existing_subjects:
+    merge_filter_ids = [t.id for t in TaskList() if t.subject == "Merge: filter"]
+    TaskCreate(subject="Integration Gate",
+               description="Run full regression on all merged blocks. Verify all contract tests pass. Generate phase-4 reports.",
+               owner="coordinator",
+               addBlockedBy=merge_filter_ids)
 ```
 
 ## Step 3: Monitor Loop

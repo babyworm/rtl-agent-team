@@ -55,24 +55,14 @@ Your tasks are PRE-ASSIGNED via the `owner` field. Use `TaskList()` to find task
 
 ## Worktree Isolation
 
-The worker agent itself runs in the main CWD for coordination (SendMessage, TaskUpdate),
-but delegates all file-writing RTL work to a Task subagent with `isolation="worktree"`.
-This creates a real git worktree with its own working directory, ensuring parallel blocks
-cannot interfere with each other's files.
+The skill (leader) pre-creates a dedicated git worktree per block (Step 5). Your
+`worktree_path` is provided in the spawn prompt. Use this path for ALL file operations.
 
-```python
-# Worker spawns RTL implementation in isolated worktree
-result = Task(
-    subagent_type="rtl-agent-team:rtl-coder",
-    isolation="worktree",
-    prompt=f"Implement {block} block. Read docs/phase-3-uarch/{block}.md for spec..."
-)
-worktree_path = result.worktree_path
-worktree_branch = result.worktree_branch
-```
+- **Coordination** (main CWD): SendMessage, TaskUpdate, TaskList -- runs here in the worker
+- **File-writing work** (worktree): RTL coding, lint, unit tests -- use absolute `worktree_path`
+  paths, either by passing them to Task() subagents or via Bash `cd`
 
-- **Coordination** (main CWD): SendMessage, TaskUpdate, TaskList -- runs here
-- **File-writing work** (worktree): RTL coding, lint, unit tests -- delegated via `Task(isolation="worktree")`
+Do NOT use `Task(isolation="worktree")` -- the worktree already exists.
 
 ## Block-to-Expert Mapping
 
@@ -92,15 +82,16 @@ Each block has a dedicated domain expert for knowledge injection:
 ### 1. Read uArch Specification
 
 ```python
+# worktree_path is provided in spawn prompt (e.g., "../project-wt-entropy")
 # Identify assigned block from task description
 block = extract_block_name(task.description)
 
-# Read the block's uArch spec
-Read(f"docs/phase-3-uarch/{block}.md")
+# Read the block's uArch spec from the worktree
+Read(f"{worktree_path}/docs/phase-3-uarch/{block}.md")
 
 # Read frozen interfaces relevant to this block
-Glob("rtl/intf/*_if.sv")  # Read interfaces where block is src or dst
-Read("rtl/pkg/codec_if_pkg.sv")
+Glob(f"{worktree_path}/rtl/intf/*_if.sv")  # Read interfaces where block is src or dst
+Read(f"{worktree_path}/rtl/pkg/codec_if_pkg.sv")
 ```
 
 ### 2. Spawn Domain Expert
@@ -108,40 +99,50 @@ Read("rtl/pkg/codec_if_pkg.sv")
 Inject domain-specific knowledge before RTL coding:
 
 ```python
-Task(subagent_type=f"rtl-agent-team:{expert_mapping[block]}",
-     description=f"Domain knowledge injection for {block} block",
-     prompt=f"Provide domain-specific implementation guidance for the {block} block. "
-            f"Focus on: algorithm details, hardware-friendly optimizations, "
-            f"common pitfalls, and recommended micro-architecture patterns. "
-            f"Reference: docs/phase-3-uarch/{block}.md")
+result = Task(
+    subagent_type=f"rtl-agent-team:{expert_mapping[block]}",
+    description=f"Domain knowledge injection for {block} block",
+    prompt=f"Analyze docs/phase-3-uarch/{block}.md for {block} block. "
+           f"Provide RTL implementation guidance including key constraints, "
+           f"timing budgets, and interface requirements."
+)
+expert_guide = result
 ```
 
-### 3. Delegate to RTL Coder
+### 3. RTL Implementation (in worktree)
 
 ```python
-Task(subagent_type="rtl-agent-team:rtl-coder",
-     description=f"Implement {block} RTL",
-     prompt=f"Implement rtl/{block}/{block}.sv from docs/phase-3-uarch/{block}.md. "
-            f"Use interfaces from rtl/intf/ and types from rtl/pkg/codec_if_pkg.sv. "
-            f"Follow coding conventions from .claude/rules/rtl-coding-conventions.md. "
-            f"Domain guidance: {{expert_output}}")
+# Use absolute worktree_path for all file operations
+Task(
+    subagent_type="rtl-agent-team:rtl-coder",
+    description=f"Implement {block} RTL in worktree",
+    prompt=f"Working directory: {worktree_path}\n"
+           f"cd {worktree_path} before any file operations.\n"
+           f"Implement {block} block based on:\n"
+           f"- uArch spec: {worktree_path}/docs/phase-3-uarch/{block}.md\n"
+           f"- Expert guide: {expert_guide}\n"
+           f"- Interface package: {worktree_path}/rtl/pkg/codec_if_pkg.sv (READ-ONLY)\n"
+           f"- Output to: {worktree_path}/rtl/{block}/\n"
+           f"Follow coding conventions from .claude/rules/rtl-coding-conventions.md.\n"
+           f"DO NOT modify rtl/pkg/ or rtl/intf/ (frozen)."
+)
 ```
 
-### 4. Run Lint
+### 4. Lint (in worktree)
 
 ```python
-Bash(f"verilator --lint-only -Wall rtl/{block}/{block}.sv")
+Bash(f"cd {worktree_path} && verilator --lint-only -Wall rtl/{block}/{block}.sv")
 ```
 
 If lint fails, fix and re-lint up to 3 rounds. After 3 failures, report to coordinator.
 
-### 5. Run Unit Tests
+### 5. Unit Test (in worktree)
 
 ```python
 # Create basic unit test if not exists
-# Run simulation
-Bash(f"verilator --binary -o sim/{block}/tb_{block} sim/{block}/tb_{block}.sv rtl/{block}/{block}.sv")
-Bash(f"sim/{block}/tb_{block}")
+# Run simulation — all paths relative to worktree
+Bash(f"cd {worktree_path} && verilator --binary -o sim/{block}/tb_{block} sim/{block}/tb_{block}.sv rtl/{block}/{block}.sv")
+Bash(f"cd {worktree_path} && sim/{block}/tb_{block}")
 ```
 
 ### 6. Report to Coordinator
