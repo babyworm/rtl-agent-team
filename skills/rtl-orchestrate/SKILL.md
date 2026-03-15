@@ -36,6 +36,9 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | **--- Phase 1: Research ---** | | |
 | "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` | Action Skill |
 | "codec consultation", "H.264", "H.265", "domain expert" | `/rtl-agent-team:domain-consult` | Action Skill |
+| "intra prediction", "angular mode", "planar mode", "DC mode" | `/rtl-agent-team:domain-consult` → `vcodec-intra-pred-expert` | Action Skill |
+| "motion estimation", "IME", "FME", "TZ search", "MV prediction", "AMVP" | `/rtl-agent-team:domain-consult` → `vcodec-me-expert` | Action Skill |
+| "motion compensation", "sub-pel interpolation", "bi-prediction", "weighted prediction" | `/rtl-agent-team:domain-consult` → `vcodec-mc-expert` | Action Skill |
 | **--- Phase 2: Architecture ---** | | |
 | "architecture design" (RTL context) | `/rtl-agent-team:p2-arch-design` | Action Skill |
 | "architecture review", "arch review" | `/rtl-agent-team:arch-review` | Action Skill |
@@ -63,6 +66,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
 | "Phase 4 team", "implement team", "parallel implement" | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
+| "block parallel", "worktree parallel", "6-block", "block-parallel Phase 4" | `/rtl-agent-team:rtl-p4-block-parallel` | Action Skill |
 | "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
 | "IP instance", "IP integration", "submodule connection" | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
@@ -86,6 +90,8 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | **--- Phase 7: Exploration (optional) ---** | | |
 | "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
+| **--- Autonomous Loops ---** | | |
+| "ultraloop", "autonomous loop", "unattended", "퇴근 모드" | `/rtl-agent-team:rat-ultraloop` | Action Skill |
 | **--- Other Verification ---** | | |
 | "LLM code review", "safe refactor", "review and refactor workflow" | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` | Action Skill |
@@ -135,6 +141,8 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rat-p1p3-spec-uarch` | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | `rat-p1p3-spec-uarch-team` | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | `rat-p4p5-impl-verify` | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
+| `rtl-p4-block-parallel` | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
+| `rat-ultraloop` | — (skill-driven, dispatches `ultraloop-reviewer` for review cycles) | — |
 
 ---
 
@@ -225,6 +233,9 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | Spec→μArch (P1-3 Team) | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
+| Phase 4: Block-Parallel | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
+| Phase 4: Block Worker | `p4-block-worker` | `rtl-p4-implement-policy` |
+| Autonomous Review Loop | `ultraloop-reviewer` | — (READ-ONLY reviewer) |
 
 ### EDA/Infrastructure Agents
 | Task Type | Agent | Model |
@@ -540,6 +551,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
 | Phase 4 team, implement team, parallel implement | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
+| block parallel, worktree parallel, 6-block | `/rtl-agent-team:rtl-p4-block-parallel` | Action Skill |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
 | IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
@@ -565,6 +577,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
+| ultraloop, autonomous loop, unattended | `/rtl-agent-team:rat-ultraloop` | Action Skill |
 | LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | cross-review, codex review, 2nd reviewer, second opinion | `/rtl-agent-team:codex-cross-review` | Action Skill |
 | `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
