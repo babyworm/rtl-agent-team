@@ -458,12 +458,13 @@ git commit -m "manifest: 3-way prediction split + 14 knowledge files registratio
 
 - [ ] **Step 1: Search for all references to vcodec-prediction-expert**
 
-Run: `grep -r "vcodec-prediction-expert" --include="*.md" --include="*.json" --include="*.sh"`
+Run: `grep -r "vcodec-prediction-expert" --include="*.md" --include="*.json" --include="*.sh" --include="*.py"`
 Fix each reference to point to the appropriate split expert(s).
 
-- [ ] **Step 2: Update domain-consult routing table**
+- [ ] **Step 2: Update domain-consult routing table and prose**
 
 Replace single prediction row with 3 rows per spec Section 4.5 keyword partition.
+Also update `<Why_This_Exists>` section prose: "4 codec sub-domain specialists" → "6 codec sub-domain specialists".
 
 - [ ] **Step 3: Update vcodec-chief-standard-expert cross-block template**
 
@@ -789,7 +790,7 @@ Add entries for new agents:
 
 Add rows to the mapping table (lines ~99-138 of `rtl-orchestrate/SKILL.md`):
 - `rtl-p4-block-parallel | p4-block-parallel-coordinator | rtl-block-interface-policy, rtl-block-contract-test-policy`
-- `rat-ultraloop | ultraloop-reviewer | (self-contained)`
+- `rat-ultraloop` — **omit from Orchestrator mapping table**. This skill is self-orchestrated (the skill itself drives the autonomous loop; `ultraloop-reviewer` is a READ-ONLY subagent, not an orchestrator). Add a note in the routing table: "rat-ultraloop: skill-driven, dispatches ultraloop-reviewer for review cycles."
 
 Add `p4-block-parallel-coordinator` and `p4-block-worker` to the Orchestrator/Agent delegation tables.
 
@@ -798,7 +799,7 @@ Add `p4-block-parallel-coordinator` and `p4-block-worker` to the Orchestrator/Ag
 Run: `sh scripts/sync_orchestrator_inject.sh`
 Verify: `hooks/rtl-orchestrator-inject.sh` updated
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add skills/rtl-orchestrate/SKILL.md hooks/rtl-orchestrator-inject.sh
@@ -941,6 +942,7 @@ Expected: no errors
 - [ ] **Step 4: Final commit if any fixes needed**
 
 ```bash
-git add -A
+git status  # review changed files — only stage files related to fixes
+git add <specific files>
 git commit -m "fix: address test/validation issues from integration"
 ```
