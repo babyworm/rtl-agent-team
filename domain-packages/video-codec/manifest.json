@@ -73,7 +73,7 @@
   "standard_support_matrix": {
     "H.264": {
       "tier": "full",
-      "agent_coverage": ["syntax", "prediction", "tq", "filter", "chief", "arch", "perf"],
+      "agent_coverage": ["syntax", "intra", "me", "mc", "tq", "filter", "chief", "arch", "perf"],
       "conformance_available": true,
       "rd_eval_available": true,
       "owner": "rtl-agent-team",
@@ -81,7 +81,7 @@
     },
     "H.265": {
       "tier": "full",
-      "agent_coverage": ["syntax", "prediction", "tq", "filter", "chief", "arch", "perf"],
+      "agent_coverage": ["syntax", "intra", "me", "mc", "tq", "filter", "chief", "arch", "perf"],
       "conformance_available": true,
       "rd_eval_available": true,
       "owner": "rtl-agent-team",
@@ -112,7 +112,7 @@
       "plugin_id": "rtl-agent-team:vcodec-chief-standard-expert",
       "file": "agents/vcodec-chief-standard-expert.md",
       "model": "claude-opus-4-6",
-      "role": "Cross-block review coordination — reviews 4 sub-domain experts, identifies cross-block dependencies, iterates to Architecture-Ready",
+      "role": "Cross-block review coordination — reviews 6 sub-domain experts, identifies cross-block dependencies, iterates to Architecture-Ready",
       "phase_intensity": {
         "research": "primary",
         "architecture": "support",
@@ -157,12 +157,12 @@
       ]
     },
     {
-      "id": "vcodec-prediction-expert",
+      "id": "vcodec-intra-pred-expert",
       "source": "plugin",
-      "plugin_id": "rtl-agent-team:vcodec-prediction-expert",
-      "file": "agents/vcodec-prediction-expert.md",
+      "plugin_id": "rtl-agent-team:vcodec-intra-pred-expert",
+      "file": "agents/vcodec-intra-pred-expert.md",
       "model": "claude-opus-4-6",
-      "role": "Prediction interpretation — intra prediction modes, motion estimation, motion compensation, sub-pixel interpolation, MV prediction",
+      "role": "Intra prediction interpretation — intra prediction modes, angular projection, reference sample construction, mode-dependent filtering, boundary conditions",
       "phase_intensity": {
         "research": "primary",
         "architecture": "primary",
@@ -172,15 +172,71 @@
       },
       "output_tags": ["DOMAIN_UNCERTAINTY"],
       "triggers": [
-        "intra prediction modes",
+        "intra prediction",
+        "angular mode",
+        "planar mode",
+        "DC mode",
+        "intra reference sample",
+        "intra mode decision",
+        "neighboring sample",
+        "intra smoothing"
+      ]
+    },
+    {
+      "id": "vcodec-me-expert",
+      "source": "plugin",
+      "plugin_id": "rtl-agent-team:vcodec-me-expert",
+      "file": "agents/vcodec-me-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Motion estimation and MV prediction interpretation — ME search algorithms (IME/FME), MV prediction (AMVP/merge), reference frame management, search range constraints",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "primary",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": ["DOMAIN_UNCERTAINTY"],
+      "triggers": [
         "motion estimation",
-        "motion compensation",
-        "sub-pixel interpolation",
+        "ME",
+        "search algorithm",
+        "IME",
+        "FME",
+        "TZ search",
+        "diamond search",
         "MV prediction",
         "AMVP",
         "merge mode",
+        "search range",
+        "reference frame selection"
+      ]
+    },
+    {
+      "id": "vcodec-mc-expert",
+      "source": "plugin",
+      "plugin_id": "rtl-agent-team:vcodec-mc-expert",
+      "file": "agents/vcodec-mc-expert.md",
+      "model": "claude-opus-4-6",
+      "role": "Motion compensation interpretation — sub-pixel interpolation filters, bi-prediction weighting, weighted prediction, reference block fetching",
+      "phase_intensity": {
+        "research": "primary",
+        "architecture": "primary",
+        "microarchitecture": "support",
+        "rtl": "review",
+        "verification": "support"
+      },
+      "output_tags": ["DOMAIN_UNCERTAINTY"],
+      "triggers": [
+        "motion compensation",
+        "MC",
+        "sub-pel interpolation",
+        "half-pel",
+        "quarter-pel",
         "bi-prediction",
-        "reference frame"
+        "weighted prediction",
+        "reference block fetch",
+        "interpolation filter"
       ]
     },
     {
@@ -349,6 +405,85 @@
         "description": "Block-level conformance verification for decoder designs — JM/HM reference comparison at each processing block boundary",
         "standard_id": ["H.264", "H.265"],
         "standard_version": null
+      },
+      {
+        "file": "intra-prediction-modes.md",
+        "description": "Intra prediction mode tables — H.264 9+4+4 modes and H.265 35 modes with angular projection geometry, intraPredAngle table, and reference sample layout",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "intra-reference-sample.md",
+        "description": "Intra prediction reference sample availability, substitution process, mode-dependent filtering, and strong intra smoothing rules",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "me-search-algorithms.md",
+        "description": "Motion estimation search algorithms — full search, diamond, hexagonal, TZSearch with search pattern diagrams, complexity analysis, and memory access patterns",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "mv-prediction.md",
+        "description": "Motion vector prediction — H.264 median MV, H.265 AMVP and merge mode candidate derivation with exact spatial/temporal neighbor positions and pruning rules",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "mc-interpolation-filters.md",
+        "description": "Motion compensation interpolation filter coefficients — H.264 6-tap and H.265 8-tap/4-tap filters with exact coefficients, precision chains, and intermediate clipping rules",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "weighted-prediction.md",
+        "description": "Bi-prediction weighting and explicit weighted prediction — default/explicit weight formulas, log2_weight_denom, per-slice parameters, and rounding rules",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "deblocking-filter-algorithm.md",
+        "description": "Deblocking filter algorithm — boundary strength derivation, filter decision thresholds (alpha/beta/tC), strong/weak filter selection, and sample modification formulas",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "sao-algorithm.md",
+        "description": "Sample Adaptive Offset algorithm — edge offset classification, band offset grouping, CTU-level SAO parameter signaling, and merge modes",
+        "standard_id": "H.265",
+        "standard_version": null
+      },
+      {
+        "file": "cabac-context-tables.md",
+        "description": "CABAC context model tables — context index offsets per syntax element, initialization values, state transition LUT, and binarization methods",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "dpb-management.md",
+        "description": "Decoded Picture Buffer management — reference picture marking, bumping process, RPS derivation, output reordering, and maximum DPB size per level",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "transform-matrices.md",
+        "description": "Transform coefficient matrices — H.264 4x4/8x8 and H.265 4x4/8x8/16x16/32x32 DCT/DST core matrices with exact integer values and butterfly decomposition",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "quantization-tables.md",
+        "description": "Quantization parameter tables — QP-to-Qstep mapping, scaling factors, level scale arrays, and dequantization formulas for all transform sizes",
+        "standard_id": ["H.264", "H.265"],
+        "standard_version": null
+      },
+      {
+        "file": "hm-function-map.md",
+        "description": "HM reference software function-to-spec-clause mapping for H.265",
+        "standard_id": "H.265",
+        "standard_version": "V9",
+        "reference_sw": "HM 16.25"
       }
     ]
   },
@@ -443,10 +578,10 @@
   "agent_coordination": {
     "description": "How domain expert agents coordinate with RTL design pipeline agents",
     "phase_1_research": {
-      "primary_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-prediction-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert"],
+      "primary_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert", "vcodec-me-expert", "vcodec-mc-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert"],
       "support_domain_agents": ["video-processing-expert", "vcodec-chief-standard-expert"],
       "rtl_agents": ["spec-analyst"],
-      "workflow": "4 sub-domain experts provide algorithm definitions in parallel -> vcodec-chief-standard-expert reviews cross-block consistency (3 mandatory rounds) -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
+      "workflow": "6 sub-domain experts provide algorithm definitions in parallel -> vcodec-chief-standard-expert reviews cross-block consistency (3 mandatory rounds) -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
     },
     "phase_2_architecture": {
       "primary_domain_agents": ["vcodec-architecture-expert", "video-processing-expert"],
@@ -462,13 +597,13 @@
     },
     "phase_4_rtl": {
       "primary_domain_agents": [],
-      "support_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-prediction-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert", "vcodec-architecture-expert"],
+      "support_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert", "vcodec-me-expert", "vcodec-mc-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert", "vcodec-architecture-expert"],
       "rtl_agents": ["rtl-coder", "lint-checker"],
       "workflow": "rtl-coder implements from microarch spec -> relevant sub-domain expert spot-checks compliance -> lint-checker runs static analysis"
     },
     "phase_5_verification": {
       "primary_domain_agents": [],
-      "support_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-prediction-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert", "video-processing-expert"],
+      "support_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert", "vcodec-me-expert", "vcodec-mc-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert", "video-processing-expert"],
       "rtl_agents": ["func-verifier", "perf-verifier"],
       "workflow": "relevant sub-domain experts define conformance vectors -> func-verifier runs bit-exact comparison -> video-processing-expert defines performance scenarios -> perf-verifier validates throughput"
     }
