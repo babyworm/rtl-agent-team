@@ -132,96 +132,96 @@ if state:
             owner=f"worker-{block}"
         )
 
-    else:
-        # === FRESH START PATH ===
+else:
+    # === FRESH START PATH ===
 
-        ## Step 3: Design Freeze Snapshot
-        frozen_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1").strip()
-        base_commit = Bash("git rev-parse HEAD").strip()
-        project_root = Bash("git rev-parse --show-toplevel").strip()
+    ## Step 3: Design Freeze Snapshot
+    frozen_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1").strip()
+    base_commit = Bash("git rev-parse HEAD").strip()
+    project_root = Bash("git rev-parse --show-toplevel").strip()
 
-        Write(".rtl-agent-team/state/design-freeze.json", json.dumps({
-            "frozen_hash": frozen_hash,
-            "base_commit": base_commit,
-            "frozen_paths": ["rtl/pkg/", "rtl/intf/", "docs/phase-3-uarch/"],
-            "created_at": ISO_TIMESTAMP
-        }))
+    Write(".rtl-agent-team/state/design-freeze.json", json.dumps({
+        "frozen_hash": frozen_hash,
+        "base_commit": base_commit,
+        "frozen_paths": ["rtl/pkg/", "rtl/intf/", "docs/phase-3-uarch/"],
+        "created_at": ISO_TIMESTAMP
+    }))
 
-        ## Step 4: Prepare Directories
-        Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
+    ## Step 4: Prepare Directories
+    Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
 
-        ## Step 5: Initialize State
-        blocks = ["entropy", "tq", "me", "mc", "intra", "filter"]
-        merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
+    ## Step 5: Initialize State
+    blocks = ["entropy", "tq", "me", "mc", "intra", "filter"]
+    merge_order = ["entropy", "tq", "me", "mc", "intra", "filter"]
 
-        state = {
-            "phase": "implement",
-            "created_at": ISO_TIMESTAMP,
-            "leader_session_id": "<current_session_id>",
-            "base_commit": base_commit,
-            "frozen_hash": frozen_hash,
-            "merge_frontier_commit": base_commit,
-            "blocks": {
-                block: {
-                    "status": "pending",
-                    "worktree_path": None,
-                    "worktree_branch": None,
-                    "lint_pass": false,
-                    "unit_test_pass": false,
-                    "contract_test_pass": false,
-                    "merge_commit": None
-                } for block in blocks
-            },
-            "merge_order": merge_order,
-            "current_merge_index": 0
-        }
+    state = {
+        "phase": "implement",
+        "created_at": ISO_TIMESTAMP,
+        "leader_session_id": "<current_session_id>",
+        "base_commit": base_commit,
+        "frozen_hash": frozen_hash,
+        "merge_frontier_commit": base_commit,
+        "blocks": {
+            block: {
+                "status": "pending",
+                "worktree_path": None,
+                "worktree_branch": None,
+                "lint_pass": false,
+                "unit_test_pass": false,
+                "contract_test_pass": false,
+                "merge_commit": None
+            } for block in blocks
+        },
+        "merge_order": merge_order,
+        "current_merge_index": 0
+    }
 
-        Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
+    Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
-        ## Step 6: Create Worktrees
-        # ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
-        # Team exists at this point, so TeamDelete is valid in cleanup
-        worktree_ok = True
+    ## Step 6: Create Worktrees
+    # ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
+    # Team exists at this point, so TeamDelete is valid in cleanup
+    worktree_ok = True
+    for block in blocks:
+        branch = f"p4-block-{block}"
+        wt_path = f"{project_root}/.worktrees/p4-{block}"  # Absolute path
+        Bash(f"mkdir -p \"{project_root}/.worktrees\"")
+        result = Bash(f"git worktree add -b {branch} \"{wt_path}\" HEAD 2>&1")
+        if result.returncode != 0:
+            worktree_ok = False
+            break
+        state["blocks"][block]["worktree_path"] = wt_path
+        state["blocks"][block]["worktree_branch"] = branch
+        state["blocks"][block]["status"] = "worktree-ready"
+
+    if not worktree_ok:
         for block in blocks:
-            branch = f"p4-block-{block}"
-            wt_path = f"{project_root}/.worktrees/p4-{block}"  # Absolute path
-            Bash(f"mkdir -p \"{project_root}/.worktrees\"")
-            result = Bash(f"git worktree add -b {branch} \"{wt_path}\" HEAD 2>&1")
-            if result.returncode != 0:
-                worktree_ok = False
-                break
-            state["blocks"][block]["worktree_path"] = wt_path
-            state["blocks"][block]["worktree_branch"] = branch
-            state["blocks"][block]["status"] = "worktree-ready"
+            if state["blocks"][block].get("worktree_path"):
+                Bash(f"git worktree remove --force \"{state['blocks'][block]['worktree_path']}\" 2>/dev/null")
+        Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
+        TeamDelete()
+        Bash("rm -f .rtl-agent-team/state/team-config.json")
+        print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement (sequential, non-team).")
+        Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
+        return
 
-        if not worktree_ok:
-            for block in blocks:
-                if state["blocks"][block].get("worktree_path"):
-                    Bash(f"git worktree remove --force \"{state['blocks'][block]['worktree_path']}\" 2>/dev/null")
-            Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
-            TeamDelete()
-            Bash("rm -f .rtl-agent-team/state/team-config.json")
-            print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement (sequential, non-team).")
-            Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
-            return
+    Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
 
-        Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
+    ## Step 7: Initial Task Graph
+    # Create task graph AFTER TeamCreate so team context is available,
+    # and BEFORE spawning agents so tasks exist when workers start
+    for block in blocks:
+        TaskCreate(
+            subject=f"Implement: {block}",
+            description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
+                        f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
+                        f"delegate to rtl-coder, run lint, create unit tests. "
+                        f"Report ready-for-merge when complete.",
+            owner=f"worker-{block}"
+        )
 
-        ## Step 7: Initial Task Graph
-        # Create task graph AFTER TeamCreate so team context is available,
-        # and BEFORE spawning agents so tasks exist when workers start
-        for block in blocks:
-            TaskCreate(
-                subject=f"Implement: {block}",
-                description=f"Implement {block} block in worktree {state['blocks'][block]['worktree_path']}. "
-                            f"Read docs/phase-3-uarch/{block}.md, spawn domain expert, "
-                            f"delegate to rtl-coder, run lint, create unit tests. "
-                            f"Report ready-for-merge when complete.",
-                owner=f"worker-{block}"
-            )
-
-    # === END fresh-start / resume branch ===
-    # From here on, both paths converge: spawn agents → monitor
+# === END fresh-start / resume branch ===
+# From here on, both paths converge: spawn agents → monitor
 ```
 
 ### Step 8: Spawn Coordinator
