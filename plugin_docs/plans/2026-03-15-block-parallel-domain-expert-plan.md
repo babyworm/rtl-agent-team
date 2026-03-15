@@ -433,6 +433,12 @@ Replace `vcodec-prediction-expert` with the appropriate split experts in:
 - `phase_4_rtl.support_domain_agents`: add all 3 new experts
 - `phase_5_verification.support_domain_agents`: add all 3 new experts
 
+- [ ] **Step 4b: Update manifest.json prose strings**
+
+Update "4 sub-domain" → "6 sub-domain" in:
+- Chief expert entry `role` field (line ~115): "reviews 4 sub-domain experts" → "reviews 6 sub-domain experts"
+- `phase_1_research.workflow` field (line ~449): "4 sub-domain experts provide" → "6 sub-domain experts provide"
+
 - [ ] **Step 5: Register 14 new knowledge files in knowledge_base.contents**
 
 Add entries for all 14 new knowledge files following the existing entry pattern (file, description, standard_id, standard_version).
@@ -465,6 +471,8 @@ Fix each reference to point to the appropriate split expert(s).
 
 Replace single prediction row with 3 rows per spec Section 4.5 keyword partition.
 Also update `<Why_This_Exists>` section prose: "4 codec sub-domain specialists" → "6 codec sub-domain specialists".
+Also update `<Tool_Usage>` section: replace the single `vcodec-prediction-expert` Task() example with three examples (intra-pred, ME, MC).
+Also update `<Examples>` Good example: replace "routes to vcodec-prediction-expert(Opus)" with appropriate split expert.
 
 - [ ] **Step 3: Update vcodec-chief-standard-expert cross-block template**
 
