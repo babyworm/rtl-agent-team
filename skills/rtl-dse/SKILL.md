@@ -79,8 +79,9 @@ trial_result = Task(subagent_type="rtl-agent-team:dse-orchestrator",
      Address the user's specific concerns in this iteration.
      User input: $ARGUMENTS""")
 
-# Capture the worktree path from the agent result for subsequent comparison steps
-worktree_path = trial_result.worktree_path  # e.g., "/path/to/repo-worktree-abc123"
+# Capture worktree path AND branch from the agent result for comparison + merge
+worktree_path = trial_result.worktree_path      # e.g., "/path/to/repo-worktree-abc123"
+worktree_branch = trial_result.worktree_branch  # e.g., "worktree-abc123"
 ```
 
 ### Trial Comparison
@@ -132,9 +133,9 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 Present comparison to user via AskUserQuestion.
 User selects the better trial:
-- If Trial N selected → merge worktree changes into current branch, then commit as new baseline:
+- If Trial N selected → merge worktree branch into current branch, then commit as new baseline:
   ```python
-  Bash("git merge <worktree_branch> && git add -f docs/ reviews/ refc/ bfm/ .rtl-agent-team/state/ && git commit -m 'dse: Trial N promoted to current best'")
+  Bash(f"git merge {worktree_branch} && git add -f docs/ reviews/ refc/ bfm/ .rtl-agent-team/state/ && git commit -m 'dse: Trial {trial_number} promoted to current best'")
   ```
 - If current best selected → discard worktree (no changes to main branch)
 

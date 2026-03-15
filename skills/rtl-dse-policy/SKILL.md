@@ -231,8 +231,8 @@ After Trial N completes, compare against the current best trial:
 | Self-critique HIGH findings | | |
 
 3. **Selection**: user chooses which trial to keep
-   - If Trial N selected → merge worktree changes into main branch
-   - If current best selected → discard Trial N worktree
+   - If Trial N selected → merge worktree branch into main, commit as new baseline
+   - If current best selected → discard Trial N worktree (no changes)
 
 ### Iteration Loop
 ```
