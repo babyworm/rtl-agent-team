@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 87-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.3 |
+| **rtl-agent-team** | 93-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.3 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.1 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -330,8 +330,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (87)
-├── skills/                              # rtl-agent-team skills (88, with 13 reference docs)
+├── agents/                              # rtl-agent-team agents (93)
+├── skills/                              # rtl-agent-team skills (91, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

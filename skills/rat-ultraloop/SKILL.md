@@ -144,6 +144,13 @@ for cycle in range(1, max_cycles + 1):
         generate_user_report(cycle, "MAX_CYCLES")
         break
 
+    # Condition 4: Token exhaustion imminent
+    # (Detect via context window usage or explicit signal)
+    if token_budget_low():
+        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+        generate_user_report(cycle, "TOKEN_EXHAUSTION")
+        break
+
     # --- (h) Wait for user input (30-min auto-continue) ---
     # Leverages stop-gate.sh escalation pattern:
     # The ultraloop-state.json with auto_continue_minutes=30 signals
@@ -196,7 +203,7 @@ Generated at `.rtl-agent-team/state/ultraloop-report.md` on loop completion or h
 ## Summary
 - **Target skill**: rtl-p4-block-parallel
 - **Cycles completed**: 3 / 10
-- **Exit reason**: ALL_MERGED / CLEAN / MAX_CYCLES / FREEZE_VIOLATION
+- **Exit reason**: ALL_MERGED / CLEAN / MAX_CYCLES / FREEZE_VIOLATION / TOKEN_EXHAUSTION
 
 ## Block Status
 | Block | Status | Lint | Unit Test | Contract Test |
