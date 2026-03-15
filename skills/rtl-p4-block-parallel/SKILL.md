@@ -188,6 +188,26 @@ if state:
 
     # === END fresh-start / resume branch ===
     # From here on, both paths converge: team creation → spawn agents → monitor
+
+    ## Common Step 1: Team Creation
+    # ALL-OR-NOTHING: if TeamCreate fails, fall back entirely to sequential
+    try:
+        TeamCreate(team_name="p4-block-parallel", description="6-block parallel RTL implementation with worktree isolation")
+    except:
+        print("WARNING: TeamCreate failed. Falling back to rtl-p4-implement (sequential, non-team).")
+        Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
+        return
+
+    ## Common Step 2: Write team-config.json
+    Write(".rtl-agent-team/state/team-config.json", json.dumps({
+        "team_mode": true,
+        "team_name": "p4-block-parallel",
+        "leader_session_id": "<current_session_id>",
+        "coordinator_name": "coordinator",
+        "worker_count": 6,
+        "phase": "p4",
+        "created_at": ISO_TIMESTAMP
+    }))
 ```
 
 ### Step 7: Spawn Coordinator
