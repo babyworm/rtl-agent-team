@@ -24,5 +24,7 @@
   "rtl-p5s-sva-check": "assertions-proven|artifacts-written",
   "rtl-p5s-cdc-verify": "cdc-analysis-complete|artifacts-written",
   "rtl-review-refactor": "review-complete|refactor-verified",
-  "codex-cross-review": "cross-review-report-written|verdict-recorded"
+  "codex-cross-review": "cross-review-report-written|verdict-recorded",
+  "rtl-p4-block-parallel": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged",
+  "rat-ultraloop": "target-skill-executed|design-freeze-intact|cycle-summary-written"
 }

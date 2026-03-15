@@ -41,7 +41,9 @@ def vproc_manifest():
 
 VCODEC_EXPERTS = [
     "vcodec-syntax-entropy-expert",
-    "vcodec-prediction-expert",
+    "vcodec-intra-pred-expert",
+    "vcodec-me-expert",
+    "vcodec-mc-expert",
     "vcodec-transform-quant-expert",
     "vcodec-filter-recon-expert",
     "vcodec-chief-standard-expert",
@@ -102,7 +104,9 @@ class TestExpertQualityContract:
 # Sub-domain experts (excluding chief, architecture, video-processing)
 SUBDOMAIN_EXPERTS = [
     "vcodec-syntax-entropy-expert",
-    "vcodec-prediction-expert",
+    "vcodec-intra-pred-expert",
+    "vcodec-me-expert",
+    "vcodec-mc-expert",
     "vcodec-transform-quant-expert",
     "vcodec-filter-recon-expert",
 ]

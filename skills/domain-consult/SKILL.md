@@ -22,7 +22,7 @@ Returns the expert's answer without modification.
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-The project has multiple domain experts (4 codec sub-domain specialists, a codec chief,
+The project has multiple domain experts (6 codec sub-domain specialists, a codec chief,
 video processing, and protocol experts). Routing to the wrong expert wastes tokens and
 produces shallow answers. This skill reads the query and selects the best match before delegating.
 </Why_This_Exists>
@@ -39,7 +39,9 @@ produces shallow answers. This skill reads the query and selects the best match 
 | Domain Keywords | Expert Agent | Notes |
 |---|---|---|
 | NAL, slice header, CABAC, CAVLC, entropy coding, DPB, bitstream, binarization, context model, Exp-Golomb | vcodec-syntax-entropy-expert | HLS parsing, entropy engine, DPB management |
-| intra prediction, motion estimation, motion compensation, ME, MC, motion vector, MV prediction, sub-pel, reference frame, merge mode, AMVP, bi-prediction | vcodec-prediction-expert | Intra modes, ME search, MC interpolation, MV prediction |
+| intra prediction, angular mode, planar mode, DC mode, intra reference sample, intra mode decision, neighboring sample, intra smoothing | vcodec-intra-pred-expert | Intra prediction modes, reference sample construction, mode-dependent filtering |
+| motion estimation, ME, search algorithm, IME, FME, TZ search, diamond search, MV prediction, AMVP, merge mode, search range, reference frame selection | vcodec-me-expert | ME search algorithms, MV prediction (AMVP/merge), reference frame management |
+| motion compensation, MC, sub-pel interpolation, half-pel, quarter-pel, bi-prediction, weighted prediction, reference block fetch, interpolation filter | vcodec-mc-expert | Sub-pixel interpolation filters, bi-prediction weighting, weighted prediction |
 | DCT, DST, quantization, RDOQ, fixed-point, scaling matrix, QP, transform, inverse transform, butterfly, dequantization, coefficient, scaling list | vcodec-transform-quant-expert | Transform, quantization, fixed-point arithmetic |
 | deblocking, SAO, in-loop filter, boundary strength, reconstruction, filter decision, edge offset, band offset, sample adaptive offset | vcodec-filter-recon-expert | Deblocking filter, SAO, reconstruction path |
 | cross-block, cross-block dependency, pipeline dependency, architecture-ready, architecture-ready assessment, codec domain coordination, codec overview, block interaction, data flow between blocks | vcodec-chief-standard-expert | Cross-block coordination, multi-block dependency analysis |
@@ -70,9 +72,17 @@ produces shallow answers. This skill reads the query and selects the best match 
 Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
      prompt="Explain the CABAC context initialization process for H.264 Main profile slice_type=P. Cite spec section numbers.")
 
-# Prediction question (intra/inter)
-Task(subagent_type="rtl-agent-team:vcodec-prediction-expert",
+# Intra prediction question
+Task(subagent_type="rtl-agent-team:vcodec-intra-pred-expert",
+     prompt="Describe H.265 angular intra prediction mode 10 for a 16x16 block. Specify reference sample geometry and filtering conditions.")
+
+# Motion estimation / MV prediction question
+Task(subagent_type="rtl-agent-team:vcodec-me-expert",
      prompt="Describe H.265 AMVP candidate derivation for a 16x16 PU. Specify the spatial neighbor scan order and pruning rules.")
+
+# Motion compensation question
+Task(subagent_type="rtl-agent-team:vcodec-mc-expert",
+     prompt="Describe H.264 half-pel luma interpolation filter. Specify exact coefficients, precision chain, and diagonal position handling.")
 
 # Transform/quantization question
 Task(subagent_type="rtl-agent-team:vcodec-transform-quant-expert",
@@ -118,7 +128,7 @@ User asks about CABAC bin string encoding → routes to vcodec-syntax-entropy-ex
 precise answer citing H.264 spec section 9.3.2.
 </Good>
 <Good>
-User asks about H.265 intra prediction angular modes → routes to vcodec-prediction-expert(Opus) → returns
+User asks about H.265 intra prediction angular modes → routes to vcodec-intra-pred-expert(Opus) → returns
 complete mode table with reference sample dependencies and boundary handling.
 </Good>
 <Good>

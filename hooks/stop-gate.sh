@@ -28,6 +28,25 @@ if teamu_should_skip_gate "$CWD/.rtl-agent-team/state"; then
   exit 0
 fi
 
+# Ultraloop auto-continue: if ultraloop is active and within its time window, keep going
+ULTRALOOP_STATE="$CWD/.rtl-agent-team/state/ultraloop-state.json"
+if [ -f "$ULTRALOOP_STATE" ]; then
+  . "$SCRIPT_DIR/lib/posix-util.sh"
+  UL_MODE=$(jsonu_get_file_path_string "$ULTRALOOP_STATE" "mode")
+  if [ "$UL_MODE" = "ultraloop" ]; then
+    UL_TIMESTAMP=$(jsonu_get_file_path_num "$ULTRALOOP_STATE" "last_cycle_timestamp")
+    UL_MINUTES=$(jsonu_get_file_path_num "$ULTRALOOP_STATE" "auto_continue_minutes")
+    [ -z "$UL_MINUTES" ] && UL_MINUTES=30
+    UL_THRESHOLD=$((UL_MINUTES * 60))
+    UL_ELAPSED=$(posix_elapsed_seconds "$UL_TIMESTAMP")
+    if [ "$UL_ELAPSED" -lt "$UL_THRESHOLD" ]; then
+      MSG="[Ultraloop] auto-continue: ${UL_ELAPSED}s elapsed (threshold=${UL_THRESHOLD}s). Continuing autonomous loop."
+      printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"
+      exit 0
+    fi
+  fi
+fi
+
 if [ ! -f "$STATE_FILE" ]; then
   printf '{"continue":true}'
   exit 0

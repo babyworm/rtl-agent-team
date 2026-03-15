@@ -74,6 +74,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
 | Phase 4 team, implement team, parallel implement | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
+| block parallel, worktree parallel, 6-block | `/rtl-agent-team:rtl-p4-block-parallel` | Action Skill |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
 | IP instance, IP integration | `/rtl-agent-team:rtl-ip-instantiate` | Action Skill |
@@ -99,6 +100,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
+| ultraloop, autonomous loop, unattended | `/rtl-agent-team:rat-ultraloop` | Action Skill |
 | LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | cross-review, codex review, 2nd reviewer, second opinion | `/rtl-agent-team:codex-cross-review` | Action Skill |
 | `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |

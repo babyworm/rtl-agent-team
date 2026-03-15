@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 87 specialized AI agents + 88 skills automate the 6-Phase pipeline:
+> 93 specialized AI agents + 91 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-87개 전문 AI 에이전트 + 88개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+93개 전문 AI 에이전트 + 91개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -18,7 +18,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 87-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.3 |
+| **rtl-agent-team** | 93-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.3 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.1 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
@@ -134,7 +134,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 88개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 91개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -165,10 +165,10 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 87개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
+├── agents/                     # 93개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 88개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 91개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── rat-setup/
 │   │   ├── scripts/
@@ -208,7 +208,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## 에이전트 팀
 
-### 에이전트 구성 (87개, 전체 Opus)
+### 에이전트 구성 (93개, 전체 Opus)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
@@ -218,7 +218,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | Phase 6 설계 노트 | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
 | EDA/합성 | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
 | 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| 도메인 전문가 | 11 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-prediction-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
+| 도메인 전문가 | 13 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-intra-pred-expert, vcodec-me-expert, vcodec-mc-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
 | 오케스트레이터 | 32 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator 외 25개 (팀/서브페이즈 변형) |
 
 모델 사용 원칙:
@@ -325,8 +325,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (87개)
-├── skills/                              # rtl-agent-team 스킬 (88개, 13개 레퍼런스 문서 포함)
+├── agents/                              # rtl-agent-team 에이전트 (93개)
+├── skills/                              # rtl-agent-team 스킬 (91개, 13개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지
