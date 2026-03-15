@@ -7,6 +7,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-03-15
+
 ### Added
 - 3-way prediction expert split: `vcodec-intra-pred-expert`, `vcodec-me-expert`, `vcodec-mc-expert`
 - 14 new knowledge files for deepened domain expertise (intra, ME, MC, entropy, TQ, filter)
