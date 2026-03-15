@@ -7,6 +7,16 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-03-15
+
+### Added
+- Cross-review convergence improvements: agreement ledger, anti-oscillation rule, stability criterion
+- Agreement ledger injected into follow-up prompts to prevent context-reset re-raises
+- Anti-oscillation: settled items cannot be re-raised without new evidence
+- Stability requires 2+ consecutive APPROVE rounds with no still_disagree and no oscillation
+- pending_confirmations separated from agreement_ledger (no premature settlement)
+- resolved_items now required in review schema
+
 ## [0.7.2] - 2026-03-15
 
 ### Fixed
