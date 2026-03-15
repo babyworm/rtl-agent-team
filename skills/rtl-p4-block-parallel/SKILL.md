@@ -79,7 +79,7 @@ if state:
     if state:
         for block, info in state["blocks"].items():
             if info.get("worktree_path") and info["status"] != "merged":
-                wt_exists = Bash(f"test -d {info['worktree_path']} && echo yes || echo no")
+                wt_exists = Bash(f"test -d \"{info['worktree_path']}\" && echo yes || echo no")
                 if wt_exists.strip() != "yes":
                     print(f"WARNING: Worktree for {block} missing at {info['worktree_path']}.")
                     print("Cannot safely resume. Starting fresh.")
@@ -87,13 +87,17 @@ if state:
                     break
 
     if state:
+        # Restore runtime variables from saved state
+        blocks = list(state["blocks"].keys())
+        merge_order = blocks  # Same as blocks — upstream-first order
+        frozen_hash = state["frozen_hash"]
+        base_commit = state["base_commit"]
+        project_root = Bash("git rev-parse --show-toplevel").strip()
+
         print(f"Resuming block-parallel from phase: {state['phase']}, "
               f"blocks completed: {sum(1 for b in state['blocks'].values() if b['status'] == 'merged')}/6")
         # Resume: skip Steps 3-6 (directories, state init, worktrees, task graph already exist)
         # Jump directly to Step 1 (Team Creation) → Step 7-9 (spawn agents + monitor)
-        frozen_hash = state["frozen_hash"]
-        base_commit = state["base_commit"]
-        # GOTO: Step 1 (Team Creation)
 ```
 
 ## Design Freeze Snapshot
@@ -189,8 +193,8 @@ worktree_ok = True
 for block in blocks:
     branch = f"p4-block-{block}"
     wt_path = f"{project_root}/.worktrees/p4-{block}"  # Absolute path
-    Bash(f"mkdir -p {project_root}/.worktrees")
-    result = Bash(f"git worktree add -b {branch} {wt_path} HEAD 2>&1")
+    Bash(f"mkdir -p \"{project_root}/.worktrees\"")
+    result = Bash(f"git worktree add -b {branch} \"{wt_path}\" HEAD 2>&1")
     if result.returncode != 0:
         worktree_ok = False
         break
@@ -202,7 +206,7 @@ if not worktree_ok:
     # Clean up any created worktrees
     for block in blocks:
         if state["blocks"][block].get("worktree_path"):
-            Bash(f"git worktree remove --force {state['blocks'][block]['worktree_path']} 2>/dev/null")
+            Bash(f"git worktree remove --force \"{state['blocks'][block]['worktree_path']}\" 2>/dev/null")
     Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
     TeamDelete()
     Bash("rm -f .rtl-agent-team/state/team-config.json")
@@ -322,7 +326,7 @@ for block in blocks:
     wt_path = state["blocks"][block]["worktree_path"]
     branch = state["blocks"][block]["worktree_branch"]
     if wt_path:
-        Bash(f"git worktree remove {wt_path} 2>/dev/null")
+        Bash(f"git worktree remove \"{wt_path}\" 2>/dev/null")
     if branch:
         Bash(f"git branch -d {branch} 2>/dev/null")
 
