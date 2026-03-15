@@ -1,5 +1,6 @@
 node_modules/
 .rtl-agent-team/
+.worktrees/
 **/.omc/
 *.log
 .DS_Store
