@@ -9,9 +9,10 @@
 The current RTL Agent Team plugin executes Phase 4 (RTL implementation) sequentially or via
 generic team mode. Video codec designs consist of 6 largely independent processing blocks
 (entropy, TQ, intra prediction, motion estimation, motion compensation, in-loop filter) that
-can be developed in parallel. Additionally, the existing 4 sub-domain experts lack the depth
-needed for block-level RTL guidance, and the prediction expert conflates two distinct hardware
-datapaths (intra vs inter).
+can be developed in parallel. Additionally, the existing 4 **block-level** sub-domain experts (syntax, prediction, TQ, filter —
+excluding chief, architecture, and performance coordination roles) lack the depth needed for
+block-level RTL guidance, and the prediction expert conflates two distinct hardware datapaths
+(intra vs inter).
 
 ## 2. Goals
 
@@ -31,7 +32,7 @@ datapaths (intra vs inter).
 | Prediction expert split | 3-way (intra, ME, MC) | ME architecture complexity warrants dedicated expert; intra/inter are separate HW datapaths |
 | Worktree granularity | 1:1 block mapping (6 worktrees) | Maximum parallelism, minimal merge conflict |
 | Execution mechanism | Team + Worktree hybrid | Team for coordination (SendMessage), worktree for code isolation |
-| Merge order | Upstream-first: entropy→TQ→ME→MC→intra→filter | Follows decoder data flow; full integration at final merge |
+| Merge order | Upstream-first: entropy→TQ→ME→MC→intra→filter | Follows codec processing pipeline; filter merges last for full integration |
 | Phase mapping | Worktree branch at Phase 4 entry | Phase 2-3 complete interface + μArch on main first |
 | Interface management | Interface-First (Phase 2) + timing (Phase 3) + contract test (merge) | Minimizes cross-block mismatch risk |
 | Autonomous mode | Separate skill (`rat-ultraloop`) | Separates execution mode from workflow logic; reusable |
@@ -47,7 +48,10 @@ datapaths (intra vs inter).
 | | `vcodec-me-expert` | IME/FME search algorithms, MV prediction (AMVP/merge), reference frame management |
 | | `vcodec-mc-expert` | Sub-pixel interpolation filters, bi-prediction, weighted prediction, reference block fetching |
 
-### 4.2 Updated Sub-Domain Expert Map (4 → 6)
+### 4.2 Updated Block-Level Sub-Domain Expert Map (4 → 6)
+
+> Note: This count excludes coordination/cross-cutting roles (chief, architecture, performance)
+> which remain unchanged. Total video-codec domain agents: 7 existing + 2 net new = 9.
 
 | # | Expert | Key Domain | Model |
 |---|--------|-----------|-------|
@@ -98,6 +102,22 @@ priorities, verification strategies). RTL agents execute **How** (actual .sv cod
 Phase 4 block-parallel implementation is fundamentally about injecting domain knowledge into
 implementation and verification specialists.
 
+### 4.5 Keyword Routing Partition (domain-consult update)
+
+After the 3-way split, the single `vcodec-prediction-expert` routing row in
+`skills/domain-consult/SKILL.md` must be replaced with three distinct rows:
+
+| Keywords | Expert | Domain |
+|----------|--------|--------|
+| intra prediction, angular mode, planar mode, DC mode, intra reference sample, intra mode decision, neighboring sample, intra smoothing | `vcodec-intra-pred-expert` | Intra prediction (spatial, single-frame) |
+| motion estimation, ME, search algorithm, IME, FME, TZ search, diamond search, hexagonal search, MV prediction, AMVP, merge mode, MV candidate, search range, reference frame selection, ME hardware | `vcodec-me-expert` | Motion Estimation (temporal search) |
+| motion compensation, MC, sub-pel interpolation, half-pel, quarter-pel, bi-prediction, weighted prediction, reference block fetch, interpolation filter, MC hardware, luma interpolation, chroma interpolation | `vcodec-mc-expert` | Motion Compensation (temporal reconstruction) |
+
+**Ambiguous keyword resolution**: Keywords that could map to multiple experts:
+- "reference frame" → `vcodec-me-expert` (selection) or `vcodec-mc-expert` (fetching): route to ME if context is search/selection, route to MC if context is interpolation/fetching
+- "motion vector" → route to `vcodec-me-expert` by default (MV is produced by ME, consumed by MC)
+- Cross-domain prediction question (intra vs inter RD decision) → route to `vcodec-chief-standard-expert`
+
 ## 5. Worktree-Based Block-Parallel Workflow
 
 ### 5.1 New Skill: `rtl-p4-block-parallel`
@@ -121,16 +141,24 @@ prerequisites:
 | `block/me` | Motion Estimation | `rtl/me/` | `vcodec-me-expert` | 3rd |
 | `block/mc` | Motion Compensation | `rtl/mc/` | `vcodec-mc-expert` | 4th |
 | `block/intra` | Intra Prediction | `rtl/intra/` | `vcodec-intra-pred-expert` | 5th |
-| `block/filter` | Filter + Recon | `rtl/filter/` | `vcodec-filter-recon-expert` | 6th |
+| `block/filter` | Filter + Recon + DPB | `rtl/filter/` | `vcodec-filter-recon-expert` | 6th |
+
+> **DPB and Reconstruction ownership**: DPB (Decoded Picture Buffer) and the reconstruction
+> path (prediction + residual combining) are implemented in the `block/filter` worktree.
+> `vcodec-filter-recon-expert` covers this scope (deblocking, SAO, reconstruction, DPB).
+> Consequently, `recon_filter_if.sv` is an **internal interface** within the filter worktree,
+> while `filter_dpb_if.sv`, `dpb_me_if.sv`, and `dpb_mc_if.sv` are **cross-block interfaces**
+> owned by the filter worktree's output boundary.
 
 ### 5.3 Team Structure (Team + Worktree Hybrid)
 
 ```
 Skill (leader session)
   │
-  ├── TeamCreate("p4-block-parallel", workers=7)
+  ├── TeamCreate("p4-block-parallel")
+  │     # 7 Agent() calls follow: 1 coordinator + 6 block-workers
   │
-  ├── Coordinator (teammate: p4-block-parallel-coordinator)
+  ├── Agent(team_name="p4-block-parallel") → Coordinator (p4-block-parallel-coordinator)
   │     Role:
   │     - Monitor 6 worker progress (TaskList/SendMessage)
   │     - Mediate cross-block interface questions
@@ -292,7 +320,26 @@ Per cycle end:
       git checkout -- rtl/pkg/ rtl/intf/ docs/phase-3-uarch/
       log("DESIGN FREEZE VIOLATION detected and reverted")
       Record violation to prevent retry in subsequent cycles
+
+Note: This intentional destructive revert is the enforcement mechanism for design freeze
+violations. The same hash-based verification also applies during `rtl-p4-block-parallel`
+execution (not only ultraloop) to prevent worktree workers from modifying frozen interfaces.
 ```
+
+### 7.6 30-Minute Auto-Continue Mechanism
+
+The 30-minute timeout uses the existing autopilot/stop-gate escalation pattern:
+
+1. After each cycle, the skill outputs a summary and enters a **soft stop** state
+2. `stop-gate.sh` detects ultraloop is active via state file and applies escalation ladder:
+   - First stop: "Cycle N complete. Waiting for user input. Auto-continue in 30 min."
+   - The skill records `last_cycle_timestamp` in state file
+3. If the user does not provide input, the next Stop hook check compares
+   `current_time - last_cycle_timestamp > 30min` and allows auto-continuation
+4. If the user provides input at any point, normal interactive mode resumes
+
+This leverages the existing hook infrastructure without requiring a new polling mechanism.
+The 30-minute threshold is configurable in `ultraloop-state.json`.
 
 ## 8. Error Handling and Fallback
 
@@ -300,8 +347,8 @@ Per cycle end:
 
 | Situation | Behavior |
 |-----------|----------|
-| Phase 2 interface not locked | Block skill entry + guide to `rtl-p2-arch-design` |
-| Phase 3 μArch incomplete | Block skill entry + guide to `rtl-p3-uarch-design` |
+| Phase 2 interface not locked | Reject skill invocation with error; guide user to `rtl-p2-arch-design` |
+| Phase 3 μArch incomplete | Reject skill invocation with error; guide user to `rtl-p3-uarch-design` |
 | Partial μArch completion | WARNING + create worktrees only for completed blocks |
 
 ### 8.2 Worktree/Team Failures
@@ -373,7 +420,7 @@ Per cycle end:
 
 | File | Change |
 |------|--------|
-| `domain-packages/video-codec/manifest.json` | Remove prediction-expert, add 3 new experts, register 14 knowledge files |
+| `domain-packages/video-codec/manifest.json` | Remove prediction-expert, add 3 new experts, register 14 knowledge files, update `standard_support_matrix.agent_coverage` arrays ("prediction" → "intra","me","mc"), update `agent_coordination` workflow references for phases 1, 4, 5 |
 | `skills/rtl-orchestrate/SKILL.md` | Add new skills/agents to routing table |
 | `skills/domain-consult/SKILL.md` | Split prediction routing → intra/ME/MC |
 | `hooks/rtl-orchestrator-inject.sh` | Auto-regenerated via `sync_orchestrator_inject.sh` |
@@ -385,3 +432,19 @@ Per cycle end:
 - `skills/rtl-dse/` — DSE skill unchanged
 - `agents/domain-expert.md` — Generic runner unchanged
 - 6+1 Phase pipeline structure — unchanged
+- `hooks/hooks.json` — no new hooks required; existing `stop-gate.sh` extended for ultraloop state detection
+
+### 9.6 Hook Implications
+
+| Existing Hook | Worktree Impact | Action Needed |
+|---------------|-----------------|---------------|
+| `rtl-edit-tracker.sh` | Edits in worktree paths may not be detected (tracks CWD-relative `.sv` files) | Verify worktree path detection; may need absolute path handling |
+| `stop-gate.sh` | Must recognize ultraloop state for 30-min auto-continue | Extend state file check to include `ultraloop-state.json` |
+| `rtl-verify-stop-gate.sh` | Worktree workers should bypass main-session verification gate | Already bypassed for team workers via `team-config.json` check |
+| `rtl-skill-completion-gate.sh` | `rtl-p4-block-parallel` needs completion criteria | Add entry to `skill-completion-criteria.json` (listed in 9.4) |
+
+Design freeze enforcement uses hash verification in skill logic (Section 7.5), consistent with
+the pattern where phase gates are hook-enforced but design-level invariants are skill-enforced.
+A dedicated freeze hook is not needed because the freeze boundary (interface files) does not
+change during normal block development — only ultraloop's autonomous improvement cycles risk
+accidental modification.
