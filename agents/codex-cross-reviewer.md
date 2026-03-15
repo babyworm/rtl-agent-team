@@ -307,7 +307,7 @@ Maintain `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json`:
 - `pending_confirmations`: items proposed (fix/rebuttal) in current round, awaiting Codex verdict in next round
 - `agreement_ledger`: ONLY confirmed-settled items (populated when Codex returns `accepted_fix`/`accepted_rebuttal` via `resolved_items`)
 - Items move from `pending_confirmations` → `agreement_ledger` only after Codex confirms. Items with `still_disagree` stay in active disputes.
-- `stability_streak`: consecutive rounds where Codex verdict == APPROVE + no new critical/major + no still_disagree
+- `stability_streak`: consecutive rounds where Codex verdict == APPROVE + no new critical/major + no still_disagree + no oscillation
 - `oscillation_count`: times a settled item was re-raised without new evidence
 
 ## Step 4: Subsequent Rounds (Round 2–5)
