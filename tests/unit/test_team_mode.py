@@ -1113,7 +1113,7 @@ class TestWorkerSubagentPattern:
             "rtl-coder", "lint-checker", "rtl-critic", "testbench-dev", "eda-runner",
             "sva-extractor", "cdc-checker", "protocol-checker",
             "func-verifier", "coverage-analyst", "perf-verifier",
-            # P1-P3 (14)
+            # P1-P3 (16)
             "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
             "vcodec-architecture-expert", "arch-designer", "power-analyzer",
             "vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert",
