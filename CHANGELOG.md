@@ -7,6 +7,15 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-03-15
+
+### Fixed
+- Clarified P3 gate iron vs zero-opens Glob comments (prevent LLM misread)
+- Added explicit trial promotion commit step with worktree_branch capture
+- Added critique closure verification (HIGH findings must be RESOLVED or JUSTIFIED)
+- Specified explicit phase paths in self-critique artifact reading
+
+
 ## [0.7.1] - 2026-03-15
 
 ### Added
