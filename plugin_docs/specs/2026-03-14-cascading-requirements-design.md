@@ -448,7 +448,7 @@ Additional verification:
   - Any implicit violations the compliance-checker missed?
 
 Stability criterion:
-  - 2+ consecutive rounds with verdict==APPROVE + no new findings + no still_disagree + no oscillation = stabilized
+  - 2+ consecutive rounds with verdict==APPROVE + no new critical/major findings + no still_disagree + no oscillation = stabilized
   - Single-round agreement is insufficient
 ```
 
