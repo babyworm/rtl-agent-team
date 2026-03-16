@@ -32,15 +32,22 @@ compliance_preprocess() {
 
   _CGU_CR_REPORT="$_CGU_STATE_DIR/compliance-report.json"
   if [ ! -f "$_CGU_CR_REPORT" ]; then
-    # No compliance report — clear any stale upstream_challenge strategy
+    # No compliance report — clear all stale compliance state
     # (report may have been removed after requirement amendment)
     _CGU_CUR_STRAT=$(jsonu_get_file_path_string "$_CGU_SKILL_STATE" "strategy")
-    if [ "$_CGU_CUR_STRAT" = "upstream_challenge" ]; then
+    _CGU_CUR_AUTH=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "compliance_authority")
+    if [ "$_CGU_CUR_STRAT" = "upstream_challenge" ] || { [ -n "$_CGU_CUR_AUTH" ] && [ "$_CGU_CUR_AUTH" -gt 0 ] 2>/dev/null; }; then
       if acquire_lock "$_CGU_SKILL_STATE"; then
-        sed 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/' \
-          "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
+        _CGU_NR_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-nr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.nr-sed")
+        printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' > "$_CGU_NR_SED"
+        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n' >> "$_CGU_NR_SED"
+        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n' >> "$_CGU_NR_SED"
+        printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_NR_SED"
+        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_NR_SED"
+        sed -f "$_CGU_NR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
           && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
           || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+        rm -f "$_CGU_NR_SED" 2>/dev/null
         release_lock "$_CGU_SKILL_STATE"
       fi
     fi
