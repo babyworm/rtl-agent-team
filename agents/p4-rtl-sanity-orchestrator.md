@@ -23,7 +23,7 @@ State contract:
 
 ## Workflow
 
-### Step 0: Context Bootstrap (MANDATORY)
+## Step 0: Context Bootstrap (MANDATORY)
 
 ```
 Read(".rtl-agent-team/state/spawn-context.json")
