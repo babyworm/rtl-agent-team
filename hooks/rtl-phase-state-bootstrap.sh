@@ -53,7 +53,7 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
         _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json"]'
         _cs_open="docs/phase-2-architecture/open-requirements.json"
         ;;
-      rtl-p4-implement|rtl-p4-implement-team|rtl-p4-rapid-impl|rtl-p4-block-parallel|rat-p4p5-impl-verify|rtl-p5-verify|rtl-p5-verify-team|rtl-p5a-functional-closure|rtl-p5b-silicon-validation)
+      rtl-p4-implement|rtl-p4-implement-team|rtl-p4-rapid-impl|rtl-p4-block-parallel|rat-p4p5-impl-verify|rtl-p5-verify|rtl-p5-verify-team|rtl-p5a-functional-closure|rtl-p5b-silicon-validation|rtl-p6-design-review)
         _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json","docs/phase-3-uarch/iron-requirements.json"]'
         _cs_open=""
         ;;
