@@ -115,6 +115,8 @@ try:
         print("")
     elif isinstance(node, bool):
         print("true" if node else "false")
+    elif isinstance(node, (list, dict)):
+        print(json.dumps(node, separators=(",", ":")))
     else:
         print(str(node))
 except Exception:
