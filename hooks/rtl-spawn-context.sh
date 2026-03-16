@@ -42,6 +42,7 @@ case "$SHORT_NAME" in
   p4s-refactor-orchestrator)      SKILL_NAME="rtl-p4s-refactor" ;;
   p4s-unit-test-orchestrator)     SKILL_NAME="rtl-p4s-unit-test" ;;
   p4-rtl-sanity-orchestrator)     SKILL_NAME="rtl-p4-rapid-impl" ;;
+  p4-block-parallel-coordinator)  SKILL_NAME="rtl-p4-block-parallel" ;;
   p5-verify-orchestrator)         SKILL_NAME="rtl-p5-verify" ;;
   p5a-functional-closure-orchestrator) SKILL_NAME="rtl-p5a-functional-closure" ;;
   p5b-silicon-validation-orchestrator) SKILL_NAME="rtl-p5b-silicon-validation" ;;

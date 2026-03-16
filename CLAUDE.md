@@ -136,7 +136,7 @@ rtl-agent-team/                          # Plugin root
 │   └── lib/                             #   Shared agent protocols (team-worker-preamble.md,
 │                                        #     team-worker-protocol.md, team-fallback.md,
 │                                        #     domain-expert-discovery-protocol.md,
-│                                        #     audit-output-protocol.md)
+│                                        #     audit-output-protocol.md, step0-template.md)
 ├── skills/                              # 91 skills: 52 action entry-points + 30 policies + 4 tool profiles + 4 conventions + 1 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-setup/templates/             #   Rules + guides deployed to user projects
