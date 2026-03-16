@@ -47,3 +47,5 @@ syn/
 │   └── cdc_constraints.sdc
 └── reports/          # Per-module results ({module}_synth.txt)
 ```
+
+<!-- rat-version: 0.7.7 -->

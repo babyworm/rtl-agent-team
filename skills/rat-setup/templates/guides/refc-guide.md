@@ -26,3 +26,5 @@ refc/
 ```bash
 gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/*.c -Iinclude
 ```
+
+<!-- rat-version: 0.7.7 -->

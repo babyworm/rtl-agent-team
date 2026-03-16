@@ -70,3 +70,5 @@ Phases 1, 2, and 3 use 3-round iterative reviews:
 - Round 2 (`*-review-r2.md`): Address R1 findings
 - Round 3 (`*-review-r3.md`): Final pass (mandatory)
 - Consolidated (`*-review.md`): Final verdict
+
+<!-- rat-version: 0.7.7 -->

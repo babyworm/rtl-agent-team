@@ -35,6 +35,17 @@ jsonu_detect_parser() {
     JSONU_PARSER_MODE="sed"
     JSONU_PY_BIN=""
   fi
+
+  # Test/debug override: force python parser path (even when jq is available).
+  if [ "${RTL_FORCE_PYTHON_PARSER:-0}" = "1" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+      JSONU_PARSER_MODE="python"
+      JSONU_PY_BIN="python3"
+    elif command -v python >/dev/null 2>&1; then
+      JSONU_PARSER_MODE="python"
+      JSONU_PY_BIN="python"
+    fi
+  fi
 }
 
 jsonu_path_to_jq_query() {

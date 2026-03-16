@@ -16,6 +16,7 @@ JSON_UTIL = HOOKS_DIR / "lib" / "json-util.sh"
 PARSER_ENVS = [
     pytest.param({}, id="default-parser"),
     pytest.param({"RTL_FORCE_JSON_FALLBACK": "1"}, id="sed-fallback"),
+    pytest.param({"RTL_FORCE_PYTHON_PARSER": "1"}, id="python-mode"),
 ]
 
 
@@ -305,3 +306,19 @@ class TestJsonuGetFilePathNum:
         result = _file_num(tmp_path, data, "phase.phase_step",
                            {"RTL_FORCE_JSON_FALLBACK": "1"})
         assert result == ""
+
+
+# ── TestPythonModeArraySerialization ────────────────────────────────────────
+
+
+class TestPythonModeArraySerialization:
+    """Tests for python parser mode array value handling."""
+
+    def test_python_mode_array_serialization(self, tmp_path):
+        """Python mode should return array values as valid JSON."""
+        env = {"RTL_FORCE_PYTHON_PARSER": "1"}
+        result = _file_string(tmp_path, {"items": ["a", "b", "c"]}, "items", env)
+        assert result == '["a","b","c"]' or result == '["a", "b", "c"]'
+        # Verify it is valid JSON
+        parsed = json.loads(result)
+        assert parsed == ["a", "b", "c"]

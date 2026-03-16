@@ -1,14 +1,23 @@
 """Tests for hook scripts — routing inject, edit tracker, and stop gates."""
 
+import datetime
 import json
 import os
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pytest
 
-from tests.conftest import HOOKS_DIR, run_hook
+from tests.conftest import HOOKS_DIR, REPO_ROOT, run_hook
+
+
+def _setup_marker(tmp_project):
+    """Create the .claude/rules/rtl-coding-conventions.md setup marker."""
+    rules_dir = tmp_project / ".claude" / "rules"
+    rules_dir.mkdir(parents=True, exist_ok=True)
+    (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
 
 
 class TestRtlOrchestratorInject:
@@ -226,7 +235,7 @@ class TestSessionScopedState:
 
     def _write_team_config(self, tmp_project, leader_id="leader-session-001"):
         """Create a team-config.json in the project state dir."""
-        import datetime
+
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         config = {
@@ -434,7 +443,7 @@ class TestRtlVerifyStopGate:
 
     def test_fallback_aggregated_in_team_mode(self, tmp_project):
         """In team mode, fallback file is included via glob aggregation."""
-        import datetime
+
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         config = {
             "team_mode": True,
@@ -1097,7 +1106,7 @@ class TestSkillCompletionGate:
                            pending="lint_pass, tb_updated, sim_pass"):
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
-        import datetime
+
         state = {
             "skill": skill,
             "active": True,
@@ -1184,7 +1193,7 @@ class TestSkillCompletionGate:
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         # Write a state with a timestamp 3 hours ago
-        import datetime
+
         old_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
         state = {
             "skill": "rtl-p4s-bugfix",
@@ -1276,11 +1285,6 @@ class TestSkillActivation:
 
     HOOK = HOOKS_DIR / "rtl-skill-activation.sh"
 
-    def _setup_marker(self, tmp_project):
-        rules_dir = tmp_project / ".claude" / "rules"
-        rules_dir.mkdir(parents=True, exist_ok=True)
-        (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
-
     def test_non_rtl_skill_ignored(self, tmp_project):
         """Non rtl-agent-team skills should be ignored."""
         stdin = {"cwd": str(tmp_project), "skill": "oh-my-claudecode:ultrawork"}
@@ -1291,7 +1295,7 @@ class TestSkillActivation:
 
     def test_rtl_skill_creates_state(self, tmp_project):
         """rtl-agent-team skill with criteria should create state file."""
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         # Create criteria config
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
@@ -1309,7 +1313,7 @@ class TestSkillActivation:
 
     def test_rtl_skill_no_criteria_no_state(self, tmp_project):
         """rtl-agent-team skill without criteria in config should not create state."""
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         criteria = {"rtl-p4s-bugfix": "lint_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
@@ -1329,7 +1333,7 @@ class TestSkillActivation:
 
     def test_different_skill_state_not_overridden(self, tmp_project):
         """G6: Different skill invocation should NOT override existing state."""
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
@@ -1347,7 +1351,7 @@ class TestSkillActivation:
 
     def test_same_skill_reinvocation_resets_counter(self, tmp_project):
         """G6: Re-invoking the same skill should reset iteration counter."""
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
@@ -1365,7 +1369,7 @@ class TestSkillActivation:
 
     def test_activation_message(self, tmp_project):
         """Activation should include skill name in additionalContext."""
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
@@ -1405,7 +1409,7 @@ class TestSkillActivation:
         assert run_sim.read_text() == "#!/usr/bin/env bash\necho custom\n"
 
     def test_parser_uses_top_level_skill_key(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
@@ -1430,13 +1434,8 @@ class TestPhaseStateBootstrap:
 
     HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
 
-    def _setup_marker(self, tmp_project):
-        rules_dir = tmp_project / ".claude" / "rules"
-        rules_dir.mkdir(parents=True, exist_ok=True)
-        (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
-
     def test_non_target_skill_ignored(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-implement"})
         assert result["continue"] is True
         assert not (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
@@ -1454,7 +1453,7 @@ class TestPhaseStateBootstrap:
         ],
     )
     def test_target_skill_bootstraps_state(self, tmp_project, skill_name, state_file, phase):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill_name})
         assert result["continue"] is True
 
@@ -1465,7 +1464,7 @@ class TestPhaseStateBootstrap:
         assert "{{TIMESTAMP}}" not in state_path.read_text()
 
     def test_existing_state_not_overwritten(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         state_path = tmp_project / ".rtl-agent-team" / "state" / "p4-state.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text('{"phase":"p4","status":"custom"}')
@@ -1475,7 +1474,7 @@ class TestPhaseStateBootstrap:
         assert json.loads(state_path.read_text())["status"] == "custom"
 
     def test_p5b_blocks_without_p5a_state(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         assert result["continue"] is False
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
@@ -1484,7 +1483,7 @@ class TestPhaseStateBootstrap:
         assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
 
     def test_p5b_blocks_when_p5a_verdict_not_pass(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         p5a_state = tmp_project / ".rtl-agent-team" / "state" / "p5a-state.json"
         p5a_state.parent.mkdir(parents=True, exist_ok=True)
         p5a_state.write_text(
@@ -1498,7 +1497,7 @@ class TestPhaseStateBootstrap:
         assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
 
     def test_p5b_bootstraps_when_p5a_pass(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         p5a_state = tmp_project / ".rtl-agent-team" / "state" / "p5a-state.json"
         p5a_state.parent.mkdir(parents=True, exist_ok=True)
         p5a_state.write_text(
@@ -1512,7 +1511,7 @@ class TestPhaseStateBootstrap:
         assert json.loads(state_path.read_text())["phase"] == "p5b"
 
     def test_p5b_blocks_when_rtl_changed_after_p5a_pass(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
 
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
@@ -1534,7 +1533,7 @@ class TestPhaseStateBootstrap:
         assert not (state_dir / "p5b-state.json").exists()
 
     def test_p5b_allows_when_p5a_newer_than_tracked_rtl_changes(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
 
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
@@ -1554,7 +1553,7 @@ class TestPhaseStateBootstrap:
         assert (state_dir / "p5b-state.json").exists()
 
     def test_missing_json_parser_emits_setup_hint_with_fallback(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         result = run_hook(
             self.HOOK,
             {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"},
@@ -1566,7 +1565,7 @@ class TestPhaseStateBootstrap:
         assert "/rtl-agent-team:rat-setup" in ctx
 
     def test_parser_uses_top_level_skill_key(self, tmp_project):
-        self._setup_marker(tmp_project)
+        _setup_marker(tmp_project)
         raw_input = json.dumps(
             {
                 "cwd": str(tmp_project),
@@ -1622,7 +1621,7 @@ class TestHookConcurrency:
 
     def test_concurrent_skill_completion_gate_counter_accuracy(self, tmp_project):
         """3 parallel skill-completion-gate calls → iteration increments correctly."""
-        import datetime
+
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         state = {
@@ -1661,7 +1660,7 @@ class TestTeamAwarenessGuard:
     }
 
     def _write_team_config(self, tmp_project, team_mode=True, leader_id="leader-session-123"):
-        import datetime
+
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         config = {
@@ -1748,7 +1747,7 @@ class TestTeamAwarenessGuard:
 
     def test_worker_bypasses_skill_completion(self, tmp_project):
         """Worker in team mode → skill completion gate allows exit."""
-        import datetime
+
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         skill_state = {
@@ -1794,7 +1793,7 @@ class TestTeamAwarenessGuard:
 
     def test_leader_session_still_blocked_by_skill_completion(self, tmp_project):
         """Leader session in team mode → skill completion gate still blocks."""
-        import datetime
+
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         skill_state = {
@@ -1945,7 +1944,7 @@ class TestSedFallbackContract:
 
     def test_skill_completion_fallback_blocks_active(self, tmp_project):
         """Active skill state → continue=false under sed fallback."""
-        import datetime
+
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state = {
             "skill": "rtl-p4s-bugfix",
@@ -1968,7 +1967,7 @@ class TestSedFallbackContract:
 
     def test_skill_completion_fallback_allows_complete(self, tmp_project):
         """all_complete=true → continue=true under sed fallback."""
-        import datetime
+
         state_dir = tmp_project / ".rtl-agent-team" / "state"
         state = {
             "skill": "rtl-p4s-bugfix",
@@ -2599,6 +2598,7 @@ class TestSpawnContextStructuralContracts:
         "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
         "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
         "dse-orchestrator": "rat-dse",
+        "review-refactor-orchestrator": "rtl-review-refactor",
         # Team orchestrators → team skills (1:1)
         "p1-research-team-orchestrator": "rtl-p1-research-team",
         "p2-arch-team-orchestrator": "rtl-p2-arch-team",
@@ -2764,3 +2764,275 @@ class TestTeamProgressHook:
 
         updated = json.loads((state_dir / "team-progress.json").read_text())
         assert updated["last_updated"] != "2020-01-01T00:00:00Z"
+
+
+# ── P1-1 Mapping Drift Detection ────────────────────────────────────────────
+
+
+class TestMappingSyncParity:
+    """Detect drift between phase mapper, compliance bootstrap, agent mappings,
+    test expectations, and skill-completion-criteria.json."""
+
+    SPAWN_CTX_UTIL = HOOKS_DIR / "lib" / "spawn-context-util.sh"
+    BOOTSTRAP_HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
+    SPAWN_HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
+    CRITERIA_FILE = REPO_ROOT / "skill-completion-criteria.json"
+    SKILLS_DIR = REPO_ROOT / "skills"
+
+    # ── Helpers: extract sets from shell case statements ──────────
+
+    @staticmethod
+    def _extract_phase_mapper_skills(path):
+        """Parse sctx_skill_to_phase() case branches from spawn-context-util.sh.
+        Returns a dict {skill_name: phase_int}."""
+        content = path.read_text()
+        # Extract the case block for sctx_skill_to_phase
+        m = re.search(
+            r'sctx_skill_to_phase\(\)\s*\{.*?case\s+"\$1"\s+in(.*?)\*\)\s+echo\s+""\s*;;',
+            content, re.DOTALL,
+        )
+        assert m, "Could not find sctx_skill_to_phase case block"
+        block = m.group(1)
+        result = {}
+        for line in block.splitlines():
+            line = line.strip()
+            # Match patterns like: skill1|skill2) echo N ;;
+            branch = re.match(r'^([a-z0-9|_-]+)\)\s+echo\s+(\d+)\s*;;', line)
+            if branch:
+                skills_str, phase = branch.group(1), int(branch.group(2))
+                for skill in skills_str.split("|"):
+                    skill = skill.strip()
+                    if skill:
+                        result[skill] = phase
+        return result
+
+    @staticmethod
+    def _extract_compliance_bootstrap_skills(path):
+        """Parse the compliance state bootstrap case in rtl-phase-state-bootstrap.sh.
+        Returns a set of skill short-names that have compliance entries."""
+        content = path.read_text()
+        # Find the case "$SHORT_NAME" block inside the compliance bootstrap section
+        m = re.search(
+            r'case\s+"\$SHORT_NAME"\s+in\s*\n(.*?)esac',
+            content, re.DOTALL,
+        )
+        assert m, "Could not find compliance bootstrap case block"
+        block = m.group(1)
+        skills = set()
+        for line in block.splitlines():
+            line = line.strip()
+            # Match branch heads like: p2-arch-design|rtl-p2-arch-team)
+            branch = re.match(r'^([a-z0-9|_-]+)\)', line)
+            if branch:
+                for skill in branch.group(1).split("|"):
+                    skill = skill.strip()
+                    if skill and skill != "*":
+                        skills.add(skill)
+        return skills
+
+    @staticmethod
+    def _extract_agent_mappings(path):
+        """Parse agent-to-skill case branches from rtl-spawn-context.sh.
+        Returns a dict {agent_short_name: skill_name}."""
+        content = path.read_text()
+        # Find the case "$SHORT_NAME" block with agent mappings
+        m = re.search(
+            r'SKILL_NAME=""\s*\ncase\s+"\$SHORT_NAME"\s+in(.*?)\*\)',
+            content, re.DOTALL,
+        )
+        assert m, "Could not find agent mapping case block"
+        block = m.group(1)
+        result = {}
+        for line in block.splitlines():
+            line = line.strip()
+            # Match: agent-name) SKILL_NAME="skill-name" ;;
+            branch = re.match(
+                r'^([a-z0-9_-]+)\)\s+SKILL_NAME="([^"]+)"\s*;;', line
+            )
+            if branch:
+                result[branch.group(1)] = branch.group(2)
+        return result
+
+    # ── Tests ─────────────────────────────────────────────────────
+
+    def test_compliance_bootstrap_subset_of_phase_mapper(self):
+        """Every skill in compliance bootstrap must exist in phase mapper."""
+        phase_mapper = self._extract_phase_mapper_skills(self.SPAWN_CTX_UTIL)
+        bootstrap_skills = self._extract_compliance_bootstrap_skills(
+            self.BOOTSTRAP_HOOK
+        )
+        missing = bootstrap_skills - set(phase_mapper.keys())
+        assert not missing, (
+            f"Compliance bootstrap has skills not in phase mapper: {sorted(missing)}"
+        )
+
+    def test_agent_mapping_skills_in_phase_mapper(self):
+        """Every target skill in agent mapping must exist in phase mapper."""
+        phase_mapper = self._extract_phase_mapper_skills(self.SPAWN_CTX_UTIL)
+        agent_mappings = self._extract_agent_mappings(self.SPAWN_HOOK)
+        target_skills = set(agent_mappings.values())
+        missing = target_skills - set(phase_mapper.keys())
+        assert not missing, (
+            f"Agent mapping targets skills not in phase mapper: {sorted(missing)}"
+        )
+
+    def test_expected_skill_phases_matches_phase_mapper(self):
+        """EXPECTED_SKILL_PHASES in TestSpawnContextStructuralContracts must
+        match the actual phase mapper exactly."""
+        actual = self._extract_phase_mapper_skills(self.SPAWN_CTX_UTIL)
+        expected = TestSpawnContextStructuralContracts.EXPECTED_SKILL_PHASES
+        # Check both directions
+        missing_from_test = set(actual.keys()) - set(expected.keys())
+        extra_in_test = set(expected.keys()) - set(actual.keys())
+        assert not missing_from_test, (
+            f"Phase mapper has skills not in EXPECTED_SKILL_PHASES: {sorted(missing_from_test)}"
+        )
+        assert not extra_in_test, (
+            f"EXPECTED_SKILL_PHASES has skills not in phase mapper: {sorted(extra_in_test)}"
+        )
+        for skill in actual:
+            assert actual[skill] == expected[skill], (
+                f"Phase mismatch for {skill}: mapper={actual[skill]}, test={expected[skill]}"
+            )
+
+    def test_expected_agent_mappings_matches_spawn_context(self):
+        """EXPECTED_AGENT_MAPPINGS in TestSpawnContextStructuralContracts must
+        match the actual agent mapping in rtl-spawn-context.sh exactly."""
+        actual = self._extract_agent_mappings(self.SPAWN_HOOK)
+        expected = TestSpawnContextStructuralContracts.EXPECTED_AGENT_MAPPINGS
+        missing_from_test = set(actual.keys()) - set(expected.keys())
+        extra_in_test = set(expected.keys()) - set(actual.keys())
+        assert not missing_from_test, (
+            f"Spawn context has agents not in EXPECTED_AGENT_MAPPINGS: {sorted(missing_from_test)}"
+        )
+        assert not extra_in_test, (
+            f"EXPECTED_AGENT_MAPPINGS has agents not in spawn context: {sorted(extra_in_test)}"
+        )
+        for agent in actual:
+            assert actual[agent] == expected[agent], (
+                f"Skill mismatch for {agent}: spawn-context={actual[agent]}, "
+                f"test={expected[agent]}"
+            )
+
+    def test_completion_criteria_skills_exist(self):
+        """Every key in skill-completion-criteria.json (except _comment) must
+        have a corresponding skills/{name}/SKILL.md."""
+        criteria = json.loads(self.CRITERIA_FILE.read_text())
+        missing = []
+        for skill_name in criteria:
+            if skill_name == "_comment":
+                continue
+            skill_md = self.SKILLS_DIR / skill_name / "SKILL.md"
+            if not skill_md.exists():
+                missing.append(skill_name)
+        assert not missing, (
+            f"Completion criteria references skills without SKILL.md: {sorted(missing)}"
+        )
+
+
+# ── P2-5 Hook Integration Chain ─────────────────────────────────────────────
+
+
+class TestHookIntegrationChain:
+    """Test the multi-hook chain: skill-activation -> phase-state-bootstrap
+    -> spawn-context for a full agent spawn lifecycle."""
+
+    ACTIVATION_HOOK = HOOKS_DIR / "rtl-skill-activation.sh"
+    BOOTSTRAP_HOOK = HOOKS_DIR / "rtl-phase-state-bootstrap.sh"
+    SPAWN_HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
+
+    def _setup_project(self, tmp_project):
+        """Set up a project with setup marker and completion criteria."""
+        rules = tmp_project / ".claude" / "rules"
+        rules.mkdir(parents=True, exist_ok=True)
+        (rules / "rtl-coding-conventions.md").touch()
+
+    def test_full_chain_p4_implement(self, tmp_project):
+        """Skill activation -> bootstrap -> spawn context produces correct manifest."""
+        self._setup_project(tmp_project)
+
+        # Step 1: skill activation
+        result1 = run_hook(
+            self.ACTIVATION_HOOK,
+            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+            env={"CLAUDE_PLUGIN_ROOT": str(REPO_ROOT)},
+        )
+        assert result1.get("continue") is True
+
+        # Step 2: phase state bootstrap
+        result2 = run_hook(
+            self.BOOTSTRAP_HOOK,
+            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+        )
+        assert result2.get("continue") is True
+
+        # Step 3: spawn context for orchestrator
+        result3 = run_hook(
+            self.SPAWN_HOOK,
+            {
+                "subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+                "cwd": str(tmp_project),
+            },
+        )
+        assert result3.get("continue") is True
+
+        # Verify spawn-context.json
+        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        assert mpath.exists(), "spawn-context.json not written"
+        manifest = json.loads(mpath.read_text())
+
+        assert manifest["pipeline"]["current_phase"] == 4
+        assert manifest["setup"]["completed"] is True
+        assert isinstance(manifest["upstream_iron"], list)
+        assert len(manifest["upstream_iron"]) == 3
+        for path in manifest["upstream_iron"]:
+            assert "iron-requirements.json" in path
+
+
+# ── P2-6 Flock Util Stale Lock ──────────────────────────────────────────────
+
+
+class TestFlockUtilStaleLock:
+    """Tests for flock-util.sh stale lock detection and cleanup."""
+
+    FLOCK_UTIL = HOOKS_DIR / "lib" / "flock-util.sh"
+
+    def _run_flock(self, script, env=None):
+        """Source flock-util.sh and run a shell snippet."""
+        import subprocess
+
+        preamble = f'. "{self.FLOCK_UTIL}"\n'
+        merged_env = {**os.environ, **(env or {})}
+        result = subprocess.run(
+            ["sh", "-c", preamble + script],
+            capture_output=True,
+            text=True,
+            env=merged_env,
+            timeout=15,
+        )
+        return result.stdout.strip(), result.stderr.strip(), result.returncode
+
+    def test_stale_lock_nonexistent_pid(self, tmp_path):
+        """Lock dir with non-existent PID should be reclaimed by new acquire."""
+        resource = tmp_path / "test-resource"
+        lock_dir = tmp_path / "test-resource.lock"
+        lock_dir.mkdir()
+        pid_file = lock_dir / "pid"
+        # Use a PID that almost certainly does not exist
+        pid_file.write_text("999999999")
+
+        stdout, _, rc = self._run_flock(
+            f'FLOCK_TIMEOUT=3 acquire_lock "{resource}" && echo ACQUIRED || echo FAILED'
+        )
+        assert "ACQUIRED" in stdout
+
+    def test_lock_dir_cleanup_on_release(self, tmp_path):
+        """After release_lock, the lock directory should be removed."""
+        resource = tmp_path / "test-resource"
+
+        stdout, _, rc = self._run_flock(
+            f'acquire_lock "{resource}" && '
+            f'release_lock "{resource}" && '
+            f'[ ! -d "{resource}.lock" ] && echo CLEANED || echo REMAINS'
+        )
+        assert "CLEANED" in stdout

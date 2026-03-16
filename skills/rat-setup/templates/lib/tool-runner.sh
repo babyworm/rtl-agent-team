@@ -113,3 +113,5 @@ tool_runner_cleanup() {
   fi
   rm -f "$_TOOL_RUNNER_STATE_FILE"
 }
+
+# rat-version: 0.7.7

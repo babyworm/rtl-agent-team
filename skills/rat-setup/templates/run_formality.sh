@@ -164,3 +164,5 @@ echo "Replay:   $REPLAY_SCRIPT"
 echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
+
+# rat-version: 0.7.7

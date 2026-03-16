@@ -14,3 +14,5 @@ paths:
 
 D2: architecture diagrams (`.d2` code blocks), per-module internal structure.
 Mermaid: FSM (`stateDiagram-v2`), data flow (`flowchart`), sequences (`sequenceDiagram`).
+
+<!-- rat-version: 0.7.7 -->

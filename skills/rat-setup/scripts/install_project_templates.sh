@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # install_project_templates.sh — bootstrap executable templates into project workspace
-# Usage: install_project_templates.sh [workspace]
+# Usage: install_project_templates.sh [--update] [workspace]
 #
-# Non-destructive policy:
+# Non-destructive policy (default):
 # - Create missing directories
 # - Copy template scripts only when destination file does not exist
 # - Never overwrite user-modified scripts
+#
+# With --update:
+# - Overwrite destination if source has a newer rat-version marker
+# - Files without version markers are never overwritten
 
 set -euo pipefail
+
+UPDATE_MODE=0
+if [[ "${1:-}" = "--update" ]]; then
+  UPDATE_MODE=1
+  shift
+fi
 
 WORKSPACE="${1:-$(pwd)}"
 if [[ ! -d "$WORKSPACE" ]]; then
@@ -20,6 +30,12 @@ PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 CREATED=0
 SKIPPED=0
+UPDATED=0
+
+# Extract rat-version marker from a file. Returns empty if not found.
+_extract_rat_version() {
+  grep -o 'rat-version: [0-9.]*' "$1" 2>/dev/null | head -n1 | sed 's/rat-version: //' || true
+}
 
 install_script_if_missing() {
   local src="$1"
@@ -28,6 +44,17 @@ install_script_if_missing() {
 
   mkdir -p "$(dirname "$dst")"
   if [[ -f "$dst" ]]; then
+    if [[ "$UPDATE_MODE" -eq 1 ]]; then
+      local src_ver dst_ver
+      src_ver=$(_extract_rat_version "$src")
+      dst_ver=$(_extract_rat_version "$dst")
+      if [[ -n "$src_ver" && -n "$dst_ver" && "$src_ver" != "$dst_ver" ]]; then
+        cp "$src" "$dst"
+        chmod "$mode" "$dst"
+        UPDATED=$((UPDATED + 1))
+        return
+      fi
+    fi
     SKIPPED=$((SKIPPED + 1))
     return
   fi
@@ -72,4 +99,4 @@ install_script_if_missing \
   "$WORKSPACE/syn/scripts/run_conformal.sh" \
   755
 
-echo "SETUP_TEMPLATE_INSTALL created=$CREATED skipped=$SKIPPED workspace=$WORKSPACE"
+echo "SETUP_TEMPLATE_INSTALL created=$CREATED updated=$UPDATED skipped=$SKIPPED workspace=$WORKSPACE"

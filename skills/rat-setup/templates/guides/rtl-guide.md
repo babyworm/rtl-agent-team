@@ -35,3 +35,5 @@ Every RTL file modification requires this flow:
 
 Detailed coding rules: `.claude/rules/rtl-coding-conventions.md`
 Verification gate rules: `.claude/rules/rtl-verification-gate.md`
+
+<!-- rat-version: 0.7.7 -->

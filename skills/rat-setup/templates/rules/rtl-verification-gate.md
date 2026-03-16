@@ -28,3 +28,5 @@ paths:
 - Non-functional change waiver: `touch .rtl-agent-team/state/rtl-verify-waiver`
 
 Hook enforcement: `PostToolUse:Edit/Write` tracks .sv modifications; `Stop` hook blocks exit without verification.
+
+<!-- rat-version: 0.7.7 -->

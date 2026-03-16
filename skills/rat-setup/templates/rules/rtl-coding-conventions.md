@@ -49,3 +49,5 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 - `systemverilog-assertion`: SVA patterns, bind files, SymbiYosys integration, assume/assert/cover
 - `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
 - `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
+
+<!-- rat-version: 0.7.7 -->

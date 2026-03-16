@@ -171,6 +171,48 @@ jsonu_detect_parser
         )
         assert any("042_agent-x.md" in f.name for f in files)
 
+    def test_validate_session_id_rejects_path_traversal(self, tmp_project):
+        """Path traversal attempts like ../../etc, .., a/b/c should be sanitized."""
+        for bad_id in ["../../etc", "..", "a/b/c", "../passwd"]:
+            stdout, _, rc = self._source_and_run(
+                tmp_project,
+                f'RESULT=$(_audit_validate_session_id "{bad_id}") && '
+                f'[ "$RESULT" != "{bad_id}" ] && echo REJECTED || echo ACCEPTED',
+            )
+            assert "REJECTED" in stdout, (
+                f"Path traversal ID {bad_id!r} was not rejected"
+            )
+
+    def test_validate_session_id_rejects_hidden(self, tmp_project):
+        """Hidden directory names like .hidden should be sanitized."""
+        stdout, _, rc = self._source_and_run(
+            tmp_project,
+            'RESULT=$(_audit_validate_session_id ".hidden") && '
+            '[ "$RESULT" != ".hidden" ] && echo REJECTED || echo ACCEPTED',
+        )
+        assert "REJECTED" in stdout
+
+    def test_validate_session_id_rejects_empty(self, tmp_project):
+        """Empty string should be sanitized to a generated fallback."""
+        stdout, _, rc = self._source_and_run(
+            tmp_project,
+            'RESULT=$(_audit_validate_session_id "") && '
+            '[ -n "$RESULT" ] && echo NONEMPTY || echo EMPTY',
+        )
+        assert "NONEMPTY" in stdout
+
+    def test_validate_session_id_accepts_valid(self, tmp_project):
+        """Normal alphanumeric IDs should pass through unchanged."""
+        for valid_id in ["abc-123", "session_2024", "test-run-42", "A1B2C3"]:
+            stdout, _, rc = self._source_and_run(
+                tmp_project,
+                f'RESULT=$(_audit_validate_session_id "{valid_id}") && '
+                f'[ "$RESULT" = "{valid_id}" ] && echo PASS || echo FAIL',
+            )
+            assert "PASS" in stdout, (
+                f"Valid session ID {valid_id!r} was not accepted"
+            )
+
     def test_prune_removes_old_sessions(self, tmp_project):
         audit_dir = tmp_project / ".rtl-agent-team" / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)

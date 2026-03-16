@@ -1,0 +1,82 @@
+#!/bin/sh
+# compliance-gate-util.sh — Compliance-pass auto-resolution for skill completion gate.
+# Requires: json-util.sh and flock-util.sh sourced and parser detected.
+#
+# Usage:
+#   . "$SCRIPT_DIR/lib/compliance-gate-util.sh"
+#   compliance_preprocess "$SKILL_STATE" "$STATE_DIR" "$PENDING"
+#   PENDING="$_CGU_PENDING"           # possibly updated pending string
+#   # $_CGU_DYN_MSG is set if compliance FAIL produced a dynamic prompt addition
+
+# compliance_preprocess <skill_state_path> <state_dir> <pending>
+#
+# Performs compliance-pass detection and auto-resolution:
+# - If compliance-report.json exists with PASS verdict, removes "compliance-pass" from pending
+# - If compliance-report.json exists with non-PASS verdict, injects authority-specific budgets
+#   and dynamic prompt into the skill state file
+# - If infeasibility is detected and iteration exceeds primary budget, sets upstream_challenge strategy
+#
+# Output variables (set after call):
+#   _CGU_PENDING  — the (possibly modified) pending string
+#   _CGU_DYN_MSG  — dynamic prompt message from compliance FAIL (empty if PASS or no report)
+compliance_preprocess() {
+  _CGU_SKILL_STATE="$1"
+  _CGU_STATE_DIR="$2"
+  _CGU_PENDING="$3"
+  _CGU_DYN_MSG=""
+
+  # Only process if "compliance-pass" is in the pending criteria
+  if ! echo "$_CGU_PENDING" | grep -q "compliance-pass"; then
+    return 0
+  fi
+
+  _CGU_CR_REPORT="$_CGU_STATE_DIR/compliance-report.json"
+  if [ ! -f "$_CGU_CR_REPORT" ]; then
+    return 0
+  fi
+
+  _CGU_CR_VERDICT=$(jsonu_get_file_path_string "$_CGU_CR_REPORT" "summary.verdict")
+  if [ "$_CGU_CR_VERDICT" = "PASS" ]; then
+    # Auto-satisfy compliance-pass by removing it from pending
+    _CGU_NEW_PENDING=$(echo "$_CGU_PENDING" | sed 's/compliance-pass//' | sed 's/||/|/g' | sed 's/^|//' | sed 's/|$//')
+    if acquire_lock "$_CGU_SKILL_STATE"; then
+      sed "s|\"pending\"[[:space:]]*:[[:space:]]*\"[^\"]*\"|\"pending\": \"$_CGU_NEW_PENDING\"|" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
+        && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
+        || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      release_lock "$_CGU_SKILL_STATE"
+    fi
+    _CGU_PENDING="$_CGU_NEW_PENDING"
+  else
+    # Compliance FAIL — inject authority-specific dynamic prompt
+    _CGU_CR_AUTH=$(jsonu_get_file_path_num "$_CGU_CR_REPORT" "summary.max_violation_authority")
+    _CGU_CR_INFEASIBLE=$(jsonu_get_file_path_string "$_CGU_CR_REPORT" "summary.infeasibility_detected")
+    [ -z "$_CGU_CR_AUTH" ] && _CGU_CR_AUTH=3
+    # Compute authority-specific budgets
+    case "$_CGU_CR_AUTH" in
+      1) _CGU_CR_TAG="[CRITICAL — UPSTREAM REQUIREMENT VIOLATION]"; _CGU_CR_MAX_P=3; _CGU_CR_MAX_F=2 ;;
+      2) _CGU_CR_TAG="[WARNING — HIGH]"; _CGU_CR_MAX_P=4; _CGU_CR_MAX_F=3 ;;
+      *) _CGU_CR_TAG="[WARNING]"; _CGU_CR_MAX_P=5; _CGU_CR_MAX_F=5 ;;
+    esac
+    _CGU_DYN_MSG="$_CGU_CR_TAG Compliance violation (authority=$_CGU_CR_AUTH). Fix violated requirements before proceeding. Re-read upstream iron-requirements.json."
+    # Write authority, budgets, and dynamic prompt via sed
+    if acquire_lock "$_CGU_SKILL_STATE"; then
+      _CGU_CR_SED=$(mktemp "${TMPDIR:-/tmp}/cr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.cr-sed")
+      printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,]*/"compliance_authority": %s/\n' "$_CGU_CR_AUTH" > "$_CGU_CR_SED"
+      printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,]*/"max_primary": %s/\n' "$_CGU_CR_MAX_P" >> "$_CGU_CR_SED"
+      printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,]*/"max_fallback": %s/\n' "$_CGU_CR_MAX_F" >> "$_CGU_CR_SED"
+      printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CGU_DYN_MSG" | sed 's/[&/\]/\\&/g')" >> "$_CGU_CR_SED"
+      # If infeasibility validated AND past primary stage, switch strategy
+      # Read current iteration to enforce "after Primary exhaustion" rule
+      _CGU_CR_ITER=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "iteration")
+      _CGU_CR_ITER=${_CGU_CR_ITER:-1}
+      if [ "$_CGU_CR_INFEASIBLE" = "true" ] && [ "$_CGU_CR_ITER" -gt "$_CGU_CR_MAX_P" ]; then
+        printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "upstream_challenge"/\n' >> "$_CGU_CR_SED"
+      fi
+      sed -f "$_CGU_CR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
+        && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
+        || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      rm -f "$_CGU_CR_SED" 2>/dev/null
+      release_lock "$_CGU_SKILL_STATE"
+    fi
+  fi
+}

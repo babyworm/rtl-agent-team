@@ -142,3 +142,5 @@ top_module -> sub_b: ctrl
 ````
 
 **Tool install**: D2: `curl -fsSL https://d2lang.com/install.sh | sh -s --` or `brew install d2`. Mermaid: `npm install -g @mermaid-js/mermaid-cli`
+
+<!-- rat-version: 0.7.7 -->
