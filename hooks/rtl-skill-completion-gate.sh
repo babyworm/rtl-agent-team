@@ -61,6 +61,11 @@ PENDING=$(jsonu_get_file_path_string "$SKILL_STATE" "pending")
 compliance_preprocess "$SKILL_STATE" "$STATE_DIR" "$PENDING"
 PENDING="$_CGU_PENDING"
 
+# Re-check completion after compliance preprocessing may have cleared last criterion
+if [ -z "$PENDING" ] || [ "$PENDING" = "null" ]; then
+  COMPLETED="true"
+fi
+
 # If all complete, clean up and allow exit
 if [ "$COMPLETED" = "true" ]; then
   rm -f "$SKILL_STATE"
