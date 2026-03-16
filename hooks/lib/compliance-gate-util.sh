@@ -38,11 +38,17 @@ compliance_preprocess() {
   _CGU_CR_VERDICT=$(jsonu_get_file_path_string "$_CGU_CR_REPORT" "summary.verdict")
   if [ "$_CGU_CR_VERDICT" = "PASS" ]; then
     # Auto-satisfy compliance-pass by removing it from pending
+    # Also clear upstream_challenge strategy if previously latched (compliance now PASS)
     _CGU_NEW_PENDING=$(echo "$_CGU_PENDING" | sed 's/compliance-pass//' | sed 's/||/|/g' | sed 's/^|//' | sed 's/|$//')
     if acquire_lock "$_CGU_SKILL_STATE"; then
-      sed "s|\"pending\"[[:space:]]*:[[:space:]]*\"[^\"]*\"|\"pending\": \"$_CGU_NEW_PENDING\"|" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
+      _CGU_PASS_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-pass-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.pass-sed")
+      printf 's|"pending"[[:space:]]*:[[:space:]]*"[^"]*"|"pending": "%s"|\n' "$_CGU_NEW_PENDING" > "$_CGU_PASS_SED"
+      # Reset upstream_challenge back to normal ladder strategy on compliance PASS
+      printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' >> "$_CGU_PASS_SED"
+      sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
         && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
         || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      rm -f "$_CGU_PASS_SED" 2>/dev/null
       release_lock "$_CGU_SKILL_STATE"
     fi
     _CGU_PENDING="$_CGU_NEW_PENDING"

@@ -1,0 +1,3 @@
+# ShellCheck configuration for rtl-agent-team hooks
+# Hooks use dynamic source paths via $SCRIPT_DIR which ShellCheck cannot resolve
+disable=SC1090,SC1091
