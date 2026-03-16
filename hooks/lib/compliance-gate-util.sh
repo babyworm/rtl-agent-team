@@ -25,14 +25,12 @@ compliance_preprocess() {
   _CGU_PENDING="$3"
   _CGU_DYN_MSG=""
 
-  # Only process if "compliance-pass" is in the pending criteria
-  if ! echo "$_CGU_PENDING" | grep -q "compliance-pass"; then
-    return 0
-  fi
+  _CGU_HAS_COMPLIANCE=$(echo "$_CGU_PENDING" | grep -c "compliance-pass" 2>/dev/null || true)
 
   _CGU_CR_REPORT="$_CGU_STATE_DIR/compliance-report.json"
   if [ ! -f "$_CGU_CR_REPORT" ]; then
     # No compliance report — clear all stale compliance state
+    # (runs even if compliance-pass is not in pending, to catch stale overrides)
     # (report may have been removed after requirement amendment)
     _CGU_CUR_STRAT=$(jsonu_get_file_path_string "$_CGU_SKILL_STATE" "strategy")
     _CGU_CUR_AUTH=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "compliance_authority")
@@ -54,6 +52,12 @@ compliance_preprocess() {
         release_lock "$_CGU_SKILL_STATE"
       fi
     fi
+    return 0
+  fi
+
+  # Skip PASS/FAIL processing if compliance-pass is not an active criterion
+  # (but stale cleanup above already ran regardless)
+  if [ "$_CGU_HAS_COMPLIANCE" = "0" ]; then
     return 0
   fi
 
