@@ -42,9 +42,13 @@ compliance_preprocess() {
     _CGU_NEW_PENDING=$(echo "$_CGU_PENDING" | sed 's/compliance-pass//' | sed 's/||/|/g' | sed 's/^|//' | sed 's/|$//')
     if acquire_lock "$_CGU_SKILL_STATE"; then
       _CGU_PASS_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-pass-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.pass-sed")
-      printf 's|"pending"[[:space:]]*:[[:space:]]*"[^"]*"|"pending": "%s"|\n' "$_CGU_NEW_PENDING" > "$_CGU_PASS_SED"
+      # Use # as sed delimiter — pending contains | which conflicts with | delimiter
+      printf 's#"pending"[[:space:]]*:[[:space:]]*"[^"]*"#"pending": "%s"#\n' "$_CGU_NEW_PENDING" > "$_CGU_PASS_SED"
       # Reset upstream_challenge back to normal ladder strategy on compliance PASS
       printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' >> "$_CGU_PASS_SED"
+      # Clear stale compliance overrides (authority-specific budgets + dynamic prompt)
+      printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_PASS_SED"
+      printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_PASS_SED"
       sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
         && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
         || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
