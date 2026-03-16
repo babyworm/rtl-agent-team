@@ -47,7 +47,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | **--- Phase 3: μArch ---** | | |
 | "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
 | **--- Pipeline Composition ---** | | |
-| "DSE", "design space exploration", "algorithm study", "architecture comparison", "iterative exploration" | `/rtl-agent-team:rtl-dse` | Action Skill |
+| "DSE", "design space exploration", "algorithm study", "architecture comparison", "iterative exploration" | `/rtl-agent-team:rat-dse` | Action Skill |
 | "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
@@ -134,7 +134,7 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p7-exploration` | `p7-exploration-orchestrator` | `rtl-p7-exploration-policy` |
 | `rtl-review-refactor` | `review-refactor-orchestrator` | `code-review-policy`, `refactor-policy`, `verification-recheck-policy` |
 | `codex-cross-review` | `codex-cross-reviewer` | — (self-contained) |
-| `rtl-dse` | `dse-orchestrator` | `rtl-dse-policy` |
+| `rat-dse` | `dse-orchestrator` | `rat-dse-policy` |
 | `rtl-p1-research-team` | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
 | `rtl-p2-arch-team` | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
 | `rtl-p3-uarch-team` | `p3-uarch-team-orchestrator` | `rtl-p3-uarch-policy` |
@@ -229,7 +229,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 5: UVM | `p5s-uvm-orchestrator` | `rtl-p5s-uvm-policy` |
 | Phase 6: Design Review | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
 | LLM Review + Refactor | `review-refactor-orchestrator` | `code-review-policy` + `refactor-policy` + `verification-recheck-policy` |
-| DSE | `dse-orchestrator` | `rtl-dse-policy` |
+| DSE | `dse-orchestrator` | `rat-dse-policy` |
 | Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | Spec→μArch (P1-3 Team) | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
@@ -487,7 +487,7 @@ Hook-enforced (quality gates):
 Agent-managed (orchestrator resumability):
 - `.rtl-agent-team/state/rat-p1p3-spec-uarch-state.json` — Spec-to-μArch pipeline progress
 - `.rtl-agent-team/state/rat-p4p5-impl-verify-state.json` — μArch-to-Verify pipeline progress
-- `.rtl-agent-team/state/rtl-dse-state.json` — DSE pipeline progress
+- `.rtl-agent-team/state/rat-dse-state.json` — DSE pipeline progress
 - `.rtl-agent-team/state/feedback-loop-state.json` — Phase 5→4 feedback loop tracking
 - `.rtl-agent-team/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker
 
@@ -538,7 +538,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | reference model, C model | `/rtl-agent-team:ref-model` | Action Skill |
 | BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` | Action Skill |
 | microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
-| DSE, design space exploration | `/rtl-agent-team:rtl-dse` | Action Skill |
+| DSE, design space exploration | `/rtl-agent-team:rat-dse` | Action Skill |
 | Phase 1 team, research team, parallel research | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |

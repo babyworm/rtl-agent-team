@@ -334,7 +334,7 @@ Per cycle end:
 
 **Design philosophy**: Follows the existing DSE pattern of "isolate then promote" — violations
 are quarantined (stashed), not destroyed. The user retains the ability to inspect and decide.
-This is consistent with `rtl-dse/SKILL.md`'s worktree comparison approach where both trial
+This is consistent with `rat-dse/SKILL.md`'s worktree comparison approach where both trial
 and baseline are preserved until the user makes an explicit selection.
 
 The same hash-based verification also applies during `rtl-p4-block-parallel` execution
@@ -424,7 +424,7 @@ The 30-minute threshold is configurable in `ultraloop-state.json`.
 4. All `worktree_path` entries still exist on disk (worktrees not cleaned up)
 
 If any check fails, resume is rejected with a diagnostic message. This is consistent with
-`rtl-dse/SKILL.md`'s use of `worktree_path` and `worktree_branch` as explicit coordination
+`rat-dse/SKILL.md`'s use of `worktree_path` and `worktree_branch` as explicit coordination
 state, and with `team-gate-util.sh`'s reliance on `leader_session_id` and `created_at`.
 ```
 
@@ -471,7 +471,7 @@ state, and with `team-gate-util.sh`'s reliance on `leader_session_id` and `creat
 ### 9.5 Explicitly Unchanged
 
 - `skills/rtl-p4-implement-team/` — Generic P4 team preserved for non-codec projects
-- `skills/rtl-dse/` — DSE skill unchanged
+- `skills/rat-dse/` — DSE skill unchanged
 - `agents/domain-expert.md` — Generic runner unchanged
 - 6+1 Phase pipeline structure — unchanged
 - `hooks/hooks.json` — no new hooks required; existing `stop-gate.sh` extended for ultraloop state detection

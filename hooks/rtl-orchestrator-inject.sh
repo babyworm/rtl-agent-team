@@ -61,7 +61,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | reference model, C model | `/rtl-agent-team:ref-model` | Action Skill |
 | BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` | Action Skill |
 | microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
-| DSE, design space exploration | `/rtl-agent-team:rtl-dse` | Action Skill |
+| DSE, design space exploration | `/rtl-agent-team:rat-dse` | Action Skill |
 | Phase 1 team, research team, parallel research | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
 | Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
 | Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |

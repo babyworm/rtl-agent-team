@@ -107,7 +107,7 @@ Phase 7 (Exploration) is optional and has no pipeline rules.
 | `/rtl-agent-team:codec-conformance-eval` | Decoder conformance against JM/HM |
 | `/rtl-agent-team:codec-rd-eval` | Rate-Distortion quality evaluation |
 | `/rtl-agent-team:rtl-conformance-test` | RTL-level conformance testing |
-| `/rtl-agent-team:rtl-dse` | Design Space Exploration |
+| `/rtl-agent-team:rat-dse` | Design Space Exploration |
 
 #### Review & Documentation
 

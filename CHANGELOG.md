@@ -7,6 +7,13 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-03-16
+
+### Changed
+- Renamed `rtl-dse` skill to `rat-dse` (consistent with `rat-` prefix for top-level pipeline entry points).
+- Renamed `rtl-dse-policy` skill to `rat-dse-policy`.
+- Updated all routing tables, hook mappings, cross-references, and tests.
+
 ## [0.7.4] - 2026-03-15
 
 ### Added

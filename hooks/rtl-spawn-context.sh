@@ -59,7 +59,7 @@ case "$SHORT_NAME" in
   autopilot-orchestrator)         SKILL_NAME="rat-auto-design" ;;
   spec-to-uarch-orchestrator)     SKILL_NAME="rat-p1p3-spec-uarch" ;;
   uarch-to-verify-orchestrator)   SKILL_NAME="rat-p4p5-impl-verify" ;;
-  dse-orchestrator)               SKILL_NAME="rtl-dse" ;;
+  dse-orchestrator)               SKILL_NAME="rat-dse" ;;
   # Team orchestrators → team skills (1:1 mapping)
   p1-research-team-orchestrator)  SKILL_NAME="rtl-p1-research-team" ;;
   p2-arch-team-orchestrator)      SKILL_NAME="rtl-p2-arch-team" ;;

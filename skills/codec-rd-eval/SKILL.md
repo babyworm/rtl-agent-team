@@ -19,7 +19,7 @@ This skill automates the full Rate-Distortion evaluation pipeline:
 This skill evaluates encoder quality metrics (BD-PSNR, BD-rate, optional SSIM/VMAF).
 For decoder conformance testing against JVET/JCTVC bitstreams, use `/rtl-agent-team:codec-conformance-eval`.
 
-**Phase-agnostic**: While commonly used during rtl-dse Step 3b, this skill can be invoked
+**Phase-agnostic**: While commonly used during rat-dse Step 3b, this skill can be invoked
 at any Phase where quantitative RD comparison of encoder configurations is needed —
 Phase 1 (algorithm exploration), Phase 2 (architecture validation), Phase 4 (fixed-point
 precision impact), or standalone evaluation outside the pipeline.
@@ -132,7 +132,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
      - SSIM/VMAF tables (if opt-in metrics enabled)
      - N-candidate comparison matrix (if candidates[] mode)
      - Interpretation guidance
-   - If invoked from rtl-dse: feed BD metrics back to algorithm comparison matrix
+   - If invoked from rat-dse: feed BD metrics back to algorithm comparison matrix
 </Steps>
 
 <Tool_Usage>
@@ -225,7 +225,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Raw data preserved at .rtl-agent-team/scratch/rd-eval/
 - [ ] If N-candidate mode: comparison matrix generated
 - [ ] If SSIM/VMAF requested: optional metrics included
-- [ ] If invoked from rtl-dse: BD metrics available for algorithm comparison matrix
+- [ ] If invoked from rat-dse: BD metrics available for algorithm comparison matrix
 
 If ANY item is unchecked → DO NOT report completion. Fix the issue first.
 </Final_Checklist>

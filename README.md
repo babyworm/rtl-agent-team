@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 93-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.4 |
+| **rtl-agent-team** | 93-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.5 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.1 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -99,7 +99,7 @@ Dynamic fallback guidance is injected through state (`orchestration_control.dyna
 ### Pipeline composition (split execution)
 
 ```
-/rtl-agent-team:rtl-dse              # Phase 1→2: Deep algorithm + architecture exploration (DSE)
+/rtl-agent-team:rat-dse              # Phase 1→2: Deep algorithm + architecture exploration (DSE)
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate evaluation for algorithm comparison
 /rtl-agent-team:codec-conformance-eval  # Decoder conformance evaluation (JVET/JCTVC/3rd party)
 /rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch design documents
@@ -107,7 +107,7 @@ Dynamic fallback guidance is injected through state (`orchestration_control.dyna
 ```
 
 Split the pipeline for human review between design and implementation:
-- `rtl-dse`: Deep Design Space Exploration — compare multiple algorithms and architecture candidates with quantitative trade-offs. Can also transform an existing functional C model into an architectural reference model. Stops at Phase 2 for review.
+- `rat-dse`: Deep Design Space Exploration — compare multiple algorithms and architecture candidates with quantitative trade-offs. Can also transform an existing functional C model into an architectural reference model. Stops at Phase 2 for review.
 - `rat-p1p3-spec-uarch`: Standard Phase 1→3 — produce design documents through μArch. Stops for review before RTL.
 - `rat-p4p5-impl-verify`: Phase 4→5 — implement RTL and run full verification from approved μArch documents.
 

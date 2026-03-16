@@ -18,7 +18,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 93-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.4 |
+| **rtl-agent-team** | 93-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.7.5 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.1 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
@@ -99,7 +99,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 ### 파이프라인 분할 실행
 
 ```
-/rtl-agent-team:rtl-dse              # Phase 1→2: 심층 알고리즘 + 아키텍처 탐색 (DSE)
+/rtl-agent-team:rat-dse              # Phase 1→2: 심층 알고리즘 + 아키텍처 탐색 (DSE)
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate 평가 (알고리즘 비교)
 /rtl-agent-team:codec-conformance-eval  # 디코더 conformance 평가 (JVET/JCTVC/3rd party)
 /rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch 설계 문서 완성
@@ -107,7 +107,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 ```
 
 설계와 구현 사이에 인간 리뷰를 위해 파이프라인을 분할합니다:
-- `rtl-dse`: 심층 Design Space Exploration — 여러 알고리즘과 아키텍처 후보를 정량적 trade-off로 비교합니다. 기존 functional C model을 architectural reference model로 변환할 수도 있습니다. Phase 2에서 리뷰를 위해 멈춥니다.
+- `rat-dse`: 심층 Design Space Exploration — 여러 알고리즘과 아키텍처 후보를 정량적 trade-off로 비교합니다. 기존 functional C model을 architectural reference model로 변환할 수도 있습니다. Phase 2에서 리뷰를 위해 멈춥니다.
 - `rat-p1p3-spec-uarch`: 표준 Phase 1→3 — μArch까지 설계 문서를 완성합니다. RTL 구현 전 리뷰를 위해 멈춥니다.
 - `rat-p4p5-impl-verify`: Phase 4→5 — 승인된 μArch 문서로부터 RTL 구현 및 전체 검증을 수행합니다.
 

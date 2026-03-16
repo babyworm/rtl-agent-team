@@ -21,7 +21,7 @@ reference C model in parallel, and iterates with 3-round review.
 <Do_Not_Use_When>
 - Phase 1 research is not complete (run p1-spec-research first)
 - Only need architecture review of existing docs (use arch-review)
-- Need DSE with multiple architecture candidates (use rtl-dse)
+- Need DSE with multiple architecture candidates (use rat-dse)
 </Do_Not_Use_When>
 
 ## Prerequisites

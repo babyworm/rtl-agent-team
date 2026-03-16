@@ -284,7 +284,7 @@ class TestCrossReferences:
             ("rtl-p6-design-review", "p6-review-orchestrator", "rtl-p6-design-review-policy"),
             ("rtl-p7-exploration", "p7-exploration-orchestrator", "rtl-p7-exploration-policy"),
             ("rtl-review-refactor", "review-refactor-orchestrator", "code-review-policy"),
-            ("rtl-dse", "dse-orchestrator", "rtl-dse-policy"),
+            ("rat-dse", "dse-orchestrator", "rat-dse-policy"),
             ("rat-p1p3-spec-uarch", "spec-to-uarch-orchestrator", "rat-p1p3-spec-uarch-policy"),
             ("rat-p4p5-impl-verify", "uarch-to-verify-orchestrator", "rat-p4p5-impl-verify-policy"),
             # P1-P5 team mode orchestrators (v0.6.0) — use Agent(team_name=...) not Task()

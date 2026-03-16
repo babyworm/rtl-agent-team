@@ -1,5 +1,5 @@
 ---
-name: rtl-dse-policy
+name: rat-dse-policy
 description: "Policy rules, DSE methodology, comparison matrix formats, C model transformation rules, self-critique protocol, trial comparison, and gate criteria for the iterative Design Space Exploration pipeline (Phase 1→3). Pure reference — no orchestration."
 user-invocable: false
 ---
@@ -8,7 +8,7 @@ user-invocable: false
 
 ## What Makes DSE Different from Standard Phase 1→3
 
-| Aspect | Standard (p1 + p2 + p3 sequential) | rtl-dse |
+| Aspect | Standard (p1 + p2 + p3 sequential) | rat-dse |
 |--------|------------------------------------------|---------|
 | Algorithm study | Select best, justify | Explore N candidates, quantitative comparison |
 | Architecture | Single architecture from requirements | Multiple candidates, trade-off matrix, user selects |

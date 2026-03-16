@@ -2544,7 +2544,7 @@ class TestSpawnContextStructuralContracts:
         "rat-auto-design": 1,
         "rat-p1p3-spec-uarch": 1,
         "rat-p1p3-spec-uarch-team": 1,
-        "rtl-dse": 1,
+        "rat-dse": 1,
         "rat-p4p5-impl-verify": 4,
     }
 
@@ -2596,7 +2596,7 @@ class TestSpawnContextStructuralContracts:
         "autopilot-orchestrator": "rat-auto-design",
         "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
         "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
-        "dse-orchestrator": "rtl-dse",
+        "dse-orchestrator": "rat-dse",
         # Team orchestrators → team skills (1:1)
         "p1-research-team-orchestrator": "rtl-p1-research-team",
         "p2-arch-team-orchestrator": "rtl-p2-arch-team",

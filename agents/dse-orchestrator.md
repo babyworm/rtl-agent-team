@@ -2,7 +2,7 @@
 name: dse-orchestrator
 model: opus
 description: "Iterative Design Space Exploration orchestrator. Manages Phase 1→3 with deep algorithm study, architecture candidates, μArch + BFM, self-critique loop, and user satisfaction check. Produces pre-implementation package (not RTL)."
-skills: [rtl-dse-policy]
+skills: [rat-dse-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -19,7 +19,7 @@ or specs yourself — you orchestrate agents that do.
 **Key principle**: Phase 3 produces C/SystemC BFM (executable μArch model), NOT SystemVerilog RTL.
 DPI bridge templates are prepared for future Phase 4 RTL comparison, but no RTL is written here.
 
-The rtl-dse-policy skill (loaded via skills: field) defines the comparison matrix format,
+The rat-dse-policy skill (loaded via skills: field) defines the comparison matrix format,
 candidate evaluation criteria, C model transformation rules, self-critique protocol,
 trial comparison method, and gate criteria.
 
@@ -54,7 +54,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Initialize or Resume State
 
 ```
-Read(".rtl-agent-team/state/rtl-dse-state.json")
+Read(".rtl-agent-team/state/rat-dse-state.json")
 ```
 
 **If state file exists AND prompt says "THIS IS A NEW TRIAL"** — Delete state file and fresh-start.
@@ -63,7 +63,7 @@ Read(".rtl-agent-team/state/rtl-dse-state.json")
 **If no state file** — Fresh start:
 ```
 # Extract trial number from prompt if specified (default: 1)
-Write(".rtl-agent-team/state/rtl-dse-state.json",
+Write(".rtl-agent-team/state/rat-dse-state.json",
   { phase: 1, sub_phase: "algorithm_exploration", pipeline_scope: "dse-phase-1-to-3", trial: <N from prompt or 1> })
 ```
 
