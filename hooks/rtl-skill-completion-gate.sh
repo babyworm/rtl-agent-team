@@ -89,7 +89,7 @@ if acquire_lock "$SKILL_STATE"; then
   # (written by compliance-pass pre-processing), use them instead of default N/2N
   _CUSTOM_PRIMARY=$(jsonu_get_file_path_num "$SKILL_STATE" "max_primary")
   _CUSTOM_FALLBACK=$(jsonu_get_file_path_num "$SKILL_STATE" "max_fallback")
-  if [ -n "$_CUSTOM_PRIMARY" ] && [ "$_CUSTOM_PRIMARY" != "null" ]; then
+  if [ -n "$_CUSTOM_PRIMARY" ] && [ "$_CUSTOM_PRIMARY" != "null" ] && [ "$_CUSTOM_PRIMARY" -gt 0 ] 2>/dev/null; then
     PRIMARY_LIMIT=$_CUSTOM_PRIMARY
     FALLBACK_LIMIT=$((_CUSTOM_PRIMARY + _CUSTOM_FALLBACK))
   else
