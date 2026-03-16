@@ -146,11 +146,11 @@ Bash("mkdir -p reviews/phase-1-research")
 
 # If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
-     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md.")
+     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md.")
 
 # If execution_mode == "sequential":
 Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
-     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
+     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
 ```
 
 The orchestrator (team or legacy) handles tree exploration, domain-consult, 3-round chief review,
@@ -169,11 +169,12 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 ## Step 3: Phase 2 — Architecture + Reference Model
 
 **Context Preload**: Verify required upstream files exist before starting Phase 2:
-- `docs/phase-1-research/requirements.json`
+- `docs/phase-1-research/iron-requirements.json`
+- `docs/phase-1-research/open-requirements.json` (optional — absent if P1 had no open items)
 - `docs/phase-1-research/io_definition.json`
 - `docs/phase-1-research/timing_constraints.json`
 - `docs/phase-1-research/domain-analysis.md`
-STOP if any missing.
+STOP if required files missing.
 
 ```
 Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
@@ -181,13 +182,13 @@ Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
 # Branch on execution_mode from state file
 # If execution_mode == "team":
 Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
-     prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
+     prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for iron-requirements.json, open-requirements.json, io_definition.json, domain-analysis.md.")
 
 # If execution_mode == "sequential":
 # p2-arch-orchestrator is the SINGLE OWNER of RefC artifacts (Step 3: parallel arch + ref-model).
 # Do NOT spawn a separate ref-model-dev agent here.
 Task(subagent_type="rtl-agent-team:p2-arch-orchestrator",
-     prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
+     prompt="Execute Phase 2 architecture design. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for iron-requirements.json, open-requirements.json, io_definition.json, domain-analysis.md.")
 
 # Synthesizability pre-assessment (parallel with p2-arch-design Round 1)
 Task(subagent_type="rtl-agent-team:rtl-critic",
@@ -216,8 +217,11 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 
 **Context Preload**: Verify required upstream files exist before starting Phase 3:
 - `docs/phase-2-architecture/architecture.md` (required, full read)
+- `docs/phase-2-architecture/iron-requirements.json` (required, P2 REQ-A-*)
+- `refc/` (required, ref model directory)
 - `docs/phase-1-research/phase-1-summary.md` (optional, summary only)
-STOP if required file missing.
+- `docs/phase-1-research/open-requirements.json` (optional — absent if all resolved)
+STOP if required files missing.
 
 ```
 Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
@@ -258,6 +262,8 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
 
 **Context Preload**: Verify required upstream files exist before starting Phase 4:
 - `docs/phase-3-uarch/*.md` (required, full read)
+- `docs/phase-3-uarch/iron-requirements.json` (required, P3 REQ-U-*)
+- `bfm/` (required, BFM directory)
 - `docs/phase-1-research/io_definition.json` (required, full read)
 - `docs/phase-2-architecture/phase-2-summary.md` (summary only)
 - `docs/phase-1-research/phase-1-summary.md` (summary only)
@@ -298,7 +304,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 **Context Preload**: Verify required upstream files exist before starting Phase 5:
 - `rtl/*/*.sv` (required, full read)
-- `docs/phase-1-research/requirements.json` (required, full read)
+- `docs/phase-1-research/iron-requirements.json` (required, full read)
 - `docs/phase-4-rtl/phase-4-summary.md` (summary only)
 - `docs/phase-3-uarch/phase-3-summary.md` (summary only)
 - `docs/phase-2-architecture/phase-2-summary.md` (summary only)

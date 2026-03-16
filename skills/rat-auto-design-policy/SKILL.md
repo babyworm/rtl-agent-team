@@ -42,7 +42,7 @@ Each phase reads upstream documents as input context and writes downstream docum
 No agent needs to "remember" another agent's output — it reads the document.
 
 Document flow:
-  requirements.json → arch-designer reads → architecture.md → uarch-designer reads →
+  iron-requirements.json + open-requirements.json → arch-designer reads → architecture.md → uarch-designer reads →
   docs/phase-3-uarch/*.md → rtl-coder reads
   reviews/phase-N/ → Quality Gate reads → next phase proceeds or fails
 
@@ -113,10 +113,11 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 ## Phase Gate Definitions
 
 ### Phase 1→2 (Research → Architecture)
-**Artifact Gate**: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
+**Artifact Gate**: iron-requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist (open-requirements.json optional — absent if P1 had no open items)
 **Quality Gate**:
 - 3-round chief review converged (or gaps escalated and user-approved)
-- spec-analyst self-reviews requirements.json for completeness and internal consistency
+- spec-analyst self-reviews iron-requirements.json and open-requirements.json for completeness, iron/open classification correctness, and acceptance_criteria measurability
+- compliance-checker verifies iron requirements have no internal contradictions
   - All functional requirements traceable to spec sections
   - No contradictions or ambiguities
   - Save: `reviews/phase-1-research/research-review.md`
@@ -129,7 +130,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 **Summary Validation**: `docs/phase-1-research/phase-1-summary.md` must exist (format: max 1 page with tables for Key Decisions, Module Inventory, Interface Summary, Quality Gate Results, Open Items, Document References)
 
 ### Phase 2→3 (Architecture → μArch)
-**Artifact Gate**: architecture.md (with D2 block diagram) + refc/*/*.c exist
+**Artifact Gate**: architecture.md (with D2 block diagram) + iron-requirements.json (P2, REQ-A-*) + refc/*/*.c exist
 **Quality Gate**:
 - 3-round iterative review converged (or gaps escalated and user-approved)
 - Feature Coverage Checklist: 100% of REQ-NNN mapped to architecture blocks
@@ -137,6 +138,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 - Memory access review PASS: all large blocks have viable memory strategy
 - Architecture ↔ ref model consistency PASS: block mapping + data flow + interface alignment
 - Ref model code review: quality, bitexact correctness verified
+- compliance-checker verifies P2 iron-requirements.json against P1 upstream iron (no violations)
 - Architecture Diagram: D2 block diagram saved
 - Per-round review artifacts: `reviews/phase-2-architecture/architecture-review-r1.md`, `r2.md`, `r3.md` (mandatory)
 - Save: `reviews/phase-2-architecture/architecture-review.md`
@@ -155,7 +157,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 **ADR Recording**: 3-5 key decisions → `docs/decisions/ADR-{NNN}.md`
 
 ### Phase 3→4 (μArch → RTL)
-**Artifact Gate**: docs/phase-3-uarch/*.md + bfm/ directory exist
+**Artifact Gate**: docs/phase-3-uarch/*.md + iron-requirements.json (P3, REQ-U-*) + bfm/ directory exist
 **Quality Gate**:
 - 3-round iterative review converged
 - Feature Preservation Checklist: 100% of architecture features preserved in μArch
@@ -163,6 +165,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
 - Block boundary alignment: 1:1 correspondence with architecture.md
 - Memory access optimization PASS: SRAM banking, port conflicts, access scheduling reviewed
 - μArch ↔ ref model consistency PASS: behavior, data widths, fixed-point formats aligned
+- compliance-checker verifies P3 iron-requirements.json against P1+P2 upstream iron (no violations)
 - Pipeline Diagram: Mermaid pipeline diagram saved
 - Per-round review artifacts: `reviews/phase-3-uarch/uarch-review-r1.md`, `r2.md`, `r3.md` (mandatory)
 - Save: `reviews/phase-3-uarch/uarch-review.md`
@@ -193,7 +196,7 @@ On phase gate FAIL + retry: scratch files preserved for next round.
   - docs/phase-4-rtl/stream-b-tb-skeletons.md
 
 **Quality Gate**:
-- rtl-critic reviews RTL against μArch specs AND requirements.json
+- rtl-critic reviews RTL against μArch specs AND upstream iron-requirements.json files from P1, P2, and P3
   - Functional Coverage Matrix: every requirement traced to RTL. Any MISSING → FAIL
   - Code quality: proper FSM, no latches, clean reset
   - Synthesizability: no non-synth constructs
