@@ -135,6 +135,17 @@ if acquire_lock "$SKILL_STATE"; then
 fi
 
 # Generate stage message outside lock (read-only, uses values determined above)
+# Check for upstream_challenge strategy (set by compliance-gate-util when infeasibility detected)
+_CURRENT_STRATEGY=$(jsonu_get_file_path_string "$SKILL_STATE" "strategy")
+if [ "$_CURRENT_STRATEGY" = "upstream_challenge" ]; then
+  STAGE_MSG="[Upstream Challenge Required] ${SKILL_NAME} — compliance checker detected infeasible iron requirement violation. Stop retrying fixes. Instead: (1) Identify the infeasible upstream requirement with quantitative PPA evidence, (2) Produce an Upstream Challenge Report documenting the violation + evidence + proposed amendment, (3) Escalate to user for upstream requirement review. Remaining criteria: ${PENDING}."
+  if [ -n "$DYNAMIC_PROMPT" ]; then
+    STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
+  fi
+  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$STAGE_MSG")"
+  exit 0
+fi
+
 MAX_ITER=${MAX_ITER:-5}
 TWO_X_LIMIT=${FALLBACK_LIMIT:-$((MAX_ITER * 2))}
 case "$STAGE" in
