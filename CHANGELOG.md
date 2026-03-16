@@ -7,6 +7,18 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-03-16
+
+### Fixed
+- Hook execution order: compliance state bootstrap now runs before spawn context manifest
+  write, fixing non-deterministic `upstream_iron` in `spawn-context.json`
+- Add `rtl-p4-block-parallel` to compliance bootstrap, phase mapper, spawn-context agent
+  mapping, and test coverage tables
+- Add `rat-p4p5-impl-verify` to compliance bootstrap case branch
+- `json-util.sh` python mode: use `json.dumps()` for list/dict types instead of `str()`
+  (fixes malformed JSON on systems without jq)
+- CLAUDE.md: add `step0-template.md` to agents/lib/ inventory
+
 ## [0.7.5] - 2026-03-16
 
 ### Changed
