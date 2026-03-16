@@ -32,6 +32,18 @@ compliance_preprocess() {
 
   _CGU_CR_REPORT="$_CGU_STATE_DIR/compliance-report.json"
   if [ ! -f "$_CGU_CR_REPORT" ]; then
+    # No compliance report — clear any stale upstream_challenge strategy
+    # (report may have been removed after requirement amendment)
+    _CGU_CUR_STRAT=$(jsonu_get_file_path_string "$_CGU_SKILL_STATE" "strategy")
+    if [ "$_CGU_CUR_STRAT" = "upstream_challenge" ]; then
+      if acquire_lock "$_CGU_SKILL_STATE"; then
+        sed 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/' \
+          "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
+          && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
+          || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+        release_lock "$_CGU_SKILL_STATE"
+      fi
+    fi
     return 0
   fi
 
