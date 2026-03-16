@@ -124,7 +124,7 @@ When modifying this plugin:
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
 1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
-2. **Step 0 Context Bootstrap duplicated across 27 orchestrators** — Each orchestrator agent contains an identical ~12-line Step 0 block. This is intentional: agent prompts must be self-contained (no `#include`), the protocol is stable (unchanged since v0.6.8), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. Bulk updates are achievable via `sed` or scripted replacement if the protocol ever changes. Note: `p5a-functional-closure-orchestrator` and `p5b-silicon-validation-orchestrator` use custom Preconditions (dedicated state files) instead of standard Step 0; `p7-exploration-orchestrator` adds a Phase 7 exemption note.
+2. **Step 0 Context Bootstrap duplicated across 30 orchestrators** — Each orchestrator agent contains an identical ~12-line Step 0 block. This is intentional: agent prompts must be self-contained (no `#include`), the protocol is stable (unchanged since v0.6.8), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. Bulk updates are achievable via `sed` or scripted replacement if the protocol ever changes. Note: `p5a-functional-closure-orchestrator` and `p5b-silicon-validation-orchestrator` use custom Preconditions (dedicated state files) instead of standard Step 0.
 
 ### File Architecture
 
