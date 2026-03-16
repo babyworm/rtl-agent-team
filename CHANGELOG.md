@@ -7,6 +7,14 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-03-16
+
+### Fixed
+- Add missing Step 0 Context Bootstrap to `review-refactor-orchestrator`
+- Fix heading level consistency in `p4-rtl-sanity-orchestrator` (`###` → `##`)
+- Add `rtl-p6-design-review` to compliance bootstrap case branch
+- Correct CLAUDE.md Step 0 orchestrator count (29→30, only p5a/p5b excluded)
+
 ## [0.7.6] - 2026-03-16
 
 ### Fixed
