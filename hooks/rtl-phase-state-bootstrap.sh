@@ -33,38 +33,42 @@ fi
 # Compliance state bootstrap — iron requirement paths per phase
 # Overwrite if phase changed (prevents stale upstream paths from prior phase)
 # NOTE: Must run BEFORE sctx_write_manifest() which reads compliance-state.json
-_CS_FILE="$CWD/.rtl-agent-team/state/compliance-state.json"
-_cs_current_phase=""
-if [ -f "$_CS_FILE" ]; then
-  _cs_current_phase=$(jsonu_get_file_path_string "$_CS_FILE" "phase")
-fi
-if [ ! -f "$_CS_FILE" ] || [ "$_cs_current_phase" != "$SHORT_NAME" ]; then
-  _cs_upstream=""
-  _cs_open=""
-  case "$SHORT_NAME" in
-    p2-arch-design|rtl-p2-arch-team)
-      _cs_upstream='["docs/phase-1-research/iron-requirements.json"]'
-      _cs_open="docs/phase-1-research/open-requirements.json"
-      ;;
-    rtl-p3-uarch-design|rtl-p3-uarch-team)
-      _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json"]'
-      _cs_open="docs/phase-2-architecture/open-requirements.json"
-      ;;
-    rtl-p4-implement|rtl-p4-implement-team|rtl-p4-rapid-impl|rtl-p4-block-parallel|rtl-p5-verify|rtl-p5-verify-team|rtl-p5a-functional-closure|rtl-p5b-silicon-validation)
-      _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json","docs/phase-3-uarch/iron-requirements.json"]'
-      _cs_open=""
-      ;;
-  esac
+# NOTE: Gated on setup marker to preserve pre-setup behavior (no filesystem writes
+#       for uninitialized projects)
+if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
+  _CS_FILE="$CWD/.rtl-agent-team/state/compliance-state.json"
+  _cs_current_phase=""
+  if [ -f "$_CS_FILE" ]; then
+    _cs_current_phase=$(jsonu_get_file_path_string "$_CS_FILE" "phase")
+  fi
+  if [ ! -f "$_CS_FILE" ] || [ "$_cs_current_phase" != "$SHORT_NAME" ]; then
+    _cs_upstream=""
+    _cs_open=""
+    case "$SHORT_NAME" in
+      p2-arch-design|rtl-p2-arch-team)
+        _cs_upstream='["docs/phase-1-research/iron-requirements.json"]'
+        _cs_open="docs/phase-1-research/open-requirements.json"
+        ;;
+      rtl-p3-uarch-design|rtl-p3-uarch-team)
+        _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json"]'
+        _cs_open="docs/phase-2-architecture/open-requirements.json"
+        ;;
+      rtl-p4-implement|rtl-p4-implement-team|rtl-p4-rapid-impl|rtl-p4-block-parallel|rtl-p5-verify|rtl-p5-verify-team|rtl-p5a-functional-closure|rtl-p5b-silicon-validation)
+        _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json","docs/phase-3-uarch/iron-requirements.json"]'
+        _cs_open=""
+        ;;
+    esac
 
-  if [ -n "$_cs_upstream" ]; then
-    mkdir -p "$CWD/.rtl-agent-team/state"
-    cat > "$_CS_FILE" << _CS_EOF
+    if [ -n "$_cs_upstream" ]; then
+      mkdir -p "$CWD/.rtl-agent-team/state"
+      cat > "$_CS_FILE" << _CS_EOF
 {
   "phase": "$SHORT_NAME",
   "upstream_iron_paths": $_cs_upstream,
   "open_requirements_path": "$_cs_open"
 }
 _CS_EOF
+    fi
   fi
 fi
 
@@ -83,7 +87,7 @@ if [ -n "$SCTX_MSG" ]; then
   fi
 fi
 
-# Skip bootstrap if project setup marker is absent.
+# Skip remaining bootstrap (template copying) if project setup marker is absent.
 if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
   emit_continue "$SETUP_HINT"
 fi
