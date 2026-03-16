@@ -48,7 +48,10 @@ install_script_if_missing() {
       local src_ver dst_ver
       src_ver=$(_extract_rat_version "$src")
       dst_ver=$(_extract_rat_version "$dst")
-      if [[ -n "$src_ver" && -n "$dst_ver" && "$src_ver" != "$dst_ver" ]]; then
+      # Compare versions: only overwrite if source is strictly newer.
+      # Simple lexicographic comparison works for dotted semver strings.
+      if [[ -n "$src_ver" && -n "$dst_ver" && "$src_ver" != "$dst_ver" ]] && \
+         [[ "$(printf '%s\n%s' "$dst_ver" "$src_ver" | sort -V | tail -n1)" = "$src_ver" ]]; then
         cp "$src" "$dst"
         chmod "$mode" "$dst"
         UPDATED=$((UPDATED + 1))

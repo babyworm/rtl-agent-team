@@ -134,13 +134,13 @@ fi
 # 5. README.md — marketplace table row for rtl-agent-team
 bump_file "$ROOT_DIR/README.md" \
   "marketplace table" \
-  "s/| **rtl-agent-team** |.*| $OLD_VER |/| **rtl-agent-team** | 93-agent RTL design pipeline (Research \→ Architecture \→ μArch \→ RTL \→ Verify \→ Design Note) | $NEW_VER |/" \
+  "s/| $OLD_VER |$/| $NEW_VER |/" \
   ""
 
 # 6. README_kr.md — marketplace table row for rtl-agent-team
 bump_file "$ROOT_DIR/README_kr.md" \
   "marketplace table" \
-  "s/| **rtl-agent-team** |.*| $OLD_VER |/| **rtl-agent-team** | 93-agent RTL 설계 파이프라인 (Research \→ Architecture \→ μArch \→ RTL \→ Verify \→ Design Note) | $NEW_VER |/" \
+  "s/| $OLD_VER |$/| $NEW_VER |/" \
   ""
 
 echo ""

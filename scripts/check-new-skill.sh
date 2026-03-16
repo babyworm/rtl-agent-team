@@ -24,6 +24,12 @@ fi
 
 SKILL="$1"
 
+# Match skill name exactly in shell case statements (delimited by | or ))
+# Avoids false positives like "rtl-p5" matching "rtl-p5-verify"
+grep_case_exact() {
+  grep -qE "(^|[|])${SKILL}([|)])" "$1" 2>/dev/null
+}
+
 PASS=0
 FAIL=0
 SKIP=0
@@ -67,7 +73,7 @@ fi
 
 # 2. Phase mapper: hooks/lib/spawn-context-util.sh sctx_skill_to_phase()
 SPAWN_UTIL="$ROOT_DIR/hooks/lib/spawn-context-util.sh"
-if grep -q "$SKILL" "$SPAWN_UTIL" 2>/dev/null; then
+if grep_case_exact "$SPAWN_UTIL"; then
   report FOUND "spawn-context-util.sh phase mapper"
 else
   report MISSING "spawn-context-util.sh phase mapper"
@@ -77,11 +83,11 @@ fi
 # Only required for P2+ primary skills (not P1, not sub-skills, not pipelines)
 BOOTSTRAP="$ROOT_DIR/hooks/rtl-phase-state-bootstrap.sh"
 case "$SKILL" in
-  p1-*|rtl-p1-*|rat-*)
-    report SKIP "rtl-phase-state-bootstrap.sh" "P1/pipeline skill — compliance bootstrap not required"
+  p1-*|rtl-p1-*|rat-*|rtl-p4s-*|rtl-p5s-*|rtl-review-refactor)
+    report SKIP "rtl-phase-state-bootstrap.sh" "P1/pipeline/sub-phase skill — compliance bootstrap not required"
     ;;
   *)
-    if grep -q "$SKILL" "$BOOTSTRAP" 2>/dev/null; then
+    if grep_case_exact "$BOOTSTRAP"; then
       report FOUND "rtl-phase-state-bootstrap.sh compliance case"
     else
       report MISSING "rtl-phase-state-bootstrap.sh compliance case"
@@ -91,7 +97,7 @@ esac
 
 # 4. Spawn context agent mapping: hooks/rtl-spawn-context.sh
 SPAWN_HOOK="$ROOT_DIR/hooks/rtl-spawn-context.sh"
-if grep -q "$SKILL" "$SPAWN_HOOK" 2>/dev/null; then
+if grep -qE "\"${SKILL}\"" "$SPAWN_HOOK" 2>/dev/null || grep_case_exact "$SPAWN_HOOK"; then
   report FOUND "rtl-spawn-context.sh agent mapping"
 else
   report MISSING "rtl-spawn-context.sh agent mapping"
@@ -99,7 +105,7 @@ fi
 
 # 5. Routing table: skills/rtl-orchestrate/SKILL.md
 ROUTING="$ROOT_DIR/skills/rtl-orchestrate/SKILL.md"
-if grep -q "$SKILL" "$ROUTING" 2>/dev/null; then
+if grep -qw "$SKILL" "$ROUTING" 2>/dev/null; then
   report FOUND "rtl-orchestrate/SKILL.md routing table"
 else
   report MISSING "rtl-orchestrate/SKILL.md routing table"
@@ -107,7 +113,7 @@ fi
 
 # 6. Hook injection: hooks/rtl-orchestrator-inject.sh
 INJECT="$ROOT_DIR/hooks/rtl-orchestrator-inject.sh"
-if grep -q "$SKILL" "$INJECT" 2>/dev/null; then
+if grep -qw "$SKILL" "$INJECT" 2>/dev/null; then
   report FOUND "rtl-orchestrator-inject.sh hook injection"
 else
   report MISSING "rtl-orchestrator-inject.sh hook injection"
