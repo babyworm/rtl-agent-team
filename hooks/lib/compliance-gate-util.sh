@@ -46,7 +46,9 @@ compliance_preprocess() {
       printf 's#"pending"[[:space:]]*:[[:space:]]*"[^"]*"#"pending": "%s"#\n' "$_CGU_NEW_PENDING" > "$_CGU_PASS_SED"
       # Reset upstream_challenge back to normal ladder strategy on compliance PASS
       printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' >> "$_CGU_PASS_SED"
-      # Clear stale compliance overrides (authority-specific budgets + dynamic prompt)
+      # Clear all stale compliance overrides (budgets + authority + dynamic prompt)
+      printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n' >> "$_CGU_PASS_SED"
+      printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n' >> "$_CGU_PASS_SED"
       printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_PASS_SED"
       printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_PASS_SED"
       sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
