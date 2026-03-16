@@ -83,6 +83,10 @@ compliance_preprocess() {
       _CGU_CR_ITER=${_CGU_CR_ITER:-1}
       if [ "$_CGU_CR_INFEASIBLE" = "true" ] && [ "$_CGU_CR_ITER" -gt "$_CGU_CR_MAX_P" ]; then
         printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "upstream_challenge"/\n' >> "$_CGU_CR_SED"
+      elif [ "$_CGU_CR_INFEASIBLE" != "true" ]; then
+        # Clear stale upstream_challenge if infeasibility is no longer detected
+        # (downgraded from infeasible FAIL to fixable FAIL)
+        printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' >> "$_CGU_CR_SED"
       fi
       sed -f "$_CGU_CR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
         && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
