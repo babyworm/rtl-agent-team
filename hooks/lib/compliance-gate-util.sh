@@ -36,7 +36,10 @@ compliance_preprocess() {
     # (report may have been removed after requirement amendment)
     _CGU_CUR_STRAT=$(jsonu_get_file_path_string "$_CGU_SKILL_STATE" "strategy")
     _CGU_CUR_AUTH=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "compliance_authority")
-    if [ "$_CGU_CUR_STRAT" = "upstream_challenge" ] || { [ -n "$_CGU_CUR_AUTH" ] && [ "$_CGU_CUR_AUTH" -gt 0 ] 2>/dev/null; }; then
+    _CGU_CUR_MAXP=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "max_primary")
+    if [ "$_CGU_CUR_STRAT" = "upstream_challenge" ] || \
+       { [ -n "$_CGU_CUR_AUTH" ] && [ "$_CGU_CUR_AUTH" -gt 0 ] 2>/dev/null; } || \
+       { [ -n "$_CGU_CUR_MAXP" ] && [ "$_CGU_CUR_MAXP" -gt 0 ] 2>/dev/null; }; then
       if acquire_lock "$_CGU_SKILL_STATE"; then
         _CGU_NR_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-nr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.nr-sed")
         printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' > "$_CGU_NR_SED"
