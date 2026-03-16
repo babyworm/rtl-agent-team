@@ -2657,21 +2657,25 @@ class TestSpawnContextStructuralContracts:
         m2.pop("generated_at")
         assert m1 == m2
 
-    def test_upstream_iron_valid_json_array(self, tmp_project):
-        """upstream_iron must be a valid JSON array, not Python repr."""
+    @pytest.mark.parametrize("skill,expected_count", [
+        ("rtl-p4-implement", 3),
+        ("rtl-p6-design-review", 3),
+    ])
+    def test_upstream_iron_valid_json_array(self, tmp_project, skill, expected_count):
+        """upstream_iron must be a valid JSON array for P4+ primary entry skills."""
         rules = tmp_project / ".claude" / "rules"
         rules.mkdir(parents=True, exist_ok=True)
         (rules / "rtl-coding-conventions.md").touch()
 
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+            {"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)},
         )
         mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
         manifest = json.loads(mpath.read_text())
         iron = manifest["upstream_iron"]
         assert isinstance(iron, list), f"upstream_iron must be list, got {type(iron)}"
-        assert len(iron) == 3, f"P4 should have 3 upstream iron paths, got {len(iron)}"
+        assert len(iron) == expected_count, f"{skill} should have {expected_count} upstream iron paths, got {len(iron)}"
         for path in iron:
             assert path.endswith("iron-requirements.json"), f"unexpected path: {path}"
 
