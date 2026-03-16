@@ -7,6 +7,40 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.8] - 2026-03-17
+
+### Added
+- `TestMappingSyncParity` (5 tests) — cross-map drift detection for phase mapper, compliance bootstrap, agent mappings
+- Python parser mode testing via `RTL_FORCE_PYTHON_PARSER` env var + 3-mode parametrization
+- `scripts/bump-version.sh` — automated 6-file version bump with `--dry-run`
+- `scripts/check-new-skill.sh` — 8-location skill registration validator
+- `.github/workflows/ci.yml` — GitHub Actions CI (pytest + shellcheck)
+- `TestHookIntegrationChain` — skill→bootstrap→spawn-context end-to-end test
+- `TestFlockUtilStaleLock` — stale lock reclaim tests
+- Audit session-id path traversal security tests (4 tests)
+- 7 missing completion criteria for pipeline-critical skills
+- `.shellcheckrc` — SC1090/SC1091 suppression for dynamic source paths
+- `plugin_docs/hook-development-guide.md` — hook development documentation
+- Template version markers (`rat-version: 0.7.8`) + `--update` flag for `install_project_templates.sh`
+- P3-10 (phase registry) and P3-11 (hook output standardization) implementation plans
+
+### Changed
+- Extract compliance-gate logic to `hooks/lib/compliance-gate-util.sh` (behavior-preserving)
+- Consolidate duplicate test setup (`datetime` import, `_setup_marker`)
+- CI uses `tests/requirements-test.txt` for dependencies
+
+### Fixed
+- Compliance gate: upstream_challenge messaging in stop gate
+- Compliance gate: clear stale overrides (strategy, budgets, authority, prompt) on PASS
+- Compliance gate: clear stale state when compliance-report.json absent
+- Compliance gate: clear upstream_challenge on fixable FAIL (downgrade from infeasible)
+- Compliance gate: ignore zero-value budget overrides (> 0 check)
+- Compliance gate: always run stale-state cleanup regardless of pending criteria
+- Compliance gate: recheck completion after preprocessing clears last criterion
+- `bump-version.sh`: fix sed BRE escaping for markdown bold
+- `check-new-skill.sh`: fix false positives via `grep_case_exact()`, skip sub-phase skills
+- `install_project_templates.sh`: use `sort -V` for newer-only version comparison
+
 ## [0.7.7] - 2026-03-16
 
 ### Fixed
