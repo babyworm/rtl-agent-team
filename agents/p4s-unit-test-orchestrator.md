@@ -139,6 +139,16 @@ Generate `sim/{module}/{module}_unit_results.json` per module with ALL schema fi
 - Gap fill: `gap_fill_round.executed` (false if not triggered, true with before/after if executed)
 - Codec conformance: `codec_conformance` ("PASS", "FAIL", or "N/A")
 
+### ac_ids Collection
+
+Collect ac_ids from test comments (`# Covers: REQ-U-NNN.AC-M`) into the result JSON
+`ac_ids` field for each feature.
+If no AC-tagged comments found for a feature, check iron-requirements:
+  - If requirement has structured acceptance_criteria: WARNING "ac_ids not tagged for {feature}"
+  - If no acceptance_criteria or empty array: populate req_ids only (backward compatible)
+When the requirement has no `acceptance_criteria` or the array is empty, fall back to
+`# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.
+
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 
 If the design is a video codec decoder (H.264/H.265), read
@@ -172,6 +182,12 @@ codec conformance PASS (if applicable, from Step 5a).
 
 If coverage still below threshold after gap-fill round → FAIL with advisory note
 that P5 CDTG will handle deep closure. Do NOT silently proceed.
+
+### AC Coverage Gate (when applicable)
+
+When iron-requirements has structured acceptance_criteria for a REQ-U-*:
+  Gate: ac_ids populated for features covering that requirement (advisory at Tier 2)
+When no acceptance_criteria: existing req_ids gate applies unchanged.
 
 # Examples
 

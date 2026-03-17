@@ -100,3 +100,14 @@ The test plan document MUST follow this structure:
 - If acceptance_criteria exist on a REQ-U-*, map each AC to specific test scenarios
 - When the requirement has no acceptance_criteria or the array is empty,
   map at REQ level only (backward compatible)
+
+## Acceptance Criteria Mapping
+
+When acceptance_criteria (structured with ac_id) exist on a REQ-U-*:
+  - Map each AC to specific test scenarios in the Requirements Coverage Map:
+    | REQ-U-012 | REQ-U-012.AC-1 | valid stable | TS-001 | assertion |
+  - Each TS-NNN should list which ac_ids it covers
+When no acceptance_criteria exist or array is empty:
+  - Map at REQ level only: | REQ-U-012 | — | description | TS-001 | cocotb |
+When the requirement has no `acceptance_criteria` or the array is empty, fall back to
+`# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.

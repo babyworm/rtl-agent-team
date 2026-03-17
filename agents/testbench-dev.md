@@ -111,6 +111,18 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       to the test plan file (do not delete existing scenarios)
   </Test_Plan_Mapping>
 
+  <AC_Level_Coverage_Tagging>
+    ## AC-Level Coverage Tagging
+    When writing test functions, include coverage comments:
+    - If requirement has structured acceptance_criteria (with ac_id):
+      `# Covers: REQ-U-012.AC-1`  (one comment per covered criterion)
+    - If requirement has no acceptance_criteria or array is empty:
+      `# Covers: REQ-U-012`  (no .AC-N suffix — backward compatible)
+    Do not fail or skip when acceptance_criteria is absent or empty.
+    When the requirement has no `acceptance_criteria` or the array is empty, fall back to
+    `# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.
+  </AC_Level_Coverage_Tagging>
+
   <Tool_Usage>
     - Read: read uarch spec, io_definition.json, requirements.json, test plan
     - Write: create sim/{module}/tb_module.sv, sim/{module}/interface.sv, sim/{module}/driver.sv, sim/{module}/monitor.sv,

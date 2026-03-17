@@ -72,6 +72,14 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     If not found: proceed with code-coverage-only analysis (existing behavior).
   </Test_Plan_Input>
 
+  <AC_ID_Gap_Reports>
+    ## ac_id in Gap Reports
+    When reporting coverage gaps, include ac_id reference if available:
+      "Gap G01: cg_handshake.cp_backpressure not hit — relates to REQ-U-012.AC-3"
+    When no ac_id available, reference REQ only:
+      "Gap G01: cg_handshake.cp_backpressure not hit — relates to REQ-U-012"
+  </AC_ID_Gap_Reports>
+
   <Investigation_Protocol>
     1. Read the functional coverage report (HTML, UCIS XML, or text format from simulation).
     2. Read the code coverage report (line, branch, toggle percentages per file).

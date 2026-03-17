@@ -103,6 +103,16 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Bash: run `sby -f module_name.sby bmc`, `sby -f module_name.sby prove`
     - Grep: search RTL for signal names referenced in assertions
 
+    ## AC Coverage Comments in SVA
+
+    Include acceptance criteria coverage comments in SVA bind files:
+    - If requirement has structured acceptance_criteria (with ac_id):
+      `// Covers: REQ-U-012.AC-1`
+    - If no acceptance_criteria or empty array:
+      `// Covers: REQ-U-012` (no .AC-N suffix)
+    When the requirement has no `acceptance_criteria` or the array is empty, fall back to
+    `// Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.
+
     SVA template:
     ```systemverilog
     // module_name_props.sva — Formal properties for module_name

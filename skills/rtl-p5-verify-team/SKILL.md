@@ -121,6 +121,10 @@ Bash("rm -rf .rtl-agent-team/scratch/phase-5/")
 
 ## Compliance Notes
 
-- Verification must confirm all iron requirement `acceptance_criteria` are met
+- Verification must confirm all iron requirement `acceptance_criteria` are met.
+  When structured acceptance_criteria (with ac_id) exist from P3, verification
+  tracks compliance at the individual criterion level (ac_id granularity).
+  When acceptance_criteria is in string-array format (P1/P2), verification
+  operates at REQ level.
 - Final compliance check compares test results against P1+P2+P3 `acceptance_criteria`
 - Phase 5 PASS requires zero unmet iron requirements across all verification categories

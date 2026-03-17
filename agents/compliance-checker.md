@@ -39,6 +39,17 @@ These are the artifacts being verified for compliance.
 
 ### Step 3: Per-Requirement 1:1 Comparison
 
+## Polymorphic acceptance_criteria Handling
+
+When iterating acceptance_criteria entries:
+- If item is a **string** (P1/P2 format, e.g., "criterion text"):
+  Treat as single criterion at REQ level. No ac_id tracking possible.
+- If item is an **object** with ac_id field (P3 format):
+  Track at ac_id level. For each ac_id, verify a test exists with matching ac_ids tag.
+  Report UNTESTED for any ac_id without test coverage.
+- If acceptance_criteria is absent or empty array:
+  Operate at req_ids level only (existing behavior).
+
 For EACH requirement in the upstream iron list:
   For EACH item in its `acceptance_criteria`:
     - Search target artifacts for evidence of fulfillment

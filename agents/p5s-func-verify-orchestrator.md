@@ -90,6 +90,14 @@ This prevents N×N duplicate execution when the parent p5-verify-orchestrator sp
 
 ## Step 2: Pipelined TB Generation + Execution (per-module parallel)
 
+### AC-Level Test Tagging
+
+Tag test functions with ac_ids when structured acceptance_criteria exist:
+- `# Covers: REQ-U-012.AC-1` for each covered criterion
+- Fall back to `# Covers: REQ-U-012` when no structured AC or empty array
+When the requirement has no `acceptance_criteria` or the array is empty, fall back to
+`# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.
+
 For each module, launch TB generation and IMMEDIATELY follow with simulation.
 Do NOT wait for all TBs — pipeline per module:
 
@@ -189,6 +197,13 @@ RTL output and expected ref model output.")
 ```
 
 ## Step 5: Requirement Traceability Matrix
+
+### AC-Level RTM Generation
+
+When structured acceptance_criteria (with ac_id) exist in iron-requirements:
+  Generate RTM with AC-level columns:
+  | REQ ID | AC ID | Description | Test Case | Status |
+When no structured AC: use existing REQ-level format.
 
 After ALL regression completes:
 

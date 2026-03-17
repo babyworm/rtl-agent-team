@@ -325,7 +325,13 @@ Task(subagent_type="rtl-agent-team:requirement-tracer",
      - UNTESTED: N (with priority — Critical/High UNTESTED = AUDIT FAIL)
      - Verdict: PASS if zero Critical/High UNTESTED, FAIL otherwise.
      NOTE: PARTIAL Critical/High requirements are WARNING (not blocking),
-     but UNTESTED Critical/High requirements are FAIL (blocking P6 entry).")
+     but UNTESTED Critical/High requirements are FAIL (blocking P6 entry).
+
+     AC-Level Traceability Audit:
+     Traceability audit operates at AC level when structured acceptance_criteria exist:
+       - Each Critical/High ac_id must be VERIFIED or FORMAL
+       - UNTESTED Critical/High ac_id → FAIL (blocks P6 entry)
+     When no structured AC: existing REQ-level audit applies.")
 
 # 3.3 Final Compliance Review
 Task(subagent_type="rtl-agent-team:rtl-architect",

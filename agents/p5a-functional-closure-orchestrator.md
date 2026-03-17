@@ -47,6 +47,14 @@ State contract:
 - Update `scopes.top.*` fields.
 
 ### Step 4: Gate decision
+
+## AC-Level Functional Closure
+
+Functional closure includes AC coverage when structured acceptance_criteria exist:
+  - All Critical/High ac_ids must have VERIFIED or FORMAL status
+  - NOT_VERIFIABLE ac_ids (verifiable: false) are documented but excluded from gate
+When no structured AC: existing closure gate applies.
+
 PASS when:
 - Functional regressions pass across module/block/top
 - Coverage targets meet project threshold
