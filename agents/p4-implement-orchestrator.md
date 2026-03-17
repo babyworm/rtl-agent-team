@@ -173,7 +173,7 @@ Output: sim/{module}/{module}_unit_results.json per module with ref_mismatches=0
 ```
 
 On failure: debug ref mismatches → rtl-coder fix → re-run Tier 2 (max 3 rounds).
-Gate: `sim/{module}/{module}_unit_results.json` exists for every module with `ref_mismatches=0` and coverage thresholds met.
+Gate: `sim/{module}/{module}_unit_results.json` exists for every module with `ref_mismatches=0`, coverage thresholds met, `req_ids` populated, `func_coverage.covergroups_defined >= 1`, and `codec_conformance` PASS/N/A.
 
 ## Wave 7: Module-level CDC (parallel, multi-domain modules only)
 

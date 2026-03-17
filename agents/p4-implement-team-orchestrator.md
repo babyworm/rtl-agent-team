@@ -162,7 +162,8 @@ After per-module loop, create global tasks:
 # Created here with correct blockedBy — never runnable until all 6a smoke pass.
 t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
                      description="Run Tier 2 unit tests for all modules against C ref model. "
-                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%).",
+                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%) + "
+                                 "covergroups_defined>=1 + codec conformance if applicable.",
                      blockedBy=all_wave6a_smoke_tasks)
 
 # Step 2d: Wire per-module W9 refactor tasks to depend on t_tier2

@@ -136,6 +136,15 @@ Generate `sim/{module}/{module}_unit_results.json` per module with:
 - Per-feature status with `req_ids` tracing (from `docs/phase-3-uarch/iron-requirements.json`)
 - Coverage summary: `coverage.line_pct`, `coverage.fsm_pct`, `coverage.toggle_pct`
 
+## Step 5a: Codec Decoder Block-Level Conformance (conditional)
+
+If the design is a video codec decoder (H.264/H.265), read
+`domain-packages/video-codec/knowledge/block-level-conformance.md` and ensure:
+- Unit test vectors for each RTL module include conformance-derived inputs extracted
+  from JM/HM trace output at the corresponding block boundary
+- Each RTL module output is compared against the C ref model block output for the same input
+- A mismatch at any block boundary is a hard FAIL (no tolerance)
+
 ## Step 5b: Coverage Gap Fill (single CDTG round)
 
 If any module's structural coverage is below Tier 2 thresholds (FSM < 50% or line < 60%):
@@ -148,16 +157,7 @@ This is a single lightweight round — NOT the full 3-round P5 CDTG protocol.
 Only triggered when initial coverage is below Tier 2 thresholds.
 Record the round in results: `"gap_fill_round": {"executed": true, "before": {...}, "after": {...}}`
 
-## Step 5a: Codec Decoder Block-Level Conformance (conditional, before gate)
-
-If the design is a video codec decoder (H.264/H.265), read
-`domain-packages/video-codec/knowledge/block-level-conformance.md` and ensure:
-- Unit test vectors for each RTL module include conformance-derived inputs extracted
-  from JM/HM trace output at the corresponding block boundary
-- Each RTL module output is compared against the C ref model block output for the same input
-- A mismatch at any block boundary is a hard FAIL (no tolerance)
-
-## Step 5c: Gate (after gap-fill AND codec conformance)
+## Step 5c: Gate (after codec conformance AND gap-fill)
 
 Gate: all unit tests pass AND reference comparison has zero mismatches AND
 coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
