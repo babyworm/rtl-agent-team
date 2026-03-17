@@ -343,7 +343,7 @@
         {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
         {"path": "rtl", "role": "p4-rtl-sources"},
         {"path": "docs/phase-4-rtl", "role": "p4-rtl-docs"},
-        {"path": "sim", "role": "p4-unit-test-results"},
+        {"path": "sim/**/*_unit_results.json", "role": "p4-tier2-unit-test-results"},
         {"path": "docs/phase-4-rtl/stream-b-sva-skeletons.md", "role": "p4-stream-b-sva"},
         {"path": "docs/phase-4-rtl/stream-b-cdc-preliminary.md", "role": "p4-stream-b-cdc"},
         {"path": "docs/phase-4-rtl/stream-b-tb-skeletons.md", "role": "p4-stream-b-tb"}
