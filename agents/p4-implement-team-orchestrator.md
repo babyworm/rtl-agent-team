@@ -119,8 +119,11 @@ t_test_plan = TaskCreate(subject=f"W0b: TestPlan {M}",
 ```
 
 **Gate**: All `t_test_plan_{M}` tasks must be DONE before their corresponding Wave 1 write tasks start.
-If test-plan-writer fails for a module, retry once. On second failure, proceed with WARNING
-and mark module as "test-plan-pending" for Wave 6a to generate.
+If test-plan-writer fails for a module, retry once. On second failure:
+  - Mark task as DONE with status "test-plan-pending"
+  - Remove the blockedBy dependency so Wave 1 can proceed
+  - Log WARNING: "Test plan deferred to Wave 6a for {M}"
+This matches the non-team path fallback behavior (proceed with WARNING, generate in Wave 6a).
 
 ## Step 2: Task Graph Creation
 
@@ -129,7 +132,7 @@ NOTE: `t_tier2` is created in Step 2c AFTER the loop. Per-module W9 uses a
 sentinel reference that is wired in Step 2d.
 
 ```python
-# Wave 1: Write (depends on test plan)
+# Wave 1: Write (depends on test plan — dependency relaxed if test plan marked "pending")
 t_write = TaskCreate(subject=f"W1: Write {M}", description=f"Implement rtl/{M}/{M}.sv from uarch spec",
                      blockedBy=[t_test_plan])
 

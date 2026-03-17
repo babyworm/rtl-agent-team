@@ -93,6 +93,8 @@ Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
 Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("sim/**/*_unit_results.json")                  # Tier 2 baseline (GAP 2 coverage handoff)
+Glob("docs/phase-3-uarch/iron-requirements.json")  # Iron requirements with acceptance_criteria
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -112,6 +114,26 @@ Read("docs/phase-4-rtl/stream-b-cdc-preliminary.md")  # CDC preliminary (optiona
 Read("docs/phase-4-rtl/stream-b-tb-skeletons.md")     # TB skeletons (optional)
 ```
 
+### Tier 2 Baseline Loading (GAP 2 coverage handoff)
+
+For each module, check if `sim/{module}/{module}_unit_results.json` exists.
+If found:
+  - Read coverage baseline: line_pct, fsm_pct, toggle_pct
+  - Read already-covered features list
+  - Pass to V5/V6 tasks: "Tier 2 baseline available — build incrementally"
+If not found:
+  - Proceed without baseline (graceful degradation)
+  - Log: "No Tier 2 baseline for {module} — CDTG starts from zero"
+
+### Iron Requirements Loading (AC-level traceability)
+
+Check if `docs/phase-3-uarch/iron-requirements.json` exists.
+If found and contains structured `acceptance_criteria` (object array with ac_id):
+  - Enable AC-level traceability for V5/V6/V9 tasks
+  - Pass to task prompts: "Use ac_id-level verification and RTM generation"
+If not found or acceptance_criteria absent/string-array:
+  - Use REQ-level traceability (existing behavior)
+
 ## Step 2: Task Graph Creation
 
 For each discovered module, create tasks with blockedBy dependencies:
@@ -127,9 +149,14 @@ t_synth = TaskCreate(subject=f"V8b: Synth {M}",     description=f"Run Yosys synt
                       blockedBy=[t_sdc])
 
 # Dependent tasks
-t_func  = TaskCreate(subject=f"V5: Functional {M}", description=f"Run cocotb regression for {M}",
+t_func  = TaskCreate(subject=f"V5: Functional {M}", description=f"Run cocotb regression for {M}. "
+                      f"Load Tier 2 baseline from sim/{M}/{M}_unit_results.json if available — "
+                      f"build incrementally on P4 coverage, focus on uncovered regions. "
+                      f"Tag test functions with ac_ids when structured acceptance_criteria exist.",
                       blockedBy=[t_lint])  # V5 depends only on V1 (lint-clean required for sim)
-t_cov   = TaskCreate(subject=f"V6: Coverage {M}",   description=f"Analyze coverage for {M}",
+t_cov   = TaskCreate(subject=f"V6: Coverage {M}",   description=f"Analyze coverage for {M}. "
+                      f"Use Tier 2 baseline as starting point for gap analysis. "
+                      f"Report uncovered ac_ids when acceptance_criteria available.",
                       blockedBy=[t_func])
 t_perf  = TaskCreate(subject=f"V7: Performance {M}", description=f"Measure throughput/latency for {M}",
                       blockedBy=[t_func])
@@ -250,18 +277,22 @@ After top-level gate passes:
 
 ```python
 t_req_trace = TaskCreate(subject="S3.1: Requirement Traceability",
-                         description="Read requirements.json and ALL test results. Map each REQ-NNN to test(s) that verify it. Save reviews/phase-5-verify/requirement-traceability.md.",
+                         description="Read requirements.json and iron-requirements.json (if available). Map each REQ-NNN to test(s) that verify it. When structured acceptance_criteria exist, map at AC level (ac_id). Save reviews/phase-5-verify/requirement-traceability.md.",
                          blockedBy=[t_top_review])
 
 t_e2e_trace = TaskCreate(subject="S3.2: E2E Traceability",
-                         description="Build unified end-to-end traceability: REQ → Arch → μArch → RTL → Test → Result. Save reviews/phase-5-verify/e2e-traceability.md.",
+                         description="Build unified end-to-end traceability: REQ → Arch → μArch → RTL → Test → Result. When traces_to field exists in iron-requirements, include cross-phase decomposition chain. Save reviews/phase-5-verify/e2e-traceability.md.",
                          blockedBy=[t_top_review])
 
-t_compliance = TaskCreate(subject="S3.3: Final Compliance Review",
-                          description="READ-ONLY final spec compliance review. Read requirements.json, io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.",
-                          blockedBy=[t_req_trace, t_e2e_trace])
+t_trace_audit = TaskCreate(subject="S3.3: Traceability Audit",
+                           description="Audit AC-level coverage for Critical/High requirements. Read iron-requirements.json for acceptance_criteria. For each Critical/High ac_id: verify VERIFIED or FORMAL status. UNTESTED Critical/High ac_id blocks P6 entry. Save reviews/phase-5-verify/traceability-audit.md with verdict PASS/FAIL.",
+                           blockedBy=[t_req_trace, t_e2e_trace])
 
-t_summary = TaskCreate(subject="S3.4: Phase 5 Summary",
+t_compliance = TaskCreate(subject="S3.4: Final Compliance Review",
+                          description="READ-ONLY final spec compliance review. Read requirements.json, iron-requirements.json (if available), io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.",
+                          blockedBy=[t_trace_audit])
+
+t_summary = TaskCreate(subject="S3.5: Phase 5 Summary",
                        description="Generate compressed Phase 5 summary. Read all Phase 5 artifacts. Write docs/phase-5-verify/phase-5-summary.md (max 200 lines). Include: verification results per module, coverage metrics, performance vs spec, synthesis estimates, outstanding issues.",
                        blockedBy=[t_compliance])
 ```

@@ -95,9 +95,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
   <Investigation_Protocol>
     1. **Read requirements specification**:
-       a. Read `requirements.json` — extract every REQ-XXXX with description and acceptance criteria.
+       a. Read `docs/phase-3-uarch/iron-requirements.json` (preferred — contains structured acceptance_criteria with ac_id when available).
+          If not found, fall back to `requirements.json` (legacy REQ-level format).
        b. Read `specs/` directory for supplementary requirements documents.
-       c. Build the complete requirement list with IDs, descriptions, and priority levels.
+       c. Build the complete requirement list with IDs, descriptions, priority levels, and acceptance_criteria (when present).
+       d. When iron-requirements.json has structured acceptance_criteria (object array with ac_id), enable AC-level traceability.
+          When acceptance_criteria is absent, empty, or string-array format (P1/P2), use REQ-level traceability.
 
     2. **Read architecture traceability** (if exists):
        a. Read `reviews/phase-2-architecture/feature-coverage.md` — REQ → Arch block mapping.
@@ -169,7 +172,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: requirements.json, test files, architecture reviews, test plan
+    - Read: iron-requirements.json (preferred) or requirements.json (fallback), test files, architecture reviews, test plan
     - Grep: search for REQ-XXXX references in test files, search for feature keywords
     - Glob: find all test_*.py, test_*.sv, *.sva files
     - Bash: count requirements, count tests, generate statistics
@@ -180,8 +183,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     # Find all REQ references in test files
     grep -rn "REQ-" sim/ --include="*.py" --include="*.sv" --include="*.sva"
 
-    # Count requirements in spec
-    grep -c "REQ-" requirements.json
+    # Count requirements in spec (prefer iron-requirements.json)
+    grep -c "REQ-" docs/phase-3-uarch/iron-requirements.json 2>/dev/null || grep -c "REQ-" requirements.json
 
     # Find tests without any REQ reference
     for f in sim/*/test_*.py; do
@@ -224,7 +227,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     # Requirement Traceability Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: requirement-tracer
-    - Spec Source: requirements.json
+    - Spec Source: iron-requirements.json (or requirements.json)
     - Verdict: PASS | FAIL
 
     ## Traceability Summary
@@ -319,7 +322,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </References>
 
   <Final_Checklist>
-    - [ ] Every REQ-XXXX in requirements.json traced to a test case?
+    - [ ] Every REQ-XXXX in iron-requirements.json (or requirements.json) traced to a test case?
+    - [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status?
     - [ ] Forward traceability matrix complete (Spec → Test)?
     - [ ] Backward traceability matrix complete (Test → Spec)?
     - [ ] UNTESTED requirements flagged with CRITICAL severity?

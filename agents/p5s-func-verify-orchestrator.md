@@ -52,7 +52,8 @@ Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-3-uarch/iron-requirements.json")  # Iron requirements (preferred, AC-level)
+Glob("docs/phase-1-research/requirements.json")    # Requirements (fallback, REQ-level)
 Glob("sim/**/*_unit_results.json")                 # Tier 2 baseline (optional — graceful degradation if absent)
 ```
 
@@ -64,7 +65,8 @@ Adjust execution plan based on available artifacts.
 ```
 Bash("mkdir -p reviews/phase-5-verify sim/regression sim/coverage")
 Glob("rtl/*/")       # Enumerate modules
-Read("docs/phase-1-research/requirements.json")  # For traceability matrix
+Read("docs/phase-3-uarch/iron-requirements.json")  # For traceability matrix (preferred — AC-level)
+Read("docs/phase-1-research/requirements.json")    # Fallback if iron-requirements absent
 ```
 
 ## Tier 2 Baseline Loading
@@ -224,21 +226,26 @@ After ALL regression completes:
 
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read requirements.json and sim/regression/*{module}*_results.json.
+     prompt="Read docs/phase-3-uarch/iron-requirements.json (preferred) or requirements.json (fallback) and sim/regression/*{module}*_results.json.
 Map each REQ-NNN to the test(s) that verify it for module {module}. Output a MODULE-LEVEL Requirement Traceability fragment.
+When structured acceptance_criteria (with ac_id) exist in iron-requirements.json:
+  Use AC-level format: | REQ ID | AC ID | Description | Test Case | Status |
+  Status per AC: VERIFIED, FORMAL, PARTIAL, UNTESTED, NOT_VERIFIABLE
+When no structured AC: use REQ-level format (existing behavior).
 Save MODULE-LEVEL traceability to reviews/phase-5-verify/requirement-traceability-{module}.md in standard review Markdown format:
   # Phase 5 Review: Requirement Traceability — {module}
   - Date: (today)
   - Reviewer: func-verifier
   - Module: {module}
-  - Upper Spec: requirements.json
+  - Upper Spec: iron-requirements.json (or requirements.json)
   - Verdict: PASS | FAIL
   ## Feature Coverage Checklist
-  | REQ ID | Test Name | Result | Status |
+  | REQ ID | AC ID | Description | Test Case | Status |
+  (Use REQ-level columns when no structured AC available)
   ## Findings
   ## Verdict
 The master p5-verify-orchestrator will merge per-module fragments into the final unified traceability matrix.
-For any REQ with NO TEST COVERAGE, write additional cocotb tests.
+For any REQ (or ac_id when structured AC exists) with NO TEST COVERAGE, write additional cocotb tests.
 Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming.")
 ```
 

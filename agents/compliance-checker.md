@@ -50,13 +50,30 @@ When iterating acceptance_criteria entries:
 - If acceptance_criteria is absent or empty array:
   Operate at req_ids level only (existing behavior).
 
-For EACH requirement in the upstream iron list:
-  For EACH item in its `acceptance_criteria`:
-    - Search target artifacts for evidence of fulfillment
-    - **PASS**: Explicit evidence found. Record exact file path and section.
-    - **VIOLATION**: No evidence found OR evidence contradicts the criterion.
-      Record which criterion failed and what was found instead.
-    - **UNCERTAIN**: Artifact not yet generated (and ONLY this reason).
+For EACH requirement in the upstream iron list, apply branching logic:
+
+**Branch A — acceptance_criteria absent or empty array []:**
+  Perform one REQ-level check (existing behavior):
+  - Search target artifacts for evidence that the requirement is fulfilled
+  - Classify as PASS / VIOLATION / UNCERTAIN at REQ level
+
+**Branch B — acceptance_criteria is string array (P1/P2 format):**
+  Treat each string as a single criterion at REQ level:
+  - Search target artifacts for evidence of each criterion text
+  - Classify per criterion, but no ac_id tracking (none available)
+
+**Branch C — acceptance_criteria is object array with ac_id (P3 format):**
+  Track at ac_id level:
+  - For EACH item with ac_id: search target artifacts for evidence of fulfillment
+  - Check for matching `# Covers: REQ-U-NNN.AC-M` or `ac_ids` tags in test results
+  - If verifiable == false: document as NOT_VERIFIABLE, exclude from gate
+  - Classify per ac_id as PASS / VIOLATION / UNCERTAIN
+
+For ALL branches, the per-item classification rules are:
+  - **PASS**: Explicit evidence found. Record exact file path and section.
+  - **VIOLATION**: No evidence found OR evidence contradicts the criterion.
+    Record which criterion failed and what was found instead.
+  - **UNCERTAIN**: Artifact not yet generated (and ONLY this reason).
 
 ### Step 4: Generate Compliance Report
 
@@ -74,6 +91,8 @@ If the prompt includes "Save report to <path>", use that path instead of the def
     "pass": 0,
     "violation": 0,
     "uncertain": 0,
+    "untested": 0,
+    "not_verifiable": 0,
     "max_violation_authority": null,
     "infeasibility_detected": false
   },
@@ -82,16 +101,25 @@ If the prompt includes "Save report to <path>", use that path instead of the def
 ```
 
 **Summary rules:**
-- `verdict`: "PASS" if violation == 0 AND uncertain ratio <= 0.2. "FAIL" otherwise.
-- `max_violation_authority`: lowest authority number among VIOLATION results (null if none).
+- `verdict`: "PASS" if violation == 0 AND untested == 0 AND uncertain ratio <= 0.2. "FAIL" otherwise.
+- `max_violation_authority`: lowest authority number among VIOLATION or UNTESTED results (null if none).
 - `infeasibility_detected`: set to true only if orchestrator has provided validated infeasibility evidence.
+- `not_verifiable`: count of NOT_VERIFIABLE results (excluded from total, pass, violation, and verdict math).
+- `untested`: count of UNTESTED results (included in verdict math — blocks PASS).
+
+**Status mapping across branches:**
+- Branch A/B: PASS, VIOLATION, UNCERTAIN only (no AC-level statuses).
+- Branch C: PASS, VIOLATION, UNCERTAIN, UNTESTED (ac_id with no test coverage), NOT_VERIFIABLE (verifiable==false, excluded from gate).
+- NOT_VERIFIABLE results are excluded from `summary.total` and do not affect verdict.
 
 **Per-result entry:**
 ```json
 {
   "req_id": "REQ-F-001",
+  "ac_id": "REQ-F-001.AC-1 or null (null when no structured AC)",
+  "criterion_description": "acceptance criterion text (from ac_id object, or null)",
   "authority": 1,
-  "verdict": "PASS | VIOLATION | UNCERTAIN",
+  "verdict": "PASS | VIOLATION | UNCERTAIN | UNTESTED | NOT_VERIFIABLE",
   "evidence": "file path and section (PASS only)",
   "failed_criteria": "specific criterion text (VIOLATION only)",
   "finding": "what was found instead (VIOLATION only)",

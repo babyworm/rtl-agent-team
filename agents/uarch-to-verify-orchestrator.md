@@ -265,9 +265,16 @@ verdict: PASS or FAIL + gap list[]")
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Final Compliance Matrix: every requirement implemented, verified, passing.
-Unify segmented traceability into e2e matrix:
-| REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
+Read docs/phase-3-uarch/iron-requirements.json (preferred) or requirements.json (fallback).
+Unify segmented traceability into e2e matrix.
+When structured acceptance_criteria (with ac_id) exist:
+  | REQ ID | AC ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
+  When traces_to field exists: include cross-phase decomposition chain (REQ-F → REQ-A → REQ-U).
+  UNTESTED Critical/High ac_id → TRACEABILITY_GAP (blocks P6 entry).
+When no structured AC:
+  | REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
 Any row with a gap → TRACEABILITY_GAP.
+For each FAILED test: report affected req_ids/ac_ids for backward failure-impact analysis.
 Output: reviews/phase-5-verify/final-compliance.md, reviews/phase-5-verify/e2e-traceability.md.
 verdict: PASS or FAIL + findings[]")
 ```

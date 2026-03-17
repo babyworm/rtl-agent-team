@@ -205,8 +205,9 @@ enabling prioritized debugging and requirement-level risk assessment.
 - [ ] Coverage targets met: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
 - [ ] sim/regression/seed_{seed}_results.json written per seed
 - [ ] Early termination applied if failure rate >5%
-- [ ] Requirement Traceability Matrix produced with per-REQ-NNN mapping
-- [ ] Every REQ-NNN in requirements.json covered by at least one test
+- [ ] Requirement Traceability Matrix produced (AC-level when structured acceptance_criteria exist, REQ-level otherwise)
+- [ ] Every REQ-NNN in iron-requirements.json (preferred) or requirements.json (fallback) covered by at least one test
+- [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status
 - [ ] All covered requirements pass their tests (or failures escalated)
 - [ ] Traceability verdict is PASS
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved
