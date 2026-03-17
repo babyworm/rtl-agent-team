@@ -7,6 +7,14 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Added
+- Test plan generation (Wave 0 Step 0b) before RTL implementation — TDD-style verification
+- New `test-plan-writer` agent for spec-driven test scenario derivation (ECP/BVA/STT/DT)
+- P4→P5 coverage handoff — P5 CDTG uses Tier 2 baseline for incremental gap closure
+- Structured acceptance criteria (`ac_id`) in iron-requirements.json with criteria-level traceability
+- AC-level RTM, compliance-checker forward-trace, and coverage-analyst gap reporting
+- Backward-compatible fallback: projects without `acceptance_criteria` use `req_ids` only
+
 ## [0.8.4] - 2026-03-17
 
 ### Verified
