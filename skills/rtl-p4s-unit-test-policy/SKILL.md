@@ -39,15 +39,21 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
 
 ## Result JSON Schema
 
+Each feature entry supports an optional `ac_ids` field for acceptance criteria traceability:
+- `ac_ids`: array of AC IDs covered by this test (e.g., `["REQ-U-012.AC-1", "REQ-U-012.AC-2"]`)
+- When the requirement has `acceptance_criteria` (structured object array with `ac_id` fields) in
+  `iron-requirements.json`, `ac_ids` MUST be populated for each covered criterion.
+- When `acceptance_criteria` is absent or an empty array `[]`, `ac_ids` may be omitted (backward compatible).
+
 ```json
 {
   "module": "{module}",
   "tier": 2,
   "ref_mode": "A_DPI" | "B_FILE",
   "features": [
-    {"name": "fsm_idle_to_active", "status": "PASS", "req_ids": ["REQ-U-003"]},
-    {"name": "pipeline_latency_3cyc", "status": "PASS", "req_ids": ["REQ-U-007"]},
-    {"name": "valid_ready_handshake", "status": "PASS", "req_ids": ["REQ-U-012"]},
+    {"name": "fsm_idle_to_active", "status": "PASS", "req_ids": ["REQ-U-003"], "ac_ids": ["REQ-U-003.AC-1"]},
+    {"name": "pipeline_latency_3cyc", "status": "PASS", "req_ids": ["REQ-U-007"], "ac_ids": ["REQ-U-007.AC-1", "REQ-U-007.AC-2"]},
+    {"name": "valid_ready_handshake", "status": "PASS", "req_ids": ["REQ-U-012"], "ac_ids": ["REQ-U-012.AC-1"]},
     {"name": "transform_accuracy", "status": "FAIL", "mismatch_cycle": 47, "req_ids": ["REQ-U-015"]}
   ],
   "ref_mismatches": 0,

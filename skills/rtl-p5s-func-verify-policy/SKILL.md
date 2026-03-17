@@ -92,16 +92,21 @@ bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh \
 
 Save to `reviews/phase-5-verify/requirement-traceability.md`:
 
+### AC-Level Format (when structured acceptance_criteria with ac_id exist in iron-requirements)
+
+When `iron-requirements.json` contains structured `acceptance_criteria` entries (object arrays with `ac_id`
+fields), the RTM uses AC-level granularity:
+
 ```markdown
 # Phase 5 Review: Requirement Traceability
 - Date: YYYY-MM-DD
 - Reviewer: func-verifier
-- Upper Spec: requirements.json
+- Upper Spec: iron-requirements.json
 - Verdict: PASS | FAIL
 
 ## Feature Coverage Checklist
-| REQ ID | Test Name | Result | Status |
-|--------|-----------|--------|--------|
+| REQ ID | AC ID | Description | Test Case | Status |
+|--------|-------|-------------|-----------|--------|
 
 ## Findings
 ### [severity] Finding-N: ...
@@ -110,10 +115,31 @@ Save to `reviews/phase-5-verify/requirement-traceability.md`:
 PASS | FAIL: [reason]
 ```
 
+AC-level status values per criterion:
+- `VERIFIED` — AC covered by a passing test
+- `FORMAL` — AC proved by formal verification
+- `PARTIAL` — AC partially covered (some test cases pass, scope limited)
+- `UNTESTED` — AC exists but no test covers it
+- `NOT_VERIFIABLE` — AC has `verifiable: false` (inspection-only); document in RTM, excluded from
+  automated coverage tracking
+
+VERIFIED judgment is made at the individual criterion level when `ac_id` fields are present.
+
+### REQ-Level Format (backward compatible — when no structured AC)
+
+When `acceptance_criteria` is absent or contains a plain string array (P1/P2 format), the RTM uses
+the existing REQ-level format:
+
+```markdown
+## Feature Coverage Checklist
+| REQ ID | Test Name | Result | Status |
+|--------|-----------|--------|--------|
+```
+
 Verdict rules:
-- `PASS` — all requirements verified with passing tests
-- `FAIL` — M requirements without test coverage, K requirements with failing tests
-- Any REQ with NO TEST COVERAGE → testbench-dev must generate additional tests
+- `PASS` — all requirements (or acceptance criteria) verified with passing tests
+- `FAIL` — M requirements/criteria without test coverage, K with failing tests
+- Any REQ (or AC) with NO TEST COVERAGE → testbench-dev must generate additional tests
 
 ## cocotb Ecosystem Quick Reference
 

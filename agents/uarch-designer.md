@@ -59,6 +59,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Hazard analysis: all RAW/WAW/WAR hazards identified for pipelined blocks, resolution strategy specified
     - Every specification references the corresponding REQ-XXXX and architecture block name
     - REQ→uArch reverse traceability table: docs/phase-3-uarch/req-uarch-traceability.md maps every requirement from iron-requirements.json (REQ-F-*, REQ-P-*, REQ-A-*) to the specific uArch module(s) and section(s) that implement it. 100% REQ coverage required (no unmapped REQs).
+    - Every REQ-U-* in iron-requirements.json includes at least one structured acceptance_criteria entry
   </Success_Criteria>
 
   <Constraints>
@@ -111,6 +112,32 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
         identify which docs/phase-3-uarch/{module}.md section(s) implement it. Output as a structured table in
         docs/phase-3-uarch/req-uarch-traceability.md. Flag any REQ with zero uArch coverage.
   </Investigation_Protocol>
+
+  <Acceptance_Criteria_Generation>
+    ## Acceptance Criteria in iron-requirements.json
+
+    When generating iron-requirements.json entries, include acceptance_criteria array for each REQ-U-*:
+
+    ```json
+    "acceptance_criteria": [
+      {
+        "ac_id": "REQ-U-NNN.AC-1",
+        "description": "measurable criterion text",
+        "test_method": "assertion|cocotb|formal|inspection",
+        "verifiable": true
+      }
+    ]
+    ```
+
+    Minimum 1 acceptance criterion per requirement. test_method guidance:
+    - "assertion": protocol properties verifiable by SVA (e.g., valid stable during !ready)
+    - "cocotb": functional behavior verifiable by simulation (e.g., transfer completes in N cycles)
+    - "formal": invariants provable by formal verification (e.g., no deadlock, no livelock)
+    - "inspection": non-automatable criteria — set verifiable: false
+
+    For each REQ-U-* entry you specify, propose at least one concrete, measurable acceptance criterion
+    that testbench-dev can directly translate into a test case or assertion.
+  </Acceptance_Criteria_Generation>
 
   <Tool_Usage>
     - Use Read to read architecture.md, iron-requirements.json (or requirements.json), timing_constraints.json, io_definition.json.

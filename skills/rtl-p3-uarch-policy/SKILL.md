@@ -235,6 +235,34 @@ For each OPEN-2-* item, the μArch team must:
    - `acceptance_criteria`: measurable criteria for the μArch decision
 4. Verify: ALL OPEN-2-* items must be resolved before Phase 3 exit
 
+## iron-requirements.json Schema — acceptance_criteria
+
+Each REQ-U-* entry SHOULD include structured acceptance_criteria:
+
+```json
+"acceptance_criteria": [
+  {
+    "ac_id": "REQ-U-NNN.AC-M",
+    "description": "measurable criterion text",
+    "test_method": "assertion|cocotb|formal|inspection",
+    "verifiable": true
+  }
+]
+```
+
+Rules:
+- Every REQ-U-* SHOULD have ≥1 acceptance criterion
+- `ac_id` format: `{parent_req_id}.AC-{N}` (e.g., `REQ-U-012.AC-1`)
+- `test_method` guides testbench-dev on verification approach:
+  - `assertion`: protocol properties verifiable by SVA (e.g., valid stable during !ready)
+  - `cocotb`: functional behavior verifiable by simulation (e.g., transfer completes correctly)
+  - `formal`: invariants provable by formal verification (e.g., no deadlock)
+  - `inspection`: non-automatable criteria — set `verifiable: false`
+- `verifiable: false` criteria are excluded from automated coverage tracking;
+  documented in RTM as `NOT_VERIFIABLE`
+- P3 exit gate: advisory WARNING if any REQ-U-* has no AC (not a hard-block)
+- Empty array `[]` treated same as absent field (backward compatible)
+
 ### Zero-Opens Invariant
 
 Phase 3 MUST NOT produce an open-requirements.json. All research topics must be resolved here.

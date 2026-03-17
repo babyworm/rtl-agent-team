@@ -75,6 +75,18 @@ scripts/run_sim.sh --sim iverilog --top tb_{top}_integration \
 - Test data transfer across clock domains
 - Use rtl-p5s-cdc-verify for detailed CDC analysis
 
+## Acceptance Criteria Traceability (Optional at Tier 4)
+
+Integration test results may optionally include `ac_ids` for AC-level traceability.
+
+When structured `acceptance_criteria` (with `ac_id` fields) exist on a requirement in
+`iron-requirements.json`:
+- Integration tests SHOULD tag `ac_ids` where feasible alongside existing `req_ids`
+- This is advisory at Tier 4 (not required for gate pass/fail)
+- Example: `{"scenario": "basic_forward", "status": "PASS", "req_ids": ["REQ-U-001"], "ac_ids": ["REQ-U-001.AC-1"]}`
+
+When no structured AC exists (absent or plain string-array format): use `req_ids` only (existing behavior).
+
 ## Tier Transition Rules
 
 - Tier 3 PASS (rtl-p5s-func-verify) → Tier 4 eligible

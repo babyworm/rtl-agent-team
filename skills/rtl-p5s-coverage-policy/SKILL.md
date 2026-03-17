@@ -48,12 +48,17 @@ with structured, actionable feedback — not just gap descriptions.
 
 For each HIGH/CRITICAL gap, coverage-analyst outputs:
 
-| Gap ID | Uncovered Bin | Constraint | Sequence | Expected Behavior |
-|--------|--------------|------------|----------|-------------------|
-| G01 | `cg_input.cp_data[overflow]` | `i_data >= 2^(WIDTH-1)` | `i_valid=1 → wait 1 cycle → check o_overflow` | `o_overflow` asserted within 2 cycles |
-| G02 | `cg_fsm.cp_transition[IDLE→ERR]` | `i_error=1 && state==IDLE` | `reset → i_valid=0 → i_error=1` | FSM transitions to ERR state |
+| Gap ID | Uncovered Bin | ac_id | Constraint | Sequence | Expected Behavior |
+|--------|--------------|-------|------------|----------|-------------------|
+| G01 | `cg_input.cp_data[overflow]` | REQ-U-012.AC-2 | `i_data >= 2^(WIDTH-1)` | `i_valid=1 → wait 1 cycle → check o_overflow` | `o_overflow` asserted within 2 cycles |
+| G02 | `cg_fsm.cp_transition[IDLE→ERR]` | — | `i_error=1 && state==IDLE` | `reset → i_valid=0 → i_error=1` | FSM transitions to ERR state |
 
 Fields:
+- **ac_id**: Acceptance criterion ID from `iron-requirements.json` that this gap maps to.
+  When `ac_id` is available, the gap report links code coverage gaps to specific acceptance criteria,
+  enabling precise traceability from uncovered bins to requirements.
+  When no `ac_id` is available (requirement lacks structured AC, or gap is structural), use `—` and
+  include the REQ ID reference in the Uncovered Bin or Constraint field instead.
 - **Constraint**: Signal value ranges or conditions that must hold to reach the uncovered bin
 - **Sequence**: Temporal ordering of stimulus (clock-cycle-level when possible)
 - **Expected Behavior**: Observable DUT response that confirms the bin was hit

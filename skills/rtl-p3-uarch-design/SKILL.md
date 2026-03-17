@@ -47,3 +47,13 @@ development, BFM validation gate, and 5-reviewer 3-round review.
 - Zero-Opens Invariant: no unresolved OPEN-* items may pass to Phase 4
 - Compliance Check: verify REQ-U-* uarch requirements against P1+P2 iron requirements
 - Exit gate includes `compliance-pass` and `zero-remaining-opens`
+
+## P3 Exit Gate: Acceptance Criteria Advisory
+
+Every REQ-U-* in `docs/phase-3-uarch/iron-requirements.json` should have ≥1 `acceptance_criteria` entry.
+This is an advisory check (WARNING, not hard-block):
+- If any REQ-U-* has no `acceptance_criteria` (absent or empty array `[]`): emit WARNING listing
+  the affected REQ IDs
+- Prompt uarch-designer to add missing criteria before P3 exit
+- Proceed even if some REQ-U-* lack AC — downstream verification will operate at req_ids level
+  (backward compatible)

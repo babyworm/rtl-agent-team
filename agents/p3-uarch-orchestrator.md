@@ -160,6 +160,19 @@ Write("docs/phase-3-uarch/iron-requirements.json")
 # Phase 3 MUST NOT produce open-requirements.json (zero-opens invariant)
 ```
 
+When generating iron-requirements.json, include structured acceptance_criteria for each REQ-U-*:
+
+```json
+"acceptance_criteria": [
+  {"ac_id": "REQ-U-NNN.AC-1", "description": "...", "test_method": "cocotb", "verifiable": true}
+]
+```
+
+Aim for ≥1 acceptance criterion per requirement. Mark non-automatable criteria as `verifiable: false`.
+After generation, verify: every REQ-U-* has at least one `acceptance_criteria` entry.
+If any are missing, prompt uarch-designer to add them (advisory — not blocking P3 exit).
+Empty array `[]` counts as missing (treated same as absent field).
+
 # Stream B: BFM development (parallel with uarch)
 # BFM MUST produce C++ files (bfm/src/*.cpp, bfm/include/*.h), NOT SystemVerilog.
 # If SystemC is unavailable, use pure C timing model as fallback — never SV.
