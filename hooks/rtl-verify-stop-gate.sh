@@ -85,8 +85,7 @@ COUNT=$(wc -l < "$TRACK_FILE" | tr -d ' ')
 FILES=$(while IFS= read -r f; do basename "$f"; done < "$TRACK_FILE" | tr '\n' ', ' | sed 's/,$//')
 # Clean up temporary aggregated file
 rm -f "$AGGREGATED_TRACK"
-# Escape JSON-special characters in filenames
-FILES=$(jsonu_escape "$FILES")
+# Note: no jsonu_escape here — emit_stop_block handles JSON escaping internally
 
 MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Options: (1) Run /rtl-agent-team:rtl-p5s-func-verify for functional verification (2) Waive: touch .rtl-agent-team/state/rtl-verify-waiver (3) Reset: rm .rtl-agent-team/state/rtl-modified-files.txt"
 emit_stop_block "$MSG"

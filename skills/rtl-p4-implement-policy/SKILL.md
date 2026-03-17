@@ -210,10 +210,10 @@ ALL of the following must be true before Phase 5:
 - [ ] reviews/phase-4-rtl/design-review.md saved
 - [ ] reviews/phase-4-rtl/lint-report.md saved
 
-**Stream B:**
-- [ ] docs/phase-4-rtl/stream-b-sva-skeletons.md saved
-- [ ] docs/phase-4-rtl/stream-b-cdc-preliminary.md saved
-- [ ] docs/phase-4-rtl/stream-b-tb-skeletons.md saved
+**Stream B (content quality verified):**
+- [ ] docs/phase-4-rtl/stream-b-sva-skeletons.md saved — contains `property`/`assert` per module
+- [ ] docs/phase-4-rtl/stream-b-cdc-preliminary.md saved — references clock domain names from `clock-domain-map.md`
+- [ ] docs/phase-4-rtl/stream-b-tb-skeletons.md saved — references `REQ-` tag per module + contains test function/task
 - [ ] docs/phase-4-rtl/stream-b-synth-estimate.md saved (synthesis smoke test — no inferred latches, no unmappable constructs)
 
 **Naming Conventions:**

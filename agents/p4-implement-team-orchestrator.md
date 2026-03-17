@@ -41,7 +41,8 @@ Wave 2:  Lint      (per module, blockedBy: write_{module})
 Wave 3:  Fix       (per module, blockedBy: lint_{module}, only if FAIL)
 Wave 4:  Review    (per module, blockedBy: lint_{module} PASS or fix_{module})
 Wave 5:  Bugfix    (per module, blockedBy: review_{module}, only if issues found)
-Wave 6:  UnitTest  (per module, blockedBy: review_{module} PASS or bugfix_{module})
+Wave 6a: Tier1Smoke (per module, blockedBy: review_{module} PASS or bugfix_{module})
+Wave 6b: Tier2Unit  (global, blockedBy: ALL wave 6a PASS; p4s-unit-test-orchestrator)
 Wave 7:  CDC       (per module, blockedBy: write_{module})
 Wave 8:  Protocol  (per module, blockedBy: write_{module}, only if bus interfaces)
 Wave 9:  Refactor  (per module, blockedBy: unittest_{module} + cdc_{module} + proto_{module})
@@ -122,9 +123,12 @@ t_review = TaskCreate(subject=f"W4: Review {M}", description=f"Code review {M}",
 
 # Wave 5: Bugfix (conditional — created after review if issues found)
 
-# Wave 6: UnitTest (depends on review)
-t_unittest = TaskCreate(subject=f"W6: UnitTest {M}", description=f"Run unit tests for {M}",
-                        blockedBy=[t_review])
+# Wave 6a: Tier 1 Smoke (depends on review, per module)
+t_smoke = TaskCreate(subject=f"W6a: Tier1Smoke {M}", description=f"Run Tier 1 smoke tests for {M}",
+                     blockedBy=[t_review])
+
+# Wave 6b: Tier 2 Unit (global, after ALL 6a pass — created once outside per-module loop)
+# See Step 2b below
 
 # Wave 7: CDC (depends on write, parallel with lint path)
 t_cdc = TaskCreate(subject=f"W7: CDC {M}", description=f"CDC analysis for {M}",
@@ -133,8 +137,8 @@ t_cdc = TaskCreate(subject=f"W7: CDC {M}", description=f"CDC analysis for {M}",
 # Wave 8: Protocol (depends on write, conditional on bus interfaces)
 # Created only if module has bus interfaces
 
-# Wave 9: Refactor (depends on unittest + cdc + protocol if present)
-refactor_deps = [t_unittest, t_cdc]
+# Wave 9: Refactor (depends on smoke + cdc + protocol if present)
+refactor_deps = [t_smoke, t_cdc]
 if t_protocol:  # Only if module has bus interfaces (Wave 8 created)
     refactor_deps.append(t_protocol)
 t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refactoring for {M}",
@@ -149,11 +153,21 @@ t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refacto
 #                          blockedBy=[t_refactor])
 ```
 
+Wave 6b global task (after ALL per-module 6a smoke tasks):
+```python
+# Step 2b: Wave 6b — Tier 2 Unit Test (global, invoked ONCE)
+# p4s-unit-test-orchestrator is whole-design scoped — iterates all modules internally.
+t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
+                     description="Run Tier 2 unit tests for all modules against C ref model. "
+                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%).",
+                     blockedBy=[all_wave6a_smoke_tasks])
+```
+
 Final integration task:
 ```python
 t_integration = TaskCreate(subject="W10: Integration Gate",
-                           description="Verify all modules integrate cleanly",
-                           blockedBy=[all_wave9_tasks])
+                           description="Verify all modules integrate cleanly + requirement-tracer forward-trace",
+                           blockedBy=[all_wave9_tasks, t_tier2])
 ```
 
 ## Step 3: Monitor Loop
@@ -187,10 +201,12 @@ Waves 7 (CDC) and 8 (Protocol) run in parallel with the lint→fix→review path
 from the task dependency graph.
 
 ### Stream B Artifacts
-During Waves 1-6, generate Stream B early verification artifacts:
+During Waves 1-6a, generate Stream B early verification artifacts:
 - SVA skeletons (`docs/phase-4-rtl/stream-b-sva-skeletons.md`)
 - CDC preliminary analysis (`docs/phase-4-rtl/stream-b-cdc-preliminary.md`)
 - TB skeletons (`docs/phase-4-rtl/stream-b-tb-skeletons.md`)
+
+**Content quality gate**: SVA skeletons must contain `property`/`assert` per module; CDC preliminary must reference clock domain names from `clock-domain-map.md`; TB skeletons must reference `REQ-` tags per module.
 
 ## Step 4: Phase 4 Gate
 
@@ -199,7 +215,8 @@ After all Wave 9 tasks (and conditional W9b) complete and integration passes.
 
 1. Verify all modules have lint PASS
 2. Verify all modules have code review PASS (0 critical/major findings)
-3. Verify all modules have unit test PASS
+3. Verify all modules have Tier 1 smoke PASS (Wave 6a)
+3b. Verify Tier 2 unit test PASS (Wave 6b): `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`, `coverage.fsm_pct >= 50`, `coverage.line_pct >= 60`, and `req_ids` populated
 4. Verify all multi-domain modules have CDC PASS (single-domain: auto-skip)
 5. Verify all bus-interface modules have protocol PASS (no-bus: auto-skip)
 6. Verify equivalence-checker report exists for all logic-touching refactors (per policy)

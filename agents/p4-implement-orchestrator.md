@@ -313,6 +313,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 Verify ALL criteria per policy skill checklist, including:
 - `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
 - Each `{module}_unit_results.json` has `ref_mismatches=0` and coverage >= thresholds
+- Stream B content quality: SVA skeletons contain `property`/`assert` per module, CDC preliminary references clock domain names from `clock-domain-map.md`, TB skeletons reference `REQ-` tags per module
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
 ## Wave 11: Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
