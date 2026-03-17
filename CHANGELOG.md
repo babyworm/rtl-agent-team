@@ -7,6 +7,11 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-03-17
+
+### Verified
+- Final comprehensive Codex cross-review R1+R2 consecutive LGTM (no code changes)
+
 ## [0.8.3] - 2026-03-17
 
 ### Fixed (final cross-review R1-R5)
