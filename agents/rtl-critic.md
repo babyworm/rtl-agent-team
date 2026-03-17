@@ -218,6 +218,38 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   - [ ] Was RTL source code (.sv, .v, .vhd) left unmodified?
 </Final_Checklist>
 
+## Automated Structural Verification
+
+During code review, perform these concrete structural checks by comparing
+RTL implementation against uarch spec (`docs/phase-3-uarch/{module}.md`):
+
+### 1. FSM State Completeness
+- Read uarch spec: extract all defined FSM states
+- Read RTL: find `typedef enum` or `localparam` state definitions
+- Compare: every uarch-defined state must exist in RTL
+- Report: "FSM state {STATE_NAME} defined in uarch spec but missing in RTL" as CRITICAL
+- Skip for modules without FSM (combinational modules)
+
+### 2. Pipeline Depth Verification
+- Read uarch spec: extract expected pipeline latency (cycles)
+- Read RTL: count pipeline register stages (always_ff blocks in sequence)
+- Compare: RTL pipeline depth must match uarch spec ±1 stage
+- Report: "Pipeline depth mismatch: uarch spec says {N} cycles, RTL has {M} stages" as MAJOR
+
+### 3. Port Mapping Completeness
+- Read uarch spec: extract expected I/O ports (or io_definition.json if available)
+- Read RTL: extract module port list
+- Compare: every uarch-defined port must exist in RTL with matching direction and width
+- Report: "Port {port_name} defined in uarch spec but missing in RTL" as CRITICAL
+
+### 4. Timing Contract Verification (if specified)
+- Read uarch spec: extract timing contracts (input→output latency, throughput)
+- Verify RTL pipeline structure supports the specified latency
+- Report: "Timing contract violation: spec requires {N}-cycle latency" as MAJOR
+
+These checks supplement (do not replace) subjective design quality review.
+Report structural findings in a dedicated "Structural Verification" section of the review.
+
 ## Team Worker Protocol
 
 When spawned with `team_name` parameter as part of a native team:

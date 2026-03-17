@@ -89,6 +89,21 @@ Per-module review by rtl-critic:
 
 Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
 
+## Structural Verification in Code Review (Wave 4)
+
+Wave 4 code review MUST include automated structural checks (performed by rtl-critic):
+1. FSM state completeness: all uarch spec states present in RTL
+2. Pipeline depth: RTL stages match uarch spec ±1
+3. Port mapping: all uarch spec ports present with correct direction/width
+4. Timing contract: pipeline supports specified latency (if documented)
+
+Structural findings are classified:
+- CRITICAL: missing FSM state, missing port → triggers Wave 5 bugfix
+- MAJOR: pipeline depth mismatch, timing violation → triggers Wave 5 bugfix
+- MINOR: naming inconsistency → advisory only
+
+REVIEW_PASS requires zero CRITICAL structural findings.
+
 ## Code Review Iteration Protocol (Wave 5)
 
 - Round 1: Full review (all focus areas)

@@ -136,6 +136,12 @@ docs/phase-3-uarch/{module}.md. Review focus: (1) uarch compliance — all FSM s
 pipeline stages, data paths present? (2) Interface compliance — ports match io_definition.json?
 (3) Logical correctness — sign extension, width mismatch, off-by-one?
 (4) Coding style — naming conventions, parameterization? (5) Power — unnecessary toggling?
+Perform automated structural verification:
+- Compare RTL FSM states against docs/phase-3-uarch/{module}.md FSM definitions
+- Verify pipeline depth matches uarch spec latency
+- Check port completeness against uarch spec or io_definition.json
+- Verify timing contracts if specified in uarch spec
+Include a 'Structural Verification' section in the review report.
 Save review to .rtl-agent-team/scratch/phase-4/{module}_review.md.
 Classify: REVIEW_PASS or REVIEW_FAIL with finding list.",
      run_in_background=true)
