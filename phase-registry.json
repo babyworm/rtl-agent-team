@@ -48,14 +48,14 @@
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
-      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance"
+      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance|ac-coverage-check"
     },
     "rtl-p4-implement-team": {
       "phase": 4,
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
-      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance"
+      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance|ac-coverage-check"
     },
     "rtl-p4-block-parallel": {
       "phase": 4,
@@ -76,7 +76,7 @@
       "primary": false,
       "iron_upstream": ["docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
-      "completion_criteria": "test-written|simulation-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance"
+      "completion_criteria": "test-written|simulation-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance|ac-coverage-check"
     },
     "rtl-p4s-refactor": {
       "phase": 4,
@@ -112,7 +112,7 @@
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
-      "completion_criteria": "verification-pass|coverage-met|artifacts-written"
+      "completion_criteria": "verification-pass|coverage-met|artifacts-written|ac-coverage-check"
     },
     "rtl-p5-verify-team": {
       "phase": 5,
@@ -120,7 +120,7 @@
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
-      "completion_criteria": "verification-pass|coverage-met|artifacts-written"
+      "completion_criteria": "verification-pass|coverage-met|artifacts-written|ac-coverage-check"
     },
     "rtl-p5s-func-verify": {
       "phase": 5,
@@ -128,7 +128,7 @@
       "primary": false,
       "iron_upstream": [],
       "open_requirements": "",
-      "completion_criteria": "regression-pass|coverage-reported"
+      "completion_criteria": "regression-pass|coverage-reported|ac-coverage-check"
     },
     "rtl-p5s-integration-test": {
       "phase": 5,

@@ -16,3 +16,10 @@ user-invocable: false
 
 ## Hard Gate
 - Functional FAIL blocks progression to silicon validation.
+
+## AC-Level P5A Closure (when applicable)
+P5A functional closure includes AC coverage when structured acceptance_criteria exist:
+  - All Critical/High ac_ids must have VERIFIED or FORMAL status
+  - NOT_VERIFIABLE ac_ids documented but excluded from gate
+  - UNTESTED Critical/High ac_ids → FAIL (blocks P6 entry)
+When no structured AC: existing closure gate applies.

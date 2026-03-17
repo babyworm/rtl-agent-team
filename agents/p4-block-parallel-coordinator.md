@@ -201,6 +201,12 @@ During merge-time verification steps, consult the rtl-block-contract-test-policy
 - PASS/FAIL criteria and retry limits (max 3 attempts)
 - Stub replacement strategy (real blocks replace stubs progressively)
 
+## AC Coverage in Block Workers
+Block worker test generation: tag ac_ids when structured acceptance_criteria exist.
+- `# Covers: REQ-U-012.AC-1` for each covered criterion
+- Fall back to `# Covers: REQ-U-012` when no structured AC or empty array
+Each block's unit_results.json must include ac_ids field when AC exists.
+
 ## Step 4: Phase 4 Gate
 
 After all 6 blocks merged and integration gate passes:

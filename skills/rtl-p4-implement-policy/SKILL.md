@@ -138,6 +138,13 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
 - **rtl-p4s-unit-test** (standalone skill): Can still be invoked independently
   for ad-hoc Tier 2 testing outside the pipeline
 
+## AC Coverage at Wave 6b (Advisory)
+When iron-requirements has structured acceptance_criteria (with ac_id) for a REQ-U-*:
+  ac_ids should be populated for each unit test feature covering that requirement.
+  This is advisory at P4 (not hard-block). Incomplete AC coverage is flagged as WARNING
+  and deferred to P5 for closure.
+When no structured AC: existing req_ids gate applies unchanged.
+
 ## Rapid-Impl to Full-Impl Transition
 
 - `rtl-p4-rapid-impl` produces: lint-clean modules, module-level CDC pass,

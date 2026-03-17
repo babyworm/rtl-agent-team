@@ -64,6 +64,13 @@ A module graduates when ALL of:
 **On FAIL**: invoke rtl-p4s-bugfix (feedback loop, max 2 per module).
 After fix, re-verify ONLY the failed categories (not all 9).
 
+## AC-Level Module Graduation (when applicable)
+When structured acceptance_criteria (with ac_id) exist in iron-requirements:
+  Module graduation requires: every Critical/High ac_id has status VERIFIED or FORMAL.
+  PARTIAL ac_ids for Critical/High: WARNING (not blocking at module level, checked at top level).
+  NOT_VERIFIABLE ac_ids (verifiable: false): excluded from gate.
+When no structured AC: existing REQ-level graduation applies.
+
 ## Top-Level Gate
 
 All top-level checks PASS → proceed to Stage 3.

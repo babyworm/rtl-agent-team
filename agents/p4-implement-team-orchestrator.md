@@ -244,6 +244,11 @@ During Waves 1-6a, generate Stream B early verification artifacts:
 
 **Content quality gate**: SVA skeletons must contain `property`/`assert` per module; CDC preliminary must reference clock domain names from `clock-domain-map.md`; TB skeletons must reference `REQ-` tags per module.
 
+## AC Coverage in Team Mode (Wave 6b)
+Wave 6b task gate: when iron-requirements has structured acceptance_criteria,
+ac_ids should be populated in unit test results (advisory, matching non-team gate).
+Workers report ac_ids coverage status to coordinator.
+
 ## Step 4: Phase 4 Gate
 
 After all Wave 9 tasks (and conditional W9b) complete and integration passes.

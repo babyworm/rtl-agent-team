@@ -198,6 +198,12 @@ Category-specific guidance:
 - V8 (synthesis): area/timing miss → targeted optimization, no bugfix loop
 - V9 (code review): quality findings → refactor via rtl-p4s-refactor, no bugfix loop
 
+## AC-Level Traceability in Team Mode
+V5/V6 verification tasks: when structured acceptance_criteria exist,
+traceability operates at AC level (matching non-team p5-verify-orchestrator).
+RTM output: AC-level columns when structured AC available.
+Workers include ac_ids in per-module verification reports.
+
 ## Step 4: Stage 2 — Top-Level Verification (after ALL modules graduate)
 
 Create top-level verification tasks with dependencies:
