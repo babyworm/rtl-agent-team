@@ -183,6 +183,14 @@ codec conformance PASS (if applicable, from Step 5a).
 If coverage still below threshold after gap-fill round → FAIL with advisory note
 that P5 CDTG will handle deep closure. Do NOT silently proceed.
 
+## Error Injection Verification (Step 5c addendum)
+After checking coverage thresholds, verify error injection presence:
+- Scan unit_results.json features for entries matching error injection patterns
+  (name contains "error_", "err_", "reset_recovery", "backpressure_", "overflow_")
+- If zero error injection tests found: emit WARNING
+  "Module {module} has no error injection tests. Minimum 1 required."
+- This is advisory at Tier 2 (not hard-block). Phase 5 Tier 3 enforces error injection coverage.
+
 ### AC Coverage Gate (when applicable)
 
 When iron-requirements has structured acceptance_criteria for a REQ-U-*:

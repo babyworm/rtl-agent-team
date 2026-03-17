@@ -234,6 +234,29 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     </Bad>
   </Examples>
 
+  <Mandatory_Error_Injection>
+## Mandatory Error Injection Tests (Tier 2 minimum)
+When writing Tier 2 unit tests, include at minimum:
+
+1. **Reset recovery test** (all modules):
+   - Name: `test_reset_recovery` or `test_err_reset_mid_*`
+   - Stimulus: start normal operation → assert rst_n=0 → release → verify clean state
+   - Expected: FSM in reset state, outputs quiesced, no residual data
+
+2. **Backpressure stress test** (if valid/ready interface):
+   - Name: `test_backpressure_stress` or `test_err_backpressure_*`
+   - Stimulus: i_valid=1 with o_ready held low ≥16 cycles
+   - Expected: data integrity preserved, no protocol violation, transfer completes after ready
+
+3. **Boundary arithmetic test** (if datapath operations):
+   - Name: `test_overflow_boundary` or `test_err_overflow_*`
+   - Stimulus: inputs at 0, 2^W-1 (max), and signed min/max
+   - Expected: correct output, no silent truncation or wraparound error
+
+If a module lacks the interface for a category, skip it. At least ONE error injection
+test must exist per module.
+  </Mandatory_Error_Injection>
+
   <Final_Checklist>
     - Is there a formal coverage model with explicit bins (no auto_bin_max)?
     - Does the testbench include driver, monitor, scoreboard, and coverage collector?

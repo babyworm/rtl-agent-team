@@ -122,6 +122,24 @@ Recommended guidance (not gate-enforced — P5 coverage-analyst verifies these):
 **Traceability:**
 - Each feature test tagged with REQ-U-* IDs from `docs/phase-3-uarch/iron-requirements.json`
 
+## Mandatory Error Injection (Tier 2)
+
+Every Tier 2 unit test MUST include at minimum these error injection scenarios
+where the module interface supports them:
+
+| Category | Condition | Mandatory Test |
+|----------|-----------|---------------|
+| Reset recovery | All modules | Assert rst_n=0 during active operation → verify FSM returns to reset state, no residual data |
+| Backpressure stress | Modules with valid/ready interface | Hold ready low ≥16 cycles during valid=1 → verify data integrity preserved |
+| Boundary arithmetic | Modules with datapath operations | Input at min/max boundary values → verify no overflow/underflow corruption |
+
+**Applicability**: If a module lacks the interface for a category (e.g., no valid/ready),
+that category is N/A. At least ONE error injection test must be present per module.
+
+**Gate**: unit_results.json `features` array must contain at least one entry with
+`name` containing "error_" or "err_" or "reset_" or "backpressure_" or "overflow_" prefix.
+Absence of any error injection test → WARNING (advisory at Tier 2, enforced at Tier 3).
+
 ## Final Checklist
 
 - [ ] sim/{module}/tb_{module}.sv exists for every module
