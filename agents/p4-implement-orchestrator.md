@@ -324,7 +324,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 **ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
 Verify ALL criteria per policy skill checklist, including:
 - `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
-- Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, `req_ids` populated for every feature entry, and `func_coverage.covergroups_defined >= 1`
+- Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, `req_ids` populated for every feature entry, `func_coverage.covergroups_defined >= 1`, and `codec_conformance: "PASS"` or `"N/A"` (if applicable)
 - Stream B content quality: SVA skeletons contain `property`/`assert` per module, CDC preliminary references clock domain names from `clock-domain-map.md`, TB skeletons reference `REQ-` tags per module
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 

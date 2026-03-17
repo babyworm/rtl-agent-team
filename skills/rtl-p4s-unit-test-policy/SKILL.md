@@ -68,7 +68,8 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
     "covergroups_defined": 2,
     "bins_hit": 14,
     "bins_total": 20
-  }
+  },
+  "codec_conformance": "PASS" | "N/A"
 }
 ```
 
