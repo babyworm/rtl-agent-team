@@ -74,7 +74,7 @@
     "rtl-p4s-unit-test": {
       "phase": 4,
       "primary": false,
-      "iron_upstream": [],
+      "iron_upstream": ["docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
       "completion_criteria": "test-written|simulation-pass|ref-mismatches-zero|coverage-met|req-ids-traced"
     },

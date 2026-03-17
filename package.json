@@ -9,6 +9,8 @@
     "hooks",
     "docker",
     "scripts",
+    "phase-registry.json",
+    "skill-completion-criteria.json",
     "plugins",
     ".claude-plugin",
     ".lsp.json",
