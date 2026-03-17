@@ -103,6 +103,25 @@ Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phas
 
 Enumerate all modules from uarch specs and identify dependency order.
 
+## Step 1b: Test Plan Task Graph
+
+For each module M identified in Step 1, create a test plan task before the wave graph:
+
+```python
+# Test Plan: generate before Wave 1 (no deps on RTL, uses uarch spec directly)
+t_test_plan = TaskCreate(subject=f"W0b: TestPlan {M}",
+                         description=f"Generate test plan for {M} via test-plan-writer. "
+                                     f"Read docs/phase-3-uarch/{M}.md and "
+                                     f"docs/phase-3-uarch/iron-requirements.json. "
+                                     f"Apply ECP, BVA, STT (if FSM), DT (if ≥3 boolean controls). "
+                                     f"Output: sim/{M}/{M}_test_plan.md")
+# t_test_plan blocks Wave 1 write for this module — test plan must exist before RTL coding
+```
+
+**Gate**: All `t_test_plan_{M}` tasks must be DONE before their corresponding Wave 1 write tasks start.
+If test-plan-writer fails for a module, retry once. On second failure, proceed with WARNING
+and mark module as "test-plan-pending" for Wave 6a to generate.
+
 ## Step 2: Task Graph Creation
 
 For each module M, create the per-module wave task graph.
@@ -110,8 +129,9 @@ NOTE: `t_tier2` is created in Step 2c AFTER the loop. Per-module W9 uses a
 sentinel reference that is wired in Step 2d.
 
 ```python
-# Wave 1: Write (no deps)
-t_write = TaskCreate(subject=f"W1: Write {M}", description=f"Implement rtl/{M}/{M}.sv from uarch spec")
+# Wave 1: Write (depends on test plan)
+t_write = TaskCreate(subject=f"W1: Write {M}", description=f"Implement rtl/{M}/{M}.sv from uarch spec",
+                     blockedBy=[t_test_plan])
 
 # Wave 2: Lint (depends on write)
 t_lint = TaskCreate(subject=f"W2: Lint {M}", description=f"Run verilator --lint-only -Wall on {M}",

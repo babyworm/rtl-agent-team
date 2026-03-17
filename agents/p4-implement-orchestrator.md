@@ -74,6 +74,20 @@ Read("docs/phase-1-research/io_definition.json")
 - Initialize per-module state tracker (schema in policy skill)
 - `mkdir -p docs/phase-4-rtl reviews/phase-4-rtl .rtl-agent-team/scratch/phase-4`
 
+### Step 0b: Test Plan Generation
+
+For each module identified in Step 0a, spawn test-plan-writer in parallel:
+
+    Task(subagent_type="rtl-agent-team:test-plan-writer",
+         prompt="Generate test plan for module {module}.
+         Read docs/phase-3-uarch/{module}.md and docs/phase-3-uarch/iron-requirements.json.
+         Apply ECP, BVA, STT (if FSM), DT (if ≥3 boolean controls).
+         Output: sim/{module}/{module}_test_plan.md")
+
+**Gate**: All modules must have `sim/{module}/{module}_test_plan.md` before proceeding to Wave 1.
+If test-plan-writer fails for a module, retry once. On second failure, proceed with WARNING
+and mark module as "test-plan-pending" for Wave 6a to generate.
+
 ## Wave 1: Write All (parallel)
 
 Launch N rtl-coder tasks simultaneously, one per module:
