@@ -121,6 +121,20 @@ Task(compliance-checker, prompt="""
 
 Never accept: "Review what we've done so far" or session-context-based prompts.
 
+## Cross-Phase Decomposition Verification (when traces_to available)
+
+When iron-requirements entries contain `traces_to` fields:
+1. Collect all upstream REQ-F-*/REQ-A-* IDs from P1/P2 iron-requirements
+2. For each REQ-U-* in P3 iron-requirements, read its `traces_to` array
+3. Build inverse map: upstream_req → [list of REQ-U-* that trace to it]
+4. For each Critical/High upstream requirement:
+   - If inverse map has ≥1 REQ-U-*: COVERED
+   - If inverse map is empty: UNCOVERED → include in compliance report
+5. Report decomposition gaps as: "REQ-F-001 (Critical) has no REQ-U-* decomposition"
+
+When `traces_to` is absent (backward compatible): skip cross-phase check,
+operate at same-phase level only.
+
 ## Infeasibility Validation
 
 When invoked with `validate_infeasibility: true`:

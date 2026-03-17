@@ -263,6 +263,19 @@ Rules:
 - P3 exit gate: advisory WARNING if any REQ-U-* has no AC (not a hard-block)
 - Empty array `[]` treated same as absent field (backward compatible)
 
+## iron-requirements.json Schema — traces_to
+
+Each REQ-U-* entry SHOULD include a `traces_to` field linking to upstream requirements:
+
+```json
+  "traces_to": ["REQ-F-NNN", "REQ-A-NNN"]   // Upstream requirements this REQ-U-* decomposes from
+```
+
+Rules:
+- Every REQ-U-* SHOULD have ≥1 entry in `traces_to` linking to P1 REQ-F-* or P2 REQ-A-*
+- Enables cross-phase decomposition completeness verification
+- P3 exit gate: advisory WARNING if Critical/High REQ-F-* has no REQ-U-* tracing to it
+
 ### Zero-Opens Invariant
 
 Phase 3 MUST NOT produce an open-requirements.json. All research topics must be resolved here.

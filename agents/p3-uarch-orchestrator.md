@@ -173,6 +173,11 @@ After generation, verify: every REQ-U-* has at least one `acceptance_criteria` e
 If any are missing, prompt uarch-designer to add them (advisory — not blocking P3 exit).
 Empty array `[]` counts as missing (treated same as absent field).
 
+Also include `traces_to` in each REQ-U-* entry: an array of upstream REQ-F-*/REQ-A-* IDs
+that this uarch requirement decomposes from.
+Read P1 (`docs/phase-1-research/iron-requirements.json`) and P2 (`docs/phase-2-architecture/iron-requirements.json`)
+iron-requirements to establish the mapping before writing the REQ-U-* entries.
+
 # Stream B: BFM development (parallel with uarch)
 # BFM MUST produce C++ files (bfm/src/*.cpp, bfm/include/*.h), NOT SystemVerilog.
 # If SystemC is unavailable, use pure C timing model as fallback — never SV.

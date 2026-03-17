@@ -57,3 +57,18 @@ This is an advisory check (WARNING, not hard-block):
 - Prompt uarch-designer to add missing criteria before P3 exit
 - Proceed even if some REQ-U-* lack AC — downstream verification will operate at req_ids level
   (backward compatible)
+
+## P3 Exit Gate: Decomposition Completeness Advisory
+
+After iron-requirements.json is finalized, verify decomposition completeness:
+1. Read docs/phase-1-research/iron-requirements.json — collect all Critical/High REQ-F-*
+2. Read docs/phase-2-architecture/iron-requirements.json — collect all Critical/High REQ-A-*
+3. For each Critical/High REQ-F-*: check if at least one REQ-U-* has it in `traces_to`
+4. For each Critical/High REQ-A-*: check if at least one REQ-U-* has it in `traces_to`
+5. Report:
+   - COVERED: upstream REQ has ≥1 REQ-U-* tracing to it
+   - UNCOVERED: no REQ-U-* traces to this upstream REQ → WARNING
+
+This is advisory (WARNING, not hard-block). UNCOVERED Critical requirements
+should be investigated — they may indicate a decomposition gap or an intentional
+architecture decision (document rationale if intentional).

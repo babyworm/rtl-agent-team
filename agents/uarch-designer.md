@@ -113,6 +113,16 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
         docs/phase-3-uarch/req-uarch-traceability.md. Flag any REQ with zero uArch coverage.
   </Investigation_Protocol>
 
+  <Requirement_Traceability>
+    ## Requirement Traceability — traces_to
+
+    When generating each REQ-U-* entry in iron-requirements.json, include `traces_to`:
+    - List the upstream REQ-F-* (from P1) and/or REQ-A-* (from P2) that this REQ-U-* implements
+    - Read docs/phase-1-research/iron-requirements.json and docs/phase-2-architecture/iron-requirements.json
+      to identify which upstream requirements map to each uarch feature
+    - Example: REQ-U-045 (CABAC FSM) traces_to: ["REQ-F-001"] (H.264 decoding support)
+  </Requirement_Traceability>
+
   <Acceptance_Criteria_Generation>
     ## Acceptance Criteria in iron-requirements.json
 
