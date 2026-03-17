@@ -105,18 +105,9 @@ Enumerate all modules from uarch specs and identify dependency order.
 
 ## Step 2: Task Graph Creation
 
-First, create the global Wave 6b task (needed by per-module W9 dependencies):
-```python
-# Step 2a: Wave 6b — Tier 2 Unit Test (global, invoked ONCE)
-# Defined BEFORE per-module loop because W9 refactor depends on t_tier2.
-# blockedBy is populated after all per-module W6a tasks are created.
-t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
-                     description="Run Tier 2 unit tests for all modules against C ref model. "
-                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%).",
-                     blockedBy=[])  # Updated after loop with all_wave6a_smoke_tasks
-```
-
-For each module M, create the per-module wave task graph:
+For each module M, create the per-module wave task graph.
+NOTE: `t_tier2` is created in Step 2c AFTER the loop. Per-module W9 uses a
+sentinel reference that is wired in Step 2d.
 
 ```python
 # Wave 1: Write (no deps)
@@ -149,9 +140,8 @@ t_cdc = TaskCreate(subject=f"W7: CDC {M}", description=f"CDC analysis for {M}",
 # Wave 8: Protocol (depends on write, conditional on bus interfaces)
 # Created only if module has bus interfaces
 
-# Wave 9: Refactor (depends on smoke + tier2 + cdc + protocol if present)
-# t_tier2 is global — must complete before any refactoring to avoid invalidating unit_results
-refactor_deps = [t_smoke, t_tier2, t_cdc]
+# Wave 9: Refactor (depends on smoke + cdc + protocol; t_tier2 added in Step 2d)
+refactor_deps = [t_smoke, t_cdc]
 if t_protocol:  # Only if module has bus interfaces (Wave 8 created)
     refactor_deps.append(t_protocol)
 t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refactoring for {M}",
@@ -166,17 +156,31 @@ t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refacto
 #                          blockedBy=[t_refactor])
 ```
 
-After per-module loop, update Wave 6b dependencies:
+After per-module loop, create global tasks:
 ```python
-# Step 2c: Wire Wave 6b blockedBy to all per-module W6a smoke tasks
-TaskUpdate(taskId=t_tier2, addBlockedBy=all_wave6a_smoke_tasks)
-```
+# Step 2c: Wave 6b — Tier 2 Unit Test (global, created AFTER loop)
+# Created here with correct blockedBy — never runnable until all 6a smoke pass.
+t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
+                     description="Run Tier 2 unit tests for all modules against C ref model. "
+                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%).",
+                     blockedBy=all_wave6a_smoke_tasks)
 
-Final integration task:
-```python
+# Step 2d: Wire per-module W9 refactor tasks to depend on t_tier2
+for t_refactor in all_wave9_tasks:
+    TaskUpdate(taskId=t_refactor, addBlockedBy=[t_tier2])
+
+# Step 2e: REQ-U-* forward-trace (compliance-checker)
+target_paths = Glob("sim/*/*_unit_results.json")
+t_req_trace = TaskCreate(subject="W10a: REQ-U Forward-Trace",
+                         description="compliance-checker forward-trace: upstream_iron=['docs/phase-3-uarch/iron-requirements.json'] "
+                                     f"target_artifacts={target_paths}. "
+                                     "Save report to reviews/phase-4-rtl/req-trace-compliance.md",
+                         blockedBy=[t_tier2])
+
+# Step 2f: Integration gate
 t_integration = TaskCreate(subject="W10: Integration Gate",
-                           description="Verify all modules integrate cleanly + compliance-checker REQ-U-* forward-trace",
-                           blockedBy=[all_wave9_tasks, t_tier2])
+                           description="Verify all modules integrate cleanly",
+                           blockedBy=[all_wave9_tasks, t_tier2, t_req_trace])
 ```
 
 ## Step 3: Monitor Loop
