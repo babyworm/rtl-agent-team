@@ -127,6 +127,8 @@ Recommended guidance (not gate-enforced — P5 coverage-analyst verifies these):
 - [ ] Zero mismatches between RTL and reference model
 - [ ] sim/{module}/{module}_unit_results.json produced with per-feature status + coverage summary
 - [ ] FSM state coverage >= 50%, line coverage >= 60%
+- [ ] Functional coverage: `func_coverage.covergroups_defined >= 1` per module
+- [ ] Codec conformance PASS (if H.264/H.265 decoder) or N/A
 - [ ] Coverage gap fill round executed if initial coverage below thresholds
 - [ ] All simulations compile and complete without crashes
 - [ ] All unit tests pass
