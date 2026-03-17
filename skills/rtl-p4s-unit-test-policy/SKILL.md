@@ -100,10 +100,15 @@ These are intentionally lower than P5 targets (90%/80%/70%) to keep Tier 2 fast 
 - FSM state coverage >= 50%
 - Line coverage >= 60%
 
-**Functional coverage (Tier 2 minimum):**
-- Each FSM must have a covergroup with explicit bins for all states defined in uarch spec
-- Each valid/ready interface must have cross-coverage: {valid, ready} x {data = 0, mid, max}
-- At least one covergroup per module with bins derived from uarch feature list
+**Functional coverage (Tier 2):**
+
+Gate-enforced (hard):
+- At least one covergroup per module (`covergroups_defined >= 1` in results JSON)
+
+Recommended guidance (not gate-enforced — P5 coverage-analyst verifies these):
+- Each FSM should have a covergroup with explicit bins for all states defined in uarch spec
+- Each valid/ready interface should have cross-coverage: {valid, ready} x {data = 0, mid, max}
+- Bins should be derived from uarch feature list
 - Functional coverage bins do NOT have a numeric threshold at Tier 2 — the goal is bin existence and hit, not closure (P5 handles closure)
 
 **Traceability:**
