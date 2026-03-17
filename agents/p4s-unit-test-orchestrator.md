@@ -136,10 +136,6 @@ Generate `sim/{module}/{module}_unit_results.json` per module with:
 - Per-feature status with `req_ids` tracing (from `docs/phase-3-uarch/iron-requirements.json`)
 - Coverage summary: `coverage.line_pct`, `coverage.fsm_pct`, `coverage.toggle_pct`
 
-Gate: all unit tests pass AND reference comparison has zero mismatches AND
-coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
-every feature entry has `req_ids` populated (at least one REQ-U-* per feature).
-
 ## Step 5b: Coverage Gap Fill (single CDTG round)
 
 If any module's structural coverage is below Tier 2 thresholds (FSM < 50% or line < 60%):
@@ -147,10 +143,19 @@ If any module's structural coverage is below Tier 2 thresholds (FSM < 50% or lin
 1. Identify uncovered FSM states and uncovered branches from coverage report
 2. For each gap, generate one additional directed test targeting the specific uncovered state/branch
 3. Re-run simulation and update {module}_unit_results.json with new coverage numbers
-4. If coverage still below threshold after one round → flag in results but proceed (P5 CDTG will handle deep closure)
 
 This is a single lightweight round — NOT the full 3-round P5 CDTG protocol.
 Only triggered when initial coverage is below Tier 2 thresholds.
+Record the round in results: `"gap_fill_round": {"executed": true, "before": {...}, "after": {...}}`
+
+## Step 5c: Gate (after gap-fill)
+
+Gate: all unit tests pass AND reference comparison has zero mismatches AND
+coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
+every feature entry has `req_ids` populated (at least one REQ-U-* per feature).
+
+If coverage still below threshold after gap-fill round → FAIL with advisory note
+that P5 CDTG will handle deep closure. Do NOT silently proceed.
 
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 

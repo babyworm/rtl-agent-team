@@ -73,9 +73,10 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     4d. For modules with >=3 boolean control inputs, build decision table.
     4e. Merge ECP + BVA + state transitions + decision table into unified test vector plan before writing any test code.
     5. Error Injection Plan (per module):
-       - Protocol violations: valid without ready for >N cycles, unexpected deassert mid-transfer
+       - Protocol violations: unexpected deassert of valid mid-transfer (before handshake), data change while valid && !ready
+       - Backpressure stress: valid held high with ready low for >N cycles (legal but stresses pipeline/FIFO depth)
        - Reset during active operation (mid-transaction reset, verify clean recovery)
-       - Backpressure/stall at every pipeline stage boundary
+       - Stall injection at every pipeline stage boundary
        - Invalid input combinations (if specified in uarch as reserved/illegal encodings)
        - Overflow/underflow at arithmetic boundaries
        - Simultaneous conflicting requests (dual-port, arbiter edge cases)
