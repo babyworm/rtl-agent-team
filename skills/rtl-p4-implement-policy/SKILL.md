@@ -9,7 +9,11 @@ user-invocable: false
 ## 10-Wave Pipeline Definition
 
 ```
-Wave 0:  Prepare      — Enumerate modules, create per-module TODO, identify dependency order
+Wave 0:  Prepare      — **Wave 0: Preparation + Test Plan**
+         - Step 0a: Module enumeration, directory creation, TODO list (existing)
+         - Step 0b: Test plan generation per module via test-plan-writer agent
+           - Gate: sim/{module}/{module}_test_plan.md exists for every module
+           - Failure: retry once, then proceed with WARNING (Wave 6a must generate missing plans)
 Wave 1:  Write All    — One rtl-coder per module, all parallel
 Wave 2:  Lint All     — One lint-checker per module, all parallel, collect results
 Wave 3:  Fix Lint     — ONLY FAIL modules, max 3 rounds, re-lint only fixes

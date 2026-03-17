@@ -72,6 +72,17 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       3. Would FAIL if the requirement were not implemented
   </Constraints>
 
+  <Test_Plan_Input>
+    ## Test Plan Input (if available)
+    When building the Requirement Traceability Matrix, check for `sim/{module}/{module}_test_plan.md`.
+    If found:
+      - Read the Requirements Coverage Map from the test plan
+      - Use as the authoritative REQ→test-scenario mapping
+      - Verify each TS-NNN has a corresponding test function in the codebase
+      - Report: "TS-NNN planned but no test function found" as UNTESTED
+    If not found: derive mapping from test code comments (# Covers: REQ-NNN) only.
+  </Test_Plan_Input>
+
   <Investigation_Protocol>
     1. **Read requirements specification**:
        a. Read `requirements.json` — extract every REQ-XXXX with description and acceptance criteria.

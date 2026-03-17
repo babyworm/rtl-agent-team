@@ -150,6 +150,12 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 |-------------|---------------|---------|
 | `rtl-test-design-policy` | `testbench-dev` | Systematic test case design methodology (ECP, BVA, state transition, decision table) |
 
+**Specialist agents (spawned by orchestrators, not user-invocable):**
+
+| Agent | Purpose | Spawned By |
+|-------|---------|-----------|
+| `test-plan-writer` | Test plan generation from uarch spec (ECP/BVA/STT/DT) | Spawned by P4 orchestrators in Wave 0 Step 0b |
+
 ---
 
 ## Agent Delegation Table

@@ -63,10 +63,23 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </Constraints>
 
   <Investigation_Protocol>
+    ### Step 0: Load Test Plan (if available)
+
+    Check if `sim/{module}/{module}_test_plan.md` exists.
+    If found:
+      - Read the test plan. Extract test scenarios (TS-NNN), coverage model, error injection plan.
+      - Use the test plan as the PRIMARY source for test vector derivation.
+      - During Steps 4a-4e, supplement the test plan (do not replace existing scenarios).
+    If not found:
+      - Proceed with uarch-spec-driven derivation (existing behavior).
+      - Log: "No test plan found — deriving test vectors from uarch spec directly."
+
     1. Read docs/phase-3-uarch/*.md for DUT interface, latency, and FSM states to cover.
     2. Read io_definition.json for all port names, directions, and widths.
     3. Read requirements.json for functional coverage requirements.
-    4. Read the test plan to identify: directed tests, random tests, corner cases, error scenarios.
+    4. Read the test plan (loaded in Step 0) to identify: directed tests, random tests,
+    corner cases, error scenarios. If Step 0 found no test plan, derive these from
+    uarch spec directly.
     4a. Apply equivalence class partitioning to each input (from io_definition.json widths and uarch spec encodings). Reference: rtl-test-design-policy.
     4b. Apply boundary value analysis to each integer input per BVA table in rtl-test-design-policy.
     4c. Extract FSM state transition matrix from uarch spec. Test all valid transitions + one illegal per state.
@@ -89,6 +102,14 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     12. Write at least three test cases: smoke, directed, and constrained-random.
     13. Compile and run; show coverage report after random test.
   </Investigation_Protocol>
+
+  <Test_Plan_Mapping>
+    When writing test functions from a test plan:
+    - Map each TS-NNN to one cocotb test function
+    - Include comment: `# From test plan: TS-NNN`
+    - After RTL-specific discoveries (new states, undocumented paths), append new scenarios
+      to the test plan file (do not delete existing scenarios)
+  </Test_Plan_Mapping>
 
   <Tool_Usage>
     - Read: read uarch spec, io_definition.json, requirements.json, test plan

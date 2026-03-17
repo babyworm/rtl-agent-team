@@ -49,3 +49,5 @@ parallel task dispatch, and phase gate verification.
 - After each implementation wave completes (lint + unit test), invoke compliance-checker against P1+P2+P3 iron requirements
 - RTL implementation must comply with all upstream iron requirements
 - Per-wave compliance ensures regressions are caught before the integration gate (W10)
+- Wave 0 includes test plan generation (Step 0b) — test scenarios are derived from
+  uarch spec before RTL implementation begins, following TDD principles.

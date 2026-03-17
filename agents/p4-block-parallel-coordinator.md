@@ -89,6 +89,12 @@ Glob("refc/**/*.c")                                # C reference model (DPI-C co
 For each missing required artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
+## Step 0b: Test Plan Dispatch (per block)
+
+Each block worker MUST generate test plan (Step 0b) before Wave 1 RTL coding.
+Dispatch test-plan-writer per block module in the block's worktree.
+Gate: sim/{module}/{module}_test_plan.md exists before Wave 1 proceeds.
+
 ## Step 1: Preparation
 
 ```

@@ -67,6 +67,12 @@ Adjust execution plan based on available artifacts.
    Populate `modules` map in state with concrete module names discovered for this run.
 4. Persist state after every stage transition and module verdict update.
 
+### Step 0.75: Test Plan Check
+
+Check if `sim/{module}/{module}_test_plan.md` exists for each module.
+If missing and time permits, spawn test-plan-writer before TB generation.
+If missing in rapid mode, proceed — testbench-dev will derive vectors from uarch spec.
+
 ### Step 1: Module implementation and quick loop
 1. Enumerate target modules from user input or `docs/phase-3-uarch/*.md`.
 2. Run per-module pipeline in parallel where possible:

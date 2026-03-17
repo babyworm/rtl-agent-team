@@ -61,6 +61,17 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Distinguish between coverage goals: code coverage (line/branch/toggle) vs. functional coverage (covergroup bins).
   </Constraints>
 
+  <Test_Plan_Input>
+    ## Test Plan Input (if available)
+    When analyzing coverage gaps, check for `sim/{module}/{module}_test_plan.md`.
+    If found:
+      - Read the planned coverage model (covergroups, coverpoints, expected bins)
+      - Compare planned bins against actual coverage data
+      - Report gaps as: "Planned bin {cg.cp} not hit — TS-NNN was supposed to cover this"
+      - This provides structured gap→test-scenario→requirement traceability
+    If not found: proceed with code-coverage-only analysis (existing behavior).
+  </Test_Plan_Input>
+
   <Investigation_Protocol>
     1. Read the functional coverage report (HTML, UCIS XML, or text format from simulation).
     2. Read the code coverage report (line, branch, toggle percentages per file).
