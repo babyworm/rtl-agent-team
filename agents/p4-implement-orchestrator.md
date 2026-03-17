@@ -294,10 +294,17 @@ NOTE: requirement-tracer is scoped to original REQ-XXXX tracing (Phase 5).
 For Phase 4 REQ-U-* forward-trace, use compliance-checker which already supports
 iron-requirements.json as upstream source.
 
+First, resolve concrete paths:
+```
+module_list = Glob("rtl/*/")  # e.g., rtl/alu/, rtl/ctrl/, ...
+target_paths = [f"sim/{M}/{M}_unit_results.json" for M in module_list]
+```
+
+Then invoke with explicit path lists:
 ```
 Task(subagent_type="rtl-agent-team:compliance-checker",
      prompt="upstream_iron: ['docs/phase-3-uarch/iron-requirements.json']
-target_artifacts: ['sim/{module}/{module}_unit_results.json' for each module in rtl/]
+target_artifacts: {target_paths}
 Mode: forward-trace only. For each Critical/High REQ-U-*, verify target artifacts contain
 a matching req_ids entry. Report untested requirements as FAIL with reason 'no unit test coverage'.
 Save report to reviews/phase-4-rtl/req-trace-compliance.md")

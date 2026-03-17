@@ -105,7 +105,18 @@ Enumerate all modules from uarch specs and identify dependency order.
 
 ## Step 2: Task Graph Creation
 
-For each module M, create the full 10-wave task graph:
+First, create the global Wave 6b task (needed by per-module W9 dependencies):
+```python
+# Step 2a: Wave 6b — Tier 2 Unit Test (global, invoked ONCE)
+# Defined BEFORE per-module loop because W9 refactor depends on t_tier2.
+# blockedBy is populated after all per-module W6a tasks are created.
+t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
+                     description="Run Tier 2 unit tests for all modules against C ref model. "
+                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%).",
+                     blockedBy=[])  # Updated after loop with all_wave6a_smoke_tasks
+```
+
+For each module M, create the per-module wave task graph:
 
 ```python
 # Wave 1: Write (no deps)
@@ -155,14 +166,10 @@ t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refacto
 #                          blockedBy=[t_refactor])
 ```
 
-Wave 6b global task (after ALL per-module 6a smoke tasks):
+After per-module loop, update Wave 6b dependencies:
 ```python
-# Step 2b: Wave 6b — Tier 2 Unit Test (global, invoked ONCE)
-# p4s-unit-test-orchestrator is whole-design scoped — iterates all modules internally.
-t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
-                     description="Run Tier 2 unit tests for all modules against C ref model. "
-                                 "REQ-U-* tracing + coverage (FSM>=50%, line>=60%).",
-                     blockedBy=[all_wave6a_smoke_tasks])
+# Step 2c: Wire Wave 6b blockedBy to all per-module W6a smoke tasks
+TaskUpdate(taskId=t_tier2, addBlockedBy=all_wave6a_smoke_tasks)
 ```
 
 Final integration task:
