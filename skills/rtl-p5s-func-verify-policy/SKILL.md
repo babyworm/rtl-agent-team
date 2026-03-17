@@ -171,6 +171,17 @@ from Phase 4, the CDTG pipeline MUST operate incrementally:
 Coverage targets remain unchanged: Line ≥ 90%, Toggle ≥ 80%, FSM ≥ 70%.
 The baseline only affects CDTG prioritization, not target thresholds.
 
+## Backward Traceability Policy
+
+Test failure reports MUST include requirement impact analysis:
+- Every failed test must list its affected req_ids and ac_ids (from `# Covers:` comments)
+- Failed tests without coverage comments are flagged as UNTRACEABLE
+- Failure Impact Summary table is mandatory in regression reports
+- Priority classification: Critical/High → BLOCKING, Medium/Low → WARNING, unmapped → UNTRACEABLE
+
+This policy ensures that test failures are immediately connected to requirements,
+enabling prioritized debugging and requirement-level risk assessment.
+
 ## Escalation & Stop Conditions
 
 - cocotb not installed → halt, provide install command (`pip install cocotb`)

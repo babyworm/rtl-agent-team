@@ -196,6 +196,21 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
 RTL output and expected ref model output.")
 ```
 
+## Backward Traceability on Test Failure
+
+When a test function fails during regression:
+1. Read the test function's coverage comments (`# Covers: REQ-U-NNN` or `# Covers: REQ-U-NNN.AC-M`)
+2. Extract all req_ids and ac_ids from the failed test
+3. Include in the failure report:
+   "FAILED: test_backpressure_stress
+    Affects: REQ-U-012 (AC-3: backpressure >16 cycles must not corrupt data)
+    Priority: Critical
+    Impact: acceptance criterion REQ-U-012.AC-3 is at risk"
+4. If the test has no coverage comments: report as "UNTRACEABLE failure — no req_ids tagged"
+
+This enables requirement-level impact assessment from test failures without manual tracing.
+When reporting to the user or upstream (P4 bugfix feedback), always include affected requirements.
+
 ## Step 5: Requirement Traceability Matrix
 
 ### AC-Level RTM Generation

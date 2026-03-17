@@ -134,6 +134,26 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
           - **ORPHAN**: Test doesn't trace to any requirement (may be infrastructure or debug test).
           - **REDUNDANT**: Multiple tests verify the exact same requirement with no additional value.
 
+  <Failure_Impact_Analysis>
+    ## Failure Impact Analysis
+
+    When performing backward traceability and test failures exist:
+    1. For each FAILED test in regression results:
+       - Extract req_ids and ac_ids from test comments or result JSON
+       - Look up the requirement priority from iron-requirements.json
+       - Classify impact:
+         - Critical/High req affected → "BLOCKING: requirement at risk"
+         - Medium/Low req affected → "WARNING: requirement at risk"
+         - No req mapped → "UNTRACEABLE: test has no requirement mapping"
+    2. Produce a Failure Impact Summary table:
+       | Failed Test | req_ids | ac_ids | Priority | Impact |
+       |------------|---------|--------|----------|--------|
+       | test_bp_stress | REQ-U-012 | AC-3 | Critical | BLOCKING |
+       | test_debug_dump | — | — | — | UNTRACEABLE |
+    3. Include this table in the traceability report
+    4. UNTRACEABLE failures should trigger a recommendation to add coverage comments
+  </Failure_Impact_Analysis>
+
     6. **Assess test adequacy** for VERIFIED requirements:
        a. Is the test self-checking? (has assertions, not just stimulus)
        b. Does the test cover boundary conditions of the requirement?
