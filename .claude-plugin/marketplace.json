@@ -12,7 +12,7 @@
     {
       "name": "rtl-agent-team",
       "source": "./",
-      "description": "93-agent RTL design pipeline with 91 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
+      "description": "93-agent RTL design pipeline with 92 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
       "version": "0.8.2",
       "author": {
         "name": "babyworm"

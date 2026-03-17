@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 93 specialized AI agents + 91 skills automate the 6-Phase pipeline:
+> 93 specialized AI agents + 92 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 93 specialized AI agents + 91 skills + 13 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 93 specialized AI agents + 92 skills + 13 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -134,7 +134,7 @@ Creates the project directory structure, verifies EDA tool installation, and **a
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 91 skills.
+See the `skills/` directory for the full list of 92 skills.
 
 ## Project Artifact Structure
 
@@ -168,7 +168,7 @@ rtl-agent-team/
 ├── agents/                     # 93 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 91 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 92 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rat-setup/
 │   │   ├── scripts/

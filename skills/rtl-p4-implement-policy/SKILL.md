@@ -16,7 +16,7 @@ Wave 3:  Fix Lint     — ONLY FAIL modules, max 3 rounds, re-lint only fixes
 Wave 4:  Code Review  — rtl-critic per lint-clean module, parallel
 Wave 5:  Bugfix       — ONLY REVIEW_FAIL modules, max 3 review→fix iterations
 Wave 6a: Tier 1 Smoke — testbench-dev + eda-runner per module, parallel
-Wave 6b: Tier 2 Unit  — Reference model comparison per module. Each uarch feature tested with REQ-U-* tracing. Min coverage: FSM >= 50%, line >= 60%
+Wave 6b: Tier 2 Unit  — Ref model comparison, REQ-U-* tracing, FSM >= 50%, line >= 60%, covergroups >= 1, codec conformance PASS/N/A
 Wave 7:  Module CDC   — cdc-checker per multi-domain module, parallel
 Wave 8:  Module Proto — protocol-checker per bus-interface module, parallel
 Wave 9:  Refactoring  — rtl-p4s-refactor for flagged modules, selective
