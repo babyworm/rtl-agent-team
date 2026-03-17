@@ -170,17 +170,19 @@ for t_refactor in all_wave9_tasks:
     TaskUpdate(taskId=t_refactor, addBlockedBy=[t_tier2])
 
 # Step 2e: REQ-U-* forward-trace (compliance-checker)
-target_paths = Glob("sim/*/*_unit_results.json")
+# NOTE: target_artifacts resolved at execution time by compliance-checker itself
+# (Glob runs inside the agent, not at task-graph construction time)
 t_req_trace = TaskCreate(subject="W10a: REQ-U Forward-Trace",
-                         description="compliance-checker forward-trace: upstream_iron=['docs/phase-3-uarch/iron-requirements.json'] "
-                                     f"target_artifacts={target_paths}. "
+                         description="compliance-checker forward-trace: "
+                                     "upstream_iron=['docs/phase-3-uarch/iron-requirements.json'] "
+                                     "target_artifacts=Glob('sim/*/*_unit_results.json'). "
                                      "Save report to reviews/phase-4-rtl/req-trace-compliance.md",
                          blockedBy=[t_tier2])
 
-# Step 2f: Integration gate
+# Step 2f: Integration gate (flatten all deps into a single list)
 t_integration = TaskCreate(subject="W10: Integration Gate",
                            description="Verify all modules integrate cleanly",
-                           blockedBy=[all_wave9_tasks, t_tier2, t_req_trace])
+                           blockedBy=[*all_wave9_tasks, t_tier2, t_req_trace])
 ```
 
 ## Step 3: Monitor Loop

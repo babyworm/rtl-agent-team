@@ -310,9 +310,6 @@ The compliance-checker result (`reviews/phase-4-rtl/req-trace-compliance.md`) fe
 Phase 4 exit quality assessment. Untested Critical/High requirements are flagged but do NOT
 hard-block the gate (advisory — Phase 5 will enforce full coverage).
 
-The requirement-tracer result feeds into the Phase 4 exit quality assessment.
-Untested Critical/High requirements are flagged in the phase-4-summary but do NOT
-hard-block the gate (advisory — Phase 5 will enforce full coverage).
 
 ### On Functional Coverage FAIL
 ```
