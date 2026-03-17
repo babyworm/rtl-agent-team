@@ -137,7 +137,8 @@ Generate `sim/{module}/{module}_unit_results.json` per module with:
 - Coverage summary: `coverage.line_pct`, `coverage.fsm_pct`, `coverage.toggle_pct`
 
 Gate: all unit tests pass AND reference comparison has zero mismatches AND
-coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy).
+coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
+every feature entry has `req_ids` populated (at least one REQ-U-* per feature).
 
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 

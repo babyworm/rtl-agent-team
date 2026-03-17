@@ -45,7 +45,7 @@ Wave 6a: Tier1Smoke (per module, blockedBy: review_{module} PASS or bugfix_{modu
 Wave 6b: Tier2Unit  (global, blockedBy: ALL wave 6a PASS; p4s-unit-test-orchestrator)
 Wave 7:  CDC       (per module, blockedBy: write_{module})
 Wave 8:  Protocol  (per module, blockedBy: write_{module}, only if bus interfaces)
-Wave 9:  Refactor  (per module, blockedBy: smoke_{module} + cdc_{module} + proto_{module})
+Wave 9:  Refactor  (per module, blockedBy: smoke_{module} + tier2_global + cdc_{module} + proto_{module})
 Wave 10: Integration (blockedBy: ALL wave 9 tasks)
 ```
 
