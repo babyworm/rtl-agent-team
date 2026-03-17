@@ -158,17 +158,20 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 
 On failure: waveform-analyzer debug → rtl-coder fix → re-lint → re-sim (max 3 rounds).
 
-## Wave 6b: Tier 2 Unit Test (parallel, after Wave 6a PASS per module)
+## Wave 6b: Tier 2 Unit Test (global, after ALL Wave 6a PASS)
+
+NOTE: p4s-unit-test-orchestrator is whole-design scoped — it iterates all modules internally.
+Invoke ONCE globally after all modules pass Wave 6a, not per-module.
 
 ```
 Task(subagent_type="rtl-agent-team:p4s-unit-test-orchestrator",
-     prompt="Run Tier 2 unit tests for module {M} against C reference model.
+     prompt="Run Tier 2 unit tests for all modules against C reference model.
 Verify each uarch feature with REQ-U-* tracing. Minimum coverage: FSM >= 50%, line >= 60%.
-Output: sim/{module}/{module}_unit_results.json with ref_mismatches=0 and coverage meeting thresholds.")
+Output: sim/{module}/{module}_unit_results.json per module with ref_mismatches=0 and coverage meeting thresholds.")
 ```
 
 On failure: debug ref mismatches → rtl-coder fix → re-run Tier 2 (max 3 rounds).
-Gate: `sim/{module}/{module}_unit_results.json` exists with `ref_mismatches=0` and coverage thresholds met.
+Gate: `sim/{module}/{module}_unit_results.json` exists for every module with `ref_mismatches=0` and coverage thresholds met.
 
 ## Wave 7: Module-level CDC (parallel, multi-domain modules only)
 
