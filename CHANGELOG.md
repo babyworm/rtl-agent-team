@@ -7,6 +7,25 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-03-17
+
+### Fixed (Codex cross-review R1-R13)
+- Team P4 orchestrator Wave 6a/6b alignment (summary, task graph, W9 deps)
+- Stream B content quality gate in orchestrator gate + policy checklist
+- rtl-verify-stop-gate FILES double-escaping removed
+- compliance-checker prompt uses upstream_iron/target_artifacts contract
+- req_ids enforcement in non-team P4 gate, policy, and Tier 2 orchestrator
+- P4 completion criteria updated for both implement + implement-team
+- Wave 10 forward-trace: compliance-checker (not requirement-tracer)
+- iron-requirements.json in defense-in-depth scan (both orchestrators)
+- W9 depends on t_tier2 (prevents unit_results invalidation)
+- Team t_tier2 created after loop with correct blockedBy (not prematurely runnable)
+- compliance-checker Glob deferred to execution time
+- W10 blockedBy flattened (no nested lists)
+- Stale requirement-tracer paragraph removed
+- phase-registry.json + skill-completion-criteria.json in package.json files
+- rtl-p4s-unit-test iron_upstream populated for standalone support
+
 ## [0.7.9] - 2026-03-17
 
 ### Added
