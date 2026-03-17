@@ -128,8 +128,9 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
   per-feature result JSON. Deeper per-module verification.
   Extends: `sim/{module}/tb_{module}.sv` (adds reference comparison logic to
   existing Wave 6a TBs, does NOT replace them).
-  Gate: `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`
-  and coverage meeting thresholds (FSM >= 50%, line >= 60%).
+  Gate: `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`,
+  coverage meeting thresholds (FSM >= 50%, line >= 60%), `req_ids` populated,
+  `func_coverage.covergroups_defined >= 1`, and `codec_conformance` PASS/N/A.
 - **rtl-p4s-unit-test** (standalone skill): Can still be invoked independently
   for ad-hoc Tier 2 testing outside the pipeline
 

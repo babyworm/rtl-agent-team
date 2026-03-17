@@ -55,10 +55,11 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
   "fail_count": 0,
   "total": 5,
   "gap_fill_round": {
-    "executed": false,
+    "executed": true,
     "before": {"line_pct": 52.1, "fsm_pct": 40.0},
     "after": {"line_pct": 67.3, "fsm_pct": 55.0}
   },
+  // When gap-fill NOT triggered: {"executed": false, "before": null, "after": null}
   "coverage": {
     "line_pct": 67.3,
     "fsm_pct": 55.0,
