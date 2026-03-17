@@ -156,7 +156,12 @@ Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Generate cocotb TB skeletons from docs/phase-3-uarch/*.md.
 Each test scenario must reference requirement: # REQ-{NNN}: {description}.
 Mark as SKELETON — full execution deferred to Phase 5c.
-Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and sim/.",
+Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and sim/.
+
+REQUIREMENT COVERAGE — reference requirements for traceability:
+Read docs/phase-1-research/requirements.json (or iron-requirements.json if available).
+For each REQ-NNN relevant to this module, ensure at least one test scenario exercises the requirement.
+Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptance_criteria exist) above each test function.",
      run_in_background=true)
 ```
 
@@ -191,7 +196,14 @@ On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
      prompt="Read all Phase 4 artifacts. Generate docs/phase-4-rtl/phase-4-summary.md
-Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
+Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.
+
+IMPORTANT — filesystem verification before writing status:
+Before marking any module's TB or RTL status in the summary, verify actual file existence:
+- Glob('sim/{module}/test_*.py') or Glob('sim/{module}/tb_*.sv') for TB status
+- Glob('rtl/{module}/*.sv') for RTL status
+Mark status based on filesystem reality, NOT prior document content.
+Do not report 'pending' for files that actually exist on disk.")
 ```
 
 On FAIL: pass findings to worker agent for correction, re-run gate (max 2 retries).

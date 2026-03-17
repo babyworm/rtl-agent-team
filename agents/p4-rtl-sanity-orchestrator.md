@@ -80,6 +80,9 @@ If missing in rapid mode, proceed — testbench-dev will derive vectors from uar
    - `lint-checker` for lint gate
    - `cdc-checker` for module-level crossing sanity
    - `testbench-dev` + `eda-runner` for smoke functional check
+     (TB generation: Read docs/phase-1-research/requirements.json or iron-requirements.json if available.
+      For each REQ-NNN relevant to this module, ensure at least one test scenario exercises the requirement.
+      Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptance_criteria exist) above each test function.)
 3. Keep scope minimal: only failing module and dependent edges.
 4. Update `modules.{name}` state fields on each result.
 
@@ -90,6 +93,13 @@ If missing in rapid mode, proceed — testbench-dev will derive vectors from uar
 - Write results to `gates.p4_exit.block_sanity_pass`.
 
 ### Step 3: Gate decision
+
+Before recording TB or RTL status in any gate verdict or summary, verify actual file existence:
+- Glob("sim/{module}/test_*.py") or Glob("sim/{module}/tb_*.sv") for TB status
+- Glob("rtl/{module}/*.sv") for RTL status
+Mark status based on filesystem reality, NOT prior document content.
+Do not report "pending" for files that actually exist on disk.
+
 PASS when all target modules and touched block scope satisfy:
 - lint PASS
 - cdc PASS

@@ -281,7 +281,12 @@ Task(subagent_type="rtl-agent-team:p4-implement-team-orchestrator",
 
 # If execution_mode == "sequential":
 Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
-     prompt="Execute Phase 4 RTL implementation. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs. Implement all modules using the 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) with parallel Stream A (RTL coding) + Stream B (SVA/CDC/TB skeletons).")
+     prompt="Execute Phase 4 RTL implementation. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs. Implement all modules using the 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) with parallel Stream A (RTL coding) + Stream B (SVA/CDC/TB skeletons).
+
+REQUIREMENT COVERAGE — TB generation must reference requirements for traceability:
+Read docs/phase-1-research/requirements.json (or iron-requirements.json if available).
+For each REQ-NNN relevant to this module, ensure at least one test scenario exercises the requirement.
+Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptance_criteria exist) above each test function.")
 ```
 
 The orchestrator (team or legacy) handles the 10-Wave pipeline, Stream A/B parallelism,
@@ -297,7 +302,14 @@ On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      model="sonnet",
-     prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
+     prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.
+
+IMPORTANT — filesystem verification before writing status:
+Before marking any module's TB or RTL status in the summary, verify actual file existence:
+- Glob('sim/{module}/test_*.py') or Glob('sim/{module}/tb_*.sv') for TB status
+- Glob('rtl/{module}/*.sv') for RTL status
+Mark status based on filesystem reality, NOT prior document content.
+Do not report 'pending' for files that actually exist on disk.")
 ```
 
 ## Step 6: Phase 5 — Extensive Verification
