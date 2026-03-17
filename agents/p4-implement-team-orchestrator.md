@@ -166,7 +166,7 @@ t_tier2 = TaskCreate(subject="W6b: Tier2 Unit (global)",
 Final integration task:
 ```python
 t_integration = TaskCreate(subject="W10: Integration Gate",
-                           description="Verify all modules integrate cleanly + requirement-tracer forward-trace",
+                           description="Verify all modules integrate cleanly + compliance-checker REQ-U-* forward-trace",
                            blockedBy=[all_wave9_tasks, t_tier2])
 ```
 
