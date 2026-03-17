@@ -1,0 +1,371 @@
+{
+  "_schema_version": "1.0",
+  "skills": {
+    "p1-spec-research": {
+      "phase": 1,
+      "primary": true,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|iron-open-classified|ambiguity-pass"
+    },
+    "p2-arch-design": {
+      "phase": 2,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json"],
+      "open_requirements": "docs/phase-1-research/open-requirements.json",
+      "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|compliance-pass|ambiguity-pass"
+    },
+    "rtl-p1-research-team": {
+      "phase": 1,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written"
+    },
+    "rtl-p2-arch-team": {
+      "phase": 2,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json"],
+      "open_requirements": "docs/phase-1-research/open-requirements.json",
+      "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|ambiguity-pass"
+    },
+    "rtl-p3-uarch-design": {
+      "phase": 3,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json"],
+      "open_requirements": "docs/phase-2-architecture/open-requirements.json",
+      "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|compliance-pass|ambiguity-pass"
+    },
+    "rtl-p3-uarch-team": {
+      "phase": 3,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json"],
+      "open_requirements": "docs/phase-2-architecture/open-requirements.json",
+      "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|ambiguity-pass"
+    },
+    "rtl-p4-implement": {
+      "phase": 4,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "rtl-written|lint-pass|unit-test-pass"
+    },
+    "rtl-p4-implement-team": {
+      "phase": 4,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "rtl-written|lint-pass|unit-test-pass"
+    },
+    "rtl-p4-block-parallel": {
+      "phase": 4,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged"
+    },
+    "rtl-p4s-bugfix": {
+      "phase": 4,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "fix-applied|lint-pass|test-pass"
+    },
+    "rtl-p4s-unit-test": {
+      "phase": 4,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "test-written|simulation-pass"
+    },
+    "rtl-p4s-refactor": {
+      "phase": 4,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "refactor-applied|lint-pass|equivalence-verified"
+    },
+    "rtl-p4-rapid-impl": {
+      "phase": 4,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "rtl-written|lint-pass|sanity-pass"
+    },
+    "rtl-review-refactor": {
+      "phase": 4,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "review-complete|refactor-verified"
+    },
+    "rat-p4p5-impl-verify": {
+      "phase": 4,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "phase-gate-passed|artifacts-written"
+    },
+    "rtl-p5-verify": {
+      "phase": 5,
+      "phase_group": "a",
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "verification-pass|coverage-met|artifacts-written"
+    },
+    "rtl-p5-verify-team": {
+      "phase": 5,
+      "phase_group": "a",
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "verification-pass|coverage-met|artifacts-written"
+    },
+    "rtl-p5s-func-verify": {
+      "phase": 5,
+      "phase_group": "a",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "regression-pass|coverage-reported"
+    },
+    "rtl-p5s-integration-test": {
+      "phase": 5,
+      "phase_group": "a",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "integration-tests-pass|artifacts-written"
+    },
+    "rtl-p5a-functional-closure": {
+      "phase": 5,
+      "phase_group": "a",
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "functional-closure-pass|artifacts-written"
+    },
+    "rtl-p5b-silicon-validation": {
+      "phase": 5,
+      "phase_group": "a",
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "synthesis-pass|signoff-check|artifacts-written"
+    },
+    "rtl-p5s-sva-check": {
+      "phase": 5,
+      "phase_group": "b",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "assertions-proven|artifacts-written"
+    },
+    "rtl-p5s-cdc-verify": {
+      "phase": 5,
+      "phase_group": "b",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "cdc-analysis-complete|artifacts-written"
+    },
+    "rtl-p5s-protocol-verify": {
+      "phase": 5,
+      "phase_group": "b",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "protocol-compliance-verified|artifacts-written"
+    },
+    "rtl-p5s-perf-verify": {
+      "phase": 5,
+      "phase_group": "b",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "performance-targets-met|report-written"
+    },
+    "rtl-p5s-coverage-analyze": {
+      "phase": 5,
+      "phase_group": "b",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "coverage-analysis-complete|report-written"
+    },
+    "rtl-p5s-uvm-verify": {
+      "phase": 5,
+      "phase_group": "b",
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "uvm-regression-pass|coverage-met"
+    },
+    "rtl-p6-design-review": {
+      "phase": 6,
+      "primary": true,
+      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "open_requirements": "",
+      "completion_criteria": "design-note-written|consistency-check-pass"
+    },
+    "rtl-p7-exploration": {
+      "phase": 7,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": ""
+    },
+    "rat-auto-design": {
+      "phase": 1,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "phase-gate-passed|artifacts-written"
+    },
+    "rat-p1p3-spec-uarch": {
+      "phase": 1,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "phase-gate-passed|artifacts-written"
+    },
+    "rat-p1p3-spec-uarch-team": {
+      "phase": 1,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "phase-gate-passed|artifacts-written"
+    },
+    "rat-dse": {
+      "phase": 1,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "exploration-complete|pareto-reported|artifacts-written"
+    },
+    "codex-cross-review": {
+      "phase": 0,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "cross-review-report-written|verdict-recorded"
+    },
+    "rat-ultraloop": {
+      "phase": 0,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "target-skill-executed|design-freeze-intact|cycle-summary-written"
+    }
+  },
+  "agents": {
+    "p1-research-orchestrator": "p1-spec-research",
+    "p2-arch-orchestrator": "p2-arch-design",
+    "p3-uarch-orchestrator": "rtl-p3-uarch-design",
+    "p4-implement-orchestrator": "rtl-p4-implement",
+    "p4s-bugfix-orchestrator": "rtl-p4s-bugfix",
+    "p4s-refactor-orchestrator": "rtl-p4s-refactor",
+    "p4s-unit-test-orchestrator": "rtl-p4s-unit-test",
+    "p4-rtl-sanity-orchestrator": "rtl-p4-rapid-impl",
+    "p4-block-parallel-coordinator": "rtl-p4-block-parallel",
+    "p5-verify-orchestrator": "rtl-p5-verify",
+    "p5a-functional-closure-orchestrator": "rtl-p5a-functional-closure",
+    "p5b-silicon-validation-orchestrator": "rtl-p5b-silicon-validation",
+    "p5s-func-verify-orchestrator": "rtl-p5s-func-verify",
+    "p5s-integration-orchestrator": "rtl-p5s-integration-test",
+    "p5s-sva-orchestrator": "rtl-p5s-sva-check",
+    "p5s-cdc-orchestrator": "rtl-p5s-cdc-verify",
+    "p5s-protocol-orchestrator": "rtl-p5s-protocol-verify",
+    "p5s-perf-orchestrator": "rtl-p5s-perf-verify",
+    "p5s-coverage-orchestrator": "rtl-p5s-coverage-analyze",
+    "p5s-uvm-orchestrator": "rtl-p5s-uvm-verify",
+    "p6-review-orchestrator": "rtl-p6-design-review",
+    "p7-exploration-orchestrator": "rtl-p7-exploration",
+    "review-refactor-orchestrator": "rtl-review-refactor",
+    "autopilot-orchestrator": "rat-auto-design",
+    "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
+    "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
+    "dse-orchestrator": "rat-dse",
+    "p1-research-team-orchestrator": "rtl-p1-research-team",
+    "p2-arch-team-orchestrator": "rtl-p2-arch-team",
+    "p3-uarch-team-orchestrator": "rtl-p3-uarch-team",
+    "p4-implement-team-orchestrator": "rtl-p4-implement-team",
+    "p5-verify-team-orchestrator": "rtl-p5-verify-team",
+    "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team"
+  },
+  "phases": {
+    "1": {
+      "required": [
+        {"path": "specs", "role": "spec-documents"}
+      ],
+      "optional": []
+    },
+    "2": {
+      "required": [
+        {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
+        {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"},
+        {"path": "docs/phase-1-research/domain-analysis.md", "role": "p1-domain-analysis"},
+        {"path": "docs/phase-1-research/timing_constraints.json", "role": "p1-timing-constraints"}
+      ],
+      "optional": [
+        {"path": "docs/phase-1-research/open-requirements.json", "role": "p1-open-requirements"}
+      ]
+    },
+    "3": {
+      "required": [
+        {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"},
+        {"path": "docs/phase-2-architecture/iron-requirements.json", "role": "p2-iron-requirements"},
+        {"path": "refc", "role": "p2-ref-model"}
+      ],
+      "optional": [
+        {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
+        {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"},
+        {"path": "docs/phase-2-architecture/bandwidth_report.json", "role": "p2-bandwidth"}
+      ]
+    },
+    "4": {
+      "required": [
+        {"path": "docs/phase-3-uarch", "role": "p3-uarch-specs"},
+        {"path": "docs/phase-3-uarch/iron-requirements.json", "role": "p3-iron-requirements"},
+        {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"}
+      ],
+      "optional": [
+        {"path": "bfm", "role": "p3-bfm-model"},
+        {"path": "docs/phase-3-uarch/clock-domain-map.md", "role": "p3-clock-domain-map"},
+        {"path": "docs/phase-3-uarch/protocol-assignments.md", "role": "p3-protocol-assignments"},
+        {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"},
+        {"path": "refc/**/*.c", "role": "p4-refc-reference"}
+      ]
+    },
+    "5": {
+      "required": [
+        {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
+        {"path": "rtl", "role": "p4-rtl-sources"},
+        {"path": "docs/phase-4-rtl", "role": "p4-rtl-docs"},
+        {"path": "sim", "role": "p4-unit-test-results"},
+        {"path": "docs/phase-4-rtl/stream-b-sva-skeletons.md", "role": "p4-stream-b-sva"},
+        {"path": "docs/phase-4-rtl/stream-b-cdc-preliminary.md", "role": "p4-stream-b-cdc"},
+        {"path": "docs/phase-4-rtl/stream-b-tb-skeletons.md", "role": "p4-stream-b-tb"}
+      ],
+      "optional": [
+        {"path": "docs/phase-4-rtl/module-descriptions.md", "role": "p4-module-descriptions"}
+      ]
+    },
+    "6": {
+      "required": [
+        {"path": "reviews/phase-5-verify/final-compliance.md", "role": "p5-compliance"}
+      ],
+      "optional": [
+        {"path": "docs/phase-4-rtl/module-descriptions.md", "role": "p4-module-descriptions"}
+      ]
+    },
+    "7": {
+      "required": [],
+      "optional": [
+        {"path": "reviews/phase-6-review/improvements.md", "role": "p6-improvements"},
+        {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"}
+      ]
+    }
+  }
+}

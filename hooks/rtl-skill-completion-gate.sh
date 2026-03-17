@@ -14,6 +14,7 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/compliance-gate-util.sh"
 jsonu_detect_parser
@@ -25,14 +26,12 @@ STATE_DIR="$CWD/.rtl-agent-team/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
 if teamu_should_skip_gate "$STATE_DIR"; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # If no active skill state, allow exit
 if [ ! -f "$SKILL_STATE" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Check staleness (2 hours = 7200 seconds)
@@ -46,8 +45,7 @@ if [ -n "$STARTED_AT" ]; then
     if [ "$AGE" -gt 7200 ]; then
       # Stale state, clean up and allow exit
       rm -f "$SKILL_STATE"
-      printf '{"continue":true}'
-      exit 0
+      emit_post_continue
     fi
   fi
 fi
@@ -69,8 +67,7 @@ fi
 # If all complete, clean up and allow exit
 if [ "$COMPLETED" = "true" ]; then
   rm -f "$SKILL_STATE"
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 DYNAMIC_PROMPT=$(jsonu_get_file_path_string "$SKILL_STATE" "dynamic_prompt")
@@ -147,8 +144,7 @@ if [ "$_CURRENT_STRATEGY" = "upstream_challenge" ]; then
   if [ -n "$DYNAMIC_PROMPT" ]; then
     STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
   fi
-  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$STAGE_MSG")"
-  exit 0
+  emit_stop_block "$STAGE_MSG"
 fi
 
 MAX_ITER=${MAX_ITER:-5}
@@ -181,4 +177,4 @@ case "$STAGE" in
     ;;
 esac
 
-printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$STAGE_MSG")"
+emit_stop_block "$STAGE_MSG"

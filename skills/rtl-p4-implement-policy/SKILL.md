@@ -15,7 +15,8 @@ Wave 2:  Lint All     — One lint-checker per module, all parallel, collect res
 Wave 3:  Fix Lint     — ONLY FAIL modules, max 3 rounds, re-lint only fixes
 Wave 4:  Code Review  — rtl-critic per lint-clean module, parallel
 Wave 5:  Bugfix       — ONLY REVIEW_FAIL modules, max 3 review→fix iterations
-Wave 6:  Unit TB+Sim  — testbench-dev + eda-runner per module, parallel
+Wave 6a: Tier 1 Smoke — testbench-dev + eda-runner per module, parallel
+Wave 6b: Tier 2 Unit  — Reference model comparison per module. Each uarch feature tested with REQ-U-* tracing. Min coverage: FSM >= 50%, line >= 60%
 Wave 7:  Module CDC   — cdc-checker per multi-domain module, parallel
 Wave 8:  Module Proto — protocol-checker per bus-interface module, parallel
 Wave 9:  Refactoring  — rtl-p4s-refactor for flagged modules, selective
@@ -32,8 +33,8 @@ Key principles:
 ## Wave Overlap Rules
 
 - Waves 1-3 (Write/Lint/Fix): batch, then progress together
-- Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6 immediately
-- Waves 6-9 (Test/CDC/Protocol/Refactor): can overlap for different modules
+- Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6a immediately
+- Waves 6a-9 (Smoke/Tier2/CDC/Protocol/Refactor): can overlap for different modules; Wave 6b starts after Wave 6a PASS per module
 - Wave 10 (Integration + Gate): requires ALL modules complete Waves 1-9
 
 ## Per-Module State Tracker Schema
@@ -46,7 +47,8 @@ Key principles:
   "wave_3_fix": "PASS|SKIP",
   "wave_4_review": "REVIEW_PASS|REVIEW_FAIL",
   "wave_5_bugfix": "PASS|SKIP",
-  "wave_6_unit_test": "PASS|FAIL",
+  "wave_6a_tier1_smoke": "PASS|FAIL",
+  "wave_6b_tier2_unit": "PASS|FAIL",
   "wave_7_cdc": "CDC_PASS|CDC_FAIL|SKIP",
   "wave_8_protocol": "PROTOCOL_PASS|PROTOCOL_FAIL|SKIP",
   "wave_9_refactor": "DONE|SKIP",
@@ -96,8 +98,11 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
 ## Protocol Check Scope (Phase 4 vs Phase 5)
 
 - Phase 4 (Wave 8): Module-level protocol — each module's bus interfaces in isolation
+  - Timing contract assertion checks for interfaces with timing specs in uarch
+  - valid/ready backpressure exercise
+  - Multi-beat transfer protocol verification
 - Phase 5 (rtl-p5s-protocol-verify): System-level protocol — end-to-end transaction flow
-- Phase 4 catches per-interface violations; Phase 5 catches integration-level protocol issues
+- Phase 4 catches per-interface violations + timing contract mismatches; Phase 5 catches integration-level protocol issues
 
 ## Refactoring Decision Criteria (Wave 9)
 
@@ -111,24 +116,28 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
   - Any change touching combinational/sequential logic, reset, clock enable, or constraints intent:
     invoke equivalence-checker (RTL-vs-RTL) before Wave 10 gate
 
-## Wave 6 vs Tier 2 Unit Test Scope
+## Wave 6a/6b Unit Test Scope
 
-- **Wave 6** (within 10-Wave pipeline): Tier 1 smoke tests — basic I/O stimulus,
-  FSM state coverage, self-checking assertions. Quick pass/fail per module.
+- **Wave 6a** (Tier 1 Smoke): Basic I/O stimulus, FSM state coverage,
+  self-checking assertions. Quick pass/fail per module.
   Produces: `sim/{module}/tb_{module}.sv`
-- **rtl-p4s-unit-test** (standalone skill): Tier 2 unit tests — reference model
-  comparison (DPI-C or file-based), uarch feature-level coverage, per-feature
-  result JSON. Deeper per-module verification.
+- **Wave 6b** (Tier 2 Unit — MANDATORY): Reference model comparison
+  (DPI-C or file-based), uarch feature-level coverage with REQ-U-* tracing,
+  per-feature result JSON. Deeper per-module verification.
   Extends: `sim/{module}/tb_{module}.sv` (adds reference comparison logic to
-  existing Wave 6 TBs, does NOT replace them)
+  existing Wave 6a TBs, does NOT replace them).
+  Gate: `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`
+  and coverage meeting thresholds (FSM >= 50%, line >= 60%).
+- **rtl-p4s-unit-test** (standalone skill): Can still be invoked independently
+  for ad-hoc Tier 2 testing outside the pipeline
 
 ## Rapid-Impl to Full-Impl Transition
 
 - `rtl-p4-rapid-impl` produces: lint-clean modules, module-level CDC pass,
   smoke functional pass, block sanity pass. State in `p4-state.json`.
-- `rtl-p4-implement` adds: code review (Wave 4-5), Tier 1 unit tests (Wave 6),
-  protocol checks (Wave 8), refactoring (Wave 9), integration gate (Wave 10),
-  Stream B artifacts.
+- `rtl-p4-implement` adds: code review (Wave 4-5), Tier 1 smoke tests (Wave 6a),
+  Tier 2 unit tests (Wave 6b), protocol checks (Wave 8), refactoring (Wave 9),
+  integration gate (Wave 10), Stream B artifacts.
 - Transition: Full-impl orchestrator should detect existing lint-clean modules
   from rapid-impl and skip Waves 1-3 for those modules. Detection via:
   `rtl/*/*.sv` exists + lint passes.
@@ -137,7 +146,7 @@ Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
 
 - `rtl-p4s-bugfix`: Used in Wave 5 for review-driven fixes, and Wave 6 for test-driven fixes
 - `rtl-p4s-refactor`: Used in Wave 9 for code quality improvements
-- `rtl-p4s-unit-test`: Tier 2 testing (used after Phase 4 for deeper per-module verification)
+- `rtl-p4s-unit-test`: Tier 2 testing (used in Wave 6b for mandatory per-module verification; also available standalone)
 - `rtl-lint-check`: Used in Waves 2-3 and after any code modification
 
 ## Escalation & Stop Conditions
@@ -171,9 +180,11 @@ ALL of the following must be true before Phase 5:
 - [ ] Per-module review reports at `.rtl-agent-team/scratch/phase-4/`
 - [ ] No module blocked after 3 review→fix iterations
 
-**Unit Test:**
+**Unit Test (Tier 1 + Tier 2):**
 - [ ] sim/{module}/tb_{module}.sv exists for every module
-- [ ] All unit tests PASS (sim/{module}/{module}_results.txt)
+- [ ] All Tier 1 smoke tests PASS (sim/{module}/{module}_results.txt)
+- [ ] All Tier 2 unit tests PASS (sim/{module}/{module}_unit_results.json with ref_mismatches=0)
+- [ ] Tier 2 coverage meets thresholds: FSM >= 50%, line >= 60%
 
 **CDC:**
 - [ ] All multi-domain modules CDC-checked (Wave 7)

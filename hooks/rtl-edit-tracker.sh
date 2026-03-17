@@ -7,6 +7,7 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
@@ -84,13 +85,11 @@ FILE_PATH=$(jsonu_get_input_string "$INPUT" "file_path")
 if [ -z "$FILE_PATH" ]; then
   COMMAND=$(jsonu_get_input_string "$INPUT" "command")
   if [ -z "$COMMAND" ]; then
-    printf '{"continue":true}'
-    exit 0
+    emit_post_continue
   fi
   # Quick pass-through: no RTL extensions in command → minimal overhead
   if ! printf '%s' "$COMMAND" | grep -qE '\.(sv|svh|v|vh)([^a-zA-Z0-9_]|$)'; then
-    printf '{"continue":true}'
-    exit 0
+    emit_post_continue
   fi
   # Extract first command and strip trailing & for classification.
   FIRST_CMD=$(printf '%s' "$COMMAND" | sed 's/^[[:space:]]*//' | awk '{print $1}')
@@ -126,25 +125,21 @@ if [ -z "$FILE_PATH" ]; then
     # find excluded: find -exec/-delete can write. Only safe single-command reads here.
     case "$FIRST_CMD_BASE" in
       cat|head|tail|less|more|grep|egrep|fgrep|rg|wc|file|stat|ls|diff|cmp|strings|hexdump|od|readlink|md5sum|sha256sum|sha1sum|cksum)
-        printf '{"continue":true}'
-        exit 0
+        emit_post_continue
         ;;
     esac
     # Token-aware lint-only exemption: only when first command IS a lint tool.
     case "$FIRST_CMD_BASE" in
       verilator)
         case "$LINT_CHECK_CMD" in *--lint-only*)
-          printf '{"continue":true}'
-          exit 0
+          emit_post_continue
         esac ;;
       verible-verilog-lint)
-        printf '{"continue":true}'
-        exit 0
+        emit_post_continue
         ;;
       slang)
         case "$LINT_CHECK_CMD" in *--lint-only*|*-W*)
-          printf '{"continue":true}'
-          exit 0
+          emit_post_continue
         esac ;;
     esac
   fi
@@ -158,8 +153,7 @@ if [ -z "$FILE_PATH" ]; then
     }
   }' | sort -u)
   if [ -z "$BASH_RTL_FILES" ]; then
-    printf '{"continue":true}'
-    exit 0
+    emit_post_continue
   fi
   _setup_tracking
   _track_and_invalidate "$BASH_RTL_FILES"
@@ -190,10 +184,10 @@ case "$FILE_PATH" in
           >/dev/null
       fi
     fi
-    printf '{"continue":true}'
+    emit_post_continue
     ;;
   *)
     # Not an RTL file, no action needed
-    printf '{"continue":true}'
+    emit_post_continue
     ;;
 esac

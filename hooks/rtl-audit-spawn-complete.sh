@@ -5,6 +5,7 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
@@ -12,23 +13,21 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 
 # Only handle rtl-agent-team agents
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")
-[ -z "$AGENT_TYPE" ] && printf '{"continue":true}' && exit 0
+[ -z "$AGENT_TYPE" ] && emit_post_continue
 
 case "$AGENT_TYPE" in
   rtl-agent-team:*)
     SHORT_NAME="${AGENT_TYPE#rtl-agent-team:}"
     ;;
   *)
-    printf '{"continue":true}'
-    exit 0
+    emit_post_continue
     ;;
 esac
 
 # Check if audit is initialized
 _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
 if [ ! -f "$_AUDIT_LIB" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 . "$SCRIPT_DIR/lib/flock-util.sh"
@@ -36,8 +35,7 @@ fi
 
 _SID=$(audit_session_id "$CWD")
 if [ -z "$_SID" ] || [ ! -d "$CWD/.rtl-agent-team/audit/$_SID" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Log spawn_complete event

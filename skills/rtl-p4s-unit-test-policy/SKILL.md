@@ -45,14 +45,20 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
   "tier": 2,
   "ref_mode": "A_DPI" | "B_FILE",
   "features": [
-    {"name": "fsm_idle_to_active", "status": "PASS"},
-    {"name": "pipeline_latency_3cyc", "status": "PASS"},
-    {"name": "transform_accuracy", "status": "FAIL", "mismatch_cycle": 47}
+    {"name": "fsm_idle_to_active", "status": "PASS", "req_ids": ["REQ-U-003"]},
+    {"name": "pipeline_latency_3cyc", "status": "PASS", "req_ids": ["REQ-U-007"]},
+    {"name": "valid_ready_handshake", "status": "PASS", "req_ids": ["REQ-U-012"]},
+    {"name": "transform_accuracy", "status": "FAIL", "mismatch_cycle": 47, "req_ids": ["REQ-U-015"]}
   ],
   "ref_mismatches": 0,
   "pass_count": 5,
   "fail_count": 0,
-  "total": 5
+  "total": 5,
+  "coverage": {
+    "line_pct": 67.3,
+    "fsm_pct": 55.0,
+    "toggle_pct": 42.1
+  }
 }
 ```
 
@@ -76,14 +82,24 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
 - Randomize input sequences with `$urandom` for broader coverage
 - Use `always_ff`, `always_comb` in testbench helper modules (never `always @*`)
 
+## Minimum Coverage Targets (Tier 2)
+
+These are intentionally lower than P5 targets (90%/80%/70%) to keep Tier 2 fast while ensuring meaningful depth:
+- FSM state coverage >= 50%
+- Line coverage >= 60%
+- Each feature test tagged with REQ-U-* IDs from `docs/phase-3-uarch/iron-requirements.json`
+
 ## Final Checklist
 
 - [ ] sim/{module}/tb_{module}.sv exists for every module
 - [ ] All testbenches use `i_`/`o_` port prefixes, `sys_clk`/`sys_rst_n`, `u_dut`
-- [ ] Each uarch feature has at least one test case
+- [ ] Each uarch feature has at least one test case with `req_ids` tracing
+- [ ] valid/ready handshake protocol exercised (assert, deassert, backpressure) for modules with handshake interfaces
+- [ ] Pipeline latency measured and matches uarch spec (docs/phase-3-uarch/{module}.md)
 - [ ] Reference model comparison executed (DPI-C or file-based)
 - [ ] Zero mismatches between RTL and reference model
-- [ ] sim/{module}/{module}_unit_results.json produced with per-feature status
+- [ ] sim/{module}/{module}_unit_results.json produced with per-feature status + coverage summary
+- [ ] FSM state coverage >= 50%, line coverage >= 60%
 - [ ] All simulations compile and complete without crashes
 - [ ] All unit tests pass
 - [ ] Failure analysis done for any initial failures

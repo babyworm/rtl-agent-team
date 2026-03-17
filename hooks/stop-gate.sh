@@ -9,6 +9,7 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 jsonu_detect_parser
 
@@ -24,8 +25,7 @@ if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
 fi
 
 if teamu_should_skip_gate "$CWD/.rtl-agent-team/state"; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Ultraloop auto-continue: if ultraloop is active and within its time window, keep going
@@ -41,28 +41,24 @@ if [ -f "$ULTRALOOP_STATE" ]; then
     UL_ELAPSED=$(posix_elapsed_seconds "$UL_TIMESTAMP")
     if [ "$UL_ELAPSED" -lt "$UL_THRESHOLD" ]; then
       MSG="[Ultraloop] auto-continue: ${UL_ELAPSED}s elapsed (threshold=${UL_THRESHOLD}s). Continuing autonomous loop."
-      printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"
-      exit 0
+      emit_stop_block "$MSG"
     fi
   fi
 fi
 
 if [ ! -f "$STATE_FILE" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 STATUS=$(jsonu_get_file_path_string "$STATE_FILE" "status")
 if [ "$STATUS" = "completed" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 UPPER_SPEC_BLOCKING=$(jsonu_get_file_path_bool "$STATE_FILE" "upper_spec_blocking")
 if [ "$UPPER_SPEC_BLOCKING" = "true" ]; then
   MSG="[RAT Auto-Design STOP] Upper-spec violation is unresolved. Resolve violation or obtain user approval before proceeding."
-  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"
-  exit 0
+  emit_stop_block "$MSG"
 fi
 
 ACTIVE_GATE_ID=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.active_gate_id")
@@ -116,4 +112,4 @@ if [ "$NEEDS_USER_DECISION" = "true" ]; then
 fi
 
 MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})"
-printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$MSG")"
+emit_stop_block "$MSG"

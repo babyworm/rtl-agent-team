@@ -8,6 +8,7 @@
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/flock-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 jsonu_detect_parser
 
 # Extract CWD from hook input (consistent with peer hooks)
@@ -21,15 +22,13 @@ PROGRESS_FILE="$STATE_DIR/team-progress.json"
 
 # Only active during team mode
 if [ ! -f "$TEAM_CONFIG" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Check team_mode is true
 _TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
 if [ "$_TEAM_MODE" != "true" ]; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Extract team name for display
@@ -48,5 +47,4 @@ if [ -f "$PROGRESS_FILE" ]; then
   fi
 fi
 
-printf '{"continue":true}'
-exit 0
+emit_post_continue

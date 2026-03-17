@@ -245,7 +245,12 @@ Stream B artifacts are generated concurrently with Stream A (RTL implementation)
 - CDC preliminary: each CDC path references architecture clock domain definition
 - TB skeletons: each test scenario references requirement: `# REQ-{NNN}: {description}`
 
-**Merge Point**: Stream A (lint-clean + unit PASS) + Stream B artifacts ready → Phase 4→5 Gate.
+**Content Quality Gate** (prevents empty-skeleton artifacts from passing):
+- SVA skeletons: must contain at least one `property` or `assert` keyword per referenced module
+- CDC preliminary: must reference actual clock domain names from `docs/phase-3-uarch/clock-domain-map.md`
+- TB skeletons: must reference at least one `REQ-` tag per module and contain at least one test function/task
+
+**Merge Point**: Stream A (lint-clean + unit PASS) + Stream B artifacts ready (content quality verified) → Phase 4→5 Gate.
 
 ## Feedback Loop Classification (Phase 5→4)
 

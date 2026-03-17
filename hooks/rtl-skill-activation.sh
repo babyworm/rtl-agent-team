@@ -57,8 +57,7 @@ case "$SHORT_NAME" in
     ;;
   *)
     if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
-      printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"[SETUP REQUIRED] rat-setup has not been run. Project rules (.claude/rules/), guides, and directory structure are missing — the pipeline may not function correctly. Run /rtl-agent-team:rat-setup first."}}'
-      exit 0
+      emit_continue "[SETUP REQUIRED] rat-setup has not been run. Project rules (.claude/rules/), guides, and directory structure are missing — the pipeline may not function correctly. Run /rtl-agent-team:rat-setup first."
     fi
     ;;
 esac
@@ -147,4 +146,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"[RTL Skill Completion Loop ACTIVATED] Skill %s has started. Completion criteria: %s. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."}}' "$SHORT_NAME" "$CRITERIA"
+emit_continue "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."

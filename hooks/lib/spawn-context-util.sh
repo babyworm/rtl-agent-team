@@ -15,6 +15,7 @@ _SCTX_LIB_DIR="${SCRIPT_DIR:-.}/lib"
 # Map skill short name to phase number.
 sctx_skill_to_phase() {
   case "$1" in
+    # BEGIN GENERATED PHASE_MAP
     p1-spec-research|rtl-p1-research-team) echo 1 ;;
     p2-arch-design|rtl-p2-arch-team)       echo 2 ;;
     rtl-p3-uarch-design|rtl-p3-uarch-team) echo 3 ;;
@@ -25,6 +26,7 @@ sctx_skill_to_phase() {
     rtl-p7-exploration) echo 7 ;;
     rat-auto-design|rat-p1p3-spec-uarch|rat-p1p3-spec-uarch-team|rat-dse) echo 1 ;;
     rat-p4p5-impl-verify) echo 4 ;;
+    # END GENERATED PHASE_MAP
     *) echo "" ;;
   esac
 }

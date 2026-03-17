@@ -10,6 +10,7 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 jsonu_detect_parser
 
@@ -22,8 +23,7 @@ VERIFY_DONE="$STATE_DIR/rtl-verify-done"
 VERIFY_WAIVER="$STATE_DIR/rtl-verify-waiver"
 
 if teamu_should_skip_gate "$STATE_DIR"; then
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Team mode aggregation: merge all session-scoped tracking files into a combined view.
@@ -67,8 +67,7 @@ fi
 # If no tracked files, allow exit
 if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
   rm -f "$AGGREGATED_TRACK"
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # If verification was done or waived, clean up and allow exit
@@ -78,8 +77,7 @@ if [ -f "$VERIFY_DONE" ] || [ -f "$VERIFY_WAIVER" ]; then
   for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
     [ -f "$sf" ] && rm -f "$sf"
   done
-  printf '{"continue":true}'
-  exit 0
+  emit_post_continue
 fi
 
 # Modified RTL files exist without verification — BLOCK exit
@@ -90,4 +88,5 @@ rm -f "$AGGREGATED_TRACK"
 # Escape JSON-special characters in filenames
 FILES=$(jsonu_escape "$FILES")
 
-printf '{"continue":false,"decision":"block","reason":"[RTL Verify Gate BLOCKED] %s RTL files modified but functional verification not performed: %s.\\n\\nOptions:\\n  1. Run /rtl-agent-team:rtl-p5s-func-verify for functional verification\\n  2. Waive: touch .rtl-agent-team/state/rtl-verify-waiver\\n  3. Reset: rm .rtl-agent-team/state/rtl-modified-files.txt"}' "$COUNT" "$FILES"
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}.\\n\\nOptions:\\n  1. Run /rtl-agent-team:rtl-p5s-func-verify for functional verification\\n  2. Waive: touch .rtl-agent-team/state/rtl-verify-waiver\\n  3. Reset: rm .rtl-agent-team/state/rtl-modified-files.txt"
+emit_stop_block "$MSG"

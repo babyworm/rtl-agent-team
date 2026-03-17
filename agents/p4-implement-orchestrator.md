@@ -141,7 +141,7 @@ reported findings. Classify: REVIEW_PASS or REVIEW_FAIL.")
 # REVIEW_PASS modules proceed to Wave 6 immediately
 ```
 
-## Wave 6: Unit TB + Sim (parallel, lint-clean + review-clean modules)
+## Wave 6a: Tier 1 Smoke (parallel, lint-clean + review-clean modules)
 
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
@@ -157,6 +157,18 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 ```
 
 On failure: waveform-analyzer debug → rtl-coder fix → re-lint → re-sim (max 3 rounds).
+
+## Wave 6b: Tier 2 Unit Test (parallel, after Wave 6a PASS per module)
+
+```
+Task(subagent_type="rtl-agent-team:p4s-unit-test-orchestrator",
+     prompt="Run Tier 2 unit tests for module {M} against C reference model.
+Verify each uarch feature with REQ-U-* tracing. Minimum coverage: FSM >= 50%, line >= 60%.
+Output: sim/{module}/{module}_unit_results.json with ref_mismatches=0 and coverage meeting thresholds.")
+```
+
+On failure: debug ref mismatches → rtl-coder fix → re-run Tier 2 (max 3 rounds).
+Gate: `sim/{module}/{module}_unit_results.json` exists with `ref_mismatches=0` and coverage thresholds met.
 
 ## Wave 7: Module-level CDC (parallel, multi-domain modules only)
 
@@ -181,8 +193,12 @@ If root cause is clock source/gating/mux ambiguity → additionally escalate to 
 Task(subagent_type="rtl-agent-team:protocol-checker",
      prompt="Verify protocol compliance in rtl/{module}/{module}.sv.
 Read docs/phase-3-uarch/protocol-assignments.md for assigned protocols.
+Read docs/phase-3-uarch/{module}.md for interface timing specs.
 Check: (1) valid/ready handshake correctness, (2) no combinational loops in handshake,
-(3) back-pressure handling, (4) AXI/APB compliance if applicable.
+(3) back-pressure handling, (4) AXI/APB compliance if applicable,
+(5) timing contract assertion checks — verify interfaces meet latency/throughput specs from uarch,
+(6) valid/ready backpressure exercise — stall/resume cycles with no data loss,
+(7) multi-beat transfer protocol verification — burst boundaries, last-beat signaling.
 Save report to .rtl-agent-team/scratch/phase-4/{module}_protocol.md.
 Classify: PROTOCOL_PASS or PROTOCOL_FAIL.",
      run_in_background=true)
@@ -268,6 +284,16 @@ with per-module cell count and any CRITICAL findings.",
      run_in_background=true)
 ```
 
+### Requirement Tracing (forward-trace)
+```
+Task(subagent_type="rtl-agent-team:requirement-tracer",
+     prompt="Forward-trace only: verify each Critical/High REQ-U-* has at least one test in sim/. Report untested requirements.")
+```
+
+The requirement-tracer result feeds into the Phase 4 exit quality assessment.
+Untested Critical/High requirements are flagged in the phase-4-summary but do NOT
+hard-block the gate (advisory — Phase 5 will enforce full coverage).
+
 ### On Functional Coverage FAIL
 ```
 Task(subagent_type="rtl-agent-team:rtl-coder",
@@ -278,7 +304,9 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 ### Phase 4 Gate Check
 
 **ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
-Verify ALL criteria per policy skill checklist.
+Verify ALL criteria per policy skill checklist, including:
+- `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
+- Each `{module}_unit_results.json` has `ref_mismatches=0` and coverage >= thresholds
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
 ## Wave 11: Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
@@ -307,8 +335,8 @@ Modules progress through waves independently. A fast module can start Wave 6 whi
 a slow module is still in Wave 5.
 
 - Waves 1-3 (Write/Lint/Fix): batch all modules together, then progress
-- Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6 immediately
-- Waves 6-9 (Test/CDC/Protocol/Refactor): can overlap for different modules
+- Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6a immediately
+- Waves 6a-9 (Smoke/Tier2/CDC/Protocol/Refactor): can overlap for different modules; Wave 6b starts after Wave 6a PASS per module
 - Wave 10 (Integration + Gate): requires ALL modules complete Waves 1-9
 
 # Examples

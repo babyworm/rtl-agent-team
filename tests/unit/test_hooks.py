@@ -4,6 +4,8 @@ import datetime
 import json
 import os
 import re
+import shutil
+import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -2927,6 +2929,47 @@ class TestMappingSyncParity:
                 missing.append(skill_name)
         assert not missing, (
             f"Completion criteria references skills without SKILL.md: {sorted(missing)}"
+        )
+
+
+# ── P3-10 Phase Registry Sync ───────────────────────────────────────────────
+
+
+class TestPhaseRegistrySync:
+    """Verify phase-registry.json stays in sync with generated shell code.
+    Runs scripts/generate-phase-maps.sh --check which exits non-zero on drift."""
+
+    GENERATOR = REPO_ROOT / "scripts" / "generate-phase-maps.sh"
+    REGISTRY = REPO_ROOT / "phase-registry.json"
+
+    def test_registry_exists(self):
+        """phase-registry.json must exist at repo root."""
+        assert self.REGISTRY.exists(), "phase-registry.json not found"
+
+    def test_registry_valid_json(self):
+        """phase-registry.json must be valid JSON with expected top-level keys."""
+        data = json.loads(self.REGISTRY.read_text())
+        assert "_schema_version" in data
+        assert "skills" in data
+        assert "agents" in data
+        assert "phases" in data
+
+    @pytest.mark.skipif(
+        not REPO_ROOT.joinpath("scripts/generate-phase-maps.sh").exists(),
+        reason="generator script not found",
+    )
+    def test_phase_registry_sync(self):
+        """Generated blocks must match current file content (no drift)."""
+        if not shutil.which("jq"):
+            pytest.skip("jq not available")
+        result = subprocess.run(
+            ["bash", str(self.GENERATOR), "--check"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"Phase registry out of sync with generated files:\n{result.stderr}"
         )
 
 

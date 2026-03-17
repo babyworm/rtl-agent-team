@@ -21,3 +21,18 @@ emit_block() {
   printf '{"continue":false,"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}' "$(jsonu_escape "$_EB_MSG")"
   exit 0
 }
+
+# Emit a Stop-hook block response with reason, then exit 0.
+# Usage: emit_stop_block "reason message"
+emit_stop_block() {
+  _ESB_MSG="$1"
+  printf '{"continue":false,"decision":"block","reason":"%s"}' "$(jsonu_escape "$_ESB_MSG")"
+  exit 0
+}
+
+# Emit a PostToolUse continue response (no additionalContext), then exit 0.
+# Usage: emit_post_continue
+emit_post_continue() {
+  printf '{"continue":true}'
+  exit 0
+}

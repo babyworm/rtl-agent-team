@@ -7,6 +7,7 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/spawn-context-util.sh"
 
 jsonu_detect_parser
@@ -16,7 +17,7 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 
 # Extract subagent_type from tool input.
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")
-[ -z "$AGENT_TYPE" ] && printf '{"continue":true}' && exit 0
+[ -z "$AGENT_TYPE" ] && emit_post_continue
 
 # Only handle rtl-agent-team agents.
 case "$AGENT_TYPE" in
@@ -24,8 +25,7 @@ case "$AGENT_TYPE" in
     SHORT_NAME="${AGENT_TYPE#rtl-agent-team:}"
     ;;
   *)
-    printf '{"continue":true}'
-    exit 0
+    emit_post_continue
     ;;
 esac
 
@@ -33,6 +33,7 @@ esac
 # Agent names like "p4-implement-orchestrator" → skill "rtl-p4-implement"
 SKILL_NAME=""
 case "$SHORT_NAME" in
+  # BEGIN GENERATED PHASE_MAP
   # Non-team orchestrators → non-team skills
   p1-research-orchestrator)       SKILL_NAME="p1-spec-research" ;;
   p2-arch-orchestrator)           SKILL_NAME="p2-arch-design" ;;
@@ -68,9 +69,9 @@ case "$SHORT_NAME" in
   p4-implement-team-orchestrator) SKILL_NAME="rtl-p4-implement-team" ;;
   p5-verify-team-orchestrator)    SKILL_NAME="rtl-p5-verify-team" ;;
   spec-to-uarch-team-orchestrator) SKILL_NAME="rat-p1p3-spec-uarch-team" ;;
+  # END GENERATED PHASE_MAP
   *)
-    printf '{"continue":true}'
-    exit 0
+    emit_post_continue
     ;;
 esac
 
@@ -101,4 +102,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-printf '{"continue":true}'
+emit_post_continue

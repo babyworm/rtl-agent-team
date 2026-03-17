@@ -45,6 +45,7 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
     _cs_upstream=""
     _cs_open=""
     case "$SHORT_NAME" in
+      # BEGIN GENERATED PHASE_MAP
       p2-arch-design|rtl-p2-arch-team)
         _cs_upstream='["docs/phase-1-research/iron-requirements.json"]'
         _cs_open="docs/phase-1-research/open-requirements.json"
@@ -57,6 +58,7 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
         _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json","docs/phase-3-uarch/iron-requirements.json"]'
         _cs_open=""
         ;;
+      # END GENERATED PHASE_MAP
     esac
 
     if [ -n "$_cs_upstream" ]; then

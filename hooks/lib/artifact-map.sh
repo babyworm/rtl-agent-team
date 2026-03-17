@@ -39,6 +39,10 @@ EOF
 docs/phase-1-research/iron-requirements.json|p1-iron-requirements
 rtl|p4-rtl-sources
 docs/phase-4-rtl|p4-rtl-docs
+sim|p4-unit-test-results
+docs/phase-4-rtl/stream-b-sva-skeletons.md|p4-stream-b-sva
+docs/phase-4-rtl/stream-b-cdc-preliminary.md|p4-stream-b-cdc
+docs/phase-4-rtl/stream-b-tb-skeletons.md|p4-stream-b-tb
 EOF
       ;;
     6)
@@ -78,9 +82,6 @@ EOF
     5)
       cat <<'EOF'
 docs/phase-4-rtl/module-descriptions.md|p4-module-descriptions
-docs/phase-4-rtl/stream-b-sva-skeletons.md|p4-stream-b-sva
-docs/phase-4-rtl/stream-b-cdc-preliminary.md|p4-stream-b-cdc
-docs/phase-4-rtl/stream-b-tb-skeletons.md|p4-stream-b-tb
 EOF
       ;;
     6)
