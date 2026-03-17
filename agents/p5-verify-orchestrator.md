@@ -60,6 +60,7 @@ Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
 Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("sim/**/*_unit_results.json")                 # Tier 2 baseline for coverage handoff
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -164,7 +165,10 @@ Task(subagent_type="rtl-agent-team:eda-runner",
 Wait for V1 (lint) PASS, then:
 ```
 Task(subagent_type="rtl-agent-team:p5s-func-verify-orchestrator",
-     prompt="Run functional regression pipeline for module {module}. Use Stream B TB skeletons from docs/phase-4-rtl/stream-b-tb-skeletons.md if available. Pipelined TB generation + multi-seed regression (seeds 42, 1, 123, 1337, 65536). Report per-test pass/fail and coverage data.",
+     prompt="Run functional regression pipeline for module {module}. Use Stream B TB skeletons from docs/phase-4-rtl/stream-b-tb-skeletons.md if available. Pipelined TB generation + multi-seed regression (seeds 42, 1, 123, 1337, 65536). Report per-test pass/fail and coverage data.
+Load Tier 2 baseline from sim/{module}/{module}_unit_results.json for each module.
+Pass baseline coverage data to CDTG for incremental gap closure.
+If Tier 2 results not found for a module, proceed without baseline (graceful degradation).",
      run_in_background=true)
 ```
 

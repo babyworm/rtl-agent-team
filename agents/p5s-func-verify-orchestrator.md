@@ -53,6 +53,7 @@ Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
 Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("sim/**/*_unit_results.json")                 # Tier 2 baseline (optional — graceful degradation if absent)
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -65,6 +66,18 @@ Bash("mkdir -p reviews/phase-5-verify sim/regression sim/coverage")
 Glob("rtl/*/")       # Enumerate modules
 Read("docs/phase-1-research/requirements.json")  # For traceability matrix
 ```
+
+## Tier 2 Baseline Loading
+
+For each module, check if `sim/{module}/{module}_unit_results.json` exists.
+If found:
+  - Read coverage baseline: line_pct, fsm_pct, toggle_pct
+  - Read already-covered features list
+  - Read func_coverage bins_hit/bins_total
+  - Pass to downstream steps: "Tier 2 baseline available for {module}"
+If not found:
+  - Proceed without baseline (graceful degradation)
+  - Log: "No Tier 2 baseline for {module} — CDTG starts from zero"
 
 ## Module Scope
 
@@ -85,7 +98,11 @@ Do NOT wait for all TBs — pipeline per module:
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write cocotb test sim/{module}/test_{module}.py.
 Use dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_* signal naming per conventions.
-Drive RTL, compare output with ref model binary on 100 random vectors.")
+Drive RTL, compare output with ref model binary on 100 random vectors.
+If Tier 2 baseline is available for this module, build incrementally:
+- Read sim/{module}/{module}_unit_results.json for already-covered features
+- Focus new test scenarios on UNCOVERED features and FSM states
+- Do not duplicate Tier 2 test vectors — extend coverage, not repeat it")
 # → As soon as TB is ready, launch sim:
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run cocotb regression: make -C sim/{module} SIM=verilator
@@ -144,7 +161,11 @@ As modules complete multi-seed regression, start partial coverage analysis immed
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Analyze coverage from completed module sims. Don't wait for all modules.
-Report early coverage gaps to guide additional test generation.")
+Report early coverage gaps to guide additional test generation.
+Include Tier 2 baseline in coverage-analyst prompt:
+'Tier 2 achieved: FSM {fsm_pct}%, Line {line_pct}%, Toggle {toggle_pct}%.
+Already covered features: {feature_list}.
+Focus CDTG Round 1 on uncovered FSM states and untested code paths.'")
 ```
 
 ## Step 3.7: Coverage Merge

@@ -128,6 +128,23 @@ Verdict rules:
 
 See `references/cocotb-ecosystem.md` for complete API reference.
 
+## Tier 2 Baseline Utilization
+
+When Tier 2 unit test results (`sim/{module}/{module}_unit_results.json`) are available
+from Phase 4, the CDTG pipeline MUST operate incrementally:
+
+1. **Load baseline**: Read Tier 2 coverage metrics (line_pct, fsm_pct, toggle_pct)
+   and already-covered features from unit_results.json
+2. **Prioritize gaps**: CDTG Round 1 focuses on uncovered FSM states, untested code
+   paths, and features not exercised in Tier 2
+3. **Avoid duplication**: Do not regenerate test vectors that duplicate Tier 2 coverage.
+   Extend coverage, not repeat it
+4. **Graceful degradation**: If Tier 2 results are absent (e.g., module skipped P4 unit
+   testing), proceed from zero baseline. Log warning but do not block
+
+Coverage targets remain unchanged: Line ≥ 90%, Toggle ≥ 80%, FSM ≥ 70%.
+The baseline only affects CDTG prioritization, not target thresholds.
+
 ## Escalation & Stop Conditions
 
 - cocotb not installed → halt, provide install command (`pip install cocotb`)
