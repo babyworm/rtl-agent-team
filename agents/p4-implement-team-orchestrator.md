@@ -138,8 +138,9 @@ t_cdc = TaskCreate(subject=f"W7: CDC {M}", description=f"CDC analysis for {M}",
 # Wave 8: Protocol (depends on write, conditional on bus interfaces)
 # Created only if module has bus interfaces
 
-# Wave 9: Refactor (depends on smoke + cdc + protocol if present)
-refactor_deps = [t_smoke, t_cdc]
+# Wave 9: Refactor (depends on smoke + tier2 + cdc + protocol if present)
+# t_tier2 is global — must complete before any refactoring to avoid invalidating unit_results
+refactor_deps = [t_smoke, t_tier2, t_cdc]
 if t_protocol:  # Only if module has bus interfaces (Wave 8 created)
     refactor_deps.append(t_protocol)
 t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refactoring for {M}",

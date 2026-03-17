@@ -35,7 +35,8 @@ Key principles:
 - Waves 1-3 (Write/Lint/Fix): batch, then progress together
 - Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6a immediately
 - Wave 6a (Smoke): per-module, can overlap; Wave 6b (Tier 2): global, starts after ALL modules pass Wave 6a
-- Waves 7-9 (CDC/Protocol/Refactor): can overlap for different modules
+- Waves 7-8 (CDC/Protocol): can overlap for different modules, parallel with Wave 6b
+- Wave 9 (Refactor): requires Wave 6b complete (avoids invalidating unit_results)
 - Wave 10 (Integration + Gate): requires ALL modules complete Waves 1-9
 
 ## Per-Module State Tracker Schema
