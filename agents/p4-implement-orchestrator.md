@@ -290,7 +290,10 @@ with per-module cell count and any CRITICAL findings.",
 ### Requirement Tracing (forward-trace)
 ```
 Task(subagent_type="rtl-agent-team:requirement-tracer",
-     prompt="Forward-trace only: verify each Critical/High REQ-U-* has at least one test in sim/. Report untested requirements.")
+     prompt="Forward-trace only against docs/phase-3-uarch/iron-requirements.json (REQ-U-* entries).
+For each Critical/High REQ-U-*, check if sim/{module}/{module}_unit_results.json contains
+a matching req_ids entry. Report untested requirements. Use iron-requirements.json as the
+primary source, NOT the original Phase 1 requirements.json.")
 ```
 
 The requirement-tracer result feeds into the Phase 4 exit quality assessment.
@@ -339,7 +342,8 @@ a slow module is still in Wave 5.
 
 - Waves 1-3 (Write/Lint/Fix): batch all modules together, then progress
 - Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6a immediately
-- Waves 6a-9 (Smoke/Tier2/CDC/Protocol/Refactor): can overlap for different modules; Wave 6b starts after Wave 6a PASS per module
+- Wave 6a (Smoke): per-module, can overlap; Wave 6b (Tier 2): global, starts after ALL modules pass Wave 6a
+- Waves 7-9 (CDC/Protocol/Refactor): can overlap for different modules
 - Wave 10 (Integration + Gate): requires ALL modules complete Waves 1-9
 
 # Examples
