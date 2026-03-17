@@ -97,6 +97,7 @@ scripts/run_sim.sh --sim iverilog --top tb_{top}_integration \
 - [ ] Handshake/backpressure tests executed
 - [ ] End-to-end reference comparison done (byte-by-byte)
 - [ ] sim/top/integration_results.json produced
+- [ ] Each data_flow and handshake entry has `req_ids` populated (REQ traceability)
 - [ ] All integration tests PASS
 - [ ] run_sim.sh used for SV TB simulation
 - [ ] Waveform analysis done for any failures

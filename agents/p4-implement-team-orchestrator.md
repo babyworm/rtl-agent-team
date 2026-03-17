@@ -231,7 +231,7 @@ After all Wave 9 tasks (and conditional W9b) complete and integration passes.
 1. Verify all modules have lint PASS
 2. Verify all modules have code review PASS (0 critical/major findings)
 3. Verify all modules have Tier 1 smoke PASS (Wave 6a)
-3b. Verify Tier 2 unit test PASS (Wave 6b): `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`, `coverage.fsm_pct >= 50`, `coverage.line_pct >= 60`, and `req_ids` populated
+3b. Verify Tier 2 unit test PASS (Wave 6b): `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`, `coverage.fsm_pct >= 50`, `coverage.line_pct >= 60`, `req_ids` populated, `func_coverage.covergroups_defined >= 1`, and codec conformance PASS (if applicable)
 4. Verify all multi-domain modules have CDC PASS (single-domain: auto-skip)
 5. Verify all bus-interface modules have protocol PASS (no-bus: auto-skip)
 6. Verify equivalence-checker report exists for all logic-touching refactors (per policy)

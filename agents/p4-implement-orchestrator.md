@@ -168,7 +168,8 @@ Invoke ONCE globally after all modules pass Wave 6a, not per-module.
 Task(subagent_type="rtl-agent-team:p4s-unit-test-orchestrator",
      prompt="Run Tier 2 unit tests for all modules against C reference model.
 Verify each uarch feature with REQ-U-* tracing. Minimum coverage: FSM >= 50%, line >= 60%.
-Output: sim/{module}/{module}_unit_results.json per module with ref_mismatches=0 and coverage meeting thresholds.")
+Require covergroups_defined >= 1 per module. Run codec conformance if applicable.
+Output: sim/{module}/{module}_unit_results.json per module with ref_mismatches=0, coverage meeting thresholds, and func_coverage populated.")
 ```
 
 On failure: debug ref mismatches → rtl-coder fix → re-run Tier 2 (max 3 rounds).
@@ -323,7 +324,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 **ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
 Verify ALL criteria per policy skill checklist, including:
 - `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
-- Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, and `req_ids` populated for every feature entry
+- Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, `req_ids` populated for every feature entry, and `func_coverage.covergroups_defined >= 1`
 - Stream B content quality: SVA skeletons contain `property`/`assert` per module, CDC preliminary references clock domain names from `clock-domain-map.md`, TB skeletons reference `REQ-` tags per module
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 

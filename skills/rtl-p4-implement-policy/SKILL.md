@@ -188,6 +188,8 @@ ALL of the following must be true before Phase 5:
 - [ ] All Tier 2 unit tests PASS (sim/{module}/{module}_unit_results.json with ref_mismatches=0)
 - [ ] Tier 2 coverage meets thresholds: FSM >= 50%, line >= 60%
 - [ ] Every feature entry in unit_results.json has `req_ids` populated (REQ-U-* tracing)
+- [ ] Functional coverage: `func_coverage.covergroups_defined >= 1` per module
+- [ ] Codec conformance PASS (if H.264/H.265 decoder — Step 5a)
 
 **CDC:**
 - [ ] All multi-domain modules CDC-checked (Wave 7)
