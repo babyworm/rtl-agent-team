@@ -294,14 +294,10 @@ NOTE: requirement-tracer is scoped to original REQ-XXXX tracing (Phase 5).
 For Phase 4 REQ-U-* forward-trace, use compliance-checker which already supports
 iron-requirements.json as upstream source.
 
-First, resolve concrete paths:
+Resolve concrete Tier 2 result paths, then invoke:
 ```
-module_list = Glob("rtl/*/")  # e.g., rtl/alu/, rtl/ctrl/, ...
-target_paths = [f"sim/{M}/{M}_unit_results.json" for M in module_list]
-```
+target_paths = Glob("sim/*/*_unit_results.json")  # e.g., sim/alu/alu_unit_results.json
 
-Then invoke with explicit path lists:
-```
 Task(subagent_type="rtl-agent-team:compliance-checker",
      prompt="upstream_iron: ['docs/phase-3-uarch/iron-requirements.json']
 target_artifacts: {target_paths}
