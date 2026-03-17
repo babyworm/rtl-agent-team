@@ -76,7 +76,7 @@
       "primary": false,
       "iron_upstream": [],
       "open_requirements": "",
-      "completion_criteria": "test-written|simulation-pass"
+      "completion_criteria": "test-written|simulation-pass|ref-mismatches-zero|coverage-met|req-ids-traced"
     },
     "rtl-p4s-refactor": {
       "phase": 4,

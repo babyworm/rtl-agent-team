@@ -19,7 +19,7 @@
   "rtl-p2-arch-team": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|ambiguity-pass",
   "rtl-p3-uarch-team": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|ambiguity-pass",
   "rtl-p4s-bugfix": "fix-applied|lint-pass|test-pass",
-  "rtl-p4s-unit-test": "test-written|simulation-pass",
+  "rtl-p4s-unit-test": "test-written|simulation-pass|ref-mismatches-zero|coverage-met|req-ids-traced",
   "rtl-p5s-func-verify": "regression-pass|coverage-reported",
   "rtl-p5s-sva-check": "assertions-proven|artifacts-written",
   "rtl-p5s-cdc-verify": "cdc-analysis-complete|artifacts-written",

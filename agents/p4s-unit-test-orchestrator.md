@@ -44,6 +44,7 @@ defense-in-depth when manifest is missing or stale.
 ```
 # Required (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-3-uarch/iron-requirements.json")  # REQ-U-* for req_ids tracing
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
 
 # Optional (per artifact-map.sh Phase 4)
@@ -131,9 +132,12 @@ If waveform analysis cannot identify root cause → escalate to rtl-architect (p
 
 ## Step 5: Results
 
-Generate `sim/{module}/{module}_unit_results.json` per module with per-feature status.
-Report pass/fail summary with reference comparison status.
-Gate: all unit tests pass AND reference comparison has zero mismatches.
+Generate `sim/{module}/{module}_unit_results.json` per module with:
+- Per-feature status with `req_ids` tracing (from `docs/phase-3-uarch/iron-requirements.json`)
+- Coverage summary: `coverage.line_pct`, `coverage.fsm_pct`, `coverage.toggle_pct`
+
+Gate: all unit tests pass AND reference comparison has zero mismatches AND
+coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy).
 
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 
