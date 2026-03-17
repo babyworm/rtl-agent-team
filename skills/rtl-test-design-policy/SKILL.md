@@ -35,7 +35,7 @@ For each FSM defined in uarch spec:
 - Mandatory tests: all valid transitions (0-switch coverage)
 - Recommended: all 1-switch transition pairs (N-1 switch coverage)
 - At least one illegal transition attempt per state (verify no state corruption)
-- Reset recovery: verify return to IDLE from every reachable state
+- Reset recovery: verify return to spec-defined reset state from every reachable state
 
 ## Decision Table Testing
 

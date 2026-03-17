@@ -63,6 +63,11 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
     "line_pct": 67.3,
     "fsm_pct": 55.0,
     "toggle_pct": 42.1
+  },
+  "func_coverage": {
+    "covergroups_defined": 2,
+    "bins_hit": 14,
+    "bins_total": 20
   }
 }
 ```

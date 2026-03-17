@@ -148,16 +148,7 @@ This is a single lightweight round — NOT the full 3-round P5 CDTG protocol.
 Only triggered when initial coverage is below Tier 2 thresholds.
 Record the round in results: `"gap_fill_round": {"executed": true, "before": {...}, "after": {...}}`
 
-## Step 5c: Gate (after gap-fill)
-
-Gate: all unit tests pass AND reference comparison has zero mismatches AND
-coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
-every feature entry has `req_ids` populated (at least one REQ-U-* per feature).
-
-If coverage still below threshold after gap-fill round → FAIL with advisory note
-that P5 CDTG will handle deep closure. Do NOT silently proceed.
-
-## Step 5a: Codec Decoder Block-Level Conformance (conditional)
+## Step 5a: Codec Decoder Block-Level Conformance (conditional, before gate)
 
 If the design is a video codec decoder (H.264/H.265), read
 `domain-packages/video-codec/knowledge/block-level-conformance.md` and ensure:
@@ -165,6 +156,16 @@ If the design is a video codec decoder (H.264/H.265), read
   from JM/HM trace output at the corresponding block boundary
 - Each RTL module output is compared against the C ref model block output for the same input
 - A mismatch at any block boundary is a hard FAIL (no tolerance)
+
+## Step 5c: Gate (after gap-fill AND codec conformance)
+
+Gate: all unit tests pass AND reference comparison has zero mismatches AND
+coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
+every feature entry has `req_ids` populated (at least one REQ-U-* per feature) AND
+codec conformance PASS (if applicable, from Step 5a).
+
+If coverage still below threshold after gap-fill round → FAIL with advisory note
+that P5 CDTG will handle deep closure. Do NOT silently proceed.
 
 # Examples
 
