@@ -7,6 +7,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-03-18
+
 ### Added
 - Test plan generation (Wave 0 Step 0b) before RTL implementation — TDD-style verification (GAP 1)
 - New `test-plan-writer` agent for spec-driven test scenario derivation (ECP/BVA/STT/DT)
