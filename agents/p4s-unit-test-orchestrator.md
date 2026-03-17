@@ -132,9 +132,12 @@ If waveform analysis cannot identify root cause → escalate to rtl-architect (p
 
 ## Step 5: Results
 
-Generate `sim/{module}/{module}_unit_results.json` per module with:
+Generate `sim/{module}/{module}_unit_results.json` per module with ALL schema fields:
 - Per-feature status with `req_ids` tracing (from `docs/phase-3-uarch/iron-requirements.json`)
 - Coverage summary: `coverage.line_pct`, `coverage.fsm_pct`, `coverage.toggle_pct`
+- Functional coverage: `func_coverage.covergroups_defined`, `func_coverage.bins_hit`, `func_coverage.bins_total`
+- Gap fill: `gap_fill_round.executed` (false if not triggered, true with before/after if executed)
+- Codec conformance: `codec_conformance` ("PASS" if decoder and passes, "N/A" if not a codec decoder)
 
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 
