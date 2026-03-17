@@ -85,8 +85,18 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
 ## Minimum Coverage Targets (Tier 2)
 
 These are intentionally lower than P5 targets (90%/80%/70%) to keep Tier 2 fast while ensuring meaningful depth:
+
+**Structural coverage:**
 - FSM state coverage >= 50%
 - Line coverage >= 60%
+
+**Functional coverage (Tier 2 minimum):**
+- Each FSM must have a covergroup with explicit bins for all states defined in uarch spec
+- Each valid/ready interface must have cross-coverage: {valid, ready} x {data = 0, mid, max}
+- At least one covergroup per module with bins derived from uarch feature list
+- Functional coverage bins do NOT have a numeric threshold at Tier 2 — the goal is bin existence and hit, not closure (P5 handles closure)
+
+**Traceability:**
 - Each feature test tagged with REQ-U-* IDs from `docs/phase-3-uarch/iron-requirements.json`
 
 ## Final Checklist
@@ -100,6 +110,7 @@ These are intentionally lower than P5 targets (90%/80%/70%) to keep Tier 2 fast 
 - [ ] Zero mismatches between RTL and reference model
 - [ ] sim/{module}/{module}_unit_results.json produced with per-feature status + coverage summary
 - [ ] FSM state coverage >= 50%, line coverage >= 60%
+- [ ] Coverage gap fill round executed if initial coverage below thresholds
 - [ ] All simulations compile and complete without crashes
 - [ ] All unit tests pass
 - [ ] Failure analysis done for any initial failures

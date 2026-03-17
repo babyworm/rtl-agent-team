@@ -144,6 +144,12 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p4-block-parallel` | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
 | `rat-ultraloop` | — (skill-driven, dispatches `ultraloop-reviewer` for review cycles) | — |
 
+**Cross-cutting policy skills** (referenced by specialist agents, not tied to a single orchestrator):
+
+| Policy Skill | Referenced By | Purpose |
+|-------------|---------------|---------|
+| `rtl-test-design-policy` | `testbench-dev` | Systematic test case design methodology (ECP, BVA, state transition, decision table) |
+
 ---
 
 ## Agent Delegation Table

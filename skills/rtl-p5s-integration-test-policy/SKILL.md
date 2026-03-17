@@ -36,12 +36,12 @@ Integration testbenches MUST follow project conventions:
     "port_width_match": "PASS"
   },
   "data_flow": [
-    {"scenario": "basic_forward", "status": "PASS"},
-    {"scenario": "max_throughput", "status": "PASS"}
+    {"scenario": "basic_forward", "status": "PASS", "req_ids": ["REQ-U-001"]},
+    {"scenario": "max_throughput", "status": "PASS", "req_ids": ["REQ-U-007", "REQ-P-003"]}
   ],
   "handshake": [
-    {"test": "backpressure_propagation", "status": "PASS"},
-    {"test": "pipeline_flush", "status": "PASS"}
+    {"test": "backpressure_propagation", "status": "PASS", "req_ids": ["REQ-U-012"]},
+    {"test": "pipeline_flush", "status": "PASS", "req_ids": ["REQ-U-015"]}
   ],
   "e2e_reference": "PASS",
   "verdict": "PASS"

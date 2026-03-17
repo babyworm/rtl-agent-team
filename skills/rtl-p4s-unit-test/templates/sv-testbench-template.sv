@@ -88,21 +88,42 @@ module tb_{{MODULE_NAME}};
     // Reset
     apply_reset();
 
-    // TODO: Add test cases here
-    // Each test case should target a specific uarch feature:
+    // ─── Test Case Design (derive from uarch spec + io_definition.json) ───
+    //
+    // Boundary Value Analysis (for each input of width W):
+    //   Unsigned: 0, 1, 2**(W-1)-1, 2**(W-1), 2**W-2, 2**W-1
+    //   Signed:   -(2**(W-1)), -(2**(W-1))+1, -1, 0, +1, 2**(W-1)-1
+    //   Address:  base, base+1, top-1, top (alignment boundaries)
+    //   Counter:  0, 1, depth-1, depth (empty/full conditions)
+    //
+    // FSM State Transitions:
+    //   Test all valid transitions from uarch state diagram
+    //   At least one illegal transition attempt per state
+    //   Reset recovery from every reachable state
+    //
+    // Interface (valid/ready):
+    //   Backpressure: valid high, ready low for >N cycles
+    //   Zero-gap: back-to-back transfers with no idle
+    //   Single-beat and max-burst transfers
+    //
+    // Error Injection:
+    //   Reset during active operation
+    //   Invalid input encodings (reserved/illegal per spec)
+    //   Overflow/underflow at arithmetic boundaries
+
+    // TODO: Replace examples below with spec-derived test vectors
     //
     // Test 1: FSM state transitions
     // $display("--- Test 1: FSM state transitions ---");
-    // ... drive inputs, wait, check outputs ...
     // check("idle_to_active", o_state, ST_ACTIVE);
     //
-    // Test 2: Pipeline stage behavior
-    // $display("--- Test 2: Pipeline latency ---");
-    // ... drive inputs, count cycles, verify latency ...
+    // Test 2: Boundary values
+    // $display("--- Test 2: Boundary values ---");
+    // i_data = '0; @(posedge sys_clk); check("bva_zero", o_result, expected_zero);
+    // i_data = '1; @(posedge sys_clk); check("bva_max", o_result, expected_max);
     //
-    // Test 3: Data transformation correctness
-    // $display("--- Test 3: Data transform ---");
-    // ... drive known input, compare with reference output ...
+    // Test 3: Reference model comparison
+    // $display("--- Test 3: Ref model compare ---");
     // check("transform_result", o_result, expected_from_ref);
 
     // ─── Summary ─────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ name: testbench-dev
 description: SV testbench and cocotb testbench developer. Designs coverage models, stimulus generators, and covergroups. Ensures functional coverage closure.
 model: opus
 color: magenta
+skills: [rtl-test-design-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -66,14 +67,26 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     2. Read io_definition.json for all port names, directions, and widths.
     3. Read requirements.json for functional coverage requirements.
     4. Read the test plan to identify: directed tests, random tests, corner cases, error scenarios.
-    5. Design the coverage model: identify coverage axes (input ranges, protocol states, error types).
-    6. Define covergroups with explicit bins for each axis and cross-coverage between axes.
-    7. Design the stimulus generator: directed mode for corner cases, constrained-random for breadth.
-    8. Write the SV interface connecting testbench to DUT.
-    9. Write driver, monitor, scoreboard, and coverage collector classes.
-    10. Write top-level testbench integrating all components.
-    11. Write at least three test cases: smoke, directed, and constrained-random.
-    12. Compile and run; show coverage report after random test.
+    4a. Apply equivalence class partitioning to each input (from io_definition.json widths and uarch spec encodings). Reference: rtl-test-design-policy.
+    4b. Apply boundary value analysis to each integer input per BVA table in rtl-test-design-policy.
+    4c. Extract FSM state transition matrix from uarch spec. Test all valid transitions + one illegal per state.
+    4d. For modules with >=3 boolean control inputs, build decision table.
+    4e. Merge ECP + BVA + state transitions + decision table into unified test vector plan before writing any test code.
+    5. Error Injection Plan (per module):
+       - Protocol violations: valid without ready for >N cycles, unexpected deassert mid-transfer
+       - Reset during active operation (mid-transaction reset, verify clean recovery)
+       - Backpressure/stall at every pipeline stage boundary
+       - Invalid input combinations (if specified in uarch as reserved/illegal encodings)
+       - Overflow/underflow at arithmetic boundaries
+       - Simultaneous conflicting requests (dual-port, arbiter edge cases)
+    6. Design the coverage model: identify coverage axes (input ranges, protocol states, error types).
+    7. Define covergroups with explicit bins for each axis and cross-coverage between axes.
+    8. Design the stimulus generator: directed mode for corner cases, constrained-random for breadth.
+    9. Write the SV interface connecting testbench to DUT.
+    10. Write driver, monitor, scoreboard, and coverage collector classes.
+    11. Write top-level testbench integrating all components.
+    12. Write at least three test cases: smoke, directed, and constrained-random.
+    13. Compile and run; show coverage report after random test.
   </Investigation_Protocol>
 
   <Tool_Usage>
