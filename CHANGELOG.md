@@ -7,6 +7,19 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-03-17
+
+### Fixed (Codex cross-review R1-R11)
+- Tier 2 PASS definition aligned across all surfaces (orchestrator, team, policy)
+- codec_conformance field in result schema (PASS/FAIL/N/A), Step 5a writes it
+- func_coverage + codec_conformance in completion criteria (3 skills x 2 files)
+- P4 policy Wave 6b gate summary aligned with full contract
+- gap_fill_round non-executed default clarified (before/after: null)
+- Step order corrected: 5a(codec) → 5b(gap-fill) → 5c(gate)
+- Step 5 requires ALL schema fields with explicit defaults
+- Team gate matched non-team exactly (per-feature req_ids, explicit codec_conformance)
+- Tier 2 checklist: func_coverage + codec_conformance items added
+
 ## [0.8.1] - 2026-03-17
 
 ### Added
