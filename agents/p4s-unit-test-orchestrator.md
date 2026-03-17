@@ -162,6 +162,7 @@ If the design is a video codec decoder (H.264/H.265), read
 Gate: all unit tests pass AND reference comparison has zero mismatches AND
 coverage meets Tier 2 minimums (FSM >= 50%, line >= 60% per policy) AND
 every feature entry has `req_ids` populated (at least one REQ-U-* per feature) AND
+functional coverage: `covergroups_defined >= 1` per module (bins existence, not closure) AND
 codec conformance PASS (if applicable, from Step 5a).
 
 If coverage still below threshold after gap-fill round → FAIL with advisory note
