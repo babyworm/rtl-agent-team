@@ -70,7 +70,7 @@ gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/{module}_ref.c
     "bins_hit": 14,
     "bins_total": 20
   },
-  "codec_conformance": "PASS" | "N/A"
+  "codec_conformance": "PASS" | "FAIL" | "N/A"
 }
 ```
 

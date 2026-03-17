@@ -137,7 +137,7 @@ Generate `sim/{module}/{module}_unit_results.json` per module with ALL schema fi
 - Coverage summary: `coverage.line_pct`, `coverage.fsm_pct`, `coverage.toggle_pct`
 - Functional coverage: `func_coverage.covergroups_defined`, `func_coverage.bins_hit`, `func_coverage.bins_total`
 - Gap fill: `gap_fill_round.executed` (false if not triggered, true with before/after if executed)
-- Codec conformance: `codec_conformance` ("PASS" if decoder and passes, "N/A" if not a codec decoder)
+- Codec conformance: `codec_conformance` ("PASS", "FAIL", or "N/A")
 
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 
@@ -147,6 +147,8 @@ If the design is a video codec decoder (H.264/H.265), read
   from JM/HM trace output at the corresponding block boundary
 - Each RTL module output is compared against the C ref model block output for the same input
 - A mismatch at any block boundary is a hard FAIL (no tolerance)
+- Write `codec_conformance: "PASS"` or `"FAIL"` into each module's `{module}_unit_results.json`
+- For non-codec modules, Step 5 already writes `codec_conformance: "N/A"`
 
 ## Step 5b: Coverage Gap Fill (single CDTG round)
 
