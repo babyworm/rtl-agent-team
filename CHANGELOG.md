@@ -7,6 +7,15 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-03-17
+
+### Fixed (final cross-review R1-R5)
+- P4 policy line 19 Wave 6b summary includes covergroups + codec conformance
+- Skill count 91→92 across all surfaces (README, README_kr, CLAUDE.md, marketplace)
+- CLAUDE.md policy breakdown 30→31 policies
+- codec_conformance schema PASS/FAIL/N/A (FAIL state representable)
+- Step 5a explicitly writes codec_conformance into result JSON
+
 ## [0.8.2] - 2026-03-17
 
 ### Fixed (Codex cross-review R1-R11)
