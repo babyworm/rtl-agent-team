@@ -287,13 +287,18 @@ with per-module cell count and any CRITICAL findings.",
      run_in_background=true)
 ```
 
-### Requirement Tracing (forward-trace)
+### Requirement Tracing (forward-trace via compliance-checker)
+
+NOTE: requirement-tracer is scoped to original REQ-XXXX tracing (Phase 5).
+For Phase 4 REQ-U-* forward-trace, use compliance-checker which already supports
+iron-requirements.json as upstream source.
+
 ```
-Task(subagent_type="rtl-agent-team:requirement-tracer",
-     prompt="Forward-trace only against docs/phase-3-uarch/iron-requirements.json (REQ-U-* entries).
-For each Critical/High REQ-U-*, check if sim/{module}/{module}_unit_results.json contains
-a matching req_ids entry. Report untested requirements. Use iron-requirements.json as the
-primary source, NOT the original Phase 1 requirements.json.")
+Task(subagent_type="rtl-agent-team:compliance-checker",
+     prompt="Forward-trace only: read docs/phase-3-uarch/iron-requirements.json (REQ-U-* entries).
+For each Critical/High REQ-U-*, verify sim/{module}/{module}_unit_results.json contains
+a matching req_ids entry. Report untested requirements as FAIL with reason 'no unit test coverage'.
+Target artifacts: sim/**/*_unit_results.json")
 ```
 
 The requirement-tracer result feeds into the Phase 4 exit quality assessment.
@@ -312,7 +317,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 **ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
 Verify ALL criteria per policy skill checklist, including:
 - `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
-- Each `{module}_unit_results.json` has `ref_mismatches=0` and coverage >= thresholds
+- Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, and `req_ids` populated for every feature entry
 - Stream B content quality: SVA skeletons contain `property`/`assert` per module, CDC preliminary references clock domain names from `clock-domain-map.md`, TB skeletons reference `REQ-` tags per module
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
