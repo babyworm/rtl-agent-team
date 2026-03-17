@@ -7,6 +7,29 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.7.9] - 2026-03-17
+
+### Added
+- P3-10: `phase-registry.json` single source of truth + `scripts/generate-phase-maps.sh`
+- P3-11: `emit_stop_block()` / `emit_post_continue()` in hook-output-util.sh
+- Wave 6b (Tier 2 unit test) mandatory in 10-Wave pipeline
+- Wave 8 expanded with timing contract verification
+- Wave 10 requirement-tracer forward-trace dispatch
+- Tier 2 coverage targets (FSM>=50%, line>=60%) and `req_ids` tracing
+- Stream B promoted to P5 required artifacts + content quality gate
+- `sim/**/*_unit_results.json` in P5 required artifact map
+
+### Changed
+- 10 hooks migrated to shared output helpers (P3-11)
+- 3 hook files use GENERATED PHASE_MAP markers (P3-10)
+- Tier 2 completion criteria: `ref-mismatches-zero|coverage-met|req-ids-traced`
+
+### Fixed
+- Wave 6b scheduling: global after all 6a (not per-module)
+- requirement-tracer scoped to iron-requirements.json (REQ-U-*)
+- phase-registry.json aligned with artifact-map glob pattern
+- \\n double-escaping in emit_stop_block messages
+
 ## [0.7.8] - 2026-03-17
 
 ### Added
