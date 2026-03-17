@@ -8,12 +8,20 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ## [Unreleased]
 
 ### Added
-- Test plan generation (Wave 0 Step 0b) before RTL implementation — TDD-style verification
+- Test plan generation (Wave 0 Step 0b) before RTL implementation — TDD-style verification (GAP 1)
 - New `test-plan-writer` agent for spec-driven test scenario derivation (ECP/BVA/STT/DT)
-- P4→P5 coverage handoff — P5 CDTG uses Tier 2 baseline for incremental gap closure
-- Structured acceptance criteria (`ac_id`) in iron-requirements.json with criteria-level traceability
+- P4→P5 coverage handoff — P5 CDTG uses Tier 2 baseline for incremental gap closure (GAP 2)
+- Structured acceptance criteria (`ac_id`) in iron-requirements.json with criteria-level traceability (GAP 4)
 - AC-level RTM, compliance-checker forward-trace, and coverage-analyst gap reporting
-- Backward-compatible fallback: projects without `acceptance_criteria` use `req_ids` only
+- Cross-phase requirement decomposition chain (`traces_to` field) — REQ-F→REQ-A→REQ-U completeness check (GAP 3)
+- Automated structural verification in Wave 4 code review — FSM completeness, pipeline depth, port mapping (GAP 5)
+- Mandatory error injection at Tier 2 — reset recovery, backpressure stress, boundary arithmetic (GAP 6)
+- Backward traceability — test failure → requirement impact analysis with BLOCKING/WARNING/UNTRACEABLE (GAP 7)
+- Backward-compatible fallback: projects without `acceptance_criteria` or `traces_to` use `req_ids` only
+
+### Fixed
+- Filesystem verification in 3 auxiliary orchestrators (autopilot, p4-rtl-sanity, uarch-to-verify)
+- Requirements.json reference added to auxiliary orchestrator TB generation prompts
 
 ## [0.8.4] - 2026-03-17
 
