@@ -7,6 +7,24 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-03-17
+
+### Added
+- New `rtl-test-design-policy` skill — ECP, BVA, state transition, decision table testing
+- testbench-dev Investigation Protocol steps 4a-4e (systematic test vector derivation)
+- Error injection plan step in testbench-dev (protocol violations, reset, backpressure)
+- Tier 2 functional coverage bins (FSM states, valid/ready cross-coverage)
+- Tier 2 lightweight CDTG gap-fill round (Step 5b in unit-test orchestrator)
+- Tier 4 integration result JSON with req_ids traceability
+- SV TB template boundary value + FSM + interface testing guide
+- `func_coverage` and `gap_fill_round` fields in Tier 2 result JSON schema
+
+### Fixed (Codex R1-R4)
+- Gate moved after codec conformance (Step 5a before 5c)
+- "valid without ready" reclassified as backpressure stress (not protocol violation)
+- "return to IDLE" replaced with "spec-defined reset state"
+- Functional coverage policy split: gate-enforced vs recommended guidance
+
 ## [0.8.0] - 2026-03-17
 
 ### Fixed (Codex cross-review R1-R13)
