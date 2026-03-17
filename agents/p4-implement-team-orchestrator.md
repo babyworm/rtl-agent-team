@@ -45,7 +45,7 @@ Wave 6a: Tier1Smoke (per module, blockedBy: review_{module} PASS or bugfix_{modu
 Wave 6b: Tier2Unit  (global, blockedBy: ALL wave 6a PASS; p4s-unit-test-orchestrator)
 Wave 7:  CDC       (per module, blockedBy: write_{module})
 Wave 8:  Protocol  (per module, blockedBy: write_{module}, only if bus interfaces)
-Wave 9:  Refactor  (per module, blockedBy: unittest_{module} + cdc_{module} + proto_{module})
+Wave 9:  Refactor  (per module, blockedBy: smoke_{module} + cdc_{module} + proto_{module})
 Wave 10: Integration (blockedBy: ALL wave 9 tasks)
 ```
 
@@ -76,6 +76,7 @@ defense-in-depth when manifest is missing or stale.
 ```
 # Required (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-3-uarch/iron-requirements.json")  # REQ-U-* for Wave 6b/Wave 10
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
 
 # Optional (per artifact-map.sh Phase 4)
@@ -177,7 +178,7 @@ while not all_tasks_complete:
     task_list = TaskList()
     # Dynamic task creation:
     #   - Lint FAIL → create W3 Fix task, update W4 blockedBy
-    #   - Review finds issues → create W5 Bugfix task, update W6 blockedBy
+    #   - Review finds issues → create W5 Bugfix task, update W6a blockedBy
     #   - Module has bus interfaces → create W8 Protocol task, update W9 blockedBy
     #   - W9 refactor touches logic → create W9b Equivalence task (see Step 2)
     #     Then: TaskUpdate(taskId=t_integration, addBlockedBy=[t_eqcheck])

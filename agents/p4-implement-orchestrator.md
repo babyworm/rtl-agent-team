@@ -45,6 +45,7 @@ defense-in-depth when manifest is missing or stale.
 ```
 # Required (per artifact-map.sh Phase 4)
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
+Glob("docs/phase-3-uarch/iron-requirements.json")  # REQ-U-* for Wave 6b/Wave 10
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
 
 # Optional (per artifact-map.sh Phase 4)
@@ -295,11 +296,16 @@ iron-requirements.json as upstream source.
 
 ```
 Task(subagent_type="rtl-agent-team:compliance-checker",
-     prompt="Forward-trace only: read docs/phase-3-uarch/iron-requirements.json (REQ-U-* entries).
-For each Critical/High REQ-U-*, verify sim/{module}/{module}_unit_results.json contains
+     prompt="upstream_iron: ['docs/phase-3-uarch/iron-requirements.json']
+target_artifacts: ['sim/{module}/{module}_unit_results.json' for each module in rtl/]
+Mode: forward-trace only. For each Critical/High REQ-U-*, verify target artifacts contain
 a matching req_ids entry. Report untested requirements as FAIL with reason 'no unit test coverage'.
-Target artifacts: sim/**/*_unit_results.json")
+Save report to reviews/phase-4-rtl/req-trace-compliance.md")
 ```
+
+The compliance-checker result (`reviews/phase-4-rtl/req-trace-compliance.md`) feeds into the
+Phase 4 exit quality assessment. Untested Critical/High requirements are flagged but do NOT
+hard-block the gate (advisory — Phase 5 will enforce full coverage).
 
 The requirement-tracer result feeds into the Phase 4 exit quality assessment.
 Untested Critical/High requirements are flagged in the phase-4-summary but do NOT
