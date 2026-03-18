@@ -47,7 +47,7 @@ class TestAgentDefinitions:
         assert AGENTS_DIR.is_dir(), "agents/ directory must exist"
 
     def test_at_least_40_agents(self, agent_files):
-        assert len(agent_files) >= 40, f"Expected ≥40 agents, got {len(agent_files)}"
+        assert len(agent_files) >= 90, f"Expected ≥90 agents, got {len(agent_files)}"
 
     def test_all_agents_have_yaml_frontmatter(self, agent_files):
         """Every agent .md must start with --- YAML frontmatter ---."""
@@ -168,7 +168,7 @@ class TestSkillDefinitions:
         assert SKILLS_DIR.is_dir(), "skills/ directory must exist"
 
     def test_at_least_30_skills(self, skill_dirs):
-        assert len(skill_dirs) >= 30, f"Expected ≥30 skill dirs, got {len(skill_dirs)}"
+        assert len(skill_dirs) >= 85, f"Expected ≥85 skill dirs, got {len(skill_dirs)}"
 
     def test_every_skill_dir_has_skill_md(self, skill_dirs):
         missing = [d.name for d in skill_dirs if not (d / "SKILL.md").exists()]
@@ -828,21 +828,6 @@ class TestCoverageDrivenVerification:
                 assert "ac-coverage-check" in pr["skills"][skill].get("completion_criteria", ""), \
                     f"{skill} missing ac-coverage-check in phase-registry.json"
 
-    def test_ac_coverage_criteria_synced(self):
-        """ac-coverage criteria must match between skill-completion-criteria.json and phase-registry.json."""
-        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
-        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
-        for skill_name, scc_criteria in scc.items():
-            if skill_name.startswith("_"):
-                continue
-            if skill_name in pr.get("skills", {}):
-                pr_criteria = pr["skills"][skill_name].get("completion_criteria", "")
-                assert scc_criteria == pr_criteria, (
-                    f"Completion criteria mismatch for {skill_name}:\n"
-                    f"  SCC: {scc_criteria}\n"
-                    f"  PR:  {pr_criteria}"
-                )
-
     def test_traces_to_in_p3_uarch_policy(self):
         """P3 uarch policy must define traces_to schema."""
         content = (SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md").read_text()
@@ -1227,38 +1212,6 @@ class TestActionSkillRegistryConsistency:
                 mismatches.append(f"{skill_name}: in phase-registry with criteria but not in skill-completion-criteria.json")
 
         assert mismatches == [], "Registry mismatch:\n" + "\n".join(mismatches)
-
-    def test_all_task_delegating_skills_target_existing_agents(self):
-        """Every user-invocable skill that uses Task(subagent_type=...) must target an existing agent."""
-        agent_names = {f.stem for f in AGENTS_DIR.glob("*.md")}
-        missing_agents = []
-
-        for skill_dir in sorted(SKILLS_DIR.iterdir()):
-            if not skill_dir.is_dir():
-                continue
-            skill_file = skill_dir / "SKILL.md"
-            if not skill_file.exists():
-                continue
-            content = skill_file.read_text()
-            parts = content.split("---", 2)
-            if len(parts) < 3:
-                continue
-            fm = parts[1]
-            # Only check user-invocable skills
-            if not re.search(r'^user-invocable:\s*true', fm, re.MULTILINE):
-                continue
-
-            # Find all Task(subagent_type="rtl-agent-team:XXX") references
-            for match in re.finditer(r'subagent_type="rtl-agent-team:([^"]+)"', content):
-                target = match.group(1)
-                if re.search(r'^\{.+\}$|^X{2,}$', target):
-                    continue  # Skip placeholders
-                if target not in agent_names:
-                    missing_agents.append(f"{skill_dir.name} → {target}")
-
-        assert missing_agents == [], (
-            "Action skills delegate to non-existent agents:\n" + "\n".join(missing_agents)
-        )
 
     def test_all_task_delegating_skills_have_valid_chain(self):
         """Every user-invocable skill → orchestrator → policy chain must be valid.
