@@ -918,6 +918,334 @@ class TestCoverageDrivenVerification:
             )
 
 
+# ── Structural contract tests (Codex-suggested gaps) ────────────────────────
+
+
+class TestComponentCounts:
+    """Exact component counts must match filesystem and all public docs."""
+
+    def test_agent_count_matches_docs(self):
+        actual = len(list(AGENTS_DIR.glob("*.md")))
+        docs_to_check = [
+            CLAUDE_MD,
+            REPO_ROOT / "README.md",
+            REPO_ROOT / "README_kr.md",
+            REPO_ROOT / ".claude-plugin" / "marketplace.json",
+        ]
+        for doc in docs_to_check:
+            content = doc.read_text()
+            assert str(actual) in content, (
+                f"{doc.name} does not contain agent count {actual}"
+            )
+
+    def test_skill_count_matches_docs(self):
+        actual = len([d for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists()])
+        for doc in [CLAUDE_MD, REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
+            content = doc.read_text()
+            assert f"{actual} skill" in content or f"{actual} 스킬" in content or f"{actual}개" in content, (
+                f"{doc.name} does not mention skill count {actual}"
+            )
+
+    def test_hook_count_matches_docs(self):
+        actual = len(list((REPO_ROOT / "hooks").glob("*.sh")))
+        content = CLAUDE_MD.read_text()
+        assert f"{actual} hook" in content or f"{actual} 후크" in content, (
+            f"CLAUDE.md does not mention hook count {actual}"
+        )
+
+
+class TestVersionSync:
+    """Version must be identical across all release surfaces."""
+
+    def test_version_synced_across_manifests(self):
+        pkg = json.loads((REPO_ROOT / "package.json").read_text())
+        plugin = json.loads(PLUGIN_JSON.read_text())
+        marketplace = json.loads((REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text())
+
+        pkg_ver = pkg["version"]
+        plugin_ver = plugin["version"]
+        mp_meta_ver = marketplace["metadata"]["version"]
+        mp_plugin_ver = marketplace["plugins"][0]["version"]
+
+        versions = {
+            "package.json": pkg_ver,
+            "plugin.json": plugin_ver,
+            "marketplace.json metadata": mp_meta_ver,
+            "marketplace.json plugin": mp_plugin_ver,
+        }
+        unique = set(versions.values())
+        assert len(unique) == 1, f"Version mismatch: {versions}"
+
+    def test_version_in_readmes(self):
+        pkg_ver = json.loads((REPO_ROOT / "package.json").read_text())["version"]
+        for readme in [REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
+            content = readme.read_text()
+            assert pkg_ver in content, f"{readme.name} missing version {pkg_ver}"
+
+    def test_version_in_changelog(self):
+        pkg_ver = json.loads((REPO_ROOT / "package.json").read_text())["version"]
+        changelog = (REPO_ROOT / "CHANGELOG.md").read_text()
+        assert f"[{pkg_ver}]" in changelog, f"CHANGELOG.md missing [{pkg_ver}] section"
+
+
+class TestAgentSkillRefResolution:
+    """Every skills: ref in agent frontmatter must resolve to an existing non-user-invocable skill."""
+
+    def test_all_agent_skill_refs_resolve(self):
+        unresolved = []
+        for agent_file in sorted(AGENTS_DIR.glob("*.md")):
+            fm = agent_file.read_text().split("---", 2)
+            if len(fm) < 3:
+                continue
+            yaml_block = fm[1]
+            # Extract skills list: skills: [a, b, c] or skills:\n  - a\n  - b
+            match = re.search(r'skills:\s*\[([^\]]*)\]', yaml_block)
+            if match:
+                skills = [s.strip().strip('"').strip("'") for s in match.group(1).split(",") if s.strip()]
+            else:
+                skills = re.findall(r'^\s*-\s*(\S+)', yaml_block.split("skills:")[1] if "skills:" in yaml_block else "", re.MULTILINE)
+
+            for skill_name in skills:
+                skill_dir = SKILLS_DIR / skill_name
+                if not (skill_dir / "SKILL.md").exists():
+                    unresolved.append(f"{agent_file.name} → {skill_name}")
+        assert unresolved == [], f"Agent skill refs that don't resolve:\n" + "\n".join(unresolved)
+
+
+class TestPromptInvocationResolution:
+    """Every Task(subagent_type=...) and Skill(skill=...) must resolve to real agent/skill."""
+
+    def _is_placeholder(self, name: str) -> bool:
+        """Return True for template/placeholder names like {expert}, XXX, etc."""
+        return bool(re.search(r'^\{.+\}$|^X{2,}$', name))
+
+    def test_task_subagent_refs_resolve(self):
+        agent_names = {f.stem for f in AGENTS_DIR.glob("*.md")}
+        skill_names = {d.name for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists()}
+        valid_targets = agent_names | skill_names
+
+        unresolved = []
+        for md_file in sorted(list(AGENTS_DIR.glob("*.md")) + [d / "SKILL.md" for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()]):
+            content = md_file.read_text()
+            # Match Task(subagent_type="rtl-agent-team:name")
+            for match in re.finditer(r'subagent_type="rtl-agent-team:([^"]+)"', content):
+                target = match.group(1)
+                if not self._is_placeholder(target) and target not in valid_targets:
+                    unresolved.append(f"{md_file.name} → Task:{target}")
+            # Match Skill(skill="rtl-agent-team:name")
+            for match in re.finditer(r'skill="rtl-agent-team:([^"]+)"', content):
+                target = match.group(1)
+                if not self._is_placeholder(target) and target not in valid_targets:
+                    unresolved.append(f"{md_file.name} → Skill:{target}")
+        assert unresolved == [], f"Unresolved invocations:\n" + "\n".join(unresolved)
+
+
+class TestPluginRuntimeBoundary:
+    """Agent/skill prompts must not reference repo-only files unavailable at plugin runtime."""
+
+    REPO_ONLY_PATTERNS = [
+        r'Read\(["\'].*CLAUDE\.md',           # Plugin CLAUDE.md not delivered to users
+        r'Read\(["\'].*CONTRIBUTING\.md',
+        r'Read\(["\'].*\.github/',
+        r'Read\(["\'].*plugin_docs/',          # Dev docs not shipped
+        r'Read\(["\'].*tests/',
+    ]
+
+    def test_prompts_do_not_reference_repo_files(self):
+        violations = []
+        for md_file in sorted(list(AGENTS_DIR.glob("*.md")) + [d / "SKILL.md" for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()]):
+            content = md_file.read_text()
+            for pattern in self.REPO_ONLY_PATTERNS:
+                if re.search(pattern, content):
+                    violations.append(f"{md_file.name}: references repo-only file ({pattern})")
+        assert violations == [], f"Prompts reference repo-only files:\n" + "\n".join(violations)
+
+
+class TestHooksJsonMatrix:
+    """hooks.json must match the documented hook event matrix and Stop gate order."""
+
+    EXPECTED_EVENTS = {
+        "SessionStart": ["rtl-project-init-advisor.sh", "rtl-orchestrator-inject.sh", "rtl-audit-init.sh"],
+        "PreToolUse": {
+            "Skill": ["rtl-phase-state-bootstrap.sh", "rtl-skill-activation.sh"],
+            "TaskCreate": ["rtl-spawn-context.sh"],
+        },
+        "PostToolUse": {
+            "Edit|Write|Bash": ["rtl-edit-tracker.sh"],
+            "TaskUpdate": ["rtl-team-progress.sh"],
+            "TaskCreate": ["rtl-audit-spawn-complete.sh"],
+        },
+        "SubagentStart": ["rtl-audit-subagent.sh"],
+        "SubagentStop": ["rtl-audit-subagent.sh"],
+        "Stop": ["rtl-verify-stop-gate.sh", "rtl-p6-cascade-gate.sh",
+                  "rtl-skill-completion-gate.sh", "stop-gate.sh"],
+    }
+
+    def test_stop_gate_order(self):
+        """Stop hooks must be in correct order: verify -> p6-cascade -> skill-completion -> stop-gate."""
+        hooks_data = json.loads(HOOKS_JSON.read_text())
+        stop_hooks = hooks_data["hooks"]["Stop"]
+        commands = []
+        for entry in stop_hooks:
+            for h in entry.get("hooks", []):
+                cmd = h.get("command", "")
+                match = re.search(r'hooks/([a-z0-9-]+\.sh)', cmd)
+                if match:
+                    commands.append(match.group(1))
+        expected_order = [
+            "rtl-verify-stop-gate.sh",
+            "rtl-p6-cascade-gate.sh",
+            "rtl-skill-completion-gate.sh",
+            "stop-gate.sh",
+        ]
+        assert commands == expected_order, (
+            f"Stop hook order mismatch:\n  actual:   {commands}\n  expected: {expected_order}"
+        )
+
+    def test_all_expected_events_registered(self):
+        """All expected hook events must be registered in hooks.json."""
+        hooks_data = json.loads(HOOKS_JSON.read_text())
+        for event in self.EXPECTED_EVENTS:
+            assert event in hooks_data["hooks"], f"Missing event: {event}"
+
+
+class TestPhaseArtifactContracts:
+    """Phase artifact map must list artifacts that orchestrators produce and downstream gates require."""
+
+    ARTIFACT_MAP = REPO_ROOT / "hooks" / "lib" / "artifact-map.sh"
+
+    def test_artifact_map_exists(self):
+        assert self.ARTIFACT_MAP.exists()
+
+    def test_p4_artifacts_include_sim_dir(self):
+        content = self.ARTIFACT_MAP.read_text()
+        assert "sim/" in content, "artifact-map must list sim/ for Phase 4/5"
+
+    def test_p5_artifacts_include_reviews(self):
+        content = self.ARTIFACT_MAP.read_text()
+        assert "reviews/phase-5" in content or "reviews/" in content, \
+            "artifact-map must list reviews/ for Phase 5"
+
+    def test_phase6_deliverables_match_cascade_gate(self):
+        """Phase 6 cascade gate expects specific filenames that must be documented."""
+        cascade_gate = (REPO_ROOT / "hooks" / "rtl-p6-cascade-gate.sh").read_text()
+        p6_policy = (SKILLS_DIR / "rtl-p6-design-review-policy" / "SKILL.md").read_text()
+        required_files = ["code-review.md", "design-review.md", "design-note", "improvements.md"]
+        for fname in required_files:
+            assert fname in cascade_gate, f"Cascade gate missing reference to {fname}"
+            assert fname in p6_policy, f"P6 policy missing reference to {fname}"
+
+
+class TestPhase5PathConvergence:
+    """Both legacy P5 and split P5A/P5B must produce the same P6 entry artifacts."""
+
+    P6_ENTRY_ARTIFACTS = ["final-compliance.md", "phase-5-summary.md"]
+
+    def test_legacy_p5_produces_p6_artifacts(self):
+        content = (AGENTS_DIR / "p5-verify-orchestrator.md").read_text()
+        for artifact in self.P6_ENTRY_ARTIFACTS:
+            assert artifact in content, f"p5-verify-orchestrator missing {artifact}"
+
+    def test_split_p5a_references_compliance(self):
+        content = (AGENTS_DIR / "p5a-functional-closure-orchestrator.md").read_text()
+        assert "final-compliance" in content or "compliance" in content, \
+            "p5a orchestrator must reference compliance artifact"
+
+    def test_team_p5_produces_p6_artifacts(self):
+        content = (AGENTS_DIR / "p5-verify-team-orchestrator.md").read_text()
+        for artifact in self.P6_ENTRY_ARTIFACTS:
+            assert artifact in content, f"p5-verify-team-orchestrator missing {artifact}"
+
+
+class TestActionSkillRegistryConsistency:
+    """Action skills with completion criteria must be in BOTH registries."""
+
+    def test_completion_criteria_synced(self):
+        """Every skill in skill-completion-criteria.json must also be in phase-registry.json with same criteria."""
+        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
+        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        mismatches = []
+        for skill_name, criteria in scc.items():
+            if skill_name.startswith("_"):
+                continue
+            if skill_name not in pr.get("skills", {}):
+                mismatches.append(f"{skill_name}: in SCC but not in phase-registry")
+            elif pr["skills"][skill_name].get("completion_criteria", "") != criteria:
+                mismatches.append(
+                    f"{skill_name}: criteria differ\n"
+                    f"  SCC: {criteria}\n"
+                    f"  PR:  {pr['skills'][skill_name].get('completion_criteria', '')}"
+                )
+        assert mismatches == [], "Registry mismatch:\n" + "\n".join(mismatches)
+
+    def test_user_invocable_skills_in_routing(self):
+        """User-invocable action skills should appear in routing SSOT."""
+        routing = RTL_ORCHESTRATE_SKILL.read_text()
+        missing = []
+        for skill_dir in sorted(SKILLS_DIR.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            skill_file = skill_dir / "SKILL.md"
+            if not skill_file.exists():
+                continue
+            content = skill_file.read_text()
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                continue
+            fm = parts[1]
+            if re.search(r'^user-invocable:\s*true', fm, re.MULTILINE):
+                if skill_dir.name not in routing:
+                    missing.append(skill_dir.name)
+        assert missing == [], f"User-invocable skills missing from routing SSOT:\n" + "\n".join(missing)
+
+
+class TestHookStateFileDocumentation:
+    """Key hook-managed state files must be documented."""
+
+    KEY_STATE_FILES = [
+        "skill-active.json",
+        "team-config.json",
+        "rtl-modified-files",
+        "rtl-verify-done",
+        "phase6-stale",
+    ]
+
+    def test_key_state_files_documented(self):
+        """Key state files used by hooks must be mentioned in CLAUDE.md or routing SSOT."""
+        claude_md = CLAUDE_MD.read_text()
+        routing_ssot = RTL_ORCHESTRATE_SKILL.read_text()
+        combined = claude_md + routing_ssot
+        missing = []
+        for state_file in self.KEY_STATE_FILES:
+            if state_file not in combined:
+                missing.append(state_file)
+        assert missing == [], f"State files not documented in CLAUDE.md or routing SSOT: {missing}"
+
+
+class TestNamingConventionConsistency:
+    """Port naming convention (i_/o_/io_) must be consistent across rules and key producers."""
+
+    def test_port_prefix_in_coding_conventions(self):
+        """Coding conventions rule template must enforce i_/o_/io_ prefix."""
+        rule_file = SKILLS_DIR / "rat-setup" / "templates" / "rules" / "rtl-coding-conventions.md"
+        if not rule_file.exists():
+            pytest.skip("Rule template not found")
+        content = rule_file.read_text()
+        assert "i_" in content and "o_" in content, \
+            "Coding conventions must enforce i_/o_ port prefix"
+
+    def test_port_prefix_in_systemverilog_skill(self):
+        """SystemVerilog convention skill must enforce same prefix."""
+        content = (SKILLS_DIR / "systemverilog" / "SKILL.md").read_text()
+        assert "i_" in content and "o_" in content, \
+            "SystemVerilog skill must enforce i_/o_ port prefix"
+
+    def test_port_prefix_in_claude_md(self):
+        content = CLAUDE_MD.read_text()
+        assert "i_" in content and "o_" in content, \
+            "CLAUDE.md must document i_/o_ port prefix convention"
+
+
 class TestTutorialSkillRename:
     """Validate tutorial skill was properly renamed from rat-tutuorial."""
 
