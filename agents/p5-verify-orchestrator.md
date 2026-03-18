@@ -204,7 +204,7 @@ After refactoring: re-run V1 (lint) to confirm lint-clean.
 
 ### Module Graduation Gate
 
-Check all 9 categories per policy skill. All PASS → module graduates.
+Check all 9 categories per policy skill. All PASS (or PARTIAL_PASS for V5 AC checks) → module graduates.
 
 **On FAIL**: invoke feedback loop (max 2 per module per check):
 ```

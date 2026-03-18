@@ -199,12 +199,12 @@ while not all_tasks_complete:
     task_list = TaskList()
     # Check for completed tasks, update progress
     # Re-assign failed tasks if needed
-    # Track module graduation (all 9 categories pass → module graduates)
+    # Track module graduation (all 9 categories pass or partial_pass → module graduates)
     # Update .rtl-agent-team/state/team-progress.json
 ```
 
 ### Module Graduation Gate
-A module graduates when ALL its V1-V9 tasks are completed successfully.
+A module graduates when ALL its V1-V9 tasks are completed successfully (PARTIAL_PASS accepted for V5 AC-level checks — WARNING at Stage 1, escalated to FAIL at Stage 3).
 Track graduation in `reviews/phase-5-verify/module-graduation.md`.
 
 ### Feedback Loop (Phase 5 → Phase 4)

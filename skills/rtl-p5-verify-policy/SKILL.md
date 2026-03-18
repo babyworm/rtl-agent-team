@@ -13,7 +13,8 @@ Stage 2 (Top): System-level verification after ALL modules graduate.
 Stage 3 (Final): Compliance review + summary generation.
 
 **Core principle**: Module-level verification first, top-level only after module graduation.
-A module "graduates" when ALL its verification checks PASS. Only graduated modules
+A module "graduates" when ALL its verification checks PASS (or PARTIAL_PASS for AC-level
+checks where PARTIAL Critical/High ac_ids produce WARNING). Only graduated modules
 participate in top-level integration. This prevents wasting top-level sim time on
 modules with known bugs.
 
@@ -50,7 +51,7 @@ Final: V9(Code Review) after V1-V8 results inform review scope
 
 ## Module Graduation Gate
 
-A module graduates when ALL of:
+A module graduates when ALL of (PARTIAL_PASS accepted for V5 AC-level checks — WARNING, not FAIL):
 - [x] V1: lint PASS (verilator + slang)
 - [x] V2: formal — all properties proved or justified timeout
 - [x] V3: CDC — zero VIOLATION (CAUTION acceptable with justification)
