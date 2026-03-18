@@ -66,9 +66,15 @@ After fix, re-verify ONLY the failed categories (not all 9).
 
 ## AC-Level Module Graduation (when applicable)
 When structured acceptance_criteria (with ac_id) exist in iron-requirements:
-  Module graduation requires: every Critical/High ac_id has status VERIFIED or FORMAL.
-  PARTIAL ac_ids for Critical/High: WARNING (not blocking at module level, checked at top level).
-  NOT_VERIFIABLE ac_ids (verifiable: false): excluded from gate.
+  **Module graduation (Stage 1):**
+  - VERIFIED or FORMAL ac_ids: PASS
+  - PARTIAL Critical/High ac_ids: WARNING — module graduates but flagged for Stage 3 closure
+  - UNTESTED Critical/High ac_ids: FAIL — module does not graduate
+  - NOT_VERIFIABLE ac_ids (verifiable: false): excluded from gate
+
+  **Stage 3 audit (final, pre-P6):**
+  - All Critical/High ac_ids must be VERIFIED or FORMAL (PARTIAL no longer accepted)
+  - UNTESTED or PARTIAL Critical/High ac_ids at Stage 3 → FAIL (blocks P6 entry)
 When no structured AC: existing REQ-level graduation applies.
 
 ## Top-Level Gate
@@ -249,7 +255,8 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved
 - [ ] reviews/phase-5-verify/e2e-traceability.md saved
 - [ ] reviews/phase-5-verify/traceability-audit.md saved with verdict PASS
-- [ ] Zero Critical/High priority requirements with UNTESTED status
+- [ ] Zero Critical/High priority UNTESTED requirements or ac_ids (when structured AC exists)
+- [ ] AC-level traceability audit: no Critical/High ac_id UNTESTED
 - [ ] reviews/phase-5-verify/final-compliance.md saved with verdict PASS
 - [ ] docs/phase-5-verify/phase-5-summary.md generated
 - [ ] docs/phase-5-verify/ reports collected

@@ -305,11 +305,11 @@ On FAIL: classify per policy (UNIT_FIX/INTEGRATION_FIX/DESIGN_FIX).
 ```
 # 3.1 Requirement Traceability
 Task(subagent_type="rtl-agent-team:requirement-tracer",
-     prompt="Read requirements.json and ALL test results. Map each REQ-NNN to test(s) that verify it. Save reviews/phase-5-verify/requirement-traceability.md.")
+     prompt="Read requirements.json and iron-requirements.json (if available) and ALL test results. Map each REQ-NNN to test(s) that verify it. When structured acceptance_criteria exist, map at AC level (ac_id). Save reviews/phase-5-verify/requirement-traceability.md.")
 
 # 3.2 E2E Traceability
 Task(subagent_type="rtl-agent-team:requirement-tracer",
-     prompt="Build unified end-to-end traceability: REQ → Arch → μArch → RTL → Test → Result. Save reviews/phase-5-verify/e2e-traceability.md.")
+     prompt="Build unified end-to-end traceability: REQ → Arch → μArch → RTL → Test → Result. When traces_to field exists in iron-requirements, include cross-phase decomposition chain (REQ-F → REQ-A → REQ-U). Save reviews/phase-5-verify/e2e-traceability.md.")
 
 # 3.2b Requirement Traceability Audit (MANDATORY gate for P6 entry)
 # After 3.1 and 3.2, verify traceability completeness before final compliance.
@@ -328,14 +328,14 @@ Task(subagent_type="rtl-agent-team:requirement-tracer",
      but UNTESTED Critical/High requirements are FAIL (blocking P6 entry).
 
      AC-Level Traceability Audit:
-     Traceability audit operates at AC level when structured acceptance_criteria exist:
-       - Each Critical/High ac_id must be VERIFIED or FORMAL
-       - UNTESTED Critical/High ac_id → FAIL (blocks P6 entry)
+     Audit AC-level coverage for Critical/High requirements. Read iron-requirements.json for acceptance_criteria.
+     For each Critical/High ac_id: verify VERIFIED or FORMAL status.
+     UNTESTED Critical/High ac_id blocks P6 entry.
      When no structured AC: existing REQ-level audit applies.")
 
 # 3.3 Final Compliance Review
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY final spec compliance review. Read docs/phase-1-research/requirements.json, docs/phase-1-research/io_definition.json, docs/phase-2-architecture/architecture.md, rtl/*/*.sv, ALL Phase 5 review results, AND reviews/phase-5-verify/traceability-audit.md. Verify RTL implements ALL spec requirements AND traceability audit verdict is PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
+     prompt="READ-ONLY final spec compliance review. Read docs/phase-1-research/requirements.json, docs/phase-3-uarch/iron-requirements.json (if available), docs/phase-1-research/io_definition.json, docs/phase-2-architecture/architecture.md, rtl/*/*.sv, ALL Phase 5 review results, AND reviews/phase-5-verify/traceability-audit.md. Verify RTL implements ALL spec requirements AND traceability audit verdict is PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
 
 # 3.4 Phase 5 Summary
 Task(subagent_type="rtl-agent-team:rtl-architect",

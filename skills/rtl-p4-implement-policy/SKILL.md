@@ -209,6 +209,9 @@ ALL of the following must be true before Phase 5:
 - [ ] Per-module review reports at `.rtl-agent-team/scratch/phase-4/`
 - [ ] No module blocked after 3 review→fix iterations
 
+**Test Plan:**
+- [ ] sim/{module}/{module}_test_plan.md exists for every module (Wave 0 Step 0b)
+
 **Unit Test (Tier 1 + Tier 2):**
 - [ ] sim/{module}/tb_{module}.sv exists for every module
 - [ ] All Tier 1 smoke tests PASS (sim/{module}/{module}_results.txt)
@@ -217,6 +220,9 @@ ALL of the following must be true before Phase 5:
 - [ ] Every feature entry in unit_results.json has `req_ids` populated (REQ-U-* tracing)
 - [ ] Functional coverage: `func_coverage.covergroups_defined >= 1` per module
 - [ ] Codec conformance PASS (if H.264/H.265 decoder — Step 5a)
+
+**AC Coverage (advisory):**
+- [ ] ac_ids populated in unit_results.json when acceptance_criteria exist (advisory)
 
 **CDC:**
 - [ ] All multi-domain modules CDC-checked (Wave 7)
