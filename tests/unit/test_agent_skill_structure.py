@@ -1217,6 +1217,15 @@ class TestActionSkillRegistryConsistency:
                     f"  SCC: {criteria}\n"
                     f"  PR:  {pr['skills'][skill_name].get('completion_criteria', '')}"
                 )
+        # Reverse: PR → SCC (skills with non-empty criteria must also be in SCC)
+        pr_skills = pr.get("skills", {})
+        for skill_name, skill_data in pr_skills.items():
+            criteria = skill_data.get("completion_criteria", "")
+            if not criteria:  # Empty criteria = no enforcement, OK to skip SCC
+                continue
+            if skill_name not in scc:
+                mismatches.append(f"{skill_name}: in phase-registry with criteria but not in skill-completion-criteria.json")
+
         assert mismatches == [], "Registry mismatch:\n" + "\n".join(mismatches)
 
     def test_all_task_delegating_skills_target_existing_agents(self):
@@ -1250,6 +1259,52 @@ class TestActionSkillRegistryConsistency:
         assert missing_agents == [], (
             "Action skills delegate to non-existent agents:\n" + "\n".join(missing_agents)
         )
+
+    def test_all_task_delegating_skills_have_valid_chain(self):
+        """Every user-invocable skill → orchestrator → policy chain must be valid.
+
+        Dynamically discovers chains from filesystem instead of hardcoded list.
+        """
+        broken_chains = []
+
+        for skill_dir in sorted(SKILLS_DIR.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            skill_file = skill_dir / "SKILL.md"
+            if not skill_file.exists():
+                continue
+            content = skill_file.read_text()
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                continue
+            fm = parts[1]
+            if not re.search(r'^user-invocable:\s*true', fm, re.MULTILINE):
+                continue
+
+            # Find Task(subagent_type=...) invocations
+            for match in re.finditer(r'subagent_type="rtl-agent-team:([^"]+)"', content):
+                target = match.group(1)
+                if re.search(r'^\{.+\}$|^X{2,}$', target):
+                    continue
+
+                # Check 1: agent exists
+                agent_file = AGENTS_DIR / f"{target}.md"
+                if not agent_file.exists():
+                    broken_chains.append(f"{skill_dir.name} → {target}: agent not found")
+                    continue
+
+                # Check 2: agent has skills: field with at least one policy
+                agent_fm = agent_file.read_text().split("---", 2)
+                if len(agent_fm) >= 3 and "skills:" in agent_fm[1]:
+                    # Extract skill refs from agent frontmatter
+                    skill_match = re.search(r'skills:\s*\[([^\]]*)\]', agent_fm[1])
+                    if skill_match:
+                        policy_refs = [s.strip().strip('"').strip("'") for s in skill_match.group(1).split(",") if s.strip()]
+                        for policy in policy_refs:
+                            if not (SKILLS_DIR / policy / "SKILL.md").exists():
+                                broken_chains.append(f"{skill_dir.name} → {target} → {policy}: policy skill not found")
+
+        assert broken_chains == [], f"Broken action→orchestrator→policy chains:\n" + "\n".join(broken_chains)
 
     def test_user_invocable_skills_in_routing(self):
         """User-invocable action skills should appear in routing SSOT."""
