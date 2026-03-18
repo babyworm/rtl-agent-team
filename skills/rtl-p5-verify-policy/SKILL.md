@@ -255,8 +255,8 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved
 - [ ] reviews/phase-5-verify/e2e-traceability.md saved
 - [ ] reviews/phase-5-verify/traceability-audit.md saved with verdict PASS
-- [ ] Zero Critical/High priority UNTESTED requirements or ac_ids (when structured AC exists)
-- [ ] AC-level traceability audit: no Critical/High ac_id UNTESTED
+- [ ] Zero Critical/High priority UNTESTED or PARTIAL requirements/ac_ids (when structured AC exists)
+- [ ] AC-level traceability audit: no Critical/High ac_id UNTESTED or PARTIAL (must be VERIFIED/FORMAL)
 - [ ] reviews/phase-5-verify/final-compliance.md saved with verdict PASS
 - [ ] docs/phase-5-verify/phase-5-summary.md generated
 - [ ] docs/phase-5-verify/ reports collected
@@ -269,7 +269,7 @@ Stage 3 includes a **Formal Traceability Audit** that gates P6 entry:
   VERIFIED (simulation test with assertion) or FORMAL (SVA proof)
 - PARTIAL Critical/High requirements at Stage 1 module graduation produce WARNING (proceed)
 - PARTIAL Critical/High requirements at Stage 3 final audit produce FAIL and block P6 entry (must upgrade to VERIFIED or FORMAL)
-- UNTESTED Critical/High requirements produce FAIL and block P6 entry
+- UNTESTED or PARTIAL Critical/High requirements produce FAIL and block P6 entry (PARTIAL must be upgraded to VERIFIED or FORMAL)
 - The traceability-audit.md verdict must be PASS for final-compliance.md to pass
 
 This ensures no Critical/High requirement ships without at least one verification artifact.

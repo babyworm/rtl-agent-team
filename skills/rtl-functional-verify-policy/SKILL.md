@@ -21,5 +21,5 @@ user-invocable: false
 P5A functional closure includes AC coverage when structured acceptance_criteria exist:
   - All Critical/High ac_ids must have VERIFIED or FORMAL status
   - NOT_VERIFIABLE ac_ids documented but excluded from gate
-  - UNTESTED Critical/High ac_ids → FAIL (blocks P6 entry)
+  - UNTESTED or PARTIAL Critical/High ac_ids → FAIL (blocks P6 entry; PARTIAL must be upgraded to VERIFIED or FORMAL)
 When no structured AC: existing closure gate applies.

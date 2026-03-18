@@ -270,7 +270,7 @@ Unify segmented traceability into e2e matrix.
 When structured acceptance_criteria (with ac_id) exist:
   | REQ ID | AC ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
   When traces_to field exists: include cross-phase decomposition chain (REQ-F → REQ-A → REQ-U).
-  UNTESTED Critical/High ac_id → TRACEABILITY_GAP (blocks P6 entry).
+  UNTESTED or PARTIAL Critical/High ac_id → TRACEABILITY_GAP (blocks P6 entry). PARTIAL must be upgraded to VERIFIED or FORMAL.
 When no structured AC:
   | REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
 Any row with a gap → TRACEABILITY_GAP.
