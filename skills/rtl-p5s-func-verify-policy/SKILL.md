@@ -207,7 +207,7 @@ enabling prioritized debugging and requirement-level risk assessment.
 - [ ] Early termination applied if failure rate >5%
 - [ ] Requirement Traceability Matrix produced (AC-level when structured acceptance_criteria exist, REQ-level otherwise)
 - [ ] Every REQ-NNN in iron-requirements.json (preferred) or requirements.json (fallback) covered by at least one test
-- [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status
+- [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status (PARTIAL = WARNING at Stage 1 module flow, escalated to FAIL at Stage 3 final audit)
 - [ ] All covered requirements pass their tests (or failures escalated)
 - [ ] Traceability verdict is PASS
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved

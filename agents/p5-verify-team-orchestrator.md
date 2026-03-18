@@ -289,7 +289,7 @@ t_trace_audit = TaskCreate(subject="S3.3: Traceability Audit",
                            blockedBy=[t_req_trace, t_e2e_trace])
 
 t_compliance = TaskCreate(subject="S3.4: Final Compliance Review",
-                          description="READ-ONLY final spec compliance review. Read requirements.json, iron-requirements.json (if available), io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.",
+                          description="READ-ONLY final spec compliance review. Read requirements.json, iron-requirements.json (if available), io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Require traceability-audit.md verdict=PASS before issuing PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.",
                           blockedBy=[t_trace_audit])
 
 t_summary = TaskCreate(subject="S3.5: Phase 5 Summary",
