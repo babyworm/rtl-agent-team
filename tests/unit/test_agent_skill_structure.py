@@ -926,31 +926,36 @@ class TestComponentCounts:
 
     def test_agent_count_matches_docs(self):
         actual = len(list(AGENTS_DIR.glob("*.md")))
-        docs_to_check = [
-            CLAUDE_MD,
-            REPO_ROOT / "README.md",
-            REPO_ROOT / "README_kr.md",
-            REPO_ROOT / ".claude-plugin" / "marketplace.json",
-        ]
-        for doc in docs_to_check:
-            content = doc.read_text()
-            assert str(actual) in content, (
-                f"{doc.name} does not contain agent count {actual}"
-            )
+        claude_md = CLAUDE_MD.read_text()
+        assert f"{actual} specialized agent" in claude_md, (
+            f"CLAUDE.md missing '{actual} specialized agents'"
+        )
+
+        for readme in [REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
+            content = readme.read_text()
+            assert (
+                f"{actual} specialized AI agents" in content
+                or f"{actual}개 전문 AI" in content
+                or f"{actual}-agent" in content
+            ), f"{readme.name} does not reference agent count {actual}"
+
+        marketplace = (REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text()
+        assert f"{actual}-agent" in marketplace, (
+            f"marketplace.json missing '{actual}-agent'"
+        )
 
     def test_skill_count_matches_docs(self):
         actual = len([d for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists()])
-        for doc in [CLAUDE_MD, REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
-            content = doc.read_text()
-            assert f"{actual} skill" in content or f"{actual} 스킬" in content or f"{actual}개" in content, (
-                f"{doc.name} does not mention skill count {actual}"
-            )
+        claude_md = CLAUDE_MD.read_text()
+        assert f"{actual} skills" in claude_md or f"{actual} 스킬" in claude_md, (
+            f"CLAUDE.md missing '{actual} skills'"
+        )
 
     def test_hook_count_matches_docs(self):
         actual = len(list((REPO_ROOT / "hooks").glob("*.sh")))
         content = CLAUDE_MD.read_text()
-        assert f"{actual} hook" in content or f"{actual} 후크" in content, (
-            f"CLAUDE.md does not mention hook count {actual}"
+        assert f"{actual} hooks" in content or f"{actual} 후크" in content, (
+            f"CLAUDE.md missing '{actual} hooks'"
         )
 
 
@@ -1102,11 +1107,47 @@ class TestHooksJsonMatrix:
             f"Stop hook order mismatch:\n  actual:   {commands}\n  expected: {expected_order}"
         )
 
-    def test_all_expected_events_registered(self):
-        """All expected hook events must be registered in hooks.json."""
+    def test_all_expected_scripts_registered(self):
+        """Verify each expected script appears under the correct event/matcher in hooks.json."""
         hooks_data = json.loads(HOOKS_JSON.read_text())
-        for event in self.EXPECTED_EVENTS:
-            assert event in hooks_data["hooks"], f"Missing event: {event}"
+        missing = []
+
+        for event, expected in self.EXPECTED_EVENTS.items():
+            if event not in hooks_data["hooks"]:
+                missing.append(f"Event {event} not in hooks.json")
+                continue
+
+            event_hooks = hooks_data["hooks"][event]
+            # Collect all script names under this event
+            all_scripts = []
+            for entry in event_hooks:
+                for h in entry.get("hooks", []):
+                    cmd = h.get("command", "")
+                    match = re.search(r'hooks/([a-z0-9-]+\.sh)', cmd)
+                    if match:
+                        all_scripts.append(match.group(1))
+
+            # Check expected scripts (handle both list and dict formats)
+            if isinstance(expected, list):
+                for script in expected:
+                    if script not in all_scripts:
+                        missing.append(f"{event}: missing {script}")
+            elif isinstance(expected, dict):
+                for matcher, scripts in expected.items():
+                    # Find the entry with this matcher
+                    matcher_scripts = []
+                    for entry in event_hooks:
+                        if entry.get("matcher") == matcher:
+                            for h in entry.get("hooks", []):
+                                cmd = h.get("command", "")
+                                m = re.search(r'hooks/([a-z0-9-]+\.sh)', cmd)
+                                if m:
+                                    matcher_scripts.append(m.group(1))
+                    for script in scripts:
+                        if script not in matcher_scripts:
+                            missing.append(f"{event}:{matcher}: missing {script}")
+
+        assert missing == [], "Hook registration gaps:\n" + "\n".join(missing)
 
 
 class TestPhaseArtifactContracts:
@@ -1177,6 +1218,38 @@ class TestActionSkillRegistryConsistency:
                     f"  PR:  {pr['skills'][skill_name].get('completion_criteria', '')}"
                 )
         assert mismatches == [], "Registry mismatch:\n" + "\n".join(mismatches)
+
+    def test_all_task_delegating_skills_target_existing_agents(self):
+        """Every user-invocable skill that uses Task(subagent_type=...) must target an existing agent."""
+        agent_names = {f.stem for f in AGENTS_DIR.glob("*.md")}
+        missing_agents = []
+
+        for skill_dir in sorted(SKILLS_DIR.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            skill_file = skill_dir / "SKILL.md"
+            if not skill_file.exists():
+                continue
+            content = skill_file.read_text()
+            parts = content.split("---", 2)
+            if len(parts) < 3:
+                continue
+            fm = parts[1]
+            # Only check user-invocable skills
+            if not re.search(r'^user-invocable:\s*true', fm, re.MULTILINE):
+                continue
+
+            # Find all Task(subagent_type="rtl-agent-team:XXX") references
+            for match in re.finditer(r'subagent_type="rtl-agent-team:([^"]+)"', content):
+                target = match.group(1)
+                if re.search(r'^\{.+\}$|^X{2,}$', target):
+                    continue  # Skip placeholders
+                if target not in agent_names:
+                    missing_agents.append(f"{skill_dir.name} → {target}")
+
+        assert missing_agents == [], (
+            "Action skills delegate to non-existent agents:\n" + "\n".join(missing_agents)
+        )
 
     def test_user_invocable_skills_in_routing(self):
         """User-invocable action skills should appear in routing SSOT."""
