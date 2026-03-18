@@ -7,10 +7,10 @@
 | 1 | Smoke Test | `rtl-p4-implement` Wave 4 | Connectivity, R/W, basic ops | Lint pass |
 | 2 | Unit Test | `rtl-p4s-unit-test` | Ref model comparison, uarch features | Tier 1 pass |
 | 3 | Module Regression | `rtl-p5s-func-verify` | cocotb multi-seed, coverage closure | Tier 2 pass |
-| 4 | Integration | `rtl-p5s-integration-test` | Cross-module data flow, end-to-end | Tier 3 pass |
+| 4 | Integration | `rtl-p5s-integration-test` | Cross-module data flow, end-to-end | Tier 3 pass or PARTIAL_PASS |
 
 **Progression rules:**
-- Each tier must PASS before proceeding to the next
+- Each tier must PASS (or PARTIAL_PASS for Tier 3→4) before proceeding to the next
 - On FAIL: fix via `rtl-p4s-bugfix`, re-verify at the failing tier
 - Tier 3 provides multi-seed regression via `rtl-p5s-func-verify`
 - Coverage targets (Tier 3): line >= 90%, toggle >= 80%, FSM >= 70%

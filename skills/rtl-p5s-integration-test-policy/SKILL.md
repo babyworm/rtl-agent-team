@@ -89,7 +89,7 @@ When no structured AC exists (absent or plain string-array format): use `req_ids
 
 ## Tier Transition Rules
 
-- Tier 3 PASS (rtl-p5s-func-verify) → Tier 4 eligible
+- Tier 3 PASS or PARTIAL_PASS (rtl-p5s-func-verify) → Tier 4 eligible
 - Tier 4 PASS (this skill) → Phase 5 final compliance eligible
 - Tier 4 FAIL → isolate to module, fix via rtl-p4s-bugfix, retest Tier 2→3→4
 

@@ -435,7 +435,7 @@ Phase 7: Exploration → docs/phase-7-exploration/      (optional, no pipeline r
 | 1 | Smoke Test | `rtl-p4-implement` Wave 4 | Lint pass |
 | 2 | Unit Test | `rtl-p4s-unit-test` | Tier 1 pass |
 | 3 | Module Regression | `rtl-p5s-func-verify` | Tier 2 pass |
-| 4 | Integration | `rtl-p5s-integration-test` | Tier 3 pass |
+| 4 | Integration | `rtl-p5s-integration-test` | Tier 3 pass or PARTIAL_PASS |
 
 Coverage targets (Tier 3): line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
 

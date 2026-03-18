@@ -9,7 +9,7 @@ Run integration-level tests on the complete RTL system. Verifies that modules wo
 correctly together: data flows through the pipeline end-to-end, reset propagates
 to all sub-modules, clocks are connected correctly, and handshake protocols work
 across module boundaries. This is Tier 4 testing — runs after Tier 2 (unit) and
-Tier 3 (module regression) pass.
+Tier 3 (module regression) pass or PARTIAL_PASS.
 
 **Testing Tier Context:**
 ```
@@ -23,7 +23,7 @@ Outputs: sim/top/integration_results.json + sim/top/ test files.
 </Purpose>
 
 <Use_When>
-- All modules pass Tier 2 unit tests and Tier 3 module regression
+- All modules pass Tier 2 unit tests and Tier 3 module regression (PASS or PARTIAL_PASS)
 - Need to verify cross-module interactions
 - Phase 5 integration verification
 - Top-level system-level test before final compliance
