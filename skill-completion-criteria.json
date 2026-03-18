@@ -32,6 +32,6 @@
   "rat-dse": "exploration-complete|pareto-reported|artifacts-written",
   "rtl-review-refactor": "review-complete|refactor-verified",
   "codex-cross-review": "cross-review-report-written|verdict-recorded",
-  "rtl-p4-block-parallel": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged",
+  "rtl-p4-block-parallel": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged|ac-coverage-advisory",
   "rat-ultraloop": "target-skill-executed|design-freeze-intact|cycle-summary-written"
 }

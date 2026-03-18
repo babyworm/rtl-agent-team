@@ -9,17 +9,17 @@
 
 When structured acceptance_criteria (with ac_id) exist:
 
-| REQ ID | AC ID | Description | Test Name | Test Result | Status |
-|--------|-------|-------------|-----------|-------------|--------|
-| REQ-U-001 | AC-1 | {{DESC}} | test_{{MODULE}}_basic | PASS | VERIFIED |
-| REQ-U-001 | AC-2 | {{DESC}} | — | — | UNTESTED |
+| REQ ID | AC ID | Description | Test Case | Status |
+|--------|-------|-------------|-----------|--------|
+| REQ-U-001 | AC-1 | {{DESC}} | test_{{MODULE}}_basic | VERIFIED |
+| REQ-U-001 | AC-2 | {{DESC}} | — | UNTESTED |
 
 When no structured AC (REQ-level fallback):
 
-| REQ ID | Description | Test Name | Test Result | Status |
-|--------|-------------|-----------|-------------|--------|
-| REQ-001 | {{DESC}} | test_{{MODULE}}_basic | PASS | VERIFIED |
-| REQ-003 | {{DESC}} | — | — | UNTESTED |
+| REQ ID | Description | Test Case | Status |
+|--------|-------------|-----------|--------|
+| REQ-001 | {{DESC}} | test_{{MODULE}}_basic | VERIFIED |
+| REQ-003 | {{DESC}} | — | UNTESTED |
 
 Status values: VERIFIED, FORMAL, PARTIAL, UNTESTED, NOT_VERIFIABLE
 

@@ -62,7 +62,7 @@
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
       "open_requirements": "",
-      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged"
+      "completion_criteria": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged|ac-coverage-advisory"
     },
     "rtl-p4s-bugfix": {
       "phase": 4,

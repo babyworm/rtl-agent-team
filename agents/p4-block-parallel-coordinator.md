@@ -92,8 +92,19 @@ Adjust execution plan based on available artifacts.
 ## Step 0b: Test Plan Dispatch (per block)
 
 Each block worker MUST generate test plan (Step 0b) before Wave 1 RTL coding.
-Dispatch test-plan-writer per block module in the block's worktree.
-Gate: sim/{module}/{module}_test_plan.md exists before Wave 1 proceeds.
+Dispatch test-plan-writer per block module in the block's worktree:
+
+```python
+for block_module in ["entropy", "tq", "me", "mc", "intra", "filter"]:
+    Task(subagent_type="rtl-agent-team:test-plan-writer",
+         prompt=f"Generate test plan for module {block_module}. "
+                f"Read docs/phase-3-uarch/{block_module}.md and docs/phase-3-uarch/iron-requirements.json. "
+                f"Apply ECP, BVA, STT (if FSM), DT (if ≥3 boolean controls). "
+                f"Output: sim/{block_module}/{block_module}_test_plan.md")
+```
+
+Gate: `sim/{block_module}/{block_module}_test_plan.md` must exist before Wave 1 proceeds for each block.
+Do not dispatch Wave 1 implementation tasks until all 6 test plans are confirmed present.
 
 ## Step 1: Preparation
 
