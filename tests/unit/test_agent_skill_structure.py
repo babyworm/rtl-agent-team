@@ -752,6 +752,172 @@ class TestShellScriptQuality:
         assert orphans == [], f"Orphan hook scripts not in hooks.json: {orphans}"
 
 
+class TestCoverageDrivenVerification:
+    """Structural contracts for v0.8.5 coverage-driven verification features.
+
+    Validates that new concepts (ac_ids, traces_to, PARTIAL_PASS, test-plan-writer,
+    ac-coverage criteria) are correctly wired across producers, consumers, and gates.
+    """
+
+    def test_test_plan_writer_agent_exists(self):
+        """test-plan-writer agent must exist with correct frontmatter."""
+        agent = AGENTS_DIR / "test-plan-writer.md"
+        assert agent.exists(), "test-plan-writer agent must exist"
+        fm = _read_frontmatter(agent)
+        assert "name: test-plan-writer" in fm
+        assert "model:" in fm
+        assert "skills:" in fm
+        assert "rtl-test-design-policy" in fm
+
+    def test_test_plan_writer_in_routing_table(self):
+        """test-plan-writer must be listed in rtl-orchestrate SSOT."""
+        content = RTL_ORCHESTRATE_SKILL.read_text()
+        assert "test-plan-writer" in content, \
+            "test-plan-writer must be in rtl-orchestrate routing table"
+
+    def test_test_plan_writer_spawned_by_p4_orchestrator(self):
+        """P4 orchestrator must spawn test-plan-writer in Wave 0."""
+        content = (AGENTS_DIR / "p4-implement-orchestrator.md").read_text()
+        assert "test-plan-writer" in content, \
+            "p4-implement-orchestrator must reference test-plan-writer"
+        assert "Step 0b" in content or "step 0b" in content.lower(), \
+            "p4-implement-orchestrator must have Step 0b for test plan"
+
+    def test_test_plan_writer_spawned_by_p4_team_orchestrator(self):
+        """P4 team orchestrator must reference test plan generation."""
+        content = (AGENTS_DIR / "p4-implement-team-orchestrator.md").read_text()
+        assert "test_plan" in content or "test-plan" in content or "TestPlan" in content, \
+            "p4-implement-team-orchestrator must reference test plan"
+
+    def test_test_plan_writer_spawned_by_block_parallel(self):
+        """Block-parallel coordinator must spawn test-plan-writer."""
+        content = (AGENTS_DIR / "p4-block-parallel-coordinator.md").read_text()
+        assert "test-plan-writer" in content, \
+            "p4-block-parallel-coordinator must reference test-plan-writer"
+
+    def test_testbench_dev_loads_test_plan(self):
+        """testbench-dev must load test plan in Investigation Protocol."""
+        content = (AGENTS_DIR / "testbench-dev.md").read_text()
+        assert "test_plan" in content or "test plan" in content.lower(), \
+            "testbench-dev must reference test plan loading"
+
+    def test_ac_coverage_advisory_in_p4_completion_criteria(self):
+        """P4 skills must have ac-coverage-advisory in completion criteria."""
+        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
+        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        p4_skills = ["rtl-p4-implement", "rtl-p4-implement-team", "rtl-p4s-unit-test",
+                      "rtl-p4-block-parallel"]
+        for skill in p4_skills:
+            if skill in scc:
+                assert "ac-coverage-advisory" in scc[skill], \
+                    f"{skill} missing ac-coverage-advisory in skill-completion-criteria.json"
+            if skill in pr.get("skills", {}):
+                assert "ac-coverage-advisory" in pr["skills"][skill].get("completion_criteria", ""), \
+                    f"{skill} missing ac-coverage-advisory in phase-registry.json"
+
+    def test_ac_coverage_check_in_p5_completion_criteria(self):
+        """P5 skills must have ac-coverage-check in completion criteria."""
+        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
+        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        p5_skills = ["rtl-p5-verify", "rtl-p5-verify-team", "rtl-p5s-func-verify"]
+        for skill in p5_skills:
+            if skill in scc:
+                assert "ac-coverage-check" in scc[skill], \
+                    f"{skill} missing ac-coverage-check in skill-completion-criteria.json"
+            if skill in pr.get("skills", {}):
+                assert "ac-coverage-check" in pr["skills"][skill].get("completion_criteria", ""), \
+                    f"{skill} missing ac-coverage-check in phase-registry.json"
+
+    def test_ac_coverage_criteria_synced(self):
+        """ac-coverage criteria must match between skill-completion-criteria.json and phase-registry.json."""
+        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
+        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        for skill_name, scc_criteria in scc.items():
+            if skill_name.startswith("_"):
+                continue
+            if skill_name in pr.get("skills", {}):
+                pr_criteria = pr["skills"][skill_name].get("completion_criteria", "")
+                assert scc_criteria == pr_criteria, (
+                    f"Completion criteria mismatch for {skill_name}:\n"
+                    f"  SCC: {scc_criteria}\n"
+                    f"  PR:  {pr_criteria}"
+                )
+
+    def test_traces_to_in_p3_uarch_policy(self):
+        """P3 uarch policy must define traces_to schema."""
+        content = (SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md").read_text()
+        assert "traces_to" in content, \
+            "rtl-p3-uarch-policy must define traces_to field"
+
+    def test_acceptance_criteria_schema_in_p3_policy(self):
+        """P3 uarch policy must define acceptance_criteria schema with ac_id."""
+        content = (SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md").read_text()
+        assert "ac_id" in content, \
+            "rtl-p3-uarch-policy must define ac_id in acceptance_criteria schema"
+
+    def test_ac_ids_in_unit_test_policy(self):
+        """P4 unit test policy must define ac_ids field."""
+        content = (SKILLS_DIR / "rtl-p4s-unit-test-policy" / "SKILL.md").read_text()
+        assert "ac_ids" in content, \
+            "rtl-p4s-unit-test-policy must define ac_ids field in result schema"
+
+    def test_partial_pass_in_func_verify_policy(self):
+        """Func-verify policy must define PARTIAL_PASS verdict."""
+        content = (SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md").read_text()
+        assert "PARTIAL_PASS" in content, \
+            "rtl-p5s-func-verify-policy must define PARTIAL_PASS verdict"
+
+    def test_partial_pass_in_tier4_handoff(self):
+        """Tier 3→4 handoff must accept PARTIAL_PASS."""
+        content = (SKILLS_DIR / "rtl-p5s-integration-test-policy" / "SKILL.md").read_text()
+        assert "PARTIAL_PASS" in content, \
+            "rtl-p5s-integration-test-policy must accept PARTIAL_PASS for Tier 4 entry"
+
+    def test_compliance_checker_has_polymorphic_ac(self):
+        """Compliance-checker must handle both string and object acceptance_criteria."""
+        content = (AGENTS_DIR / "compliance-checker.md").read_text()
+        assert "string" in content.lower() and "object" in content.lower(), \
+            "compliance-checker must handle polymorphic acceptance_criteria (string + object)"
+
+    def test_compliance_checker_has_traces_to(self):
+        """Compliance-checker must support cross-phase decomposition."""
+        content = (AGENTS_DIR / "compliance-checker.md").read_text()
+        assert "traces_to" in content, \
+            "compliance-checker must support traces_to cross-phase verification"
+
+    def test_backward_traceability_in_func_verify(self):
+        """P5 func-verify orchestrator must have backward traceability."""
+        content = (AGENTS_DIR / "p5s-func-verify-orchestrator.md").read_text()
+        assert "Backward Traceability" in content or "backward traceability" in content.lower(), \
+            "p5s-func-verify-orchestrator must have backward traceability section"
+
+    def test_error_injection_in_unit_test_policy(self):
+        """Unit test policy must mandate error injection."""
+        content = (SKILLS_DIR / "rtl-p4s-unit-test-policy" / "SKILL.md").read_text()
+        assert "Error Injection" in content or "error injection" in content.lower(), \
+            "rtl-p4s-unit-test-policy must mandate error injection"
+
+    def test_tier2_baseline_in_func_verify_policy(self):
+        """Func-verify policy must reference Tier 2 baseline utilization."""
+        content = (SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md").read_text()
+        assert "Tier 2 Baseline" in content, \
+            "rtl-p5s-func-verify-policy must have Tier 2 Baseline Utilization section"
+
+    def test_ac_coverage_guidance_in_orchestrators(self):
+        """Orchestrators with ac-coverage criteria must have completion guidance."""
+        orchestrators_with_ac = [
+            ("p4-implement-orchestrator.md", "ac-coverage-advisory"),
+            ("p4s-unit-test-orchestrator.md", "ac-coverage-advisory"),
+            ("p5-verify-orchestrator.md", "ac-coverage-check"),
+            ("p5s-func-verify-orchestrator.md", "ac-coverage-check"),
+        ]
+        for agent_file, criterion in orchestrators_with_ac:
+            content = (AGENTS_DIR / agent_file).read_text()
+            assert criterion in content, (
+                f"{agent_file} must have '{criterion}' completion guidance section"
+            )
+
+
 class TestTutorialSkillRename:
     """Validate tutorial skill was properly renamed from rat-tutuorial."""
 

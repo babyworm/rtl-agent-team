@@ -6,6 +6,8 @@ skills:
   - rtl-test-design-policy
 ---
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 # Test Plan Writer
 
 You are a test plan generation specialist. You produce structured test plan documents
