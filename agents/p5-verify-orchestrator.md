@@ -323,14 +323,14 @@ Task(subagent_type="rtl-agent-team:requirement-tracer",
      - FORMAL: N (with SVA property citations)
      - PARTIAL: N (with gap descriptions)
      - UNTESTED: N (with priority — Critical/High UNTESTED = AUDIT FAIL)
-     - Verdict: PASS if zero Critical/High UNTESTED, FAIL otherwise.
-     NOTE: PARTIAL Critical/High requirements are WARNING (not blocking),
-     but UNTESTED Critical/High requirements are FAIL (blocking P6 entry).
+     - Verdict: PASS if zero Critical/High UNTESTED or PARTIAL, FAIL otherwise.
+     NOTE: UNTESTED or PARTIAL Critical/High requirements are FAIL (blocking P6 entry).
+     PARTIAL must be upgraded to VERIFIED or FORMAL before P6 entry is allowed.
 
      AC-Level Traceability Audit:
      Audit AC-level coverage for Critical/High requirements. Read iron-requirements.json for acceptance_criteria.
      For each Critical/High ac_id: verify VERIFIED or FORMAL status.
-     UNTESTED Critical/High ac_id blocks P6 entry.
+     UNTESTED or PARTIAL Critical/High ac_id blocks P6 entry.
      When no structured AC: existing REQ-level audit applies.")
 
 # 3.3 Final Compliance Review

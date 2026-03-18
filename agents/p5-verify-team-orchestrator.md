@@ -285,7 +285,7 @@ t_e2e_trace = TaskCreate(subject="S3.2: E2E Traceability",
                          blockedBy=[t_top_review])
 
 t_trace_audit = TaskCreate(subject="S3.3: Traceability Audit",
-                           description="Audit AC-level coverage for Critical/High requirements. Read iron-requirements.json for acceptance_criteria. For each Critical/High ac_id: verify VERIFIED or FORMAL status. UNTESTED Critical/High ac_id blocks P6 entry. Save reviews/phase-5-verify/traceability-audit.md with verdict PASS/FAIL.",
+                           description="Audit AC-level coverage for Critical/High requirements. Read iron-requirements.json for acceptance_criteria. For each Critical/High ac_id: verify VERIFIED or FORMAL status. UNTESTED or PARTIAL Critical/High ac_id blocks P6 entry. PARTIAL must be upgraded to VERIFIED or FORMAL before P6. Save reviews/phase-5-verify/traceability-audit.md with verdict PASS/FAIL.",
                            blockedBy=[t_req_trace, t_e2e_trace])
 
 t_compliance = TaskCreate(subject="S3.4: Final Compliance Review",

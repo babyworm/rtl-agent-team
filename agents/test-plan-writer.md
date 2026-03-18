@@ -116,6 +116,6 @@ When acceptance_criteria (structured with ac_id) exist on a REQ-U-*:
   - Each TS-NNN should list which ac_ids it covers
 When no acceptance_criteria exist or array is empty:
   - Use the REQ-level table (4 columns: REQ ID | Description | Test Scenarios | Method)
-  - Map at REQ level only: | REQ-U-012 | — | description | TS-001 | cocotb |
+  - Map at REQ level only: | REQ-U-012 | description | TS-001 | cocotb |
 When the requirement has no `acceptance_criteria` or the array is empty, fall back to
 `# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.

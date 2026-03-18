@@ -267,7 +267,8 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 Stage 3 includes a **Formal Traceability Audit** that gates P6 entry:
 - Every Critical/High priority requirement in requirements.json must have status
   VERIFIED (simulation test with assertion) or FORMAL (SVA proof)
-- PARTIAL Critical/High requirements produce WARNING but do not block
+- PARTIAL Critical/High requirements at Stage 1 module graduation produce WARNING (proceed)
+- PARTIAL Critical/High requirements at Stage 3 final audit produce FAIL and block P6 entry (must upgrade to VERIFIED or FORMAL)
 - UNTESTED Critical/High requirements produce FAIL and block P6 entry
 - The traceability-audit.md verdict must be PASS for final-compliance.md to pass
 

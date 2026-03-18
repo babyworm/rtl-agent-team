@@ -88,7 +88,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     When building RTM and requirement has structured acceptance_criteria (object array with ac_id):
       - Add per-AC rows: | REQ ID | AC ID | Description | Test Case | Status |
       - Status per AC: VERIFIED, FORMAL, PARTIAL, UNTESTED, NOT_VERIFIABLE
-      - UNTESTED Critical/High AC → FAIL (blocks P6 entry)
+      - UNTESTED or PARTIAL Critical/High AC → FAIL (blocks P6 entry). PARTIAL must be upgraded to VERIFIED or FORMAL before P6.
       - NOT_VERIFIABLE: criteria with verifiable:false — document but exclude from gate
     When acceptance_criteria is string array (P1/P2) or absent: existing REQ-level RTM.
   </AC_Level_Traceability>
@@ -294,7 +294,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     ## Verdict
     PASS: All Critical/High requirements are VERIFIED or FORMAL.
-    FAIL: N Critical/High requirements are UNTESTED.
+    FAIL: N Critical/High requirements are UNTESTED or PARTIAL (PARTIAL must be upgraded to VERIFIED or FORMAL before P6).
     ```
   </Output_Format>
 
