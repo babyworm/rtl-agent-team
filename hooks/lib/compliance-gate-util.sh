@@ -40,11 +40,13 @@ compliance_preprocess() {
        { [ -n "$_CGU_CUR_MAXP" ] && [ "$_CGU_CUR_MAXP" -gt 0 ] 2>/dev/null; }; then
       if acquire_lock "$_CGU_SKILL_STATE"; then
         _CGU_NR_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-nr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.nr-sed")
-        printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' > "$_CGU_NR_SED"
-        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n' >> "$_CGU_NR_SED"
-        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n' >> "$_CGU_NR_SED"
-        printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_NR_SED"
-        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_NR_SED"
+        {
+          printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n'
+          printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n'
+          printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n'
+          printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n'
+          printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n'
+        } > "$_CGU_NR_SED"
         if sed -f "$_CGU_NR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
           mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
         else
@@ -71,14 +73,16 @@ compliance_preprocess() {
     if acquire_lock "$_CGU_SKILL_STATE"; then
       _CGU_PASS_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-pass-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.pass-sed")
       # Use # as sed delimiter — pending contains | which conflicts with | delimiter
-      printf 's#"pending"[[:space:]]*:[[:space:]]*"[^"]*"#"pending": "%s"#\n' "$_CGU_NEW_PENDING" > "$_CGU_PASS_SED"
-      # Reset upstream_challenge back to normal ladder strategy on compliance PASS
-      printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' >> "$_CGU_PASS_SED"
-      # Clear all stale compliance overrides (budgets + authority + dynamic prompt)
-      printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n' >> "$_CGU_PASS_SED"
-      printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n' >> "$_CGU_PASS_SED"
-      printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_PASS_SED"
-      printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_PASS_SED"
+      {
+        printf 's#"pending"[[:space:]]*:[[:space:]]*"[^"]*"#"pending": "%s"#\n' "$_CGU_NEW_PENDING"
+        # Reset upstream_challenge back to normal ladder strategy on compliance PASS
+        printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n'
+        # Clear all stale compliance overrides (budgets + authority + dynamic prompt)
+        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n'
+        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n'
+        printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n'
+        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n'
+      } > "$_CGU_PASS_SED"
       if sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
         mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
       else
@@ -103,10 +107,12 @@ compliance_preprocess() {
     # Write authority, budgets, and dynamic prompt via sed
     if acquire_lock "$_CGU_SKILL_STATE"; then
       _CGU_CR_SED=$(mktemp "${TMPDIR:-/tmp}/cr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.cr-sed")
-      printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,]*/"compliance_authority": %s/\n' "$_CGU_CR_AUTH" > "$_CGU_CR_SED"
-      printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,]*/"max_primary": %s/\n' "$_CGU_CR_MAX_P" >> "$_CGU_CR_SED"
-      printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,]*/"max_fallback": %s/\n' "$_CGU_CR_MAX_F" >> "$_CGU_CR_SED"
-      printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CGU_DYN_MSG" | sed 's/[&/\]/\\&/g')" >> "$_CGU_CR_SED"
+      {
+        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,]*/"compliance_authority": %s/\n' "$_CGU_CR_AUTH"
+        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,]*/"max_primary": %s/\n' "$_CGU_CR_MAX_P"
+        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,]*/"max_fallback": %s/\n' "$_CGU_CR_MAX_F"
+        printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CGU_DYN_MSG" | sed 's/[&/\]/\\&/g')"
+      } > "$_CGU_CR_SED"
       # If infeasibility validated AND past primary stage, switch strategy
       # Read current iteration to enforce "after Primary exhaustion" rule
       _CGU_CR_ITER=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "iteration")

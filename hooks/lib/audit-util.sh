@@ -196,6 +196,7 @@ $_apr_d"
   if [ "$_APR_COUNT" -gt "$_APR_MAX" ]; then
     _APR_REMOVE=$((_APR_COUNT - _APR_MAX))
     # Sort by mtime ascending — use ls -1td for reverse chronological, then tail
+    # shellcheck disable=SC2012  # ls -1td is safe here: audit dirs have predictable names
     _APR_SORTED=$(ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n "$_APR_REMOVE")
     for _apr_old in $_APR_SORTED; do
       [ -d "$_apr_old" ] && rm -rf "$_apr_old"
@@ -207,6 +208,7 @@ $_apr_d"
   _APR_MAX_KB=$((AUDIT_MAX_SIZE_MB * 1024))
   if [ -n "$_APR_SIZE_KB" ] && [ "$_APR_SIZE_KB" -gt "$_APR_MAX_KB" ] 2>/dev/null; then
     # Remove oldest sessions until under limit
+    # shellcheck disable=SC2012  # ls -1td is safe here: audit dirs have predictable names
     for _apr_old in $(ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n +2); do
       [ -d "$_apr_old" ] || continue
       rm -rf "$_apr_old"
