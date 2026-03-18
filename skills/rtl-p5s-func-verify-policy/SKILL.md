@@ -136,10 +136,13 @@ the existing REQ-level format:
 |--------|-----------|--------|--------|
 ```
 
-Verdict rules:
+Verdict rules (Tier 3 module-level, aligns with Stage 1 2-tier model):
 - `PASS` — all requirements (or acceptance criteria) verified with passing tests
-- `FAIL` — M requirements/criteria without test coverage, K with failing tests
-- Any REQ (or AC) with NO TEST COVERAGE → testbench-dev must generate additional tests
+- `PARTIAL_PASS` — some Critical/High ac_ids are PARTIAL (not yet VERIFIED/FORMAL).
+  At Stage 1 module graduation: WARNING (proceed). At Stage 3 final audit: escalated to FAIL.
+- `FAIL` — M requirements/criteria UNTESTED, K with failing tests
+- Any REQ (or AC) UNTESTED → testbench-dev must generate additional tests
+- PARTIAL Critical/High ac_ids → WARNING at this stage, must be resolved before Stage 3
 
 ## cocotb Ecosystem Quick Reference
 
