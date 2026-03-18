@@ -89,7 +89,7 @@ if [[ -n "$FILELIST" ]]; then
     SRC_FILES+=("$line")
   done < "$FILELIST"
 fi
-SRC_FILES+=("${FILES[@]}")
+[[ ${#FILES[@]} -gt 0 ]] && SRC_FILES+=("${FILES[@]}")
 
 if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
   echo "ERROR: No source files specified. Use -f <filelist> or pass .sv files directly." >&2
