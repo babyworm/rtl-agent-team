@@ -205,3 +205,10 @@ waveform shows missing state; RTL fix → retest → all PASS.
 
 **Bad**: Writing a single monolithic testbench for entire design.
 Testing only connectivity (Tier 1) instead of uarch features (Tier 2).
+
+## Completion Criteria: ac-coverage-advisory
+To satisfy the `ac-coverage-advisory` completion criterion:
+- After Step 5c gate, verify ac_ids populated in unit_results.json for each module
+  where iron-requirements has structured acceptance_criteria
+- Advisory: missing ac_ids produce WARNING, not FAIL
+- Mark complete after ac_ids verification performed

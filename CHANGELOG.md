@@ -25,6 +25,18 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 - Filesystem verification in 3 auxiliary orchestrators (autopilot, p4-rtl-sanity, uarch-to-verify)
 - Requirements.json reference added to auxiliary orchestrator TB generation prompts
 
+### Fixed (Codex cross-review R1-R10 + internal review R1)
+- Non-team P5 Stage 3 aligned with team (AC audit, traces_to, iron-requirements)
+- P4/P5 policy checklists gain test-plan + ac_ids items
+- PARTIAL_PASS 2-tier model: Stage 1 WARNING, Stage 3 FAIL — enforced across all surfaces
+  (p5-verify-orchestrator, p5-verify-team, requirement-tracer, p5a-closure, func-verify-policy,
+  integration-test-policy, RTM template, routing SSOT, sim-guide)
+- RTM template columns aligned with policy (5-col AC, 4-col REQ)
+- Block-parallel: ac-coverage-advisory + Task() syntax for test-plan-writer
+- Tier 3→4 handoff accepts PARTIAL_PASS (integration-test-policy, skill, routing)
+- Module graduation gate accepts PARTIAL_PASS for V5 AC checks
+- P5A internal vs exit gate PARTIAL distinction clarified
+
 ## [0.8.4] - 2026-03-17
 
 ### Verified

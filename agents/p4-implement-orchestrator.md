@@ -398,3 +398,11 @@ Wave-based batching is 3-5x faster for N modules.
 
 **Bad**: Skipping Wave 4 (code review). Unit test catches 5 design bugs that review would
 have caught earlier. Review catches design bugs before simulation.
+
+## Completion Criteria: ac-coverage-advisory
+To satisfy the `ac-coverage-advisory` completion criterion:
+- Verify that unit_results.json for each module contains `ac_ids` field when the module's
+  REQ-U-* entries have structured `acceptance_criteria` in iron-requirements.json
+- If no acceptance_criteria exist: criterion is automatically satisfied (backward compatible)
+- This is ADVISORY — proceed even if some ac_ids are missing. P5 enforces closure.
+Mark complete by confirming ac_ids presence check was performed.

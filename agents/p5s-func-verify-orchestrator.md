@@ -267,3 +267,10 @@ RTL fix applied; rerun shows all 200 pass.
 
 **Bad**: Comparing only checksums instead of per-output comparison — misses byte-level misalignment.
 **Bad**: Using `dut.clk_i` or `dut.data_i` in cocotb — signal name mismatch causes AttributeError.
+
+## Completion Criteria: ac-coverage-check
+To satisfy the `ac-coverage-check` completion criterion:
+- Verify RTM includes ac_ids mapping when structured acceptance_criteria exist
+- Tier 3 verdict PASS or PARTIAL_PASS satisfies this criterion
+- If no structured acceptance_criteria: criterion automatically satisfied
+- Mark complete after RTM generation with ac-level coverage confirmed

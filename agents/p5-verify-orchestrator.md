@@ -392,3 +392,10 @@ This stops and removes the container tracked in `.rtl-agent-team/state/docker-co
 **Bad**: Running Stage 2 before all modules graduate — wastes expensive sim time.
 **Bad**: Running all 9 checks sequentially per module — wastes parallelism.
 **Bad**: Yosys synthesis without liberty file — meaningless gate count. Always NanGate45 + SDC.
+
+## Completion Criteria: ac-coverage-check
+To satisfy the `ac-coverage-check` completion criterion:
+- Stage 3 traceability audit must confirm: every Critical/High ac_id has
+  VERIFIED or FORMAL status (PARTIAL → FAIL at Stage 3)
+- If no structured acceptance_criteria exist: criterion automatically satisfied
+- Mark complete when traceability-audit.md verdict = PASS
