@@ -7,6 +7,19 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.6] - 2026-03-18
+
+### Added
+- Cross-Phase Artifact Functional Consistency principle — verification artifacts must be functionally validated against upstream references, not just checked for existence + compilation
+- P3 BFM Validation Gate rewritten with G4a/G4b/G4c sub-gates: compilation → functional correctness (shared test vectors, per-block output comparison vs refC) → I/O log completeness
+- bfm-dev agent Success Criteria and Final Checklist now require refC output match
+- bfm-develop skill updated with functional validation requirement
+
+### Fixed
+- P3 team orchestrator referenced `requirements.json` instead of `iron-requirements.json` in upstream artifact scan
+- P3 BFM gate failure handling now includes ref-model-dev in iteration loop (was missing)
+- P4/P5 enforcement labels corrected: refC comparison is already enforced (not just "design intent")
+
 ## [0.8.5] - 2026-03-18
 
 ### Added

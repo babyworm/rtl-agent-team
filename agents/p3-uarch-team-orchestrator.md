@@ -80,7 +80,7 @@ Scan for upstream artifacts needed by Phase 3. Missing artifacts produce WARNING
 ```
 Glob("docs/phase-2-architecture/architecture.md")  # Architecture spec
 Glob("refc/**/*.c")                                # C reference model
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/iron-requirements.json")  # Requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
 Glob("docs/phase-1-research/timing_constraints.json")  # Timing estimates per block
 Glob("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation
@@ -95,7 +95,7 @@ Adjust execution plan based on available artifacts.
 # Read P2 artifacts
 Read("docs/phase-2-architecture/architecture.md")
 Read("docs/phase-2-architecture/hw-candidate-review.md")  # HW candidate evaluation from P2
-Read("docs/phase-1-research/requirements.json")
+Read("docs/phase-1-research/iron-requirements.json")
 Read("docs/phase-1-research/timing_constraints.json")     # Per-block timing targets
 # Read bandwidth_report.json if available (from ref-model-dev, saved during Phase 2)
 Glob("docs/phase-2-architecture/bandwidth_report.json")
@@ -123,8 +123,8 @@ t2 = TaskCreate(subject="T2: BFM development (SystemC C++, NOT SystemVerilog)",
 Create BFM validation gate and review tasks:
 
 ```python
-t3 = TaskCreate(subject="T3: BFM validation gate",
-                description="Leader validates: BFM compiles, simulates correctly, produces per-block I/O logs. If BFM fails, iterate uarch-designer <-> bfm-dev (max 2 iterations before escalation to user).")
+t3 = TaskCreate(subject="T3: BFM validation gate (G4a/G4b/G4c)",
+                description="Leader validates via three sub-gates: G4a (compilation), G4b (functional correctness — BFM per-block output must match refc using shared test vectors), G4c (I/O log completeness). G4b failures take priority. If fail, iterate uarch-designer <-> bfm-dev <-> ref-model-dev (max 2 iterations before escalation).")
 TaskUpdate(taskId=t3, addBlockedBy=[t1, t2])
 
 # Review R1 — 5 parallel reviewers
@@ -222,9 +222,9 @@ while not converged and round_num < max_rounds:
     round_num += 1
     task_list = TaskList()
 
-    # === T3 (BFM validation gate): Leader validates directly ===
-    # Check BFM compiles, sim results, I/O logs exist
-    # If fail: create fix tasks for uarch-design and/or bfm-worker
+    # === T3 (BFM validation gate): Leader validates G4a/G4b/G4c directly ===
+    # G4a: BFM compiles. G4b: per-block output matches refc (shared test vectors). G4c: I/O log completeness
+    # If fail: create fix tasks for uarch-design, bfm-worker, and/or ref-model worker
 
     # === Round N review tasks ===
     # Create reviewer tasks (T4a-e pattern for R1, T7a-e for R2, etc.)
@@ -285,17 +285,33 @@ Write("docs/phase-3-uarch/{module}.md", content)
 
 ### BFM Validation Gate (T3)
 
-Leader validates directly:
-1. BFM compiles without errors
-2. BFM simulation produces correct results
-3. **Per-block I/O log count must match the number of block spec files in uArch docs**
+Leader validates directly with three sub-gates:
+
+**G4a: Compilation Gate**
+1. BFM compiles without errors (`cmake --build bfm/build`)
+
+**G4b: Functional Correctness Gate (MANDATORY — highest priority)**
+2. Build Phase 2 C reference model (refc/) using its standard build target
+3. Generate or locate shared test vectors (both refc and BFM must use the **same input**)
+4. Run refc with shared test vectors to produce per-block golden output
+5. Run BFM simulation with same test vectors and extract per-block functional output from `bfm/logs/*_io.log`
+6. Compare BFM per-block output against refc golden output:
+   - PASS: all block outputs match (bitexact or within documented tolerance for fixed-point rounding)
+   - FAIL: any block output mismatch → log mismatched blocks with expected vs actual values
+   - If external golden model exists (e.g., `vendor_ref/`): verify BOTH refc AND BFM match it
+   - BFM that compiles but produces wrong output → FAIL (not a partial pass)
+
+**G4c: I/O Log Existence Gate**
+7. **Per-block I/O log count must match the number of block spec files in uArch docs**
    - Glob `bfm/logs/*_io.log` and `docs/phase-3-uarch/*.md`
    - Exclude non-block files from count (clock-domain-map.md, protocol-assignments.md, phase-3-summary.md, etc.)
    - If log count < block count: FAIL + "BFM I/O logs missing for blocks: {missing_list}. Per-block I/O logging for ALL blocks is required (per policy)."
    - If no logs at all: FAIL + "BFM logs required for Phase 4 unit test generation."
-4. I/O logs align with C reference model outputs
 
-If validation fails, iterate: create targeted fix tasks for uarch-design and/or bfm-worker (max 2 iterations before escalation to user via AskUserQuestion).
+**Gate Failure Handling:**
+G4b (functional correctness) failures take priority over G4c (log existence) — fix correctness first.
+On G4b mismatch: run refc self-test first — if refc fails, fix refc before BFM.
+If validation fails, iterate: create targeted fix tasks for uarch-design, bfm-worker, and/or ref-model worker (max 2 iterations before escalation to user via AskUserQuestion).
 
 ### Conditional Expert Delegation (per policy)
 

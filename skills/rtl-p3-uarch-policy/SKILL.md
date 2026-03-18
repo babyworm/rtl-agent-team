@@ -52,14 +52,21 @@ Format:
 
 ## BFM Validation Requirements (MANDATORY)
 
+Three sub-gates, applied in order (G4a → G4b → G4c):
+
+- **(G4a) Compilation gate**: BFM must compile without errors before any further validation
 - **Default**: blocking transport (LT — Loosely Timed) for fast simulation
 - **On request**: non-blocking transport (AT — Approximately Timed) for timing accuracy
-- **Per-block I/O logging MANDATORY**: every block input/output transaction logged
+- **(G4b) Functional correctness gate**: BFM per-block output MUST be compared against Phase 2 C reference model (refc/) output using **shared test vectors** (same input to both models). Comparison must verify **data correctness** (functional output match), not just structural checks (file existence + compilation). FAIL on any per-block output mismatch.
+  - If external golden C model is provided (e.g., JM/HM, vendor model): both refc and BFM must match it
+  - If no external golden: BFM must match refc (Phase 2 is the golden reference)
+  - BFM that compiles but produces wrong output → FAIL (worse than no BFM — false confidence)
+  - On mismatch: run refc self-test first to determine root cause (refc bug vs BFM bug)
+- **(G4c) I/O log existence gate**: per-block I/O logging MANDATORY — every block input/output transaction logged
   - Format: timestamped records (cycle, address, data, control signals)
   - Logs serve as golden reference for Phase 4-5 RTL unit verification
-- BFM must compile and simulate before review begins
-- BFM outputs compared against C reference model (refc/)
-- If BFM fails: iterate uarch-designer ↔ bfm-dev (max 2 iterations before escalation)
+  - Log count must match block count from uArch docs
+- If any gate fails: iterate uarch-designer ↔ bfm-dev ↔ ref-model-dev (max 2 iterations before escalation)
 
 ## Conditional Expert Delegation (Phase 3)
 
@@ -200,7 +207,8 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 
 **BFM validation:**
 - [ ] TLM-based BFM built and compiled (blocking LT)
-- [ ] BFM simulation passes against C ref model
+- [ ] (G4b) BFM per-block functional output compared against Phase 2 C ref model (refc/) — bitexact or within documented tolerance
+- [ ] If external golden C model provided: both refc and BFM match it
 - [ ] Per-block I/O logging for ALL blocks
 - [ ] I/O logs archived for Phase 4-5 use
 - [ ] No deadlocks or protocol violations

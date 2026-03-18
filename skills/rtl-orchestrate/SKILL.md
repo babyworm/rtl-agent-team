@@ -355,6 +355,28 @@ reviews/phase-N/ → Quality Gate → next phase proceeds or fails
 - Enables resumability: any phase can restart by re-reading its input documents
 - Each phase generates `phase-N-summary.md` on completion for downstream context efficiency
 
+### Cross-Phase Artifact Functional Consistency
+Verification artifacts MUST be functionally validated against their upstream reference —
+not merely checked for existence and compilation. Phase 1 (Research) and Phase 6 (Design Note)
+are excluded as they produce no executable verification artifacts.
+
+```
+Phase 2 refC ──compare──→ external golden C model (if provided, e.g., vendor_ref/) OR Phase 1 requirements
+Phase 3 BFM  ──compare──→ Phase 2 refC (shared test vectors, per-block output match) [enforced: G4b gate]
+Phase 4 unit ──compare──→ Phase 2 refC golden output [enforced: DPI-C/file; gap: BFM I/O logs]
+Phase 5 TB   ──compare──→ Phase 1 requirements via Phase 2 refC as oracle [enforced]
+```
+
+- **Validation gates must verify functional correctness** (output comparison), not just
+  structural correctness (file exists + compiles)
+- If external golden C model is provided (e.g., JM/HM, vendor model): Phase 2 refC AND Phase 3 BFM must both match it
+- If no external golden: each phase builds on Phase 1 requirements with progressively more detail
+- A verification artifact that compiles but produces wrong output is worse than no artifact —
+  it provides false confidence and propagates errors downstream
+- BFM validation gate (P3 G4b) must run both models with shared test vectors, compare per-block
+  outputs against refC, and FAIL on mismatch before proceeding to review
+- P3 G4b is the most explicit gate; P4/P5 enforce refC comparison via existing policies; gap: P4 does not yet consume BFM I/O logs
+
 ## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
 
 Use these cues to justify dynamic spawning of the four high-value specialists:
@@ -622,6 +644,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 - **Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix defects at the top, not the bottom.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
 - **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
+- **Cross-Phase Artifact Functional Consistency**: Verification artifacts (P2 refC, P3 BFM, P4 unit tests, P5 TBs) must be functionally validated against upstream references via output comparison — not just file existence + compilation. BFM that compiles but produces wrong output → FAIL.
 
 ## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
 - rtl-planner: P3 or P3→P4 handoff when dependency graph and critical path are unclear or rework loops do not converge.

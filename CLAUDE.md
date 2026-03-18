@@ -234,6 +234,17 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 
 **Asymmetric Phase Gate Design**: Exit gates are strict (artifact existence verification required), entry gates are flexible (WARNING + proceed with available artifacts). This ensures downstream phases never receive incomplete inputs, while allowing upstream-incomplete phases to proceed with adaptive scope reduction. Details in `skills/rtl-orchestrate/SKILL.md`.
 
+**Cross-Phase Artifact Functional Consistency**: Each phase produces verification artifacts (Phase 2 refC, Phase 3 BFM, Phase 4 unit tests, Phase 5 testbenches) that MUST be functionally validated against their upstream reference — not merely checked for existence and compilation. Validation gates must verify **functional correctness** (output comparison), not just **structural correctness** (file exists + compiles).
+
+- **Phase 1 (Research)**: Excluded — produces requirements, not executable verification artifacts.
+- **Phase 2 refC**: If an external golden C model is provided (e.g., JM/HM for H.264/H.265, vendor-supplied model at `vendor_ref/` or similar), refC must produce bitexact-matching output against it. If no external golden exists, refC must satisfy Phase 1 requirements via self-test.
+- **Phase 3 BFM** (enforced via G4b gate): Builds on Phase 2 refC with timing/pipeline detail. BFM per-block functional output must match refC output (data correctness, bitexact or within documented tolerance). The BFM validation gate must run both models with shared test vectors, compare per-block outputs, and FAIL on mismatch.
+- **Phase 4 unit tests** (enforced: refC comparison via DPI-C/file; gap: BFM I/O logs not yet consumed): Verify RTL against Phase 2 refC golden output. BFM I/O log integration planned.
+- **Phase 5 testbenches** (enforced: refC-based oracle comparison): Validate RTL against Phase 1 requirements using Phase 2 refC as oracle.
+- **Phase 6 (Design Note)**: Excluded — documentation/review phase, no executable verification artifacts.
+
+A verification artifact that compiles but produces wrong output is worse than no artifact — it provides false confidence and propagates errors downstream. Details in `skills/rtl-orchestrate/SKILL.md`.
+
 ## Coding Conventions (Core Overrides)
 
 1. **Port prefix**: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt

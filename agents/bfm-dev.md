@@ -67,6 +67,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - BFM models cycle-accurate backpressure: it correctly stalls when downstream is not ready
     - Co-simulation adapter matches io_definition.json port list exactly
     - DPI-C interface provided when SystemVerilog co-simulation is required
+    - BFM per-block functional output matches Phase 2 C reference model (refc/) output — bitexact or within documented tolerance for fixed-point rounding. Both models must be fed the same test vectors for valid comparison
   </Success_Criteria>
 
   <Constraints>
@@ -548,6 +549,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Are clock periods derived from timing_constraints.json (no magic numbers)?
     - Are AMBA extensions cleaned up in memory manager free()?
     - Is DPI-C interface provided if SystemVerilog co-simulation is required?
+    - **General**: Does BFM per-block functional output match Phase 2 C reference model (refc/) when fed the same test vectors? (bitexact or within documented tolerance)
     - **Codec decoder**: Does the BFM produce per-block I/O logs matching the C ref model at each block boundary? (see `domain-packages/video-codec/knowledge/block-level-conformance.md`)
   </Final_Checklist>
 

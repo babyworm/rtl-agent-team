@@ -42,6 +42,7 @@ that LT blocking transport cannot capture.
 - PEQ (peq_with_cb_and_phase) required for AT phase scheduling
 - video-processing-expert ensures datapath model accuracy
 - Smoke test (compile + run one AT transaction with 4-phase handshake) required before gate passes
+- BFM per-block functional output must match Phase 2 C reference model (refc/) — bitexact or within documented tolerance. Both models must be fed the same test vectors for valid comparison (Cross-Phase Artifact Functional Consistency principle)
 </Execution_Policy>
 
 <Steps>
@@ -106,6 +107,7 @@ No Memory Manager — payload leaks accumulate during simulation.
 - [ ] Memory Manager (tlm_mm_interface) used for payload pooling
 - [ ] PEQ (peq_with_cb_and_phase) used for phase scheduling
 - [ ] Smoke test passes (at least one AT transaction)
+- [ ] BFM per-block functional output matches refc/ output (shared test vectors, bitexact or documented tolerance)
 - [ ] bfm/smoke_test_result.txt written
 - [ ] DPI-C interface provided if SV co-simulation required
 </Final_Checklist>

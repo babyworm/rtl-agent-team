@@ -193,9 +193,57 @@ Task(subagent_type="rtl-agent-team:bfm-dev",
 
 ## Step 4: BFM Validation Gate
 
-BFM must compile, simulate correctly, and produce per-block I/O logs before review.
+BFM must compile, simulate correctly, produce functionally correct output matching the
+Phase 2 C reference model, and generate per-block I/O logs before review.
 
-**BFM I/O Log Existence Gate** (G4: mandatory before review):
+### G4a: BFM Compilation Gate
+```
+# BFM must compile without errors
+Bash("cd bfm && cmake -B build . && cmake --build build 2>&1")
+# If compilation fails: FAIL + error log → bfm-dev fix iteration
+```
+
+### G4b: BFM Functional Correctness Gate (MANDATORY)
+
+BFM per-block functional output MUST match Phase 2 C reference model (refc/) output.
+This is the critical gate that prevents functionally incorrect BFMs from becoming
+false golden references in Phase 4-5.
+
+**Comparison contract** (the orchestrator determines the specific commands based on project structure):
+
+1. **Build refc**: Identify the refc build system (`refc/Makefile` or `refc/CMakeLists.txt`).
+   Build using the project's standard target (typically `make build` or `cmake --build`).
+   If refc is a library (no main), use its test harness (`make test`) or build a minimal driver.
+
+2. **Generate shared test vectors**: Use `make vectors` if available, or provide representative
+   input data at a canonical path (e.g., `refc/vectors/` or `sim/consistency/test_vectors.bin`).
+   Both refc and BFM MUST be fed the **same input** for comparison to be valid.
+
+3. **Run refc** with shared test vectors to produce per-block golden output.
+   Output location: `refc/output/{block}_out.txt` or stdout capture — adapt to project structure.
+
+4. **Run BFM** with the same shared test vectors.
+   Per-block output extracted from BFM I/O logs at `bfm/logs/*_io.log`.
+
+5. **Compare per-block functional outputs** (data values, not timing annotations):
+   - PASS: all block outputs match (bitexact or within documented tolerance for fixed-point rounding)
+   - FAIL: any block output mismatch → log mismatched blocks with expected vs actual values
+
+```
+# Prerequisite: verify bfm/logs/ contains at least one *_io.log before attempting comparison
+Glob("bfm/logs/*_io.log")
+# If no logs exist → cannot perform G4b → FAIL with "BFM produced no I/O logs for comparison"
+
+# External golden model check (optional):
+Glob("vendor_ref/**")  # or project-specific external golden path
+# If found: verify BOTH refc AND BFM match the external golden output
+# If not found: verify BFM matches refc (Phase 2 is the golden reference)
+```
+
+On FAIL: report which blocks have output mismatches with diff summary.
+BFM that compiles but produces wrong output → FAIL (not a partial pass).
+
+### G4c: BFM I/O Log Existence Gate
 ```
 Glob("bfm/logs/*_io.log")     # Per-block I/O log files
 Glob("docs/phase-3-uarch/*.md")  # Per-block uArch docs
@@ -208,7 +256,15 @@ Per-block I/O log count must match the number of block spec files.
 If log count < block count: FAIL + "BFM I/O logs missing for blocks: {missing_list}. Per-block I/O logging for ALL blocks is required (per policy)."
 If no logs at all: FAIL + "BFM logs required for Phase 4 unit test generation. Re-run BFM with I/O logging enabled."
 
-If BFM fails: iterate uarch-designer ↔ bfm-dev (max 2 iterations before escalation to user via AskUserQuestion).
+### Gate Failure Handling
+
+If any sub-gate (G4a/G4b/G4c) fails: iterate uarch-designer ↔ bfm-dev ↔ ref-model-dev (max 2 iterations before escalation to user via AskUserQuestion).
+G4b (functional correctness) failures take priority over G4c (log existence) — fix correctness first.
+
+On G4b mismatch, determine root cause before iterating:
+- Run refc self-test (`make test`) to confirm refc is internally consistent
+- If refc self-test fails → ref-model-dev fixes refc first
+- If refc self-test passes → bfm-dev fixes BFM output to match refc
 
 ## Step 5: Iterative Review with Dynamic Convergence (5 parallel reviewers)
 
