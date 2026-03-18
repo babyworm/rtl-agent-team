@@ -19,7 +19,14 @@ user-invocable: false
 
 ## AC-Level P5A Closure (when applicable)
 P5A functional closure includes AC coverage when structured acceptance_criteria exist:
+
+  **During P5A internal verification (module/block checkpoints):**
+  - PARTIAL Critical/High ac_ids = WARNING (continue verification, attempt to upgrade)
+  - UNTESTED Critical/High ac_ids = FAIL (must add tests before proceeding)
+
+  **At P5A exit gate (gates P5B entry and ultimately P6):**
   - All Critical/High ac_ids must have VERIFIED or FORMAL status
+  - UNTESTED or PARTIAL Critical/High ac_ids → FAIL (blocks P5B/P6 entry; PARTIAL must be upgraded to VERIFIED or FORMAL)
   - NOT_VERIFIABLE ac_ids documented but excluded from gate
-  - UNTESTED or PARTIAL Critical/High ac_ids → FAIL (blocks P6 entry; PARTIAL must be upgraded to VERIFIED or FORMAL)
+
 When no structured AC: existing closure gate applies.

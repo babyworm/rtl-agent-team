@@ -51,8 +51,16 @@ State contract:
 ## AC-Level Functional Closure
 
 Functional closure includes AC coverage when structured acceptance_criteria exist:
+
+  **During internal checkpoints (module/block):**
+  - PARTIAL Critical/High ac_ids = WARNING (continue, attempt upgrade via additional tests)
+  - UNTESTED Critical/High ac_ids = FAIL (must add tests)
+
+  **At P5A exit gate (final):**
   - All Critical/High ac_ids must have VERIFIED or FORMAL status
-  - NOT_VERIFIABLE ac_ids (verifiable: false) are documented but excluded from gate
+  - UNTESTED or PARTIAL at exit → FAIL (blocks P5B/P6)
+  - NOT_VERIFIABLE ac_ids (verifiable: false) documented but excluded from gate
+
 When no structured AC: existing closure gate applies.
 
 PASS when:
