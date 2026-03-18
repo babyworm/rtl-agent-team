@@ -102,7 +102,7 @@ fields), the RTM uses AC-level granularity:
 - Date: YYYY-MM-DD
 - Reviewer: func-verifier
 - Upper Spec: iron-requirements.json
-- Verdict: PASS | FAIL
+- Verdict: PASS | PARTIAL_PASS | FAIL
 
 ## Feature Coverage Checklist
 | REQ ID | AC ID | Description | Test Case | Status |
@@ -112,7 +112,10 @@ fields), the RTM uses AC-level granularity:
 ### [severity] Finding-N: ...
 
 ## Verdict
-PASS | FAIL: [reason]
+PASS | PARTIAL_PASS | FAIL: [reason]
+- PASS: all Critical/High ac_ids VERIFIED or FORMAL
+- PARTIAL_PASS: some Critical/High ac_ids PARTIAL (WARNING at Stage 1, escalated to FAIL at Stage 3)
+- FAIL: Critical/High ac_ids UNTESTED or tests failing
 ```
 
 AC-level status values per criterion:
@@ -212,5 +215,5 @@ enabling prioritized debugging and requirement-level risk assessment.
 - [ ] Every REQ-NNN in iron-requirements.json (preferred) or requirements.json (fallback) covered by at least one test
 - [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status (PARTIAL = WARNING at Stage 1 module flow, escalated to FAIL at Stage 3 final audit)
 - [ ] All covered requirements pass their tests (or failures escalated)
-- [ ] Traceability verdict is PASS
+- [ ] Traceability verdict is PASS or PARTIAL_PASS (PARTIAL_PASS = WARNING at Stage 1, escalated to FAIL at Stage 3)
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved
