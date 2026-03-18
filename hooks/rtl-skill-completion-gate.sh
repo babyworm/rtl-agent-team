@@ -129,9 +129,11 @@ if acquire_lock "$SKILL_STATE"; then
   if [ "$LADDER_ENABLED" != "true" ] && grep -q '"use_escalation_ladder"' "$SKILL_STATE" 2>/dev/null; then
     printf 's/"use_escalation_ladder"[[:space:]]*:[[:space:]]*false/"use_escalation_ladder": true/\n' >> "$_SED_SCRIPT"
   fi
-  sed -f "$_SED_SCRIPT" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null \
-    && mv "$SKILL_STATE.tmp" "$SKILL_STATE" \
-    || rm -f "$SKILL_STATE.tmp" 2>/dev/null
+  if sed -f "$_SED_SCRIPT" "$SKILL_STATE" > "$SKILL_STATE.tmp" 2>/dev/null; then
+    mv "$SKILL_STATE.tmp" "$SKILL_STATE"
+  else
+    rm -f "$SKILL_STATE.tmp" 2>/dev/null
+  fi
   rm -f "$_SED_SCRIPT" 2>/dev/null
   release_lock "$SKILL_STATE"
 fi

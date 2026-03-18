@@ -1,4 +1,5 @@
 ---
+name: test-plan-writer
 description: "Test plan generation specialist — derives test scenarios from uarch spec using ECP/BVA/STT/DT methodology"
 model: sonnet
 skills:

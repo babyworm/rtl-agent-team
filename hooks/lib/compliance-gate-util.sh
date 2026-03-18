@@ -45,9 +45,11 @@ compliance_preprocess() {
         printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n' >> "$_CGU_NR_SED"
         printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_NR_SED"
         printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_NR_SED"
-        sed -f "$_CGU_NR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
-          && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
-          || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+        if sed -f "$_CGU_NR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
+          mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
+        else
+          rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+        fi
         rm -f "$_CGU_NR_SED" 2>/dev/null
         release_lock "$_CGU_SKILL_STATE"
       fi
@@ -77,9 +79,11 @@ compliance_preprocess() {
       printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n' >> "$_CGU_PASS_SED"
       printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n' >> "$_CGU_PASS_SED"
       printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n' >> "$_CGU_PASS_SED"
-      sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
-        && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
-        || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      if sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
+        mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
+      else
+        rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      fi
       rm -f "$_CGU_PASS_SED" 2>/dev/null
       release_lock "$_CGU_SKILL_STATE"
     fi
@@ -114,9 +118,11 @@ compliance_preprocess() {
         # (downgraded from infeasible FAIL to fixable FAIL)
         printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n' >> "$_CGU_CR_SED"
       fi
-      sed -f "$_CGU_CR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null \
-        && mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE" \
-        || rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      if sed -f "$_CGU_CR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
+        mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
+      else
+        rm -f "$_CGU_SKILL_STATE.tmp" 2>/dev/null
+      fi
       rm -f "$_CGU_CR_SED" 2>/dev/null
       release_lock "$_CGU_SKILL_STATE"
     fi

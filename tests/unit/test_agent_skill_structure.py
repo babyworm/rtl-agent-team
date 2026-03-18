@@ -694,6 +694,64 @@ class TestDomainExpertAgent:
             "domain-expert agent should restrict write tools"
 
 
+class TestShellScriptQuality:
+    """Catch shell anti-patterns that caused CI failures, without requiring shellcheck.
+
+    This complements (not replaces) the shellcheck CI job. It catches the specific
+    patterns that are easy to introduce and hard to notice in review:
+    - SC2015: file-modifying `cmd > file && mv ... || rm ...` chains
+    - Orphan hook scripts not referenced in hooks.json
+    """
+
+    HOOKS_DIR = REPO_ROOT / "hooks"
+
+    @pytest.fixture
+    def hook_scripts(self):
+        return sorted(self.HOOKS_DIR.glob("*.sh"))
+
+    @pytest.fixture
+    def hook_lib_scripts(self):
+        return sorted((self.HOOKS_DIR / "lib").glob("*.sh"))
+
+    def test_no_sc2015_file_modifying_chain(self, hook_scripts, hook_lib_scripts):
+        """SC2015: cmd > file && mv file || rm file is not if-then-else.
+
+        Detects multi-line chains where a file-redirecting command is followed
+        by && mv ... || rm ... (the pattern that caused the v0.8.5 CI failure).
+        Single-line [ test ] && echo || echo patterns are safe and excluded.
+        """
+        violations = []
+        for f in hook_scripts + hook_lib_scripts:
+            lines = f.read_text().splitlines()
+            for i, line in enumerate(lines, 1):
+                stripped = line.strip()
+                if stripped.startswith("#") or not stripped:
+                    continue
+                # Pattern: continuation line with && mv ... || rm ...
+                # This catches the exact SC2015 case: cmd > tmp && mv tmp orig || rm tmp
+                if re.search(r'>\s*"\$.*\.tmp"', stripped):
+                    # Look at next 2 lines for && mv ... || rm pattern
+                    context = " ".join(l.strip() for l in lines[i:i+3])
+                    if "&& mv " in context and "|| rm " in context:
+                        violations.append(
+                            f"{f.name}:{i}: file-redirect + mv/rm chain — use if/then/else"
+                        )
+        assert violations == [], (
+            f"SC2015: file-modifying && ... || chain found — use if/then/else:\n"
+            + "\n".join(violations)
+        )
+
+    def test_all_hook_scripts_referenced_in_hooks_json(self, hook_scripts):
+        """Every hook script should be referenced in hooks.json (no orphans)."""
+        hooks_json = json.loads(HOOKS_JSON.read_text())
+        all_commands = json.dumps(hooks_json)
+        orphans = []
+        for f in hook_scripts:
+            if f.name not in all_commands:
+                orphans.append(f.name)
+        assert orphans == [], f"Orphan hook scripts not in hooks.json: {orphans}"
+
+
 class TestTutorialSkillRename:
     """Validate tutorial skill was properly renamed from rat-tutuorial."""
 
