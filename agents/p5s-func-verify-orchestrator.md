@@ -238,7 +238,7 @@ Save MODULE-LEVEL traceability to reviews/phase-5-verify/requirement-traceabilit
   - Reviewer: func-verifier
   - Module: {module}
   - Upper Spec: iron-requirements.json (or requirements.json)
-  - Verdict: PASS | FAIL
+  - Verdict: PASS | PARTIAL_PASS | FAIL
   ## Feature Coverage Checklist
   | REQ ID | AC ID | Description | Test Case | Status |
   (Use REQ-level columns when no structured AC available)

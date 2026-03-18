@@ -2,16 +2,26 @@
 
 - **Date**: {{DATE}}
 - **Reviewer**: func-verifier
-- **Upper Spec**: requirements.json
+- **Upper Spec**: iron-requirements.json (or requirements.json fallback)
 - **Verdict**: {{VERDICT}}
 
 ## Requirement Traceability Matrix
 
+When structured acceptance_criteria (with ac_id) exist:
+
+| REQ ID | AC ID | Description | Test Name | Test Result | Status |
+|--------|-------|-------------|-----------|-------------|--------|
+| REQ-U-001 | AC-1 | {{DESC}} | test_{{MODULE}}_basic | PASS | VERIFIED |
+| REQ-U-001 | AC-2 | {{DESC}} | — | — | UNTESTED |
+
+When no structured AC (REQ-level fallback):
+
 | REQ ID | Description | Test Name | Test Result | Status |
 |--------|-------------|-----------|-------------|--------|
-| REQ-001 | {{DESC}} | test_{{MODULE}}_basic | PASS | COVERED |
-| REQ-002 | {{DESC}} | test_{{MODULE}}_edge | PASS | COVERED |
-| REQ-003 | {{DESC}} | — | — | NO COVERAGE |
+| REQ-001 | {{DESC}} | test_{{MODULE}}_basic | PASS | VERIFIED |
+| REQ-003 | {{DESC}} | — | — | UNTESTED |
+
+Status values: VERIFIED, FORMAL, PARTIAL, UNTESTED, NOT_VERIFIABLE
 
 ## Coverage Summary
 
@@ -36,5 +46,6 @@
 
 {{VERDICT}}: {{REASON}}
 
-<!-- PASS — all [N] requirements verified with passing tests -->
-<!-- FAIL — [M] requirements without test coverage, [K] requirements with failing tests -->
+<!-- PASS — all Critical/High requirements/ac_ids VERIFIED or FORMAL -->
+<!-- PARTIAL_PASS — some Critical/High ac_ids PARTIAL (WARNING at Stage 1, escalated to FAIL at Stage 3) -->
+<!-- FAIL — M requirements/ac_ids UNTESTED, K with failing tests -->

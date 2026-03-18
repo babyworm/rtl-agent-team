@@ -17,7 +17,8 @@ Tier 4: Integration    — cross-module, end-to-end (rtl-p5s-integration-test)
 
 Tier transition rules:
 - Tier 2 PASS (rtl-p4s-unit-test) → Tier 3 eligible
-- Tier 3 PASS (this skill) → Tier 4 eligible (rtl-p5s-integration-test)
+- Tier 3 PASS or PARTIAL_PASS (this skill) → Tier 4 eligible (rtl-p5s-integration-test)
+  (PARTIAL_PASS = some Critical/High ac_ids PARTIAL; WARNING at Stage 1, escalated to FAIL at Stage 3)
 - Tier 3 FAIL → fix via rtl-p4s-bugfix, re-run Tier 2 then Tier 3
 
 ## cocotb Signal Naming Convention
@@ -213,7 +214,7 @@ enabling prioritized debugging and requirement-level risk assessment.
 - [ ] Early termination applied if failure rate >5%
 - [ ] Requirement Traceability Matrix produced (AC-level when structured acceptance_criteria exist, REQ-level otherwise)
 - [ ] Every REQ-NNN in iron-requirements.json (preferred) or requirements.json (fallback) covered by at least one test
-- [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status (PARTIAL = WARNING at Stage 1 module flow, escalated to FAIL at Stage 3 final audit)
+- [ ] When structured AC exists: every Critical/High ac_id is VERIFIED, FORMAL, or PARTIAL (PARTIAL = PARTIAL_PASS verdict at Stage 1, escalated to FAIL at Stage 3 final audit). UNTESTED = FAIL.
 - [ ] All covered requirements pass their tests (or failures escalated)
 - [ ] Traceability verdict is PASS or PARTIAL_PASS (PARTIAL_PASS = WARNING at Stage 1, escalated to FAIL at Stage 3)
 - [ ] reviews/phase-5-verify/requirement-traceability.md saved
