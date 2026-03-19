@@ -39,11 +39,11 @@ DESELECT_ARGS=""
 if [[ "$OSTYPE" == darwin* ]] || [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   echo "  (platform: ${OSTYPE}, bash ${BASH_VERSION} — deselecting shell-execution tests)"
   SKIP_MARKERS=(
-    "tests/unit/test_hooks.py::TestSessionScopedState"       # requires bash 5+ process substitution
-    "tests/unit/test_hooks.py::TestSkillCompletionGate"      # requires bash 5+ associative arrays
-    "tests/unit/test_hooks.py::TestHookConcurrency"          # requires flock (Linux)
-    "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # requires bash 5+ shell execution
-    "tests/unit/test_hooks.py::TestSedFallbackContract"      # requires GNU sed behavior
+    "tests/unit/test_hooks.py::TestSessionScopedState"       # hook subprocess: depends on Linux shell tools (json-util.sh sed patterns)
+    "tests/unit/test_hooks.py::TestSkillCompletionGate"      # hook subprocess: depends on Linux shell tools (json-util.sh sed patterns)
+    "tests/unit/test_hooks.py::TestHookConcurrency"          # concurrent hook subprocess: mkdir-based locking timing varies across platforms
+    "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # hook subprocess: depends on Linux shell tools (team-gate-util.sh)
+    "tests/unit/test_hooks.py::TestSedFallbackContract"      # requires GNU sed behavior (BSD sed incompatible)
     "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # requires slang-server binary
     "tests/unit/test_regression_coverage.py::TestRunRegression"  # requires verilator binary
   )
