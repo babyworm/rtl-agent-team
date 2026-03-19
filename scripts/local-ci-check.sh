@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # local-ci-check.sh — Run CI-equivalent checks locally before pushing.
 #
-# Usage: sh scripts/local-ci-check.sh
+# Usage: bash scripts/local-ci-check.sh   (or ./scripts/local-ci-check.sh)
 #
 # Mirrors .github/workflows/ci.yml:
-#   1. pytest tests/unit/ (skips macOS-incompatible shell execution tests)
+#   1. pytest tests/unit/
 #   2. shellcheck -s sh hooks/*.sh hooks/lib/*.sh
+#
+# On macOS or bash < 5, tests requiring Ubuntu bash 5+ / specific binaries
+# are automatically deselected. On Linux with bash 5+, all tests run (CI parity).
 #
 # Exit code: 0 if all checks pass, 1 if any fail.
 
@@ -30,24 +33,35 @@ if [ -f ".venv/bin/activate" ]; then
   . .venv/bin/activate
 fi
 
-# Skip tests that require Ubuntu bash 5+ or specific binaries
-SKIP_MARKERS=(
-  "tests/unit/test_hooks.py::TestSessionScopedState"
-  "tests/unit/test_hooks.py::TestSkillCompletionGate"
-  "tests/unit/test_hooks.py::TestHookConcurrency"
-  "tests/unit/test_hooks.py::TestTeamAwarenessGuard"
-  "tests/unit/test_hooks.py::TestSedFallbackContract"
-  "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"
-  "tests/unit/test_regression_coverage.py::TestRunRegression"
-)
-
+# Platform detection: skip shell-execution tests only on macOS or bash < 5
+# On Linux with bash 5+ (CI environment), run everything for full parity
 DESELECT_ARGS=""
-for marker in "${SKIP_MARKERS[@]}"; do
-  DESELECT_ARGS="$DESELECT_ARGS --deselect=$marker"
-done
+if [[ "$OSTYPE" == darwin* ]] || [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
+  echo "  (platform: ${OSTYPE}, bash ${BASH_VERSION} — deselecting shell-execution tests)"
+  SKIP_MARKERS=(
+    "tests/unit/test_hooks.py::TestSessionScopedState"       # requires bash 5+ process substitution
+    "tests/unit/test_hooks.py::TestSkillCompletionGate"      # requires bash 5+ associative arrays
+    "tests/unit/test_hooks.py::TestHookConcurrency"          # requires flock (Linux)
+    "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # requires bash 5+ shell execution
+    "tests/unit/test_hooks.py::TestSedFallbackContract"      # requires GNU sed behavior
+    "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # requires slang-server binary
+    "tests/unit/test_regression_coverage.py::TestRunRegression"  # requires verilator binary
+  )
+  for marker in "${SKIP_MARKERS[@]}"; do
+    DESELECT_ARGS="$DESELECT_ARGS --deselect=$marker"
+  done
+else
+  echo "  (platform: ${OSTYPE}, bash ${BASH_VERSION} — running all tests, CI parity)"
+fi
+
+# test_bd_rate.py requires numpy (CI installs via requirements-test.txt)
+IGNORE_ARGS="--ignore=tests/unit/test_bd_rate.py"
+if python3 -c "import numpy" 2>/dev/null; then
+  IGNORE_ARGS=""
+fi
 
 # shellcheck disable=SC2086
-if python3 -m pytest tests/unit/ -x -q $DESELECT_ARGS; then
+if python3 -m pytest tests/unit/ -x -q $IGNORE_ARGS $DESELECT_ARGS; then
   echo "  ✓ pytest PASS"
 else
   echo "  ✗ pytest FAIL"
