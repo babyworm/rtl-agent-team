@@ -8,7 +8,7 @@
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-94개 전문 AI 에이전트 + 92개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+94개 전문 AI 에이전트 + 93개 스킬 + 13개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -136,7 +136,7 @@ EDA 도구 확인 및 설치는 `/rtl-agent-team:rat-setup`을 실행하세요 (
 /rtl-agent-team:domain-consult    # 도메인 전문가 상담
 ```
 
-전체 92개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+전체 93개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
 
 ## 프로젝트 산출물 구조
 
@@ -328,7 +328,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
 ├── agents/                              # rtl-agent-team 에이전트 (94개)
-├── skills/                              # rtl-agent-team 스킬 (92개, 13개 레퍼런스 문서 포함)
+├── skills/                              # rtl-agent-team 스킬 (93개, 13개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지
