@@ -18,6 +18,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 FAIL=0
+SKIPPED=""
 
 echo "============================================"
 echo "  RTL Agent Team — Local CI Check"
@@ -60,6 +61,9 @@ fi
 IGNORE_ARGS="--ignore=tests/unit/test_bd_rate.py"
 if python3 -c "import numpy" 2>/dev/null; then
   IGNORE_ARGS=""
+else
+  echo "  (numpy not installed — skipping test_bd_rate.py; install via: pip install -r tests/requirements-test.txt)"
+  SKIPPED="${SKIPPED}numpy "
 fi
 
 # shellcheck disable=SC2086
@@ -84,12 +88,17 @@ if command -v shellcheck >/dev/null 2>&1; then
   fi
 else
   echo "  ⚠ shellcheck not installed — skipping (install: apt-get install shellcheck or brew install shellcheck)"
+  SKIPPED="${SKIPPED}shellcheck "
 fi
 
 echo ""
 echo "============================================"
 if [ "$FAIL" -eq 0 ]; then
-  echo "  ✓ ALL CI CHECKS PASSED — safe to push"
+  if [ -n "$SKIPPED" ]; then
+    echo "  ✓ CI CHECKS PASSED (skipped: ${SKIPPED% }) — CI will run full suite"
+  else
+    echo "  ✓ ALL CI CHECKS PASSED — safe to push"
+  fi
 else
   echo "  ✗ CI CHECKS FAILED — fix before pushing"
 fi
