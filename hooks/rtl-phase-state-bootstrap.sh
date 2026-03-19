@@ -35,7 +35,7 @@ fi
 # NOTE: Must run BEFORE sctx_write_manifest() which reads compliance-state.json
 # NOTE: Gated on setup marker to preserve pre-setup behavior (no filesystem writes
 #       for uninitialized projects)
-if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
+if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; then
   _CS_FILE="$CWD/.rtl-agent-team/state/compliance-state.json"
   _cs_current_phase=""
   if [ -f "$_CS_FILE" ]; then

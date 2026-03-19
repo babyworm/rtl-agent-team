@@ -267,7 +267,7 @@ sctx_write_manifest() {
   # Setup check
   SCTX_SETUP="false"
   SCTX_MARKER=".claude/rules/rtl-coding-conventions.md"
-  if [ -f "$SCTX_CWD/$SCTX_MARKER" ]; then
+  if [ -f "$SCTX_CWD/$SCTX_MARKER" ] || [ -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; then
     SCTX_SETUP="true"
   fi
 

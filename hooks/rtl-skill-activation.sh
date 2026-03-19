@@ -56,7 +56,7 @@ case "$SHORT_NAME" in
   rat-init-project|rat-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
     ;;
   *)
-    if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
+    if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] && [ ! -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; then
       emit_continue "[SETUP REQUIRED] Project not initialized. Rules (.claude/rules/), guides, and directory structure are missing. Run /rtl-agent-team:rat-init-project first."
     fi
     ;;

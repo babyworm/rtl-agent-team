@@ -333,7 +333,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
 ├── agents/                              # rtl-agent-team agents (94)
-├── skills/                              # rtl-agent-team skills (92, with 13 reference docs)
+├── skills/                              # rtl-agent-team skills (93, with 13 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

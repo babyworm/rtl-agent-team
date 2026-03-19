@@ -61,8 +61,8 @@ Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver 
 | Layer | Mechanism | When Loaded | Content |
 |-------|-----------|-------------|---------|
 | 1 | `hooks/rtl-orchestrator-inject.sh` | Every RTL session | Routing, rules, principles |
-| 2 | `.claude/rules/*` (deployed by rat-setup) | .sv/.svh/.v/.vh access | Coding conventions, verification gates |
-| 3 | Subdirectory CLAUDE.md (deployed by rat-setup) | Directory entry | Phase guides, tool usage |
+| 2 | `.claude/rules/*` (deployed by rat-init-project) | .sv/.svh/.v/.vh access | Coding conventions, verification gates |
+| 3 | Subdirectory CLAUDE.md (deployed by rat-init-project) | Directory entry | Phase guides, tool usage |
 | 4 | Skill frontmatter | Session start (all) | Name + description (~2 lines each) |
 | 5 | Skill SKILL.md body | Skill invocation | Full workflow (50-300 lines) |
 | 6 | Agent prompt | Agent spawn | Role, constraints, output format |
@@ -261,7 +261,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
-| `rtl-project-init-advisor.sh` | SessionStart | Advise `rat-setup` if project not initialized |
+| `rtl-project-init-advisor.sh` | SessionStart | Advise `rat-init-project` if project not initialized |
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |

@@ -96,8 +96,8 @@ This skill ensures the project workspace is ready before design work begins.
    ```bash
    mkdir -p .claude/rules
    # RTL rules: skip if global exists (no duplication)
-   [ ! -f ~/.claude/rules/rtl-coding-conventions.md ] && [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rat-init-project/templates/rules/rtl-coding-conventions.md .claude/rules/
-   [ ! -f ~/.claude/rules/rtl-verification-gate.md ] && [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rat-init-project/templates/rules/rtl-verification-gate.md .claude/rules/
+   [ ! -f ~/.claude/rules/rtl-coding-conventions.md ] && [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/rules/rtl-coding-conventions.md" .claude/rules/
+   [ ! -f ~/.claude/rules/rtl-verification-gate.md ] && [ ! -f .claude/rules/rtl-verification-gate.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/rules/rtl-verification-gate.md" .claude/rules/
    ```
    If `grep -q '<markdown_diagram_rule>' ~/.claude/CLAUDE.md` fails AND `.claude/rules/diagram-rules.md`
    does not exist, use Write tool to create `.claude/rules/diagram-rules.md` with:
@@ -118,12 +118,12 @@ This skill ensures the project workspace is ready before design work begins.
 2b. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
    ```bash
    # Copy guide files as CLAUDE.md into each artifact directory (non-destructive)
-   [ ! -f rtl/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/rtl-guide.md rtl/CLAUDE.md
-   [ ! -f sim/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/sim-guide.md sim/CLAUDE.md
-   [ ! -f docs/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/docs-guide.md docs/CLAUDE.md
-   [ ! -f reviews/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/reviews-guide.md reviews/CLAUDE.md
-   [ ! -f refc/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/refc-guide.md refc/CLAUDE.md
-   [ ! -f syn/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/syn-guide.md syn/CLAUDE.md
+   [ ! -f rtl/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/rtl-guide.md" rtl/CLAUDE.md
+   [ ! -f sim/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/sim-guide.md" sim/CLAUDE.md
+   [ ! -f docs/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/docs-guide.md" docs/CLAUDE.md
+   [ ! -f reviews/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/reviews-guide.md" reviews/CLAUDE.md
+   [ ! -f refc/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/refc-guide.md" refc/CLAUDE.md
+   [ ! -f syn/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/syn-guide.md" syn/CLAUDE.md
    ```
 
 3. **Generate lessons-learned.md** (if docs/lessons-learned.md does not exist):
@@ -227,18 +227,18 @@ Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include 
 
 # Rules deployment (skip if already global, non-destructive)
 Bash: mkdir -p .claude/rules
-Bash: [ ! -f ~/.claude/rules/rtl-coding-conventions.md ] && [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp skills/rat-init-project/templates/rules/rtl-coding-conventions.md .claude/rules/ || true
-Bash: [ ! -f ~/.claude/rules/rtl-verification-gate.md ] && [ ! -f .claude/rules/rtl-verification-gate.md ] && cp skills/rat-init-project/templates/rules/rtl-verification-gate.md .claude/rules/ || true
+Bash: [ ! -f ~/.claude/rules/rtl-coding-conventions.md ] && [ ! -f .claude/rules/rtl-coding-conventions.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/rules/rtl-coding-conventions.md" .claude/rules/ || true
+Bash: [ ! -f ~/.claude/rules/rtl-verification-gate.md ] && [ ! -f .claude/rules/rtl-verification-gate.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/rules/rtl-verification-gate.md" .claude/rules/ || true
 # Diagram rules: if <markdown_diagram_rule> tag missing from ~/.claude/CLAUDE.md,
 # use Write tool to create .claude/rules/diagram-rules.md with inline content (see Step 2a)
 
 # Guide deployment (non-destructive, copy as CLAUDE.md)
-Bash: [ ! -f rtl/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/rtl-guide.md rtl/CLAUDE.md || true
-Bash: [ ! -f sim/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/sim-guide.md sim/CLAUDE.md || true
-Bash: [ ! -f docs/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/docs-guide.md docs/CLAUDE.md || true
-Bash: [ ! -f reviews/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/reviews-guide.md reviews/CLAUDE.md || true
-Bash: [ ! -f refc/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/refc-guide.md refc/CLAUDE.md || true
-Bash: [ ! -f syn/CLAUDE.md ] && cp skills/rat-init-project/templates/guides/syn-guide.md syn/CLAUDE.md || true
+Bash: [ ! -f rtl/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/rtl-guide.md" rtl/CLAUDE.md || true
+Bash: [ ! -f sim/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/sim-guide.md" sim/CLAUDE.md || true
+Bash: [ ! -f docs/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/docs-guide.md" docs/CLAUDE.md || true
+Bash: [ ! -f reviews/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/reviews-guide.md" reviews/CLAUDE.md || true
+Bash: [ ! -f refc/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/refc-guide.md" refc/CLAUDE.md || true
+Bash: [ ! -f syn/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/syn-guide.md" syn/CLAUDE.md || true
 
 # Quick tool status (informational)
 Bash: verilator --version 2>&1 || echo "NOT_FOUND"
@@ -247,19 +247,19 @@ Bash: verible-verilog-lint --version 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
 
 # Template generation (copy from plugin templates)
-Bash: cp skills/rat-init-project/templates/filelist.f rtl/filelist_top.f
-Bash: cp skills/rat-init-project/templates/cocotb-makefile sim/top/Makefile
-Bash: mkdir -p lib && cp skills/rat-init-project/templates/lib/tool-runner.sh lib/tool-runner.sh
-Bash: cp skills/rat-init-project/templates/run_lint.sh lint/scripts/run_lint.sh
-Bash: cp skills/rat-init-project/templates/run_syn.sh syn/scripts/run_syn.sh
-Bash: cp skills/rat-init-project/templates/run_cdc.sh sim/cdc/run_cdc.sh
-Bash: cp skills/rat-init-project/templates/run_formality.sh syn/scripts/run_formality.sh
-Bash: cp skills/rat-init-project/templates/run_conformal.sh syn/scripts/run_conformal.sh
-Bash: mkdir -p reviews/phase-6-review && cp -n skills/rat-init-project/templates/phase6-pdf-makefile reviews/phase-6-review/Makefile
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/filelist.f" rtl/filelist_top.f
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/cocotb-makefile" sim/top/Makefile
+Bash: mkdir -p lib && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/lib/tool-runner.sh" lib/tool-runner.sh
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_lint.sh" lint/scripts/run_lint.sh
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_syn.sh" syn/scripts/run_syn.sh
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_cdc.sh" sim/cdc/run_cdc.sh
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_formality.sh" syn/scripts/run_formality.sh
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_conformal.sh" syn/scripts/run_conformal.sh
+Bash: mkdir -p reviews/phase-6-review && cp -n "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/phase6-pdf-makefile" reviews/phase-6-review/Makefile
 Bash: chmod +x lib/tool-runner.sh lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh syn/scripts/run_formality.sh syn/scripts/run_conformal.sh
 Bash: chmod +x scripts/run_sim.sh
 # Hook-safe bootstrap (non-destructive, idempotent)
-Bash: bash skills/rat-init-project/scripts/install_project_templates.sh "$PWD"
+Bash: bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/install_project_templates.sh" "$PWD"
 Write: rtl/include/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
 ```
 
