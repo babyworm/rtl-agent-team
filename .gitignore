@@ -8,6 +8,9 @@ node_modules/
 .env.local
 
 # Pipeline execution artifacts (generated per-project, not part of plugin)
+.venv/
+.omx/
+.venv/
 reviews/
 rtl/
 refc/
