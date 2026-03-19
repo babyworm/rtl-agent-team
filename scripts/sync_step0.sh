@@ -73,7 +73,7 @@ for agent_file in "$AGENTS_DIR"/*.md; do
     # Inside Step 0 core: skip lines until we hit the fallback close
     in_step0 == 1 && core_done == 0 {
       # The fallback close line: full-line match to avoid false positives
-      if ($0 == "If NOT found → `Skill(skill=\"rtl-agent-team:rat-setup\")`. Wait for completion before proceeding.") {
+      if ($0 == "If NOT found → `Skill(skill=\"rtl-agent-team:rat-init-project\")`. Wait for completion before proceeding.") {
         # Print template instead of the core
         if (printed_template == 0) {
           printed_template = 1

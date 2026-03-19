@@ -118,10 +118,12 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 ### 프로젝트 초기화
 
 ```
-/rtl-agent-team:rat-setup
+/rtl-agent-team:rat-init-project
 ```
 
-프로젝트 디렉토리 구조 생성, EDA 도구 설치 확인, 그리고 **EDA wrapper 스크립트 자동 배포**(`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`)를 수행합니다. Hook-driven bootstrap으로 기존 스크립트는 절대 덮어쓰지 않습니다 (non-destructive 정책).
+프로젝트 디렉토리 구조 생성, 코딩 규칙 배포, **EDA wrapper 스크립트 자동 배포**(`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`)를 수행합니다. Hook-driven bootstrap으로 기존 스크립트는 절대 덮어쓰지 않습니다 (non-destructive 정책).
+
+EDA 도구 확인 및 설치는 `/rtl-agent-team:rat-setup`을 실행하세요 (머신당 1회).
 
 ### 개별 스킬
 
@@ -168,9 +170,9 @@ rtl-agent-team/
 ├── agents/                     # 94개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 92개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 93개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
-│   ├── rat-setup/
+│   ├── rat-init-project/
 │   │   ├── scripts/
 │   │   │   └── install_project_templates.sh  # Hook-driven 템플릿 자동 설치
 │   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + 기타 템플릿
@@ -289,7 +291,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in) |
 
-스크립트는 `rat-setup` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.
+스크립트는 `rat-init-project` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.
 
 Regression runner는 기본 `--mode local`에 `max(1, nproc-2)` 병렬로 동작합니다. AWS Batch는 명시적 opt-in이 필요합니다 (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
