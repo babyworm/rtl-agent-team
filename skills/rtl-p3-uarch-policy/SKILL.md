@@ -338,7 +338,7 @@ Apply ambiguity scoring to all new REQ-U-* decisions:
 
 ## Mermaid Pipeline Diagram Format
 
-Per diagram-rules.md: use Mermaid for pipeline/flow diagrams (ASCII art prohibited).
+Per diagram policy: use Mermaid for pipeline/flow diagrams (ASCII art prohibited).
 
 ```mermaid
 flowchart LR

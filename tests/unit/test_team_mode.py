@@ -16,7 +16,7 @@ from tests.conftest import REPO_ROOT
 
 AGENTS_DIR = REPO_ROOT / "agents"
 SKILLS_DIR = REPO_ROOT / "skills"
-TEMPLATE_DIR = SKILLS_DIR / "rtl-design-policy" / "templates"
+TEMPLATE_DIR = SKILLS_DIR / "rtl-p4-rapid-impl-policy" / "templates"
 
 
 class TestTeamConfigLifecycle:

@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 94 specialized AI agents + 92 skills automate the 6-Phase pipeline:
+> 94 specialized AI agents + 93 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 94 specialized AI agents + 92 skills + 13 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 94 specialized AI agents + 93 skills + 13 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -118,10 +118,12 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 ### Project initialization
 
 ```
-/rtl-agent-team:rat-setup
+/rtl-agent-team:rat-init-project
 ```
 
-Creates the project directory structure, verifies EDA tool installation, and **auto-installs EDA wrapper scripts** (`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`) into the project via a hook-driven bootstrap. Existing scripts are never overwritten (non-destructive policy).
+Creates the project directory structure, deploys coding convention rules, and **auto-installs EDA wrapper scripts** (`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`) into the project via a hook-driven bootstrap. Existing scripts are never overwritten (non-destructive policy).
+
+For EDA tool verification and installation, run `/rtl-agent-team:rat-setup` (one-time per machine).
 
 ### Individual skills
 
@@ -134,7 +136,7 @@ Creates the project directory structure, verifies EDA tool installation, and **a
 /rtl-agent-team:domain-consult    # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 92 skills.
+See the `skills/` directory for the full list of 93 skills.
 
 ## Project Artifact Structure
 
@@ -168,9 +170,9 @@ rtl-agent-team/
 ├── agents/                     # 94 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 92 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 93 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
-│   ├── rat-setup/
+│   ├── rat-init-project/
 │   │   ├── scripts/
 │   │   │   └── install_project_templates.sh  # Hook-driven template auto-installer
 │   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + other templates
@@ -294,7 +296,7 @@ All EDA operations use replayable wrapper scripts that generate timestamped + `_
 | `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb regression (local-first, AWS opt-in) |
 
-Scripts are auto-installed by the `rat-setup` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.
+Scripts are auto-installed by the `rat-init-project` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.
 
 Regression runner defaults to `--mode local` with `max(1, nproc-2)` parallel jobs. AWS Batch requires explicit opt-in (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 

@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 94 specialized agents, 92 skills, 14 hooks,
+When installed as a plugin, it provides 94 specialized agents, 93 skills, 14 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -137,10 +137,10 @@ rtl-agent-team/                          # Plugin root
 │                                        #     team-worker-protocol.md, team-fallback.md,
 │                                        #     domain-expert-discovery-protocol.md,
 │                                        #     audit-output-protocol.md, step0-template.md)
-├── skills/                              # 92 skills: 52 action entry-points + 31 policies + 4 tool profiles + 4 conventions + 1 internal
+├── skills/                              # 93 skills: 53 action entry-points + 31 policies + 4 tool profiles + 4 conventions + 1 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
-│   ├── rat-setup/templates/             #   Rules + guides deployed to user projects
-│   │   ├── rules/ (3 files)             #     → .claude/rules/ in user project
+│   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
+│   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project
 │   │   └── guides/ (6 files)            #     → {dir}/CLAUDE.md in user project
 │   └── {skill-name}/SKILL.md            #   Phase-specific workflow
 ├── hooks/                               # Event-driven enforcement
@@ -253,7 +253,7 @@ A verification artifact that compiles but produces wrong output is worse than no
 4. SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
 5. Convention skills auto-applied by file extension (systemverilog, systemverilog-assertion, uvm, systemc)
 
-Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `.claude/rules/diagram-rules.md`.
+Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `<markdown_diagram_rule>` in CLAUDE.md (or `.claude/rules/diagram-rules.md` fallback).
 
 ## Hook-Based Enforcement
 

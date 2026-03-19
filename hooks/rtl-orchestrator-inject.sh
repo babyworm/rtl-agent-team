@@ -51,7 +51,8 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | Pattern | Route To | Type |
 |---|---|---|
 | RTL design, chip design, full pipeline | `/rtl-agent-team:rat-auto-design` | Action Skill |
-| setup, initialize, project start | `/rtl-agent-team:rat-setup` | Action Skill |
+| setup tools, EDA setup, install tools | `/rtl-agent-team:rat-setup` | Action Skill |
+| init project, initialize project, new project | `/rtl-agent-team:rat-init-project` | Action Skill |
 | debug, diagnostics, plugin status | `/rtl-agent-team:rat-plugin-debug` | Action Skill |
 | tutorial, getting started, how to use | `/rtl-agent-team:rat-tutorial` | Action Skill |
 | spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` | Action Skill |
@@ -146,7 +147,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 - Clock: `clk` (single) or `{domain}_clk` (multiple), Reset: `rst_n` (single) or `{domain}_rst_n` (multiple) (active-low async)
 - No CamelCase: `snake_case` or `ALL_CAPS` only. Params `ALL_CAPS`, localparam `L_` prefix
 - SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
-- Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `.claude/rules/diagram-rules.md`
+- Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `<markdown_diagram_rule>` in CLAUDE.md (or `.claude/rules/diagram-rules.md` fallback)
 
 ## Mandatory Verification After RTL Changes
 RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done

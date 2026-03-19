@@ -1,6 +1,6 @@
 ---
-name: refactor-policy
-description: "Passive policy for controlled RTL refactoring. Defines auto-fix allowed scope and prohibited changes requiring approval."
+name: refactor-classification-policy
+description: "Passive policy classifying RTL refactoring changes into SAFE/RESTRICTED/PROHIBITED tiers with approval requirements. Used by review-refactor workflow."
 user-invocable: false
 ---
 

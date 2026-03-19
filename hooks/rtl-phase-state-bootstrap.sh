@@ -27,7 +27,7 @@ esac
 
 SETUP_HINT=""
 if [ "$JSONU_PARSER_MODE" = "sed" ]; then
-  SETUP_HINT="[ENV WARNING] No jq/python JSON parser available — running in fallback (sed) mode. For stability, run /rtl-agent-team:rat-setup and ensure jq or python3 is available."
+  SETUP_HINT="[ENV WARNING] No jq/python JSON parser available — running in fallback (sed) mode. For stability, run /rtl-agent-team:rat-init-project and ensure jq or python3 is available."
 fi
 
 # Compliance state bootstrap — iron requirement paths per phase
@@ -98,11 +98,11 @@ TEMPLATE=""
 TARGET=""
 case "$SHORT_NAME" in
   rtl-p4-rapid-impl)
-    TEMPLATE="$PLUGIN_ROOT/skills/rtl-design-policy/templates/p4-state.json"
+    TEMPLATE="$PLUGIN_ROOT/skills/rtl-p4-rapid-impl-policy/templates/p4-state.json"
     TARGET="$CWD/.rtl-agent-team/state/p4-state.json"
     ;;
   rtl-p5a-functional-closure)
-    TEMPLATE="$PLUGIN_ROOT/skills/rtl-functional-verify-policy/templates/p5a-state.json"
+    TEMPLATE="$PLUGIN_ROOT/skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json"
     TARGET="$CWD/.rtl-agent-team/state/p5a-state.json"
     ;;
   rtl-p5b-silicon-validation)

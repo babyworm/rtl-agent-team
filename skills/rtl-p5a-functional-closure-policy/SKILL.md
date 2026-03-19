@@ -1,5 +1,5 @@
 ---
-name: rtl-functional-verify-policy
+name: rtl-p5a-functional-closure-policy
 description: "Policy for P5A functional closure. Defines hierarchy-level verification depth, coverage goals, and requirement traceability gates."
 user-invocable: false
 ---

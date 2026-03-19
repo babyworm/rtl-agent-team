@@ -2,7 +2,7 @@
 name: p5a-functional-closure-orchestrator
 model: opus
 description: "Phase 5A functional closure orchestrator. Executes deep hierarchy-level functional verification, coverage closure, and requirement traceability gates."
-skills: [rtl-functional-verify-policy]
+skills: [rtl-p5a-functional-closure-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -17,7 +17,7 @@ Mission:
 State contract:
 - Read/write `.rtl-agent-team/state/p5a-state.json`
 - Initialize from template:
-  `skills/rtl-functional-verify-policy/templates/p5a-state.json`
+  `skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json`
 - Update `scopes.*` progress and `gates.p5a_exit`
 
 ## Workflow

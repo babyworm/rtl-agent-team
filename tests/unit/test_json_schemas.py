@@ -168,8 +168,8 @@ class TestP4P5StateTemplates:
     @pytest.mark.parametrize(
         "relpath",
         [
-            "skills/rtl-design-policy/templates/p4-state.json",
-            "skills/rtl-functional-verify-policy/templates/p5a-state.json",
+            "skills/rtl-p4-rapid-impl-policy/templates/p4-state.json",
+            "skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json",
             "skills/rtl-silicon-validation-policy/templates/p5b-state.json",
         ],
     )

@@ -812,7 +812,7 @@ Note: Skill count includes team variants (P1-team, P2-team, P3-team, P4-team, P5
 2. `agents/spec-analyst.md` — iron/open classification output
 3. `agents/compliance-checker.md` — new agent
 4. `skill-completion-criteria.json` — new criteria registration
-5. `skills/rtl-design-policy/templates/compliance-state.json` — state template
+5. `skills/rtl-p4-rapid-impl-policy/templates/compliance-state.json` — state template
 
 Verification: Run P1 skill standalone, confirm iron/open JSON generated correctly.
 

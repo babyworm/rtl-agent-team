@@ -3,7 +3,7 @@ name: testbench-dev
 description: SV testbench and cocotb testbench developer. Designs coverage models, stimulus generators, and covergroups. Ensures functional coverage closure.
 model: opus
 color: magenta
-skills: [rtl-test-design-policy]
+skills: [test-design-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -80,8 +80,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     4. Read the test plan (loaded in Step 0) to identify: directed tests, random tests,
     corner cases, error scenarios. If Step 0 found no test plan, derive these from
     uarch spec directly.
-    4a. Apply equivalence class partitioning to each input (from io_definition.json widths and uarch spec encodings). Reference: rtl-test-design-policy.
-    4b. Apply boundary value analysis to each integer input per BVA table in rtl-test-design-policy.
+    4a. Apply equivalence class partitioning to each input (from io_definition.json widths and uarch spec encodings). Reference: test-design-policy.
+    4b. Apply boundary value analysis to each integer input per BVA table in test-design-policy.
     4c. Extract FSM state transition matrix from uarch spec. Test all valid transitions + one illegal per state.
     4d. For modules with >=3 boolean control inputs, build decision table.
     4e. Merge ECP + BVA + state transitions + decision table into unified test vector plan before writing any test code.

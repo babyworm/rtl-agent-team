@@ -18,7 +18,7 @@ Shows plugin version, EDA tool availability, state file status, and hook health.
 </Use_When>
 
 <Do_Not_Use_When>
-- Setting up a new project (use rat-setup)
+- Setting up a new project (use rat-init-project) or installing tools (use rat-setup)
 - Running design pipeline (use rat-auto-design or phase-specific skills)
 </Do_Not_Use_When>
 
@@ -71,7 +71,7 @@ Report as a table with status icons: `[OK]` installed, `[!!]` required but missi
 ### 3. Project Setup Status
 
 ```bash
-# Check if rat-setup has been run (marker: .claude/rules/rtl-coding-conventions.md)
+# Check if rat-init-project has been run (marker: .claude/rules/rtl-coding-conventions.md)
 test -f .claude/rules/rtl-coding-conventions.md && echo "SETUP_DONE" || echo "SETUP_NOT_DONE"
 
 # Check directory structure
@@ -80,9 +80,12 @@ for dir in specs refc rtl sim lint syn docs reviews .rtl-agent-team/state; do
 done
 
 # Check deployed rules
-for f in .claude/rules/rtl-coding-conventions.md .claude/rules/rtl-verification-gate.md .claude/rules/diagram-rules.md; do
+for f in .claude/rules/rtl-coding-conventions.md .claude/rules/rtl-verification-gate.md; do
   test -f "$f" && echo "[OK] $f" || echo "[--] $f"
 done
+# Diagram rules: check global CLAUDE.md tag OR local fallback file
+grep -q '<markdown_diagram_rule>' ~/.claude/CLAUDE.md 2>/dev/null && echo "[OK] diagram-rules (global CLAUDE.md tag)" || \
+  (test -f .claude/rules/diagram-rules.md && echo "[OK] diagram-rules (local file)" || echo "[--] diagram-rules (neither global tag nor local file)")
 
 # Check deployed guides
 for f in rtl/CLAUDE.md sim/CLAUDE.md docs/CLAUDE.md reviews/CLAUDE.md refc/CLAUDE.md syn/CLAUDE.md; do
@@ -140,7 +143,7 @@ done
 Present a one-line verdict:
 - **READY**: All required tools installed, setup done, no stale state
 - **PARTIAL**: Some optional tools missing but functional
-- **NOT READY**: Required tools missing or setup not done — suggest `/rat-setup`
+- **NOT READY**: Required tools missing or setup not done — suggest `/rat-init-project` and `/rat-setup`
 
 ```
 ## RAT Plugin Debug Report

@@ -98,7 +98,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Do NOT use Write or Edit (read-only advisor role).
     - Present architecture.md content as a code block in your response for the orchestrator to write.
 
-    D2 block diagram format (per diagram-rules.md — ASCII art prohibited):
+    D2 block diagram format (per diagram policy — ASCII art prohibited):
     ```d2
     my_top_block: {
       input_buffer: {

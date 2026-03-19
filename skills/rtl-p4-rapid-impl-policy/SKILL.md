@@ -1,5 +1,5 @@
 ---
-name: rtl-design-policy
+name: rtl-p4-rapid-impl-policy
 description: "Policy for P4 rapid RTL implementation and block sanity integration. Defines quick-loop gates, failure handling, and minimum quality bars."
 user-invocable: false
 ---

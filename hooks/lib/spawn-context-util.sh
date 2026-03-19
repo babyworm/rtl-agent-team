@@ -252,7 +252,7 @@ sctx_write_manifest() {
   if [ -z "$SCTX_PHASE" ]; then
     # No direct phase mapping. If skill is rat-setup and a manifest exists,
     # refresh it using the previously stored skill context (setup marker may have changed).
-    if [ "$SCTX_SKILL" = "rat-setup" ] && [ -f "$SCTX_MANIFEST" ]; then
+    if { [ "$SCTX_SKILL" = "rat-setup" ] || [ "$SCTX_SKILL" = "rat-init-project" ]; } && [ -f "$SCTX_MANIFEST" ]; then
       _PREV_SKILL=$(jsonu_get_file_path_string "$SCTX_MANIFEST" "pipeline.skill_invoked")
       if [ -n "$_PREV_SKILL" ]; then
         SCTX_SKILL="$_PREV_SKILL"

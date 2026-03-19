@@ -90,7 +90,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ## [0.8.1] - 2026-03-17
 
 ### Added
-- New `rtl-test-design-policy` skill — ECP, BVA, state transition, decision table testing
+- New `test-design-policy` skill (renamed from `rtl-test-design-policy`) — ECP, BVA, state transition, decision table testing
 - testbench-dev Investigation Protocol steps 4a-4e (systematic test vector derivation)
 - Error injection plan step in testbench-dev (protocol violations, reset, backpressure)
 - Tier 2 functional coverage bins (FSM states, valid/ready cross-coverage)

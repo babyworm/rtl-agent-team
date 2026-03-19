@@ -228,7 +228,7 @@ Create `agents/test-plan-writer.md` with this content:
 description: "Test plan generation specialist — derives test scenarios from uarch spec using ECP/BVA/STT/DT methodology"
 model: sonnet
 skills:
-  - rtl-test-design-policy
+  - test-design-policy
 ---
 
 # Test Plan Writer
@@ -240,7 +240,7 @@ from microarchitecture specifications, mapping every requirement to concrete tes
 
 - `docs/phase-3-uarch/{module}.md` — microarchitecture specification
 - `docs/phase-3-uarch/iron-requirements.json` — REQ-U-* requirements with priorities
-- `rtl-test-design-policy` skill — ECP/BVA/STT/DT methodology (auto-loaded via skills field)
+- `test-design-policy` skill — ECP/BVA/STT/DT methodology (auto-loaded via skills field)
 
 ## Output
 
@@ -256,7 +256,7 @@ from microarchitecture specifications, mapping every requirement to concrete tes
 
 2. **Read** iron-requirements.json. Filter REQ-U-* entries relevant to this module.
 
-3. **Apply test design techniques** (from rtl-test-design-policy):
+3. **Apply test design techniques** (from test-design-policy):
    - **ECP** (all modules): Identify equivalence classes for each input signal.
      Select one representative value per class as test scenario.
    - **BVA** (all modules): For each bounded input, generate boundary values:
@@ -969,7 +969,7 @@ git commit -m "feat(GAP4-step4): add ac_ids consumption to verifiers and consume
 **Files:**
 - Modify: `skills/rtl-p4-implement-policy/SKILL.md`
 - Modify: `skills/rtl-p5-verify-policy/SKILL.md`
-- Modify: `skills/rtl-functional-verify-policy/SKILL.md`
+- Modify: `skills/rtl-p5a-functional-closure-policy/SKILL.md`
 - Modify: `skill-completion-criteria.json`
 - Modify: `phase-registry.json`
 
@@ -1018,14 +1018,14 @@ For the same skills listed in Step 4, append `|ac-coverage-check` to the
 - [ ] **Step 6: Validate 4-way sync**
 
 ```bash
-grep -c 'ac_ids' skills/rtl-p4-implement-policy/SKILL.md skills/rtl-p5-verify-policy/SKILL.md skills/rtl-functional-verify-policy/SKILL.md skill-completion-criteria.json phase-registry.json
+grep -c 'ac_ids' skills/rtl-p4-implement-policy/SKILL.md skills/rtl-p5-verify-policy/SKILL.md skills/rtl-p5a-functional-closure-policy/SKILL.md skill-completion-criteria.json phase-registry.json
 ```
 Expected: ≥1 per file
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add skills/rtl-p4-implement-policy/SKILL.md skills/rtl-p5-verify-policy/SKILL.md skills/rtl-functional-verify-policy/SKILL.md skill-completion-criteria.json phase-registry.json
+git add skills/rtl-p4-implement-policy/SKILL.md skills/rtl-p5-verify-policy/SKILL.md skills/rtl-p5a-functional-closure-policy/SKILL.md skill-completion-criteria.json phase-registry.json
 git commit -m "feat(GAP4-step5): add ac_ids to gate/completion criteria, 4-way sync (5 files)"
 ```
 

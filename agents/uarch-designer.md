@@ -156,7 +156,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Do NOT use Write or Edit (read-only advisor).
     - Present all docs/phase-3-uarch/*.md file contents as markdown code blocks in your response.
 
-    FSM diagram format (Mermaid stateDiagram-v2 — per diagram-rules.md, ASCII art prohibited):
+    FSM diagram format (Mermaid stateDiagram-v2 — per diagram policy, ASCII art prohibited):
     ```mermaid
     stateDiagram-v2
       [*] --> IDLE : sys_rst_n='0'

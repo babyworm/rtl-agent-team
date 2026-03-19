@@ -26,7 +26,7 @@ INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
 P5S_FUNC_VERIFY_ORCHESTRATOR = AGENTS_DIR / "p5s-func-verify-orchestrator.md"
 P5S_FUNC_VERIFY_POLICY = SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md"
 CODE_REVIEW_POLICY = SKILLS_DIR / "code-review-policy" / "SKILL.md"
-REFACTOR_POLICY = SKILLS_DIR / "refactor-policy" / "SKILL.md"
+REFACTOR_POLICY = SKILLS_DIR / "refactor-classification-policy" / "SKILL.md"
 VERIFICATION_RECHECK_POLICY = SKILLS_DIR / "verification-recheck-policy" / "SKILL.md"
 SIM_TOOL_PROFILES = SKILLS_DIR / "sim-tool-profiles" / "SKILL.md"
 LINT_TOOL_PROFILES = SKILLS_DIR / "lint-tool-profiles" / "SKILL.md"
@@ -515,6 +515,40 @@ class TestRatSetupRuntimeContract:
         assert "git clone https://github.com/accellera-official/systemc.git" in content
 
 
+class TestRatInitProjectRuntimeContract:
+    """Lock runtime behavior contract for rat-init-project."""
+
+    RAT_INIT_PROJECT_SKILL = SKILLS_DIR / "rat-init-project" / "SKILL.md"
+
+    def test_skill_exists(self):
+        assert self.RAT_INIT_PROJECT_SKILL.exists()
+
+    def test_non_destructive_policy(self):
+        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        assert "Non-destructive" in content or "non-destructive" in content
+
+    def test_recommends_rat_setup(self):
+        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        assert "rat-setup" in content
+
+    def test_setup_marker_check(self):
+        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        assert ".setup-complete" in content
+
+    def test_setup_marker_fallback_path(self):
+        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        assert ".config/rtl-agent-team" in content
+
+    def test_directory_structure_defined(self):
+        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        for d in ["rtl/", "refc/", "sim/", "docs/", "reviews/", "lint/", "syn/"]:
+            assert d in content, f"Missing directory {d} in rat-init-project"
+
+    def test_diagram_rules_fallback(self):
+        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        assert "<markdown_diagram_rule>" in content
+
+
 class TestFlockUtilContract:
     """Validate flock-util.sh exists and has required functions."""
 
@@ -788,7 +822,7 @@ class TestP5abP6ArtifactChain:
 class TestTeamConfigTemplate:
     """Validate team-config.json template."""
 
-    TEMPLATE = REPO_ROOT / "skills" / "rtl-design-policy" / "templates" / "team-config.json"
+    TEMPLATE = REPO_ROOT / "skills" / "rtl-p4-rapid-impl-policy" / "templates" / "team-config.json"
 
     def test_template_exists(self):
         assert self.TEMPLATE.exists()

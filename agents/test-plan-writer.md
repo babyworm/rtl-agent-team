@@ -3,7 +3,7 @@ name: test-plan-writer
 description: "Test plan generation specialist — derives test scenarios from uarch spec using ECP/BVA/STT/DT methodology"
 model: sonnet
 skills:
-  - rtl-test-design-policy
+  - test-design-policy
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -17,7 +17,7 @@ from microarchitecture specifications, mapping every requirement to concrete tes
 
 - `docs/phase-3-uarch/{module}.md` — microarchitecture specification
 - `docs/phase-3-uarch/iron-requirements.json` — REQ-U-* requirements with priorities
-- `rtl-test-design-policy` skill — ECP/BVA/STT/DT methodology (auto-loaded via skills field)
+- `test-design-policy` skill — ECP/BVA/STT/DT methodology (auto-loaded via skills field)
 
 ## Output
 
@@ -33,7 +33,7 @@ from microarchitecture specifications, mapping every requirement to concrete tes
 
 2. **Read** iron-requirements.json. Filter REQ-U-* entries relevant to this module.
 
-3. **Apply test design techniques** (from rtl-test-design-policy):
+3. **Apply test design techniques** (from test-design-policy):
    - **ECP** (all modules): Identify equivalence classes for each input signal.
      Select one representative value per class as test scenario.
    - **BVA** (all modules): For each bounded input, generate boundary values:

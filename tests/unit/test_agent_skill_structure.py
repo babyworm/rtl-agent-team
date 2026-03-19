@@ -266,12 +266,12 @@ class TestCrossReferences:
             ("p2-arch-design", "p2-arch-orchestrator", "p2-arch-design-policy"),
             ("rtl-p3-uarch-design", "p3-uarch-orchestrator", "rtl-p3-uarch-policy"),
             ("rtl-p4-implement", "p4-implement-orchestrator", "rtl-p4-implement-policy"),
-            ("rtl-p4-rapid-impl", "p4-rtl-sanity-orchestrator", "rtl-design-policy"),
+            ("rtl-p4-rapid-impl", "p4-rtl-sanity-orchestrator", "rtl-p4-rapid-impl-policy"),
             ("rtl-p4s-bugfix", "p4s-bugfix-orchestrator", "rtl-p4s-bugfix-policy"),
             ("rtl-p4s-refactor", "p4s-refactor-orchestrator", "rtl-p4s-refactor-policy"),
             ("rtl-p4s-unit-test", "p4s-unit-test-orchestrator", "rtl-p4s-unit-test-policy"),
             ("rtl-p5-verify", "p5-verify-orchestrator", "rtl-p5-verify-policy"),
-            ("rtl-p5a-functional-closure", "p5a-functional-closure-orchestrator", "rtl-functional-verify-policy"),
+            ("rtl-p5a-functional-closure", "p5a-functional-closure-orchestrator", "rtl-p5a-functional-closure-policy"),
             ("rtl-p5b-silicon-validation", "p5b-silicon-validation-orchestrator", "rtl-silicon-validation-policy"),
             ("rtl-p5s-func-verify", "p5s-func-verify-orchestrator", "rtl-p5s-func-verify-policy"),
             ("rtl-p5s-integration-test", "p5s-integration-orchestrator", "rtl-p5s-integration-test-policy"),
@@ -360,7 +360,7 @@ class TestCrossReferences:
         orchestrator = "review-refactor-orchestrator"
         required_policies = [
             "code-review-policy",
-            "refactor-policy",
+            "refactor-classification-policy",
             "verification-recheck-policy",
         ]
 
@@ -477,7 +477,7 @@ class TestCrossReferences:
         )
 
     def test_p4_state_module_population_contract_is_explicit(self):
-        p4_template = SKILLS_DIR / "rtl-design-policy" / "templates" / "p4-state.json"
+        p4_template = SKILLS_DIR / "rtl-p4-rapid-impl-policy" / "templates" / "p4-state.json"
         assert p4_template.exists(), "Missing p4-state template"
         template_text = p4_template.read_text()
         assert "{{module_name}}" not in template_text, (
@@ -767,7 +767,7 @@ class TestCoverageDrivenVerification:
         assert "name: test-plan-writer" in fm
         assert "model:" in fm
         assert "skills:" in fm
-        assert "rtl-test-design-policy" in fm
+        assert "test-design-policy" in fm
 
     def test_test_plan_writer_in_routing_table(self):
         """test-plan-writer must be listed in rtl-orchestrate SSOT."""
@@ -1303,12 +1303,23 @@ class TestHookStateFileDocumentation:
         assert missing == [], f"State files not documented in CLAUDE.md or routing SSOT: {missing}"
 
 
+class TestRuleTemplateCount:
+    """Rule templates must match expected count after diagram-rules.md removal."""
+
+    def test_rule_template_files(self):
+        rules_dir = SKILLS_DIR / "rat-init-project" / "templates" / "rules"
+        actual = sorted(f.name for f in rules_dir.glob("*.md"))
+        assert actual == ["rtl-coding-conventions.md", "rtl-verification-gate.md"], (
+            f"Expected exactly 2 rule templates, got {actual}"
+        )
+
+
 class TestNamingConventionConsistency:
     """Port naming convention (i_/o_/io_) must be consistent across rules and key producers."""
 
     def test_port_prefix_in_coding_conventions(self):
         """Coding conventions rule template must enforce i_/o_/io_ prefix."""
-        rule_file = SKILLS_DIR / "rat-setup" / "templates" / "rules" / "rtl-coding-conventions.md"
+        rule_file = SKILLS_DIR / "rat-init-project" / "templates" / "rules" / "rtl-coding-conventions.md"
         if not rule_file.exists():
             pytest.skip("Rule template not found")
         content = rule_file.read_text()

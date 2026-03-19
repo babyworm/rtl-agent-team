@@ -8,7 +8,7 @@ CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 if [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ] && { [ -d "$CWD/.git" ] || [ -f "$CWD/.git" ]; }; then
-  printf '{"hookSpecificOutput":{"additionalContext":"RTL project directories not detected. Run /rtl-agent-team:rat-setup to initialize project structure."}}'
+  printf '{"hookSpecificOutput":{"additionalContext":"RTL project directories not detected. Run /rtl-agent-team:rat-init-project to initialize project structure."}}'
   exit 0
 fi
 

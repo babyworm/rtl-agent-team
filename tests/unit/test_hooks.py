@@ -60,11 +60,11 @@ class TestRtlProjectInitAdvisor:
     HOOK = HOOKS_DIR / "rtl-project-init-advisor.sh"
 
     def test_git_repo_no_rtl_no_docs_advises_setup(self, tmp_path):
-        """Git repo without rtl/ or docs/ → advise rat-setup."""
+        """Git repo without rtl/ or docs/ → advise rat-init-project."""
         (tmp_path / ".git").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         assert "additionalContext" in result.get("hookSpecificOutput", {})
-        assert "rat-setup" in result["hookSpecificOutput"]["additionalContext"]
+        assert "rat-init-project" in result["hookSpecificOutput"]["additionalContext"]
 
     def test_git_repo_with_rtl_dir_silent(self, tmp_path):
         """Git repo with rtl/ → no output (happy path)."""
@@ -97,7 +97,7 @@ class TestRtlProjectInitAdvisor:
         """Git worktree (.git is a file, not dir) without project dirs → advise setup."""
         (tmp_path / ".git").write_text("gitdir: /somewhere/.git/worktrees/branch")
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert "rat-setup" in result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "rat-init-project" in result.get("hookSpecificOutput", {}).get("additionalContext", "")
 
     def test_git_file_worktree_with_rtl_silent(self, tmp_path):
         """Git worktree with rtl/ dir → no output."""
@@ -1381,8 +1381,8 @@ class TestSkillActivation:
         assert "rtl-p4s-bugfix" in ctx
 
     def test_rtl_setup_bootstrap_installs_template_scripts(self, tmp_project):
-        """rat-setup activation should auto-install run_xxx.sh templates into project."""
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rat-setup"}
+        """rat-init-project activation should auto-install run_xxx.sh templates into project."""
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rat-init-project"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
 
@@ -1399,13 +1399,13 @@ class TestSkillActivation:
         assert "SETUP_TEMPLATE_INSTALL" in ctx
 
     def test_rtl_setup_bootstrap_is_non_destructive(self, tmp_project):
-        """Existing scripts should not be overwritten by rat-setup bootstrap."""
+        """Existing scripts should not be overwritten by rat-init-project bootstrap."""
         run_sim = tmp_project / "scripts" / "run_sim.sh"
         run_sim.parent.mkdir(parents=True, exist_ok=True)
         run_sim.write_text("#!/usr/bin/env bash\necho custom\n")
         run_sim.chmod(0o755)
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rat-setup"}
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rat-init-project"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         assert run_sim.read_text() == "#!/usr/bin/env bash\necho custom\n"
@@ -1564,7 +1564,7 @@ class TestPhaseStateBootstrap:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "fallback" in ctx
-        assert "/rtl-agent-team:rat-setup" in ctx
+        assert "/rtl-agent-team:rat-init-project" in ctx
 
     def test_parser_uses_top_level_skill_key(self, tmp_project):
         _setup_marker(tmp_project)
@@ -2193,18 +2193,18 @@ class TestSpawnContextManifest:
         assert m["quality_gates"]["p5a_verdict"] == "pass"
 
     def test_manifest_setup_refreshed_after_rtl_setup(self, tmp_project):
-        """rat-setup skill refreshes existing manifest with setup.completed=true."""
+        """rat-init-project skill refreshes existing manifest with setup.completed=true."""
         # First: invoke P4 without setup marker → setup.completed=false
         self._invoke(tmp_project, "rtl-p4-implement")
         m1 = self._read_manifest(tmp_project)
         assert m1["setup"]["completed"] is False
         assert m1["pipeline"]["current_phase"] == 4
 
-        # Simulate rat-setup creating the marker
+        # Simulate rat-init-project creating the marker
         self._setup_project(tmp_project)
 
-        # Invoke rat-setup skill → should refresh existing manifest
-        result = self._invoke(tmp_project, "rat-setup")
+        # Invoke rat-init-project skill → should refresh existing manifest
+        result = self._invoke(tmp_project, "rat-init-project")
         m2 = self._read_manifest(tmp_project)
         assert m2["setup"]["completed"] is True
         # Phase context preserved from original invocation
@@ -2708,10 +2708,10 @@ class TestSpawnContextStructuralContracts:
         assert m2["pipeline"]["current_phase"] == 4
         assert m2["setup"]["completed"] is True
 
-        # Step 3: rat-setup refreshes with preserved context
+        # Step 3: rat-init-project refreshes with preserved context
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:rat-setup", "cwd": str(tmp_project)},
+            {"skill": "rtl-agent-team:rat-init-project", "cwd": str(tmp_project)},
         )
         m3 = json.loads(mpath.read_text())
         assert m3["pipeline"]["current_phase"] == 4  # Preserved

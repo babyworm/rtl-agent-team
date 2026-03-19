@@ -27,37 +27,37 @@ case "$SKILL_NAME" in
 esac
 
 SETUP_EXTRA_CONTEXT=""
-if [ "$SHORT_NAME" = "rat-setup" ]; then
-  BOOTSTRAP_SCRIPT="$PLUGIN_ROOT/skills/rat-setup/scripts/install_project_templates.sh"
+if [ "$SHORT_NAME" = "rat-init-project" ]; then
+  BOOTSTRAP_SCRIPT="$PLUGIN_ROOT/skills/rat-init-project/scripts/install_project_templates.sh"
   if [ -x "$BOOTSTRAP_SCRIPT" ]; then
     BOOTSTRAP_OUTPUT=$("$BOOTSTRAP_SCRIPT" "$CWD" 2>&1)
     BOOTSTRAP_STATUS=$?
     if [ "$BOOTSTRAP_STATUS" -eq 0 ]; then
       BOOTSTRAP_SUMMARY=$(printf '%s\n' "$BOOTSTRAP_OUTPUT" | tail -n 1)
       if [ -n "$BOOTSTRAP_SUMMARY" ]; then
-        SETUP_EXTRA_CONTEXT="[rat-setup bootstrap] $BOOTSTRAP_SUMMARY"
+        SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] $BOOTSTRAP_SUMMARY"
       else
-        SETUP_EXTRA_CONTEXT="[rat-setup bootstrap] template script installation completed."
+        SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template script installation completed."
       fi
     else
-      SETUP_EXTRA_CONTEXT="[rat-setup bootstrap] template installation failed: $BOOTSTRAP_OUTPUT"
+      SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template installation failed: $BOOTSTRAP_OUTPUT"
     fi
   else
-    SETUP_EXTRA_CONTEXT="[rat-setup bootstrap] installer not found: $BOOTSTRAP_SCRIPT"
+    SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] installer not found: $BOOTSTRAP_SCRIPT"
   fi
 fi
 
 # Setup prerequisite check — exempt categories:
-# Category 1 — Self-reference: rat-setup (cannot check setup before setup)
-# Category 2 — Passive policies: *-policy (14 skills, loaded by agents via skills: field, not user-invocable)
+# Category 1 — Self-reference: rat-init-project, rat-setup (cannot check setup before setup)
+# Category 2 — Passive policies: *-policy (loaded by agents via skills: field, not user-invocable)
 # Category 3 — File-extension conventions: systemverilog, systemverilog-assertion, systemc, uvm
 # Category 4 — Reference-only: rtl-orchestrate (routing table, no execution)
 case "$SHORT_NAME" in
-  rat-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
+  rat-init-project|rat-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
     ;;
   *)
     if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
-      emit_continue "[SETUP REQUIRED] rat-setup has not been run. Project rules (.claude/rules/), guides, and directory structure are missing — the pipeline may not function correctly. Run /rtl-agent-team:rat-setup first."
+      emit_continue "[SETUP REQUIRED] Project not initialized. Rules (.claude/rules/), guides, and directory structure are missing. Run /rtl-agent-team:rat-init-project first."
     fi
     ;;
 esac

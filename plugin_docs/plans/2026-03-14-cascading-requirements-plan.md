@@ -18,7 +18,7 @@
 | File | Responsibility |
 |------|---------------|
 | `agents/compliance-checker.md` | Opus agent that compares downstream artifacts against upstream iron-requirements.json |
-| `skills/rtl-design-policy/templates/compliance-state.json` | State template bootstrapped by phase-state-bootstrap hook |
+| `skills/rtl-p4-rapid-impl-policy/templates/compliance-state.json` | State template bootstrapped by phase-state-bootstrap hook |
 
 ### Modified Files (22)
 | File | Change Summary |
@@ -225,11 +225,11 @@ git commit -m "test: add iron/open and compliance JSON schema validation tests"
 ### Task 2: compliance-state.json Template
 
 **Files:**
-- Create: `skills/rtl-design-policy/templates/compliance-state.json`
+- Create: `skills/rtl-p4-rapid-impl-policy/templates/compliance-state.json`
 
 - [ ] **Step 1: Check existing templates directory**
 
-Run: `ls skills/rtl-design-policy/templates/`
+Run: `ls skills/rtl-p4-rapid-impl-policy/templates/`
 Expected: See existing template files (p4-state.json etc.)
 
 - [ ] **Step 2: Write compliance-state.json template**
@@ -248,13 +248,13 @@ Expected: See existing template files (p4-state.json etc.)
 
 - [ ] **Step 3: Verify template matches test schema**
 
-Run: `python -c "import json; t=json.load(open('skills/rtl-design-policy/templates/compliance-state.json')); assert set(t.keys()) == {'phase','upstream_iron_paths','open_requirements_path','compliance_status','compliance_authority','challenge_count','last_check_timestamp'}; print('OK')"`
+Run: `python -c "import json; t=json.load(open('skills/rtl-p4-rapid-impl-policy/templates/compliance-state.json')); assert set(t.keys()) == {'phase','upstream_iron_paths','open_requirements_path','compliance_status','compliance_authority','challenge_count','last_check_timestamp'}; print('OK')"`
 Expected: `OK`
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add skills/rtl-design-policy/templates/compliance-state.json
+git add skills/rtl-p4-rapid-impl-policy/templates/compliance-state.json
 git commit -m "feat: add compliance-state.json template for phase state bootstrap"
 ```
 
@@ -680,7 +680,7 @@ Expected: All PASS, no regressions
 
 - [ ] **Step 2: Verify file structure**
 
-Run: `ls agents/compliance-checker.md skills/rtl-design-policy/templates/compliance-state.json`
+Run: `ls agents/compliance-checker.md skills/rtl-p4-rapid-impl-policy/templates/compliance-state.json`
 Expected: Both files exist
 
 - [ ] **Step 3: Verify skill-completion-criteria.json is valid JSON**

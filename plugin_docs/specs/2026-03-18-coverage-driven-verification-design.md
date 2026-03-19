@@ -117,7 +117,7 @@ Wave 0: Preparation + Test Plan (expanded)
     test-plan-writer per module (parallel):
       Input:  docs/phase-3-uarch/{module}.md
               docs/phase-3-uarch/iron-requirements.json
-              skills: [rtl-test-design-policy]
+              skills: [test-design-policy]
       Process:
         1. Extract features from uarch spec (FSM, pipeline, protocol, datapath)
         2. Map each feature to REQ-U-* from iron-requirements
@@ -204,9 +204,9 @@ Wave 6b (enhanced): Tier 2 Unit FROM Test Plan
 
 ```yaml
 Role: Test plan generation specialist
-Input: uarch spec + iron-requirements + rtl-test-design-policy
+Input: uarch spec + iron-requirements + test-design-policy
 Output: sim/{module}/{module}_test_plan.md per module
-Skills: [rtl-test-design-policy]
+Skills: [test-design-policy]
 Spawn: One Task() per module, parallel execution
 Constraints:
   - Must reference every REQ-U-* from iron-requirements
@@ -244,7 +244,7 @@ After creating `test-plan-writer.md`:
 - `pytest tests/` regression PASS
 - Verify: p4-implement-orchestrator Wave 0 has Step 0a (preparation) + Step 0b (test plan)
 - Verify: testbench-dev Investigation Protocol references `{module}_test_plan.md`
-- Verify: test-plan-writer agent references rtl-test-design-policy via skills field
+- Verify: test-plan-writer agent references test-design-policy via skills field
 - Verify: coverage-analyst and requirement-tracer reference `{module}_test_plan.md`
 - Verify: `grep -r 'test-plan-writer' agents/ skills/` returns expected references
 
@@ -409,7 +409,7 @@ Each file MUST include the per-file fallback instruction (see Backward Compatibi
 |------|--------|
 | `skills/rtl-p4-implement-policy/SKILL.md` | Wave 6b gate: ac_ids populated condition (when AC exists). Advisory, not hard-block |
 | `skills/rtl-p5-verify-policy/SKILL.md` | Module graduation: AC-level VERIFIED condition for Critical/High |
-| `skills/rtl-functional-verify-policy/SKILL.md` | P5A closure gate includes AC coverage |
+| `skills/rtl-p5a-functional-closure-policy/SKILL.md` | P5A closure gate includes AC coverage |
 | `skill-completion-criteria.json` | Add ac_ids verification to relevant skills |
 | `phase-registry.json` | completion_check includes AC coverage |
 
@@ -514,7 +514,7 @@ Step 7: Hook library audit (Category G: 0 files — no change needed)
 - Step 2: `grep -c 'acceptance_criteria' agents/uarch-designer.md agents/p3-uarch-orchestrator.md`
 - Step 3: `grep -c 'ac_ids\|AC-[0-9]' agents/testbench-dev.md agents/test-plan-writer.md agents/p4s-unit-test-orchestrator.md agents/p5s-func-verify-orchestrator.md agents/sva-extractor.md`
 - Step 4: `grep -c 'ac_ids\|ac_id' agents/compliance-checker.md agents/requirement-tracer.md agents/coverage-analyst.md agents/p5-verify-orchestrator.md agents/p5a-functional-closure-orchestrator.md skills/rtl-p5-verify/SKILL.md skills/rtl-p5-verify-team/SKILL.md`
-- Step 5: `grep -c 'ac_ids' skills/rtl-p4-implement-policy/SKILL.md skills/rtl-p5-verify-policy/SKILL.md skills/rtl-functional-verify-policy/SKILL.md skill-completion-criteria.json phase-registry.json`
+- Step 5: `grep -c 'ac_ids' skills/rtl-p4-implement-policy/SKILL.md skills/rtl-p5-verify-policy/SKILL.md skills/rtl-p5a-functional-closure-policy/SKILL.md skill-completion-criteria.json phase-registry.json`
 - Step 6: Diff team vs non-team orchestrators for symmetric ac_ids handling
 - Step 7: `grep -c 'ac_ids\|acceptance_criteria' hooks/lib/artifact-map.sh` (audit)
 - Final: `pytest tests/` full regression PASS

@@ -144,7 +144,7 @@ class TestComplianceStateSchema:
 
     def test_compliance_state_template_matches_schema(self):
         """Verify the actual template file matches expected schema."""
-        template_path = REPO_ROOT / "skills" / "rtl-design-policy" / "templates" / "compliance-state.json"
+        template_path = REPO_ROOT / "skills" / "rtl-p4-rapid-impl-policy" / "templates" / "compliance-state.json"
         if template_path.exists():
             state = json.loads(template_path.read_text())
             assert REQUIRED_STATE_FIELDS.issubset(state.keys())

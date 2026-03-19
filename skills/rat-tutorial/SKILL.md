@@ -26,16 +26,21 @@ code blocks. Keep explanations concise but educational.
 ### 1. Getting Started
 
 ```
-/rtl-agent-team:rat-setup
+/rtl-agent-team:rat-init-project
 ```
 
 This is the FIRST command to run in any new RTL project. It:
-- Checks for required tools (Verilator, Python, SystemC, gcc)
+- Creates standard directory structure (rtl/, sim/, docs/, etc.)
 - Deploys coding convention rules to `.claude/rules/`
-- Installs EDA helper scripts (`run_lint.sh`, `run_sim.sh`, `run_syn.sh`, etc.)
-- Creates project directory structure
+- Deploys phase guides and EDA scripts
 
-Without setup, all other skills will prompt you to run it first.
+Then verify your EDA tools:
+```
+/rtl-agent-team:rat-setup
+```
+This checks/installs required tools (Verilator, Python, SystemC, gcc).
+
+Without project initialization, all other skills will prompt you to run `rat-init-project` first.
 
 ---
 
@@ -290,7 +295,7 @@ your-project/
 
 ### 7. Quick Tips
 
-- **Always start with `/rtl-agent-team:rat-setup`** — everything depends on it
+- **Always start with `/rtl-agent-team:rat-init-project`** then `/rtl-agent-team:rat-setup`
 - **Use `/rtl-agent-team:domain-consult`** freely — it auto-routes to the right expert
 - **RTL changes trigger verification gates** — the Stop hook enforces lint → TB → sim
 - **Phase 6 cascade** — if you modify RTL after P6, design review must be re-run
@@ -305,4 +310,4 @@ your-project/
 2. Use code blocks for commands — make them copy-pasteable
 3. Highlight the most important commands in each section
 4. If the user asks about a specific section, expand on that section with more detail
-5. End with: "Run `/rtl-agent-team:rat-setup` to get started, or ask about any specific command for more details."
+5. End with: "Run `/rtl-agent-team:rat-init-project` to set up your project, then `/rtl-agent-team:rat-setup` to verify EDA tools."

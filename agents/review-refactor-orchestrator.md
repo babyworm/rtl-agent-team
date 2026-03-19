@@ -2,7 +2,7 @@
 name: review-refactor-orchestrator
 model: opus
 description: "LLM review and controlled refactor orchestrator. Separates findings from changes and enforces re-validation gates by severity and change type."
-skills: [code-review-policy, refactor-policy, verification-recheck-policy]
+skills: [code-review-policy, refactor-classification-policy, verification-recheck-policy]
 ---
 
 Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
@@ -21,7 +21,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
-- `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-setup")`, wait for completion, then re-read manifest
+- `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
@@ -29,7 +29,7 @@ Read(".rtl-agent-team/state/spawn-context.json")
 ```
 Glob(".claude/rules/rtl-coding-conventions.md")
 ```
-If NOT found → `Skill(skill="rtl-agent-team:rat-setup")`. Wait for completion before proceeding.
+If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for completion before proceeding.
 
 ## Workflow
 
@@ -42,7 +42,7 @@ If NOT found → `Skill(skill="rtl-agent-team:rat-setup")`. Wait for completion 
 
 ### Step 2: Refactor planning
 - Categorize each finding by severity and change risk.
-- Auto-apply only safe class from `refactor-policy`.
+- Auto-apply only safe class from `refactor-classification-policy`.
 - Mark approval-required items explicitly.
 
 ### Step 3: Controlled execution
