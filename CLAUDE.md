@@ -106,9 +106,9 @@ When modifying this plugin:
 3. **Hook enforcement** — Quality gates MUST be enforced by hooks (Stop/PreToolUse/PostToolUse), never by LLM instruction compliance alone
 4. **Skill completion criteria** — Action skills with completion enforcement must be listed in `skill-completion-criteria.json` (plugin root)
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
-6. **Non-destructive deployment** — `rat-setup` deploys rules/guides only if files don't already exist
+6. **Non-destructive deployment** — `rat-init-project` deploys rules/guides only if files don't already exist
 7. **POSIX shell compatibility** — Hook scripts (`hooks/*.sh`) are invoked with `sh`, not `bash`. Use `[` not `[[`. Scripts in `scripts/` may use `bash` when specified via shebang
-8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-setup` is a hard block
+8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-init-project` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
 11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
