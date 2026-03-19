@@ -44,8 +44,8 @@ if [[ "$OSTYPE" == darwin* ]] || [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
     "tests/unit/test_hooks.py::TestHookConcurrency"          # concurrent hook subprocess: mkdir-based locking timing varies across platforms
     "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # hook subprocess: depends on Linux shell tools (team-gate-util.sh)
     "tests/unit/test_hooks.py::TestSedFallbackContract"      # requires GNU sed behavior (BSD sed incompatible)
-    "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # requires slang-server binary
-    "tests/unit/test_regression_coverage.py::TestRunRegression"  # requires verilator binary
+    "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # shell subprocess: install script uses GNU sort -V
+    "tests/unit/test_regression_coverage.py::TestRunRegression"  # shell subprocess: run_regression.sh uses declare -A (bash 4+) + nproc
   )
   for marker in "${SKIP_MARKERS[@]}"; do
     DESELECT_ARGS="$DESELECT_ARGS --deselect=$marker"
@@ -81,7 +81,7 @@ if command -v shellcheck >/dev/null 2>&1; then
     FAIL=1
   fi
 else
-  echo "  ⚠ shellcheck not installed — skipping (install: brew install shellcheck)"
+  echo "  ⚠ shellcheck not installed — skipping (install: apt-get install shellcheck or brew install shellcheck)"
 fi
 
 echo ""
