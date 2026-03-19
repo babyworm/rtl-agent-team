@@ -96,7 +96,7 @@ Each feature entry supports an optional `ac_ids` field for acceptance criteria t
 
 ## Advanced
 
-- Use `$dumpvars` for waveform capture even on passing tests (for coverage)
+- Waveform dump: use `ifdef` guards for portability (`FSDB_DUMP`, `SHM_DUMP`, `VCD_DUMP`). No dump by default for fast regression. Enable per-run via `+define+FSDB_DUMP` etc.
 - Randomize input sequences with `$urandom` for broader coverage
 - Use `always_ff`, `always_comb` in testbench helper modules (never `always @*`)
 

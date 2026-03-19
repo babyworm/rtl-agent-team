@@ -124,11 +124,21 @@ module tb_{MODULE_NAME};
   // =========================================================================
   // Waveform Dump (conditional)
   // =========================================================================
-  `ifdef DUMP_WAVES
+  // Compile-time selection: +define+FSDB_DUMP / +define+SHM_DUMP / +define+VCD_DUMP
+  // Default: no dump (fastest simulation). Enable as needed for debug.
   initial begin
-    $dumpfile("tb_{MODULE_NAME}.vcd");
-    $dumpvars(0, tb_{MODULE_NAME});
+    `ifdef FSDB_DUMP
+      $fsdbDumpfile($sformatf("sim/{MODULE_NAME}/tb_{MODULE_NAME}.fsdb"));
+      $fsdbDumpvars(0, tb_{MODULE_NAME}, "+all");
+    `endif
+    `ifdef SHM_DUMP
+      $shm_open($sformatf("sim/{MODULE_NAME}/tb_{MODULE_NAME}.shm"));
+      $shm_probe(tb_{MODULE_NAME}, "ASMC");
+    `endif
+    `ifdef VCD_DUMP
+      $dumpfile($sformatf("sim/{MODULE_NAME}/tb_{MODULE_NAME}.vcd"));
+      $dumpvars(0, tb_{MODULE_NAME});
+    `endif
   end
-  `endif
 
 endmodule

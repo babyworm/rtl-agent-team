@@ -60,6 +60,11 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Error injection must be explicitly enabled by test configuration; never inject by default.
     - Scoreboards must check every output transaction, not sample at the end.
     - Cocotb monitors must use non-blocking reads; never use blocking reads in monitors.
+    - Waveform dump: use compile-time `ifdef` guards for simulator portability:
+      - `ifdef FSDB_DUMP`: `$fsdbDumpfile`/`$fsdbDumpvars` (Synopsys VCS + Verdi)
+      - `ifdef SHM_DUMP`: `$shm_open`/`$shm_probe` (Cadence Xcelium)
+      - `ifdef VCD_DUMP`: `$dumpfile`/`$dumpvars` (open-source: iverilog, verilator)
+      - Default (no define): no dump for fastest regression. Enable per-run via `+define+FSDB_DUMP` etc.
   </Constraints>
 
   <Investigation_Protocol>
