@@ -53,6 +53,7 @@ if [[ "$OSTYPE" == darwin* ]] || [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   for marker in "${SKIP_MARKERS[@]}"; do
     DESELECT_ARGS="$DESELECT_ARGS --deselect=$marker"
   done
+  SKIPPED="${SKIPPED}platform-deselects "
 else
   echo "  (platform: ${OSTYPE}, bash ${BASH_VERSION} — running all tests, CI parity)"
 fi
