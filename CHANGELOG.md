@@ -7,6 +7,16 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.7] - 2026-03-19
+
+### Fixed
+- `local-ci-check.sh`: platform detection for CI parity (Linux bash 5+ runs all tests, macOS/older bash conservatively deselects)
+- `local-ci-check.sh`: usage comment corrected from `sh` to `bash` (script uses bash arrays)
+- `local-ci-check.sh`: skip reason comments now honestly describe conservative deselection, not fabricated hard dependencies
+- `local-ci-check.sh`: numpy absence now warns visibly with install hint (was silent)
+- `local-ci-check.sh`: final summary distinguishes "ALL PASSED" from "PASSED (skipped: ...)" to prevent false CI parity claims
+- `local-ci-check.sh`: shellcheck install hint made platform-neutral (apt-get or brew)
+
 ## [0.8.6] - 2026-03-18
 
 ### Added
