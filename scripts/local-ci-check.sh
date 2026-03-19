@@ -7,8 +7,8 @@
 #   1. pytest tests/unit/
 #   2. shellcheck -s sh hooks/*.sh hooks/lib/*.sh
 #
-# On macOS or bash < 5, tests requiring Ubuntu bash 5+ / specific binaries
-# are automatically deselected. On Linux with bash 5+, all tests run (CI parity).
+# On macOS or bash < 5, shell-execution tests are conservatively deselected
+# (cross-platform behavior not validated). On Linux with bash 5+, all tests run (CI parity).
 #
 # Exit code: 0 if all checks pass, 1 if any fail.
 
@@ -33,19 +33,21 @@ if [ -f ".venv/bin/activate" ]; then
   . .venv/bin/activate
 fi
 
-# Platform detection: skip shell-execution tests only on macOS or bash < 5
-# On Linux with bash 5+ (CI environment), run everything for full parity
+# Platform detection: conservative deselect on non-CI platforms
+# CI runs ubuntu-latest (bash 5.2) with full test suite. On macOS or older bash,
+# shell-execution tests are deselected as cross-platform behavior is not validated.
+# Hooks target POSIX compatibility but subtle platform differences may exist.
 DESELECT_ARGS=""
 if [[ "$OSTYPE" == darwin* ]] || [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   echo "  (platform: ${OSTYPE}, bash ${BASH_VERSION} — deselecting shell-execution tests)"
   SKIP_MARKERS=(
-    "tests/unit/test_hooks.py::TestSessionScopedState"       # hook subprocess: depends on Linux shell tools (json-util.sh sed patterns)
-    "tests/unit/test_hooks.py::TestSkillCompletionGate"      # hook subprocess: depends on Linux shell tools (json-util.sh sed patterns)
-    "tests/unit/test_hooks.py::TestHookConcurrency"          # concurrent hook subprocess: mkdir-based locking timing varies across platforms
-    "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # hook subprocess: depends on Linux shell tools (team-gate-util.sh)
-    "tests/unit/test_hooks.py::TestSedFallbackContract"      # requires GNU sed behavior (BSD sed incompatible)
-    "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # shell subprocess: install script uses GNU sort -V
-    "tests/unit/test_regression_coverage.py::TestRunRegression"  # shell subprocess: run_regression.sh uses declare -A (bash 4+) + nproc
+    "tests/unit/test_hooks.py::TestSessionScopedState"       # hook subprocess: cross-platform not validated
+    "tests/unit/test_hooks.py::TestSkillCompletionGate"      # hook subprocess: cross-platform not validated
+    "tests/unit/test_hooks.py::TestHookConcurrency"          # concurrent hook subprocess: timing varies across platforms
+    "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # hook subprocess: cross-platform not validated
+    "tests/unit/test_hooks.py::TestSedFallbackContract"      # sed fallback: cross-platform not validated
+    "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # install script uses GNU sort -V
+    "tests/unit/test_regression_coverage.py::TestRunRegression"  # run_regression.sh uses declare -A (bash 4+) + nproc
   )
   for marker in "${SKIP_MARKERS[@]}"; do
     DESELECT_ARGS="$DESELECT_ARGS --deselect=$marker"
