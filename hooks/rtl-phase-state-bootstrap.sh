@@ -90,7 +90,7 @@ if [ -n "$SCTX_MSG" ]; then
 fi
 
 # Skip remaining bootstrap (template copying) if project setup marker is absent.
-if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ]; then
+if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] && [ ! -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; then
   emit_continue "$SETUP_HINT"
 fi
 
