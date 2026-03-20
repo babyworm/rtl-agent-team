@@ -173,6 +173,68 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 - 0.3–0.5: CONDITIONAL PASS — log warnings, Phase 2 reviewers focus on flagged axes
 - \> 0.5: BLOCK — resolve top ambiguities via AskUserQuestion before proceeding
 
+## Adversarial Interpretation Gate (Steps 7.6-7.9)
+
+After ambiguity gate (Step 7.5a) and iron/open verification (Step 7.5b) pass,
+run adversarial reinterpretation to surface ambiguities the initial analysis missed.
+
+### Protocol
+
+1. **Step 7.6**: Spawn adversarial spec-analyst (separate Task, clean context) to challenge
+   iron-requirements.json. References items by `source.section`, not REQ ID.
+   Output: `challenge-report.json` in `.rtl-agent-team/scratch/stability/phase-1/`.
+   Schema: `skills/p1-spec-research/templates/challenge-report-schema.json`.
+   Budget: max 30 challenges per pass.
+2. **Step 7.7**: Present HIGH challenges to user (AskUserQuestion). MEDIUM batched if >10.
+   LOW auto-documented. User may mark challenges as NOT_GENUINE (forced disagreements).
+3. **Step 7.8**: Re-run spec-analyst with original spec + clarifications → all 4 canonical artifacts
+   (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json)
+   + self-validation.
+4. **Step 7.9**: Gate check + stability report.
+
+### Gate Metric
+
+```
+genuine = (HIGH + MEDIUM challenges) - NOT_GENUINE
+resolved = RESOLVED + DOCUMENTED
+resolution_ratio = resolved / genuine   (if genuine == 0: pass)
+gate_pass = (all HIGH resolved) AND (resolution_ratio ≥ 0.8)
+```
+
+Gate failure: list unresolved HIGH challenges, loop back to Step 7.7 (max 1 re-loop).
+After 2nd failure: escalate to user with full divergence report.
+
+### Dual Gate Arbitration (Ambiguity Score + Adversarial Gate)
+
+| Ambiguity Score | Adversarial Gate | Decision |
+|-----------------|-----------------|----------|
+| PASS (≤0.3) | PASS | Proceed |
+| PASS (≤0.3) | FAIL | **BLOCK** |
+| CONDITIONAL (0.3-0.5) | PASS | Proceed with WARNING |
+| BLOCK (>0.5) | PASS | **BLOCK** |
+| BLOCK (>0.5) | FAIL | **BLOCK** |
+
+Rule: Either gate can block; neither can unblock the other.
+
+### Severity Classification
+
+| Severity | Criterion | Example |
+|----------|-----------|---------|
+| HIGH | Different RTL behavior | Signed vs unsigned arithmetic |
+| HIGH | Different interface | 32-bit vs 64-bit datapath |
+| MEDIUM | Different parameterization | Fixed depth vs configurable |
+| MEDIUM | Different timing | 3-stage vs 4-stage pipeline |
+| LOW | Cosmetic only | Block naming differences |
+
+Boundary rule: alternative interpretation would cause different RTL module → HIGH.
+Same module but different parameters → MEDIUM. Same module, same parameters → LOW.
+
+### Pathological Patterns
+
+- Zero challenges on >15 requirements → re-run with stronger adversarial framing
+- >50% items at HIGH severity → spec fundamentally under-specified, escalate
+- Challenge budget exceeded (>30) → rank by severity, return top 30
+
 ## Final Checklist
 
 - [ ] `docs/phase-1-research/iron-requirements.json` exists and is valid JSON
@@ -199,6 +261,10 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 - [ ] AskUserQuestion used at every ambiguity point (no unresolved assumptions)
 - [ ] `docs/phase-1-research/ambiguity-assessment.md` saved with per-axis scores and overall ambiguity_score
 - [ ] Ambiguity Gate passed (score ≤ 0.3 for PASS, 0.3–0.5 for CONDITIONAL PASS)
+- [ ] Adversarial reinterpretation completed (Step 7.6)
+- [ ] All HIGH challenges resolved or escalated
+- [ ] resolution_ratio ≥ 0.8 (adversarial gate PASS)
+- [ ] `reviews/phase-1-research/stability-report.md` saved
 - [ ] Every iron requirement has measurable acceptance_criteria (no vague terms)
 - [ ] Every iron requirement has `"violation_policy": "user_escalation"`
 - [ ] Every open item has ≥ 2 candidates and evaluation_criteria
