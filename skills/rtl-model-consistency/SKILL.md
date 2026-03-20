@@ -30,6 +30,8 @@ if ref != BFM == RTL, ref model diverged; if ref == RTL != BFM, BFM has an issue
 </Why_This_Exists>
 
 <Execution_Policy>
+- Use `skills/rtl-model-consistency/scripts/compare_3way.py` for automated pairwise comparison
+- Use `skills/rtl-model-consistency/templates/consistency-report.md` as report scaffold
 - ref-model-dev runs reference C model on shared test vectors
 - bfm-dev runs BFM on same vectors
 - func-verifier runs RTL on same vectors

@@ -31,6 +31,8 @@ Conformance testbenches and simulation wrappers MUST follow project conventions 
 - Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
 - Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
 - DUT instance: `u_dut` or `u_` prefix
+- Use `skills/rtl-conformance-test/scripts/conformance_compare.py` for bitexact comparison
+- Use `skills/rtl-conformance-test/templates/golden-metadata.json` for stream metadata
 - Use `logic` only (NOT `reg`/`wire`)
 </Coding_Convention_Requirements>
 

@@ -31,6 +31,8 @@ root_cause.md documents the finding for the RTL engineer making the fix.
 <Execution_Policy>
 - waveform-analyzer reads existing failing simulation waveforms first
 - func-verifier creates and runs a minimal reproduction TB
+- Use `skills/rtl-bug-repro/templates/repro-tb-template.sv` as scaffold for repro TBs
+- Use `skills/rtl-bug-repro/scripts/vcd_diff.py` for cycle-by-cycle VCD comparison
 - Root cause documented in sim/bugs/{bug_id}/root_cause.md
 - Do NOT fix RTL — reproduce and document only
 </Execution_Policy>

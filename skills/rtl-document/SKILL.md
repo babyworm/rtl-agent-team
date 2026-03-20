@@ -32,6 +32,7 @@ with port tables and functional descriptions accelerate integration and review.
 - rtl-explorer reads source files to extract module structure
 - synthesis-reporter provides area and timing data if synth report exists
 - Output is Markdown per module, following docs/ structure
+- Use `skills/rtl-document/templates/module-doc-template.md` as scaffold — copy and fill placeholders
 - Do NOT modify RTL source during documentation
 </Execution_Policy>
 

@@ -1,0 +1,26 @@
+{
+  "_comment": "Conformance stream metadata template. One entry per test vector.",
+  "streams": [
+    {
+      "id": "{{STREAM_ID}}",
+      "standard": "H.264|H.265",
+      "profile": "{{PROFILE}}",
+      "level": "{{LEVEL}}",
+      "source": "{{JM|HM|VTM|JCTVC|JVET}}",
+      "source_version": "{{VERSION}}",
+      "bitstream": "{{PATH_TO_BITSTREAM}}",
+      "golden_output": "{{PATH_TO_GOLDEN_YUV}}",
+      "golden_md5": "{{MD5_HASH}}",
+      "resolution": {
+        "width": 0,
+        "height": 0
+      },
+      "frames": 0,
+      "format": "yuv420",
+      "description": "{{TEST_DESCRIPTION}}",
+      "features_tested": ["{{FEATURE1}}", "{{FEATURE2}}"],
+      "comparison_mode": "bitexact|md5|psnr",
+      "psnr_threshold_db": null
+    }
+  ]
+}

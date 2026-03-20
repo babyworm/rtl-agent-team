@@ -20,6 +20,7 @@ Tier 4: Integration    — cross-module, end-to-end (THIS SKILL) ←
 ```
 
 Outputs: sim/top/integration_results.json + sim/top/ test files.
+Use `skills/rtl-p5s-integration-test/templates/integration-tb-template.sv` as scaffold.
 </Purpose>
 
 <Use_When>

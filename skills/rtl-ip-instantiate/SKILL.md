@@ -30,7 +30,7 @@ eliminates transcription errors and documents all connections explicitly.
 <Execution_Policy>
 - rtl-explorer reads existing project structure and interface conventions
 - rtl-architect designs the wrapper interface and connection strategy
-- rtl-coder writes the wrapper RTL
+- rtl-coder writes the wrapper RTL using `skills/rtl-ip-instantiate/templates/ip-wrapper-template.sv` as scaffold
 - Wrapper MUST follow project coding conventions:
   - Port prefixes: `i_` (input), `o_` (output), `io_` (bidirectional)
   - Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`

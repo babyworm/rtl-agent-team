@@ -30,6 +30,7 @@ Runs in parallel with rtl-p3-uarch-design during Phase 3.
 TLM models run orders of magnitude faster than RTL simulation.
 Early BFM catches protocol bugs and performance bottlenecks before RTL exists.
 BFM also serves as the performance reference in rtl-p5s-perf-verify phase.
+Use `skills/bfm-develop/templates/bfm_module_template.h` as SystemC TLM-2.0 AT scaffold.
 AT non-blocking transport accurately models pipelined and out-of-order behavior
 that LT blocking transport cannot capture.
 </Why_This_Exists>

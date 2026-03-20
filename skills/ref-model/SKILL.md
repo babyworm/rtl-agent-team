@@ -32,6 +32,7 @@ Runs in parallel with p2-arch-design during Phase 2.
 RTL verification requires a golden reference. Writing the reference model before RTL
 forces algorithm understanding and exposes spec ambiguities before silicon commitment.
 Bitexact match against JM/HM is the industry standard acceptance criterion.
+Use `skills/ref-model/templates/` for scaffolding: Makefile, ref_model_main.c, dpi_wrapper.h.
 
 The model also serves as a bandwidth analysis tool: by tracking external memory access
 counts and patterns through the abstraction layer, architects can estimate required

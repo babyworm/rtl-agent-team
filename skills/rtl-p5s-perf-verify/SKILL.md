@@ -13,6 +13,7 @@ Outputs: sim/{module}/{module}_perf.json with measured vs expected metrics.
 
 <Use_When>
 - RTL passes functional verification and performance validation is needed
+- Use `skills/rtl-p5s-perf-verify/templates/perf-monitor-template.sv` as measurement harness scaffold
 - BFM performance baseline exists in bfm/
 - Performance regression after RTL change
 </Use_When>

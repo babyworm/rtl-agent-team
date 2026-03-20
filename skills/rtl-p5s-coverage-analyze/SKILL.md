@@ -14,6 +14,7 @@ Outputs: sim/coverage/coverage_gaps.md + sim/coverage/test_coverage_fill.py.
 
 <Use_When>
 - Coverage report exists from a rtl-p5s-func-verify run
+- Use `skills/rtl-p5s-coverage-analyze/templates/coverage-gap-report.md` as report scaffold
 - Coverage is below target (90% line, 80% toggle, 70% FSM)
 - Preparing for verification closure milestone
 </Use_When>
