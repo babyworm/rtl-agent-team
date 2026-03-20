@@ -38,6 +38,116 @@
 3. **Data stability**: Bus data stable for full synchronization latency during transfer
 4. **FIFO pointer sync**: Read/write pointers properly gray-encoded before crossing
 
+## Edge Cases & Pitfalls
+
+These are areas where incorrect design choices are common. When reviewing or generating
+CDC-related RTL, apply these rules explicitly.
+
+### Non-Power-of-2 Async FIFO Depth
+
+Standard Gray code requires 2^N entries to guarantee single-bit change on wrap.
+Non-power-of-2 depth breaks this at the wrap point (N-1 → 0 may flip multiple bits).
+
+| Approach | Pros | Cons | Recommendation |
+|----------|------|------|----------------|
+| **Round up to 2^N** | Safe, simple, standard Gray code works | Wastes memory | **Preferred** — default choice unless memory-constrained |
+| **Symmetric pointer (ping-pong)** | No memory waste, 1-bit change preserved | Doubles pointer range, complex full/empty logic | Use only with proven reference design |
+| **Johnson counter** | 1-bit change per step | Fixed 2N-state cycle (N-bit register), not arbitrary depth | Only for very small, fixed-size buffers |
+| **Binary pointer + handshake** | Works for any depth | Higher latency, lower throughput | When FIFO throughput is not critical |
+| **Almost-full/empty flags** | Reduces crossing frequency | Still requires synchronized remote pointer for flag generation | Good for flow control with conservative margin |
+
+**Rule**: When non-2^N FIFO depth is used, the design MUST document which approach
+is taken and why. Verify that the wrap-point transition changes at most 1 bit
+in the encoding used for crossing. Flag as CAUTION if the approach cannot be
+verified structurally.
+
+### Reconvergence
+
+Multiple signals from the same source domain crossing to the same destination domain
+independently can arrive at different cycles due to independent synchronizer latency.
+
+```
+Source domain A:          Dest domain B:
+  q_addr  ──→ 2FF sync ──→ synced_addr
+  q_valid ──→ 2FF sync ──→ synced_valid   ← may arrive 1 cycle apart!
+```
+
+**Risk**: `synced_valid` may assert while `synced_addr` still holds the old value.
+**Fix**: Use handshake or FIFO to transfer addr+valid together, OR use MUX sync
+where valid is the control and addr is the data (addr must be held stable while valid
+is asserted, until the destination domain captures or acknowledges).
+
+**Rule**: When 2+ signals from the same source FF group cross to the same destination,
+flag as CAUTION unless they share a common synchronization mechanism (handshake, FIFO, MUX sync).
+
+### Combinational Logic Before Synchronizer
+
+Combinational logic between the source FF and the first synchronizer FF can produce
+glitches that violate the setup/hold window of the sync FF.
+
+```
+Source FF ──→ [AND/OR/MUX] ──→ Sync FF1 ──→ Sync FF2   ← GLITCH RISK
+Source FF ──→ Sync FF1 ──→ Sync FF2                      ← CORRECT
+```
+
+**Rule**: The input to the first synchronizer FF should be driven directly by a
+register output (no combinational logic in between). Flag as CAUTION if combinational
+logic is detected on the path.
+
+### Fan-out Before Synchronization Complete
+
+Using the signal after the first sync FF but before the second creates a partially-synchronized path.
+
+```
+Source FF ──→ Sync FF1 ──→ Sync FF2
+                  │
+                  └──→ Logic X   ← STILL METASTABLE, unsafe!
+```
+
+**Rule**: No fan-out from intermediate sync FFs. Only the output of the final sync FF
+(FF2 for 2-FF, FF3 for 3-FF) may drive destination logic.
+
+### Reset Domain Crossing
+
+Async reset signals crossing domains must use a **reset synchronizer**:
+async assert (immediate), sync deassert (synchronized to destination clock).
+
+```systemverilog
+// CORRECT: async assert, sync deassert
+always_ff @(posedge dest_clk or negedge src_rst_n) begin
+  if (!src_rst_n) begin
+    rst_sync_ff1 <= 1'b0;
+    rst_sync_ff2 <= 1'b0;
+  end else begin
+    rst_sync_ff1 <= 1'b1;
+    rst_sync_ff2 <= rst_sync_ff1;
+  end
+end
+assign dest_rst_n = rst_sync_ff2;
+```
+
+**Rule**: Async reset used in a different clock domain without reset synchronizer → VIOLATION.
+
+### Clock Gating and CDC
+
+Clock-gated domains share the same source clock but the gated version may stop.
+When the gated clock resumes, FFs in the gated domain may sample stale data
+from the ungated domain.
+
+**Rule**: Treat gated and ungated versions of the same clock as **related but distinct**
+domains. Crossings between them require at minimum data stability verification.
+Flag as CAUTION (not VIOLATION, since they are phase-related).
+
+### Quasi-Static Signals
+
+Configuration registers written once at startup and never changed during operation.
+Technically a CDC path, but safe if the signal is stable before any destination
+domain logic uses it.
+
+**Rule**: If a signal can be proven quasi-static (written only during reset/config phase,
+stable during operation), it may be waived. But the waiver must be explicit —
+do not silently skip quasi-static crossings.
+
 ## CDC Constraint Patterns (SDC)
 
 ```tcl

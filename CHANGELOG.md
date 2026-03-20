@@ -7,6 +7,33 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.8] - 2026-03-20
+
+### Added
+- New `rat-init-project` skill — per-project initialization (directories, rules, guides, templates)
+- FSDB/SHM/VCD waveform dump `ifdef` guards in all SV testbench templates
+- Templates and scripts for 11 previously asset-free skills:
+  rtl-document, rtl-bug-repro, rtl-ipxact-gen, rtl-p5s-perf-verify,
+  rtl-p5s-coverage-analyze, rtl-p5s-integration-test, ref-model,
+  bfm-develop, rtl-ip-instantiate, rtl-model-consistency, rtl-conformance-test
+- CDC edge case guidelines in `cdc-patterns.md` (non-2^N FIFO, reconvergence,
+  combinational before sync, fan-out, reset crossing, clock gating, quasi-static)
+- Categorized skill table in README/README_kr (93 skills across 10 categories)
+- `${CLAUDE_PLUGIN_DATA}` advisory setup marker with `~/.config` fallback
+- Global rules check in hooks (local || `~/.claude/rules/` fallback)
+- `TestRatInitProjectRuntimeContract` and `TestRuleTemplateCount` tests
+
+### Changed
+- `rat-setup` redesigned as interactive 5-Phase EDA wizard (per-machine, not per-project)
+- `diagram-rules.md` template removed — content injected via `<markdown_diagram_rule>` tag
+- Agent Step 0 now calls `rat-init-project` (not `rat-setup`) for project initialization
+
+### Renamed
+- `refactor-policy` → `refactor-classification-policy`
+- `rtl-design-policy` → `rtl-p4-rapid-impl-policy`
+- `rtl-functional-verify-policy` → `rtl-p5a-functional-closure-policy`
+- `rtl-test-design-policy` → `test-design-policy`
+
 ## [0.8.7] - 2026-03-19
 
 ### Fixed
