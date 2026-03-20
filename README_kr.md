@@ -143,9 +143,9 @@ EDA 도구 확인 및 설치는 `/rtl-agent-team:rat-setup`을 실행하세요 (
 | **Pipeline** | 11 | 전체 파이프라인 (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...) | T,S,R (32) |
 | **Phase 1-3** | 6 | 스펙 분석, 아키텍처, μArch (+ 팀 모드) | — |
 | **Phase 4** | 7 | RTL 구현, 버그 수정, 리팩토링, 유닛 테스트, 블록 병렬 | T (1) |
-| **Phase 5** | 12 | 검증: 기능, formal, CDC, 프로토콜, 성능, 커버리지, UVM, 통합 | T,S,R,E (23) |
+| **Phase 5** | 12 | 검증: 기능, formal, CDC, 프로토콜, 성능, 커버리지, UVM, 통합 | T,S,R,E (28) |
 | **Phase 6-7** | 2 | 설계 리뷰, 자유 탐색 | — |
-| **Utility** | 13 | Lint, 합성, IP-XACT, conformance, 문서, 리뷰, 코덱 평가 | T,S,R,E (30) |
+| **Utility** | 13 | Lint, 합성, IP-XACT, conformance, 문서, 리뷰, 코덱 평가 | T,S,R,E (52) |
 | **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC | T,R,E (11) |
 | **Policy** | 31 | 에이전트가 참조하는 규칙/기준 (비사용자 호출) | T (5) |
 | **Tool Profile** | 4 | 시뮬레이터/린터/합성기/CDC 도구 설정 | — |

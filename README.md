@@ -143,9 +143,9 @@ For EDA tool verification and installation, run `/rtl-agent-team:rat-setup` (one
 | **Pipeline** | 11 | Full pipeline orchestration (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...) | T,S,R (32) |
 | **Phase 1-3** | 6 | Spec research, architecture, uArch (+ team modes) | — |
 | **Phase 4** | 7 | RTL implementation, bugfix, refactor, unit test, block-parallel | T (1) |
-| **Phase 5** | 12 | Verification: functional, formal, CDC, protocol, perf, coverage, UVM, integration | T,S,R,E (23) |
+| **Phase 5** | 12 | Verification: functional, formal, CDC, protocol, perf, coverage, UVM, integration | T,S,R,E (28) |
 | **Phase 6-7** | 2 | Design review, free exploration | — |
-| **Utility** | 13 | Lint, synthesis, IP-XACT, conformance, document, review, codec eval | T,S,R,E (30) |
+| **Utility** | 13 | Lint, synthesis, IP-XACT, conformance, document, review, codec eval | T,S,R,E (52) |
 | **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC | T,R,E (11) |
 | **Policy** | 31 | Rules/criteria referenced by agents (non-user-invocable) | T (5) |
 | **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations | — |

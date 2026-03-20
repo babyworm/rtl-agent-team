@@ -14,7 +14,6 @@ Outputs: sim/coverage/coverage_gaps.md + sim/coverage/test_coverage_fill.py.
 
 <Use_When>
 - Coverage report exists from a rtl-p5s-func-verify run
-- Use `skills/rtl-p5s-coverage-analyze/templates/coverage-gap-report.md` as report scaffold
 - Coverage is below target (90% line, 80% toggle, 70% FSM)
 - Preparing for verification closure milestone
 </Use_When>
@@ -24,6 +23,10 @@ Outputs: sim/coverage/coverage_gaps.md + sim/coverage/test_coverage_fill.py.
 - Functional failures exist (fix failures before analyzing coverage)
 - Only a single test is needed (write it directly with testbench-dev)
 </Do_Not_Use_When>
+
+<Execution_Policy>
+- Use `skills/rtl-p5s-coverage-analyze/templates/coverage-gap-report.md` as report scaffold
+</Execution_Policy>
 
 <Why_This_Exists>
 Raw coverage reports are verbose and hard to prioritize. coverage-analyst identifies

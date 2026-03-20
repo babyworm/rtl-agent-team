@@ -20,7 +20,6 @@ Tier 4: Integration    — cross-module, end-to-end (THIS SKILL) ←
 ```
 
 Outputs: sim/top/integration_results.json + sim/top/ test files.
-Use `skills/rtl-p5s-integration-test/templates/integration-tb-template.sv` as scaffold.
 </Purpose>
 
 <Use_When>
@@ -37,6 +36,10 @@ Use `skills/rtl-p5s-integration-test/templates/integration-tb-template.sv` as sc
 - Performance measurement (use rtl-p5s-perf-verify)
 - Standards conformance bitexact testing (use rtl-conformance-test)
 </Do_Not_Use_When>
+
+<Execution_Policy>
+- Use `skills/rtl-p5s-integration-test/templates/integration-tb-template.sv` as scaffold
+</Execution_Policy>
 
 <Why_This_Exists>
 Modules that pass individually may fail when connected due to interface mismatches,

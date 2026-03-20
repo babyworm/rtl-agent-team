@@ -5,7 +5,7 @@ Compares two VCD files (expected vs actual) and reports the first divergence
 point with surrounding context. Useful for bug reproduction verification.
 
 Usage:
-    python3 vcd_diff.py expected.vcd actual.vcd [--signals sig1,sig2] [--context 5]
+    python3 vcd_diff.py expected.vcd actual.vcd [--signals sig1,sig2]
 
 Output:
     - First divergence cycle and signal name
@@ -83,7 +83,7 @@ def parse_vcd_signals(filepath, filter_signals=None):
     return result
 
 
-def find_divergences(expected, actual, context=5):
+def find_divergences(expected, actual):
     """Compare two signal dicts and find first divergence per signal."""
     all_signals = sorted(set(expected.keys()) & set(actual.keys()))
     only_expected = sorted(set(expected.keys()) - set(actual.keys()))
@@ -123,7 +123,6 @@ def main():
     parser.add_argument("expected", help="Expected (golden) VCD file")
     parser.add_argument("actual", help="Actual (DUT) VCD file")
     parser.add_argument("--signals", help="Comma-separated signal filter", default=None)
-    parser.add_argument("--context", type=int, default=5, help="Context cycles around divergence")
     args = parser.parse_args()
 
     filter_sigs = set(args.signals.split(",")) if args.signals else None
@@ -132,7 +131,7 @@ def main():
     exp = parse_vcd_signals(args.expected, filter_sigs)
     act = parse_vcd_signals(args.actual, filter_sigs)
 
-    divs, common, only_exp, only_act = find_divergences(exp, act, args.context)
+    divs, common, only_exp, only_act = find_divergences(exp, act)
 
     # Report
     print(f"\nSignals compared: {len(common)}")

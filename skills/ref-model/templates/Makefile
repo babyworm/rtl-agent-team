@@ -17,8 +17,9 @@ DPI_TARGET = build/lib{{MODULE_NAME}}_dpi.so
 
 # Source files
 SRCS    = src/{{MODULE_NAME}}_ref.c
+MAIN_SRC = src/{{MODULE_NAME}}_main.c
 HEADERS = include/{{MODULE_NAME}}_ref.h include/dpi_wrapper.h
-DPI_SRC = src/dpi_wrapper.c
+DPI_SRC = src/{{MODULE_NAME}}_dpi_wrapper.c
 
 # Standalone executable
 TARGET  = build/{{MODULE_NAME}}_ref
@@ -29,7 +30,7 @@ all: $(TARGET)
 
 $(TARGET): $(SRCS) $(HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) $(LDFLAGS) -Iinclude -o $@ $(SRCS) src/main.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -Iinclude -o $@ $(SRCS) $(MAIN_SRC)
 
 dpi: $(DPI_TARGET)
 

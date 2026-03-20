@@ -93,6 +93,7 @@ def main():
             return 0
         else:
             print("RESULT: FAIL (MD5 mismatch)")
+            return 1
 
     mismatch_pos = compare_binary(args.golden, args.actual)
 
