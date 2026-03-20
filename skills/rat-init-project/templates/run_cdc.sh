@@ -36,7 +36,7 @@ usage() {
 Usage: sim/cdc/run_cdc.sh [OPTIONS] [SV_FILES...]
 
 Options:
-  --tool <name>     structural|spyglass|vc_cdc|questa_cdc (default: structural)
+  --tool <name>     structural|slang-cdc|spyglass|vc_cdc|questa_cdc (default: structural)
   --top <module>    Top-level module name
   -f <filelist>     Source filelist (.f file)
   --outdir <dir>    Report output directory (default: sim/cdc/reports)
@@ -102,12 +102,10 @@ EXIT_CODE=0
 case "$TOOL" in
   structural)
     {
-      echo "=== Structural CDC Quick Check ==="
+      echo "=== Structural CDC Quick Check (grep heuristic) ==="
       echo "Top: ${TOP:-N/A}"
       echo "Files: ${#SRC_FILES[@]}"
       echo "Rule: detect clock/reset naming patterns and obvious async crossings."
-      echo ""
-      echo "[INFO] This mode is heuristic and should be replaced by commercial CDC signoff when available."
       echo ""
       echo "Clock-like signals:"
       grep -RhoE '\b[a-zA-Z0-9_]*_clk\b|\bclk\b' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true
@@ -115,6 +113,53 @@ case "$TOOL" in
       echo "Reset-like signals:"
       grep -RhoE '\b[a-zA-Z0-9_]*_rst_n\b|\brst_n\b' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true
     } | tee "$REPORT"
+    EXIT_CODE=${PIPESTATUS[0]}
+
+    # slang-cdc crosscheck: run AST-based analysis if installed
+    if command -v slang-cdc &>/dev/null; then
+      echo ""
+      echo "=== slang-cdc Crosscheck (AST-based) ==="
+      SLANG_CDC_OUTDIR="$OUTDIR/slang-cdc"
+      mkdir -p "$SLANG_CDC_OUTDIR"
+      SLANG_CDC_CMD="slang-cdc --format all -o $SLANG_CDC_OUTDIR"
+      [[ -n "$TOP" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD --top $TOP"
+      [[ -n "$FILELIST" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD -f $FILELIST"
+      for src in "${SRC_FILES[@]}"; do
+        SLANG_CDC_CMD="$SLANG_CDC_CMD $src"
+      done
+      echo "CMD: $SLANG_CDC_CMD"
+      if run_tool $SLANG_CDC_CMD 2>&1 | tee -a "$REPORT"; then
+        echo "[slang-cdc] Crosscheck complete. Reports in $SLANG_CDC_OUTDIR/"
+      else
+        SLANG_CDC_EXIT=$?
+        echo "[slang-cdc] Found $SLANG_CDC_EXIT violation(s). Reports in $SLANG_CDC_OUTDIR/"
+        # Use slang-cdc exit code as the authoritative result when available
+        EXIT_CODE=$SLANG_CDC_EXIT
+      fi
+    else
+      echo ""
+      echo "[INFO] slang-cdc not installed. Install for AST-based CDC crosscheck:"
+      echo "  git clone https://github.com/babyworm/slang-cdc.git ~/tools/slang-cdc"
+      echo "  cd ~/tools/slang-cdc && make build && make install"
+    fi
+    ;;
+
+  slang-cdc)
+    if ! command -v slang-cdc &>/dev/null; then
+      echo "ERROR: slang-cdc not found. Install:" >&2
+      echo "  git clone https://github.com/babyworm/slang-cdc.git ~/tools/slang-cdc" >&2
+      echo "  cd ~/tools/slang-cdc && make build && make install" >&2
+      exit 1
+    fi
+    SLANG_CDC_CMD="slang-cdc --format all -o $OUTDIR"
+    [[ -n "$TOP" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD --top $TOP"
+    [[ -n "$FILELIST" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD -f $FILELIST"
+    for src in "${SRC_FILES[@]}"; do
+      SLANG_CDC_CMD="$SLANG_CDC_CMD $src"
+    done
+    echo "=== slang-cdc (AST-based CDC analysis) ==="
+    echo "CMD: $SLANG_CDC_CMD"
+    run_tool $SLANG_CDC_CMD 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 

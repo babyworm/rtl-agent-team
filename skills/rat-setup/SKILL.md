@@ -68,6 +68,7 @@ Categorize tools into three tiers and check each:
 | Tool | Check Command | Purpose |
 |------|--------------|---------|
 | jq | `jq --version` | Hook JSON parser (robust state gating) |
+| slang-cdc | `slang-cdc --version` | AST-based CDC analysis (crosscheck with structural) |
 | slang-server | `slang-server --version` | SV Language Server (LSP for Claude Code) |
 | verible (if slang only) | `verible-verilog-lint --version` | Style lint + formatting |
 | slang (if verible only) | `slang --version` | Deep semantic lint |

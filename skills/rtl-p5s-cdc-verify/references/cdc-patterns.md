@@ -174,9 +174,16 @@ set_max_delay -datapath_only 5.0 \
 
 | Tool | Capability | Command |
 |------|------------|---------|
+| **slang-cdc** | AST-based structural CDC: 8 sync patterns, quality checks, SDC gen | `slang-cdc --top <top> -f filelist.f -o reports/` |
 | Yosys + custom script | Basic crossing detection | `yosys -p "read_verilog -sv *.sv; hierarchy -check; proc; scc"` |
 | Verilator | `SYNCASYNCNET` warning | `verilator --lint-only -Wall` |
 | slang | CDC-aware semantic checks | `slang --lint-only` |
 
-For comprehensive CDC analysis, commercial tools (Synopsys SpyGlass CDC, Cadence Conformal CDC,
-Siemens Questa CDC) provide formal proof of synchronizer correctness.
+**slang-cdc** (https://github.com/babyworm/slang-cdc) is the recommended open-source CDC tool.
+It detects 8 synchronizer patterns (2-FF, 3-FF, gray code, handshake, async FIFO, MUX, pulse,
+Johnson counter) and performs quality checks (reconvergence, glitch path, fan-out-before-sync,
+reset synchronizer, non-2^N FIFO depth). Outputs: Markdown + JSON + SDC + waiver YAML.
+Install: `git clone ... && make build && make install`.
+
+For comprehensive CDC analysis with formal proof, commercial tools (Synopsys SpyGlass CDC,
+Cadence Conformal CDC, Siemens Questa CDC) are still the industry standard.
