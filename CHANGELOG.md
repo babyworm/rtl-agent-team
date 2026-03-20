@@ -7,6 +7,16 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.10] - 2026-03-20
+
+### Added
+- slang-cdc integration into CDC verification pipeline
+  - `run_cdc.sh` structural mode: automatic slang-cdc crosscheck when installed
+  - `run_cdc.sh` standalone `--tool slang-cdc` mode
+  - `rat-setup` Tier 2: slang-cdc check, Q2 install option, Install_Instructions
+  - `cdc-tool-profiles`: slang-cdc profile (8 sync patterns, quality checks)
+  - `cdc-patterns.md`: slang-cdc as recommended open-source CDC tool
+
 ## [0.8.9] - 2026-03-20
 
 ### Added
