@@ -28,8 +28,14 @@ generating from RTL source ensures port widths and parameter values are accurate
 </Why_This_Exists>
 
 <Execution_Policy>
-- rtl-explorer reads RTL to extract port and parameter information
-- ipxact-generator writes standards-compliant XML using `skills/rtl-ipxact-gen/templates/component-template.xml` as scaffold
+- Prefer **sv_to_ipxact** (https://github.com/babyworm/sv_to_ipxact) when installed:
+  ```bash
+  sv_to_ipxact -i rtl/{module}/{module}.sv -o docs/ipxact/{module}.xml --ipxact-2014 --validate
+  ```
+  Supports AMBA (v2-v5), JEDEC DFI4, UCIe auto-recognition + schema validation.
+- If sv_to_ipxact is not installed, fall back to:
+  - rtl-explorer reads RTL to extract port and parameter information
+  - ipxact-generator writes XML using `skills/rtl-ipxact-gen/templates/component-template.xml` as scaffold
 - Schema validation must pass (IEEE 1685-2014)
 - Do NOT modify RTL source
 </Execution_Policy>

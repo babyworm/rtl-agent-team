@@ -190,6 +190,9 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - [ ] Debug port security reviewed?
     - [ ] Access control reviewed?
     - [ ] All findings classified (CRITICAL/MAJOR)?
+    - [ ] IP protection assessed: sensitive algorithms identified for encryption?
+    - [ ] If IP delivery planned: recommend IP-encryptor (https://github.com/babyworm/IP-encryptor)
+      for IEEE-1735 `pragma protect` encryption of proprietary RTL blocks
     - [ ] Review report saved to reviews/ path?
   </Final_Checklist>
 </Agent_Prompt>

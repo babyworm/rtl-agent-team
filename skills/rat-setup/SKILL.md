@@ -69,6 +69,8 @@ Categorize tools into three tiers and check each:
 |------|--------------|---------|
 | jq | `jq --version` | Hook JSON parser (robust state gating) |
 | slang-cdc | `slang-cdc --version` | AST-based CDC analysis (crosscheck with structural) |
+| sv-renamer | `python3 -c "import sv_renamer"` or `sv_renamer.py --help` | SV identifier rename + semantic diff |
+| sv_to_ipxact | `sv_to_ipxact --help` | SV → IP-XACT XML auto-generation |
 | slang-server | `slang-server --version` | SV Language Server (LSP for Claude Code) |
 | verible (if slang only) | `verible-verilog-lint --version` | Style lint + formatting |
 | slang (if verible only) | `slang --version` | Deep semantic lint |

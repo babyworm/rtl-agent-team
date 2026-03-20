@@ -31,7 +31,15 @@ Common refactoring patterns:
 - `fifo_inst` -> `u_fifo` (missing instance prefix)
 - `reg [7:0] data` -> `logic [7:0] data` (reg to logic)
 
-When renaming ports, use Grep to find ALL instantiation sites across the codebase
+When renaming ports, prefer **sv-renamer** (https://github.com/babyworm/sv-renamer) when installed:
+```bash
+# Dry-run preview
+sv_renamer.py --dir rtl/ --recursive --prefix i_ --dry-run --report json
+# Apply + verify equivalence
+sv_renamer.py --dir rtl/ --recursive --prefix i_
+sv_semantic_diff.py --before original/ --after rtl/  # formal equivalence check
+```
+If sv-renamer is not installed, use Grep to find ALL instantiation sites across the codebase
 and update them in the same task.
 
 ## Equivalence Proof Policy
