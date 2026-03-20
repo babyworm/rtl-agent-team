@@ -3,7 +3,8 @@
 # Usage: sim/cdc/run_cdc.sh [OPTIONS] [SV_FILES...]
 #
 # Supports:
-#   - structural (default): lightweight structural checks without commercial tools
+#   - structural (default): grep heuristic + slang-cdc crosscheck (if installed)
+#   - slang-cdc: AST-based CDC analysis (https://github.com/babyworm/slang-cdc)
 #   - spyglass: Synopsys SpyGlass CDC
 #   - vc_cdc: Synopsys VC CDC
 #   - questa_cdc: Siemens Questa CDC
@@ -121,19 +122,18 @@ case "$TOOL" in
       echo "=== slang-cdc Crosscheck (AST-based) ==="
       SLANG_CDC_OUTDIR="$OUTDIR/slang-cdc"
       mkdir -p "$SLANG_CDC_OUTDIR"
-      SLANG_CDC_CMD="slang-cdc --format all -o $SLANG_CDC_OUTDIR"
-      [[ -n "$TOP" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD --top $TOP"
-      [[ -n "$FILELIST" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD -f $FILELIST"
-      for src in "${SRC_FILES[@]}"; do
-        SLANG_CDC_CMD="$SLANG_CDC_CMD $src"
-      done
-      echo "CMD: $SLANG_CDC_CMD"
-      if run_tool $SLANG_CDC_CMD 2>&1 | tee -a "$REPORT"; then
-        echo "[slang-cdc] Crosscheck complete. Reports in $SLANG_CDC_OUTDIR/"
+      SLANG_CDC_ARGS=(slang-cdc --format all -o "$SLANG_CDC_OUTDIR")
+      [[ -n "$TOP" ]] && SLANG_CDC_ARGS+=(--top "$TOP")
+      [[ -n "$FILELIST" ]] && SLANG_CDC_ARGS+=(-f "$FILELIST")
+      SLANG_CDC_ARGS+=("${SRC_FILES[@]}")
+      echo "CMD: ${SLANG_CDC_ARGS[*]}"
+      write_replay "${SLANG_CDC_ARGS[*]}"
+      if run_tool "${SLANG_CDC_ARGS[@]}" 2>&1 | tee -a "$REPORT"; then
+        echo "[slang-cdc] Crosscheck complete (0 violations). Reports in $SLANG_CDC_OUTDIR/"
       else
         SLANG_CDC_EXIT=$?
-        echo "[slang-cdc] Found $SLANG_CDC_EXIT violation(s). Reports in $SLANG_CDC_OUTDIR/"
-        # Use slang-cdc exit code as the authoritative result when available
+        echo "[slang-cdc] Crosscheck failed (exit $SLANG_CDC_EXIT). Reports in $SLANG_CDC_OUTDIR/"
+        # slang-cdc exit code = violation count; use as authoritative result
         EXIT_CODE=$SLANG_CDC_EXIT
       fi
     else
@@ -151,15 +151,14 @@ case "$TOOL" in
       echo "  cd ~/tools/slang-cdc && make build && make install" >&2
       exit 1
     fi
-    SLANG_CDC_CMD="slang-cdc --format all -o $OUTDIR"
-    [[ -n "$TOP" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD --top $TOP"
-    [[ -n "$FILELIST" ]] && SLANG_CDC_CMD="$SLANG_CDC_CMD -f $FILELIST"
-    for src in "${SRC_FILES[@]}"; do
-      SLANG_CDC_CMD="$SLANG_CDC_CMD $src"
-    done
+    SLANG_CDC_ARGS=(slang-cdc --format all -o "$OUTDIR")
+    [[ -n "$TOP" ]] && SLANG_CDC_ARGS+=(--top "$TOP")
+    [[ -n "$FILELIST" ]] && SLANG_CDC_ARGS+=(-f "$FILELIST")
+    SLANG_CDC_ARGS+=("${SRC_FILES[@]}")
     echo "=== slang-cdc (AST-based CDC analysis) ==="
-    echo "CMD: $SLANG_CDC_CMD"
-    run_tool $SLANG_CDC_CMD 2>&1 | tee "$REPORT"
+    echo "CMD: ${SLANG_CDC_ARGS[*]}"
+    write_replay "${SLANG_CDC_ARGS[*]}"
+    run_tool "${SLANG_CDC_ARGS[@]}" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -221,7 +220,7 @@ case "$TOOL" in
 
   *)
     echo "ERROR: Unknown CDC tool: $TOOL" >&2
-    echo "Supported: structural, spyglass, vc_cdc, questa_cdc" >&2
+    echo "Supported: structural, slang-cdc, spyglass, vc_cdc, questa_cdc" >&2
     exit 1
     ;;
 esac

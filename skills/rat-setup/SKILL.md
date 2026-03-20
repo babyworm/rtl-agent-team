@@ -168,6 +168,7 @@ Before installing missing required tools, ask the user:
 > 3. slang-server — SV LSP integration for Claude Code
 > 4. iverilog — fallback simulator
 > 5. gtkwave — waveform viewer
+> 6. slang-cdc — AST-based CDC analysis (crosscheck with structural)
 
 ### Q3: Plugin Global Configuration
 
@@ -311,6 +312,7 @@ Bash: slang --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 2: Recommended ---
 Bash: jq --version 2>&1 || echo "NOT_FOUND"
+Bash: slang-cdc --version 2>&1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 3: Optional ---
@@ -383,6 +385,13 @@ ln -sf "$HOME/tools/verible/bin/verible-verilog-format" "$HOME/.local/bin/veribl
 
 # ===== slang (prebuilt binary or source) =====
 # See: https://sv-lang.com / https://github.com/MikePopoloski/slang/releases
+
+# ===== slang-cdc (AST-based CDC analysis) =====
+git clone https://github.com/babyworm/slang-cdc.git "$HOME/tools/slang-cdc"
+cd "$HOME/tools/slang-cdc"
+make build
+make install
+# Binary installs to ~/.local/bin/slang-cdc
 
 # ===== slang-server (SystemVerilog LSP for Claude Code) =====
 bash scripts/install-slang-server.sh install
