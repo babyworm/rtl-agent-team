@@ -128,15 +128,30 @@ EDA 도구 확인 및 설치는 `/rtl-agent-team:rat-setup`을 실행하세요 (
 ### 개별 스킬
 
 ```
-/rtl-agent-team:rtl-lint-check        # RTL lint 검사
-/rtl-agent-team:rtl-p5s-func-verify       # cocotb 기능 검증
-/rtl-agent-team:rtl-synth-check       # Yosys 합성
-/rtl-agent-team:rtl-p5s-sva-check         # SVA formal 검증
-/rtl-agent-team:p2-arch-design    # 아키텍처 설계
-/rtl-agent-team:domain-consult    # 도메인 전문가 상담
+/rtl-agent-team:rtl-lint-check           # RTL lint 검사
+/rtl-agent-team:rtl-p5s-func-verify      # cocotb 기능 검증
+/rtl-agent-team:rtl-synth-check          # Yosys 합성
+/rtl-agent-team:rtl-p5s-sva-check        # SVA formal 검증
+/rtl-agent-team:p2-arch-design           # 아키텍처 설계
+/rtl-agent-team:domain-consult           # 도메인 전문가 상담
 ```
 
-전체 93개 스킬 목록은 `skills/` 디렉토리를 참조하세요.
+### 스킬 카테고리 (93개)
+
+| 카테고리 | 수량 | 설명 | 에셋 |
+|----------|------|------|------|
+| **Pipeline** | 11 | 전체 파이프라인 (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...) | T,S,R (32) |
+| **Phase 1-3** | 6 | 스펙 분석, 아키텍처, μArch (+ 팀 모드) | — |
+| **Phase 4** | 7 | RTL 구현, 버그 수정, 리팩토링, 유닛 테스트, 블록 병렬 | T (1) |
+| **Phase 5** | 12 | 검증: 기능, formal, CDC, 프로토콜, 성능, 커버리지, UVM, 통합 | T,S,R,E (23) |
+| **Phase 6-7** | 2 | 설계 리뷰, 자유 탐색 | — |
+| **Utility** | 13 | Lint, 합성, IP-XACT, conformance, 문서, 리뷰, 코덱 평가 | T,S,R,E (30) |
+| **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC | T,R,E (11) |
+| **Policy** | 31 | 에이전트가 참조하는 규칙/기준 (비사용자 호출) | T (5) |
+| **Tool Profile** | 4 | 시뮬레이터/린터/합성기/CDC 도구 설정 | — |
+| **Internal** | 1 | 라우팅 SSOT (`rtl-orchestrate`) | — |
+
+에셋 범례: **T**=템플릿, **S**=스크립트, **R**=레퍼런스, **E**=예제. 괄호 안 숫자는 총 에셋 파일 수.
 
 ## 프로젝트 산출물 구조
 

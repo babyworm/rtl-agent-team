@@ -128,15 +128,30 @@ For EDA tool verification and installation, run `/rtl-agent-team:rat-setup` (one
 ### Individual skills
 
 ```
-/rtl-agent-team:rtl-lint-check        # RTL lint check
-/rtl-agent-team:rtl-p5s-func-verify       # cocotb functional verification
-/rtl-agent-team:rtl-synth-check       # Yosys synthesis
-/rtl-agent-team:rtl-p5s-sva-check         # SVA formal verification
-/rtl-agent-team:p2-arch-design    # Architecture design
-/rtl-agent-team:domain-consult    # Domain expert consultation
+/rtl-agent-team:rtl-lint-check           # RTL lint check
+/rtl-agent-team:rtl-p5s-func-verify      # cocotb functional verification
+/rtl-agent-team:rtl-synth-check          # Yosys synthesis
+/rtl-agent-team:rtl-p5s-sva-check        # SVA formal verification
+/rtl-agent-team:p2-arch-design           # Architecture design
+/rtl-agent-team:domain-consult           # Domain expert consultation
 ```
 
-See the `skills/` directory for the full list of 93 skills.
+### Skill categories (93 skills)
+
+| Category | Count | Description | Assets |
+|----------|-------|-------------|--------|
+| **Pipeline** | 11 | Full pipeline orchestration (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...) | T,S,R (32) |
+| **Phase 1-3** | 6 | Spec research, architecture, uArch (+ team modes) | — |
+| **Phase 4** | 7 | RTL implementation, bugfix, refactor, unit test, block-parallel | T (1) |
+| **Phase 5** | 12 | Verification: functional, formal, CDC, protocol, perf, coverage, UVM, integration | T,S,R,E (23) |
+| **Phase 6-7** | 2 | Design review, free exploration | — |
+| **Utility** | 13 | Lint, synthesis, IP-XACT, conformance, document, review, codec eval | T,S,R,E (30) |
+| **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC | T,R,E (11) |
+| **Policy** | 31 | Rules/criteria referenced by agents (non-user-invocable) | T (5) |
+| **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations | — |
+| **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) | — |
+
+Asset legend: **T**=Templates, **S**=Scripts, **R**=References, **E**=Examples. Number in parentheses is total asset file count.
 
 ## Project Artifact Structure
 
