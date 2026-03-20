@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Adversarial Challenge Report",
+  "description": "Output of adversarial reinterpretation step (Step 7.6). References items by source.section, not requirement ID.",
+  "type": "object",
+  "required": ["challenges", "unchallenged_count", "challenged_count"],
+  "properties": {
+    "challenges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target_source", "original_interpretation", "alternative_interpretation", "spec_evidence", "impact", "severity"],
+        "properties": {
+          "target_source": {
+            "type": "object",
+            "required": ["section"],
+            "properties": {
+              "document": { "type": "string" },
+              "section": { "type": "string" }
+            }
+          },
+          "original_interpretation": { "type": "string" },
+          "alternative_interpretation": { "type": "string" },
+          "spec_evidence": { "type": "string" },
+          "impact": { "type": "string" },
+          "severity": { "enum": ["HIGH", "MEDIUM", "LOW"] },
+          "resolution": {
+            "description": "Set during Step 7.7 user resolution. null until resolved.",
+            "enum": ["RESOLVED", "DOCUMENTED", "NOT_GENUINE", null],
+            "default": null
+          }
+        }
+      },
+      "maxItems": 30
+    },
+    "unchallenged_count": { "type": "integer", "minimum": 0 },
+    "challenged_count": { "type": "integer", "minimum": 0 }
+  }
+}
