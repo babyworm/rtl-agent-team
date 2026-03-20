@@ -329,6 +329,114 @@ Glob("docs/phase-1-research/iron-requirements.json")
 Glob("docs/phase-1-research/open-requirements.json")
 ```
 
+## Step 7.6: Adversarial Reinterpretation
+
+Spawn a separate spec-analyst subagent with adversarial prompt to challenge
+the iron-requirements.json produced in Step 7. This surfaces ambiguities
+the initial analysis accepted without question.
+
+```
+# Save v1 to scratch for stability report
+Bash("mkdir -p .rtl-agent-team/scratch/stability/phase-1")
+Bash("cp docs/phase-1-research/iron-requirements.json .rtl-agent-team/scratch/stability/phase-1/output-v1.json")
+
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     prompt="ADVERSARIAL REINTERPRETATION MODE.
+     You are NOT extracting requirements. You are CHALLENGING an existing extraction.
+
+     Read the original spec documents and the iron-requirements.json at
+     docs/phase-1-research/iron-requirements.json.
+
+     For each requirement, find ALTERNATIVE VALID interpretations that differ
+     from the current extraction. Ground alternatives in the spec text.
+
+     Reference items by source.section (NOT requirement ID).
+
+     Severity classification:
+     - HIGH: alternative would produce different RTL behavior (different logic, waveform)
+     - MEDIUM: alternative would produce different parameters (same logic, different constants)
+     - LOW: cosmetic differences only (naming, formatting)
+
+     Boundary rule: if alternative causes a different RTL module to be written → HIGH.
+     Same module but different parameter values → MEDIUM.
+
+     Output JSON challenge report following the schema at
+     skills/p1-spec-research/templates/challenge-report-schema.json.
+     Save to .rtl-agent-team/scratch/stability/phase-1/challenge-report.json
+     using the Write tool.
+
+     Max 30 challenges, ranked by severity (HIGH first).")
+```
+
+## Step 7.7: User Resolution
+
+Present adversarial challenges to the user for resolution.
+
+```
+Read(".rtl-agent-team/scratch/stability/phase-1/challenge-report.json")
+
+# For each HIGH challenge:
+#   AskUserQuestion("Adversarial reinterpretation found an ambiguity:
+#     Spec section: {target_source.section}
+#     Current interpretation: {original_interpretation}
+#     Alternative interpretation: {alternative_interpretation}
+#     Evidence: {spec_evidence}
+#     Impact: {impact}
+#     Which interpretation is correct? Or mark as NOT_GENUINE if forced.")
+
+# For MEDIUM challenges (if ≤10): AskUserQuestion batched
+# For MEDIUM challenges (if >10): present summary, ask "review these assumptions?"
+# For LOW challenges: auto-document as assumptions, no user interaction
+
+# User may mark any challenge as NOT_GENUINE (forced disagreement)
+# Accumulate clarifications for Step 7.8
+# Update challenge-report.json with resolution status (RESOLVED/DOCUMENTED/NOT_GENUINE)
+```
+
+## Step 7.8: Re-run with Clarifications
+
+Re-run spec-analyst with enriched input to produce consistent canonical artifacts.
+
+```
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     prompt="Re-analyze the specification with the following clarifications
+     from adversarial review:
+     {accumulated_clarifications_from_step_7.7}
+
+     Produce ALL 4 canonical artifacts:
+     - docs/phase-1-research/iron-requirements.json
+     - docs/phase-1-research/open-requirements.json
+     - docs/phase-1-research/io_definition.json
+     - docs/phase-1-research/timing_constraints.json
+
+     Include self-validation (re-read spec, verify all features covered).
+     Save all files using Write tool.")
+```
+
+## Step 7.9: Adversarial Gate Check
+
+Compute the adversarial gate and generate stability audit report.
+
+```
+Read(".rtl-agent-team/scratch/stability/phase-1/challenge-report.json")
+
+# Compute gate (per p1-spec-research-policy):
+#   genuine = (HIGH + MEDIUM) - NOT_GENUINE
+#   resolved = RESOLVED + DOCUMENTED
+#   resolution_ratio = resolved / genuine (if genuine == 0: pass)
+#   gate_pass = (all HIGH resolved) AND (resolution_ratio ≥ 0.8)
+#
+# If FAIL: loop back to Step 7.7 (max 1 re-loop)
+# If PASS after 2nd attempt still FAIL: escalate to user with full report
+
+# Generate stability audit report (informational, not the gate)
+Bash("python3 scripts/stability_check.py .rtl-agent-team/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
+
+# Record gate result
+# If PASS: proceed to Step 8
+# If FAIL: escalate
+```
+
 ## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)
 
 Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
