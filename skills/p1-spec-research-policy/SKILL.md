@@ -211,6 +211,7 @@ After 2nd failure: escalate to user with full divergence report.
 | PASS (≤0.3) | PASS | Proceed |
 | PASS (≤0.3) | FAIL | **BLOCK** |
 | CONDITIONAL (0.3-0.5) | PASS | Proceed with WARNING |
+| CONDITIONAL (0.3-0.5) | FAIL | **BLOCK** |
 | BLOCK (>0.5) | PASS | **BLOCK** |
 | BLOCK (>0.5) | FAIL | **BLOCK** |
 

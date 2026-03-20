@@ -49,8 +49,8 @@ def compute_pair_similarity(r1, r2):
     score = 0.0
 
     # source match (25%) — section (15%) + line proximity (10%)
-    src1 = r1.get("source", {})
-    src2 = r2.get("source", {})
+    src1 = r1.get("source") or {}
+    src2 = r2.get("source") or {}
     sec_match = 1.0 if (src1.get("section") and src1.get("section") == src2.get("section")) else 0.0
     line1, line2 = src1.get("line", 0), src2.get("line", 0)
     line_proximity = 1.0 if (line1 and line2 and abs(line1 - line2) <= 5) else 0.0
@@ -105,12 +105,12 @@ def align_requirements(v1_reqs, v2_reqs):
     # Pass 1: source-key grouping with best-match within each group
     v2_by_section = {}
     for j, r2 in enumerate(v2_reqs):
-        sec = r2.get("source", {}).get("section", "")
+        sec = (r2.get("source") or {}).get("section", "")
         if sec:
             v2_by_section.setdefault(sec, []).append((j, r2))
 
     for r1 in v1_reqs:
-        sec = r1.get("source", {}).get("section", "")
+        sec = (r1.get("source") or {}).get("section", "")
         if sec and sec in v2_by_section:
             best_sim, best_j, best_r2 = -1.0, -1, None
             for j, r2 in v2_by_section[sec]:
@@ -146,7 +146,8 @@ def align_requirements(v1_reqs, v2_reqs):
     v1_still_unmatched = [r for r in v1_unmatched
                           if not any(a[0] is r for a in aligned)]
 
-    return aligned, v1_still_unmatched, [r for _, r in v2_unmatched]
+    pass2_count = len(aligned) - pass1_count
+    return aligned, v1_still_unmatched, [r for _, r in v2_unmatched], pass1_count, pass2_count
 
 
 # ═══ Gate Computation ═════════════════════════════════════════════════════════
@@ -196,7 +197,8 @@ def compute_gate(challenges, threshold=0.8):
 
 # ═══ Report Generation ════════════════════════════════════════════════════════
 
-def generate_report(aligned, v1_only, v2_only, v1_path, v2_path):
+def generate_report(aligned, v1_only, v2_only, v1_path, v2_path,
+                    pass1_count=0, pass2_count=0):
     """Generate stability-report.md content."""
     total_aligned = len(aligned)
     avg_sim = sum(s for _, _, s in aligned) / total_aligned if total_aligned else 0.0
@@ -214,18 +216,25 @@ def generate_report(aligned, v1_only, v2_only, v1_path, v2_path):
         f"- Aligned pairs: {total_aligned} (avg similarity: {avg_sim:.2f})",
         f"- v1-only (removed after clarification): {len(v1_only)}",
         f"- v2-only (added after clarification): {len(v2_only)}",
+        f"- Pass 1 (section-based): {pass1_count}, Pass 2 (greedy): {pass2_count}",
         "",
     ]
 
+    # WARNING if >50% alignments came from Pass 2
+    if total_aligned > 0 and pass2_count > pass1_count:
+        lines.append("> **WARNING**: >50% of alignments used greedy fallback (Pass 2).")
+        lines.append("> source.section data may be missing or inconsistent.")
+        lines.append("")
+
     if v1_only or v2_only:
         lines.append("## Changes From Clarification")
-        lines.append("| Source | Direction | Description |")
+        lines.append("| Source Section | Direction | Description |")
         lines.append("|--------|-----------|-------------|")
         for r in v1_only:
-            sec = r.get("source", {}).get("section", "?")
+            sec = (r.get("source") or {}).get("section", "?")
             lines.append(f"| {sec} | REMOVED | {r.get('description', '?')[:60]} |")
         for r in v2_only:
-            sec = r.get("source", {}).get("section", "?")
+            sec = (r.get("source") or {}).get("section", "?")
             lines.append(f"| {sec} | ADDED | {r.get('description', '?')[:60]} |")
         lines.append("")
 
@@ -250,8 +259,8 @@ def main():
     v1_reqs = v1_data.get("requirements", [])
     v2_reqs = v2_data.get("requirements", [])
 
-    aligned, v1_only, v2_only = align_requirements(v1_reqs, v2_reqs)
-    report = generate_report(aligned, v1_only, v2_only, args.v1, args.v2)
+    aligned, v1_only, v2_only, p1_count, p2_count = align_requirements(v1_reqs, v2_reqs)
+    report = generate_report(aligned, v1_only, v2_only, args.v1, args.v2, p1_count, p2_count)
 
     if args.output:
         with open(args.output, "w") as f:

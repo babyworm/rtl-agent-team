@@ -16,6 +16,8 @@
 |----------------|-----------|-------------|
 | {{SECTION}} | REMOVED/ADDED | {{DESCRIPTION}} |
 
+<!-- Sections below are appended by the orchestrator (Step 7.9), not by stability_check.py -->
+
 ## Adversarial Challenge Resolution
 | Challenge | Source Section | Severity | Resolution | Status |
 |-----------|--------------|----------|------------|--------|

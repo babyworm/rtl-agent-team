@@ -458,6 +458,7 @@ Both gates exist. Arbitration when they disagree:
 | PASS (≤0.3) | PASS | **Proceed** |
 | PASS (≤0.3) | FAIL | **BLOCK** — adversarial found issues the score missed |
 | CONDITIONAL (0.3-0.5) | PASS | **Proceed with WARNING** — score flagged concerns but adversarial found no alternatives |
+| CONDITIONAL (0.3-0.5) | FAIL | **BLOCK** — adversarial confirms ambiguity concerns |
 | BLOCK (>0.5) | PASS | **BLOCK** — ambiguity score is the conservative gate |
 | BLOCK (>0.5) | FAIL | **BLOCK** |
 
