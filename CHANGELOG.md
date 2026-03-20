@@ -7,6 +7,18 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.9] - 2026-03-20
+
+### Added
+- Interpretation Stability Framework (MVP Phase 1):
+  - `scripts/stability_check.py` — content-based requirement alignment (41 TDD tests)
+  - Adversarial reinterpretation Steps 7.6-7.9 in P1 orchestrator
+  - Adversarial gate policy with dual gate arbitration (6-row table)
+  - `challenge-report-schema.json` + `stability-report.md` template
+- Phase 6 reviewers redesigned: objective metrics replace subjective 1-10 scoring
+  - `code-quality-reviewer`: measurable thresholds (module size, nesting, conventions)
+  - `design-quality-reviewer`: hierarchical traceability metrics (REQ coverage, drift)
+
 ## [0.8.8] - 2026-03-20
 
 ### Added
