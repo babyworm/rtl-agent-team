@@ -65,7 +65,7 @@ check_file() {
   # Heuristic: flags logic/typedef/localparam at <=4 spaces indent after first assign/always
   # Known limitations: per-file (not per-module) scan; always_latch not checked (forbidden by convention)
   local first_logic_block
-  first_logic_block=$(grep -nE '^\s{0,4}(assign\b|always_ff\b|always_comb\b)' "$file" 2>/dev/null | head -1 | cut -d: -f1)
+  first_logic_block=$(grep -nE '^\s{0,4}(assign\b|always_ff\b|always_comb\b)' "$file" 2>/dev/null | head -1 | cut -d: -f1) || true
 
   if [[ -n "$first_logic_block" ]]; then
     while IFS=: read -r lineno content; do
