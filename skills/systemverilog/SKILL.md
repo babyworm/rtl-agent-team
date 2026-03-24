@@ -136,6 +136,7 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - Latch prevention: `default` is mandatory in all `case` statements
 - Combinational loops are forbidden
 - `#delay` in synthesizable code is forbidden
+- Forward references are forbidden: all signals, types, and parameters must be declared before first use (IEEE 1800 §12.5). Xcelium (xmvlog) strictly enforces sequential declaration visibility within a module
 
 ### 4.3 iverilog Incompatible Constructs (Do Not Generate)
 
@@ -147,17 +148,27 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - `typedef struct packed` / `typedef union packed` are supported (OK to use)
 - Do not modify existing code or user-added code that contains these constructs
 
-### 4.4 Module Structure
+### 4.4 Module Structure (Mandatory Declaration Order)
+
+> **IMPORTANT — IEEE 1800 §12.5 requires identifiers to be declared before first use.**
+> Xcelium (xmvlog) strictly enforces sequential declaration visibility.
+> Reordering concurrent statements (assign, always_ff, always_comb) has zero synthesis/simulation impact,
+> but declarations MUST always precede their first reference.
+
 ```
 module_name_pkg.sv    <- Shared type/constant definitions
-module_name.sv        <- Module implementation
-  - parameter declarations
-  - port declarations (ANSI style)
-  - internal signal declarations
-  - submodule instances (u_ prefix)
-  - combinational logic (always_comb)
-  - sequential logic (always_ff)
-  - assertions (SVA)
+module_name.sv        <- Module implementation (order is MANDATORY):
+  1. parameter declarations
+  2. port declarations (ANSI style)
+  3. import statements
+  4. typedef / localparam / enum       <- all types and constants
+  5. internal signal declarations      <- all signals before any logic
+  -- declaration boundary ------------ (no declarations below this line)
+  6. assign statements                 <- continuous assignments
+  7. submodule instances (u_ prefix)
+  8. always_comb blocks                <- combinational logic
+  9. always_ff blocks                  <- sequential logic
+  10. assertions (SVA)
 ```
 See `templates/module-template.sv` for complete scaffold.
 
@@ -320,4 +331,5 @@ module cabac_encoder #(
 - [ ] No magic numbers (use parameter/localparam)
 - [ ] Filename = module name
 - [ ] One module per file
+- [ ] Declaration order: all `logic`/`typedef`/`localparam` before first `assign`/`always` (no forward references)
 </Final_Checklist>

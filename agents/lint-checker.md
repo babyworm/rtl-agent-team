@@ -75,13 +75,14 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
      If `.vlt` waiver file exists: `verilator --lint-only -Wall -Wpedantic {files} verilator.vlt`
   4. Run Verible lint (verible-verilog-lint) on all discovered files, capturing full output.
   5. Run slang lint (slang --lint-only) on all discovered files, capturing full output.
-  6. Parse all three outputs: extract file, line, column, rule name, message for each finding.
-  6. Group findings by rule/category: e.g., "module-filename", "always-ff-non-blocking", "implicit-net-declaration".
-  7. For each group, read the offending lines from the source files to understand context.
-  8. Identify cross-file patterns: same mistake in multiple files indicates a systemic issue.
-  9. Classify severity: critical (will cause functional bugs), major (synthesizability risk), minor (style).
-  10. Draft root cause analysis and fix recommendations with concrete before/after examples.
-  11. Produce structured report.
+  6. Check for forward reference risks (IEEE 1800 §12.5): identify `logic`/`typedef`/`localparam` declarations that appear after `assign`/`always_ff`/`always_comb` blocks at the same indentation level. Verilator may accept these, but Xcelium (xmvlog) will reject them. Run supplementary convention script (`check_conventions.sh`) if available.
+  7. Parse all three outputs: extract file, line, column, rule name, message for each finding.
+  8. Group findings by rule/category: e.g., "module-filename", "always-ff-non-blocking", "implicit-net-declaration".
+  9. For each group, read the offending lines from the source files to understand context.
+  10. Identify cross-file patterns: same mistake in multiple files indicates a systemic issue.
+  11. Classify severity: critical (will cause functional bugs), major (synthesizability risk), minor (style).
+  12. Draft root cause analysis and fix recommendations with concrete before/after examples.
+  13. Produce structured report.
 </Investigation_Protocol>
 
 <Tool_Usage>

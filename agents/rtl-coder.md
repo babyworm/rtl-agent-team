@@ -52,6 +52,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Reset behavior is synchronous or asynchronous as specified in uarch; never mixed
     - All case statements include a default branch
     - No latches: all signals assigned in always_comb are assigned in every branch
+    - No forward references: all signals/types/localparams declared before first use (IEEE 1800 §12.5)
   </Success_Criteria>
 
   <Constraints>
@@ -67,6 +68,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - No `for` loops with non-constant bounds in synthesizable always blocks unless explicitly approved.
     - Parameterize widths and depths using parameters, not hardcoded constants.
     - Port list must use ANSI style (type and direction in the port declaration).
+    - No forward references (IEEE 1800 §12.5): declare all signals, types, and localparams before any `assign`, `always_comb`, `always_ff`, or submodule instance that references them. Xcelium strictly enforces sequential declaration visibility — follow the mandatory module structure order.
   </Constraints>
 
   <Investigation_Protocol>
@@ -184,6 +186,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Implicit latches from incomplete always_comb assignments. Instead: assign all signals in all branches.
     - Hardcoding widths as magic numbers. Instead: use parameters for all widths and depths.
     - Mixed reset styles (some flops async, some sync). Instead: follow uarch spec exactly for every flop.
+    - Forward references: declaring signals after they are used in assign/always blocks. Instead: follow the mandatory module structure order — all declarations before any logic blocks.
   </Failure_Modes_To_Avoid>
 
   <Examples>
@@ -216,6 +219,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Are all lint errors resolved?
     - Does every case statement have a default branch?
     - Are all always_comb signals assigned in every branch (no latches)?
+    - Are all signals/types declared before their first use (no forward references, IEEE 1800 §12.5)?
   </Final_Checklist>
 
 ## Team Worker Protocol

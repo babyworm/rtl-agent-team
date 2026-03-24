@@ -36,6 +36,18 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 - verilator/slang fully support 2009 features with default settings
 - No synthesis-related feature additions after 2012 (2017 is errata only, 2023 has early tool support)
 
+## Declaration Ordering (IEEE 1800 §12.5)
+
+- **All identifiers must be declared before first use** within a module body
+- Xcelium (xmvlog) strictly enforces sequential declaration visibility; Verilator/iverilog may be lenient
+- Required order within a module:
+  1. `import` / `typedef` / `localparam` / `enum`
+  2. Signal declarations (`logic`)
+  3. `assign` continuous assignments
+  4. Submodule instances (`u_` prefix)
+  5. `always_comb` / `always_ff` blocks
+- Reordering concurrent RTL statements has zero synthesis impact, but **declarations must precede usage**
+
 ## Convention Skills (Auto-Applied by Extension/Phase)
 
 | File Extension / Context | Phase | Applied Skill |

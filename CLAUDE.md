@@ -252,6 +252,7 @@ A verification artifact that compiles but produces wrong output is worse than no
 3. **No CamelCase**: `snake_case` or `ALL_CAPS` only. Parameters `ALL_CAPS`, localparam `L_` prefix
 4. SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
 5. Convention skills auto-applied by file extension (systemverilog, systemverilog-assertion, uvm, systemc)
+6. **No forward references**: all declarations before logic blocks (IEEE 1800 §12.5). Xcelium strictly enforces declaration ordering
 
 Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `<markdown_diagram_rule>` in CLAUDE.md (or `.claude/rules/diagram-rules.md` fallback).
 

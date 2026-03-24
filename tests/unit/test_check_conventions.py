@@ -1,9 +1,10 @@
 r"""Tests for check_conventions.sh -- RTL naming convention checker.
 
 Known Issues:
-- BUG-001: ``set -euo pipefail`` + ``((VIOLATIONS++))`` causes silent exit when
-  VIOLATIONS is 0 (post-increment returns 0, treated as failure by set -e).
-  The script exits with rc=1 but no stdout on first violation.
+- BUG-001: FIXED. ``set -euo pipefail`` + ``((VIOLATIONS++))`` previously caused
+  silent exit when VIOLATIONS was 0 (post-increment returns 0, treated as failure
+  by set -e). Fixed by replacing ``((VIOLATIONS++))`` with
+  ``VIOLATIONS=$((VIOLATIONS + 1))``.
 - BUG-002: Rule 5 (INSTANCE_PREFIX) uses ``grep -n`` producing line-number prefixed
   output, but the ``-vE`` exclude filter matches against ``^\s*(module|...)`` which
   fails because the line starts with ``N:module`` not ``module``. This causes false
@@ -28,9 +29,9 @@ class TestCheckConventions:
 
     def test_clean_file_triggers_false_positive(self, sample_sv_clean):
         """DOCUMENTS BUG: Clean module declaration triggers INSTANCE_PREFIX false positive
-        due to BUG-002, then BUG-001 causes silent exit."""
+        due to BUG-002 (grep -n line-number prefix defeats exclude filter)."""
         result = run_script(CHECK_CONVENTIONS, str(sample_sv_clean))
-        # Expected: rc=0, "PASS". Actual: rc=1, empty stdout (BUG-001 + BUG-002)
+        # Expected: rc=0, "PASS". Actual: rc=1, INSTANCE_PREFIX false positive (BUG-002)
         assert result.returncode == 1  # DOCUMENTS BUG
 
     def test_nonexistent_target(self):
@@ -111,3 +112,37 @@ endmodule
         assert result.returncode == 0
         assert "Convention Check Report" in result.stdout
         assert "VERDICT: PASS" in result.stdout
+
+    def test_decl_order_forward_ref_detected(self, tmp_path):
+        """Rule 7: Declaration after logic block should trigger DECL_ORDER violation.
+        IEEE 1800 §12.5 requires identifiers to be declared before first use."""
+        sv = tmp_path / "fwd_ref.sv"
+        sv.write_text("""\
+  logic [7:0] data_q;
+
+  assign o_result = data_q;
+
+  logic [7:0] late_decl;
+""")
+        result = run_script(CHECK_CONVENTIONS, str(sv))
+        assert result.returncode == 1
+        assert "DECL_ORDER" in result.stdout
+
+    def test_decl_order_clean_no_violation(self, tmp_path):
+        """Rule 7: Declarations before logic blocks should not trigger DECL_ORDER."""
+        sv = tmp_path / "no_fwd_ref.sv"
+        sv.write_text("""\
+  logic [7:0] data_q;
+  logic [7:0] intermediate;
+
+  assign intermediate = data_q;
+  assign o_result = intermediate;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) data_q <= '0;
+    else        data_q <= i_data;
+  end
+""")
+        result = run_script(CHECK_CONVENTIONS, str(sv))
+        # No DECL_ORDER violation expected (other violations like BUG-002 may appear)
+        assert "DECL_ORDER" not in result.stdout

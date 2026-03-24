@@ -14,7 +14,7 @@ REPORT=""
 add_violation() {
   local file="$1" line="$2" rule="$3" msg="$4"
   REPORT+="  CONVENTION  ${file}:${line}  ${rule}  ${msg}"$'\n'
-  ((VIOLATIONS++))
+  VIOLATIONS=$((VIOLATIONS + 1))
 }
 
 check_file() {
@@ -58,6 +58,22 @@ check_file() {
       add_violation "$file" "$lineno" "GENERATE_PREFIX" "Generate block '$gen_label' missing gen_ prefix: $content"
     fi
   done < <(grep -nE '^\s*\w+\s*:\s*(for|if)\b' "$file" 2>/dev/null || true)
+
+  # Rule 7: Declaration order — module-level declarations must precede logic blocks
+  # IEEE 1800 §12.5: identifiers must be declared before first use
+  # Xcelium (xmvlog) strictly enforces sequential declaration visibility
+  # Heuristic: flags logic/typedef/localparam at <=4 spaces indent after first assign/always
+  # Known limitations: per-file (not per-module) scan; always_latch not checked (forbidden by convention)
+  local first_logic_block
+  first_logic_block=$(grep -nE '^\s{0,4}(assign\b|always_ff\b|always_comb\b)' "$file" 2>/dev/null | head -1 | cut -d: -f1)
+
+  if [[ -n "$first_logic_block" ]]; then
+    while IFS=: read -r lineno content; do
+      if [[ "$lineno" -gt "$first_logic_block" ]]; then
+        add_violation "$file" "$lineno" "DECL_ORDER" "Declaration after logic block — forward reference risk (IEEE 1800 §12.5): $content"
+      fi
+    done < <(grep -nE '^\s{0,4}(logic|typedef|localparam)\b' "$file" 2>/dev/null || true)
+  fi
 }
 
 # Find all .sv/.v files

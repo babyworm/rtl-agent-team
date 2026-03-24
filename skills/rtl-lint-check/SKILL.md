@@ -38,6 +38,7 @@ Lint checks MUST enforce the project coding conventions (CLAUDE.md):
 - Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
 - Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
 - `logic` only — `reg`/`wire` usage flagged as violation
+- Declaration order (IEEE 1800 §12.5): all `logic`/`typedef`/`localparam` must appear before `assign`/`always` blocks — forward references flagged as violation
 - Instance prefix: `u_` — missing prefix flagged
 - Generate prefix: `gen_` — missing prefix flagged
 Note: Verible and slang may not catch all convention violations natively.
@@ -76,7 +77,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 
 5. Run supplementary convention checks via Bash CLI:
    - Use `skills/rtl-lint-check/scripts/check_conventions.sh {files}` for automated convention checking
-   - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes
+   - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes, declarations after logic blocks (forward reference risk)
 6. Merge all results; report violations grouped by file then by severity
 7. Return PASS (zero violations) or FAIL (violation count + list)
    - Use `templates/lint-report.md` as the report format template

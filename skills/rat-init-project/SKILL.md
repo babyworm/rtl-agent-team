@@ -88,7 +88,15 @@ This skill ensures the project workspace is ready before design work begins.
    Note: Per-module subdirectories under `refc/`, `bfm/`, `rtl/`, `sim/` are created
    during Phase 2 (architecture) when module decomposition is decided.
 
-2a. **Deploy rules** (skip if already deployed globally via `rat-setup`):
+2a. **Inject project CLAUDE.md** (RAT-managed section):
+   Run the injection script to create or update the RAT-managed section in the project root CLAUDE.md.
+   User content outside `<!-- RAT:START -->` / `<!-- RAT:END -->` tags is never modified.
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/inject_claude_md.sh" .
+   ```
+   Idempotent — safe to re-run on every `rat-init-project` invocation.
+
+2b. **Deploy rules** (skip if already deployed globally via `rat-setup`):
    For each rule file, check `~/.claude/rules/` first. If the same file exists globally,
    skip the local copy to avoid duplicate injection. Only deploy locally if neither exists.
    Diagram rules are injected into `~/.claude/CLAUDE.md` by `rat-setup` via `<markdown_diagram_rule>` tag.
@@ -115,7 +123,7 @@ This skill ensures the project workspace is ready before design work begins.
    | **ASCII flow diagram** | **Prohibited** | Do NOT use ASCII art — use D2 or Mermaid |
    ```
 
-2b. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
+2c. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
    ```bash
    # Copy guide files as CLAUDE.md into each artifact directory (non-destructive)
    [ ! -f rtl/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/rtl-guide.md" rtl/CLAUDE.md
@@ -166,6 +174,15 @@ This skill ensures the project workspace is ready before design work begins.
    - **CDC**: `sim/cdc/run_cdc.sh` — structural quick check + spyglass/vc_cdc/questa_cdc
    - Runtime hook integration: `hooks/rtl-skill-activation.sh` runs
      `skills/rat-init-project/scripts/install_project_templates.sh` automatically when `rat-init-project` starts.
+
+4.9. **Deploy project Makefile** (if project root has no Makefile):
+   Copy the unified build system Makefile that wraps all EDA scripts:
+   ```bash
+   [ ! -f Makefile ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/Makefile" Makefile
+   ```
+   Open-source tools by default (`make sim`, `make lint`, `make syn`, `make formal`).
+   Commercial EDA via `_tool` suffix (`make sim_xrun`, `make lint_spyglass`, `make syn_dc`).
+   Run `make help` to see all targets and variables.
 
 5. **Generate cocotb Makefile template** (if sim/ has no Makefile):
    Copy `skills/rat-init-project/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
