@@ -7,6 +7,21 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.11] - 2026-03-24
+
+### Added
+- IEEE 1800 §12.5 forward reference enforcement across agents, skills, and coding conventions
+- `check_conventions.sh` Rule 7 (DECL_ORDER): heuristic detection of declarations after logic blocks
+- Unified project Makefile template (17 targets: sim/lint/syn/formal/cdc with open-source defaults, commercial EDA via `_tool` suffix)
+- RAT-tagged project CLAUDE.md injection (`inject_claude_md.sh`): idempotent create/append/update with `<!-- RAT:START -->` / `<!-- RAT:END -->` delimiters
+- CI-before-push rule (#12 CRITICAL) in Plugin Development Best Practices
+
+### Fixed
+- BUG-001: `((VIOLATIONS++))` → `VIOLATIONS=$((VIOLATIONS + 1))` for `set -e` safety
+- DECL_ORDER grep pipeline `|| true` guard for `set -eo pipefail` on no-match files
+- lint-checker.md step numbering (removed duplicate step 6, renumbered 6–13)
+- Best Practices numbering (duplicate #12 → #12, #13, #14)
+
 ## [0.8.10] - 2026-03-20
 
 ### Added
