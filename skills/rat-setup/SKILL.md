@@ -222,6 +222,10 @@ fi
 
 ---
 
+**IMPORTANT: After receiving all Q1-Q4 answers, immediately proceed to Phase 4 execution
+in the same response. Do NOT pause or wait for user confirmation between Phase 3 and Phase 4.
+The user has already made their decisions — execute them without an extra turn boundary.**
+
 ## Phase 4: Execute (based on user answers)
 
 ### 4a. Tool Installation
@@ -359,6 +363,37 @@ VERILATOR_LATEST_TAG="$(git ls-remote --tags --refs https://github.com/verilator
 SYSTEMC_LATEST_TAG="$(git ls-remote --tags --refs https://github.com/accellera-official/systemc.git | awk -F/ '{print $3}' | sort -V | tail -1)"
 echo "Verilator latest stable candidate: ${VERILATOR_LATEST_TAG}"
 echo "SystemC latest stable candidate: ${SYSTEMC_LATEST_TAG}"
+```
+
+## RHEL/CentOS GCC Toolset (source builds requiring C++17/C++20)
+
+RHEL, CentOS, Rocky, Alma and other EL-based distros ship older GCC by default (often GCC 8-11),
+which may lack full C++20 support needed by tools like **slang**, **slang-cdc**, and recent **Verilator**.
+
+Before source-building these tools, detect the distro and activate a newer GCC toolset:
+
+```bash
+# Detect RHEL-family and activate gcc-toolset if available
+if [ -f /etc/redhat-release ]; then
+  # Try gcc-toolset-14, fall back to 13, 12
+  for VER in 14 13 12; do
+    if [ -f "/opt/rh/gcc-toolset-${VER}/enable" ]; then
+      source "/opt/rh/gcc-toolset-${VER}/enable"
+      echo "Activated gcc-toolset-${VER}: $(g++ --version | head -1)"
+      break
+    fi
+  done
+fi
+```
+
+If no toolset is installed, print instructions for the user:
+```bash
+# RHEL/Rocky/Alma:
+sudo dnf install -y gcc-toolset-14
+source /opt/rh/gcc-toolset-14/enable
+# CentOS Stream:
+sudo dnf install -y gcc-toolset-14
+scl enable gcc-toolset-14 bash
 ```
 
 ## Mode: `local` (default — LLM executes directly, no sudo)

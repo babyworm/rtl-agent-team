@@ -7,6 +7,12 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.12] - 2026-03-24
+
+### Fixed
+- rat-setup Phase 3→4 turn boundary: added directive to proceed immediately after Q1-Q4 answers without extra user prompt
+- rat-setup RHEL/CentOS GCC toolset guidance for C++20 source builds (slang, slang-cdc, Verilator)
+
 ## [0.8.11] - 2026-03-24
 
 ### Added
