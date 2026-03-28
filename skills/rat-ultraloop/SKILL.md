@@ -42,7 +42,7 @@ Before starting the loop, capture a hash of all frozen artifacts:
 ```python
 frozen_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1").strip()
 
-Write(".rtl-agent-team/state/design-freeze.json", json.dumps({
+Write(".rat/state/design-freeze.json", json.dumps({
     "frozen_hash": frozen_hash,
     "frozen_paths": ["rtl/pkg/", "rtl/intf/", "docs/phase-3-uarch/"],
     "created_at": ISO_TIMESTAMP
@@ -57,7 +57,7 @@ max_cycles = 10
 
 # Initialize ultraloop state
 # last_cycle_timestamp: Unix epoch seconds (date +%s)
-Write(".rtl-agent-team/state/ultraloop-state.json", json.dumps({
+Write(".rat/state/ultraloop-state.json", json.dumps({
     "mode": "ultraloop",
     "target_skill": target_skill,
     "cycle": 0,
@@ -73,7 +73,7 @@ for cycle in range(1, max_cycles + 1):
     # Update state
     ultraloop_state["cycle"] = cycle
     ultraloop_state["last_cycle_timestamp"] = int(time.time())  # Unix epoch seconds (date +%s)
-    Write(".rtl-agent-team/state/ultraloop-state.json", json.dumps(ultraloop_state))
+    Write(".rat/state/ultraloop-state.json", json.dumps(ultraloop_state))
 
     # --- (a) Execute/continue target skill ---
     Skill(skill=f"rtl-agent-team:{target_skill}", prompt="--resume")
@@ -84,8 +84,8 @@ for cycle in range(1, max_cycles + 1):
         description=f"Ultraloop review cycle {cycle}",
         prompt=f"Review cycle {cycle} of ultraloop targeting {target_skill}. "
                f"Assess RTL quality, contract test coverage, and design freeze integrity. "
-               f"Read .rtl-agent-team/state/block-parallel-state.json for block status. "
-               f"Read .rtl-agent-team/state/design-freeze.json for freeze hash. "
+               f"Read .rat/state/block-parallel-state.json for block status. "
+               f"Read .rat/state/design-freeze.json for freeze hash. "
                f"Output structured review with per-block assessment and verdict."
     )
 
@@ -112,7 +112,7 @@ for cycle in range(1, max_cycles + 1):
         print("Halting ultraloop. User review required.")
 
         # Clean up ultraloop state so stop-gate.sh stops blocking
-        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+        Bash("rm -f .rat/state/ultraloop-state.json")
         generate_user_report(cycle, "FREEZE_VIOLATION")
         break
 
@@ -121,33 +121,33 @@ for cycle in range(1, max_cycles + 1):
 
     # --- (g) Check auto-termination conditions ---
     # Condition 1: All blocks merged + contract tests PASS
-    block_state = Read(".rtl-agent-team/state/block-parallel-state.json")
+    block_state = Read(".rat/state/block-parallel-state.json")
     all_merged = all(b["status"] == "merged" for b in block_state["blocks"].values())
     all_contracts_pass = all(b["contract_test_pass"] for b in block_state["blocks"].values())
     if all_merged and all_contracts_pass:
         print("All blocks merged and contract tests PASS. Ultraloop complete.")
-        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+        Bash("rm -f .rat/state/ultraloop-state.json")
         generate_user_report(cycle, "COMPLETE")
         break
 
     # Condition 2: Clean review (no improvements found)
     if review_result.verdict == "CLEAN":
         print("Clean review — no further improvements needed. Ultraloop complete.")
-        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+        Bash("rm -f .rat/state/ultraloop-state.json")
         generate_user_report(cycle, "CLEAN")
         break
 
     # Condition 3: Max cycles reached
     if cycle == max_cycles:
         print(f"Max cycles ({max_cycles}) reached. Saving state for manual review.")
-        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+        Bash("rm -f .rat/state/ultraloop-state.json")
         generate_user_report(cycle, "MAX_CYCLES")
         break
 
     # Condition 4: Token exhaustion imminent
     # (Detect via context window usage or explicit signal)
     if token_budget_low():
-        Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+        Bash("rm -f .rat/state/ultraloop-state.json")
         generate_user_report(cycle, "TOKEN_EXHAUSTION")
         break
 
@@ -171,7 +171,7 @@ The loop terminates when any of these conditions is met:
 On token exhaustion detection, the skill MUST remove `ultraloop-state.json` before exiting
 to prevent `stop-gate.sh` from treating the next session as an active ultraloop:
 ```python
-Bash("rm -f .rtl-agent-team/state/ultraloop-state.json")
+Bash("rm -f .rat/state/ultraloop-state.json")
 generate_user_report(cycle, "TOKEN_EXHAUSTION")
 ```
 If the session terminates abruptly without cleanup, `stop-gate.sh` will detect a stale
@@ -179,7 +179,7 @@ timestamp (elapsed > threshold) and allow normal stopping in the next session.
 
 ## State Persistence
 
-Maintained at `.rtl-agent-team/state/ultraloop-state.json`:
+Maintained at `.rat/state/ultraloop-state.json`:
 
 ```json
 {
@@ -195,7 +195,7 @@ Maintained at `.rtl-agent-team/state/ultraloop-state.json`:
 
 ## User Return Report
 
-Generated at `.rtl-agent-team/state/ultraloop-report.md` on loop completion or halt:
+Generated at `.rat/state/ultraloop-report.md` on loop completion or halt:
 
 ```markdown
 # Ultraloop Execution Report

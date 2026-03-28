@@ -36,7 +36,7 @@ A design note that only describes WHAT was built is half the story. Future engin
 - **Quality Gate**: All deliverables must exist AND pass quality checks
   - On FAIL: iterate review → fix cycle (max 2 rounds)
   - On agent failure: retry once, then escalate to user
-- State tracking: update `.rtl-agent-team/state/rat-auto-design-state.json` if running within autopilot
+- State tracking: update `.rat/state/rat-auto-design-state.json` if running within autopilot
 
 ## Design Note Requirements
 

@@ -22,7 +22,7 @@ engine selection guide, iterative refinement rules, and escalation conditions.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -52,7 +52,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Preparation
 
 ```
-Bash("mkdir -p sim/formal reviews/phase-5-verify .rtl-agent-team/scratch/phase-5")
+Bash("mkdir -p sim/formal reviews/phase-5-verify .rat/scratch/phase-5")
 Glob("rtl/*/")       # Enumerate modules
 ```
 
@@ -68,7 +68,7 @@ Write initial SVA properties at sim/formal/{module}_props.sv.
 Round 1 (Draft): Focus on safety properties (no overflow, no deadlock) and protocol
 handshake properties. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md.
 Guard $past() with past_valid register. Use |-> and |=> temporal operators correctly.
-Save iteration note to .rtl-agent-team/scratch/phase-5/sva-iteration-{module}-r1.md.")
+Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r1.md.")
 
 # Round 2 (Strengthen): Edge cases and cover properties
 Task(subagent_type="rtl-agent-team:sva-extractor",
@@ -76,7 +76,7 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 Round 2 (Strengthen): Review for completeness. Add missing edge cases: reset behavior,
 boundary conditions, back-to-back transactions, error paths. Add cover properties
 for reachability. Check for vacuous assertions. Update sim/formal/{module}_props.sv.
-Save iteration note to .rtl-agent-team/scratch/phase-5/sva-iteration-{module}-r2.md.")
+Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r2.md.")
 
 # Round 3 (Harden): Liveness and spec cross-check
 Task(subagent_type="rtl-agent-team:sva-extractor",
@@ -84,7 +84,7 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 Round 3 (Harden): Cross-check against spec requirements. Add liveness properties
 (##[1:N] bounded eventually). Verify assume/assert balance (not over-constrained).
 Add cross-module interface properties if applicable. Finalize sim/formal/{module}_props.sv.
-Save iteration note to .rtl-agent-team/scratch/phase-5/sva-iteration-{module}-r3.md.")
+Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r3.md.")
 ```
 
 Rounds are sequential per module (each builds on the previous).

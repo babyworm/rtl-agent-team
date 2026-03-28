@@ -8,11 +8,14 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/spawn-context-util.sh"
 . "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_continue; }
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
@@ -36,7 +39,7 @@ fi
 # NOTE: Gated on setup marker to preserve pre-setup behavior (no filesystem writes
 #       for uninitialized projects)
 if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; then
-  _CS_FILE="$CWD/.rtl-agent-team/state/compliance-state.json"
+  _CS_FILE="$RAT_DIR/state/compliance-state.json"
   _cs_current_phase=""
   if [ -f "$_CS_FILE" ]; then
     _cs_current_phase=$(jsonu_get_file_path_string "$_CS_FILE" "phase")
@@ -62,7 +65,7 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/
     esac
 
     if [ -n "$_cs_upstream" ]; then
-      mkdir -p "$CWD/.rtl-agent-team/state"
+      mkdir -p "$RAT_DIR/state"
       cat > "$_CS_FILE" << _CS_EOF
 {
   "phase": "$SHORT_NAME",
@@ -99,16 +102,16 @@ TARGET=""
 case "$SHORT_NAME" in
   rtl-p4-rapid-impl)
     TEMPLATE="$PLUGIN_ROOT/skills/rtl-p4-rapid-impl-policy/templates/p4-state.json"
-    TARGET="$CWD/.rtl-agent-team/state/p4-state.json"
+    TARGET="$RAT_DIR/state/p4-state.json"
     ;;
   rtl-p5a-functional-closure)
     TEMPLATE="$PLUGIN_ROOT/skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json"
-    TARGET="$CWD/.rtl-agent-team/state/p5a-state.json"
+    TARGET="$RAT_DIR/state/p5a-state.json"
     ;;
   rtl-p5b-silicon-validation)
-    P5A_STATE="$CWD/.rtl-agent-team/state/p5a-state.json"
+    P5A_STATE="$RAT_DIR/state/p5a-state.json"
     if [ ! -f "$P5A_STATE" ]; then
-      MSG="[P5B Gate BLOCKED] P5A functional closure state file (.rtl-agent-team/state/p5a-state.json) not found. Run /rtl-agent-team:rtl-p5a-functional-closure first."
+      MSG="[P5B Gate BLOCKED] P5A functional closure state file (.rat/state/p5a-state.json) not found. Run /rtl-agent-team:rtl-p5a-functional-closure first."
       if [ -n "$SETUP_HINT" ]; then
         MSG="$MSG $SETUP_HINT"
       fi
@@ -131,7 +134,7 @@ case "$SHORT_NAME" in
 
     # Staleness guard: if tracked RTL files were modified after P5A PASS, re-run P5A.
     # Aggregate all tracking files: global + session-specific (team mode) + fallback
-    _P5B_STATE_DIR="$CWD/.rtl-agent-team/state"
+    _P5B_STATE_DIR="$RAT_DIR/state"
     _P5B_COMBINED=$(cat "$_P5B_STATE_DIR"/rtl-modified-files*.txt 2>/dev/null | sort -u)
     P5A_MTIME=$(get_mtime_epoch "$P5A_STATE")
     if [ -n "$P5A_MTIME" ] && [ -n "$_P5B_COMBINED" ]; then
@@ -163,7 +166,7 @@ _P5B_TRACK_EOF
     fi
 
     TEMPLATE="$PLUGIN_ROOT/skills/rtl-silicon-validation-policy/templates/p5b-state.json"
-    TARGET="$CWD/.rtl-agent-team/state/p5b-state.json"
+    TARGET="$RAT_DIR/state/p5b-state.json"
     ;;
   *)
     emit_continue "$SETUP_HINT"

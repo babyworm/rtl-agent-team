@@ -1,7 +1,7 @@
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:

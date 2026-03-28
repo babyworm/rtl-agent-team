@@ -11,14 +11,17 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/flock-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 . "$SCRIPT_DIR/lib/audit-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && exit 0
 
 # Only log for RTL projects with active audit sessions
-AUDIT_DIR="$CWD/.rtl-agent-team/audit"
+AUDIT_DIR="$RAT_DIR/audit"
 [ ! -d "$AUDIT_DIR" ] && exit 0
 
 SESSION_ID=$(audit_session_id "$CWD")

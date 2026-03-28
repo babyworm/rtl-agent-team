@@ -7,10 +7,13 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_continue; }
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # Extract skill name from tool input
@@ -62,7 +65,7 @@ case "$SHORT_NAME" in
     ;;
 esac
 
-STATE_DIR="$CWD/.rtl-agent-team/state"
+STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 CRITERIA_FILE="$PLUGIN_ROOT/skill-completion-criteria.json"
 
@@ -130,7 +133,7 @@ if [ -f "$_AUDIT_LIB" ]; then
   . "$SCRIPT_DIR/lib/flock-util.sh"
   . "$_AUDIT_LIB"
   _SKI_SID=$(audit_session_id "$CWD")
-  if [ -n "$_SKI_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_SKI_SID" ]; then
+  if [ -n "$_SKI_SID" ] && [ -d "$RAT_DIR/audit/$_SKI_SID" ]; then
     _SKI_SAFE=$(jsonu_escape "$SHORT_NAME")
     _SKI_PHASE=""
     # Resolve phase from spawn-context-util if available
@@ -146,4 +149,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-emit_continue "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rtl-agent-team/state/skill-active.json."
+emit_continue "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rat/state/skill-active.json."

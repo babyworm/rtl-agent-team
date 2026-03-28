@@ -196,7 +196,7 @@ INTEGRATION_FIX: always sequential (cross-module dependencies).
 
 ## Integration with rat-auto-design
 
-When invoked from rat-auto-design, state is tracked in `.rtl-agent-team/state/rat-auto-design-state.json`:
+When invoked from rat-auto-design, state is tracked in `.rat/state/rat-auto-design-state.json`:
 ```json
 {
   "current_phase": 5,

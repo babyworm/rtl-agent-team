@@ -77,7 +77,7 @@ For ALL branches, the per-item classification rules are:
 
 ### Step 4: Generate Compliance Report
 
-Write a JSON compliance report to the path specified in the prompt (default: `.rtl-agent-team/state/compliance-report.json`).
+Write a JSON compliance report to the path specified in the prompt (default: `.rat/state/compliance-report.json`).
 If the prompt includes "Save report to <path>", use that path instead of the default:
 
 ```json

@@ -38,7 +38,7 @@ class TestTeamConfigLifecycle:
 
     def test_team_config_creation(self, tmp_path):
         """Simulate team-config.json creation as the skill would."""
-        state_dir = tmp_path / ".rtl-agent-team" / "state"
+        state_dir = tmp_path / ".rat" / "state"
         state_dir.mkdir(parents=True)
         config = {
             "team_mode": True,
@@ -58,7 +58,7 @@ class TestTeamConfigLifecycle:
 
     def test_team_config_cleanup(self, tmp_path):
         """Removing team-config.json restores normal Stop hook behavior."""
-        state_dir = tmp_path / ".rtl-agent-team" / "state"
+        state_dir = tmp_path / ".rat" / "state"
         state_dir.mkdir(parents=True)
         config_file = state_dir / "team-config.json"
         config_file.write_text(json.dumps({"team_mode": True, "team_name": "test"}))

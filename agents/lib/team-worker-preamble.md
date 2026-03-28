@@ -32,7 +32,7 @@ Skill (main session = leader)
 When spawned with `team_name` parameter:
 - Team membership is managed by Claude Code natively (via TeamCreate/SendMessage)
 - Identify self (name) and coordinator from native team context
-- Read `.rtl-agent-team/state/team-config.json` for plugin state only (team_mode, phase)
+- Read `.rat/state/team-config.json` for plugin state only (team_mode, phase)
 - Call `TaskList()` to discover available tasks
 
 ### 2. Task Claim Loop

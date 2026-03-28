@@ -23,7 +23,7 @@ document requirements, naming conventions, and checklists. Reference it for pass
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -399,7 +399,7 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
      target_artifacts: ['docs/phase-3-uarch/iron-requirements.json', 'docs/phase-3-uarch/clock-domain-map.md', 'docs/phase-3-uarch/protocol-assignments.md', 'docs/phase-3-uarch/req-uarch-traceability.md']
      Read only the above files and compare directly. Do not trust implementer explanations.")
 
-Read(".rtl-agent-team/state/compliance-report.json")
+Read(".rat/state/compliance-report.json")
 # If verdict == "FAIL":
 #   → Check max_violation_authority
 #   → Enter authority-appropriate escalation ladder (authority 3: N=5, Primary 5 + Fallback 5 + Last-chance 1 = 11)
@@ -445,7 +445,7 @@ Glob("docs/phase-3-uarch/iron-requirements.json")  # MUST exist (REQ-U-* decisio
 # Zero-opens invariant check (separate from iron check above):
 # open-requirements.json MUST NOT exist in P3 — if found → FAIL
 Glob("docs/phase-3-uarch/open-requirements.json")  # expect: NO MATCH
-Read(".rtl-agent-team/state/compliance-report.json")
+Read(".rat/state/compliance-report.json")
 # Verify verdict == "PASS"
 ```
 
@@ -469,13 +469,13 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Output artifacts: docs/phase-3-uarch/ (per-module uarch specs, clock-domain-map.md, protocol-assignments.md, req-uarch-traceability.md, pipeline diagram).
      Review verdicts: reviews/phase-3-uarch/ (uarch-review.md, feature-preservation.md).
      ADRs: docs/decisions/ADR-*.md.
-     Compliance report: .rtl-agent-team/state/compliance-report.json (include in review if exists).
+     Compliance report: .rat/state/compliance-report.json (include in review if exists).
      Upstream iron: docs/phase-1-research/iron-requirements.json, docs/phase-2-architecture/iron-requirements.json.
      Focus: pipeline correctness, clock domain safety, protocol assignments, feature preservation, BFM consistency, iron requirement compliance.")
 ```
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-3/cross-review-report.md")
+Read(".rat/cross-review/phase-3/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 3 complete
 
 # Parallel Execution Patterns

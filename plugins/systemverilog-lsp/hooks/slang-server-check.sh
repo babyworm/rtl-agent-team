@@ -12,7 +12,7 @@ fi
 
 LOCAL_BIN="${HOME}/.local/bin/slang-server"
 if [ -x "$LOCAL_BIN" ]; then
-  printf '{"hookSpecificOutput":{"additionalContext":"systemverilog-lsp: slang-server is installed at %s but is not on PATH. Add `export PATH=\"$HOME/.local/bin:$PATH\"` to your shell profile, restart the session, or ask me to verify the local LSP install."}}' "$LOCAL_BIN"
+  printf '{"hookSpecificOutput":{"additionalContext":"systemverilog-lsp: slang-server is installed at %s but is not on PATH. Add `export PATH=\\"$HOME/.local/bin:$PATH\\"` to your shell profile, restart the session, or ask me to verify the local LSP install."}}' "$LOCAL_BIN"
   exit 0
 fi
 

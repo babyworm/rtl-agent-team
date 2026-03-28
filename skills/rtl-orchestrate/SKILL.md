@@ -424,8 +424,8 @@ This rule applies to ALL tasks that modify `.sv/.svh/.v/.vh` files.
 **Correct flow:** RTL modify → lint pass → TB create/update → simulation PASS → "done"
 
 **Gate signals:**
-- Verification done: `touch .rtl-agent-team/state/rtl-verify-done`
-- Waiver (non-functional changes): `touch .rtl-agent-team/state/rtl-verify-waiver`
+- Verification done: `touch .rat/state/rtl-verify-done`
+- Waiver (non-functional changes): `touch .rat/state/rtl-verify-waiver`
 
 **Phase 4 Parallel Streams:**
 - Stream A: RTL coding (wave-based) → lint → unit TB → unit sim
@@ -510,21 +510,21 @@ Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → 
 ## State Files
 
 Hook-enforced (quality gates):
-- `.rtl-agent-team/state/rat-auto-design-state.json` — Full pipeline progress (stop-gate)
-- `.rtl-agent-team/state/rat-auto-design-state.json::orchestration_control` — Active gate counters/strategy (`N→2N→last-chance`) and dynamic prompt payload
-- `.rtl-agent-team/state/rtl-verify-done` — RTL verification completion gate (rtl-verify-stop-gate)
-- `.rtl-agent-team/state/rtl-verify-waiver` — Verification waiver (rtl-verify-stop-gate)
-- `.rtl-agent-team/state/skill-active.json` — Skill completion loop state (rtl-skill-activation, rtl-skill-completion-gate)
-- `.rtl-agent-team/state/phase6-stale` — Phase 6 cascade marker (rtl-edit-tracker, rtl-p6-cascade-gate)
-- `.rtl-agent-team/state/phase6-cascade-done` — Phase 6 cascade completion (rtl-p6-cascade-gate)
-- `.rtl-agent-team/state/rtl-modified-files.txt` — Modified RTL file tracking (rtl-edit-tracker, rtl-verify-stop-gate)
+- `.rat/state/rat-auto-design-state.json` — Full pipeline progress (stop-gate)
+- `.rat/state/rat-auto-design-state.json::orchestration_control` — Active gate counters/strategy (`N→2N→last-chance`) and dynamic prompt payload
+- `.rat/state/rtl-verify-done` — RTL verification completion gate (rtl-verify-stop-gate)
+- `.rat/state/rtl-verify-waiver` — Verification waiver (rtl-verify-stop-gate)
+- `.rat/state/skill-active.json` — Skill completion loop state (rtl-skill-activation, rtl-skill-completion-gate)
+- `.rat/state/phase6-stale` — Phase 6 cascade marker (rtl-edit-tracker, rtl-p6-cascade-gate)
+- `.rat/state/phase6-cascade-done` — Phase 6 cascade completion (rtl-p6-cascade-gate)
+- `.rat/state/rtl-modified-files.txt` — Modified RTL file tracking (rtl-edit-tracker, rtl-verify-stop-gate)
 
 Agent-managed (orchestrator resumability):
-- `.rtl-agent-team/state/rat-p1p3-spec-uarch-state.json` — Spec-to-μArch pipeline progress
-- `.rtl-agent-team/state/rat-p4p5-impl-verify-state.json` — μArch-to-Verify pipeline progress
-- `.rtl-agent-team/state/rat-dse-state.json` — DSE pipeline progress
-- `.rtl-agent-team/state/feedback-loop-state.json` — Phase 5→4 feedback loop tracking
-- `.rtl-agent-team/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker
+- `.rat/state/rat-p1p3-spec-uarch-state.json` — Spec-to-μArch pipeline progress
+- `.rat/state/rat-p4p5-impl-verify-state.json` — μArch-to-Verify pipeline progress
+- `.rat/state/rat-dse-state.json` — DSE pipeline progress
+- `.rat/state/feedback-loop-state.json` — Phase 5→4 feedback loop tracking
+- `.rat/state/{module}-phase-3-complete.json` — Per-module Phase 3 completion marker
 
 Templates:
 - `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/autopilot-state.json` (or `skills/rat-auto-design/templates/autopilot-state.json` in repo context) — v3.0 state schema with `orchestration_control`
@@ -663,7 +663,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 
 ## Mandatory Verification After RTL Changes
 RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
-Gate: `touch .rtl-agent-team/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
+Gate: `touch .rat/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
 
 ## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)

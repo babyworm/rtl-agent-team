@@ -73,7 +73,7 @@ In feedback mode: lesson-learned recording is **mandatory** (not just recommende
 - [ ] Bug reproduction scenario included as a test case
 - [ ] **Functional simulation executed (cocotb or verilator sim)**
 - [ ] **All tests PASS**
-- [ ] **Verification-done marker created (.rtl-agent-team/state/rtl-verify-done)**
+- [ ] **Verification-done marker created (.rat/state/rtl-verify-done)**
 - [ ] TB signal naming convention followed
 - [ ] Multi-module failures classified (UNIT_FIX vs INTEGRATION_FIX)
 - [ ] Independent UNIT_FIX modules fixed in parallel (not sequentially)

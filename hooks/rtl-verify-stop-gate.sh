@@ -1,9 +1,9 @@
 #!/bin/sh
 # RTL Verify Stop Gate: blocks session exit if RTL files were modified without verification.
 #
-# Tracking file: .rtl-agent-team/state/rtl-modified-files.txt (one path per line)
-# Verification evidence: .rtl-agent-team/state/rtl-verify-done (marker file)
-# Waiver: .rtl-agent-team/state/rtl-verify-waiver (bypass marker)
+# Tracking file: .rat/state/rtl-modified-files.txt (one path per line)
+# Verification evidence: .rat/state/rtl-verify-done (marker file)
+# Waiver: .rat/state/rtl-verify-waiver (bypass marker)
 #
 # If modified RTL files exist and no evidence/waiver is found, session exit is BLOCKED.
 
@@ -12,12 +12,15 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
-STATE_DIR="$CWD/.rtl-agent-team/state"
+STATE_DIR="$RAT_DIR/state"
 TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
 VERIFY_DONE="$STATE_DIR/rtl-verify-done"
 VERIFY_WAIVER="$STATE_DIR/rtl-verify-waiver"
@@ -87,5 +90,5 @@ FILES=$(while IFS= read -r f; do basename "$f"; done < "$TRACK_FILE" | tr '\n' '
 rm -f "$AGGREGATED_TRACK"
 # Note: no jsonu_escape here — emit_stop_block handles JSON escaping internally
 
-MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Options: (1) Run /rtl-agent-team:rtl-p5s-func-verify for functional verification (2) Waive: touch .rtl-agent-team/state/rtl-verify-waiver (3) Reset: rm .rtl-agent-team/state/rtl-modified-files.txt"
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Options: (1) Run /rtl-agent-team:rtl-p5s-func-verify for functional verification (2) Waive: touch .rat/state/rtl-verify-waiver (3) Reset: rm .rat/state/rtl-modified-files.txt"
 emit_stop_block "$MSG"

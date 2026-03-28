@@ -11,25 +11,28 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
-STATE_FILE="$CWD/.rtl-agent-team/state/rat-auto-design-state.json"
+STATE_FILE="$RAT_DIR/state/rat-auto-design-state.json"
 
 # Legacy migration: rename old state file from pre-0.6.10 naming convention
-LEGACY_STATE_FILE="$CWD/.rtl-agent-team/state/rtl-autopilot-state.json"
+LEGACY_STATE_FILE="$RAT_DIR/state/rtl-autopilot-state.json"
 if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
   mv "$LEGACY_STATE_FILE" "$STATE_FILE"
 fi
 
-if teamu_should_skip_gate "$CWD/.rtl-agent-team/state"; then
+if teamu_should_skip_gate "$RAT_DIR/state"; then
   emit_post_continue
 fi
 
 # Ultraloop auto-continue: if ultraloop is active and within its time window, keep going
-ULTRALOOP_STATE="$CWD/.rtl-agent-team/state/ultraloop-state.json"
+ULTRALOOP_STATE="$RAT_DIR/state/ultraloop-state.json"
 if [ -f "$ULTRALOOP_STATE" ]; then
   . "$SCRIPT_DIR/lib/posix-util.sh"
   UL_MODE=$(jsonu_get_file_path_string "$ULTRALOOP_STATE" "mode")

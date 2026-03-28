@@ -2,8 +2,8 @@
 # RTL Phase 6 Cascade Gate: Stop hook
 # Blocks session exit when RTL files were modified after Phase 6 review was completed.
 #
-# Stale marker:   .rtl-agent-team/state/phase6-stale       (set by rtl-edit-tracker.sh)
-# Cascade done:   .rtl-agent-team/state/phase6-cascade-done (set manually after updating docs)
+# Stale marker:   .rat/state/phase6-stale       (set by rtl-edit-tracker.sh)
+# Cascade done:   .rat/state/phase6-cascade-done (set manually after updating docs)
 #
 # Flow:
 #   - phase6-stale absent            → allow exit (Phase 6 was never completed or no RTL edits)
@@ -16,12 +16,15 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
-STATE_DIR="$CWD/.rtl-agent-team/state"
+STATE_DIR="$RAT_DIR/state"
 STALE_MARKER="$STATE_DIR/phase6-stale"
 CASCADE_DONE="$STATE_DIR/phase6-cascade-done"
 
@@ -70,7 +73,7 @@ if [ -f "$CASCADE_DONE" ]; then
   fi
 
   if [ "$DOCS_STALE" = "true" ]; then
-    emit_stop_block "[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after RTL change. Document mtime must be newer than the stale marker. Action: Update documents to reflect RTL modifications, then touch .rtl-agent-team/state/phase6-cascade-done again."
+    emit_stop_block "[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after RTL change. Document mtime must be newer than the stale marker. Action: Update documents to reflect RTL modifications, then touch .rat/state/phase6-cascade-done again."
   fi
 
   rm -f "$STALE_MARKER" "$CASCADE_DONE"
@@ -78,4 +81,4 @@ if [ -f "$CASCADE_DONE" ]; then
 fi
 
 # Phase 6 stale and cascade not yet confirmed — BLOCK exit
-emit_stop_block "[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified. Required steps: (1) Re-run lint (verilator --lint-only -Wall) (2) Update code-review.md (3) Update design-review.md (4) Update design-note*.md (single or split files per P6 policy) (5) Update improvements.md. When done: touch .rtl-agent-team/state/phase6-cascade-done"
+emit_stop_block "[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified. Required steps: (1) Re-run lint (verilator --lint-only -Wall) (2) Update code-review.md (3) Update design-review.md (4) Update design-note*.md (single or split files per P6 policy) (5) Update improvements.md. When done: touch .rat/state/phase6-cascade-done"

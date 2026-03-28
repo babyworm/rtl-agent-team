@@ -74,7 +74,7 @@ comparing outputs, and tracking which profile features are covered.
 - Requires refc/*.c with decoder functionality (or configured decoder_src)
 - HJSON conformance configuration defines all test parameters
 - Local execution is the default; AWS Batch is opt-in via configuration
-- Conformance results are cached at .rtl-agent-team/scratch/conformance-eval/
+- Conformance results are cached at .rat/scratch/conformance-eval/
 - Report is generated at configured path (default: docs/phase-1-research/conformance-eval-report.md)
 - On build failure: report error details and stop
 - On decoding failure: mark stream as FAIL, continue with remaining streams
@@ -110,7 +110,7 @@ comparing outputs, and tracking which profile features are covered.
      - **local**: `python3 skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode local`
      - **aws-batch**: `python3 skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode aws-batch`
    - Each job produces: decoded YUV (or MD5) + decode_time + status
-   - Results saved to: `.rtl-agent-team/scratch/conformance-eval/results.json`
+   - Results saved to: `.rat/scratch/conformance-eval/results.json`
 
 4. **Output comparison** (compare_output.py)
    - `python3 skills/codec-conformance-eval/scripts/compare_output.py <results.json> <config.hjson>`
@@ -120,7 +120,7 @@ comparing outputs, and tracking which profile features are covered.
      c) PSNR threshold (for approximate matching, e.g., floating-point rounding)
    - Optional: SSIM/VMAF (only when quality_metrics includes them)
    - Profile coverage matrix: which profile features are tested
-   - Output: `.rtl-agent-team/scratch/conformance-eval/conformance-metrics.json`
+   - Output: `.rat/scratch/conformance-eval/conformance-metrics.json`
 
 5. **Report generation**
    - Generate report from template at skills/codec-conformance-eval/templates/conformance-report.md
@@ -148,7 +148,7 @@ Bash("ls conformance/golden-outputs/") # Verify golden output references exist
 # ============================================================
 # Step 2: Decoder build
 # ============================================================
-Bash("bash skills/codec-conformance-eval/scripts/build_decoder.sh refc .rtl-agent-team/scratch/conformance-eval/decoder")
+Bash("bash skills/codec-conformance-eval/scripts/build_decoder.sh refc .rat/scratch/conformance-eval/decoder")
 
 # ============================================================
 # Step 3: Conformance test execution (parallel)
@@ -159,12 +159,12 @@ Bash("python3 skills/codec-conformance-eval/scripts/run_conformance.py <config.h
 # ============================================================
 # Step 4: Output comparison
 # ============================================================
-Bash("python3 skills/codec-conformance-eval/scripts/compare_output.py .rtl-agent-team/scratch/conformance-eval/results.json <config.hjson> --output .rtl-agent-team/scratch/conformance-eval/conformance-metrics.json")
+Bash("python3 skills/codec-conformance-eval/scripts/compare_output.py .rat/scratch/conformance-eval/results.json <config.hjson> --output .rat/scratch/conformance-eval/conformance-metrics.json")
 
 # ============================================================
 # Step 5: Report generation
 # ============================================================
-Read(".rtl-agent-team/scratch/conformance-eval/conformance-metrics.json")
+Read(".rat/scratch/conformance-eval/conformance-metrics.json")
 # Write report to configured output path
 ```
 </Tool_Usage>
@@ -219,7 +219,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Profile/level coverage matrix generated
 - [ ] Overall verdict determined (PASS only if all mandatory streams pass)
 - [ ] Report generated at configured output path
-- [ ] Raw data preserved at .rtl-agent-team/scratch/conformance-eval/
+- [ ] Raw data preserved at .rat/scratch/conformance-eval/
 - [ ] If SSIM/VMAF requested: optional metrics included
 - [ ] Failed streams have detailed failure info (byte offset or pixel divergence)
 - [ ] **Block-level verification** (decoder designs): If applicable, per-block I/O comparison confirms bitexact match at each processing block boundary (see `domain-packages/video-codec/knowledge/block-level-conformance.md`)

@@ -28,7 +28,7 @@ teamu_should_skip_gate() {
   TEAMU_CREATED=$(jsonu_get_file_path_string "$TEAMU_CONFIG" "created_at")
   if [ -n "$TEAMU_CREATED" ]; then
     TEAMU_START=$(date -d "$TEAMU_CREATED" +%s 2>/dev/null \
-      || date -jf "%Y-%m-%dT%H:%M:%SZ" "$TEAMU_CREATED" +%s 2>/dev/null \
+      || TZ=UTC date -jf "%Y-%m-%dT%H:%M:%S" "${TEAMU_CREATED%Z}" +%s 2>/dev/null \
       || echo "")
     TEAMU_NOW=$(date +%s 2>/dev/null || echo "")
     if [ -n "$TEAMU_START" ] && [ -n "$TEAMU_NOW" ]; then

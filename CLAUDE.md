@@ -176,7 +176,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── post-install.sh                  #   One-time EDA environment check
 │   ├── sync_orchestrator_inject.sh      #   Regenerate condensed routing block in hook
 │   └── ...                              #   (other helper scripts)
-└── .rtl-agent-team/                     # Runtime state (gitignored, created per-project)
+└── .rat/                                # Runtime state (gitignored, created per-project)
 ```
 
 ---
@@ -278,7 +278,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `rtl-audit-subagent.sh` | SubagentStart/SubagentStop | Log subagent lifecycle events to audit trace |
 | `rtl-audit-spawn-complete.sh` | PostToolUse:TaskCreate | Log spawn completion events to audit trace |
 
-**State files**: Stored under `.rtl-agent-team/state/`. Pipeline state, verification gates, skill completion tracking.
+**State files**: Stored under `.rat/state/`. Pipeline state, verification gates, skill completion tracking.
 
 ## Native Team Mode (v0.6.6) — Orchestrator as Teammate Pattern
 
@@ -321,7 +321,7 @@ Skill (main session = leader)
 | `agents/lib/team-worker-protocol.md` | Worker communication and coordination protocol |
 | `agents/lib/team-fallback.md` | Graceful degradation patterns (Orchestrator as Teammate) |
 
-**Team-awareness**: Stop hooks check `.rtl-agent-team/state/team-config.json` — coordinator
+**Team-awareness**: Stop hooks check `.rat/state/team-config.json` — coordinator
 and workers bypass gates, only the leader session is subject to stop enforcement.
 Hook concurrency is protected by POSIX file locking (`hooks/lib/flock-util.sh`).
 

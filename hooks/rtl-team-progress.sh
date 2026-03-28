@@ -1,6 +1,6 @@
 #!/bin/sh
 # Hook: PostToolUse:TaskUpdate — Team progress tracking
-# Updates .rtl-agent-team/state/team-progress.json when team mode is active.
+# Updates .rat/state/team-progress.json when team mode is active.
 # In "Orchestrator as Teammate" pattern, the coordinator teammate and workers
 # both trigger this hook via TaskUpdate calls.
 # Shows progress summary in hook output.
@@ -9,14 +9,17 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 # Extract CWD from hook input (consistent with peer hooks)
 INPUT=$(cat)
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
-STATE_DIR="$CWD/.rtl-agent-team/state"
+STATE_DIR="$RAT_DIR/state"
 TEAM_CONFIG="$STATE_DIR/team-config.json"
 PROGRESS_FILE="$STATE_DIR/team-progress.json"
 

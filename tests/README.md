@@ -165,7 +165,7 @@ class TestNewHook:
 
     def test_차단(self, tmp_project):
         # 차단 조건 설정
-        (tmp_project / ".rtl-agent-team" / "state" / "block-file").touch()
+        (tmp_project / ".rat" / "state" / "block-file").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
 ```

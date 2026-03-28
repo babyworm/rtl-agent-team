@@ -28,7 +28,7 @@ Extract `{module}` from the invocation prompt. All coverage data paths use
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -60,7 +60,7 @@ Coverage data absence means no analysis is possible — report and halt if no co
 ## Step 1: Preparation
 
 ```
-Bash("mkdir -p sim/{module}/coverage .rtl-agent-team/scratch/phase-5 reviews/phase-5-verify")
+Bash("mkdir -p sim/{module}/coverage .rat/scratch/phase-5 reviews/phase-5-verify")
 ```
 
 Check for coverage data. If none of `sim/{module}/coverage/coverage.xml`, `sim/{module}/coverage/*.dat`, or `sim/{module}/coverage/merged.info` exists,
@@ -79,7 +79,7 @@ Prioritize ALL gaps: HIGH (functional/safety path), MED (error path), LOW (unrea
 Special HIGH priority: error/safety paths (overflow, underflow, reset, ECC).
 Special HIGH priority: protocol corner cases (backpressure, burst boundary, empty/full).
 Write sim/{module}/coverage/coverage_gaps.md with complete prioritized gap list.
-Save iteration note to .rtl-agent-team/scratch/phase-5/coverage-iteration-r1.md.
+Save iteration note to .rat/scratch/phase-5/coverage-iteration-r1.md.
 Report: current coverage percentages (line/toggle/FSM), total gap count by priority.")
 ```
 
@@ -119,7 +119,7 @@ Target MED priority gaps that are now reachable.
 Check for truly unreachable code (dead FSM states, impossible combinational conditions)
 — these are waiver candidates, list them separately.
 Update sim/{module}/coverage/coverage_gaps.md with Round 2 findings.
-Save iteration note to .rtl-agent-team/scratch/phase-5/coverage-iteration-r2.md.
+Save iteration note to .rat/scratch/phase-5/coverage-iteration-r2.md.
 Report: delta coverage improvement from Round 1, remaining gap count.")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
@@ -150,7 +150,7 @@ Final coverage push:
   - For unreachable gaps: write formal waiver justification
   - Document each waived bin: file:line, reason (dead code / impossible condition)
 Update sim/{module}/coverage/coverage_gaps.md with Round 3 analysis and waiver list.
-Save iteration note to .rtl-agent-team/scratch/phase-5/coverage-iteration-r3.md.
+Save iteration note to .rat/scratch/phase-5/coverage-iteration-r3.md.
 Report: final projected coverage after waivers, bins still open without justification.")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
@@ -171,7 +171,7 @@ Report final coverage percentages.",
 
 If coverage targets are not met after Round 3 and open bins remain without waiver:
 - Repeat Steps 3-4 pattern until targets are met or all remaining gaps are justified
-- Each additional round produces `.rtl-agent-team/scratch/phase-5/coverage-iteration-r{N}.md`
+- Each additional round produces `.rat/scratch/phase-5/coverage-iteration-r{N}.md`
 - If coverage remains below 70% after directed gap fill → escalate to rtl-architect
 
 ## Step 6: Final Coverage Report

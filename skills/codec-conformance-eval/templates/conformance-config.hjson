@@ -23,7 +23,7 @@
   // Decoder configuration
   decoder: {
     decoder_src: "refc/src"
-    decoder_binary: ".rtl-agent-team/scratch/conformance-eval/decoder"
+    decoder_binary: ".rat/scratch/conformance-eval/decoder"
     // Command template — variables: {decoder} {bitstream} {output} {extra_args}
     decoder_cmd_template: "{decoder} -b {bitstream} -o {output} {extra_args}"
     extra_args: ""
@@ -101,7 +101,7 @@
   // Output settings
   output: {
     report_path: "docs/phase-1-research/conformance-eval-report.md"
-    raw_data_path: ".rtl-agent-team/scratch/conformance-eval"
+    raw_data_path: ".rat/scratch/conformance-eval"
     // Decoded YUV files are always preserved in raw_data_path (needed for PSNR/SSIM comparison)
   }
 }

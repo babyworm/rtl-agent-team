@@ -85,13 +85,17 @@ harvest_new_results() {
   local result_files=("$RESULTS_DIR"/seed_*_results.json)
   shopt -u nullglob
 
+  if [[ ${#result_files[@]} -eq 0 ]]; then
+    return
+  fi
+
   local result_file
   local seed_value
   for result_file in "${result_files[@]}"; do
-    if [[ -n "${PROCESSED_RESULT_FILES[$result_file]:-}" ]]; then
-      continue
-    fi
-    PROCESSED_RESULT_FILES["$result_file"]=1
+    case "$PROCESSED_RESULT_FILES" in
+      *"|${result_file}|"*) continue ;;
+    esac
+    PROCESSED_RESULT_FILES="${PROCESSED_RESULT_FILES}|${result_file}|"
 
     if grep -q '"status"[[:space:]]*:[[:space:]]*"PASS"' "$result_file"; then
       PASSED=$((PASSED + 1))
@@ -230,7 +234,7 @@ PASSED=0
 FAILED=0
 FAILED_SEEDS=""
 STOP_DISPATCH=0
-declare -A PROCESSED_RESULT_FILES=()
+PROCESSED_RESULT_FILES=""
 
 run_seed() {
   local seed="$1"
@@ -268,7 +272,7 @@ for seed in $SEEDS; do
   if [[ "$PARALLEL" -gt 1 ]]; then
     run_seed "$seed" &
     while [[ "$(count_active_jobs)" -ge "$PARALLEL" ]]; do
-      wait -n 2>/dev/null || true
+      sleep 0.2
       harvest_new_results
       if should_halt_by_fail_rate; then
         STOP_DISPATCH=1
@@ -296,10 +300,15 @@ done
 
 # Wait for remaining parallel jobs and recount
 if [[ "$PARALLEL" -gt 1 ]]; then
-  while [[ "$(count_active_jobs)" -gt 0 ]]; do
-    wait -n 2>/dev/null || true
+  while [ "$(count_active_jobs)" -gt 0 ]; do
+    sleep 0.2
     harvest_new_results
+    if should_halt_by_fail_rate; then
+      terminate_active_jobs
+      break
+    fi
   done
+  wait 2>/dev/null || true
   harvest_new_results
 fi
 

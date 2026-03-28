@@ -15,24 +15,24 @@ Mission:
 - Preserve functional correctness as superior gate
 
 State contract:
-- Read/write `.rtl-agent-team/state/p5b-state.json`
+- Read/write `.rat/state/p5b-state.json`
 - Initialize from template:
   `skills/rtl-silicon-validation-policy/templates/p5b-state.json`
-- Require `.rtl-agent-team/state/p5a-state.json` to exist
+- Require `.rat/state/p5a-state.json` to exist
 - Require `gates.p5a_exit.verdict == "pass"` in `p5a-state.json`
 - Mirror precondition result to `p5b-state.json.precondition.p5a_functional_closure_pass`
 
 ## Workflow
 
 ### Step 0: Preconditions
-- Read `.rtl-agent-team/state/p5a-state.json`.
+- Read `.rat/state/p5a-state.json`.
 - Require `gates.p5a_exit.verdict == "pass"` as the canonical handoff signal from P5A.
 - If precondition is not satisfied, set
   `precondition.p5a_functional_closure_pass=false`, stop with actionable message,
   and do not execute P5B tasks.
 
 ### Step 0.5: Initialize or resume state
-1. Resume from existing `.rtl-agent-team/state/p5b-state.json` when present.
+1. Resume from existing `.rat/state/p5b-state.json` when present.
 2. Otherwise initialize from template and set precondition status from Step 0.
 3. Persist state on every major task result and precondition decision.
 
@@ -62,7 +62,7 @@ PASS when:
 - required equivalence checks (if triggered) pass with no unresolved non-equivalent points
 
 FAIL when any signoff-critical risk remains unresolved.
-- Persist terminal verdict in `.rtl-agent-team/state/p5b-state.json`.
+- Persist terminal verdict in `.rat/state/p5b-state.json`.
 
 ### Final Compliance Artifact (P6 entry gate)
 
@@ -85,4 +85,4 @@ if [[ -f lib/tool-runner.sh ]]; then
   tool_runner_cleanup
 fi
 ```
-This stops and removes the container tracked in `.rtl-agent-team/state/docker-container.txt`.
+This stops and removes the container tracked in `.rat/state/docker-container.txt`.

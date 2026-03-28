@@ -32,7 +32,7 @@ and direct workers via SendMessage.
 - **Signal completion**: Notify leader when all tasks are done
 
 Workers pick up tasks from the shared task list automatically.
-Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-4/`;
+Write-restricted agents now write directly to `.rat/scratch/phase-4/`;
 read their output from there and Write to the final location.
 
 # 6-Block Pipeline
@@ -51,7 +51,7 @@ Block 6: filter    (deblocking filter — depends on reconstruction)
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -115,9 +115,9 @@ Read("docs/phase-3-uarch/clock-domain-map.md")
 Read("docs/phase-1-research/io_definition.json")
 
 # Verify interface freeze
-Read(".rtl-agent-team/state/design-freeze.json")
+Read(".rat/state/design-freeze.json")
 
-Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
+Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rat/scratch/phase-4")
 ```
 
 Enumerate all 6 blocks and verify interface freeze manifest exists.
@@ -183,14 +183,14 @@ while not all_tasks_complete:
     #   6. After 3 failures → mark MERGE_BLOCKED, notify leader
 
     # Design freeze verification at each merge point:
-    #   Read(".rtl-agent-team/state/design-freeze.json")  # get frozen_hash
+    #   Read(".rat/state/design-freeze.json")  # get frozen_hash
     #   current_hash = Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1")
     #   If current_hash != frozen_hash → REJECT merge, notify worker
 
     # Also verify docs/phase-3-uarch/ not modified:
     #   Compare against known hashes from spawn-context or initial scan
 
-    # Update .rtl-agent-team/state/team-progress.json
+    # Update .rat/state/team-progress.json
 ```
 
 ### Cross-Block Regression

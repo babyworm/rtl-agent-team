@@ -23,7 +23,7 @@ Coverage coverpoint extraction and test generation must iterate at least 3 times
 - **Round 3 (Close)**: Final coverage push. Add corner-case stimulus for remaining gaps. Verify coverage targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%). Document waived bins with justification.
 - **Additional rounds**: Continue until coverage targets are met or all remaining gaps are justified as waived.
 
-Each round produces a progress note at `.rtl-agent-team/scratch/phase-5/coverage-iteration-r{N}.md`.
+Each round produces a progress note at `.rat/scratch/phase-5/coverage-iteration-r{N}.md`.
 
 ## Escalation & Stop Conditions
 

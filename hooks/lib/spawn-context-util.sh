@@ -1,6 +1,6 @@
 #!/bin/sh
 # Spawn Context Manifest writer for agent context handoff.
-# Writes .rtl-agent-team/state/spawn-context.json with setup, pipeline,
+# Writes .rat/state/spawn-context.json with setup, pipeline,
 # upstream artifact, staleness, team, and quality gate information.
 #
 # Requires: json-util.sh sourced and parser detected.
@@ -152,7 +152,8 @@ ARP_EOF
 # Collect staleness information.
 _sctx_staleness_json() {
   _ST_CWD="$1"
-  _ST_STATE="$_ST_CWD/.rtl-agent-team/state"
+  _ST_RAT=$(rat_project_dir "$_ST_CWD") || _ST_RAT="$_ST_CWD/.rat"
+  _ST_STATE="$_ST_RAT/state"
   _ST_TRACK="$_ST_STATE/rtl-modified-files.txt"
 
   # Aggregate solo + all session-scoped tracking files (team mode parity with verify gate)
@@ -185,7 +186,8 @@ _sctx_staleness_json() {
 # Collect team mode information.
 _sctx_team_json() {
   _TM_CWD="$1"
-  _TM_CONFIG="$_TM_CWD/.rtl-agent-team/state/team-config.json"
+  _TM_RAT=$(rat_project_dir "$_TM_CWD") || _TM_RAT="$_TM_CWD/.rat"
+  _TM_CONFIG="$_TM_RAT/state/team-config.json"
 
   if [ ! -f "$_TM_CONFIG" ]; then
     printf '{"active":false,"leader_session_id":""}'
@@ -224,7 +226,8 @@ _sctx_quality_gates_json() {
   fi
 
   _QG_P5A="null"
-  _QG_P5A_STATE="$_QG_CWD/.rtl-agent-team/state/p5a-state.json"
+  _QG_RAT=$(rat_project_dir "$_QG_CWD") || _QG_RAT="$_QG_CWD/.rat"
+  _QG_P5A_STATE="$_QG_RAT/state/p5a-state.json"
   if [ -f "$_QG_P5A_STATE" ]; then
     # Try nested path (jq/python). sed fallback: grep for "verdict":"..." pattern.
     _QG_P5A_RAW=$(jsonu_get_file_path_string "$_QG_P5A_STATE" "gates.p5a_exit.verdict")
@@ -246,7 +249,8 @@ _sctx_quality_gates_json() {
 sctx_write_manifest() {
   SCTX_CWD="$1"
   SCTX_SKILL="$2"
-  SCTX_MANIFEST="$SCTX_CWD/.rtl-agent-team/state/spawn-context.json"
+  SCTX_RAT=$(rat_project_dir "$SCTX_CWD") || SCTX_RAT="$SCTX_CWD/.rat"
+  SCTX_MANIFEST="$SCTX_RAT/state/spawn-context.json"
 
   SCTX_PHASE=$(sctx_skill_to_phase "$SCTX_SKILL")
   if [ -z "$SCTX_PHASE" ]; then
@@ -292,7 +296,7 @@ sctx_write_manifest() {
   SCTX_GATES=$(_sctx_quality_gates_json "$SCTX_CWD")
 
   # Compliance context — read from compliance-state.json if exists
-  _sctx_cs="$SCTX_CWD/.rtl-agent-team/state/compliance-state.json"
+  _sctx_cs="$SCTX_RAT/state/compliance-state.json"
   _sctx_upstream="[]"
   _sctx_open=""
   if [ -f "$_sctx_cs" ]; then
@@ -313,7 +317,8 @@ MANIFEST_EOF
 # Reads from the written manifest to ensure accuracy (handles rat-setup refresh case).
 sctx_summary() {
   SCTX_S_CWD="$1"
-  SCTX_S_MANIFEST="$SCTX_S_CWD/.rtl-agent-team/state/spawn-context.json"
+  SCTX_S_RAT=$(rat_project_dir "$SCTX_S_CWD") || SCTX_S_RAT="$SCTX_S_CWD/.rat"
+  SCTX_S_MANIFEST="$SCTX_S_RAT/state/spawn-context.json"
 
   if [ ! -f "$SCTX_S_MANIFEST" ]; then
     return 1

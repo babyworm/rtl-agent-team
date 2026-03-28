@@ -23,7 +23,7 @@ escalation rules, and the 25-item checklist.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -170,7 +170,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
 ```
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-6/cross-review-report.md")
+Read(".rat/cross-review/phase-6/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 6 complete
 
 ## Step 8: PDF Generation (optional, on user request)

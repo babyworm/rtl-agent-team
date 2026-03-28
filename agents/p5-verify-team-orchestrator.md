@@ -30,7 +30,7 @@ and direct workers via SendMessage.
 - **Signal completion**: Notify leader when all tasks are done
 
 Workers pick up tasks from the shared task list automatically.
-Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-5/`;
+Write-restricted agents now write directly to `.rat/scratch/phase-5/`;
 read their output from there and Write to the final location.
 
 # Verification Categories
@@ -69,7 +69,7 @@ V9 is blocked by V1-V8 (review after all checks pass).
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -200,7 +200,7 @@ while not all_tasks_complete:
     # Check for completed tasks, update progress
     # Re-assign failed tasks if needed
     # Track module graduation (all 9 categories pass or partial_pass → module graduates)
-    # Update .rtl-agent-team/state/team-progress.json
+    # Update .rat/state/team-progress.json
 ```
 
 ### Module Graduation Gate
@@ -314,7 +314,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Focus: verification completeness, requirement traceability gaps, coverage adequacy, test quality.")
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-5/cross-review-report.md")
+Read(".rat/cross-review/phase-5/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 5 complete
 ```
 

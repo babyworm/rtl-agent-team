@@ -13,14 +13,14 @@
   // =====================================================================
   anchor: {
     encoder_src: "refc/src"       // C source directory
-    encoder_binary: ".rtl-agent-team/scratch/rd-eval/anchor_encoder"
+    encoder_binary: ".rat/scratch/rd-eval/anchor_encoder"
     encoder_cfg: "configs/anchor.cfg"  // Encoder configuration file
     label: "Anchor (baseline)"
   }
 
   test: {
     encoder_src: "refc/src"       // Same source or different branch
-    encoder_binary: ".rtl-agent-team/scratch/rd-eval/test_encoder"
+    encoder_binary: ".rat/scratch/rd-eval/test_encoder"
     encoder_cfg: "configs/test.cfg"    // Modified encoder configuration
     label: "Test (improved)"
   }
@@ -33,20 +33,20 @@
   //   {
   //     label: "SAD baseline"
   //     encoder_src: "refc/src"
-  //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/sad_encoder"
+  //     encoder_binary: ".rat/scratch/rd-eval/sad_encoder"
   //     encoder_cfg: "configs/sad.cfg"
   //     is_anchor: true
   //   }
   //   {
   //     label: "Hadamard"
   //     encoder_src: "refc/src_hadamard"
-  //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/hadamard_encoder"
+  //     encoder_binary: ".rat/scratch/rd-eval/hadamard_encoder"
   //     encoder_cfg: "configs/hadamard.cfg"
   //   }
   //   {
   //     label: "SATD+RDOQ"
   //     encoder_src: "refc/src_satd_rdoq"
-  //     encoder_binary: ".rtl-agent-team/scratch/rd-eval/satd_rdoq_encoder"
+  //     encoder_binary: ".rat/scratch/rd-eval/satd_rdoq_encoder"
   //     encoder_cfg: "configs/satd_rdoq.cfg"
   //   }
   // ]
@@ -140,7 +140,7 @@
   // Output settings
   output: {
     report_path: "docs/phase-1-research/rd-eval-report.md"
-    raw_data_path: ".rtl-agent-team/scratch/rd-eval"
+    raw_data_path: ".rat/scratch/rd-eval"
     // Bitstreams and reconstructed YUV files are always preserved in raw_data_path
   }
 }

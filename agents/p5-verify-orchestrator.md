@@ -36,7 +36,7 @@ V9: Code Review            → rtl-critic + rtl-p4s-refactor (direct)
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -358,7 +358,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
 ```
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-5/cross-review-report.md")
+Read(".rat/cross-review/phase-5/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 5 complete
 
 Collect all verification reports into `docs/phase-5-verify/`:
@@ -374,7 +374,7 @@ if [[ -f lib/tool-runner.sh ]]; then
   tool_runner_cleanup
 fi
 ```
-This stops and removes the container tracked in `.rtl-agent-team/state/docker-container.txt`.
+This stops and removes the container tracked in `.rat/state/docker-container.txt`.
 
 # Examples
 

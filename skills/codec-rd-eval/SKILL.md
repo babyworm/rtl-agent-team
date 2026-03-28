@@ -72,7 +72,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - Requires refc/*.c to exist (or user-specified encoder source path)
 - HJSON test configuration defines all evaluation parameters
 - Local execution is the default; AWS Batch is opt-in via configuration
-- Simulation results are cached at .rtl-agent-team/scratch/rd-eval/ for re-analysis
+- Simulation results are cached at .rat/scratch/rd-eval/ for re-analysis
 - Report is generated at the path specified in test configuration (default: docs/phase-1-research/rd-eval-report.md)
 - On build failure: report error details and stop (do not proceed with stale binaries)
 - On simulation failure: report failed jobs, compute BD metrics from successful jobs with warnings
@@ -107,10 +107,10 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
      - **aws-batch**: `python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode aws-batch`
    - Each job produces: bitrate_kbps, psnr_y/u/v/yuv (dB), encode_time_s
    - Optional: SSIM, VMAF (when quality_metrics includes them)
-   - Results saved to: `.rtl-agent-team/scratch/rd-eval/results.json`
+   - Results saved to: `.rat/scratch/rd-eval/results.json`
 
 4. **BD-PSNR/BD-rate calculation** (bd_rate.py)
-   - `python3 skills/codec-rd-eval/scripts/bd_rate.py .rtl-agent-team/scratch/rd-eval/results.json --output .rtl-agent-team/scratch/rd-eval/bd-metrics.json`
+   - `python3 skills/codec-rd-eval/scripts/bd_rate.py .rat/scratch/rd-eval/results.json --output .rat/scratch/rd-eval/bd-metrics.json`
    - VCEG-M33 algorithm with N-point support:
      1. Transform rates to log10 domain
      2. Fit polynomial (degree = min(3, N-1)) — exact interpolation for 4 points, least-squares fitting for 5+
@@ -118,7 +118,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
      4. BD-rate (%) and BD-PSNR (dB)
    - N-candidate mode: compute metrics for each test vs anchor
    - Per-sequence results + aggregate average + encoding time summary
-   - Output: `.rtl-agent-team/scratch/rd-eval/bd-metrics.json`
+   - Output: `.rat/scratch/rd-eval/bd-metrics.json`
 
 5. **Report generation**
    - Generate report from template at skills/codec-rd-eval/templates/rd-eval-report.md
@@ -147,8 +147,8 @@ Bash("python3 -c 'import numpy; import hjson; print(\"OK\")'")  # Check dependen
 # ============================================================
 # Step 2: Encoder build (for each unique encoder_src)
 # ============================================================
-Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rtl-agent-team/scratch/rd-eval/anchor_encoder")
-Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rtl-agent-team/scratch/rd-eval/test_encoder")
+Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rat/scratch/rd-eval/anchor_encoder")
+Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rat/scratch/rd-eval/test_encoder")
 
 # ============================================================
 # Step 3: Simulation execution (parallel)
@@ -159,13 +159,13 @@ Bash("python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode loc
 # ============================================================
 # Step 4: BD metric calculation
 # ============================================================
-Bash("python3 skills/codec-rd-eval/scripts/bd_rate.py .rtl-agent-team/scratch/rd-eval/results.json --output .rtl-agent-team/scratch/rd-eval/bd-metrics.json")
+Bash("python3 skills/codec-rd-eval/scripts/bd_rate.py .rat/scratch/rd-eval/results.json --output .rat/scratch/rd-eval/bd-metrics.json")
 
 # ============================================================
 # Step 5: Report generation
 # ============================================================
 # Read bd-metrics.json and generate markdown report
-Read(".rtl-agent-team/scratch/rd-eval/bd-metrics.json")
+Read(".rat/scratch/rd-eval/bd-metrics.json")
 # Write report to configured output path
 ```
 </Tool_Usage>
@@ -222,7 +222,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Aggregate BD metrics computed
 - [ ] Encoding time comparison included in report
 - [ ] Report generated at configured output path
-- [ ] Raw data preserved at .rtl-agent-team/scratch/rd-eval/
+- [ ] Raw data preserved at .rat/scratch/rd-eval/
 - [ ] If N-candidate mode: comparison matrix generated
 - [ ] If SSIM/VMAF requested: optional metrics included
 - [ ] If invoked from rat-dse: BD metrics available for algorithm comparison matrix

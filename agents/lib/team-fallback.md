@@ -53,7 +53,7 @@ If `SendMessage()` fails between coordinator and workers:
 3. Artifact paths follow standard conventions:
    - RTL: `rtl/{module}/{module}.sv`
    - Reviews: `reviews/phase-N-*/`
-   - State: `.rtl-agent-team/state/`
+   - State: `.rat/state/`
 
 ## Worker Crash / Timeout
 

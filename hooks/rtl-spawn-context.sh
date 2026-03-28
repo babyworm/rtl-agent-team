@@ -9,11 +9,14 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/spawn-context-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_continue; }
 
 # Extract subagent_type from tool input.
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")
@@ -86,7 +89,7 @@ if [ -f "$_AUDIT_LIB" ]; then
   . "$SCRIPT_DIR/lib/flock-util.sh"
   . "$_AUDIT_LIB"
   _AUDIT_SID=$(audit_session_id "$CWD")
-  if [ -n "$_AUDIT_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_AUDIT_SID" ]; then
+  if [ -n "$_AUDIT_SID" ] && [ -d "$RAT_DIR/audit/$_AUDIT_SID" ]; then
     _AUDIT_PHASE=$(sctx_skill_to_phase "$SKILL_NAME")
     [ -z "$_AUDIT_PHASE" ] && _AUDIT_PHASE="null"
     _AUDIT_SAFE_AGENT=$(jsonu_escape "$SHORT_NAME")

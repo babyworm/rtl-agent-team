@@ -6,10 +6,13 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
 # Only handle rtl-agent-team agents
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")
@@ -34,7 +37,7 @@ fi
 . "$_AUDIT_LIB"
 
 _SID=$(audit_session_id "$CWD")
-if [ -z "$_SID" ] || [ ! -d "$CWD/.rtl-agent-team/audit/$_SID" ]; then
+if [ -z "$_SID" ] || [ ! -d "$RAT_DIR/audit/$_SID" ]; then
   emit_post_continue
 fi
 

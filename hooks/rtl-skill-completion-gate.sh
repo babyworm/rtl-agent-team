@@ -1,7 +1,7 @@
 #!/bin/sh
 # RTL Skill Completion Gate: blocks session exit if an RTL skill is active without completion.
 #
-# State file: .rtl-agent-team/state/skill-active.json
+# State file: .rat/state/skill-active.json
 # Contains: skill name, iteration count, pending criteria, all_complete flag
 #
 # If skill is active and not all_complete, session exit is BLOCKED and iteration incremented.
@@ -17,12 +17,15 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/compliance-gate-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
-STATE_DIR="$CWD/.rtl-agent-team/state"
+STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
 if teamu_should_skip_gate "$STATE_DIR"; then
@@ -38,7 +41,7 @@ fi
 STARTED_AT=$(jsonu_get_file_path_string "$SKILL_STATE" "started_at")
 if [ -n "$STARTED_AT" ]; then
   # Convert to epoch — try GNU date -d, then BSD date -jf, then skip
-  START_EPOCH=$(date -d "$STARTED_AT" +%s 2>/dev/null || date -jf "%Y-%m-%dT%H:%M:%SZ" "$STARTED_AT" +%s 2>/dev/null || echo "")
+  START_EPOCH=$(date -d "$STARTED_AT" +%s 2>/dev/null || TZ=UTC date -jf "%Y-%m-%dT%H:%M:%S" "${STARTED_AT%Z}" +%s 2>/dev/null || echo "")
   NOW_EPOCH=$(date +%s 2>/dev/null)
   if [ -n "$START_EPOCH" ] && [ -n "$NOW_EPOCH" ]; then
     AGE=$(( NOW_EPOCH - START_EPOCH ))

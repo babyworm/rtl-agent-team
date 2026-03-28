@@ -125,7 +125,7 @@ assert result["continue"] is True
 ```
 
 `run_hook()` runs `sh <hook>` with JSON on stdin, parses stdout as JSON.
-Use the `tmp_project` fixture (provides a temp dir with `.rtl-agent-team/state/`).
+Use the `tmp_project` fixture (provides a temp dir with `.rat/state/`).
 Use `env=` parameter to inject environment variables (e.g., `CLAUDE_SESSION_ID`).
 
 Run tests:

@@ -7,7 +7,7 @@
 set -e
 
 CWD="${PWD}"
-AUDIT_DIR="$CWD/.rtl-agent-team/audit"
+AUDIT_DIR="$CWD/.rat/audit"
 
 SESSION_ID="${1:-}"
 if [ -z "$SESSION_ID" ]; then

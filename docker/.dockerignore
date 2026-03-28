@@ -1,5 +1,6 @@
 node_modules/
 dist/
 .omc/
-.rtl-agent-team/state/
+.rat/
+.rtl-agent-team/
 *.log

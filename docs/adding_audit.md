@@ -13,7 +13,7 @@ design decision events in a structured, append-only trace log.
 ```
 Hook Events (SessionStart/PreToolUse/PostToolUse/Stop)
     → audit-util.sh (POSIX sh library)
-    → .rtl-agent-team/audit/{session_id}/trace.jsonl
+    → .rat/audit/{session_id}/trace.jsonl
 ```
 
 ### Components

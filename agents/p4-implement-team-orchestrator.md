@@ -30,7 +30,7 @@ and direct workers via SendMessage.
 - **Signal completion**: Notify leader when all tasks are done
 
 Workers pick up tasks from the shared task list automatically.
-Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-4/`;
+Write-restricted agents now write directly to `.rat/scratch/phase-4/`;
 read their output from there and Write to the final location.
 
 # 10-Wave Pipeline
@@ -54,7 +54,7 @@ Wave 10: Integration (blockedBy: ALL wave 9 tasks)
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -98,7 +98,7 @@ Read("docs/phase-3-uarch/clock-domain-map.md")
 Read("docs/phase-3-uarch/protocol-assignments.md")
 Read("docs/phase-1-research/io_definition.json")
 
-Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
+Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rat/scratch/phase-4")
 ```
 
 Enumerate all modules from uarch specs and identify dependency order.
@@ -231,7 +231,7 @@ while not all_tasks_complete:
     #     TaskCreate(subject=f"W8-escalate: Protocol expert review {M}", blockedBy=[t_proto_fail])
     #
     # Track per-module wave progress
-    # Update .rtl-agent-team/state/team-progress.json
+    # Update .rat/state/team-progress.json
 ```
 
 ### Wave Overlap
@@ -284,7 +284,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Focus: RTL correctness vs uarch spec, coding convention compliance, synthesizability, integration correctness.")
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-4/cross-review-report.md")
+Read(".rat/cross-review/phase-4/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 4 complete
 ```
 

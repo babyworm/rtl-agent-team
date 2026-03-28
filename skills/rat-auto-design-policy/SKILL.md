@@ -46,7 +46,7 @@ Document flow:
   docs/phase-3-uarch/*.md → rtl-coder reads
   reviews/phase-N/ → Quality Gate reads → next phase proceeds or fails
 
-State is persisted at `.rtl-agent-team/state/rat-auto-design-state.json` for resumability.
+State is persisted at `.rat/state/rat-auto-design-state.json` for resumability.
 
 ## Execution Rules
 
@@ -102,10 +102,10 @@ Specific file lists are defined inline in each orchestrator's phase steps.
 
 ### Scratchpad Convention
 During iterative review rounds, reviewers write findings to:
-  `.rtl-agent-team/scratch/phase-{N}/round-{R}-{agent}.md`
+  `.rat/scratch/phase-{N}/round-{R}-{agent}.md`
 
 Coordinator reads all round files to aggregate:
-  `.rtl-agent-team/scratch/phase-{N}/round-{R}-feedback.md`
+  `.rat/scratch/phase-{N}/round-{R}-feedback.md`
 
 On phase gate PASS: consolidated review saved to `reviews/phase-{N}-*/`, scratch cleaned.
 On phase gate FAIL + retry: scratch files preserved for next round.

@@ -16,7 +16,7 @@ Mission:
 - Escalate with precise root-cause summaries when loops stall
 
 State contract:
-- Read/write `.rtl-agent-team/state/p4-state.json`
+- Read/write `.rat/state/p4-state.json`
 - Initialize from template:
   `skills/rtl-p4-rapid-impl-policy/templates/p4-state.json`
 - Update `current_stage`, per-module statuses, and `gates.p4_exit`
@@ -26,7 +26,7 @@ State contract:
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -61,7 +61,7 @@ For each missing required artifact: output `WARNING: {artifact} not found — pr
 Adjust execution plan based on available artifacts.
 
 ### Step 0.5: Initialize or resume state
-1. If `.rtl-agent-team/state/p4-state.json` exists, resume from its `current_stage`.
+1. If `.rat/state/p4-state.json` exists, resume from its `current_stage`.
 2. If not, create it from template and set target module list.
 3. Template intentionally leaves `modules` empty (no `{{module_name}}` placeholder).
    Populate `modules` map in state with concrete module names discovered for this run.
@@ -109,7 +109,7 @@ PASS when all target modules and touched block scope satisfy:
 FAIL path:
 - Emit failure class, root cause, and minimal rerun plan.
 - Suggest next action (`rtl-p4s-bugfix` or focused recode loop).
-- Persist terminal verdict in `.rtl-agent-team/state/p4-state.json`.
+- Persist terminal verdict in `.rat/state/p4-state.json`.
 
 ## Step 4: Codex Cross-Review (MANDATORY — after gate PASS)
 
@@ -126,5 +126,5 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
 ```
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-4/cross-review-report.md")
+Read(".rat/cross-review/phase-4/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 4 complete

@@ -287,7 +287,7 @@ your-project/
 │       └── experts/*.md
 ├── .claude/
 │   └── rules/                      # Auto-deployed coding conventions
-└── .rtl-agent-team/
+└── .rat/
     └── state/                      # Pipeline/team state files
 ```
 

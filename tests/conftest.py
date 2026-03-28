@@ -24,7 +24,15 @@ def repo_root():
 
 @pytest.fixture
 def tmp_project(tmp_path):
-    """Create a temporary project directory with .rtl-agent-team/state/."""
+    """Create a temporary project directory with .rat/state/."""
+    state_dir = tmp_path / ".rat" / "state"
+    state_dir.mkdir(parents=True)
+    return tmp_path
+
+
+@pytest.fixture
+def tmp_legacy_project(tmp_path):
+    """Create a project with only .rtl-agent-team (no .rat) -- legacy layout."""
     state_dir = tmp_path / ".rtl-agent-team" / "state"
     state_dir.mkdir(parents=True)
     return tmp_path

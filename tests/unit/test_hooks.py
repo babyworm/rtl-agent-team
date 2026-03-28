@@ -47,7 +47,7 @@ class TestRtlOrchestratorInject:
         assert "/rtl-agent-team:p1-spec-research" in output
 
     def test_rtl_state_dir_triggers_injection(self, tmp_path):
-        (tmp_path / ".rtl-agent-team").mkdir()
+        (tmp_path / ".rat").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         output = result.get("raw_stdout", "")
         assert "/rtl-agent-team:rtl-p5-verify" in output
@@ -118,7 +118,7 @@ class TestRtlEditTracker:
         assert result["continue"] is True
         assert "additionalContext" in result.get("hookSpecificOutput", {})
 
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
         assert "rtl/module/top.sv" in track_file.read_text()
 
@@ -149,7 +149,7 @@ class TestRtlEditTracker:
         run_hook(self.HOOK, stdin)
         run_hook(self.HOOK, stdin)
 
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         lines = [l for l in track_file.read_text().splitlines() if l.strip()]
         assert lines.count("rtl/module/top.sv") == 1
 
@@ -157,7 +157,7 @@ class TestRtlEditTracker:
         run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/a.sv"})
         run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/b.sv"})
 
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         content = track_file.read_text()
         assert "rtl/a.sv" in content
         assert "rtl/b.sv" in content
@@ -197,7 +197,7 @@ class TestRtlEditTracker:
         )
         result = run_hook(self.HOOK, raw_input)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
         tracked = track_file.read_text()
         assert "rtl/top_level.sv" in tracked
@@ -205,7 +205,7 @@ class TestRtlEditTracker:
 
     def test_new_edit_invalidates_verify_done(self, tmp_project):
         """New RTL edit must remove rtl-verify-done and rtl-verify-waiver markers."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         # Simulate previous verification
         (state_dir / "rtl-verify-done").touch()
@@ -217,7 +217,7 @@ class TestRtlEditTracker:
 
     def test_duplicate_edit_also_invalidates_verify_done(self, tmp_project):
         """Re-editing an already-tracked file must still invalidate verify markers."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         # First edit — tracked
         run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": "rtl/existing.sv"})
@@ -238,7 +238,7 @@ class TestSessionScopedState:
     def _write_team_config(self, tmp_project, leader_id="leader-session-001"):
         """Create a team-config.json in the project state dir."""
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         config = {
             "team_mode": True,
@@ -258,7 +258,7 @@ class TestSessionScopedState:
             {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv"},
             env=env,
         )
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         session_file = state_dir / "rtl-modified-files-worker-abc-123.txt"
         solo_file = state_dir / "rtl-modified-files.txt"
         assert session_file.exists(), "Session-scoped file should be created"
@@ -271,7 +271,7 @@ class TestSessionScopedState:
             self.EDIT_HOOK,
             {"cwd": str(tmp_project), "file_path": "rtl/mod_b.sv"},
         )
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         solo_file = state_dir / "rtl-modified-files.txt"
         assert solo_file.exists()
         assert "rtl/mod_b.sv" in solo_file.read_text()
@@ -289,7 +289,7 @@ class TestSessionScopedState:
             {"cwd": str(tmp_project), "file_path": "rtl/b.sv"},
             env={"CLAUDE_SESSION_ID": "session-2"},
         )
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         f1 = state_dir / "rtl-modified-files-session-1.txt"
         f2 = state_dir / "rtl-modified-files-session-2.txt"
         assert f1.exists() and f2.exists()
@@ -301,7 +301,7 @@ class TestSessionScopedState:
     def test_verify_gate_aggregates_session_files(self, tmp_project):
         """Verify gate merges all session-scoped files for leader gate judgment."""
         self._write_team_config(tmp_project, leader_id="leader-001")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         # Simulate two workers' tracking files
         (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
@@ -320,7 +320,7 @@ class TestSessionScopedState:
     def test_verify_gate_cleanup_removes_session_files(self, tmp_project):
         """When verify-done exists, gate cleans up all session-scoped files."""
         self._write_team_config(tmp_project, leader_id="leader-001")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
         (state_dir / "rtl-verify-done").touch()
@@ -346,7 +346,7 @@ class TestSessionScopedState:
         )
         assert result["continue"] is True
         # skill-active.json should NOT be created by worker
-        skill_state = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        skill_state = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not skill_state.exists(), "Worker should not create skill-active.json"
 
 
@@ -360,33 +360,33 @@ class TestRtlVerifyStopGate:
         assert result["continue"] is True
 
     def test_empty_tracking_file_allows_exit(self, tmp_project):
-        track = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_tracked_files_without_verification_blocks(self, tmp_project):
-        track = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("rtl/module/top.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
 
     def test_verify_done_allows_exit(self, tmp_project):
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
         (state_dir / "rtl-verify-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_verify_waiver_allows_exit(self, tmp_project):
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
         (state_dir / "rtl-verify-waiver").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_cleanup_after_verify_done(self, tmp_project):
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         track = state_dir / "rtl-modified-files.txt"
         done = state_dir / "rtl-verify-done"
         track.write_text("rtl/module/top.sv\n")
@@ -396,7 +396,7 @@ class TestRtlVerifyStopGate:
         assert not done.exists()
 
     def test_cleanup_after_waiver(self, tmp_project):
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         track = state_dir / "rtl-modified-files.txt"
         waiver = state_dir / "rtl-verify-waiver"
         track.write_text("rtl/a.sv\nrtl/b.sv\n")
@@ -407,7 +407,7 @@ class TestRtlVerifyStopGate:
 
     def test_multiple_files_blocks(self, tmp_project):
         """Multiple tracked files should all be mentioned in block message."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
@@ -416,7 +416,7 @@ class TestRtlVerifyStopGate:
 
     def test_fallback_file_blocks_exit(self, tmp_project):
         """Fallback entries from lock failure must block exit even without main track file."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/alu/alu.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
@@ -425,7 +425,7 @@ class TestRtlVerifyStopGate:
 
     def test_fallback_merged_with_main_track(self, tmp_project):
         """Fallback and main track entries are both counted."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
@@ -435,7 +435,7 @@ class TestRtlVerifyStopGate:
 
     def test_verify_done_cleans_fallback(self, tmp_project):
         """Verify-done should clean up fallback file too."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
         (state_dir / "rtl-verify-done").touch()
@@ -446,7 +446,7 @@ class TestRtlVerifyStopGate:
     def test_fallback_aggregated_in_team_mode(self, tmp_project):
         """In team mode, fallback file is included via glob aggregation."""
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         config = {
             "team_mode": True,
             "team_name": "test-team",
@@ -477,7 +477,7 @@ class TestStopGate:
     HOOK = HOOKS_DIR / "stop-gate.sh"
 
     def _write_autopilot_state(self, tmp_project, payload):
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "rat-auto-design-state.json"
+        state_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_text(json.dumps(payload, indent=2))
         return state_file
@@ -488,13 +488,13 @@ class TestStopGate:
 
     def test_legacy_state_file_migrated_and_blocks(self, tmp_project):
         """Pre-0.6.10 state file (rtl-autopilot-state.json) should be migrated and still block exit."""
-        legacy_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
+        legacy_file = tmp_project / ".rat" / "state" / "rtl-autopilot-state.json"
         legacy_file.parent.mkdir(parents=True, exist_ok=True)
         legacy_file.write_text(json.dumps({"phase": 3}))
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
         # Legacy file should have been migrated to new name
-        new_file = tmp_project / ".rtl-agent-team" / "state" / "rat-auto-design-state.json"
+        new_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         assert new_file.exists()
         assert not legacy_file.exists()
 
@@ -503,13 +503,13 @@ class TestStopGate:
         # Write new state first (completed)
         self._write_autopilot_state(tmp_project, {"status": "completed"})
         # Write legacy state (active run)
-        legacy_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-autopilot-state.json"
+        legacy_file = tmp_project / ".rat" / "state" / "rtl-autopilot-state.json"
         legacy_file.write_text(json.dumps({"phase": 3}))
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         # New file says completed → should allow exit (legacy must not overwrite)
         assert result["continue"] is True
         # New file should be unchanged
-        new_file = tmp_project / ".rtl-agent-team" / "state" / "rat-auto-design-state.json"
+        new_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         new_data = json.loads(new_file.read_text())
         assert new_data["status"] == "completed"
 
@@ -657,7 +657,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
         assert "top.sv" in track_file.read_text()
 
@@ -666,7 +666,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/module/top.sv"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists()
 
     def test_bash_verible_lint_not_tracked(self, tmp_project):
@@ -674,7 +674,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "verible-verilog-lint rtl/module/top.sv"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists()
 
     def test_bash_backgrounded_lint_not_tracked(self, tmp_project):
@@ -682,7 +682,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv &"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists()
 
     def test_bash_command_without_rtl_passthrough(self, tmp_project):
@@ -699,7 +699,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_background_ampersand_mixed_tracked(self, tmp_project):
@@ -709,7 +709,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_lint_substring_in_sed_still_tracked(self, tmp_project):
@@ -719,7 +719,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_adjacent_ampersand_rtl_extracted(self, tmp_project):
@@ -729,7 +729,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_readonly_prefix_with_write_tracked(self, tmp_project):
@@ -739,7 +739,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_redirect_to_rtl_file_tracked(self, tmp_project):
@@ -749,7 +749,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_lint_redirect_to_log_not_tracked(self, tmp_project):
@@ -757,7 +757,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv > lint.log"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists()
 
     def test_bash_pipe_readonly_not_tracked(self, tmp_project):
@@ -765,7 +765,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "grep foo rtl/top.sv | wc -l"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists()
 
     def test_bash_lint_stderr_redirect_not_tracked(self, tmp_project):
@@ -773,7 +773,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv > lint.log 2>&1"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists()
 
     def test_bash_quoted_rtl_path_tracked(self, tmp_project):
@@ -783,7 +783,7 @@ class TestRtlEditTrackerBash:
         assert result["continue"] is True
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
 
     def test_bash_command_with_svh_tracked(self, tmp_project):
@@ -821,7 +821,7 @@ class TestRtlEditTrackerBash:
         stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/a.sv rtl/b.sv"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         content = track_file.read_text()
         assert "a.sv" in content
         assert "b.sv" in content
@@ -836,12 +836,12 @@ class TestRtlEditTrackerBash:
             ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
             assert "RTL Verify Gate" not in ctx, f"Read-only command should not trigger tracking: {cmd}"
         # Tracking file must not be created by read-only commands
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert not track_file.exists(), "Read-only commands must not create tracking file"
 
     def test_bash_write_invalidates_verify_done(self, tmp_project):
         """B1: Bash write command must invalidate verify-done/waiver markers."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         (state_dir / "rtl-verify-done").touch()
         (state_dir / "rtl-verify-waiver").touch()
@@ -860,7 +860,7 @@ class TestRtlEditTrackerBash:
         (p6_dir / "improvements.md").write_text("# Improvements")
         stdin = {"cwd": str(tmp_project), "command": "sed -i 's/foo/bar/' rtl/mod.sv"}
         result = run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert stale.exists()
 
 
@@ -873,7 +873,7 @@ class TestRtlEditTrackerPhase6:
         """No phase 6 review dir → no stale marker created."""
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
         run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert not stale.exists()
 
     def test_phase6_exists_creates_stale_marker(self, tmp_project):
@@ -886,7 +886,7 @@ class TestRtlEditTrackerPhase6:
         (p6_dir / "improvements.md").write_text("# Improvements")
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
         run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert stale.exists()
 
     def test_phase6_empty_dir_no_stale(self, tmp_project):
@@ -895,7 +895,7 @@ class TestRtlEditTrackerPhase6:
         p6_dir.mkdir(parents=True)
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
         run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert not stale.exists()
 
     def test_phase6_partial_deliverables_no_stale(self, tmp_project):
@@ -905,7 +905,7 @@ class TestRtlEditTrackerPhase6:
         (p6_dir / "code-review.md").write_text("# Partial — P6 in progress")
         stdin = {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"}
         run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert not stale.exists(), "Partial P6 deliverables should not trigger staleness"
 
     def test_phase6_stale_message_in_output(self, tmp_project):
@@ -928,12 +928,12 @@ class TestRtlEditTrackerPhase6:
         (p6_dir / "code-review.md").write_text("# Review")
         stdin = {"cwd": str(tmp_project), "file_path": "docs/readme.md"}
         run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rtl-agent-team" / "state" / "phase6-stale"
+        stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert not stale.exists()
 
     def test_trackfile_recorded_despite_lock_timeout(self, tmp_project):
         """Fail-closed: RTL file must be tracked in fallback when TRACK_FILE lock fails."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         # Pre-create lock dir with live PID to prevent stale reclaim
         lock_dir = state_dir / "rtl-modified-files.txt.lock"
@@ -957,7 +957,7 @@ class TestRtlEditTrackerPhase6:
         (p6_dir / "design-note.md").write_text("# Design Note")
         (p6_dir / "improvements.md").write_text("# Improvements")
         # Pre-create lock dir to simulate a held lock (causes acquire_lock timeout)
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         lock_dir = state_dir / "phase6-stale.lock"
         lock_dir.mkdir()
@@ -983,7 +983,7 @@ class TestP6CascadeGate:
 
     def test_stale_marker_blocks_exit(self, tmp_project):
         """phase6-stale exists without cascade-done → block exit."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is False
@@ -992,7 +992,7 @@ class TestP6CascadeGate:
 
     def test_cascade_done_allows_exit(self, tmp_project):
         """Both markers + updated docs → clean up and allow exit."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         review_dir = tmp_project / "reviews" / "phase-6-review"
         review_dir.mkdir(parents=True)
         # Stale marker with old mtime
@@ -1009,7 +1009,7 @@ class TestP6CascadeGate:
 
     def test_cascade_done_cleans_markers(self, tmp_project):
         """After allowing exit with cascade-done + updated docs, both markers should be removed."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         review_dir = tmp_project / "reviews" / "phase-6-review"
         review_dir.mkdir(parents=True)
         stale = state_dir / "phase6-stale"
@@ -1029,7 +1029,7 @@ class TestP6CascadeGate:
 
     def test_block_message_content(self, tmp_project):
         """Block message should mention lint and all 4 P6 deliverables."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         ctx = result.get("reason", "")
@@ -1048,7 +1048,7 @@ class TestP6CascadeGate:
 
     def test_cascade_done_blocks_when_docs_older_than_stale(self, tmp_project):
         """G5: cascade-done present but docs mtime older than stale marker → block."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         review_dir = tmp_project / "reviews" / "phase-6-review"
         review_dir.mkdir(parents=True)
         # Create full P6 deliverable set with explicitly old mtime
@@ -1069,7 +1069,7 @@ class TestP6CascadeGate:
 
     def test_cascade_done_allows_when_docs_newer_than_stale(self, tmp_project):
         """G5: cascade-done with docs newer than stale marker → allow and clean up."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         review_dir = tmp_project / "reviews" / "phase-6-review"
         review_dir.mkdir(parents=True)
         # Stale marker with explicitly old mtime
@@ -1089,7 +1089,7 @@ class TestP6CascadeGate:
 
     def test_cascade_done_no_docs_blocks_exit(self, tmp_project):
         """G5: cascade-done without review docs → block exit (stale marker proves docs once existed)."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
@@ -1106,7 +1106,7 @@ class TestSkillCompletionGate:
     def _write_skill_state(self, tmp_project, skill="rtl-p4s-bugfix", iteration=1,
                            max_iterations=5, all_complete=False,
                            pending="lint_pass, tb_updated, sim_pass"):
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
 
         state = {
@@ -1141,7 +1141,7 @@ class TestSkillCompletionGate:
         """After allowing exit for completed skill, state file should be removed."""
         self._write_skill_state(tmp_project, all_complete=True)
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not state_file.exists()
 
     def test_max_iterations_still_blocks_under_ladder(self, tmp_project):
@@ -1156,14 +1156,14 @@ class TestSkillCompletionGate:
         """Ladder mode should keep state for fallback/last-chance escalation."""
         self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert state_file.exists()
 
     def test_iteration_increments_on_block(self, tmp_project):
         """Each block should increment the iteration counter."""
         self._write_skill_state(tmp_project, iteration=1)
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         content = state_file.read_text()
         assert '"iteration": 2' in content
 
@@ -1192,7 +1192,7 @@ class TestSkillCompletionGate:
 
     def test_stale_state_allows_exit(self, tmp_project):
         """State older than 2 hours should be treated as stale and cleaned up."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         # Write a state with a timestamp 3 hours ago
 
@@ -1212,7 +1212,7 @@ class TestSkillCompletionGate:
 
     def test_ladder_primary_stage_blocks(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         state = json.loads(state_file.read_text())
         state["use_escalation_ladder"] = True
         state["dynamic_prompt"] = "primary prompt"
@@ -1225,7 +1225,7 @@ class TestSkillCompletionGate:
 
     def test_ladder_fallback_stage_blocks(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=3, max_iterations=2)
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         state = json.loads(state_file.read_text())
         state["use_escalation_ladder"] = True
         state["dynamic_prompt"] = "fallback prompt"
@@ -1239,7 +1239,7 @@ class TestSkillCompletionGate:
 
     def test_ladder_last_chance_stage_blocks(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         state = json.loads(state_file.read_text())
         state["use_escalation_ladder"] = True
         state_file.write_text(json.dumps(state, indent=2))
@@ -1251,7 +1251,7 @@ class TestSkillCompletionGate:
 
     def test_ladder_after_last_chance_requires_user(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         state = json.loads(state_file.read_text())
         state["use_escalation_ladder"] = True
         state_file.write_text(json.dumps(state, indent=2))
@@ -1263,7 +1263,7 @@ class TestSkillCompletionGate:
 
     def test_legacy_disabled_ladder_is_migrated_and_still_blocks(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         state = json.loads(state_file.read_text())
         state["use_escalation_ladder"] = False
         state_file.write_text(json.dumps(state, indent=2))
@@ -1292,7 +1292,7 @@ class TestSkillActivation:
         stdin = {"cwd": str(tmp_project), "skill": "oh-my-claudecode:ultrawork"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not state_file.exists()
 
     def test_rtl_skill_creates_state(self, tmp_project):
@@ -1305,7 +1305,7 @@ class TestSkillActivation:
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert state_file.exists()
         state = json.loads(state_file.read_text())
         assert state["skill"] == "rtl-p4s-bugfix"
@@ -1322,7 +1322,7 @@ class TestSkillActivation:
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:systemverilog"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not state_file.exists()
 
     def test_no_criteria_file_no_state(self, tmp_project):
@@ -1330,7 +1330,7 @@ class TestSkillActivation:
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not state_file.exists()
 
     def test_different_skill_state_not_overridden(self, tmp_project):
@@ -1339,7 +1339,7 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         existing = {"skill": "rtl-p4-implement", "iteration": 3, "all_complete": False, "pending": "something"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
@@ -1357,7 +1357,7 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         existing = {"skill": "rtl-p4s-bugfix", "iteration": 3, "all_complete": False, "pending": "sim_pass"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
@@ -1425,7 +1425,7 @@ class TestSkillActivation:
 
         result = run_hook(self.HOOK, raw_input, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
-        state_file = tmp_project / ".rtl-agent-team" / "state" / "skill-active.json"
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert state_file.exists()
         state = json.loads(state_file.read_text())
         assert state["skill"] == "rtl-p4s-bugfix"
@@ -1440,12 +1440,12 @@ class TestPhaseStateBootstrap:
         _setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-implement"})
         assert result["continue"] is True
-        assert not (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
+        assert not (tmp_project / ".rat" / "state" / "p4-state.json").exists()
 
     def test_setup_missing_does_not_bootstrap(self, tmp_project):
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
         assert result["continue"] is True
-        assert not (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
+        assert not (tmp_project / ".rat" / "state" / "p4-state.json").exists()
 
     @pytest.mark.parametrize(
         "skill_name,state_file,phase",
@@ -1459,7 +1459,7 @@ class TestPhaseStateBootstrap:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill_name})
         assert result["continue"] is True
 
-        state_path = tmp_project / ".rtl-agent-team" / "state" / state_file
+        state_path = tmp_project / ".rat" / "state" / state_file
         assert state_path.exists()
         data = json.loads(state_path.read_text())
         assert data["phase"] == phase
@@ -1467,7 +1467,7 @@ class TestPhaseStateBootstrap:
 
     def test_existing_state_not_overwritten(self, tmp_project):
         _setup_marker(tmp_project)
-        state_path = tmp_project / ".rtl-agent-team" / "state" / "p4-state.json"
+        state_path = tmp_project / ".rat" / "state" / "p4-state.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text('{"phase":"p4","status":"custom"}')
 
@@ -1482,11 +1482,11 @@ class TestPhaseStateBootstrap:
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "P5B Gate BLOCKED" in ctx
         assert "rtl-p5a-functional-closure" in ctx
-        assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
+        assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
     def test_p5b_blocks_when_p5a_verdict_not_pass(self, tmp_project):
         _setup_marker(tmp_project)
-        p5a_state = tmp_project / ".rtl-agent-team" / "state" / "p5a-state.json"
+        p5a_state = tmp_project / ".rat" / "state" / "p5a-state.json"
         p5a_state.parent.mkdir(parents=True, exist_ok=True)
         p5a_state.write_text(
             json.dumps({"gates": {"p5a_exit": {"verdict": "fail"}}}, indent=2)
@@ -1496,11 +1496,11 @@ class TestPhaseStateBootstrap:
         assert result["continue"] is False
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "gates.p5a_exit.verdict=fail" in ctx
-        assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
+        assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
     def test_p5b_bootstraps_when_p5a_pass(self, tmp_project):
         _setup_marker(tmp_project)
-        p5a_state = tmp_project / ".rtl-agent-team" / "state" / "p5a-state.json"
+        p5a_state = tmp_project / ".rat" / "state" / "p5a-state.json"
         p5a_state.parent.mkdir(parents=True, exist_ok=True)
         p5a_state.write_text(
             json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2)
@@ -1508,14 +1508,14 @@ class TestPhaseStateBootstrap:
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         assert result["continue"] is True
-        state_path = tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json"
+        state_path = tmp_project / ".rat" / "state" / "p5b-state.json"
         assert state_path.exists()
         assert json.loads(state_path.read_text())["phase"] == "p5b"
 
     def test_p5b_blocks_when_rtl_changed_after_p5a_pass(self, tmp_project):
         _setup_marker(tmp_project)
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         p5a_state = state_dir / "p5a-state.json"
         p5a_state.write_text(json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2))
@@ -1537,7 +1537,7 @@ class TestPhaseStateBootstrap:
     def test_p5b_allows_when_p5a_newer_than_tracked_rtl_changes(self, tmp_project):
         _setup_marker(tmp_project)
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         rtl_dir = tmp_project / "rtl"
         rtl_dir.mkdir(parents=True, exist_ok=True)
@@ -1578,8 +1578,8 @@ class TestPhaseStateBootstrap:
 
         result = run_hook(self.HOOK, raw_input)
         assert result["continue"] is True
-        assert (tmp_project / ".rtl-agent-team" / "state" / "p4-state.json").exists()
-        assert not (tmp_project / ".rtl-agent-team" / "state" / "p5b-state.json").exists()
+        assert (tmp_project / ".rat" / "state" / "p4-state.json").exists()
+        assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
 
 class TestHookConcurrency:
@@ -1603,7 +1603,7 @@ class TestHookConcurrency:
         for r in results:
             assert r.get("continue") is True
 
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         assert track_file.exists()
         lines = sorted(l for l in track_file.read_text().splitlines() if l.strip())
         assert lines == sorted(files), f"Expected {sorted(files)}, got {lines}"
@@ -1617,14 +1617,14 @@ class TestHookConcurrency:
             futures = [pool.submit(track_same) for _ in range(5)]
             [fut.result() for fut in as_completed(futures)]
 
-        track_file = tmp_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         lines = [l for l in track_file.read_text().splitlines() if l.strip()]
         assert lines.count("rtl/top.sv") == 1
 
     def test_concurrent_skill_completion_gate_counter_accuracy(self, tmp_project):
         """3 parallel skill-completion-gate calls → iteration increments correctly."""
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         state = {
             "skill": "rtl-p4s-bugfix",
@@ -1663,7 +1663,7 @@ class TestTeamAwarenessGuard:
 
     def _write_team_config(self, tmp_project, team_mode=True, leader_id="leader-session-123"):
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         config = {
             "team_mode": team_mode,
@@ -1698,7 +1698,7 @@ class TestTeamAwarenessGuard:
         """Worker (non-leader) in team mode → stop gate allows exit."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         # Create blocking state
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state = {"status": "in_progress", "orchestration_control": {
             "active_gate_id": "test", "active_gate_retry_limit": 2,
             "active_gate_primary_attempts": 0, "active_gate_fallback_attempts": 0,
@@ -1712,7 +1712,7 @@ class TestTeamAwarenessGuard:
     def test_leader_session_still_blocked_by_stop_gate(self, tmp_project):
         """Leader session in team mode → stop gate still blocks."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state = {"status": "in_progress", "orchestration_control": {
             "active_gate_id": "test", "active_gate_retry_limit": 2,
             "active_gate_primary_attempts": 0, "active_gate_fallback_attempts": 0,
@@ -1734,7 +1734,7 @@ class TestTeamAwarenessGuard:
     def test_worker_bypasses_verify_gate(self, tmp_project):
         """Worker in team mode → verify gate allows exit even with tracked files."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is True
@@ -1742,7 +1742,7 @@ class TestTeamAwarenessGuard:
     def test_worker_bypasses_p6_cascade(self, tmp_project):
         """Worker in team mode → P6 cascade allows exit even with stale marker."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is True
@@ -1751,7 +1751,7 @@ class TestTeamAwarenessGuard:
         """Worker in team mode → skill completion gate allows exit."""
 
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         skill_state = {
             "skill": "rtl-p4s-bugfix", "active": True, "iteration": 1,
             "max_iterations": 5, "pending": "lint_pass", "all_complete": False,
@@ -1764,7 +1764,7 @@ class TestTeamAwarenessGuard:
     def test_leader_session_still_blocked_by_verify_gate(self, tmp_project):
         """Leader session in team mode → verify gate still blocks."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
         import subprocess
         env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
@@ -1780,7 +1780,7 @@ class TestTeamAwarenessGuard:
     def test_leader_session_still_blocked_by_p6_cascade(self, tmp_project):
         """Leader session in team mode → P6 cascade gate still blocks."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         import subprocess
         env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
@@ -1797,7 +1797,7 @@ class TestTeamAwarenessGuard:
         """Leader session in team mode → skill completion gate still blocks."""
 
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         skill_state = {
             "skill": "rtl-p4s-bugfix", "active": True, "iteration": 1,
             "max_iterations": 5, "pending": "lint_pass", "all_complete": False,
@@ -1818,14 +1818,14 @@ class TestTeamAwarenessGuard:
     def test_empty_leader_id_enforces_gate_fail_closed(self, tmp_project):
         """Empty leader_session_id with team_mode=true → fail-closed, gate enforced for all."""
         self._write_team_config(tmp_project, leader_id="")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is False
 
     def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
         """team-config.json older than 2h → removed, normal gate behavior resumes."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         stale_config = {
             "team_mode": True,
@@ -1844,7 +1844,7 @@ class TestTeamAwarenessGuard:
     def test_team_mode_false_does_not_bypass(self, tmp_project):
         """team_mode=false → no bypass, normal behavior."""
         self._write_team_config(tmp_project, team_mode=False, leader_id="leader-abc")
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
         assert result["continue"] is False
@@ -1885,7 +1885,7 @@ class TestSedFallbackContract:
 
     def test_stop_gate_fallback_blocks_active(self, tmp_project):
         """Active autopilot state → continue=false under sed fallback."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_file = state_dir / "rat-auto-design-state.json"
         state_file.write_text(json.dumps({"status": "in_progress", "phase": 3}, indent=2))
         result = run_hook(
@@ -1899,7 +1899,7 @@ class TestSedFallbackContract:
 
     def test_verify_gate_fallback_blocks_unverified(self, tmp_project):
         """Tracked files without verification → continue=false under sed fallback."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
         result = run_hook(
             self.HOOKS["verify-stop-gate"],
@@ -1910,7 +1910,7 @@ class TestSedFallbackContract:
 
     def test_verify_gate_fallback_allows_verified(self, tmp_project):
         """Tracked files with verify-done → continue=true under sed fallback."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
         (state_dir / "rtl-verify-done").touch()
         result = run_hook(
@@ -1924,7 +1924,7 @@ class TestSedFallbackContract:
 
     def test_p6_cascade_fallback_blocks_stale(self, tmp_project):
         """phase6-stale marker → continue=false under sed fallback."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(
             self.HOOKS["p6-cascade-gate"],
@@ -1947,7 +1947,7 @@ class TestSedFallbackContract:
     def test_skill_completion_fallback_blocks_active(self, tmp_project):
         """Active skill state → continue=false under sed fallback."""
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state = {
             "skill": "rtl-p4s-bugfix",
             "active": True,
@@ -1970,7 +1970,7 @@ class TestSedFallbackContract:
     def test_skill_completion_fallback_allows_complete(self, tmp_project):
         """all_complete=true → continue=true under sed fallback."""
 
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state = {
             "skill": "rtl-p4s-bugfix",
             "active": True,
@@ -2004,7 +2004,7 @@ class TestSpawnContextManifest:
         )
 
     def _read_manifest(self, tmp_project):
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert mpath.exists(), "spawn-context.json not written"
         return json.loads(mpath.read_text())
 
@@ -2077,7 +2077,7 @@ class TestSpawnContextManifest:
     def test_manifest_staleness_populated(self, tmp_project):
         """RTL tracking file → staleness section reflects modified count."""
         self._setup_project(tmp_project)
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\n")
 
         self._invoke(tmp_project, "rtl-p4-implement")
@@ -2089,7 +2089,7 @@ class TestSpawnContextManifest:
     def test_manifest_staleness_verify_done(self, tmp_project):
         """rtl-verify-done marker → staleness.rtl_verify_done=true."""
         self._setup_project(tmp_project)
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-verify-done").touch()
 
@@ -2101,7 +2101,7 @@ class TestSpawnContextManifest:
     def test_manifest_team_mode(self, tmp_project):
         """team-config.json present → team section populated."""
         self._setup_project(tmp_project)
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         team_cfg = {
             "team_mode": True,
             "leader_session_id": "sess-abc-123",
@@ -2122,7 +2122,7 @@ class TestSpawnContextManifest:
             {"skill": "other-plugin:some-skill", "cwd": str(tmp_project)},
         )
         assert result["continue"] is True
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert not mpath.exists()
 
     def test_manifest_not_written_for_non_phase_skill(self, tmp_project):
@@ -2130,7 +2130,7 @@ class TestSpawnContextManifest:
         self._setup_project(tmp_project)
         self._invoke(tmp_project, "rtl-lint-check")
 
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert not mpath.exists()
 
     def test_manifest_setup_false_when_marker_missing(self, tmp_project):
@@ -2181,7 +2181,7 @@ class TestSpawnContextManifest:
     def test_manifest_p5a_verdict_from_state(self, tmp_project):
         """p5a_verdict populated from p5a-state.json."""
         self._setup_project(tmp_project)
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         p5a_state = {
             "gates": {"p5a_exit": {"verdict": "pass"}},
         }
@@ -2228,7 +2228,7 @@ class TestSpawnContextTaskCreate:
         )
 
     def _read_manifest(self, tmp_project):
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert mpath.exists(), "spawn-context.json not written"
         return json.loads(mpath.read_text())
 
@@ -2257,7 +2257,7 @@ class TestSpawnContextTaskCreate:
             {"subagent_type": "rtl-agent-team:rtl-coder", "cwd": str(tmp_project)},
         )
         assert result["continue"] is True
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert not mpath.exists()
 
     # ── Robustness: malformed / unexpected input payloads ────────────
@@ -2279,7 +2279,7 @@ class TestSpawnContextTaskCreate:
             {"subagent_type": "other-plugin:some-agent", "cwd": str(tmp_project)},
         )
         assert result["continue"] is True
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert not mpath.exists()
 
 
@@ -2306,7 +2306,7 @@ class TestSpawnContextInputRobustness:
             {"skill": "garbage:not-a-skill", "cwd": str(tmp_project)},
         )
         assert result["continue"] is True
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert not mpath.exists()
 
     def test_bootstrap_rtl_skill_unknown_name(self, tmp_project):
@@ -2316,7 +2316,7 @@ class TestSpawnContextInputRobustness:
             {"skill": "rtl-agent-team:nonexistent-skill", "cwd": str(tmp_project)},
         )
         assert result["continue"] is True
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert not mpath.exists()
 
     def test_spawn_hook_invalid_json(self):
@@ -2363,7 +2363,7 @@ class TestSpawnContextStructuralContracts:
             self.BOOTSTRAP_HOOK,
             {"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)},
         )
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         return json.loads(mpath.read_text())
 
     def test_manifest_schema_types(self, tmp_project):
@@ -2623,7 +2623,7 @@ class TestSpawnContextStructuralContracts:
                  "cwd": str(tmp_project)},
             )
             assert result["continue"] is True
-            mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+            mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
             assert mpath.exists(), f"No manifest for agent {agent}"
             m = json.loads(mpath.read_text())
             assert m["pipeline"]["skill_invoked"] == expected_skill, (
@@ -2645,7 +2645,7 @@ class TestSpawnContextStructuralContracts:
             self.BOOTSTRAP_HOOK,
             {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
         )
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         m1 = json.loads(mpath.read_text())
 
         run_hook(
@@ -2673,7 +2673,7 @@ class TestSpawnContextStructuralContracts:
             self.BOOTSTRAP_HOOK,
             {"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)},
         )
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         manifest = json.loads(mpath.read_text())
         iron = manifest["upstream_iron"]
         assert isinstance(iron, list), f"upstream_iron must be list, got {type(iron)}"
@@ -2694,7 +2694,7 @@ class TestSpawnContextStructuralContracts:
             self.BOOTSTRAP_HOOK,
             {"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project)},
         )
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         m1 = json.loads(mpath.read_text())
         assert m1["pipeline"]["current_phase"] == 1
 
@@ -2733,7 +2733,7 @@ class TestTeamProgressHook:
 
     def test_noop_when_team_mode_false(self, tmp_project):
         """When team_mode is false, hook outputs JSON and exits cleanly."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         (state_dir / "team-config.json").write_text(
             json.dumps({"team_mode": False, "team_name": "test"})
@@ -2743,7 +2743,7 @@ class TestTeamProgressHook:
 
     def test_noop_without_progress_file(self, tmp_project):
         """When team mode is active but no progress file, hook exits cleanly."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         (state_dir / "team-config.json").write_text(
             json.dumps({"team_mode": True, "team_name": "test-team"})
@@ -2753,7 +2753,7 @@ class TestTeamProgressHook:
 
     def test_updates_timestamp_in_progress_file(self, tmp_project):
         """When team mode is active and progress file exists, last_updated is refreshed."""
-        state_dir = tmp_project / ".rtl-agent-team" / "state"
+        state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         (state_dir / "team-config.json").write_text(
             json.dumps({"team_mode": True, "team_name": "test-team"})
@@ -3020,7 +3020,7 @@ class TestHookIntegrationChain:
         assert result3.get("continue") is True
 
         # Verify spawn-context.json
-        mpath = tmp_project / ".rtl-agent-team" / "state" / "spawn-context.json"
+        mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         assert mpath.exists(), "spawn-context.json not written"
         manifest = json.loads(mpath.read_text())
 
@@ -3079,3 +3079,101 @@ class TestFlockUtilStaleLock:
             f'[ ! -d "{resource}.lock" ] && echo CLEANED || echo REMAINS'
         )
         assert "CLEANED" in stdout
+
+
+# ── rat-dir-util.sh unit tests ───────────────────────────────────────────────
+
+
+class TestRatDirUtil:
+    """Direct unit tests for hooks/lib/rat-dir-util.sh functions."""
+
+    def _run(self, cwd, cmd):
+        script = f'. "{HOOKS_DIR}/lib/rat-dir-util.sh"\n{cmd}'
+        result = subprocess.run(
+            ["sh", "-c", script],
+            capture_output=True, text=True, cwd=str(cwd),
+        )
+        return result.stdout.strip(), result.returncode
+
+    def test_is_project_true_with_rat(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        _, rc = self._run(tmp_path, f'rat_is_project "{tmp_path}"')
+        assert rc == 0
+
+    def test_is_project_true_with_legacy(self, tmp_path):
+        (tmp_path / ".rtl-agent-team").mkdir()
+        _, rc = self._run(tmp_path, f'rat_is_project "{tmp_path}"')
+        assert rc == 0
+
+    def test_is_project_false_with_neither(self, tmp_path):
+        _, rc = self._run(tmp_path, f'rat_is_project "{tmp_path}"')
+        assert rc == 1
+
+    def test_project_dir_prefers_rat(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / ".rtl-agent-team").mkdir()
+        out, rc = self._run(tmp_path, f'rat_project_dir "{tmp_path}"')
+        assert rc == 0
+        assert out == f"{tmp_path}/.rat"
+
+    def test_project_dir_falls_back_to_legacy(self, tmp_path):
+        (tmp_path / ".rtl-agent-team").mkdir()
+        out, rc = self._run(tmp_path, f'rat_project_dir "{tmp_path}"')
+        assert rc == 0
+        assert out == f"{tmp_path}/.rtl-agent-team"
+
+    def test_project_dir_returns_1_when_neither(self, tmp_path):
+        out, rc = self._run(tmp_path, f'rat_project_dir "{tmp_path}"')
+        assert rc == 1
+        assert out == ""
+
+
+# ── Legacy .rtl-agent-team fallback integration tests ────────────────────────
+
+
+class TestLegacyDirFallback:
+    """Verify hooks work with legacy .rtl-agent-team directories (no .rat)."""
+
+    EDIT_HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
+    VERIFY_HOOK = HOOKS_DIR / "rtl-verify-stop-gate.sh"
+    INJECT_HOOK = HOOKS_DIR / "rtl-orchestrator-inject.sh"
+
+    def test_edit_tracker_works_with_legacy_dir(self, tmp_legacy_project):
+        result = run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_legacy_project), "file_path": "rtl/mod.sv"},
+        )
+        assert result["continue"] is True
+        track = tmp_legacy_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        assert track.exists()
+        assert "rtl/mod.sv" in track.read_text()
+
+    def test_verify_gate_blocks_with_legacy_dir(self, tmp_legacy_project):
+        track = tmp_legacy_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
+        track.write_text("rtl/mod.sv\n")
+        result = run_hook(
+            self.VERIFY_HOOK,
+            {"cwd": str(tmp_legacy_project)},
+        )
+        assert result["continue"] is False
+
+    def test_orchestrator_inject_fires_with_legacy_dir(self, tmp_legacy_project):
+        result = run_hook(self.INJECT_HOOK, {"cwd": str(tmp_legacy_project)})
+        raw = result.get("raw_stdout", "")
+        assert "Routing" in raw or "Absolute Rules" in raw
+
+    def test_hooks_exit_cleanly_in_non_project(self, tmp_path):
+        """Hooks should emit {"continue":true} when no .rat or .rtl-agent-team exists."""
+        for hook_name in ["rtl-verify-stop-gate.sh", "stop-gate.sh",
+                          "rtl-p6-cascade-gate.sh", "rtl-skill-completion-gate.sh"]:
+            result = run_hook(
+                HOOKS_DIR / hook_name,
+                {"cwd": str(tmp_path)},
+            )
+            assert result.get("continue") is True, (
+                f"{hook_name} did not emit continue:true in non-project dir, got: {result}"
+            )
+            # No state directory should be created
+            assert not (tmp_path / ".rat").exists(), (
+                f"{hook_name} created .rat in non-project dir"
+            )

@@ -30,7 +30,7 @@ and direct workers via SendMessage.
 - **Signal completion**: Notify leader when all tasks are done
 
 Workers pick up tasks from the shared task list automatically.
-Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-1/`;
+Write-restricted agents now write directly to `.rat/scratch/phase-1/`;
 read their output from there and Write to the final location.
 
 # Task Graph — Tree-of-Thought Exploration
@@ -66,7 +66,7 @@ T12: Final verification + artifacts (spec-analyst, blockedBy: T11)
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -107,7 +107,7 @@ Read("specs/...")  # Read available spec files
 Skill("rtl-agent-team:domain-consult",
       args="What algorithms/coding tools are available for the target domain?")
 
-Bash("mkdir -p docs/phase-1-research reviews/phase-1-research .rtl-agent-team/scratch/phase-1")
+Bash("mkdir -p docs/phase-1-research reviews/phase-1-research .rat/scratch/phase-1")
 ```
 
 Assess user request completeness. Use AskUserQuestion to clarify:
@@ -141,7 +141,7 @@ Cross-cutting survey tasks (created now, blocked by T2):
 # TaskUpdate(taskId=t4a, addBlockedBy=[t2])
 
 t4b = TaskCreate(subject="T4b: Interconnect topology survey",
-                 description="Survey shared bus, crossbar, ring, NoC comparison. Output to .rtl-agent-team/scratch/phase-1/interconnect-survey.md (write-restricted — orchestrator will copy to final location).")
+                 description="Survey shared bus, crossbar, ring, NoC comparison. Output to .rat/scratch/phase-1/interconnect-survey.md (write-restricted — orchestrator will copy to final location).")
 TaskUpdate(taskId=t4b, addBlockedBy=[t2])
 
 t4c = TaskCreate(subject="T4c: Power optimization survey",
@@ -217,22 +217,22 @@ while not all_tasks_complete:
         created_groups.add("T12")
 
     # === Write-restricted agent handling ===
-    # Check .rtl-agent-team/scratch/phase-1/ for completed scratch files
+    # Check .rat/scratch/phase-1/ for completed scratch files
     # Copy to final location
 
     # Track progress
-    # Update .rtl-agent-team/state/team-progress.json
+    # Update .rat/state/team-progress.json
 ```
 
 ### Write-Restricted Agent Handling
 
 Workers using agents that prefer not to write directly (arch-designer, etc.)
-save their content to `.rtl-agent-team/scratch/phase-1/`.
+save their content to `.rat/scratch/phase-1/`.
 The orchestrator reads from scratch and writes to the final location:
 
 ```python
 # On detecting completed scratch files:
-content = Read(".rtl-agent-team/scratch/phase-1/interconnect-survey.md")
+content = Read(".rat/scratch/phase-1/interconnect-survey.md")
 Write("docs/phase-1-research/interconnect-survey.md", content)
 ```
 
@@ -301,7 +301,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
 
 # Explicit verdict check — read report and verify consensus
-Read(".rtl-agent-team/cross-review/phase-1/cross-review-report.md")
+Read(".rat/cross-review/phase-1/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 1 complete
 ```
 

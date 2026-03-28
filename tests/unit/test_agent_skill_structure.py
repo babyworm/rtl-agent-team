@@ -514,7 +514,7 @@ class TestCrossReferences:
 
     def test_p5b_precondition_is_state_based(self):
         p5b_orchestrator = (AGENTS_DIR / "p5b-silicon-validation-orchestrator.md").read_text()
-        assert ".rtl-agent-team/state/p5a-state.json" in p5b_orchestrator
+        assert ".rat/state/p5a-state.json" in p5b_orchestrator
         assert "gates.p5a_exit.verdict" in p5b_orchestrator
         assert "precondition.p5a_functional_closure_pass" in p5b_orchestrator
 

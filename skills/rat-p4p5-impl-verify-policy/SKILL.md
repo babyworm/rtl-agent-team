@@ -22,7 +22,7 @@ RTL must faithfully implement the μArch design. Verification must validate agai
 ### Document-as-Memory
 Phase 4 reads Phase 1-3 documents as input context. Phase 5 reads Phase 4 artifacts.
 No agent needs to "remember" another agent's output — it reads the document.
-State is persisted at `.rtl-agent-team/state/rat-p4p5-impl-verify-state.json` for resumability.
+State is persisted at `.rat/state/rat-p4p5-impl-verify-state.json` for resumability.
 
 ## Execution Rules
 
@@ -66,7 +66,7 @@ Do NOT proceed to Phase 6.
 - [ ] All μArch specs exist: `docs/phase-3-uarch/{module}.md` for each module
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
-- [ ] State file updated: `.rtl-agent-team/state/{module}-phase-3-complete.json`
+- [ ] State file updated: `.rat/state/{module}-phase-3-complete.json`
 - [ ] Context preload files verified: Phase 4 required upstream files exist
 
 ## Phase Gate Definitions

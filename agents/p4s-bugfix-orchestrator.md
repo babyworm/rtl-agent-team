@@ -22,7 +22,7 @@ The rtl-p4s-bugfix-policy skill (loaded via skills: field) defines the mandatory
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -123,7 +123,7 @@ On failure: debug waveforms, iterate fix (max 2 iterations, then escalate per po
 
 On all tests PASS:
 ```
-Bash("touch .rtl-agent-team/state/rtl-verify-done")
+Bash("touch .rat/state/rtl-verify-done")
 ```
 
 ## Step 5: Phase 5→4 Feedback Return
@@ -168,7 +168,7 @@ Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run test for module_b.", run_in_background=true)
 
 # After all pass:
-Bash("touch .rtl-agent-team/state/rtl-verify-done")
+Bash("touch .rat/state/rtl-verify-done")
 ```
 
 # Examples

@@ -30,7 +30,7 @@ and direct workers via SendMessage.
 - **Signal completion**: Notify leader when all tasks are done
 
 Workers pick up tasks from the shared task list automatically.
-Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-3/`;
+Write-restricted agents now write directly to `.rat/scratch/phase-3/`;
 read their output from there and Write to the final location.
 
 # Task Graph — Dual-Stream uArch + BFM
@@ -59,7 +59,7 @@ T_final: Final consolidation + pipeline diagram + feedback report (blockedBy: la
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -104,7 +104,7 @@ Glob("docs/phase-2-architecture/bandwidth_report.json")
 Skill("rtl-agent-team:domain-consult",
       args="Protocol selection guidance for inter-block interfaces. Memory architecture patterns. Pipeline design patterns.")
 
-Bash("mkdir -p docs/phase-3-uarch reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
+Bash("mkdir -p docs/phase-3-uarch reviews/phase-3-uarch .rat/scratch/phase-3")
 ```
 
 ## Step 2: Task Graph Creation
@@ -113,7 +113,7 @@ Create initial parallel streams (T1, T2):
 
 ```python
 t1 = TaskCreate(subject="T1: Per-block uArch design",
-                description="Produce microarchitecture docs at .rtl-agent-team/scratch/phase-3/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec. Also produce clock-domain-map.md and protocol-assignments.md. (Write-restricted — orchestrator will copy to final location at docs/phase-3-uarch/.)")
+                description="Produce microarchitecture docs at .rat/scratch/phase-3/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec. Also produce clock-domain-map.md and protocol-assignments.md. (Write-restricted — orchestrator will copy to final location at docs/phase-3-uarch/.)")
 
 t2 = TaskCreate(subject="T2: BFM development (SystemC C++, NOT SystemVerilog)",
                 description="Build SystemC TLM-2.0 BFM in C++ at bfm/src/*.cpp from architecture.md. CRITICAL: Output MUST be C++ (.cpp/.h) files, NOT SystemVerilog (.sv). If SystemC is not installed, use pure C timing model as fallback. Default LT blocking transport. Per-block I/O logging MANDATORY. Compare against C reference model (refc/). Archive I/O logs at bfm/logs/ for Phase 4-5.")
@@ -133,14 +133,14 @@ t4a = TaskCreate(subject="T4a: R1 Feature preservation review",
 TaskUpdate(taskId=t4a, addBlockedBy=[t3])
 
 t4b = TaskCreate(subject="T4b: R1 Timing/pipeline review",
-                 description="Review critical path at target frequency, pipeline balance, clock domain feasibility. Save findings to .rtl-agent-team/scratch/phase-3/timing-review-r1.md (write-restricted — orchestrator will copy to final location).")
+                 description="Review critical path at target frequency, pipeline balance, clock domain feasibility. Save findings to .rat/scratch/phase-3/timing-review-r1.md (write-restricted — orchestrator will copy to final location).")
 TaskUpdate(taskId=t4b, addBlockedBy=[t3])
 
 # T4c: conditional on domain — use domain expert if domain-packages/{domain}/ exists
 has_domain_expert = len(Glob("domain-packages/*/")) > 0
 if has_domain_expert:
     t4c = TaskCreate(subject="T4c: R1 Algorithm consistency review",
-                     description="Review algorithm-to-uArch consistency, memory optimization, protocol adequacy. Save findings to .rtl-agent-team/scratch/phase-3/algo-review-r1.md (write-restricted — orchestrator will copy to final location).")
+                     description="Review algorithm-to-uArch consistency, memory optimization, protocol adequacy. Save findings to .rat/scratch/phase-3/algo-review-r1.md (write-restricted — orchestrator will copy to final location).")
     TaskUpdate(taskId=t4c, addBlockedBy=[t3])
 # If no domain expert: SKIP T4c, rtl-architect (T4a) covers algorithm consistency in its scope
 
@@ -244,7 +244,7 @@ while not converged and round_num < max_rounds:
     # if all criteria met: converged = True
 
     # === Write-restricted agent handling ===
-    # Check .rtl-agent-team/scratch/phase-3/ for completed scratch files
+    # Check .rat/scratch/phase-3/ for completed scratch files
     # Copy to final location
 
 # If not converged after max_rounds: escalate to user via AskUserQuestion
@@ -274,12 +274,12 @@ TaskUpdate(taskId=t_feedback, addBlockedBy=[last_review_aggregate])
 ### Write-Restricted Agent Handling
 
 Workers using agents that prefer not to write directly (uarch-designer, timing-advisor, vcodec-architecture-expert)
-save their content to `.rtl-agent-team/scratch/phase-3/`.
+save their content to `.rat/scratch/phase-3/`.
 The orchestrator reads from scratch and writes to the final location:
 
 ```python
 # On detecting completed scratch files:
-content = Read(".rtl-agent-team/scratch/phase-3/{module}.md")
+content = Read(".rat/scratch/phase-3/{module}.md")
 Write("docs/phase-3-uarch/{module}.md", content)
 ```
 
@@ -380,7 +380,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Focus: pipeline correctness, clock domain safety, protocol assignments, feature preservation, BFM consistency.")
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-3/cross-review-report.md")
+Read(".rat/cross-review/phase-3/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 3 complete
 ```
 

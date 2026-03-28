@@ -44,7 +44,7 @@ Task(subagent_type="rtl-agent-team:dse-orchestrator",
 
 # After orchestrator completes Trial 1 (including self-critique + re-run):
 # Commit only DSE-produced artifacts as the "current best" (avoid sweeping unrelated work)
-Bash("git add -f docs/phase-1-research/ docs/phase-2-architecture/ docs/phase-3-uarch/ docs/decisions/ reviews/phase-1-research/ reviews/phase-2-architecture/ reviews/phase-3-uarch/ reviews/dse-self-critique.md refc/ bfm/ .rtl-agent-team/state/rat-dse-state.json .rtl-agent-team/state/compliance-report.json && git commit -m 'dse: Trial 1 complete'")
+Bash("git add -f docs/phase-1-research/ docs/phase-2-architecture/ docs/phase-3-uarch/ docs/decisions/ reviews/phase-1-research/ reviews/phase-2-architecture/ reviews/phase-3-uarch/ reviews/dse-self-critique.md refc/ bfm/ .rat/state/rat-dse-state.json .rat/state/compliance-report.json && git commit -m 'dse: Trial 1 complete'")
 ```
 
 The orchestrator runs Phase 1→3, performs self-critique, re-runs with findings,
@@ -100,7 +100,7 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
                         'docs/phase-3-uarch/clock-domain-map.md',
                         'docs/phase-3-uarch/protocol-assignments.md']
      Read only the above files from the CURRENT WORKING DIRECTORY.
-     Save report to .rtl-agent-team/state/compliance-report-current.json""")
+     Save report to .rat/state/compliance-report-current.json""")
 
 # Run compliance-checker on NEW trial (worktree — use absolute paths from worktree_path)
 Task(subagent_type="rtl-agent-team:compliance-checker",
@@ -112,7 +112,7 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
                         '{worktree_path}/docs/phase-3-uarch/clock-domain-map.md',
                         '{worktree_path}/docs/phase-3-uarch/protocol-assignments.md']
      Read only the above files using ABSOLUTE PATHS (worktree location).
-     Save report to {worktree_path}/.rtl-agent-team/state/compliance-report-new.json""")
+     Save report to {worktree_path}/.rat/state/compliance-report-new.json""")
 ```
 
 Then use rtl-architect to produce a structured comparison using both reports
@@ -122,20 +122,20 @@ and artifacts from both locations:
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt=f"""Compare DSE Trial results.
      Trial A (current best): read artifacts from current working directory
-       - Compliance report: .rtl-agent-team/state/compliance-report-current.json
+       - Compliance report: .rat/state/compliance-report-current.json
      Trial B (new trial): read artifacts from {worktree_path}/
-       - Compliance report: {worktree_path}/.rtl-agent-team/state/compliance-report-new.json
+       - Compliance report: {worktree_path}/.rat/state/compliance-report-new.json
      Produce comparison table: iron requirement count, acceptance_criteria
      measurability, compliance verdicts, ambiguity scores, open item
      resolution quality, self-critique HIGH findings remaining.
-     Output: .rtl-agent-team/scratch/trial-comparison.md""")
+     Output: .rat/scratch/trial-comparison.md""")
 ```
 
 Present comparison to user via AskUserQuestion.
 User selects the better trial:
 - If Trial N selected → merge worktree branch into current branch, then commit as new baseline:
   ```python
-  Bash(f"git merge {worktree_branch} && git add -f docs/ reviews/ refc/ bfm/ .rtl-agent-team/state/ && git commit -m 'dse: Trial {trial_number} promoted to current best'")
+  Bash(f"git merge {worktree_branch} && git add -f docs/ reviews/ refc/ bfm/ .rat/state/ && git commit -m 'dse: Trial {trial_number} promoted to current best'")
   ```
 - If current best selected → discard worktree (no changes to main branch)
 

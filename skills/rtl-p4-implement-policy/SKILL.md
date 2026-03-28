@@ -206,7 +206,7 @@ ALL of the following must be true before Phase 5:
 **Code Review:**
 - [ ] All modules reviewed by rtl-critic (Wave 4)
 - [ ] All modules REVIEW_PASS (0 critical/major findings)
-- [ ] Per-module review reports at `.rtl-agent-team/scratch/phase-4/`
+- [ ] Per-module review reports at `.rat/scratch/phase-4/`
 - [ ] No module blocked after 3 review→fix iterations
 
 **Test Plan:**

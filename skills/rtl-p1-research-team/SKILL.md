@@ -38,7 +38,7 @@ Specification documents should be available in `specs/` directory.
 TeamCreate(team_name="p1-research", description="Phase 1 research: tree-of-thought parallel candidate exploration")
 
 # Step 2: Write team-config.json for hook consumption
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
+Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p1-research",
     "leader_session_id": "<current_session_id>",
@@ -49,7 +49,7 @@ Write(".rtl-agent-team/state/team-config.json", json.dumps({
 }))
 
 # Step 3: Prepare directories
-Bash("mkdir -p docs/phase-1-research reviews/phase-1-research .rtl-agent-team/scratch/phase-1")
+Bash("mkdir -p docs/phase-1-research reviews/phase-1-research .rat/scratch/phase-1")
 
 # Step 4: Create initial task graph
 t1 = TaskCreate(subject="T1: Solution Tree Construction",
@@ -84,7 +84,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:spec-analyst",
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
              "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n. "
-             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+             "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
       name="research-1", description="P1 architecture review and deep-dive",
       prompt="You are a Phase 1 research worker in team 'p1-research'. "
@@ -94,7 +94,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
              "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n. "
-             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+             "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
       name="analysis-0", description="P1 analysis and survey",
       prompt="You are a Phase 1 research worker in team 'p1-research'. "
@@ -103,7 +103,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
              "Specialty: cross-cutting surveys (memory, interconnect, power), literature survey. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
-             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+             "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:power-analyzer",
       name="domain-0", description="P1 domain and power analysis",
       prompt="You are a Phase 1 research worker in team 'p1-research'. "
@@ -112,7 +112,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:power-analyzer",
              "Specialty: power analysis, domain-specific expert consultation. "
              "For domain expert work, spawn: Task(subagent_type='rtl-agent-team:vcodec-*-expert', prompt='...'). "
              "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
-             "Scratch dir: .rtl-agent-team/scratch/phase-1/ (for write-restricted outputs).")
+             "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete
 while True:
@@ -124,8 +124,8 @@ while True:
 
 # Step 8: Cleanup
 TeamDelete()
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-1/")
+Bash("rm -f .rat/state/team-config.json")
+Bash("rm -rf .rat/scratch/phase-1/")
 ```
 
 ## Output Artifacts

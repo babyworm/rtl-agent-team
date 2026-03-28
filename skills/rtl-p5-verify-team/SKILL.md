@@ -43,7 +43,7 @@ Proceed with available artifacts — orchestrator will adapt scope.
 TeamCreate(team_name="p5-verify", description="Phase 5 verification: 9-category parallel verification")
 
 # Step 2: Write team-config.json for hook consumption
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
+Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p5-verify",
     "leader_session_id": "<current_session_id>",
@@ -54,7 +54,7 @@ Write(".rtl-agent-team/state/team-config.json", json.dumps({
 }))
 
 # Step 3: Prepare directories
-Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage sim/formal sim/cdc .rtl-agent-team/scratch/phase-5")
+Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage sim/formal sim/cdc .rat/scratch/phase-5")
 
 # Step 4: No initial tasks from skill — coordinator creates per-module V1-V9 after discovering modules
 
@@ -115,8 +115,8 @@ while True:
 
 # Step 8: Cleanup
 TeamDelete()
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-5/")
+Bash("rm -f .rat/state/team-config.json")
+Bash("rm -rf .rat/scratch/phase-5/")
 ```
 
 ## Compliance Notes

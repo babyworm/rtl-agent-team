@@ -23,7 +23,7 @@ C_CYAN='\033[36m'
 
 # Defaults
 CWD="${PWD}"
-AUDIT_DIR="$CWD/.rtl-agent-team/audit"
+AUDIT_DIR="$CWD/.rat/audit"
 MODE="timeline"
 SESSION_ID=""
 FILTER=""

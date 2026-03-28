@@ -27,7 +27,7 @@ principles, checklists, and escalation rules. Reference it for pass/fail decisio
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -45,7 +45,7 @@ If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for comp
 
 Scan for upstream artifacts based on current phase. Missing artifacts produce WARNING, not BLOCK.
 Multi-phase orchestrator: artifact requirements depend on the phase being entered.
-Check `.rtl-agent-team/state/` for current phase, then scan corresponding upstream artifacts.
+Check `.rat/state/` for current phase, then scan corresponding upstream artifacts.
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
@@ -54,12 +54,12 @@ Adjust execution plan based on available artifacts.
 
 ```
 # Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
-Read(".rtl-agent-team/state/rtl-autopilot-state.json")
+Read(".rat/state/rtl-autopilot-state.json")
 # If legacy file exists AND new file does NOT exist, rename it:
-Bash("[ ! -f .rtl-agent-team/state/rat-auto-design-state.json ] && mv .rtl-agent-team/state/rtl-autopilot-state.json .rtl-agent-team/state/rat-auto-design-state.json || true")
+Bash("[ ! -f .rat/state/rat-auto-design-state.json ] && mv .rat/state/rtl-autopilot-state.json .rat/state/rat-auto-design-state.json || true")
 
 # Check for existing state
-Read(".rtl-agent-team/state/rat-auto-design-state.json")
+Read(".rat/state/rat-auto-design-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -88,9 +88,9 @@ Read(".rtl-agent-team/state/rat-auto-design-state.json")
    - Phase 6: check `completed_waves`, resume from `current_wave`
 4. **Context Load**: Read upstream docs per Context Preload (defined in each phase step below)
 5. Clear `interrupted_reason` and `partial_work_summary`
-6. **Team config**: If `execution_mode == "team"` and `.rtl-agent-team/state/team-config.json` doesn't exist, recreate it:
+6. **Team config**: If `execution_mode == "team"` and `.rat/state/team-config.json` doesn't exist, recreate it:
    ```
-   Write(".rtl-agent-team/state/team-config.json", { team_mode: true })
+   Write(".rat/state/team-config.json", { team_mode: true })
    ```
    This ensures hooks see team mode on resume (phase orchestrators recreate their own on start).
 
@@ -106,13 +106,13 @@ EXECUTION_MODE = "team" if TEAM_MODE else "sequential"
 
 2. Create team-config.json (consumed by hooks for session-scoped file tracking):
 ```
-Write(".rtl-agent-team/state/team-config.json",
+Write(".rat/state/team-config.json",
   { team_mode: TEAM_MODE })
 ```
 
 3. Create state file with `execution_mode` as the single source of truth for phase branching:
 ```
-Write(".rtl-agent-team/state/rat-auto-design-state.json",
+Write(".rat/state/rat-auto-design-state.json",
   { schema_version: "3.0", current_phase: 1, execution_mode: EXECUTION_MODE,
     orchestration_control: { default_retry_limit: 2, active_gate_id: "p1-quality-gate", active_gate_retry_limit: 2, active_gate_primary_attempts: 0, active_gate_fallback_attempts: 0, active_gate_last_chance_attempts: 0, active_gate_strategy: "primary", needs_user_decision: false, dynamic_prompt_text: "" },
     phases: { "1": { status: "pending" }, ... } })
@@ -177,7 +177,7 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 STOP if required files missing.
 
 ```
-Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
+Bash("mkdir -p reviews/phase-2-architecture .rat/scratch/phase-2")
 
 # Branch on execution_mode from state file
 # If execution_mode == "team":
@@ -200,7 +200,7 @@ verdict: PASS or FAIL + findings[]")
 **Phase 2→3 Quality Gate** (criteria in policy skill):
 - Check: `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
 - Check: `reviews/phase-2-architecture/feature-coverage.md` 100% coverage
-- Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-2/`
+- Clean up scratch: `rm -rf .rat/scratch/phase-2/`
 
 On PASS: generate Phase 2 summary + ADRs:
 ```
@@ -224,7 +224,7 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 STOP if required files missing.
 
 ```
-Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
+Bash("mkdir -p reviews/phase-3-uarch .rat/scratch/phase-3")
 
 # Branch on execution_mode from state file
 # If execution_mode == "team":
@@ -245,7 +245,7 @@ Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
 **Phase 3→4 Quality Gate** (criteria in policy skill):
 - Check: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - Check: `reviews/phase-3-uarch/feature-preservation.md` 100% preserved
-- Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-3/`
+- Clean up scratch: `rm -rf .rat/scratch/phase-3/`
 
 On PASS: generate Phase 3 summary + ADRs:
 ```
@@ -368,7 +368,7 @@ On FAIL: iterate review → fix cycle (max 2 rounds).
 
 ## Step 8: Completion
 
-- Remove `.rtl-agent-team/state/rat-auto-design-state.json`
+- Remove `.rat/state/rat-auto-design-state.json`
 - Report summary with Final Compliance Matrix and Phase 6 deliverables
 
 # Parallel Execution Patterns

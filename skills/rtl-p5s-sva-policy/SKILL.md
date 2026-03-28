@@ -25,7 +25,7 @@ Each round builds upon the previous:
 - **Round 3 (Harden)**: Cross-check against spec requirements. Add liveness properties (`##[1:N]` bounded eventually). Verify assume/assert balance (not over-constrained). Add cross-module interface properties if applicable.
 - **Additional rounds**: Continue if coverage of spec requirements < 100% or if new RTL paths are discovered.
 
-Each round produces a review note at `.rtl-agent-team/scratch/phase-5/sva-iteration-r{N}.md`.
+Each round produces a review note at `.rat/scratch/phase-5/sva-iteration-r{N}.md`.
 
 ## Escalation & Stop Conditions
 

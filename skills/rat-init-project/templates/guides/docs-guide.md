@@ -84,7 +84,7 @@ No agent needs to "remember" — it reads the document.
 **Context Summarization**: Each phase generates `phase-N-summary.md`. Downstream phases use summaries
 (via `summary only` in Context Preload) instead of full docs, reducing context window consumption.
 Full documents are only loaded when declared as `required (full read)` or on-demand.
-Intra-phase scratchpad: `.rtl-agent-team/scratch/phase-{N}/` (cleaned on phase completion).
+Intra-phase scratchpad: `.rat/scratch/phase-{N}/` (cleaned on phase completion).
 
 ## Phase 1 — Proactive Requirement Clarification
 

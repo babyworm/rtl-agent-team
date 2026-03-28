@@ -23,7 +23,7 @@ prerequisite checks, feedback classification, checklists, and escalation rules.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -88,11 +88,11 @@ Read("docs/phase-2-architecture/phase-2-summary.md")
 
 ```
 # Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
-Read(".rtl-agent-team/state/rtl-uarch-to-verify-state.json")
+Read(".rat/state/rtl-uarch-to-verify-state.json")
 # If legacy file exists AND new file does NOT exist, rename it:
-Bash("[ ! -f .rtl-agent-team/state/rat-p4p5-impl-verify-state.json ] && mv .rtl-agent-team/state/rtl-uarch-to-verify-state.json .rtl-agent-team/state/rat-p4p5-impl-verify-state.json || true")
+Bash("[ ! -f .rat/state/rat-p4p5-impl-verify-state.json ] && mv .rat/state/rtl-uarch-to-verify-state.json .rat/state/rat-p4p5-impl-verify-state.json || true")
 
-Read(".rtl-agent-team/state/rat-p4p5-impl-verify-state.json")
+Read(".rat/state/rat-p4p5-impl-verify-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -109,7 +109,7 @@ Read(".rtl-agent-team/state/rat-p4p5-impl-verify-state.json")
 
 **If no state file** — Fresh start:
 ```
-Write(".rtl-agent-team/state/rat-p4p5-impl-verify-state.json",
+Write(".rat/state/rat-p4p5-impl-verify-state.json",
   { schema_version: "3.0", current_phase: 4, current_phase_name: "rtl_implementation",
     pipeline_scope: "phase-4-to-5",
     interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
@@ -299,11 +299,11 @@ Skill(skill="rtl-agent-team:rtl-p4s-bugfix",
 **INTEGRATION_FIX**: always sequential (cross-module dependencies).
 **DESIGN_FIX**: IMMEDIATE STOP, escalate to user (see policy: Escalation).
 
-Track feedback loop state in `.rtl-agent-team/state/feedback-loop-state.json`.
+Track feedback loop state in `.rat/state/feedback-loop-state.json`.
 
 **G2: Feedback Loop Iteration Enforcement** (mandatory):
 ```
-Read(".rtl-agent-team/state/feedback-loop-state.json")
+Read(".rat/state/feedback-loop-state.json")
 # Check iteration_count per sub-phase
 ```
 If `iteration_count >= 2` for any sub-phase:

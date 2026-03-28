@@ -60,7 +60,8 @@ audit_session_id() {
   fi
 
   # Fallback: read from cached file (for environments without CLAUDE_SESSION_ID)
-  _ASI_ID_FILE="$_ASI_CWD/.rtl-agent-team/audit/session-id.txt"
+  _ASI_RAT=$(rat_project_dir "$_ASI_CWD") || _ASI_RAT="$_ASI_CWD/.rat"
+  _ASI_ID_FILE="$_ASI_RAT/audit/session-id.txt"
   if [ -f "$_ASI_ID_FILE" ]; then
     _ASI_RAW=$(cat "$_ASI_ID_FILE" 2>/dev/null)
     _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$_ASI_RAW")
@@ -77,13 +78,15 @@ audit_session_id() {
 # Returns 0 on success, 1 if not an RTL project.
 audit_init_session() {
   _AIS_CWD="$1"
-  _AIS_STATE="$_AIS_CWD/.rtl-agent-team"
+  _AIS_STATE=$(rat_project_dir "$_AIS_CWD")
 
   # Only initialize if this looks like an RTL project
-  if [ ! -d "$_AIS_STATE" ] && [ ! -d "$_AIS_CWD/rtl" ] && [ ! -d "$_AIS_CWD/docs" ]; then
+  if [ -z "$_AIS_STATE" ] && [ ! -d "$_AIS_CWD/rtl" ] && [ ! -d "$_AIS_CWD/docs" ]; then
     return 1
   fi
 
+  # Default to .rat for new projects where neither marker exists yet
+  [ -z "$_AIS_STATE" ] && _AIS_STATE="$_AIS_CWD/.rat"
   _AIS_ID=$(audit_session_id "$_AIS_CWD")
   _AIS_AUDIT_DIR="$_AIS_STATE/audit"
   _AIS_SESSION_DIR="$_AIS_AUDIT_DIR/$_AIS_ID"
@@ -110,7 +113,8 @@ audit_trace_append() {
     return 1
   fi
 
-  _ATA_TRACE="$_ATA_CWD/.rtl-agent-team/audit/$_ATA_ID/trace.jsonl"
+  _ATA_RAT=$(rat_project_dir "$_ATA_CWD") || _ATA_RAT="$_ATA_CWD/.rat"
+  _ATA_TRACE="$_ATA_RAT/audit/$_ATA_ID/trace.jsonl"
   mkdir -p "$(dirname "$_ATA_TRACE")"
 
   # Generate timestamp
@@ -157,7 +161,8 @@ audit_save_prompt() {
     return 1
   fi
 
-  _ASP_DIR="$_ASP_CWD/.rtl-agent-team/audit/$_ASP_ID/prompts"
+  _ASP_RAT=$(rat_project_dir "$_ASP_CWD") || _ASP_RAT="$_ASP_CWD/.rat"
+  _ASP_DIR="$_ASP_RAT/audit/$_ASP_ID/prompts"
   mkdir -p "$_ASP_DIR"
 
   # Sanitize agent name to prevent path traversal (strip to basename-safe token)
@@ -177,7 +182,8 @@ audit_save_prompt() {
 audit_prune() {
   _APR_CWD="$1"
   _APR_MAX="${2:-$AUDIT_MAX_SESSIONS}"
-  _APR_AUDIT_DIR="$_APR_CWD/.rtl-agent-team/audit"
+  _APR_RAT=$(rat_project_dir "$_APR_CWD") || _APR_RAT="$_APR_CWD/.rat"
+  _APR_AUDIT_DIR="$_APR_RAT/audit"
 
   [ ! -d "$_APR_AUDIT_DIR" ] && return 0
 

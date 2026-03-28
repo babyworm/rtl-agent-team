@@ -42,7 +42,7 @@ Proceed with available artifacts — orchestrator will adapt scope.
 TeamCreate(team_name="p3-uarch", description="Phase 3 uArch: dual-stream uArch + BFM development")
 
 # Step 2: Write team-config.json for hook consumption
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
+Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p3-uarch",
     "leader_session_id": "<current_session_id>",
@@ -53,7 +53,7 @@ Write(".rtl-agent-team/state/team-config.json", json.dumps({
 }))
 
 # Step 3: Prepare directories
-Bash("mkdir -p docs/phase-3-uarch reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
+Bash("mkdir -p docs/phase-3-uarch reviews/phase-3-uarch .rat/scratch/phase-3")
 
 # Step 4: Create initial task graph (T1 and T2 are independent — no dependencies)
 TaskCreate(subject="T1: uArch Design",
@@ -81,7 +81,7 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:uarch-designer",
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: timing-advisor for timing review, vcodec-architecture-expert for domain. "
              "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
-             "Scratch dir: .rtl-agent-team/scratch/phase-3/ (for write-restricted outputs).")
+             "Scratch dir: .rat/scratch/phase-3/ (for write-restricted outputs).")
 Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:bfm-dev",
       name="bfm-worker", description="P3 BFM development",
       prompt="You are a Phase 3 BFM worker in team 'p3-uarch'. "
@@ -98,7 +98,7 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:rtl-architect",
              "Specialty: feature preservation review, aggregation, final consolidation. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
-             "Scratch dir: .rtl-agent-team/scratch/phase-3/ (for write-restricted outputs).")
+             "Scratch dir: .rat/scratch/phase-3/ (for write-restricted outputs).")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete
 while True:
@@ -110,8 +110,8 @@ while True:
 
 # Step 8: Cleanup
 TeamDelete()
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-3/")
+Bash("rm -f .rat/state/team-config.json")
+Bash("rm -rf .rat/scratch/phase-3/")
 ```
 
 ## Workflow Notes

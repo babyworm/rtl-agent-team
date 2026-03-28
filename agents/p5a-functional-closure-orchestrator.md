@@ -15,7 +15,7 @@ Mission:
 - Block silicon validation until functional closure is PASS
 
 State contract:
-- Read/write `.rtl-agent-team/state/p5a-state.json`
+- Read/write `.rat/state/p5a-state.json`
 - Initialize from template:
   `skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json`
 - Update `scopes.*` progress and `gates.p5a_exit`
@@ -26,7 +26,7 @@ State contract:
 - Confirm P4 outputs exist and no open critical sanity failures remain.
 
 ### Step 0.5: Initialize or resume state
-1. Resume from existing `.rtl-agent-team/state/p5a-state.json` when present.
+1. Resume from existing `.rat/state/p5a-state.json` when present.
 2. Otherwise initialize from template and set scope execution plan.
 3. Persist state after each scope-level verdict.
 
@@ -72,7 +72,7 @@ PASS when:
 If FAIL:
 - Classify failure and route fix scope to P4 loop.
 - Set `gates.p5a_exit.verdict = "fail"` and `status = "blocked"`.
-- Persist terminal verdict in `.rtl-agent-team/state/p5a-state.json`.
+- Persist terminal verdict in `.rat/state/p5a-state.json`.
 
 Note: P5A PASS is a precondition for P5B (silicon validation), which is responsible for
 generating `reviews/phase-5-verify/final-compliance.md` — the canonical Phase 6 entry artifact.

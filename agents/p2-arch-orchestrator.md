@@ -23,7 +23,7 @@ HW evaluation criteria, naming conventions, and checklists. Reference it for pas
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -278,7 +278,7 @@ Task(subagent_type="rtl-agent-team:compliance-checker",
      target_artifacts: ['docs/phase-2-architecture/architecture.md', 'docs/phase-2-architecture/iron-requirements.json', 'docs/phase-2-architecture/hw-candidate-review.md']
      Read only the above files and compare directly. Do not trust implementer explanations.")
 
-Read(".rtl-agent-team/state/compliance-report.json")
+Read(".rat/state/compliance-report.json")
 # If verdict == "FAIL":
 #   → Check max_violation_authority
 #   → Enter authority-appropriate escalation ladder
@@ -316,7 +316,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
 
 Glob("docs/phase-2-architecture/iron-requirements.json")
 Glob("docs/phase-2-architecture/open-requirements.json")
-Read(".rtl-agent-team/state/compliance-report.json")
+Read(".rat/state/compliance-report.json")
 # Verify verdict == "PASS"
 ```
 
@@ -340,13 +340,13 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Output artifacts: docs/phase-2-architecture/ (architecture.md, hw-candidate-review.md, phase-2-summary.md), refc/ (C reference model).
      Review verdicts: reviews/phase-2-architecture/ (architecture-review.md, feature-coverage.md, ref-model-review.md).
      ADRs: docs/decisions/ADR-*.md.
-     Compliance report: .rtl-agent-team/state/compliance-report.json (include in review if exists).
+     Compliance report: .rat/state/compliance-report.json (include in review if exists).
      Upstream iron: docs/phase-1-research/iron-requirements.json.
      Focus: architecture soundness, ref model correctness, feature coverage completeness, spec compliance, iron requirement compliance.")
 ```
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-2/cross-review-report.md")
+Read(".rat/cross-review/phase-2/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 2 complete
 
 # Parallel Execution Patterns

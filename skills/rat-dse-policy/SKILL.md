@@ -105,7 +105,7 @@ Phase 1→2, Phase 2→3, and Phase 3 completion require BOTH Artifact Gate + Qu
 Quality Gate verdicts: `PASS` or `FAIL + findings[]`. Max 2 retries per gate.
 
 ### Scratchpad Convention
-`.rtl-agent-team/scratch/phase-{N}/round-{R}-{agent}.md`
+`.rat/scratch/phase-{N}/round-{R}-{agent}.md`
 On gate PASS: consolidate to reviews/, clean scratch.
 
 ### Termination

@@ -66,7 +66,7 @@ The following directories are frozen at Phase 2 exit:
 
 ### Hash Verification Method
 
-The freeze hash is stored in `.rtl-agent-team/state/design-freeze.json` (created by the
+The freeze hash is stored in `.rat/state/design-freeze.json` (created by the
 `rtl-p4-block-parallel` skill before parallel work begins). This file contains a `frozen_hash`
 computed over `rtl/pkg/`, `rtl/intf/`, and `docs/phase-3-uarch/`.
 
@@ -75,7 +75,7 @@ At each merge point during Phase 4 block-parallel execution, verify the freeze:
 ```bash
 # Recompute current hash and compare against design-freeze.json's frozen_hash
 current_hash=$(find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1)
-stored_hash=$(python3 -c "import json; print(json.load(open('.rtl-agent-team/state/design-freeze.json'))['frozen_hash'])")
+stored_hash=$(python3 -c "import json; print(json.load(open('.rat/state/design-freeze.json'))['frozen_hash'])")
 [ "$current_hash" = "$stored_hash" ] || echo "FREEZE VIOLATION: hash mismatch"
 ```
 

@@ -38,7 +38,7 @@ Phase 4 completion required:
 - `rtl/**/*.sv` files must exist
 - One of the following completion proofs must exist:
   - `reviews/phase-4-rtl/lint-report.md` (full `rtl-p4-implement` path)
-  - `.rtl-agent-team/state/p4-state.json` with `gates.p4_exit.verdict` = `pass` (rapid `rtl-p4-rapid-impl` path)
+  - `.rat/state/p4-state.json` with `gates.p4_exit.verdict` = `pass` (rapid `rtl-p4-rapid-impl` path)
 
 If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl-p4-rapid-impl`
 or `/rtl-agent-team:rtl-p4-implement`. Proceed with available artifacts — orchestrator will adapt scope.

@@ -31,7 +31,7 @@ and direct workers via SendMessage.
 - **Signal completion**: Notify leader when all tasks are done
 
 Workers pick up tasks from the shared task list automatically.
-Write-restricted agents now write directly to `.rtl-agent-team/scratch/phase-2/`;
+Write-restricted agents now write directly to `.rat/scratch/phase-2/`;
 read their output from there and Write to the final location.
 
 # Task Graph — Dual-Stream Arch + RefC
@@ -68,7 +68,7 @@ T13:   Final consolidation (rtl-architect, blockedBy: ALL T12*)
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -106,7 +106,7 @@ Read("docs/phase-1-research/timing_constraints.json")  # Per-block timing target
 Read("docs/phase-1-research/domain-analysis.md")
 Read("docs/phase-1-research/candidate-comparison.md")
 
-Bash("mkdir -p docs/phase-2-architecture reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
+Bash("mkdir -p docs/phase-2-architecture reviews/phase-2-architecture .rat/scratch/phase-2")
 ```
 
 Enumerate algorithm candidates from P1's domain-analysis.md that need HW evaluation.
@@ -195,7 +195,7 @@ while not converged and round_num < max_rounds:
     # if all criteria met: converged = True
 
     # === Write-restricted agent handling ===
-    # Check .rtl-agent-team/scratch/phase-2/ for completed scratch files
+    # Check .rat/scratch/phase-2/ for completed scratch files
     # Copy to final location
 
 # If not converged after max_rounds: escalate to user via AskUserQuestion
@@ -205,12 +205,12 @@ while not converged and round_num < max_rounds:
 ### Write-Restricted Agent Handling
 
 Workers using agents that prefer not to write directly (arch-designer, etc.)
-save their content to `.rtl-agent-team/scratch/phase-2/`.
+save their content to `.rat/scratch/phase-2/`.
 The orchestrator reads from scratch and writes to the final location:
 
 ```python
 # On detecting completed scratch files:
-content = Read(".rtl-agent-team/scratch/phase-2/architecture.md")
+content = Read(".rat/scratch/phase-2/architecture.md")
 Write("docs/phase-2-architecture/architecture.md", content)
 ```
 
@@ -259,7 +259,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Focus: architecture soundness, ref model correctness, feature coverage completeness, spec compliance.")
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-2/cross-review-report.md")
+Read(".rat/cross-review/phase-2/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 2 complete
 ```
 

@@ -15,7 +15,7 @@ recommendations.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -45,7 +45,7 @@ For each implemented block under `rtl/`:
 # Check for existing lint results
 Glob("reviews/phase-4-rtl/*lint*")
 # Verify all blocks have lint PASS status
-Read(".rtl-agent-team/state/block-parallel-state.json")  # Check per-block lint_pass
+Read(".rat/state/block-parallel-state.json")  # Check per-block lint_pass
 ```
 
 ### 3. Unit Test Coverage
@@ -76,7 +76,7 @@ Verify hash of frozen paths against stored freeze hash:
 
 ```python
 # Read stored freeze hash
-Read(".rtl-agent-team/state/design-freeze.json")
+Read(".rat/state/design-freeze.json")
 
 # Compute current hash
 Bash("find rtl/pkg/ rtl/intf/ docs/phase-3-uarch/ -name '*.sv' -o -name '*.md' 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1")

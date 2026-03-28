@@ -182,7 +182,7 @@ run adversarial reinterpretation to surface ambiguities the initial analysis mis
 
 1. **Step 7.6**: Spawn adversarial spec-analyst (separate Task, clean context) to challenge
    iron-requirements.json. References items by `source.section`, not REQ ID.
-   Output: `challenge-report.json` in `.rtl-agent-team/scratch/stability/phase-1/`.
+   Output: `challenge-report.json` in `.rat/scratch/stability/phase-1/`.
    Schema: `skills/p1-spec-research/templates/challenge-report-schema.json`.
    Budget: max 30 challenges per pass.
 2. **Step 7.7**: Present HIGH challenges to user (AskUserQuestion). MEDIUM batched if >10.

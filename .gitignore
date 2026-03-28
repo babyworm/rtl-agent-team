@@ -1,4 +1,5 @@
 node_modules/
+.rat/
 .rtl-agent-team/
 .worktrees/
 **/.omc/

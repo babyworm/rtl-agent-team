@@ -15,6 +15,9 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
+RAT_DIR=$(rat_project_dir "$CWD")
+[ -z "$RAT_DIR" ] && { emit_post_continue; }
 
 # --- Shared helpers (used by both Bash and Edit/Write paths) ---
 
@@ -37,7 +40,7 @@ _check_p6_stale() {
 # Set up STATE_DIR and TRACK_FILE with team mode awareness.
 # Sets globals: STATE_DIR, TRACK_FILE
 _setup_tracking() {
-  STATE_DIR="$CWD/.rtl-agent-team/state"
+  STATE_DIR="$RAT_DIR/state"
   mkdir -p "$STATE_DIR"
   TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
   _ST_TEAM_CONFIG="$STATE_DIR/team-config.json"
@@ -177,7 +180,7 @@ case "$FILE_PATH" in
     if [ -f "$_AUDIT_LIB" ]; then
       . "$_AUDIT_LIB"
       _ART_SID=$(audit_session_id "$CWD")
-      if [ -n "$_ART_SID" ] && [ -d "$CWD/.rtl-agent-team/audit/$_ART_SID" ]; then
+      if [ -n "$_ART_SID" ] && [ -d "$RAT_DIR/audit/$_ART_SID" ]; then
         _ART_SAFE=$(jsonu_escape "$FILE_PATH")
         audit_trace_append "$CWD" \
           "{\"event\":\"artifact_write\",\"agent\":\"system\",\"detail\":\"${_ART_SAFE}\",\"status\":\"success\"}" \

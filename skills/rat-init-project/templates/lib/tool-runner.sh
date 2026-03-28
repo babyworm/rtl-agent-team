@@ -8,7 +8,7 @@
 #   - Created on first run_tool() call when a local tool is missing
 #   - Reused across all subsequent run_tool() calls in the same project
 #   - Stopped via tool_runner_cleanup() (called at Phase 5 exit)
-#   - Container name stored in .rtl-agent-team/state/docker-container.txt
+#   - Container name stored in .rat/state/docker-container.txt
 #
 # Usage in scripts:
 #   source lib/tool-runner.sh
@@ -21,7 +21,7 @@
 RTL_EDA_IMAGE="${RTL_EDA_IMAGE:-rtl-eda-tools}"
 
 _TOOL_RUNNER_CONTAINER=""
-_TOOL_RUNNER_STATE_FILE=".rtl-agent-team/state/docker-container.txt"
+_TOOL_RUNNER_STATE_FILE=".rat/state/docker-container.txt"
 
 # Derive container name from project directory
 _tool_runner_container_name() {

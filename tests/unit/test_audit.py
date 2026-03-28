@@ -32,6 +32,7 @@ SCRIPT_DIR="{HOOKS_DIR}"
 . "{HOOKS_DIR}/lib/json-util.sh"
 jsonu_detect_parser
 . "{HOOKS_DIR}/lib/flock-util.sh"
+. "{HOOKS_DIR}/lib/rat-dir-util.sh"
 . "{HOOKS_DIR}/lib/audit-util.sh"
 """
         merged_env = {**os.environ, **(env or {})}
@@ -50,7 +51,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}" && echo OK',
         )
         assert "OK" in stdout
-        audit_dir = tmp_project / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_project / ".rat" / "audit"
         assert audit_dir.exists()
 
     def test_init_session_creates_session_id_file(self, tmp_project):
@@ -58,7 +59,7 @@ jsonu_detect_parser
             tmp_project,
             f'audit_init_session "{tmp_project}"',
         )
-        sid_file = tmp_project / ".rtl-agent-team" / "audit" / "session-id.txt"
+        sid_file = tmp_project / ".rat" / "audit" / "session-id.txt"
         assert sid_file.exists()
         assert len(sid_file.read_text().strip()) > 0
 
@@ -68,7 +69,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}"',
             env={"CLAUDE_SESSION_ID": "test-session-123"},
         )
-        sid_file = tmp_project / ".rtl-agent-team" / "audit" / "session-id.txt"
+        sid_file = tmp_project / ".rat" / "audit" / "session-id.txt"
         assert sid_file.read_text().strip() == "test-session-123"
 
     def test_init_session_creates_prompts_dir(self, tmp_project):
@@ -77,7 +78,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}"',
             env={"CLAUDE_SESSION_ID": "sess-001"},
         )
-        prompts = tmp_project / ".rtl-agent-team" / "audit" / "sess-001" / "prompts"
+        prompts = tmp_project / ".rat" / "audit" / "sess-001" / "prompts"
         assert prompts.is_dir()
 
     def test_init_session_rejects_non_rtl_project(self, tmp_path):
@@ -106,7 +107,7 @@ jsonu_detect_parser
             f'\'{{"event":"test","agent":"tester","status":"started"}}\'',
             env={"CLAUDE_SESSION_ID": "trace-test"},
         )
-        trace = tmp_project / ".rtl-agent-team" / "audit" / "trace-test" / "trace.jsonl"
+        trace = tmp_project / ".rat" / "audit" / "trace-test" / "trace.jsonl"
         assert trace.exists()
         line = json.loads(trace.read_text().strip())
         assert line["event"] == "test"
@@ -123,7 +124,7 @@ jsonu_detect_parser
             f'audit_trace_append "{tmp_project}" \'{{"event":"e3","agent":"a"}}\'',
             env={"CLAUDE_SESSION_ID": "seq-test"},
         )
-        trace = tmp_project / ".rtl-agent-team" / "audit" / "seq-test" / "trace.jsonl"
+        trace = tmp_project / ".rat" / "audit" / "seq-test" / "trace.jsonl"
         lines = [json.loads(l) for l in trace.read_text().strip().splitlines()]
         assert len(lines) == 3
         assert [l["seq"] for l in lines] == [1, 2, 3]
@@ -148,7 +149,7 @@ jsonu_detect_parser
         )
         prompt_file = (
             tmp_project
-            / ".rtl-agent-team"
+            / ".rat"
             / "audit"
             / "prompt-test"
             / "prompts"
@@ -165,7 +166,7 @@ jsonu_detect_parser
             env={"CLAUDE_SESSION_ID": "pad-test"},
         )
         files = list(
-            (tmp_project / ".rtl-agent-team" / "audit" / "pad-test" / "prompts").glob(
+            (tmp_project / ".rat" / "audit" / "pad-test" / "prompts").glob(
                 "*.md"
             )
         )
@@ -214,7 +215,7 @@ jsonu_detect_parser
             )
 
     def test_prune_removes_old_sessions(self, tmp_project):
-        audit_dir = tmp_project / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_project / ".rat" / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
         # Create 12 session dirs with deterministic mtimes
         base_time = 1000000000  # fixed epoch
@@ -242,12 +243,12 @@ class TestAuditInitHook:
 
     def test_creates_audit_dir_for_rtl_project(self, tmp_project):
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        audit_dir = tmp_project / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_project / ".rat" / "audit"
         assert audit_dir.exists()
 
     def test_creates_session_id_file(self, tmp_project):
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        sid_file = tmp_project / ".rtl-agent-team" / "audit" / "session-id.txt"
+        sid_file = tmp_project / ".rat" / "audit" / "session-id.txt"
         assert sid_file.exists()
 
     def test_logs_session_start_event(self, tmp_project):
@@ -257,7 +258,7 @@ class TestAuditInitHook:
             env={"CLAUDE_SESSION_ID": "init-test"},
         )
         trace = (
-            tmp_project / ".rtl-agent-team" / "audit" / "init-test" / "trace.jsonl"
+            tmp_project / ".rat" / "audit" / "init-test" / "trace.jsonl"
         )
         assert trace.exists()
         line = json.loads(trace.read_text().strip().splitlines()[0])
@@ -266,7 +267,7 @@ class TestAuditInitHook:
     def test_skips_non_rtl_project(self, tmp_path):
         """Non-RTL directories should not get audit initialized."""
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        audit_dir = tmp_path / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_path / ".rat" / "audit"
         assert not audit_dir.exists()
 
     def test_silent_output(self, tmp_project):
@@ -285,15 +286,15 @@ class TestAuditSubagentHook:
     HOOK = HOOKS_DIR / "rtl-audit-subagent.sh"
 
     def test_logs_to_diagnostic_file(self, tmp_project):
-        (tmp_project / ".rtl-agent-team" / "audit").mkdir(parents=True, exist_ok=True)
-        sid_file = tmp_project / ".rtl-agent-team" / "audit" / "session-id.txt"
+        (tmp_project / ".rat" / "audit").mkdir(parents=True, exist_ok=True)
+        sid_file = tmp_project / ".rat" / "audit" / "session-id.txt"
         sid_file.write_text("subagent-test")
-        (tmp_project / ".rtl-agent-team" / "audit" / "subagent-test").mkdir()
+        (tmp_project / ".rat" / "audit" / "subagent-test").mkdir()
 
         run_hook(self.HOOK, {"cwd": str(tmp_project), "agent_type": "rtl-agent-team:spec-analyst"})
         diag = (
             tmp_project
-            / ".rtl-agent-team"
+            / ".rat"
             / "audit"
             / "subagent-test"
             / "subagent-debug.jsonl"
@@ -318,7 +319,7 @@ class TestAuditSpawnComplete:
     HOOK = HOOKS_DIR / "rtl-audit-spawn-complete.sh"
 
     def _setup_audit(self, tmp_project, sid="spawn-complete-test"):
-        audit_dir = tmp_project / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_project / ".rat" / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
         (audit_dir / "session-id.txt").write_text(sid)
         (audit_dir / sid).mkdir(exist_ok=True)
@@ -336,7 +337,7 @@ class TestAuditSpawnComplete:
 
         trace = (
             tmp_project
-            / ".rtl-agent-team"
+            / ".rat"
             / "audit"
             / "spawn-complete-test"
             / "trace.jsonl"
@@ -375,7 +376,7 @@ class TestEditTrackerArtifactTrace:
     HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
 
     def _setup_audit(self, tmp_project, sid="artifact-test"):
-        audit_dir = tmp_project / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_project / ".rat" / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
         (audit_dir / "session-id.txt").write_text(sid)
         (audit_dir / sid).mkdir(exist_ok=True)
@@ -388,7 +389,7 @@ class TestEditTrackerArtifactTrace:
         )
         assert result["continue"] is True
         trace = (
-            tmp_project / ".rtl-agent-team" / "audit" / "artifact-test" / "trace.jsonl"
+            tmp_project / ".rat" / "audit" / "artifact-test" / "trace.jsonl"
         )
         assert trace.exists()
         line = json.loads(trace.read_text().strip())
@@ -403,7 +404,7 @@ class TestEditTrackerArtifactTrace:
         )
         assert result["continue"] is True
         trace = (
-            tmp_project / ".rtl-agent-team" / "audit" / "artifact-test" / "trace.jsonl"
+            tmp_project / ".rat" / "audit" / "artifact-test" / "trace.jsonl"
         )
         assert trace.exists()
 
@@ -415,7 +416,7 @@ class TestEditTrackerArtifactTrace:
             {"cwd": str(tmp_project), "file_path": "rtl/module/top.sv"},
         )
         trace = (
-            tmp_project / ".rtl-agent-team" / "audit" / "artifact-test" / "trace.jsonl"
+            tmp_project / ".rat" / "audit" / "artifact-test" / "trace.jsonl"
         )
         # RTL files should NOT create artifact_write trace
         if trace.exists():
@@ -431,7 +432,7 @@ class TestEditTrackerArtifactTrace:
             {"cwd": str(tmp_project), "file_path": "src/utils.py"},
         )
         trace = (
-            tmp_project / ".rtl-agent-team" / "audit" / "artifact-test" / "trace.jsonl"
+            tmp_project / ".rat" / "audit" / "artifact-test" / "trace.jsonl"
         )
         assert not trace.exists()
 
@@ -447,7 +448,7 @@ class TestSkillActivationTrace:
         rules.mkdir(parents=True, exist_ok=True)
         (rules / "rtl-coding-conventions.md").touch()
         # Setup audit
-        audit_dir = tmp_project / ".rtl-agent-team" / "audit"
+        audit_dir = tmp_project / ".rat" / "audit"
         audit_dir.mkdir(parents=True, exist_ok=True)
         (audit_dir / "session-id.txt").write_text(sid)
         (audit_dir / sid).mkdir(exist_ok=True)
@@ -471,7 +472,7 @@ class TestSkillActivationTrace:
 
         trace = (
             tmp_project
-            / ".rtl-agent-team"
+            / ".rat"
             / "audit"
             / "skill-trace-test"
             / "trace.jsonl"
@@ -491,7 +492,7 @@ class TestSkillActivationTrace:
         )
         trace = (
             tmp_project
-            / ".rtl-agent-team"
+            / ".rat"
             / "audit"
             / "skill-trace-test"
             / "trace.jsonl"

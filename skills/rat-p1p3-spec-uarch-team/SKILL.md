@@ -33,21 +33,21 @@ Specification documents should be available in `specs/` directory.
 
 ```python
 # Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
-legacy = Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")  # may not exist
+legacy = Read(".rat/state/rtl-spec-to-uarch-state.json")  # may not exist
 if legacy:
-    new_exists = Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")  # check new file
+    new_exists = Read(".rat/state/rat-p1p3-spec-uarch-state.json")  # check new file
     if not new_exists:
-        Bash("mv .rtl-agent-team/state/rtl-spec-to-uarch-state.json .rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
+        Bash("mv .rat/state/rtl-spec-to-uarch-state.json .rat/state/rat-p1p3-spec-uarch-state.json")
 
 # Initialize or resume state
-state = Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")  # may not exist
+state = Read(".rat/state/rat-p1p3-spec-uarch-state.json")  # may not exist
 
 if state and state.current_phase > 1:
     # Resume: skip completed phases
     pass
 else:
     # Fresh start
-    Write(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json",
+    Write(".rat/state/rat-p1p3-spec-uarch-state.json",
       { "schema_version": "3.0", "current_phase": 1, "pipeline_scope": "phase-1-to-3",
         "execution_mode": "team",
         "phases": {

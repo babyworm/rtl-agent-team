@@ -1,6 +1,6 @@
 #!/bin/sh
 # SessionStart hook: RTL project orchestration rules injection
-# Fires when RTL project directories exist (rtl/ or docs/ or .rtl-agent-team/)
+# Fires when RTL project directories exist (rtl/ or docs/ or .rat/)
 # Injects critical design rules, delegation guidance, and pipeline context.
 #
 # WHY THIS EXISTS:
@@ -20,7 +20,8 @@ CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 # Only inject when RTL project is detected
-if [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ] && [ ! -d "$CWD/.rtl-agent-team" ]; then
+if [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ] && [ ! -d "$CWD/.rat" ] && [ ! -d "$CWD/.rtl-agent-team" ]; then
+  printf '{}'
   exit 0
 fi
 
@@ -151,7 +152,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 
 ## Mandatory Verification After RTL Changes
 RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
-Gate: `touch .rtl-agent-team/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
+Gate: `touch .rat/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
 
 ## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)

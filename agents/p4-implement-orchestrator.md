@@ -23,7 +23,7 @@ coding conventions, overlap rules, escalation conditions, and checklists.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -72,7 +72,7 @@ Read("docs/phase-1-research/io_definition.json")
 - Identify module dependency order (leaf modules first, then composite)
 - Create per-module TODO list (TaskCreate per module with wave dependencies)
 - Initialize per-module state tracker (schema in policy skill)
-- `mkdir -p docs/phase-4-rtl reviews/phase-4-rtl .rtl-agent-team/scratch/phase-4`
+- `mkdir -p docs/phase-4-rtl reviews/phase-4-rtl .rat/scratch/phase-4`
 
 ### Step 0b: Test Plan Generation
 
@@ -142,7 +142,7 @@ Perform automated structural verification:
 - Check port completeness against uarch spec or io_definition.json
 - Verify timing contracts if specified in uarch spec
 Include a 'Structural Verification' section in the review report.
-Save review to .rtl-agent-team/scratch/phase-4/{module}_review.md.
+Save review to .rat/scratch/phase-4/{module}_review.md.
 Classify: REVIEW_PASS or REVIEW_FAIL with finding list.",
      run_in_background=true)
 # ... one review per module, all in parallel
@@ -202,7 +202,7 @@ Task(subagent_type="rtl-agent-team:cdc-checker",
      prompt="Analyze CDC crossings in rtl/{module}/{module}.sv.
 Read docs/phase-3-uarch/clock-domain-map.md for domain assignments.
 Identify all clock domain crossings, verify synchronizer presence (2FF/FIFO/handshake).
-Save report to .rtl-agent-team/scratch/phase-4/{module}_cdc.md.
+Save report to .rat/scratch/phase-4/{module}_cdc.md.
 Classify: CDC_PASS or CDC_FAIL.",
      run_in_background=true)
 # Single-domain modules: skip (CDC_PASS automatically)
@@ -224,7 +224,7 @@ Check: (1) valid/ready handshake correctness, (2) no combinational loops in hand
 (5) timing contract assertion checks — verify interfaces meet latency/throughput specs from uarch,
 (6) valid/ready backpressure exercise — stall/resume cycles with no data loss,
 (7) multi-beat transfer protocol verification — burst boundaries, last-beat signaling.
-Save report to .rtl-agent-team/scratch/phase-4/{module}_protocol.md.
+Save report to .rat/scratch/phase-4/{module}_protocol.md.
 Classify: PROTOCOL_PASS or PROTOCOL_FAIL.",
      run_in_background=true)
 # Modules without bus interfaces: skip (PROTOCOL_PASS automatically)
@@ -365,7 +365,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
 ```
 
 # Explicit verdict check
-Read(".rtl-agent-team/cross-review/phase-4/cross-review-report.md")
+Read(".rat/cross-review/phase-4/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 4 complete
 
 # Wave Overlap Rules

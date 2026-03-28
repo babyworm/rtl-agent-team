@@ -68,7 +68,7 @@ Step N-1: Cross-Review Gate
   Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
        prompt="Cross-review Phase {N}. Artifacts: {paths}.")
   # MANDATORY explicit verdict check:
-  Read(".rtl-agent-team/cross-review/phase-{N}/cross-review-report.md")
+  Read(".rat/cross-review/phase-{N}/cross-review-report.md")
   # Parse verdict field — must be CONSENSUS or USER_DECIDED
   # If verdict != CONSENSUS and user did not approve → do NOT proceed to completion
 ```
@@ -101,12 +101,12 @@ Max 5 rounds → AskUserQuestion escalation to user
 ## Artifacts
 
 Cross-review artifacts are phase-scoped for traceability:
-- `.rtl-agent-team/cross-review/review-schema.json` — shared JSON schema
-- `.rtl-agent-team/cross-review/phase-{N}/phase-summary.md` — phase context sent to Codex
-- `.rtl-agent-team/cross-review/phase-{N}/prompt-round-R.txt` — exact prompt sent each round
-- `.rtl-agent-team/cross-review/phase-{N}/round-R.json` — Codex's structured response each round
-- `.rtl-agent-team/cross-review/phase-{N}/resolution-state.json` — running resolution tracker
-- `.rtl-agent-team/cross-review/phase-{N}/cross-review-report.md` — final summary report
-- `.rtl-agent-team/cross-review/phase-{N}/escalation-summary.md` — generated if user escalation needed
+- `.rat/cross-review/review-schema.json` — shared JSON schema
+- `.rat/cross-review/phase-{N}/phase-summary.md` — phase context sent to Codex
+- `.rat/cross-review/phase-{N}/prompt-round-R.txt` — exact prompt sent each round
+- `.rat/cross-review/phase-{N}/round-R.json` — Codex's structured response each round
+- `.rat/cross-review/phase-{N}/resolution-state.json` — running resolution tracker
+- `.rat/cross-review/phase-{N}/cross-review-report.md` — final summary report
+- `.rat/cross-review/phase-{N}/escalation-summary.md` — generated if user escalation needed
 
-Completion marker: `.rtl-agent-team/state/cross-review-phase-${N}-done` (e.g., `cross-review-phase-2-done`)
+Completion marker: `.rat/state/cross-review-phase-${N}-done` (e.g., `cross-review-phase-2-done`)

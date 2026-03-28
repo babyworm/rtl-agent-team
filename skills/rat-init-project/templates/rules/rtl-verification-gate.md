@@ -24,8 +24,8 @@ paths:
 
 ## Gate Signals
 
-- Verification complete: `touch .rtl-agent-team/state/rtl-verify-done`
-- Non-functional change waiver: `touch .rtl-agent-team/state/rtl-verify-waiver`
+- Verification complete: `touch .rat/state/rtl-verify-done`
+- Non-functional change waiver: `touch .rat/state/rtl-verify-waiver`
 
 Hook enforcement: `PostToolUse:Edit/Write` tracks .sv modifications; `Stop` hook blocks exit without verification.
 

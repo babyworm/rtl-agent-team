@@ -50,9 +50,9 @@ Annotate key moments with RAT (Reasoning Audit Tag) markers for traceable decisi
 
 On spawn, save your received task description to:
 ```
-.rtl-agent-team/audit/{session_id}/prompts/{NNN}_{agent-name}.md
+.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md
 ```
-where `{session_id}` is read from `.rtl-agent-team/audit/session-id.txt`
+where `{session_id}` is read from `.rat/audit/session-id.txt`
 and `{NNN}` is a zero-padded sequence number.
 
 If the session directory does not exist, skip prompt self-report silently.

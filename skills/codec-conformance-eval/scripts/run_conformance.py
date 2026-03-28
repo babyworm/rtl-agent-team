@@ -379,7 +379,7 @@ def main():
         sys.exit(1)
 
     output_dir = args.output_dir or config.get("output", {}).get(
-        "raw_data_path", ".rtl-agent-team/scratch/conformance-eval"
+        "raw_data_path", ".rat/scratch/conformance-eval"
     )
     os.makedirs(output_dir, exist_ok=True)
 

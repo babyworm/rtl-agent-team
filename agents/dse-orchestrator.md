@@ -28,7 +28,7 @@ trial comparison method, and gate criteria.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -46,7 +46,7 @@ If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for comp
 
 Scan for upstream artifacts based on current phase. Missing artifacts produce WARNING, not BLOCK.
 Multi-phase orchestrator: artifact requirements depend on the phase being entered.
-Check `.rtl-agent-team/state/` for current phase, then scan corresponding upstream artifacts.
+Check `.rat/state/` for current phase, then scan corresponding upstream artifacts.
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
@@ -54,7 +54,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Initialize or Resume State
 
 ```
-Read(".rtl-agent-team/state/rat-dse-state.json")
+Read(".rat/state/rat-dse-state.json")
 ```
 
 **If state file exists AND prompt says "THIS IS A NEW TRIAL"** — Delete state file and fresh-start.
@@ -63,7 +63,7 @@ Read(".rtl-agent-team/state/rat-dse-state.json")
 **If no state file** — Fresh start:
 ```
 # Extract trial number from prompt if specified (default: 1)
-Write(".rtl-agent-team/state/rat-dse-state.json",
+Write(".rat/state/rat-dse-state.json",
   { phase: 1, sub_phase: "algorithm_exploration", pipeline_scope: "dse-phase-1-to-3", trial: <N from prompt or 1> })
 ```
 
@@ -144,7 +144,7 @@ Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
 ## Step 4: Phase 2 — Architecture DSE + Reference C Model
 
 ```
-Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
+Bash("mkdir -p reviews/phase-2-architecture .rat/scratch/phase-2")
 ```
 
 ### Step 4a: Architecture Candidate Exploration (ENHANCED — multiple candidates)
@@ -205,7 +205,7 @@ Skill(skill="rtl-agent-team:ref-model")
 - Check: architecture-candidates.md exists with quantitative comparison
 - Check: algorithm and architecture selection ADRs recorded
 - If transform mode: bitexact equivalence verified
-- Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-2/`
+- Clean up scratch: `rm -rf .rat/scratch/phase-2/`
 
 On PASS: generate Phase 2 summary + ADRs:
 ```
@@ -241,7 +241,7 @@ Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
 - Check: BFM compiles and outputs match ref C model
 - Check: Compliance against P1+P2 iron: PASS
 - Check: Zero remaining open items (no open-requirements.json in P3)
-- Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-3/`
+- Clean up scratch: `rm -rf .rat/scratch/phase-3/`
 
 On PASS: generate Phase 3 summary:
 ```

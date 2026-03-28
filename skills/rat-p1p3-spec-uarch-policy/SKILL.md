@@ -33,7 +33,7 @@ Principle: **refine thoroughly at the top, execute efficiently at the bottom.**
 
 ### Document-as-Memory
 Design artifacts serve as persistent memory. Each phase reads upstream documents and writes
-downstream documents. State at `.rtl-agent-team/state/rat-p1p3-spec-uarch-state.json`.
+downstream documents. State at `.rat/state/rat-p1p3-spec-uarch-state.json`.
 
 ## Execution Rules
 
@@ -52,7 +52,7 @@ Before each phase, verify required upstream files exist (specific file lists def
 
 ### Scratchpad Convention
 During iterative review rounds:
-  `.rtl-agent-team/scratch/phase-{N}/round-{R}-{agent}.md`
+  `.rat/scratch/phase-{N}/round-{R}-{agent}.md`
 Coordinator reads all round files to aggregate feedback.
 On phase gate PASS: consolidated review saved to reviews/, scratch cleaned.
 
@@ -164,7 +164,7 @@ Review rounds within P2 and P3 use dynamic convergence instead of fixed 3 rounds
 - [ ] All μArch specs exist: `docs/phase-3-uarch/{module}.md` for each module
 - [ ] Phase 3 review passed: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - [ ] Feature preservation verified: `reviews/phase-3-uarch/feature-preservation.md`
-- [ ] State file updated: `.rtl-agent-team/state/{module}-phase-3-complete.json`
+- [ ] State file updated: `.rat/state/{module}-phase-3-complete.json`
 - [ ] Context preload files verified: Phase 4 required upstream files exist
 
 ## Escalation & Stop Conditions

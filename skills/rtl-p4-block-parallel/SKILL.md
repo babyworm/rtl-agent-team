@@ -56,7 +56,7 @@ Before starting fresh, check for existing state:
 
 ```python
 # === Phase 0: Resume Check ===
-state_path = ".rtl-agent-team/state/block-parallel-state.json"
+state_path = ".rat/state/block-parallel-state.json"
 state = Read(state_path)  # Returns None if not found
 
 if state:
@@ -97,7 +97,7 @@ except:
     return
 
 ## Common Step 2: Write team-config.json
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
+Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p4-block-parallel",
     "leader_session_id": "<current_session_id>",
@@ -140,7 +140,7 @@ else:
     base_commit = Bash("git rev-parse HEAD").strip()
     project_root = Bash("git rev-parse --show-toplevel").strip()
 
-    Write(".rtl-agent-team/state/design-freeze.json", json.dumps({
+    Write(".rat/state/design-freeze.json", json.dumps({
         "frozen_hash": frozen_hash,
         "base_commit": base_commit,
         "frozen_paths": ["rtl/pkg/", "rtl/intf/", "docs/phase-3-uarch/"],
@@ -148,7 +148,7 @@ else:
     }))
 
     ## Step 4: Prepare Directories
-    Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
+    Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rat/scratch/phase-4")
 
     ## Step 5: Initialize State
     blocks = ["entropy", "tq", "me", "mc", "intra", "filter"]
@@ -176,7 +176,7 @@ else:
         "current_merge_index": 0
     }
 
-    Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
+    Write(".rat/state/block-parallel-state.json", json.dumps(state))
 
     ## Step 6: Create Worktrees
     # ALL-OR-NOTHING: if any worktree fails, clean up all and fall back
@@ -198,14 +198,14 @@ else:
         for block in blocks:
             if state["blocks"][block].get("worktree_path"):
                 Bash(f"git worktree remove --force \"{state['blocks'][block]['worktree_path']}\" 2>/dev/null")
-        Bash("rm -f .rtl-agent-team/state/block-parallel-state.json")
+        Bash("rm -f .rat/state/block-parallel-state.json")
         TeamDelete()
-        Bash("rm -f .rtl-agent-team/state/team-config.json")
+        Bash("rm -f .rat/state/team-config.json")
         print("WARNING: Worktree creation failed. Falling back to rtl-p4-implement (sequential, non-team).")
         Skill(skill="rtl-agent-team:rtl-p4-implement", prompt=ARGUMENTS)
         return
 
-    Write(".rtl-agent-team/state/block-parallel-state.json", json.dumps(state))
+    Write(".rat/state/block-parallel-state.json", json.dumps(state))
 
     ## Step 7: Initial Task Graph
     # Create task graph AFTER TeamCreate so team context is available,
@@ -234,7 +234,7 @@ Agent(team_name="p4-block-parallel",
       prompt="You are the Phase 4 block-parallel coordinator in team 'p4-block-parallel'. "
              "Manage the 6-block task graph using TaskCreate/TaskList/TaskUpdate. "
              "Direct workers via SendMessage. "
-             "Read .rtl-agent-team/state/block-parallel-state.json for worktree assignments. "
+             "Read .rat/state/block-parallel-state.json for worktree assignments. "
              "Orchestrate upstream-first merge sequence after all blocks complete. "
              "Signal leader when integration gate passes. User input: $ARGUMENTS")
 ```
@@ -282,7 +282,7 @@ while True:
         break
 
     # Read state for progress tracking
-    state = Read(".rtl-agent-team/state/block-parallel-state.json")
+    state = Read(".rat/state/block-parallel-state.json")
 
     # Check for MERGE_BLOCKED escalations
     for block, info in state["blocks"].items():
@@ -323,13 +323,13 @@ for block in blocks:
 
 # Team cleanup
 TeamDelete()
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-4/")
+Bash("rm -f .rat/state/team-config.json")
+Bash("rm -rf .rat/scratch/phase-4/")
 ```
 
 ## State Persistence
 
-Full state is maintained at `.rtl-agent-team/state/block-parallel-state.json`:
+Full state is maintained at `.rat/state/block-parallel-state.json`:
 
 ```json
 {

@@ -23,7 +23,7 @@ review protocols, naming conventions, and checklists. Reference it for pass/fail
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -337,8 +337,8 @@ the initial analysis accepted without question.
 
 ```
 # Save v1 to scratch for stability report
-Bash("mkdir -p .rtl-agent-team/scratch/stability/phase-1")
-Bash("cp docs/phase-1-research/iron-requirements.json .rtl-agent-team/scratch/stability/phase-1/output-v1.json")
+Bash("mkdir -p .rat/scratch/stability/phase-1")
+Bash("cp docs/phase-1-research/iron-requirements.json .rat/scratch/stability/phase-1/output-v1.json")
 
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="ADVERSARIAL REINTERPRETATION MODE.
@@ -362,7 +362,7 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 
      Output JSON challenge report following the schema at
      skills/p1-spec-research/templates/challenge-report-schema.json.
-     Save to .rtl-agent-team/scratch/stability/phase-1/challenge-report.json
+     Save to .rat/scratch/stability/phase-1/challenge-report.json
      using the Write tool.
 
      Max 30 challenges, ranked by severity (HIGH first).")
@@ -373,7 +373,7 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 Present adversarial challenges to the user for resolution.
 
 ```
-Read(".rtl-agent-team/scratch/stability/phase-1/challenge-report.json")
+Read(".rat/scratch/stability/phase-1/challenge-report.json")
 
 # For each HIGH challenge:
 #   AskUserQuestion("Adversarial reinterpretation found an ambiguity:
@@ -418,7 +418,7 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 Compute the adversarial gate and generate stability audit report.
 
 ```
-Read(".rtl-agent-team/scratch/stability/phase-1/challenge-report.json")
+Read(".rat/scratch/stability/phase-1/challenge-report.json")
 
 # Compute gate (per p1-spec-research-policy):
 #   genuine = (HIGH + MEDIUM) - NOT_GENUINE
@@ -430,7 +430,7 @@ Read(".rtl-agent-team/scratch/stability/phase-1/challenge-report.json")
 # If PASS after 2nd attempt still FAIL: escalate to user with full report
 
 # Generate stability audit report (informational, not the gate)
-Bash("python3 scripts/stability_check.py .rtl-agent-team/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
+Bash("python3 scripts/stability_check.py .rat/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
 
 # Record gate result
 # If PASS: proceed to Step 8
@@ -453,7 +453,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
 ```
 
 # Explicit verdict check — read report and verify consensus
-Read(".rtl-agent-team/cross-review/phase-1/cross-review-report.md")
+Read(".rat/cross-review/phase-1/cross-review-report.md")
 # If verdict != CONSENSUS and user did not approve → do NOT declare Phase 1 complete
 
 # Parallel Execution Patterns

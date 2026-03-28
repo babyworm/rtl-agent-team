@@ -31,7 +31,7 @@ review protocols, handoff checklists, and escalation rules.
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
-Read(".rtl-agent-team/state/spawn-context.json")
+Read(".rat/state/spawn-context.json")
 ```
 
 **If file found and valid** — use manifest data:
@@ -49,7 +49,7 @@ If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for comp
 
 Scan for upstream artifacts based on current phase. Missing artifacts produce WARNING, not BLOCK.
 Multi-phase orchestrator: artifact requirements depend on the phase being entered.
-Check `.rtl-agent-team/state/` for current phase, then scan corresponding upstream artifacts.
+Check `.rat/state/` for current phase, then scan corresponding upstream artifacts.
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
@@ -58,11 +58,11 @@ Adjust execution plan based on available artifacts.
 
 ```
 # Legacy migration: rename pre-0.6.10 state file ONLY if new file does not exist
-Read(".rtl-agent-team/state/rtl-spec-to-uarch-state.json")
+Read(".rat/state/rtl-spec-to-uarch-state.json")
 # If legacy file exists AND new file does NOT exist, rename it:
-Bash("[ ! -f .rtl-agent-team/state/rat-p1p3-spec-uarch-state.json ] && mv .rtl-agent-team/state/rtl-spec-to-uarch-state.json .rtl-agent-team/state/rat-p1p3-spec-uarch-state.json || true")
+Bash("[ ! -f .rat/state/rat-p1p3-spec-uarch-state.json ] && mv .rat/state/rtl-spec-to-uarch-state.json .rat/state/rat-p1p3-spec-uarch-state.json || true")
 
-Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
+Read(".rat/state/rat-p1p3-spec-uarch-state.json")
 ```
 
 **If state file exists** — Resume Protocol:
@@ -80,7 +80,7 @@ Read(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json")
 
 **If no state file** — Fresh start:
 ```
-Write(".rtl-agent-team/state/rat-p1p3-spec-uarch-state.json",
+Write(".rat/state/rat-p1p3-spec-uarch-state.json",
   { schema_version: "3.0", current_phase: 1, pipeline_scope: "phase-1-to-3",
     execution_mode: "team",
     interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
@@ -147,7 +147,7 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 STOP if any missing.
 
 ```
-Bash("mkdir -p reviews/phase-2-architecture .rtl-agent-team/scratch/phase-2")
+Bash("mkdir -p reviews/phase-2-architecture .rat/scratch/phase-2")
 
 Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
      prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
@@ -165,7 +165,7 @@ Glob("docs/phase-2-architecture/bandwidth_report.json")    # Bandwidth analysis
 ```
 All three must exist. If any missing: FAIL + list specific missing artifacts.
 
-- Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-2/`
+- Clean up scratch: `rm -rf .rat/scratch/phase-2/`
 
 On PASS: generate Phase 2 summary + ADRs:
 ```
@@ -185,7 +185,7 @@ Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
 STOP if required file missing.
 
 ```
-Bash("mkdir -p reviews/phase-3-uarch .rtl-agent-team/scratch/phase-3")
+Bash("mkdir -p reviews/phase-3-uarch .rat/scratch/phase-3")
 
 Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
      prompt="Execute Phase 3 uArch design using native teams. Context: Phase 2 artifacts complete. Read docs/phase-2-architecture/architecture.md (includes block diagram).")
@@ -199,7 +199,7 @@ Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
 **Phase 3 Quality Gate** (criteria in policy):
 - Check: `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 - Check: `reviews/phase-3-uarch/feature-preservation.md` 100% preserved
-- Clean up scratch: `rm -rf .rtl-agent-team/scratch/phase-3/`
+- Clean up scratch: `rm -rf .rat/scratch/phase-3/`
 
 On PASS: generate Phase 3 summary + ADRs:
 ```

@@ -7,6 +7,7 @@ INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/flock-util.sh"
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 . "$SCRIPT_DIR/lib/audit-util.sh"
 jsonu_detect_parser
 
@@ -14,7 +15,8 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 # Only initialize for RTL projects
-if [ ! -d "$CWD/.rtl-agent-team" ] && [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ]; then
+if [ ! -d "$CWD/.rat" ] && [ ! -d "$CWD/.rtl-agent-team" ] && [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ]; then
+  printf '{}'
   exit 0
 fi
 
@@ -29,4 +31,5 @@ if audit_init_session "$CWD"; then
     >/dev/null
 fi
 
-# No output — this hook is silent (SessionStart hooks without additionalContext)
+# Minimal output to avoid Claude Code "startup hook error" on empty stdout
+printf '{}'

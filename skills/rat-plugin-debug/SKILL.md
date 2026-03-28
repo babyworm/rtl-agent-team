@@ -75,7 +75,7 @@ Report as a table with status icons: `[OK]` installed, `[!!]` required but missi
 test -f .claude/rules/rtl-coding-conventions.md && echo "SETUP_DONE" || echo "SETUP_NOT_DONE"
 
 # Check directory structure
-for dir in specs refc rtl sim lint syn docs reviews .rtl-agent-team/state; do
+for dir in specs refc rtl sim lint syn docs reviews .rat/state; do
   test -d "$dir" && echo "[OK] $dir" || echo "[--] $dir"
 done
 
@@ -97,7 +97,7 @@ done
 
 ```bash
 # List all state files with age
-find .rtl-agent-team/state/ -name "*.json" -type f 2>/dev/null | while read f; do
+find .rat/state/ -name "*.json" -type f 2>/dev/null | while read f; do
   AGE_SEC=$(( $(date +%s) - $(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || echo 0) ))
   AGE_MIN=$(( AGE_SEC / 60 ))
   SIZE=$(stat -c %s "$f" 2>/dev/null || stat -f %z "$f" 2>/dev/null || echo "?")
@@ -105,13 +105,13 @@ find .rtl-agent-team/state/ -name "*.json" -type f 2>/dev/null | while read f; d
 done
 
 # Check for stale state (older than 2 hours)
-find .rtl-agent-team/state/ -name "*.json" -mmin +120 -type f 2>/dev/null | while read f; do
+find .rat/state/ -name "*.json" -mmin +120 -type f 2>/dev/null | while read f; do
   echo "[STALE] $f — older than 2 hours, may block hooks"
 done
 ```
 
 If stale files are found, suggest cleanup command:
-`rm -f .rtl-agent-team/state/{filename}` (with user confirmation).
+`rm -f .rat/state/{filename}` (with user confirmation).
 
 ### 5. Hook Health
 

@@ -42,7 +42,7 @@ Proceed with available artifacts — orchestrator will adapt scope.
 TeamCreate(team_name="p4-implement", description="Phase 4 RTL implementation: 10-wave parallel module coding")
 
 # Step 2: Write team-config.json for hook consumption
-Write(".rtl-agent-team/state/team-config.json", json.dumps({
+Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p4-implement",
     "leader_session_id": "<current_session_id>",
@@ -53,7 +53,7 @@ Write(".rtl-agent-team/state/team-config.json", json.dumps({
 }))
 
 # Step 3: Prepare directories
-Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rtl-agent-team/scratch/phase-4")
+Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rat/scratch/phase-4")
 
 # Step 4: No initial tasks from skill — coordinator creates per-module W1-W10 after reading uarch specs
 
@@ -114,8 +114,8 @@ while True:
 
 # Step 8: Cleanup
 TeamDelete()
-Bash("rm -f .rtl-agent-team/state/team-config.json")
-Bash("rm -rf .rtl-agent-team/scratch/phase-4/")
+Bash("rm -f .rat/state/team-config.json")
+Bash("rm -rf .rat/scratch/phase-4/")
 ```
 
 ## Compliance Notes
