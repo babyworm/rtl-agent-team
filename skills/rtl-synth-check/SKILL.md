@@ -58,26 +58,40 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    - **SDC must exist before synthesis estimation proceeds**
 
 3. **sv2v conversion** (mandatory before Yosys):
-   Yosys has limited SystemVerilog support. Convert all RTL .sv files to Verilog first:
+   Yosys has limited SystemVerilog support. Convert all RTL .sv files to Verilog first.
+   **Always include `rtl/common/`** (SRAM wrappers, shared utilities):
    ```bash
-   sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
+   # Per-module (include common wrappers):
+   sv2v rtl/common/*.sv rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
    # For top-level (all modules):
-   sv2v rtl/*/*.sv -o rtl/top/design_v2v.v
+   sv2v rtl/common/*.sv rtl/*/*.sv -o rtl/top/design_v2v.v
    ```
    All subsequent Yosys commands use `read_verilog` (NOT `read_verilog -sv`) on the converted `.v` files.
 
 4. **ASIC synthesis estimation** (NanGate45 liberty — TSMC 28nm proxy):
-   eda-runner runs Yosys via Bash CLI (see `templates/yosys-synth-script.ys` for script template):
+   Use the replayable wrapper or `templates/yosys-synth-script.ys` for script template:
    ```bash
-   sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
+   # Preferred: replayable wrapper (auto-includes rtl/common/, handles sv2v)
+   syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --liberty NangateOpenCellLibrary_typical.lib
+
+   # Manual (for debugging):
+   sv2v rtl/common/*.sv rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
    yosys -p "read_verilog rtl/{module}/{module}_v2v.v; \
-     synth -top {module}; \
+     hierarchy -check -top {module}; proc; opt; fsm; opt; \
+     memory; opt; techmap; opt; \
      dfflibmap -liberty NangateOpenCellLibrary_typical.lib; \
-     abc -liberty NangateOpenCellLibrary_typical.lib; \
+     abc -liberty NangateOpenCellLibrary_typical.lib; clean; \
      stat -liberty NangateOpenCellLibrary_typical.lib" \
      | tee syn/reports/{module}_synth.txt
    ```
    **Note**: Always use NanGate45 (ASIC target). Do NOT use generic synthesis (no liberty) or FPGA synthesis.
+
+4.5. **SRAM wrapper handling during synthesis**:
+   - SRAM wrappers (`sram_sp`, `sram_dp` from `rtl/common/`) contain behavioral memory arrays
+   - Yosys `memory` pass infers these as memory blocks (BRAM on FPGA, mapped cells on ASIC)
+   - For ASIC with foundry macros: wrapper body replaced via `` `ifdef SYNTHESIS `` guard
+   - Check `synth-summary.json` `memory_inference` field to verify correct inference
+   - If SRAM incorrectly inferred as FFs → check `memory -nomap; stat` to debug
 
 5. Capture syn/reports/{module}_synth.txt (raw Yosys output)
 
@@ -98,11 +112,21 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    ```
    Output includes: area_um2, gate_count_nand2, technology target
 
-9.5. If commercial synthesis is requested, run Design Compiler via replayable wrapper:
+9.5. **Commercial synthesis** (when available):
+   Use the replayable wrapper which auto-generates tool scripts with SDC loading,
+   SRAM don't-touch handling, and full PPA reporting (area/timing/power/QoR):
    ```bash
-   syn/scripts/run_syn.sh --tool dc_shell --top {top} -f rtl/filelist_top.f --outdir syn/reports
+   # Synopsys Design Compiler
+   syn/scripts/run_syn.sh --tool dc_shell --top {top} -f rtl/filelist_top.f --liberty <tech.lib>
+
+   # Cadence Genus
+   syn/scripts/run_syn.sh --tool genus --top {top} -f rtl/filelist_top.f --liberty <tech.lib>
    ```
-   - Optional: `--liberty <tech.lib>` and `--script <dc.tcl>`
+   - Auto-generated scripts include: SDC source (`syn/constraints/design.sdc`),
+     `rtl/common/` auto-inclusion, SRAM wrapper `dont_touch` placeholders,
+     `report_area`, `report_timing`, `report_power`, `report_qor`
+   - Provide `--script <tcl>` to use a custom Tcl script instead of auto-generation
+   - SRAM wrappers: uncomment `dont_touch` lines in generated script when using foundry macros
 
 10. Flag any inferred latches as hard errors
 </Steps>

@@ -132,9 +132,26 @@ case "$TOOL" in
   slang)
     CMD="slang --color-diagnostics"
     [[ -n "$TOP" ]] && CMD="$CMD --top $TOP"
+
+    # Strict mode for RTL: -Weverything catches multi-driver violations
+    # (e.g., always_ff + initial on same signal — VCS ICPD error)
+    # TB code: --allow-dup-initial-drivers relaxes this for testbenches
+    IS_RTL=0
+    for f in "${SRC_FILES[@]}"; do
+      case "$f" in
+        rtl/*|*/rtl/*) IS_RTL=1; break ;;
+      esac
+    done
+    if [[ "$IS_RTL" -eq 1 ]]; then
+      CMD="$CMD -Weverything"
+    else
+      CMD="$CMD --allow-dup-initial-drivers"
+    fi
+
     CMD="$CMD ${SRC_FILES[*]}"
     REPORT="$OUTDIR/slang_lint_${TIMESTAMP}.log"
     echo "=== slang Lint ==="
+    [[ "$IS_RTL" -eq 1 ]] && echo "Mode: RTL strict (-Weverything)" || echo "Mode: TB (--allow-dup-initial-drivers)"
     echo "CMD: $CMD"
     write_replay "$CMD"
     eval "run_tool $CMD" 2>&1 | tee "$REPORT"
@@ -148,22 +165,30 @@ case "$TOOL" in
       SPYGLASS_TCL="${SPYGLASS_LINT_TCL:-$OUTDIR/spyglass_lint_${TIMESTAMP}.tcl}"
     fi
 
+    SPYGLASS_PROJDIR="$OUTDIR/spyglass_lint"
+
     if [[ ! -f "$SPYGLASS_TCL" ]]; then
       {
-        echo "# Auto-generated SpyGlass lint script"
+        echo "# Auto-generated SpyGlass lint script (sg_shell batch mode)"
+        echo "new_project spyglass_lint -projectwdir \"$SPYGLASS_PROJDIR\" -force"
         for src in "${SRC_FILES[@]}"; do
-          echo "read_file -type verilog \"$src\""
+          case "$src" in
+            *.sv|*.svh) echo "read_file -type systemverilog \"$src\"" ;;
+            *)          echo "read_file -type verilog \"$src\"" ;;
+          esac
         done
         [[ -n "$TOP" ]] && echo "set_option top \"$TOP\""
-        [[ -n "$FILELIST" ]] && echo "read_file -type verilog \"$FILELIST\""
         echo "current_goal lint/lint_rtl"
         echo "run_goal"
-        echo "exit -save"
+        echo "save_project"
+        echo "close_project"
+        echo "exit"
       } > "$SPYGLASS_TCL"
     fi
 
-    CMD="spyglass -shell -tcl \"$SPYGLASS_TCL\""
-    echo "=== SpyGlass Lint ==="
+    # Use sg_shell for batch mode (not spyglass GUI binary)
+    CMD="sg_shell -tcl \"$SPYGLASS_TCL\""
+    echo "=== SpyGlass Lint (sg_shell) ==="
     echo "TCL: $SPYGLASS_TCL"
     echo "CMD: $CMD"
     write_replay "$CMD"

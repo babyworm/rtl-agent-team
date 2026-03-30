@@ -120,31 +120,67 @@ case "$TOOL" in
     REPORT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.log"
     NETLIST="$OUTDIR/${TOP}_netlist.json"
 
+    # sv2v conversion (SystemVerilog → Verilog for Yosys compatibility)
+    SV2V_OUT="$OUTDIR/${TOP}_v2v.v"
+    if command -v sv2v >/dev/null 2>&1; then
+      # Auto-include rtl/common/ (SRAM wrappers, shared utilities)
+      COMMON_FILES=()
+      if [[ -d rtl/common ]]; then
+        while IFS= read -r cf; do
+          COMMON_FILES+=("$cf")
+        done < <(find rtl/common -name '*.sv' -o -name '*.v' 2>/dev/null | sort)
+      fi
+      echo "=== sv2v Conversion ==="
+      sv2v "${COMMON_FILES[@]}" "${SRC_FILES[@]}" -o "$SV2V_OUT"
+      echo "Converted: $SV2V_OUT (${#SRC_FILES[@]} source + ${#COMMON_FILES[@]} common files)"
+      USE_SV2V=1
+    else
+      echo "WARNING: sv2v not found — using read_verilog -sv (limited SV support in Yosys)"
+      USE_SV2V=0
+    fi
+
     # Generate Yosys script
     {
       echo "# Yosys synthesis script for $TOP"
       echo "# Generated: $(date)"
       echo ""
-      for f in "${SRC_FILES[@]}"; do
-        echo "read_verilog -sv $f"
-      done
+      if [[ $USE_SV2V -eq 1 ]]; then
+        echo "read_verilog $SV2V_OUT"
+      else
+        for f in "${SRC_FILES[@]}"; do
+          echo "read_verilog -sv $f"
+        done
+        # Auto-include rtl/common/ for SRAM wrappers
+        if [[ -d rtl/common ]]; then
+          for f in rtl/common/*.sv rtl/common/*.v; do
+            [[ -f "$f" ]] && echo "read_verilog -sv $f"
+          done
+        fi
+      fi
       echo ""
       echo "hierarchy -check -top $TOP"
-      echo "proc"
-      echo "opt"
+      echo "proc; opt; fsm; opt"
       [[ $FLATTEN -eq 1 ]] && echo "flatten"
+      echo ""
+      echo "# Memory handling (SRAM wrappers → inferred memory blocks)"
+      echo "memory; opt"
       echo ""
       if [[ -n "$LIBERTY" ]]; then
         echo "# Technology mapping"
+        echo "techmap; opt"
         echo "dfflibmap -liberty $LIBERTY"
         echo "abc -liberty $LIBERTY"
+        echo "clean"
+        echo ""
+        echo "stat -liberty $LIBERTY"
       else
-        echo "# Generic synthesis (no technology mapping)"
-        echo "synth -top $TOP"
+        echo "# Generic synthesis (no technology mapping — area estimates less accurate)"
+        echo "techmap; opt"
+        echo "stat -top $TOP"
       fi
       echo ""
-      echo "# Reports"
-      echo "stat -top $TOP"
+      echo "# Post-synthesis checks"
+      echo "scc -max_depth 10"
       echo "write_json $NETLIST"
     } > "$SCRIPT"
 
@@ -167,26 +203,66 @@ case "$TOOL" in
     fi
 
     if [[ ! -f "$SCRIPT" ]]; then
+      SDC_FILE="syn/constraints/design.sdc"
+      POWER_RPT="$OUTDIR/${TOP}_power_${TIMESTAMP}.rpt"
+      QOR_RPT="$OUTDIR/${TOP}_qor_${TIMESTAMP}.rpt"
       {
         echo "# Auto-generated Design Compiler script"
+        echo "# Generated: $(date)"
+        echo ""
         echo "set_app_var search_path [list .]"
         if [[ -n "$LIBERTY" ]]; then
           echo "set_app_var target_library [list \"$LIBERTY\"]"
           echo "set_app_var link_library [list \"*\" \"$LIBERTY\"]"
         fi
+        echo ""
+        echo "# --- Read RTL ---"
+        # Auto-include rtl/common/ for SRAM wrappers
+        if [[ -d rtl/common ]]; then
+          for f in rtl/common/*.sv rtl/common/*.v; do
+            [[ -f "$f" ]] && echo "analyze -format sverilog \"$f\""
+          done
+        fi
         for f in "${SRC_FILES[@]}"; do
           echo "analyze -format sverilog \"$f\""
         done
+        echo ""
         echo "elaborate $TOP"
         echo "link"
         echo "check_design"
+        echo ""
+        echo "# --- Constraints ---"
+        echo "if {[file exists \"$SDC_FILE\"]} {"
+        echo "  source \"$SDC_FILE\""
+        echo "  puts \"INFO: SDC loaded from $SDC_FILE\""
+        echo "} else {"
+        echo "  puts \"WARNING: No SDC found at $SDC_FILE — timing estimates unreliable\""
+        echo "}"
+        echo ""
+        echo "# --- SRAM wrapper handling ---"
+        echo "# Preserve SRAM wrappers as black boxes if foundry macros are intended"
+        echo "# Uncomment and adjust for your target library:"
+        echo "# set_dont_touch [get_designs sram_sp]"
+        echo "# set_dont_touch [get_designs sram_dp]"
+        echo ""
         if [[ $FLATTEN -eq 1 ]]; then
           echo "ungroup -all -flatten"
         fi
-        echo "compile_ultra"
-        echo "report_area > \"$AREA_RPT\""
-        echo "report_timing -max_paths 10 > \"$TIMING_RPT\""
+        echo ""
+        echo "# --- Compile ---"
+        echo "compile_ultra -no_autoungroup"
+        echo ""
+        echo "# --- Reports ---"
+        echo "report_area -hierarchy > \"$AREA_RPT\""
+        echo "report_timing -max_paths 10 -significant_digits 3 > \"$TIMING_RPT\""
+        echo "report_power > \"$POWER_RPT\""
+        echo "report_qor > \"$QOR_RPT\""
+        echo "report_constraint -all_violators"
+        echo ""
+        echo "# --- Netlist ---"
+        echo "change_names -rules verilog -hierarchy"
         echo "write -hierarchy -format verilog -output \"$NETLIST\""
+        echo ""
         echo "quit"
       } > "$SCRIPT"
     fi
@@ -211,6 +287,9 @@ case "$TOOL" in
     fi
 
     if [[ ! -f "$SCRIPT" ]]; then
+      SDC_FILE="syn/constraints/design.sdc"
+      POWER_RPT="$OUTDIR/${TOP}_power_${TIMESTAMP}.rpt"
+      QOR_RPT="$OUTDIR/${TOP}_qor_${TIMESTAMP}.rpt"
       {
         echo "# Auto-generated Cadence Genus synthesis script"
         echo "# Generated: $(date)"
@@ -220,6 +299,13 @@ case "$TOOL" in
           echo "set_db library [list \"$LIBERTY\"]"
         fi
         echo ""
+        echo "# --- Read RTL ---"
+        # Auto-include rtl/common/ for SRAM wrappers
+        if [[ -d rtl/common ]]; then
+          for f in rtl/common/*.sv rtl/common/*.v; do
+            [[ -f "$f" ]] && echo "read_hdl -sv \"$f\""
+          done
+        fi
         for f in "${SRC_FILES[@]}"; do
           echo "read_hdl -sv \"$f\""
         done
@@ -227,15 +313,36 @@ case "$TOOL" in
         echo "elaborate $TOP"
         echo "check_design -unresolved"
         echo ""
+        echo "# --- Constraints ---"
+        echo "if {[file exists \"$SDC_FILE\"]} {"
+        echo "  read_sdc \"$SDC_FILE\""
+        echo "  puts \"INFO: SDC loaded from $SDC_FILE\""
+        echo "} else {"
+        echo "  puts \"WARNING: No SDC found at $SDC_FILE — timing estimates unreliable\""
+        echo "}"
+        echo ""
+        echo "# --- SRAM wrapper handling ---"
+        echo "# Preserve SRAM wrappers as black boxes if foundry macros are intended"
+        echo "# Uncomment and adjust for your target library:"
+        echo "# set_db [get_db designs sram_sp] .dont_touch true"
+        echo "# set_db [get_db designs sram_dp] .dont_touch true"
+        echo ""
         if [[ $FLATTEN -eq 1 ]]; then
           echo "ungroup -all -flatten"
         fi
+        echo ""
+        echo "# --- Synthesize ---"
         echo "syn_generic"
         echo "syn_map"
         echo "syn_opt"
         echo ""
+        echo "# --- Reports ---"
         echo "report_area > \"$AREA_RPT\""
         echo "report_timing -nworst 10 > \"$TIMING_RPT\""
+        echo "report_power > \"$POWER_RPT\""
+        echo "report_qor > \"$QOR_RPT\""
+        echo ""
+        echo "# --- Netlist ---"
         echo "write_hdl -mapped > \"$NETLIST\""
         echo ""
         echo "exit"

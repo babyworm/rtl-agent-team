@@ -19,6 +19,10 @@ user-invocable: false
   - `lint/scripts/run_lint.sh --tool verible -f rtl/filelist_top.f --outdir lint/reports`
 - `slang`:
   - `lint/scripts/run_lint.sh --tool slang -f rtl/filelist_top.f --outdir lint/reports`
+  - **Auto-detects RTL vs TB** based on source file paths:
+    - RTL (`rtl/`): runs with `-Weverything` for maximum strictness — catches `always_ff` multi-driver violations (VCS ICPD), uninitialized variables, width mismatches, etc.
+    - TB (`sim/`): runs with `--allow-dup-initial-drivers` — permits `initial` + `always_ff` on same signal (common testbench pattern)
+  - Only slang catches IEEE 1800 §9.2.2.4 multi-driver violations; Verilator and Verible do not
 
 ## Commercial Profile
 - `spyglass`:

@@ -86,7 +86,7 @@ class TestCommercialLintSynthCdcWrappers:
         outdir = tmp_path / "lint_out"
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
-        _make_fake_tool(fake_bin, "spyglass", "echo SPYGLASS_FAKE \"$@\"")
+        _make_fake_tool(fake_bin, "sg_shell", "echo SG_SHELL_FAKE \"$@\"")
 
         result = run_script(
             RUN_LINT,
@@ -104,7 +104,7 @@ class TestCommercialLintSynthCdcWrappers:
         assert result.returncode == 0
         replay = outdir / "replay" / "run_lint_spyglass_latest.sh"
         assert replay.exists()
-        assert "spyglass -shell -tcl" in replay.read_text()
+        assert "sg_shell -tcl" in replay.read_text()
 
     def test_dc_shell_synth_path_and_replay(self, tmp_path):
         sv = tmp_path / "m.sv"
@@ -142,7 +142,7 @@ class TestCommercialLintSynthCdcWrappers:
         outdir = tmp_path / "cdc_out"
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
-        _make_fake_tool(fake_bin, "spyglass", "echo SPYGLASS_CDC_FAKE \"$@\"")
+        _make_fake_tool(fake_bin, "sg_shell", "echo SG_SHELL_CDC_FAKE \"$@\"")
 
         result = run_script(
             RUN_CDC,
@@ -160,4 +160,4 @@ class TestCommercialLintSynthCdcWrappers:
         assert result.returncode == 0
         replay = outdir / "replay" / "run_cdc_spyglass_latest.sh"
         assert replay.exists()
-        assert "spyglass -shell -tcl" in replay.read_text()
+        assert "sg_shell -tcl" in replay.read_text()

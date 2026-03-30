@@ -8,7 +8,11 @@ user-invocable: true
 Run three complementary lint tools on target RTL files via Bash CLI:
 - **Verilator** (synthesizability + semantic): catches LATCH, BLKANDNBLK, WIDTH, MULTIDRIVEN
 - **Verible** (style/syntax): catches formatting, naming, structure issues
-- **slang** (semantic/IEEE 1800 compliance): catches type errors, port mismatches
+- **slang** (semantic/IEEE 1800 compliance): catches type errors, port mismatches, `always_ff` multi-driver violations
+
+RTL files (`rtl/`) are linted with slang `-Weverything` for maximum strictness — this catches
+IEEE 1800 §9.2.2.4 violations (e.g., `always_ff` + `initial` on same signal) that only VCS
+enforces at compile time. TB files (`sim/`) use `--allow-dup-initial-drivers` for flexibility.
 
 Report all violations with file, line, rule, and severity.
 See `references/verilator-warnings.md` for detailed Verilator warning categories and waiver format.
@@ -68,8 +72,12 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
    ```
 4. Run **slang** via Bash CLI (semantic lint):
    ```bash
-   slang --lint-only {files}
+   # RTL (maximum strictness — catches VCS ICPD errors):
+   slang -Weverything {rtl_files}
+   # TB (relaxed — allows initial + always_ff on same signal):
+   slang --allow-dup-initial-drivers {tb_files}
    ```
+   The `run_lint.sh` wrapper auto-detects RTL vs TB based on file paths.
 4.5. If commercial lint signoff is requested, run SpyGlass lint:
    ```bash
    lint/scripts/run_lint.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/reports

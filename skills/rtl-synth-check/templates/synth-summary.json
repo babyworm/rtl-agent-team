@@ -20,6 +20,12 @@
   "nand2_area_um2": 0.798,
   "max_logic_depth": null,
   "latches_found": 0,
+  "memory_inference": {
+    "sram_wrappers_found": 0,
+    "inferred_as_bram": 0,
+    "inferred_as_ff": 0,
+    "notes": "sram_sp/sram_dp from rtl/common/ should infer as memory blocks, not FFs"
+  },
   "concerns": [],
   "sdc_applied": true,
   "sdc_path": "syn/constraints/design.sdc",

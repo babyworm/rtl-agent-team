@@ -167,22 +167,33 @@ case "$TOOL" in
     if [[ -z "$CDC_TCL" ]]; then
       CDC_TCL="${SPYGLASS_CDC_TCL:-$OUTDIR/spyglass_cdc_${TIMESTAMP}.tcl}"
     fi
+
+    SPYGLASS_PROJDIR="$OUTDIR/spyglass_cdc"
+
     if [[ ! -f "$CDC_TCL" ]]; then
       {
-        echo "# Auto-generated SpyGlass CDC script"
+        echo "# Auto-generated SpyGlass CDC script (sg_shell batch mode)"
+        echo "new_project spyglass_cdc -projectwdir \"$SPYGLASS_PROJDIR\" -force"
         for src in "${SRC_FILES[@]}"; do
-          echo "read_file -type verilog \"$src\""
+          case "$src" in
+            *.sv|*.svh) echo "read_file -type systemverilog \"$src\"" ;;
+            *)          echo "read_file -type verilog \"$src\"" ;;
+          esac
         done
         [[ -n "$TOP" ]] && echo "set_option top \"$TOP\""
         echo "current_goal cdc/cdc_setup_check"
         echo "run_goal"
         echo "current_goal cdc/cdc_verify_struct"
         echo "run_goal"
-        echo "exit -save"
+        echo "save_project"
+        echo "close_project"
+        echo "exit"
       } > "$CDC_TCL"
     fi
-    CMD="spyglass -shell -tcl \"$CDC_TCL\""
-    echo "=== SpyGlass CDC ==="
+
+    # Use sg_shell for batch mode (not spyglass GUI binary)
+    CMD="sg_shell -tcl \"$CDC_TCL\""
+    echo "=== SpyGlass CDC (sg_shell) ==="
     echo "TCL: $CDC_TCL"
     echo "CMD: $CMD"
     write_replay "$CMD"

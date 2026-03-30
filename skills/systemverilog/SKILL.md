@@ -138,7 +138,25 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - `#delay` in synthesizable code is forbidden
 - Forward references are forbidden: all signals, types, and parameters must be declared before first use (IEEE 1800 §12.5). Xcelium (xmvlog) strictly enforces sequential declaration visibility within a module
 
-### 4.3 iverilog Incompatible Constructs (Do Not Generate)
+### 4.3 VCS Strict `always_ff` Rules (Verification TB Caveat)
+
+VCS enforces IEEE 1800 `always_ff` semantics strictly — a variable driven by `always_ff` must NOT also be driven by `initial`, `always_comb`, or `task` blocks (ICPD error). Verilator and iverilog are lenient on this.
+
+**RTL code**: No issue — RTL should never mix `always_ff` with `initial` for the same signal.
+
+**Verification TB code** (coverage counters, debug registers): If a testbench variable needs both sequential update (`posedge clk`) and procedural initialization (`initial` or `task`), use `always @(posedge clk)` instead of `always_ff`:
+```systemverilog
+// BAD — VCS ICPD error: cov_cnt driven by always_ff AND initial
+always_ff @(posedge clk) cov_cnt <= cov_cnt + 1;
+initial cov_cnt = 0;
+
+// GOOD — always @(posedge) allows multiple drivers in TB
+always @(posedge clk) cov_cnt <= cov_cnt + 1;
+initial cov_cnt = 0;
+```
+This applies to **testbench only** — synthesizable RTL must always use `always_ff`.
+
+### 4.4 iverilog Incompatible Constructs (Do Not Generate)
 
 > This restriction applies to synthesizable RTL code only. Verification TBs may use `interface` if the target simulator supports it.
 
@@ -148,7 +166,7 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 - `typedef struct packed` / `typedef union packed` are supported (OK to use)
 - Do not modify existing code or user-added code that contains these constructs
 
-### 4.4 Module Structure (Mandatory Declaration Order)
+### 4.5 Module Structure (Mandatory Declaration Order)
 
 > **IMPORTANT — IEEE 1800 §12.5 requires identifiers to be declared before first use.**
 > Xcelium (xmvlog) strictly enforces sequential declaration visibility.
