@@ -1327,8 +1327,9 @@ class TestSkillActivation:
 
     def test_no_criteria_file_no_state(self, tmp_project):
         """Missing criteria file should not create state."""
+        _setup_marker(tmp_project)
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
-        result = run_hook(self.HOOK, stdin)
+        result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not state_file.exists()
@@ -1443,7 +1444,7 @@ class TestPhaseStateBootstrap:
         assert not (tmp_project / ".rat" / "state" / "p4-state.json").exists()
 
     def test_setup_missing_does_not_bootstrap(self, tmp_project):
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"}, env={"HOME": str(tmp_project)})
         assert result["continue"] is True
         assert not (tmp_project / ".rat" / "state" / "p4-state.json").exists()
 
@@ -2135,7 +2136,7 @@ class TestSpawnContextManifest:
 
     def test_manifest_setup_false_when_marker_missing(self, tmp_project):
         """No setup marker → setup.completed=false in manifest."""
-        self._invoke(tmp_project, "rtl-p4-implement")
+        self._invoke(tmp_project, "rtl-p4-implement", env={"HOME": str(tmp_project)})
 
         m = self._read_manifest(tmp_project)
         assert m["setup"]["completed"] is False
@@ -2195,7 +2196,7 @@ class TestSpawnContextManifest:
     def test_manifest_setup_refreshed_after_rtl_setup(self, tmp_project):
         """rat-init-project skill refreshes existing manifest with setup.completed=true."""
         # First: invoke P4 without setup marker → setup.completed=false
-        self._invoke(tmp_project, "rtl-p4-implement")
+        self._invoke(tmp_project, "rtl-p4-implement", env={"HOME": str(tmp_project)})
         m1 = self._read_manifest(tmp_project)
         assert m1["setup"]["completed"] is False
         assert m1["pipeline"]["current_phase"] == 4
