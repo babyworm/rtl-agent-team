@@ -50,6 +50,30 @@ Format:
 - Protocol choice MUST be justified by data rate, latency, and backpressure requirements
 - domain-consult invoked when protocol selection is non-obvious
 
+## Storage Selection Criteria (Register vs SRAM Wrapper)
+
+Every storage element in the μArch spec MUST include a storage type decision with rationale:
+
+| Total Bits | Ports | Storage Type | Rationale |
+|-----------|-------|-------------|-----------|
+| ≤256 | any | **Flip-flop array** | SRAM macro overhead exceeds register cost at this size |
+| 257–4096 | ≤2 R/W | **SRAM wrapper** (recommended) | Area-efficient; register file acceptable with documented rationale |
+| 257–4096 | >2 R/W | **Register file** | Multi-port SRAM macros are rare; register file provides arbitrary port count |
+| >4096 | ≤2 R/W | **SRAM wrapper** (mandatory) | Register file at this size wastes area and power |
+| >4096 | >2 R/W | **Banked SRAM** or **register file** | Bank SRAM to reduce port count; register file only with PPA justification |
+
+**Exceptions requiring register file regardless of size:**
+- Reset to non-zero value (SRAM macros typically reset to unknown/zero only)
+- Partial-word write with read-modify-write semantics not supported by target SRAM
+- Content must survive clock gating (technology-dependent)
+
+**SRAM wrapper interface specification** (required for every SRAM instance in μArch doc):
+- Type: Single-port (SP) or Dual-port (DP)
+- Parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)`)
+- Read latency: 1 cycle (registered output) — default; document if different
+- Port list: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (SP); add `i_addr_b`, `i_wdata_b`, `o_rdata_b` (DP)
+- Banking strategy: if capacity > single macro limit, specify bank count and address decode
+
 ## BFM Validation Requirements (MANDATORY)
 
 Three sub-gates, applied in order (G4a → G4b → G4c):
@@ -202,7 +226,9 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 **Register/SRAM/FSM allocation:**
 - [ ] Pipeline registers: placement justified
 - [ ] Config registers: fields, widths, reset values defined
-- [ ] SRAM: capacity, banking, port count per block
+- [ ] Every storage element has explicit type decision (register vs SRAM wrapper) with rationale per Storage Selection Criteria
+- [ ] SRAM instances: capacity, banking, port count, SP/DP type, read latency documented
+- [ ] SRAM wrapper interface specified: DEPTH, WIDTH, port list, banking strategy (if banked)
 - [ ] FSM: state count, encoding, transitions per control path
 
 **BFM validation:**

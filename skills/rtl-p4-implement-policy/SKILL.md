@@ -76,6 +76,42 @@ All RTL produced in Phase 4 MUST follow:
 - Parameters: `UPPER_SNAKE_CASE`, localparam: `L_` prefix, types: `snake_case_t`
 - ANSI port style, one module per file
 
+## Memory Wrapper Rules
+
+Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use standardized wrappers:
+
+**Wrapper placement**: `rtl/common/` (shared across modules)
+
+**Standard wrappers** (parameterized behavioral models for simulation, replaced by foundry macros for synthesis):
+
+| Wrapper | File | Use |
+|---------|------|-----|
+| `sram_sp` | `rtl/common/sram_sp.sv` | Single-port: 1 R/W port |
+| `sram_dp` | `rtl/common/sram_dp.sv` | Simple dual-port: 1 W + 1 R port |
+| `sram_tdp` | `rtl/common/sram_tdp.sv` | True dual-port: 2 R/W ports |
+
+**Parameter contract**:
+- `DEPTH`: number of entries (power-of-2 recommended for efficient address decode)
+- `WIDTH`: bits per entry
+- Derived: `ADDR_W = $clog2(DEPTH)` (localparam inside wrapper)
+
+**Port naming** (SP example):
+- `clk` — clock
+- `i_ce` — chip enable (active-high)
+- `i_we` — write enable (active-high)
+- `i_addr [ADDR_W-1:0]` — address
+- `i_wdata [WIDTH-1:0]` — write data
+- `o_rdata [WIDTH-1:0]` — read data (1-cycle latency, registered output)
+
+**Instance naming**: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
+
+**Foundry macro replacement strategy**:
+- Behavioral wrapper is used for simulation and open-source synthesis (Yosys infers BRAM)
+- For ASIC: replace `sram_sp` body with foundry-specific macro instantiation behind `` `ifdef SYNTHESIS `` guard
+- Wrapper interface stays identical — no RTL changes outside the wrapper
+
+**Wave 1 responsibility**: rtl-coder creates `rtl/common/sram_*.sv` wrappers if not already present, then instantiates them in modules per μArch spec.
+
 ## Code Review Focus Areas (Wave 4)
 
 Per-module review by rtl-critic:

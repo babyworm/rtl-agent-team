@@ -69,6 +69,9 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Parameterize widths and depths using parameters, not hardcoded constants.
     - Port list must use ANSI style (type and direction in the port declaration).
     - No forward references (IEEE 1800 §12.5): declare all signals, types, and localparams before any `assign`, `always_comb`, `always_ff`, or submodule instance that references them. Xcelium strictly enforces sequential declaration visibility — follow the mandatory module structure order.
+    - Storage elements specified as "SRAM wrapper" in μArch docs: instantiate `sram_sp`/`sram_dp`/`sram_tdp` from `rtl/common/`. If wrappers don't exist yet, create them first. Do NOT inline behavioral memory arrays directly — always use the wrapper for foundry macro portability.
+    - Instance naming for SRAM: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`).
+    - Storage elements specified as "register" or "register file": implement as `logic` arrays directly in the module (no wrapper needed).
   </Constraints>
 
   <Investigation_Protocol>

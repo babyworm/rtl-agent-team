@@ -215,7 +215,86 @@ assign mul_result  = mul_a_gated * mul_b_gated;
 - Explicitly specify level shifter placement for multi-voltage domains
 - Mark retention registers with comments when needed
 
-## A.2 FPGA Considerations
+## A.2 Memory Wrapper Patterns
+
+### Storage Selection by Size
+| Total Bits | Ports | Implementation | Rationale |
+|-----------|-------|---------------|-----------|
+| ≤256 | any | Flip-flop array (`logic [W-1:0] name [0:D-1]`) | SRAM overhead exceeds benefit |
+| 257–4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_dp` wrapper | Area-efficient; register acceptable with rationale |
+| >4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_dp` wrapper (mandatory) | Register file wastes area and power |
+| any, >2 R/W | >2 | Flip-flop array (register file) | Multi-port SRAM macros are rare |
+
+### Standard SRAM Wrapper — Single-Port (SP)
+Place in `rtl/common/sram_sp.sv`. Instance with `u_mem_` prefix.
+```systemverilog
+module sram_sp #(
+  parameter int DEPTH = 256,
+  parameter int WIDTH = 32
+) (
+  input  logic                    clk,
+  input  logic                    i_ce,
+  input  logic                    i_we,
+  input  logic [$clog2(DEPTH)-1:0] i_addr,
+  input  logic [WIDTH-1:0]        i_wdata,
+  output logic [WIDTH-1:0]        o_rdata
+);
+
+  localparam int L_ADDR_W = $clog2(DEPTH);
+
+  logic [WIDTH-1:0] mem [0:DEPTH-1];
+
+  always_ff @(posedge clk) begin
+    if (i_ce) begin
+      if (i_we) begin
+        mem[i_addr] <= i_wdata;
+      end
+      o_rdata <= mem[i_addr];  // 1-cycle read latency
+    end
+  end
+
+endmodule
+```
+
+### Standard SRAM Wrapper — Simple Dual-Port (DP)
+Place in `rtl/common/sram_dp.sv`. Port A = write, Port B = read.
+```systemverilog
+module sram_dp #(
+  parameter int DEPTH = 256,
+  parameter int WIDTH = 32
+) (
+  input  logic                    clk,
+  // Port A — write
+  input  logic                    i_we,
+  input  logic [$clog2(DEPTH)-1:0] i_waddr,
+  input  logic [WIDTH-1:0]        i_wdata,
+  // Port B — read
+  input  logic                    i_re,
+  input  logic [$clog2(DEPTH)-1:0] i_raddr,
+  output logic [WIDTH-1:0]        o_rdata
+);
+
+  logic [WIDTH-1:0] mem [0:DEPTH-1];
+
+  always_ff @(posedge clk) begin
+    if (i_we) begin
+      mem[i_waddr] <= i_wdata;
+    end
+    if (i_re) begin
+      o_rdata <= mem[i_raddr];  // 1-cycle read latency
+    end
+  end
+
+endmodule
+```
+
+### Foundry Macro Replacement
+- Behavioral wrappers are used for simulation and FPGA synthesis (infers BRAM)
+- For ASIC: replace wrapper body with foundry macro behind `` `ifdef SYNTHESIS `` guard
+- Wrapper interface stays identical — no changes to instantiating modules
+- DEPTH/WIDTH parameters must match foundry macro configuration
+
+## A.3 FPGA Considerations
 
 ### Resource Inference Guide
 | Resource | Inference Pattern | Notes |
@@ -238,7 +317,7 @@ assign mul_result  = mul_a_gated * mul_b_gated;
 - Intel: Platform Designer (Qsys) IP
 - IP instances also follow the `u_` prefix convention
 
-## A.3 Pipelining for Timing Closure
+## A.4 Pipelining for Timing Closure
 
 ### Pipeline Insertion Criteria
 - When timing reports show critical path violations
@@ -332,4 +411,6 @@ module cabac_encoder #(
 - [ ] Filename = module name
 - [ ] One module per file
 - [ ] Declaration order: all `logic`/`typedef`/`localparam` before first `assign`/`always` (no forward references)
+- [ ] Storage >256 bits with ≤2 ports uses `sram_sp`/`sram_dp` wrapper from `rtl/common/` (not inline array)
+- [ ] SRAM instances named `u_mem_{purpose}`
 </Final_Checklist>
