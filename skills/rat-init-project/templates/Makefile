@@ -136,6 +136,59 @@ formal_vcf:
 	vcf -f $(VCF_TCL) -batch
 
 # =============================================================================
+# UVM Verification — commercial simulators only
+# =============================================================================
+.PHONY: uvm_compile uvm_run uvm_regression uvm_coverage
+
+UVM_TEST    ?= base_test
+UVM_SEEDS   ?= 42 123 456 789 1337
+UVM_SIM     ?= vcs
+UVM_TB_DIR  ?= sim/uvm
+UVM_REG_SCRIPT := sim/uvm/scripts/run_regression_uvm.sh
+
+uvm_compile:
+	$(call _require_top)
+	@echo "=== UVM Compile ($(UVM_SIM)) ==="
+ifeq ($(UVM_SIM),vcs)
+	vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl+branch \
+	  -timescale=1ns/1ps -f $(FILELIST) $(UVM_TB_DIR)/*.sv -o build/simv
+else ifeq ($(UVM_SIM),xrun)
+	xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
+	  -f $(FILELIST) $(UVM_TB_DIR)/*.sv -xmlibdirpath build/xcelium
+else ifeq ($(UVM_SIM),questa)
+	vlib build/work 2>/dev/null || true
+	vlog -sv -work build/work +incdir+$(UVM_TB_DIR) -f $(FILELIST) $(UVM_TB_DIR)/*.sv
+endif
+
+uvm_run: uvm_compile
+	$(call _require_top)
+	@echo "=== UVM Run: $(UVM_TEST) ==="
+ifeq ($(UVM_SIM),vcs)
+	build/simv +UVM_TESTNAME=$(UVM_TEST) +ntb_random_seed=42 \
+	  -cm line+cond+fsm+tgl+branch -cm_dir sim/uvm/coverage/seed_42.vdb
+else ifeq ($(UVM_SIM),xrun)
+	xrun -sv -uvm -R +UVM_TESTNAME=$(UVM_TEST) -seed 42 -coverage all \
+	  -xmlibdirpath build/xcelium
+else ifeq ($(UVM_SIM),questa)
+	vsim -c -work build/work -coverage +UVM_TESTNAME=$(UVM_TEST) -sv_seed 42 \
+	  -do "coverage save -onexit sim/uvm/coverage/seed_42.ucdb; run -all; quit -f" tb_top
+endif
+
+uvm_regression:
+	$(call _require_top)
+	$(UVM_REG_SCRIPT) --sim $(UVM_SIM) --seeds "$(UVM_SEEDS)" \
+	  --test $(UVM_TEST) --module $(TOP) --filelist $(FILELIST)
+
+uvm_coverage:
+	@echo "=== UVM Coverage Report ==="
+ifeq ($(UVM_SIM),vcs)
+	urg -dir sim/uvm/coverage/*.vdb -report sim/uvm/coverage/report -format text
+else ifeq ($(UVM_SIM),questa)
+	vcover merge sim/uvm/coverage/merged.ucdb sim/uvm/coverage/seed_*.ucdb
+	vcover report -details sim/uvm/coverage/merged.ucdb
+endif
+
+# =============================================================================
 # CDC Analysis — default: structural + slang-cdc
 # =============================================================================
 .PHONY: cdc cdc_spyglass
@@ -179,6 +232,12 @@ help:
 	@echo "    formal_jasper     Cadence JasperGold"
 	@echo "    formal_vcf        Synopsys VC Formal"
 	@echo ""
+	@echo "  UVM Verification (commercial simulators)"
+	@echo "    uvm_compile       Compile UVM environment"
+	@echo "    uvm_run           Single test run (UVM_TEST=name)"
+	@echo "    uvm_regression    Multi-seed regression (UVM_SEEDS=\"...\")"
+	@echo "    uvm_coverage      Merge and report coverage"
+	@echo ""
 	@echo "  CDC Analysis"
 	@echo "    cdc               structural + slang-cdc"
 	@echo "    cdc_spyglass      Synopsys SpyGlass CDC"
@@ -195,6 +254,9 @@ help:
 	@echo "    SBY_FILE=<.sby>   SymbiYosys config (default: sim/formal/\$$TOP.sby)"
 	@echo "    JASPER_TCL=<tcl>  JasperGold script"
 	@echo "    VCF_TCL=<tcl>     VC Formal script"
+	@echo "    UVM_SIM=<sim>     UVM simulator: vcs|xrun|questa (default: vcs)"
+	@echo "    UVM_TEST=<name>   UVM test name (default: base_test)"
+	@echo "    UVM_SEEDS=\"...\"   Seed list for regression (default: 42 123 456 789 1337)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make sim TOP=entropy_coder"

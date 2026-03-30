@@ -7,6 +7,32 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.13] - 2026-03-30
+
+### Added
+- Storage selection criteria (register vs SRAM wrapper) across Phase 3/4 pipeline
+  - P3 uarch-policy: size/port threshold table (≤256b→register, 257-4096b→SRAM recommended, >4096b→SRAM mandatory)
+  - SRAM wrapper interface spec (SP/DP/TDP, DEPTH/WIDTH params, standard port naming)
+  - P4 implement-policy: Memory Wrapper Rules (rtl/common/ placement, foundry macro replacement)
+  - systemverilog skill: SP/DP wrapper templates with behavioral code
+  - rtl-coding-conventions: storage selection table deployed to user projects
+- UVM coverage-driven regression infrastructure
+  - `run_regression_uvm.sh`: multi-seed parallel regression for VCS/Xcelium/Questa with failure halt, per-seed JSON, coverage merge
+  - Makefile targets: `uvm_compile`, `uvm_run`, `uvm_regression`, `uvm_coverage`
+  - UVM policy: coverage targets (line≥90%, toggle≥80%, FSM≥70%, branch≥80%, functional≥95%)
+  - CDV feedback loop: coverage-analyst → CDTG table → testbench-dev (max 3 rounds)
+  - UVM orchestrator: mandatory coverage collector, regression script integration
+- slang `-Weverything` for RTL lint (catches VCS ICPD errors: always_ff multi-driver)
+  - Auto-detect RTL vs TB paths in run_lint.sh; TB uses `--allow-dup-initial-drivers`
+- VCS `always_ff` + `initial` ICPD caveat documented in systemverilog skill §4.3
+
+### Fixed
+- SpyGlass batch mode: `spyglass -shell` → `sg_shell` with proper `new_project -projectwdir` lifecycle
+- SpyGlass TCL: `read_file -type systemverilog` for .sv files (was `verilog`)
+- Synthesis templates: Yosys split pass chain (memory pass for SRAM), sv2v auto rtl/common/ inclusion
+- DC/Genus flows: SDC auto-loading, SRAM dont_touch, report_power/report_qor added
+- Test environment isolation: 4 tests fixed for global `~/.claude/rules/` interference
+
 ## [0.8.12] - 2026-03-24
 
 ### Fixed

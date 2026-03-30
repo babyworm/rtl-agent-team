@@ -17,6 +17,44 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 - Use `logic` in all SV declarations (NOT `reg`/`wire`)
 - Interface signal names must match RTL ports exactly (e.g., `i_data`, `o_valid`)
 
+## Coverage Targets (Enforced at Regression Report)
+
+| Coverage Type | Target | Tool Flag (VCS) | Notes |
+|--------------|--------|-----------------|-------|
+| Line | ≥ 90% | `-cm line` | Every executable line exercised |
+| Toggle | ≥ 80% | `-cm tgl` | Signal 0→1 and 1→0 transitions |
+| FSM | ≥ 70% | `-cm fsm` | State and transition coverage |
+| Branch | ≥ 80% | `-cm cond` | if/case branch coverage |
+| Functional | ≥ 95% | UVM covergroups | Architect-defined coverpoints |
+
+**Code coverage** is always enabled during regression (`-cm line+cond+fsm+tgl+branch` for VCS,
+`-coverage all` for Xcelium, `-coverage` for Questa). Merged from all seeds before evaluation.
+
+**Functional coverage** is collected via `uvm_subscriber`-based coverage collectors in the
+testbench. Covergroups must be mapped to requirements (REQ-U-*).
+
+## Coverage-Driven Verification (CDV) Feedback Loop
+
+When merged coverage falls below targets after regression:
+1. `coverage-analyst` identifies uncovered bins, states, branches
+2. Produces CDTG (Coverage-Driven Test Generation) feedback table:
+   ```
+   | Gap ID | Uncovered Bin | REQ | Constraint | Sequence | Expected |
+   ```
+3. `testbench-dev` writes one directed UVM sequence per gap row
+4. Re-run regression with new tests → re-merge → re-analyze
+5. Maximum 3 iterations before escalation to user
+
+## Regression Runner
+
+Use `skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh` for multi-seed regression:
+```bash
+bash run_regression_uvm.sh --sim vcs --seeds "42 123 456 789 1337" --test base_test --module {module}
+```
+- Compiles once, runs seeds in parallel with failure halt logic
+- Per-seed result JSON + merged coverage + regression report
+- Coverage merge: VCS `urg`, Xcelium `imc`, Questa `vcover`
+
 ## Escalation & Stop Conditions
 
 - No commercial simulator found → HALT immediately, report which simulators are supported

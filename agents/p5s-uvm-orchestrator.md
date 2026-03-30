@@ -98,83 +98,84 @@ Write the following components:
   - sim/uvm/{module}_monitor.sv       (monitor using o_ port names)
   - sim/uvm/{module}_agent.sv         (agent wrapping m_driver, m_monitor)
   - sim/uvm/{module}_scoreboard.sv    (comparison against reference model)
-  - sim/uvm/{module}_env.sv           (environment top with m_agent, m_scoreboard)
+  - sim/uvm/{module}_coverage.sv      (uvm_subscriber coverage collector with covergroups mapped to REQ-U-*)
+  - sim/uvm/{module}_env.sv           (environment top with m_agent, m_scoreboard, m_coverage)
   - sim/uvm/{module}_base_test.sv     (base test class)
   - sim/uvm/{module}_directed_test.sv (directed test sequences)
-  - sim/uvm/tb_top.sv                 (DUT wrapper with u_dut instance)")
+  - sim/uvm/tb_top.sv                 (DUT wrapper with u_dut instance)
+
+MANDATORY — coverage collector ({module}_coverage.sv):
+  - Extend uvm_subscriber #({module}_seq_item)
+  - Define covergroups for key protocol states, data ranges, and cross-coverage
+  - Map each coverpoint to REQ-U-* via comments
+  - Sample in write() method from monitor's analysis port
+  - Example:
+    covergroup cg_data_transfer;
+      cp_cmd:  coverpoint m_txn.cmd  { bins read = {0}; bins write = {1}; }
+      cp_size: coverpoint m_txn.size { bins small = {[1:4]}; bins large = {[5:16]}; }
+      cross cp_cmd, cp_size;
+    endgroup")
 ```
 
-## Step 4: UVM Environment Compilation
+## Step 4: UVM Regression (Compile + Multi-Seed Run + Coverage Merge)
 
-```
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Compile UVM environment using the available commercial simulator via Bash CLI.
-
-For VCS:
-  vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl \
-      rtl/{module}/*.sv sim/uvm/*.sv -o sim/uvm/simv_{module}
-
-For Questa (vsim/vlog):
-  vlog -sv +incdir+sim/uvm rtl/{module}/*.sv sim/uvm/*.sv
-
-For Xcelium (xrun):
-  xrun -sv -uvm -coverage all rtl/{module}/*.sv sim/uvm/*.sv \
-      +UVM_TESTNAME=directed_test -seed 42 -compile_only
-
-Report exact compilation command used, all compilation errors (do NOT attempt workarounds),
-and compilation success/failure status.")
-```
-
-If compilation fails → report exact errors to user, halt, do not attempt simulation.
-
-## Step 5: Test Execution (multiple seeds)
+Use the regression runner script which handles compile, parallel seed execution,
+failure halt, per-seed results, and coverage merge in one invocation:
 
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run UVM tests with multiple seeds using the available simulator via Bash CLI.
+     prompt="Run UVM regression using the regression runner script via Bash CLI.
 
-For VCS (run each seed):
-  ./sim/uvm/simv_{module} +UVM_TESTNAME=directed_test +ntb_random_seed={seed} \
-      -cm line+cond+fsm+tgl -cm_dir sim/uvm/coverage/vcs_{seed}.vdb
+bash skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh \
+  --sim {vcs|xrun|questa} \
+  --seeds '42 123 456 789 1337' \
+  --test base_test \
+  --module {module} \
+  --filelist rtl/filelist_{module}.f \
+  --parallel 4
 
-For Questa:
-  vsim -c -coverage opt_tb +UVM_TESTNAME=directed_test \
-      -do 'coverage save -onexit sim/uvm/coverage/questa_{seed}.ucdb; run -all'
+The script:
+1. Compiles once (with code coverage: line+cond+fsm+tgl+branch)
+2. Runs all seeds in parallel with failure halt (default: 5% threshold)
+3. Writes per-seed result JSON to sim/uvm/regression/seed_*_results.json
+4. Merges coverage (VCS: urg, Xcelium: imc, Questa: vcover)
+5. Produces regression report: sim/uvm/regression/regression_{module}_*.json
 
-For Xcelium:
-  xrun -sv -uvm -coverage all rtl/{module}/*.sv sim/uvm/*.sv \
-      +UVM_TESTNAME=directed_test -seed {seed} \
-      -covwork sim/uvm/coverage/xcelium_{seed}/
-
-Run seeds: 42, 123, 456, 789, 1337 (5 seeds minimum).
-Save results to sim/uvm/results/run_summary.log.
-Report per-test pass/fail and any UVM_FATAL/UVM_ERROR messages.",
+Report: pass/fail per seed, overall verdict, and coverage merge location.",
      run_in_background=true)
 ```
 
-## Step 6: Coverage Collection
+If compilation fails → report exact errors to user, halt.
+If regression verdict is FAIL → proceed to Step 6 (failure analysis) for failed seeds.
 
-After all test runs complete:
+## Step 5: Coverage Evaluation & CDV Feedback Loop
+
+After regression completes, evaluate coverage against targets:
 
 ```
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Merge and extract coverage from all seed runs via Bash CLI.
+Task(subagent_type="rtl-agent-team:coverage-analyst",
+     prompt="Analyze merged UVM coverage from sim/uvm/coverage/.
 
-For VCS:
-  urg -dir sim/uvm/coverage/vcs_*.vdb -format xml -output sim/uvm/coverage/uvm_coverage.xml
+Coverage targets (per rtl-p5s-uvm-policy):
+  - Line ≥ 90%, Toggle ≥ 80%, FSM ≥ 70%, Branch ≥ 80%, Functional ≥ 95%
 
-For Questa:
-  vcover merge sim/uvm/coverage/merged.ucdb sim/uvm/coverage/questa_*.ucdb
-  vcover report -xml sim/uvm/coverage/merged.ucdb > sim/uvm/coverage/uvm_coverage.xml
-
-For Xcelium:
-  imc -exec 'load -run sim/uvm/coverage/xcelium_*/; report -xml uvm_coverage.xml'
-
-Final output: sim/uvm/coverage/uvm_coverage.xml
-Report line, toggle, and functional coverage percentages.")
+1. Parse coverage report (VCS text/XML, Questa ucdb, Xcelium ucd)
+2. Compare against targets — identify gaps by category
+3. For each gap: produce CDTG feedback row:
+   | Gap ID | Type | Uncovered Bin/Line/State | REQ | Constraint | Sequence | Expected |
+4. Prioritize: functional gaps > FSM gaps > branch gaps > line/toggle gaps
+5. Write gap report to sim/uvm/coverage/coverage_gaps.md
+6. If ALL targets met → report PASS, skip CDV iteration
+7. If gaps remain → testbench-dev writes directed UVM sequences per gap row")
 ```
 
-## Step 7: Failure Analysis (on scoreboard mismatch)
+**CDV iteration** (max 3 rounds):
+- Round 1: Initial regression → gap analysis → directed tests for HIGH priority gaps
+- Round 2: Re-run regression with new tests → gap analysis → MEDIUM priority gaps
+- Round 3: Final pass → remaining gaps documented as accepted/waived
+- If targets still not met after 3 rounds → escalate to user
+
+## Step 6: Failure Analysis (on scoreboard mismatch)
 
 For any test that reports scoreboard mismatch or UVM_ERROR:
 
