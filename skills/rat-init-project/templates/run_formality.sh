@@ -171,4 +171,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 0.7.7
+# rat-version: 0.8.14
