@@ -80,19 +80,44 @@ UVM component naming conventions (aligned with project style):
 - DUT wrapper instance: `u_dut` (u_ prefix for RTL instances only)
 - All SV code uses `logic` (never `reg`/`wire`)
 
-Simulator-specific flags:
+Simulator-specific coverage flags — **both compile and run must enable coverage**:
+
 ```bash
-# VCS with coverage
-vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl rtl/*/*.sv sim/uvm/*.sv -o simv
-./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} -cm line+cond+fsm+tgl
+# VCS — compile + run
+vcs -full64 -sverilog -ntb_opts uvm-1.2 \
+    -cm line+cond+fsm+tgl+branch \
+    -timescale=1ns/1ps rtl/*/*.sv sim/uvm/*.sv -o simv
+./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} \
+    -cm line+cond+fsm+tgl+branch -cm_dir coverage/seed_{seed}.vdb
 
-# Questa with coverage
-vlog -sv +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv
-vsim -c -coverage opt_tb +UVM_TESTNAME={test} -do "coverage save -onexit cov.ucdb; run -all"
+# VCS — merge (text + XML for coverage-analyst parsing)
+urg -dir coverage/seed_*.vdb -report coverage/merged -format both
 
-# Xcelium with coverage
-xrun -sv -uvm -coverage all rtl/*/*.sv sim/uvm/*.sv +UVM_TESTNAME={test} -seed {seed}
+# Questa — compile (MUST include +cover) + run
+vlog -sv +cover=bcestf +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv
+vsim -c -coverage tb_top +UVM_TESTNAME={test} -sv_seed {seed} \
+    -do "coverage save -onexit coverage/seed_{seed}.ucdb; run -all; quit -f"
+
+# Questa — merge
+vcover merge coverage/merged.ucdb coverage/seed_*.ucdb
+vcover report -details coverage/merged.ucdb
+
+# Xcelium — compile + run (separate phases)
+xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
+    rtl/*/*.sv sim/uvm/*.sv -xmlibdirpath build/xcelium
+xrun -R +UVM_TESTNAME={test} -seed {seed} \
+    -coverage all -covworkdir coverage/seed_{seed}/cov_work -covscope tb_top \
+    -xmlibdirpath build/xcelium
+
+# Xcelium — merge (via imc TCL script)
+imc -exec merge_script.tcl   # merge -run seed_*/cov_work → report
 ```
+
+**Common mistakes to avoid:**
+- Questa: omitting `+cover=bcestf` at `vlog` compile → runtime `-coverage` collects nothing
+- VCS: omitting `-cm` at runtime → compile instrumentation wasted
+- Xcelium: using `-R` without matching `-xmlibdirpath` → snapshot not found
+- All tools: merging before all seeds complete → partial coverage report
 
 See `references/uvm-architecture.md` for complete UVM class hierarchy, phase order,
 and common UVM mistakes to avoid.

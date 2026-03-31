@@ -156,6 +156,7 @@ compile_uvm() {
     questa)
       vlib "$RUN_DIR/work" 2>/dev/null || true
       vlog -sv -work "$RUN_DIR/work" \
+        +cover=bcestf \
         +incdir+"$TB_DIR" \
         "${SRC_FILES[@]}" \
         2>&1 | tee "$compile_log"
@@ -192,11 +193,12 @@ run_seed() {
         > "$log" 2>&1 || rc=$?
       ;;
     xrun)
-      xrun -sv -uvm -R \
+      xrun -R \
         +UVM_TESTNAME="$TEST" \
         -seed "$seed" \
         -coverage all \
-        -covworkdir "$seed_dir" \
+        -covworkdir "$seed_dir/cov_work" \
+        -covscope tb_top \
         -xmlibdirpath "$RUN_DIR/xcelium" \
         +UVM_VERBOSITY=UVM_MEDIUM \
         > "$log" 2>&1 || rc=$?
@@ -251,12 +253,24 @@ merge_coverage() {
         [[ -d "$d" ]] && vdb_list+=("$d")
       done
       if [[ ${#vdb_list[@]} -gt 0 ]]; then
-        urg -dir "${vdb_list[@]}" -report "$merged" -format text 2>&1
-        echo "VCS coverage merged: $merged"
+        # Generate both text (human) and XML (coverage-analyst parsing)
+        urg -dir "${vdb_list[@]}" -report "$merged" -format both 2>&1
+        echo "VCS coverage merged: $merged (text + XML)"
       fi
       ;;
     xrun)
-      imc -exec "merge -out $merged.ucd $RUN_DIR/seed_*/cov_work/*/imc_*.ucd" 2>&1 || true
+      # Xcelium stores coverage under covworkdir/scope/ — merge all seed runs
+      local imc_script="$RUN_DIR/imc_merge.tcl"
+      {
+        echo "merge -out \"$merged\" \\"
+        for d in "$RUN_DIR"/seed_*/cov_work; do
+          [[ -d "$d" ]] && echo "  -run \"$d\" \\"
+        done
+        echo ""
+        echo "report -detail -out \"${merged}_report.txt\""
+        echo "exit"
+      } > "$imc_script"
+      imc -exec "$imc_script" 2>&1 || true
       echo "Xcelium coverage merged: $merged"
       ;;
     questa)

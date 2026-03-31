@@ -157,7 +157,7 @@ else ifeq ($(UVM_SIM),xrun)
 	  -f $(FILELIST) $(UVM_TB_DIR)/*.sv -xmlibdirpath build/xcelium
 else ifeq ($(UVM_SIM),questa)
 	vlib build/work 2>/dev/null || true
-	vlog -sv -work build/work +incdir+$(UVM_TB_DIR) -f $(FILELIST) $(UVM_TB_DIR)/*.sv
+	vlog -sv -work build/work +cover=bcestf +incdir+$(UVM_TB_DIR) -f $(FILELIST) $(UVM_TB_DIR)/*.sv
 endif
 
 uvm_run: uvm_compile
