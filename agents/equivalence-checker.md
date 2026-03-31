@@ -91,7 +91,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
        b. Implementation: synthesis netlist (syn/netlist/*.v or syn/reports/*_netlist.v) OR modified RTL
     2. Identify synthesis tool used (DC/Genus/Yosys) from synthesis logs or rat_config.json
     3. Select equivalence tool per Tool_Selection_Protocol
-    4. Prepare blackbox list: SRAM wrappers (sram_sp, sram_dp), hard macros, analog blocks
+    4. Prepare blackbox list: SRAM wrappers (sram_sp, sram_dp, sram_tdp), hard macros, analog blocks
     5. Run equivalence check using tool-specific flow below
     6. Analyze results and generate report
   </Investigation_Protocol>
@@ -143,6 +143,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     set_black_box i:/WORK/sram_sp
     set_black_box r:/WORK/sram_dp
     set_black_box i:/WORK/sram_dp
+    set_black_box r:/WORK/sram_tdp
+    set_black_box i:/WORK/sram_tdp
 
     # 5. Handle scan/test signals (set to functional mode)
     set_constant r:/WORK/{module}/i_scan_enable 0
@@ -216,6 +218,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     add notranslate module sram_sp -revised
     add notranslate module sram_dp -golden
     add notranslate module sram_dp -revised
+    add notranslate module sram_tdp -golden
+    add notranslate module sram_tdp -revised
 
     // 6. Handle scan/test (tie to functional mode)
     add pin constraints 0 i_scan_enable -golden
@@ -412,7 +416,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - [ ] Technology library loaded (for netlist verification)?
     - [ ] Both designs loaded and prepared correctly?
     - [ ] Primary I/O mapped by name?
-    - [ ] SRAM wrappers (sram_sp, sram_dp) blackboxed in both reference and implementation?
+    - [ ] SRAM wrappers (sram_sp, sram_dp, sram_tdp) blackboxed in both reference and implementation?
     - [ ] Scan/test pins constrained to functional mode?
     - [ ] Equivalence check run to completion?
     - [ ] All outputs classified (proven/failed/unknown)?

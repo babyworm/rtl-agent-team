@@ -336,14 +336,12 @@ module sram_tdp #(
 
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
+  // Single always_ff to avoid multi-driver on mem (slang -Weverything)
   always_ff @(posedge clk) begin
     if (i_ce_a) begin
       if (i_we_a) mem[i_addr_a] <= i_wdata_a;
       o_rdata_a <= mem[i_addr_a];
     end
-  end
-
-  always_ff @(posedge clk) begin
     if (i_ce_b) begin
       if (i_we_b) mem[i_addr_b] <= i_wdata_b;
       o_rdata_b <= mem[i_addr_b];

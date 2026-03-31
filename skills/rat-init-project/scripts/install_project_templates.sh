@@ -102,4 +102,9 @@ install_script_if_missing \
   "$WORKSPACE/syn/scripts/run_conformal.sh" \
   755
 
+install_script_if_missing \
+  "$PLUGIN_ROOT/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh" \
+  "$WORKSPACE/sim/uvm/scripts/run_regression_uvm.sh" \
+  755
+
 echo "SETUP_TEMPLATE_INSTALL created=$CREATED updated=$UPDATED skipped=$SKIPPED workspace=$WORKSPACE"
