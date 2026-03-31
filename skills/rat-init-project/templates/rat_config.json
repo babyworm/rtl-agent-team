@@ -34,6 +34,10 @@
       "slang_cdc":  { "detected": false, "path": "", "env_source": "" },
       "sg_shell":   { "detected": false, "path": "", "env_source": "" }
     },
+    "equivalence": {
+      "fm_shell":  { "detected": false, "path": "", "env_source": "" },
+      "lec":       { "detected": false, "path": "", "env_source": "" }
+    },
     "debug": {
       "verdi":      { "detected": false, "path": "", "env_source": "" },
       "simvision":  { "detected": false, "path": "", "env_source": "" }
@@ -50,7 +54,8 @@
     "synthesis": "",
     "lint": "",
     "formal": "",
-    "cdc": ""
+    "cdc": "",
+    "equivalence": ""
   },
   "technology": {
     "target": "",

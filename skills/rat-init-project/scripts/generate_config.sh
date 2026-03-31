@@ -87,6 +87,8 @@ ALL_TOOLS=(
   "formal      sby        sby"
   "formal      jg         jg"
   "formal      vcf        vcf"
+  "equivalence fm_shell   fm_shell"
+  "equivalence lec        lec"
   "cdc         slang_cdc  slang-cdc"
   "cdc         sg_shell   sg_shell"
   "debug       verdi      verdi"
@@ -209,8 +211,9 @@ PREF_LINT=$(pick_pref lint sg_shell slang verilator verible)
 PREF_FORMAL=$(pick_pref formal jg vcf sby)
 PREF_CDC=$(pick_pref cdc sg_shell slang_cdc)
 if [[ -z "$PREF_CDC" ]]; then PREF_CDC="structural"; fi
+PREF_EQUIV=$(pick_pref equivalence fm_shell lec)
 
-echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC"
+echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC equiv=${PREF_EQUIV:-(yosys)}"
 
 # ─── NAND2 area extraction ────────────────────────────────────────────────
 NAND2_AREA="null"
@@ -274,6 +277,7 @@ $(category_json formal sby jg vcf),
 $(tool_json cdc slang_cdc),
 $(tool_json cdc sg_shell)
     },
+$(category_json equivalence fm_shell lec),
 $(category_json debug verdi simvision),
 $(category_json coverage urg imc vcover)
   },
@@ -283,7 +287,8 @@ $(category_json coverage urg imc vcover)
     "synthesis": "$PREF_SYN",
     "lint": "$PREF_LINT",
     "formal": "$PREF_FORMAL",
-    "cdc": "$PREF_CDC"
+    "cdc": "$PREF_CDC",
+    "equivalence": "${PREF_EQUIV:-}"
   },
   "technology": {
     "target": "$TARGET",
