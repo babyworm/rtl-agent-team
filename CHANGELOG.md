@@ -7,6 +7,28 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.15] - 2026-03-31
+
+### Added
+- SRAM wrapper taxonomy correction: SP (single-port) / TP (two-port, single clock) / DP (dual-port, dual clock wclk/rclk)
+  - TP template: separate R+W ports, single clock — replaces old incorrectly-named sram_dp
+  - DP template: separate R+W ports, dual clock (wclk/rclk) — new, for CDC boundaries
+  - TDP (true dual-port, 2 R/W) removed — not recommended in modern processes
+- P2 architecture: Memory Architecture Classification section (capacity, port count, clock domain)
+- P5 CDC: sram_dp as CDC boundary in synchronizer table, Dual-Port SRAM Synchronizer pattern
+  with verification checklist and SDC constraint templates in cdc-patterns.md
+- CDC checker/reviewer: sram_dp domain verification in checklists
+- rtl-architect/synthesis-reviewer: SP/TP/DP wrapper names with CDC annotation
+
+### Fixed
+- 12 consistency issues from initial review + 4 self-review + 2 Codex R1 + 3 Codex R3 + 3 Codex R4 + 2 Codex R5
+- sram_tdp multi-driver (merged to single always_ff), then removed entirely (taxonomy correction)
+- SpyGlass CDC orchestrator: `which spyglass` → `which sg_shell`
+- UVM regression: functional≥95% in JSON output + help text, script bootstrap in install_project_templates.sh
+- Template versioning: run_formality.sh, run_conformal.sh, run_syn.sh bumped to 0.8.14
+- lint-checker agent: slang -Weverything for RTL, --allow-dup-initial-drivers for TB
+- rat_config.json: env_source documentation alignment, equivalence category added
+
 ## [0.8.14] - 2026-03-31
 
 ### Added
