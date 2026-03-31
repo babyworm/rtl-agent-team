@@ -78,7 +78,7 @@ Every storage element in the μArch spec MUST include a storage type decision wi
 - Content must survive clock gating (technology-dependent)
 - Combinational (0-cycle) read required by downstream logic
 
-**SpyGlass compatibility:** The 4096-bit SRAM threshold aligns with SpyGlass default `mthresh` value. Storage exceeding this threshold without SRAM wrapper will trigger SpyGlass lint warnings.
+**SpyGlass compatibility:** SpyGlass `set_option mthresh <bits>` flags register arrays exceeding the threshold as SRAM candidates. The default varies by methodology; teams typically set `mthresh` to 4096–65536 bits based on target technology. Align the plugin's >4096-bit mandatory SRAM rule with your project's `mthresh` setting in `rat_config.json` if different.
 
 **SRAM wrapper interface specification** (required for every SRAM instance in μArch doc):
 - Type: Single-port (SP), Two-port (TP), or Dual-port (DP)
