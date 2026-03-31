@@ -127,7 +127,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     2. **Area Estimation**:
        a. Register count: aggregate FF bit count (signal width × depth)
        b. Combinational gates: per-operator gate estimation (adder ~N gates/bit, multiplier ~N² gates)
-       c. Memory: SRAM macro vs register file classification (≤256b→register, 257-4096b→SRAM recommended, >4096b→SRAM mandatory; >2 R/W ports→register file)
+       c. Memory: SRAM macro vs register file (≤256b→register, 257-4096b→SRAM recommended, >4096b→SRAM mandatory; >2 R/W ports→register file). Standard wrappers: `sram_sp` (single-port), `sram_tp` (two-port, single clock), `sram_dp` (dual-port, dual clock — CDC boundary)
        d. Total gate equivalent estimation (NAND2 basis)
     3. **Timing Estimation**:
        a. Combinational path depth: logic level estimation within always_comb blocks

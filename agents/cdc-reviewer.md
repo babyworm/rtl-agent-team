@@ -215,6 +215,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - [ ] Gray code transitions verified (Hamming distance = 1)?
     - [ ] Reset synchronization reviewed in every domain?
     - [ ] Data coherency analyzed for multi-signal crossings?
+    - [ ] `sram_dp` instances reviewed: wclk/rclk domain assignment correct?
+    - [ ] `sram_dp` address/control signals generated in their respective clock domains?
     - [ ] Findings classified (Critical/Major/Minor)?
     - [ ] Review report saved to reviews/ path?
   </Final_Checklist>

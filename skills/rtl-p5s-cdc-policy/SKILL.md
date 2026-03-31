@@ -46,7 +46,18 @@ in addition to any CDC violations.
 | Multi-bit counter | Gray code FIFO |
 | Multi-bit data bus | Handshake (REQ/ACK) or MUX synchronizer |
 | Single-cycle pulse | Pulse synchronizer (toggle-based) |
+| Bulk data (cross-domain R+W) | Dual-port SRAM (`sram_dp` with `wclk`/`rclk`) |
 | Reset signal | Async assert, sync deassert reset synchronizer |
+
+### Dual-Port SRAM as CDC Boundary
+
+`sram_dp` from `rtl/common/` is inherently a CDC element — write port on `wclk`, read port on `rclk`.
+- `wclk` and `rclk` MUST be in different clock domains (verified in CDC analysis)
+- No additional synchronizer needed on the data path (SRAM handles internally)
+- Address/control signals (`i_waddr`, `i_wen`, `i_raddr`, `i_ren`) must be generated within their respective clock domains
+- SDC: `set_clock_groups -asynchronous` between `wclk` and `rclk` domains
+- If used as async FIFO backend: verify gray-coded pointers cross correctly (separate 2-FF sync on pointers)
+- CDC checker should recognize `sram_dp` instances and verify wclk/rclk domain assignment
 
 For comprehensive CDC analysis, commercial tools (SpyGlass CDC, Conformal CDC, Questa CDC)
 provide formal proof of synchronizer correctness beyond structural analysis.

@@ -172,6 +172,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Is every crossing classified (single-bit, multi-bit, control, reset)?
     - Is every "safe" crossing backed by a verified synchronizer at a cited file:line?
     - Are all unsafe crossings listed with required fix?
+    - Are `sram_dp` instances identified as CDC boundaries (wclk/rclk in different domains)?
+    - Are `sram_dp` address/control signals verified as domain-local (no pre-SRAM crossing)?
     - Is reset synchronization analyzed for every domain?
     - Are multi-bit buses flagged as requiring structural guarantee (not just stability assumption)?
   </Final_Checklist>

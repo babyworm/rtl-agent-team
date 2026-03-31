@@ -55,6 +55,18 @@ Dynamic convergence review (min 2, max 5 rounds), coordinated by rtl-architect:
 - arch-designer consumes bandwidth_report.json during Step 4 (after synchronization)
 - If bandwidth exceeds limits → adjust block partitioning or PARALLEL_LANES before review
 
+## Memory Architecture Classification
+
+Each block's storage elements must be classified at architecture level:
+- **Local storage**: SRAM or register file (Phase 3 specifies exact type: SP/TP/DP wrapper)
+- **Cross-domain storage**: flag for dual-clock SRAM (DP) when read and write are in different clock domains
+- **External memory**: DDR/HBM accessed via bus interface
+
+Architecture does NOT select wrapper types (that is Phase 3 μArch responsibility), but MUST identify:
+- Estimated capacity per block (bits = depth × width)
+- Port count requirement (1 R/W, simultaneous R+W, multi-port)
+- Clock domain: same domain (→ SP or TP in Phase 3) vs cross-domain (→ DP in Phase 3)
+
 ## Memory Access Latency Awareness
 
 Architecture review must verify:

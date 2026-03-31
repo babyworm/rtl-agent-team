@@ -10,6 +10,36 @@
 | Handshake Synchronizer | Multi-bit data bus | REQ/ACK handshake with data hold |
 | Pulse Synchronizer | Single-cycle pulses | Toggle-based pulse transfer |
 | MUX Synchronizer | Multi-bit data (low rate) | Synchronized select signal gates data MUX |
+| Dual-Port SRAM | Bulk data (cross-domain R+W) | `sram_dp` wrapper with `wclk`/`rclk` — write and read in separate clock domains |
+
+### Dual-Port SRAM Synchronizer (`sram_dp`)
+
+The `sram_dp` wrapper from `rtl/common/` provides a built-in CDC boundary for bulk data transfer:
+- **Write port**: `wclk`, `i_wen`, `i_waddr`, `i_wdata` — operates in write clock domain
+- **Read port**: `rclk`, `i_ren`, `i_raddr`, `o_rdata` — operates in read clock domain
+- SRAM cell itself is asynchronous storage — no metastability on the data array
+- **Key constraint**: address and control signals must NOT cross domains before reaching the SRAM port
+
+**When to use**: async FIFO memory backend, cross-domain shared buffers, line buffers between pipeline stages in different clock domains.
+
+**CDC verification checklist for `sram_dp`**:
+1. `wclk` and `rclk` assigned to different `set_clock_groups -asynchronous` in SDC
+2. Write-side logic (`i_waddr`, `i_wen`, `i_wdata`) generated entirely in `wclk` domain
+3. Read-side logic (`i_raddr`, `i_ren`) generated entirely in `rclk` domain
+4. If used as async FIFO: gray-coded read/write pointers cross via separate 2-FF synchronizers
+5. No combinational path from write-domain signals to read-domain signals outside the SRAM
+6. `sram_dp` blackboxed in equivalence checking (behavioral vs foundry macro)
+
+**SDC constraints**:
+```tcl
+# Async clock relationship for dual-port SRAM
+set_clock_groups -asynchronous \
+  -group [get_clocks wclk] \
+  -group [get_clocks rclk]
+
+# False path through SRAM data array (storage is async)
+set_false_path -from [get_pins u_mem_*/mem_reg*/Q] -to [get_pins u_mem_*/o_rdata_reg*/D]
+```
 
 ## Common CDC Violations
 

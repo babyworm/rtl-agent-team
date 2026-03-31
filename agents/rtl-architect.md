@@ -96,7 +96,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
      b. Pipeline stage count and register placement (performance)
      c. Clock gating, enable signals, power domains (power)
      d. FSM complexity: state count, transition fan-out (area + verification)
-     e. Memory interfaces: SRAM macros, FIFOs, register files (area + timing)
+     e. Memory interfaces: SRAM wrappers (`sram_sp`/`sram_tp`/`sram_dp` from `rtl/common/`), FIFOs, register files (area + timing). Note: `sram_dp` (dual-clock) is a CDC boundary — verify wclk/rclk domain assignment.
      f. Handshake protocol completeness (valid/ready, req/ack)
   9. Cross-module analysis: shared resources, bus contention, clock domain crossings.
   10. Identify the three most impactful architectural concerns.
