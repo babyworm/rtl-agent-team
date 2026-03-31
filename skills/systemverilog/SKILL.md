@@ -352,6 +352,28 @@ endmodule
 **Note**: `sram_dp` has two `always_ff` blocks writing different signals (`mem` from `wclk`, `o_rdata` from `rclk`),
 which is correct — no multi-driver conflict since each signal has a single driver.
 
+### Read Latency: Register File vs SRAM
+- **Register file** (flip-flop array): combinational read (0-cycle) — use when downstream logic requires same-cycle data
+- **SRAM wrapper**: synchronous read (1-cycle) — matches real SRAM macro behavior; pipeline must account for read latency
+
+### Anti-Pattern: Combinational Read on Large Storage (DO NOT)
+```systemverilog
+// BAD: >4096-bit register array with combinational MUX
+// Real case: 4096×13-bit line buffer → 500K+ gate equivalents,
+// 5h+ DC compile, 55% area wasted, 4096:1 MUX per bit on critical path
+logic signed [12:0] lb_mem [4096];
+always_comb begin
+  rd_data = lb_mem[rd_addr];  // 4096:1 MUX — area/timing/compile disaster
+end
+
+// GOOD: Use SRAM wrapper with synchronous read (1-cycle latency)
+sram_tp #(.DEPTH(4096), .WIDTH(13)) u_mem_line_buf (
+  .clk    (clk),
+  .i_wen  (wr_en),  .i_waddr(wr_addr), .i_wdata(wr_data),
+  .i_ren  (rd_en),  .i_raddr(rd_addr), .o_rdata(rd_data)  // 1-cycle latency
+);
+```
+
 ### Foundry Macro Replacement
 - Behavioral wrappers are used for simulation and FPGA synthesis (infers BRAM)
 - For ASIC: replace wrapper body with foundry macro behind `` `ifdef SYNTHESIS `` guard

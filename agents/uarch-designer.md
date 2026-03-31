@@ -81,6 +81,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       - 257–4096 bits, ≤2 ports: SRAM wrapper recommended (register acceptable with rationale)
       - >4096 bits, ≤2 ports: SRAM wrapper mandatory
       - >2 read/write ports: register file regardless of size (multi-port SRAM macros are rare)
+      - Streaming buffers (line buffer, frame buffer, init-time coefficient table) → always SRAM wrapper regardless of size
+      - 0-cycle read required → register file; 1-cycle read OK → SRAM wrapper
       - Exceptions: non-zero reset, partial-word RMW, clock-gating survival → register file
     - Every SRAM instance must specify: SP/TP/DP type, DEPTH, WIDTH, read latency, banking (if needed)
     - Standard wrappers: `sram_sp`, `sram_tp`, `sram_dp` from `rtl/common/`

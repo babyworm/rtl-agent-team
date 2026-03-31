@@ -62,10 +62,23 @@ Every storage element in the μArch spec MUST include a storage type decision wi
 | >4096 | ≤2 R/W | **SRAM wrapper** (mandatory) | Register file at this size wastes area and power |
 | >4096 | >2 R/W | **Banked SRAM** or **register file** | Bank SRAM to reduce port count; register file only with PPA justification |
 
+**Read latency as selection criterion:**
+- Register file: combinational read (0-cycle latency) allowed — use when downstream logic cannot tolerate 1-cycle delay
+- SRAM wrapper: synchronous read (1-cycle latency) mandatory — matches real SRAM macro behavior
+- If μArch requires 0-cycle read AND size > 4096 bits → architectural issue, escalate to Phase 2
+
+**Streaming buffer rule:**
+- Pattern: sequential data with write-once, read-multiple access (e.g., line buffers, frame buffers, coefficient tables written at init)
+- Decision: **always SRAM wrapper** regardless of size — combinational read on streaming buffers creates massive MUX trees
+- If N readers share 1R port: document time-multiplex schedule (e.g., 4 readers × 1 cycle = 4-cycle access, must fit within pipeline initiation interval)
+
 **Exceptions requiring register file regardless of size:**
 - Reset to non-zero value (SRAM macros typically reset to unknown/zero only)
 - Partial-word write with read-modify-write semantics not supported by target SRAM
 - Content must survive clock gating (technology-dependent)
+- Combinational (0-cycle) read required by downstream logic
+
+**SpyGlass compatibility:** The 4096-bit SRAM threshold aligns with SpyGlass default `mthresh` value. Storage exceeding this threshold without SRAM wrapper will trigger SpyGlass lint warnings.
 
 **SRAM wrapper interface specification** (required for every SRAM instance in μArch doc):
 - Type: Single-port (SP), Two-port (TP), or Dual-port (DP)
