@@ -86,9 +86,9 @@ Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use sta
 
 | Wrapper | File | Use |
 |---------|------|-----|
-| `sram_sp` | `rtl/common/sram_sp.sv` | Single-port: 1 R/W port |
-| `sram_dp` | `rtl/common/sram_dp.sv` | Simple dual-port: 1 W + 1 R port |
-| `sram_tdp` | `rtl/common/sram_tdp.sv` | True dual-port: 2 R/W ports |
+| `sram_sp` | `rtl/common/sram_sp.sv` | Single-port: 1 R/W port, single clock |
+| `sram_tp` | `rtl/common/sram_tp.sv` | Two-port: 1W + 1R, single clock (`clk`) |
+| `sram_dp` | `rtl/common/sram_dp.sv` | Dual-port: 1W + 1R, dual clock (`wclk`/`rclk`) |
 
 **Parameter contract**:
 - `DEPTH`: number of entries (power-of-2 recommended for efficient address decode)
@@ -103,18 +103,24 @@ Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use sta
 - `i_wdata [WIDTH-1:0]` — write data
 - `o_rdata [WIDTH-1:0]` — read data (1-cycle latency, registered output)
 
-**DP port naming** (simple dual-port: 1W + 1R):
+**TP port naming** (two-port: 1W + 1R, single clock):
 - `clk` — clock
-- `i_we` — write enable
+- `i_wen` — write enable
 - `i_waddr [ADDR_W-1:0]` — write address
 - `i_wdata [WIDTH-1:0]` — write data
-- `i_re` — read enable
+- `i_ren` — read enable
 - `i_raddr [ADDR_W-1:0]` — read address
 - `o_rdata [WIDTH-1:0]` — read data (1-cycle latency)
 
-**TDP port naming** (true dual-port: 2 R/W, Port A + Port B):
-- `clk`, `i_ce_a`, `i_we_a`, `i_addr_a`, `i_wdata_a`, `o_rdata_a`
-- `i_ce_b`, `i_we_b`, `i_addr_b`, `i_wdata_b`, `o_rdata_b`
+**DP port naming** (dual-port: 1W + 1R, dual clock):
+- `wclk` — write clock
+- `i_wen` — write enable
+- `i_waddr [ADDR_W-1:0]` — write address
+- `i_wdata [WIDTH-1:0]` — write data
+- `rclk` — read clock
+- `i_ren` — read enable
+- `i_raddr [ADDR_W-1:0]` — read address
+- `o_rdata [WIDTH-1:0]` — read data (1-cycle latency, rclk domain)
 
 **Instance naming**: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
 

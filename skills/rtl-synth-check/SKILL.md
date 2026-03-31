@@ -87,7 +87,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    **Note**: Always use NanGate45 (ASIC target). Do NOT use generic synthesis (no liberty) or FPGA synthesis.
 
 4.5. **SRAM wrapper handling during synthesis**:
-   - SRAM wrappers (`sram_sp`, `sram_dp`, `sram_tdp` from `rtl/common/`) contain behavioral memory arrays
+   - SRAM wrappers (`sram_sp`, `sram_tp`, `sram_dp` from `rtl/common/`) contain behavioral memory arrays
    - Yosys `memory` pass infers these as memory blocks (BRAM on FPGA, mapped cells on ASIC)
    - For ASIC with foundry macros: wrapper body replaced via `` `ifdef SYNTHESIS `` guard
    - Check `synth-summary.json` `memory_inference` field to verify correct inference

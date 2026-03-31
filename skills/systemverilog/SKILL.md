@@ -200,7 +200,7 @@ See `templates/module-template.sv` for complete scaffold.
 > The items below apply only when specific optimizations are needed. See the `<Advanced>` section for detailed patterns and code examples.
 
 - **Power Optimization**: Clock gating (ICG), operand isolation, power domains → `<Advanced>` section A.1
-- **Memory Wrapper Patterns**: Storage selection, SRAM wrappers (SP/DP/TDP), foundry replacement → `<Advanced>` section A.2
+- **Memory Wrapper Patterns**: Storage selection, SRAM wrappers (SP/TP/DP), foundry replacement → `<Advanced>` section A.2
 - **FPGA Considerations**: BRAM/DSP inference, XDC constraints, ILA debugging, IP Core → `<Advanced>` section A.3
 - **Pipelining for Timing Closure**: Pipeline insertion criteria, retiming, valid/ready pipelining → `<Advanced>` section A.4
 
@@ -242,15 +242,16 @@ assign mul_result  = mul_a_gated * mul_b_gated;
 ## A.2 Memory Wrapper Patterns
 
 ### Storage Selection by Size
-| Total Bits | Ports | Implementation | Rationale |
-|-----------|-------|---------------|-----------|
+| Total Bits | Access Pattern | Implementation | Rationale |
+|-----------|---------------|---------------|-----------|
 | ≤256 | any | Flip-flop array (`logic [W-1:0] name [0:D-1]`) | SRAM overhead exceeds benefit |
-| 257–4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_dp` wrapper | Area-efficient; register acceptable with rationale |
-| >4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_dp` wrapper (mandatory) | Register file wastes area and power |
-| any, >2 R/W | >2 | Flip-flop array (register file) | Multi-port SRAM macros are rare |
+| 257–4096 | 1 R/W | `sram_sp` wrapper | Area-efficient; register acceptable with rationale |
+| 257–4096 | R+W simultaneous | `sram_tp` (single-clock) or `sram_dp` (dual-clock) | Separate read/write ports |
+| >4096 | any | SRAM wrapper (mandatory) | Register file wastes area and power |
+| any | >2 ports | Flip-flop array (register file) | Multi-port SRAM macros are rare in modern processes |
 
 ### Standard SRAM Wrapper — Single-Port (SP)
-Place in `rtl/common/sram_sp.sv`. Instance with `u_mem_` prefix.
+Place in `rtl/common/sram_sp.sv`. One R/W port, single clock. Instance with `u_mem_` prefix.
 ```systemverilog
 module sram_sp #(
   parameter int DEPTH = 256,
@@ -263,8 +264,6 @@ module sram_sp #(
   input  logic [WIDTH-1:0]        i_wdata,
   output logic [WIDTH-1:0]        o_rdata
 );
-
-  localparam int L_ADDR_W = $clog2(DEPTH);
 
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
@@ -280,20 +279,21 @@ module sram_sp #(
 endmodule
 ```
 
-### Standard SRAM Wrapper — Simple Dual-Port (DP)
-Place in `rtl/common/sram_dp.sv`. Port A = write, Port B = read.
+### Standard SRAM Wrapper — Two-Port (TP)
+Place in `rtl/common/sram_tp.sv`. Separate read and write ports, **single clock**.
+Use when simultaneous read+write is needed within the same clock domain.
 ```systemverilog
-module sram_dp #(
+module sram_tp #(
   parameter int DEPTH = 256,
   parameter int WIDTH = 32
 ) (
   input  logic                    clk,
-  // Port A — write
-  input  logic                    i_we,
+  // Write port
+  input  logic                    i_wen,
   input  logic [$clog2(DEPTH)-1:0] i_waddr,
   input  logic [WIDTH-1:0]        i_wdata,
-  // Port B — read
-  input  logic                    i_re,
+  // Read port
+  input  logic                    i_ren,
   input  logic [$clog2(DEPTH)-1:0] i_raddr,
   output logic [WIDTH-1:0]        o_rdata
 );
@@ -301,10 +301,10 @@ module sram_dp #(
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
   always_ff @(posedge clk) begin
-    if (i_we) begin
+    if (i_wen) begin
       mem[i_waddr] <= i_wdata;
     end
-    if (i_re) begin
+    if (i_ren) begin
       o_rdata <= mem[i_raddr];  // 1-cycle read latency
     end
   end
@@ -312,57 +312,45 @@ module sram_dp #(
 endmodule
 ```
 
-### Standard SRAM Wrapper — True Dual-Port (TDP)
-Place in `rtl/common/sram_tdp.sv`. Both ports can read and write.
+### Standard SRAM Wrapper — Dual-Port (DP)
+Place in `rtl/common/sram_dp.sv`. Separate read and write ports, **dual clock** (`wclk`/`rclk`).
+Use at clock domain crossings (e.g., async FIFO memory backend, cross-domain shared buffer).
 ```systemverilog
-module sram_tdp #(
+module sram_dp #(
   parameter int DEPTH = 256,
   parameter int WIDTH = 32
 ) (
-  input  logic                    clk,
-  // Port A
-  input  logic                    i_ce_a,
-  input  logic                    i_we_a,
-  input  logic [$clog2(DEPTH)-1:0] i_addr_a,
-  input  logic [WIDTH-1:0]        i_wdata_a,
-  output logic [WIDTH-1:0]        o_rdata_a,
-  // Port B
-  input  logic                    i_ce_b,
-  input  logic                    i_we_b,
-  input  logic [$clog2(DEPTH)-1:0] i_addr_b,
-  input  logic [WIDTH-1:0]        i_wdata_b,
-  output logic [WIDTH-1:0]        o_rdata_b
+  // Write port (write clock domain)
+  input  logic                    wclk,
+  input  logic                    i_wen,
+  input  logic [$clog2(DEPTH)-1:0] i_waddr,
+  input  logic [WIDTH-1:0]        i_wdata,
+  // Read port (read clock domain)
+  input  logic                    rclk,
+  input  logic                    i_ren,
+  input  logic [$clog2(DEPTH)-1:0] i_raddr,
+  output logic [WIDTH-1:0]        o_rdata
 );
 
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
-  // Single always_ff to avoid multi-driver on mem (slang -Weverything).
-  // WARNING: Same-address write collision (i_we_a && i_we_b && i_addr_a == i_addr_b)
-  // is UNDEFINED in real SRAM macros. This behavioral model lets port B win silently.
-  // Designs must prevent same-address simultaneous writes at the protocol level.
-  always_ff @(posedge clk) begin
-    if (i_ce_a) begin
-      if (i_we_a) mem[i_addr_a] <= i_wdata_a;
-      o_rdata_a <= mem[i_addr_a];
-    end
-    if (i_ce_b) begin
-      if (i_we_b) mem[i_addr_b] <= i_wdata_b;
-      o_rdata_b <= mem[i_addr_b];
+  always_ff @(posedge wclk) begin
+    if (i_wen) begin
+      mem[i_waddr] <= i_wdata;
     end
   end
 
-  // SVA: detect same-address write collision (undefined in real SRAM macros)
-  // synthesis translate_off
-  property p_no_write_collision;
-    @(posedge clk) disable iff (!i_ce_a || !i_ce_b)
-    (i_we_a && i_we_b) |-> (i_addr_a != i_addr_b);
-  endproperty
-  a_no_write_collision: assert property (p_no_write_collision)
-    else $error("sram_tdp: same-address write collision (addr=%0h)", i_addr_a);
-  // synthesis translate_on
+  always_ff @(posedge rclk) begin
+    if (i_ren) begin
+      o_rdata <= mem[i_raddr];  // 1-cycle read latency (rclk domain)
+    end
+  end
 
 endmodule
 ```
+
+**Note**: `sram_dp` has two `always_ff` blocks writing different signals (`mem` from `wclk`, `o_rdata` from `rclk`),
+which is correct — no multi-driver conflict since each signal has a single driver.
 
 ### Foundry Macro Replacement
 - Behavioral wrappers are used for simulation and FPGA synthesis (infers BRAM)
@@ -487,6 +475,7 @@ module cabac_encoder #(
 - [ ] Filename = module name
 - [ ] One module per file
 - [ ] Declaration order: all `logic`/`typedef`/`localparam` before first `assign`/`always` (no forward references)
-- [ ] Storage >256 bits with ≤2 ports uses `sram_sp`/`sram_dp` wrapper from `rtl/common/` (not inline array)
+- [ ] Storage >256 bits uses `sram_sp`/`sram_tp`/`sram_dp` wrapper from `rtl/common/` (not inline array)
+- [ ] TP (single-clock R+W) vs DP (dual-clock R+W) selected correctly per clock domain
 - [ ] SRAM instances named `u_mem_{purpose}`
 </Final_Checklist>

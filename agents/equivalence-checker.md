@@ -91,7 +91,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
        b. Implementation: synthesis netlist (syn/netlist/*.v or syn/reports/*_netlist.v) OR modified RTL
     2. Identify synthesis tool used (DC/Genus/Yosys) from synthesis logs or rat_config.json
     3. Select equivalence tool per Tool_Selection_Protocol
-    4. Prepare blackbox list: SRAM wrappers (sram_sp, sram_dp, sram_tdp), hard macros, analog blocks
+    4. Prepare blackbox list: SRAM wrappers (sram_sp, sram_tp, sram_dp), hard macros, analog blocks
     5. Run equivalence check using tool-specific flow below
     6. Analyze results and generate report
   </Investigation_Protocol>
@@ -141,10 +141,10 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     # Blackbox memories that have no gate-level model
     set_black_box r:/WORK/sram_sp
     set_black_box i:/WORK/sram_sp
+    set_black_box r:/WORK/sram_tp
+    set_black_box i:/WORK/sram_tp
     set_black_box r:/WORK/sram_dp
     set_black_box i:/WORK/sram_dp
-    set_black_box r:/WORK/sram_tdp
-    set_black_box i:/WORK/sram_tdp
 
     # 5. Handle scan/test signals (set to functional mode)
     set_constant r:/WORK/{module}/i_scan_enable 0
@@ -216,10 +216,10 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     // 5. Handle SRAM wrappers
     add notranslate module sram_sp -golden
     add notranslate module sram_sp -revised
+    add notranslate module sram_tp -golden
+    add notranslate module sram_tp -revised
     add notranslate module sram_dp -golden
     add notranslate module sram_dp -revised
-    add notranslate module sram_tdp -golden
-    add notranslate module sram_tdp -revised
 
     // 6. Handle scan/test (tie to functional mode)
     add pin constraints 0 i_scan_enable -golden
@@ -344,7 +344,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   <SRAM_Wrapper_Handling>
     ## SRAM Wrapper Blackboxing (All Tools)
 
-    SRAM wrappers (`sram_sp`, `sram_dp`, `sram_tdp` from `rtl/common/`) contain behavioral
+    SRAM wrappers (`sram_sp`, `sram_tp`, `sram_dp` from `rtl/common/`) contain behavioral
     memory arrays for simulation. During equivalence checking, these must be blackboxed because:
     - RTL uses behavioral `logic [W-1:0] mem [0:D-1]` (functional model)
     - Netlist may use foundry macro instantiation (structural model)
@@ -352,9 +352,9 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     | Tool | Blackbox Command |
     |------|-----------------|
-    | Formality | `set_black_box r:/WORK/sram_sp` + `i:/WORK/sram_sp` (repeat for `sram_dp`, `sram_tdp`) |
-    | Conformal | `add notranslate module sram_sp -golden` + `-revised` (repeat for `sram_dp`, `sram_tdp`) |
-    | Yosys | `setattr -mod -set blackbox 1 sram_sp` (repeat for `sram_dp`, `sram_tdp`; before flattening) |
+    | Formality | `set_black_box r:/WORK/sram_sp` + `i:/WORK/sram_sp` (repeat for `sram_tp`, `sram_dp`) |
+    | Conformal | `add notranslate module sram_sp -golden` + `-revised` (repeat for `sram_tp`, `sram_dp`) |
+    | Yosys | `setattr -mod -set blackbox 1 sram_sp` (repeat for `sram_tp`, `sram_dp`; before flattening) |
   </SRAM_Wrapper_Handling>
 
   <Output_Format>
@@ -388,7 +388,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     | Module | Reason |
     |--------|--------|
     | sram_sp | SRAM wrapper — behavioral vs foundry macro |
-    | sram_dp | SRAM wrapper — behavioral vs foundry macro |
+    | sram_tp | SRAM wrapper — behavioral vs foundry macro |
 
     ## Failed Equivalence Points
     ### FAIL-N: [signal name]
@@ -416,7 +416,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - [ ] Technology library loaded (for netlist verification)?
     - [ ] Both designs loaded and prepared correctly?
     - [ ] Primary I/O mapped by name?
-    - [ ] SRAM wrappers (sram_sp, sram_dp, sram_tdp) blackboxed in both reference and implementation?
+    - [ ] SRAM wrappers (sram_sp, sram_tp, sram_dp) blackboxed in both reference and implementation?
     - [ ] Scan/test pins constrained to functional mode?
     - [ ] Equivalence check run to completion?
     - [ ] All outputs classified (proven/failed/unknown)?

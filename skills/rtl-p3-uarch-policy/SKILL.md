@@ -72,8 +72,8 @@ Every storage element in the μArch spec MUST include a storage type decision wi
 - Parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)`)
 - Read latency: 1 cycle (registered output) — default; document if different
 - SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata`
-- DP ports (simple dual-port: 1W+1R): `clk`, `i_we`, `i_waddr`, `i_wdata`, `i_re`, `i_raddr`, `o_rdata`
-- TDP ports (true dual-port: 2 R/W): `clk`, `i_ce_a`, `i_we_a`, `i_addr_a`, `i_wdata_a`, `o_rdata_a`, `i_ce_b`, `i_we_b`, `i_addr_b`, `i_wdata_b`, `o_rdata_b`
+- TP ports (two-port, single clock): `clk`, `i_wen`, `i_waddr`, `i_wdata`, `i_ren`, `i_raddr`, `o_rdata`
+- DP ports (dual-port, dual clock): `wclk`, `i_wen`, `i_waddr`, `i_wdata`, `rclk`, `i_ren`, `i_raddr`, `o_rdata`
 - Banking strategy: if capacity > single macro limit, specify bank count and address decode
 
 ## BFM Validation Requirements (MANDATORY)
@@ -229,7 +229,7 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 - [ ] Pipeline registers: placement justified
 - [ ] Config registers: fields, widths, reset values defined
 - [ ] Every storage element has explicit type decision (register vs SRAM wrapper) with rationale per Storage Selection Criteria
-- [ ] SRAM instances: capacity, banking, port count, SP/DP type, read latency documented
+- [ ] SRAM instances: capacity, banking, port count, SP/TP/DP type, read latency documented
 - [ ] SRAM wrapper interface specified: DEPTH, WIDTH, port list, banking strategy (if banked)
 - [ ] FSM: state count, encoding, transitions per control path
 

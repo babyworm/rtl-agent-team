@@ -10,7 +10,7 @@
 # ============================================================
 # Read RTL (sv2v-converted Verilog — NOT .sv)
 # ============================================================
-# Include common wrappers (sram_sp, sram_dp, etc.) + module-specific files
+# Include common wrappers (sram_sp, sram_tp, etc.) + module-specific files
 # sv2v merges all inputs into a single .v file
 read_verilog rtl/{{MODULE}}/{{MODULE}}_v2v.v
 
@@ -25,7 +25,7 @@ proc; opt; fsm; opt
 # ============================================================
 # memory pass converts behavioral memory arrays to $mem cells,
 # then maps to FF or inferred BRAM depending on size.
-# SRAM wrappers (sram_sp/sram_dp) should infer as memory blocks.
+# SRAM wrappers (sram_sp/sram_tp) should infer as memory blocks.
 # Use -nomap to inspect $mem cells before technology mapping:
 #   memory -nomap; stat    (debug: check memory inference)
 memory; opt

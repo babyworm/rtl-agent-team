@@ -53,12 +53,12 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 | Total Bits | Ports | Implementation |
 |-----------|-------|---------------|
 | ≤256 | any | Flip-flop array (`logic [W-1:0] name [0:D-1]`) |
-| 257–4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_dp` wrapper from `rtl/common/` (recommended) |
-| >4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_dp` wrapper (mandatory) |
+| 257–4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_tp` wrapper from `rtl/common/` (recommended) |
+| >4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_tp` wrapper (mandatory) |
 | any, >2 R/W | >2 | Flip-flop array (multi-port register file) |
 
 - Exceptions: non-zero reset, partial-word RMW, clock-gating survival → register file with documented rationale
-- SRAM wrapper naming: `sram_sp.sv`, `sram_dp.sv`, `sram_tdp.sv` in `rtl/common/`
+- SRAM wrapper naming: `sram_sp.sv`, `sram_tp.sv`, `sram_dp.sv` in `rtl/common/`
 - SRAM instance prefix: `u_mem_` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
 - Wrapper parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)` inside wrapper)
 - SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (1-cycle read latency)
