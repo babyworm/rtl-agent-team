@@ -82,7 +82,8 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       - >4096 bits, ≤2 ports: SRAM wrapper mandatory
       - >2 read/write ports: register file regardless of size (multi-port SRAM macros are rare)
       - Exceptions: non-zero reset, partial-word RMW, clock-gating survival → register file
-    - Every SRAM instance must specify: SP/DP type, DEPTH, WIDTH, read latency, banking (if needed)
+    - Every SRAM instance must specify: SP/DP/TDP type, DEPTH, WIDTH, read latency, banking (if needed)
+    - Standard wrappers: `sram_sp`, `sram_dp`, `sram_tdp` from `rtl/common/`
     - SRAM wrapper ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (SP standard)
       (prefetch buffer, double buffering, decoupled access-execute, or accepted stall with justification).
     - Total per-stage latency = compute_cycles + memory_access_latency (with or without hiding).

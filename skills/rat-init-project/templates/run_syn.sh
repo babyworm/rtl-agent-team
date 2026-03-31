@@ -244,6 +244,7 @@ case "$TOOL" in
         echo "# Uncomment and adjust for your target library:"
         echo "# set_dont_touch [get_designs sram_sp]"
         echo "# set_dont_touch [get_designs sram_dp]"
+        echo "# set_dont_touch [get_designs sram_tdp]"
         echo ""
         if [[ $FLATTEN -eq 1 ]]; then
           echo "ungroup -all -flatten"
@@ -326,6 +327,7 @@ case "$TOOL" in
         echo "# Uncomment and adjust for your target library:"
         echo "# set_db [get_db designs sram_sp] .dont_touch true"
         echo "# set_db [get_db designs sram_dp] .dont_touch true"
+        echo "# set_db [get_db designs sram_tdp] .dont_touch true"
         echo ""
         if [[ $FLATTEN -eq 1 ]]; then
           echo "ungroup -all -flatten"
@@ -397,4 +399,4 @@ fi
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 0.7.7
+# rat-version: 0.8.14
