@@ -7,6 +7,24 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.14] - 2026-03-31
+
+### Added
+- `rat_config.json` project configuration with EDA tool auto-detection
+  - `env_setup`: sourcing scripts for tools not in PATH
+  - `tools`: auto-detected by category (simulator, synthesis, lint, formal, cdc)
+  - `technology`: liberty path, SRAM lib, NAND2 area auto-extraction from liberty
+  - `coverage`: targets, seeds, max fail rate as single source of truth
+  - `waivers`: custom paths for lint/CDC waiver files
+  - `generate_config.sh`: preserves user fields on re-run
+- Simulator-specific coverage collection documentation in UVM policy and sim-tool-profiles
+
+### Fixed
+- Questa coverage: add `+cover=bcestf` at `vlog` compile (was missing)
+- Xcelium coverage: fix `imc` merge path (TCL script-based), add `-covscope`
+- VCS coverage: `urg -format both` (text + XML for coverage-analyst)
+- `generate_config.sh`: fix `set -e` + `&&` silent exit, fix subshell nameref array loss
+
 ## [0.8.13] - 2026-03-30
 
 ### Added

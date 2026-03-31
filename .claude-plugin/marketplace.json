@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "RTL design and verification automation agents for Claude Code",
-    "version": "0.8.13"
+    "version": "0.8.14"
   },
   "plugins": [
     {
       "name": "rtl-agent-team",
       "source": "./",
       "description": "94-agent RTL design pipeline with 93 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
-      "version": "0.8.13",
+      "version": "0.8.14",
       "author": {
         "name": "babyworm"
       },
