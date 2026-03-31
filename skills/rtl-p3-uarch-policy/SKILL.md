@@ -68,7 +68,7 @@ Every storage element in the μArch spec MUST include a storage type decision wi
 - Content must survive clock gating (technology-dependent)
 
 **SRAM wrapper interface specification** (required for every SRAM instance in μArch doc):
-- Type: Single-port (SP) or Dual-port (DP)
+- Type: Single-port (SP), Two-port (TP), or Dual-port (DP)
 - Parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)`)
 - Read latency: 1 cycle (registered output) — default; document if different
 - SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata`

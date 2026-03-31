@@ -389,6 +389,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     |--------|--------|
     | sram_sp | SRAM wrapper — behavioral vs foundry macro |
     | sram_tp | SRAM wrapper — behavioral vs foundry macro |
+    | sram_dp | SRAM wrapper — behavioral vs foundry macro |
 
     ## Failed Equivalence Points
     ### FAIL-N: [signal name]

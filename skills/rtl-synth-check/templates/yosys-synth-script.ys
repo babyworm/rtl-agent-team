@@ -25,7 +25,7 @@ proc; opt; fsm; opt
 # ============================================================
 # memory pass converts behavioral memory arrays to $mem cells,
 # then maps to FF or inferred BRAM depending on size.
-# SRAM wrappers (sram_sp/sram_tp) should infer as memory blocks.
+# SRAM wrappers (sram_sp/sram_tp/sram_dp) should infer as memory blocks.
 # Use -nomap to inspect $mem cells before technology mapping:
 #   memory -nomap; stat    (debug: check memory inference)
 memory; opt
