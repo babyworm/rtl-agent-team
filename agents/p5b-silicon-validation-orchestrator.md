@@ -43,6 +43,10 @@ State contract:
 - If synthesis outputs netlist/ECO deltas, invoke `equivalence-checker`:
   - RTL-vs-netlist for signoff synthesis outputs
   - RTL-vs-RTL for behavior-preserving ECO/refactor deltas
+  - Pass context from `rat_config.json`: preferred tool (`preferences.equivalence`),
+    liberty path (`technology.liberty`), SVF file (`syn/output/{module}.svf` if DC synthesis).
+    Example Task prompt includes: `--svf syn/output/{module}.svf --liberty {technology.liberty}`
+  - Tool selection: DC synthesis → Formality (fm_shell), Genus → Conformal (lec), else → Yosys
 - Persist equivalence verdict/evidence path in state under `scopes.*.equivalence`.
 
 ### Step 2: CDC/timing signoff posture

@@ -111,8 +111,8 @@ Attempt commercial tool first; fall back to structural analysis if unavailable:
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Check commercial CDC tool availability via Bash CLI:
-which spyglass || which vc_cdc || which questa_cdc
-If available, run replayable CDC script:
+which sg_shell || which vc_cdc || which questa_cdc
+If available, run replayable CDC script (note: sg_shell detected → pass --tool spyglass to script):
   sim/cdc/run_cdc.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir sim/cdc/reports
 Replay artifact must be saved to: sim/cdc/reports/replay/run_cdc_spyglass_latest.sh
 If SpyGlass is unavailable, fall back to structural analysis:

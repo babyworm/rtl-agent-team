@@ -45,10 +45,11 @@ Options:
   -h, --help               Show this help
 
 Coverage Targets (enforced at report time):
-  Line    ≥ 90%
-  Toggle  ≥ 80%
-  FSM     ≥ 70%
-  Branch  ≥ 80%
+  Line       ≥ 90%
+  Toggle     ≥ 80%
+  FSM        ≥ 70%
+  Branch     ≥ 80%
+  Functional ≥ 95%
 EOF
 }
 
@@ -402,7 +403,8 @@ cat > "$REPORT" << REPORT_EOF
     "line": 90,
     "toggle": 80,
     "fsm": 70,
-    "branch": 80
+    "branch": 80,
+    "functional": 95
   },
   "coverage_dir": "$COVERAGE_DIR",
   "run_dir": "$RUN_DIR",

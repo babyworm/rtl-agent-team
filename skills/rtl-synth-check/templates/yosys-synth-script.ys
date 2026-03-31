@@ -33,8 +33,10 @@ memory; opt
 # ============================================================
 # Technology Mapping (NanGate45 — TSMC 28nm proxy)
 # ============================================================
-# This is the DEFAULT and ONLY target for PPA estimation.
-# Do NOT use generic synthesis (no liberty) or FPGA synthesis.
+# NanGate45 is the DEFAULT liberty for PPA estimation.
+# To use a different liberty: run_syn.sh --liberty <path> generates
+# a dynamic script with your library. This template is for direct
+# Yosys invocation with NanGate45 only.
 techmap; opt
 dfflibmap -liberty NangateOpenCellLibrary_typical.lib
 abc -liberty NangateOpenCellLibrary_typical.lib

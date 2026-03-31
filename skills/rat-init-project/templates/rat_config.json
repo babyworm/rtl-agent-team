@@ -5,7 +5,7 @@
     "filelist": "rtl/filelist_top.f"
   },
   "tools": {
-    "_comment": "All known EDA tools. 'detected' is auto-filled by generate_config.sh. Edit 'path' or 'env_source' to help detection for tools requiring environment setup (module load, source setup.sh).",
+    "_comment": "All known EDA tools. 'detected' is auto-filled by generate_config.sh. This config is consumed by LLM agents (runner scripts use CLI args). Edit 'path' or 'env_source' for tools requiring setup (module load, source setup.sh), then re-run generate_config.sh.",
     "simulators": {
       "vcs":       { "detected": false, "path": "", "env_source": "" },
       "xrun":      { "detected": false, "path": "", "env_source": "" },
@@ -70,6 +70,7 @@
     "max_fail_rate": 5
   },
   "waivers": {
+    "_comment": "Waiver file paths. Keys use product names (spyglass_lint, not sg_shell) for clarity since one binary serves multiple functions.",
     "verilator": "",
     "verible": "",
     "spyglass_lint": "",

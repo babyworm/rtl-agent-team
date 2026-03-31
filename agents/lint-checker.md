@@ -25,7 +25,10 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - SYNCASYNCNET: mixed sync/async usage of a signal (MAJOR for CDC)
     - PINCONNECTEMPTY / PINNOCONNECT: unconnected module ports (MAJOR)
   - **Verible** (`verible-verilog-lint`): Best for style, formatting, naming conventions, structural checks.
-  - **slang** (`slang --lint-only`): Best for semantic analysis, type checking, IEEE 1800-2012 compliance.
+  - **slang**: Best for semantic analysis, type checking, IEEE 1800 compliance.
+    - RTL files (`rtl/`): use `slang -Weverything` — catches `always_ff` multi-driver violations (VCS ICPD), unused signals, width mismatches
+    - TB files (`sim/`): use `slang --allow-dup-initial-drivers` — permits `initial` + `always_ff` on same signal (common TB pattern)
+    - The `run_lint.sh --tool slang` wrapper auto-detects RTL vs TB based on file paths
 
   **Verilator waiver support:** If `.vlt` waiver file exists, apply it:
   `verilator --lint-only -Wall -Wpedantic *.sv verilator.vlt`

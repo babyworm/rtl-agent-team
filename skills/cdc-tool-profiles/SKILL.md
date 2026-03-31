@@ -30,8 +30,9 @@ user-invocable: false
   - Install: `git clone https://github.com/babyworm/slang-cdc.git && make build && make install`
 
 ## Commercial Profiles
-- `spyglass`:
+- `spyglass` (binary: `sg_shell`, config key: `sg_shell`, script flag: `--tool spyglass`):
   - `sim/cdc/run_cdc.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+  - Note: `rat_config.json` uses `sg_shell` as tool key; runner scripts accept `--tool spyglass`
 - `vc_cdc`:
   - `sim/cdc/run_cdc.sh --tool vc_cdc --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
 - `questa_cdc`:

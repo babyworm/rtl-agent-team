@@ -156,6 +156,11 @@ initial cov_cnt = 0;
 ```
 This applies to **testbench only** — synthesizable RTL must always use `always_ff`.
 
+**slang detection**: `slang -Weverything` catches this same `always_ff` multi-driver violation
+at lint time (RTL mode). For TB files, use `slang --allow-dup-initial-drivers` to permit the
+`initial` + `always_ff` pattern. The `run_lint.sh --tool slang` wrapper auto-detects RTL vs TB
+based on file paths.
+
 ### 4.4 iverilog Incompatible Constructs (Do Not Generate)
 
 > This restriction applies to synthesizable RTL code only. Verification TBs may use `interface` if the target simulator supports it.
@@ -195,8 +200,9 @@ See `templates/module-template.sv` for complete scaffold.
 > The items below apply only when specific optimizations are needed. See the `<Advanced>` section for detailed patterns and code examples.
 
 - **Power Optimization**: Clock gating (ICG), operand isolation, power domains → `<Advanced>` section A.1
-- **FPGA Considerations**: BRAM/DSP inference, XDC constraints, ILA debugging, IP Core → `<Advanced>` section A.2
-- **Pipelining for Timing Closure**: Pipeline insertion criteria, retiming, valid/ready pipelining → `<Advanced>` section A.3
+- **Memory Wrapper Patterns**: Storage selection, SRAM wrappers (SP/DP/TDP), foundry replacement → `<Advanced>` section A.2
+- **FPGA Considerations**: BRAM/DSP inference, XDC constraints, ILA debugging, IP Core → `<Advanced>` section A.3
+- **Pipelining for Timing Closure**: Pipeline insertion criteria, retiming, valid/ready pipelining → `<Advanced>` section A.4
 
 </Steps>
 
@@ -300,6 +306,47 @@ module sram_dp #(
     end
     if (i_re) begin
       o_rdata <= mem[i_raddr];  // 1-cycle read latency
+    end
+  end
+
+endmodule
+```
+
+### Standard SRAM Wrapper — True Dual-Port (TDP)
+Place in `rtl/common/sram_tdp.sv`. Both ports can read and write.
+```systemverilog
+module sram_tdp #(
+  parameter int DEPTH = 256,
+  parameter int WIDTH = 32
+) (
+  input  logic                    clk,
+  // Port A
+  input  logic                    i_ce_a,
+  input  logic                    i_we_a,
+  input  logic [$clog2(DEPTH)-1:0] i_addr_a,
+  input  logic [WIDTH-1:0]        i_wdata_a,
+  output logic [WIDTH-1:0]        o_rdata_a,
+  // Port B
+  input  logic                    i_ce_b,
+  input  logic                    i_we_b,
+  input  logic [$clog2(DEPTH)-1:0] i_addr_b,
+  input  logic [WIDTH-1:0]        i_wdata_b,
+  output logic [WIDTH-1:0]        o_rdata_b
+);
+
+  logic [WIDTH-1:0] mem [0:DEPTH-1];
+
+  always_ff @(posedge clk) begin
+    if (i_ce_a) begin
+      if (i_we_a) mem[i_addr_a] <= i_wdata_a;
+      o_rdata_a <= mem[i_addr_a];
+    end
+  end
+
+  always_ff @(posedge clk) begin
+    if (i_ce_b) begin
+      if (i_we_b) mem[i_addr_b] <= i_wdata_b;
+      o_rdata_b <= mem[i_addr_b];
     end
   end
 

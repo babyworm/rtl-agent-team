@@ -348,9 +348,9 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     | Tool | Blackbox Command |
     |------|-----------------|
-    | Formality | `set_black_box r:/WORK/sram_sp` + `set_black_box i:/WORK/sram_sp` |
-    | Conformal | `add notranslate module sram_sp -golden` + `-revised` |
-    | Yosys | `setattr -mod -set blackbox 1 sram_sp` (before flattening) |
+    | Formality | `set_black_box r:/WORK/sram_sp` + `i:/WORK/sram_sp` (repeat for `sram_dp`, `sram_tdp`) |
+    | Conformal | `add notranslate module sram_sp -golden` + `-revised` (repeat for `sram_dp`, `sram_tdp`) |
+    | Yosys | `setattr -mod -set blackbox 1 sram_sp` (repeat for `sram_dp`, `sram_tdp`; before flattening) |
   </SRAM_Wrapper_Handling>
 
   <Output_Format>

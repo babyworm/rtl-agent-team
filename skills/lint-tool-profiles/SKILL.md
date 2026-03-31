@@ -25,8 +25,9 @@ user-invocable: false
   - Only slang catches IEEE 1800 §9.2.2.4 multi-driver violations; Verilator and Verible do not
 
 ## Commercial Profile
-- `spyglass`:
+- `spyglass` (binary: `sg_shell`, config key: `sg_shell`, script flag: `--tool spyglass`):
   - `lint/scripts/run_lint.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir lint/reports`
+  - Note: `rat_config.json` uses `sg_shell` as tool key; runner scripts accept `--tool spyglass`
 
 ## Severity Mapping
 - Tool `error/fatal` -> normalized `error`

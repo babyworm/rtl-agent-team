@@ -103,6 +103,19 @@ Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use sta
 - `i_wdata [WIDTH-1:0]` — write data
 - `o_rdata [WIDTH-1:0]` — read data (1-cycle latency, registered output)
 
+**DP port naming** (simple dual-port: 1W + 1R):
+- `clk` — clock
+- `i_we` — write enable
+- `i_waddr [ADDR_W-1:0]` — write address
+- `i_wdata [WIDTH-1:0]` — write data
+- `i_re` — read enable
+- `i_raddr [ADDR_W-1:0]` — read address
+- `o_rdata [WIDTH-1:0]` — read data (1-cycle latency)
+
+**TDP port naming** (true dual-port: 2 R/W, Port A + Port B):
+- `clk`, `i_ce_a`, `i_we_a`, `i_addr_a`, `i_wdata_a`, `o_rdata_a`
+- `i_ce_b`, `i_we_b`, `i_addr_b`, `i_wdata_b`, `o_rdata_b`
+
 **Instance naming**: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
 
 **Foundry macro replacement strategy**:

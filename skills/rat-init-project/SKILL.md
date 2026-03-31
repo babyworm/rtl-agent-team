@@ -198,6 +198,14 @@ This skill ensures the project workspace is ready before design work begins.
    Commercial EDA via `_tool` suffix (`make sim_xrun`, `make lint_spyglass`, `make syn_dc`).
    Run `make help` to see all targets and variables.
 
+4.10. **Deploy UVM regression runner** (if sim/uvm/scripts/ has no run_regression_uvm.sh):
+   ```bash
+   mkdir -p sim/uvm/scripts
+   [ ! -f sim/uvm/scripts/run_regression_uvm.sh ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh" sim/uvm/scripts/run_regression_uvm.sh && chmod +x sim/uvm/scripts/run_regression_uvm.sh
+   ```
+   Multi-seed UVM regression with VCS/Xcelium/Questa, coverage merge, failure halt.
+   Referenced by Makefile `uvm_regression` target.
+
 5. **Generate cocotb Makefile template** (if sim/ has no Makefile):
    Copy `skills/rat-init-project/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
    Per-module cocotb Makefiles are created in `sim/{module}/Makefile` during Phase 4-5.
