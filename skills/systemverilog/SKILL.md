@@ -351,6 +351,16 @@ module sram_tdp #(
     end
   end
 
+  // SVA: detect same-address write collision (undefined in real SRAM macros)
+  // synthesis translate_off
+  property p_no_write_collision;
+    @(posedge clk) disable iff (!i_ce_a || !i_ce_b)
+    (i_we_a && i_we_b) |-> (i_addr_a != i_addr_b);
+  endproperty
+  a_no_write_collision: assert property (p_no_write_collision)
+    else $error("sram_tdp: same-address write collision (addr=%0h)", i_addr_a);
+  // synthesis translate_on
+
 endmodule
 ```
 
