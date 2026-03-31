@@ -103,12 +103,12 @@ This skill ensures the project workspace is ready before design work begins.
    bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh" . "$(basename $(pwd))"
    ```
    The config file stores:
-   - `env_setup`: sourcing scripts for tools not in PATH (e.g., `"vcs": "source /tools/synopsys/vcs/setup.sh"`)
-   - `tools`: detected EDA tools by category (simulator, synthesis, lint, formal, cdc) with preferred tool
+   - `tools`: 24 EDA tools across 8 categories (simulators, synthesis, lint, formal, equivalence, cdc, debug, coverage). Each tool has `detected`, `path`, and `env_source` fields. Set `env_source` per-tool for tools needing setup (e.g., `"env_source": "source /tools/synopsys/vcs/setup.sh"`)
+   - `preferences`: preferred tool per category (auto-set to first detected commercial tool, user-overridable)
    - `technology`: target library path, SRAM lib, NAND2 cell pattern (auto-extracted from liberty if set)
    - `coverage`: targets (line≥90%, toggle≥80%, FSM≥70%, branch≥80%, functional≥95%), seeds, fail rate
    - `waivers`: custom paths for lint/CDC waiver files
-   Users should edit `env_setup`, `technology.liberty`, and `waivers` after generation.
+   Users should edit per-tool `env_source`, `technology.liberty`, and `waivers` after generation.
 
 2c. **Deploy rules** (skip if already deployed globally via `rat-setup`):
    For each rule file, check `~/.claude/rules/` first. If the same file exists globally,
