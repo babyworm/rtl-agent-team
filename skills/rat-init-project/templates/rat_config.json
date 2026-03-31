@@ -4,24 +4,53 @@
     "top_module": "",
     "filelist": "rtl/filelist_top.f"
   },
-  "env_setup": {
-    "_comment": "Shell commands to source before running each tool (e.g., 'source /tools/synopsys/vcs/setup.sh'). Leave empty if tool is already in PATH.",
-    "vcs": "",
-    "xrun": "",
-    "vsim": "",
-    "dc_shell": "",
-    "genus": "",
-    "sg_shell": "",
-    "sby": "",
-    "verilator": "",
-    "slang": ""
-  },
   "tools": {
-    "simulator":  { "preferred": "", "available": [] },
-    "synthesis":  { "preferred": "", "available": [] },
-    "lint":       { "preferred": "", "available": [] },
-    "formal":     { "preferred": "", "available": [] },
-    "cdc":        { "preferred": "", "available": [] }
+    "_comment": "All known EDA tools. 'detected' is auto-filled by generate_config.sh. Edit 'path' or 'env_source' to help detection for tools requiring environment setup (module load, source setup.sh).",
+    "simulators": {
+      "vcs":       { "detected": false, "path": "", "env_source": "" },
+      "xrun":      { "detected": false, "path": "", "env_source": "" },
+      "vsim":      { "detected": false, "path": "", "env_source": "" },
+      "verilator": { "detected": false, "path": "", "env_source": "" },
+      "iverilog":  { "detected": false, "path": "", "env_source": "" }
+    },
+    "synthesis": {
+      "yosys":    { "detected": false, "path": "", "env_source": "" },
+      "dc_shell": { "detected": false, "path": "", "env_source": "" },
+      "genus":    { "detected": false, "path": "", "env_source": "" }
+    },
+    "lint": {
+      "verilator": { "detected": false, "path": "", "env_source": "" },
+      "verible":   { "detected": false, "path": "", "env_source": "" },
+      "slang":     { "detected": false, "path": "", "env_source": "" },
+      "sg_shell":  { "detected": false, "path": "", "env_source": "" }
+    },
+    "formal": {
+      "sby":       { "detected": false, "path": "", "env_source": "" },
+      "jg":        { "detected": false, "path": "", "env_source": "" },
+      "vcf":       { "detected": false, "path": "", "env_source": "" }
+    },
+    "cdc": {
+      "structural": { "detected": true,  "path": "(built-in)", "env_source": "" },
+      "slang_cdc":  { "detected": false, "path": "", "env_source": "" },
+      "sg_shell":   { "detected": false, "path": "", "env_source": "" }
+    },
+    "debug": {
+      "verdi":      { "detected": false, "path": "", "env_source": "" },
+      "simvision":  { "detected": false, "path": "", "env_source": "" }
+    },
+    "coverage": {
+      "urg":    { "detected": false, "path": "", "env_source": "" },
+      "imc":    { "detected": false, "path": "", "env_source": "" },
+      "vcover": { "detected": false, "path": "", "env_source": "" }
+    }
+  },
+  "preferences": {
+    "_comment": "Preferred tool per category. Auto-set to first detected commercial tool (or first open-source). User-overridable.",
+    "simulator": "",
+    "synthesis": "",
+    "lint": "",
+    "formal": "",
+    "cdc": ""
   },
   "technology": {
     "target": "",

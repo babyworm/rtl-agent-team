@@ -3,139 +3,141 @@
 #
 # Usage: generate_config.sh [project_root] [project_name]
 #
-# Detects available EDA tools (checking PATH and env_setup sourcing scripts),
-# extracts NAND2 area from liberty file if specified, and writes rat_config.json.
+# Detects all known EDA tools, records path for each, extracts NAND2 area
+# from liberty if specified. Tools not in PATH get empty fields that users
+# can fill in with 'path' or 'env_source' to enable detection on re-run.
 #
-# If rat_config.json already exists, only updates tool availability (preserves
-# user-edited fields like liberty, waivers, env_setup, coverage targets).
+# If rat_config.json already exists, preserves user-edited fields (env_source,
+# path overrides, technology, waivers, coverage). Only refreshes 'detected'.
 
 set -euo pipefail
 
 PROJECT_ROOT="${1:-.}"
 PROJECT_NAME="${2:-$(basename "$(cd "$PROJECT_ROOT" && pwd)")}"
 CONFIG="$PROJECT_ROOT/rat_config.json"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE="$(cd "$SCRIPT_DIR/.." && pwd)/templates/rat_config.json"
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
-# Check if a tool is available, optionally sourcing env_setup first
-# Args: tool_name [env_setup_cmd]
-tool_available() {
-  local tool="$1"
-  local env_cmd="${2:-}"
-
-  if [[ -n "$env_cmd" ]]; then
-    # Source in subshell and check
-    (eval "$env_cmd" 2>/dev/null && command -v "$tool" >/dev/null 2>&1)
-  else
-    command -v "$tool" >/dev/null 2>&1
-  fi
-}
-
-# Read a JSON string field using grep+sed (no jq dependency)
+# Read a JSON string value by key (simple grep-based, no jq dependency)
 json_get() {
   local file="$1" key="$2"
   sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$file" | head -1
 }
 
-# ─── Load existing config (if any) for env_setup ───────────────────────────
-declare -A ENV_SETUP=()
+# Read env_source for a tool from existing config (nested under category)
+json_get_tool_field() {
+  local file="$1" tool="$2" field="$3"
+  # Match: "tool": { ... "field": "value" ... } — simplified line-by-line
+  awk -v tool="\"$tool\"" -v field="\"$field\"" '
+    $0 ~ tool { found=1 }
+    found && $0 ~ field {
+      gsub(/.*: *"/, ""); gsub(/".*/, ""); print; exit
+    }
+    found && /\}/ { found=0 }
+  ' "$file"
+}
+
+# Check if a tool is available, optionally sourcing env first or using explicit path
+# Args: tool_name env_source_cmd explicit_path
+tool_detect() {
+  local tool="$1" env_cmd="${2:-}" explicit_path="${3:-}"
+
+  # Try explicit path first
+  if [[ -n "$explicit_path" && -x "$explicit_path" ]]; then
+    echo "$explicit_path"
+    return 0
+  fi
+
+  # Try with env_source
+  if [[ -n "$env_cmd" ]]; then
+    local found
+    found=$(bash -c "$env_cmd 2>/dev/null && command -v $tool 2>/dev/null" 2>/dev/null) || true
+    if [[ -n "$found" ]]; then
+      echo "$found"
+      return 0
+    fi
+  fi
+
+  # Try PATH directly
+  local path
+  path=$(command -v "$tool" 2>/dev/null) || true
+  if [[ -n "$path" ]]; then
+    echo "$path"
+    return 0
+  fi
+
+  return 1
+}
+
+# ─── All known tools (category:binary_name) ────────────────────────────────
+# Format: CATEGORY TOOL_KEY BINARY_NAME
+ALL_TOOLS=(
+  "simulators  vcs        vcs"
+  "simulators  xrun       xrun"
+  "simulators  vsim       vsim"
+  "simulators  verilator  verilator"
+  "simulators  iverilog   iverilog"
+  "synthesis   yosys      yosys"
+  "synthesis   dc_shell   dc_shell"
+  "synthesis   genus      genus"
+  "lint        verilator  verilator"
+  "lint        verible    verible-verilog-lint"
+  "lint        slang      slang"
+  "lint        sg_shell   sg_shell"
+  "formal      sby        sby"
+  "formal      jg         jg"
+  "formal      vcf        vcf"
+  "cdc         slang_cdc  slang-cdc"
+  "cdc         sg_shell   sg_shell"
+  "debug       verdi      verdi"
+  "debug       simvision  simvision"
+  "coverage    urg        urg"
+  "coverage    imc        imc"
+  "coverage    vcover     vcover"
+)
+
+# ─── Load existing user fields ─────────────────────────────────────────────
+declare -A SAVED_ENV=()
+declare -A SAVED_PATH=()
+
 if [[ -f "$CONFIG" ]]; then
-  for tool in vcs xrun vsim dc_shell genus sg_shell sby verilator slang; do
-    val=$(json_get "$CONFIG" "$tool")
-    [[ -n "$val" ]] && ENV_SETUP[$tool]="$val"
-  done
-fi
-
-# ─── Detect tools ──────────────────────────────────────────────────────────
-# Detect tools in a category, writing results to global vars
-# Sets: _DET_TOOLS (array), _DET_PREF (string)
-detect_category() {
-  _DET_TOOLS=()
-  _DET_PREF=""
-  local tools=("$@")
-
-  for tool in "${tools[@]}"; do
-    if tool_available "$tool" "${ENV_SETUP[$tool]:-}"; then
-      _DET_TOOLS+=("$tool")
-      if [[ -z "$_DET_PREF" ]]; then _DET_PREF="$tool"; fi
+  for entry in "${ALL_TOOLS[@]}"; do
+    read -r _cat key _bin <<< "$entry"
+    env_val=$(json_get_tool_field "$CONFIG" "$key" "env_source")
+    path_val=$(json_get_tool_field "$CONFIG" "$key" "path")
+    [[ -n "$env_val" ]] && SAVED_ENV[$key]="$env_val"
+    # Only preserve user-set paths (not auto-detected ones)
+    if [[ -n "$path_val" && "$path_val" != "/"* && "$path_val" != "(built-in)" ]]; then
+      SAVED_PATH[$key]="$path_val"
+    elif [[ -n "$path_val" && -n "${SAVED_ENV[$key]:-}" ]]; then
+      # User set env_source, preserve their path too
+      SAVED_PATH[$key]="$path_val"
     fi
   done
-  return 0
-}
+  echo "Loaded existing config (preserving user fields)"
+fi
 
-echo "=== EDA Tool Detection ==="
-
-detect_category vcs xrun vsim
-SIM_TOOLS=("${_DET_TOOLS[@]}"); SIM_PREF="$_DET_PREF"
-echo "Simulators: [${SIM_TOOLS[*]:-none}] (preferred: ${SIM_PREF:-none})"
-
-detect_category yosys dc_shell genus
-SYN_TOOLS=("${_DET_TOOLS[@]}"); SYN_PREF="$_DET_PREF"
-echo "Synthesis:  [${SYN_TOOLS[*]:-none}] (preferred: ${SYN_PREF:-none})"
-
-detect_category verilator verible-verilog-lint slang sg_shell
-LINT_TOOLS=("${_DET_TOOLS[@]}"); LINT_PREF="$_DET_PREF"
-# Normalize verible binary name
-LINT_TOOLS=("${LINT_TOOLS[@]/verible-verilog-lint/verible}")
-if [[ "$LINT_PREF" == "verible-verilog-lint" ]]; then LINT_PREF="verible"; fi
-echo "Lint:       [${LINT_TOOLS[*]:-none}] (preferred: ${LINT_PREF:-none})"
-
-detect_category sby
-FORMAL_TOOLS=("${_DET_TOOLS[@]}"); FORMAL_PREF="$_DET_PREF"
-echo "Formal:     [${FORMAL_TOOLS[*]:-none}] (preferred: ${FORMAL_PREF:-none})"
-
-detect_category slang-cdc sg_shell
-CDC_TOOLS=("structural" "${_DET_TOOLS[@]}"); CDC_PREF="${_DET_PREF:-structural}"
-echo "CDC:        [${CDC_TOOLS[*]}] (preferred: $CDC_PREF)"
-
-# ─── Format JSON arrays ───────────────────────────────────────────────────
-json_array() {
-  local arr=("$@")
-  if [[ ${#arr[@]} -eq 0 ]]; then
-    echo "[]"
-    return
-  fi
-  local out="["
-  for i in "${!arr[@]}"; do
-    [[ $i -gt 0 ]] && out+=", "
-    out+="\"${arr[$i]}\""
-  done
-  out+="]"
-  echo "$out"
-}
-
-SIM_ARR=$(json_array "${SIM_TOOLS[@]}")
-SYN_ARR=$(json_array "${SYN_TOOLS[@]}")
-LINT_ARR=$(json_array "${LINT_TOOLS[@]}")
-FORMAL_ARR=$(json_array "${FORMAL_TOOLS[@]}")
-CDC_ARR=$(json_array "${CDC_TOOLS[@]}")
-
-# ─── Preserve user fields from existing config ─────────────────────────────
+# Preserve other user-edited sections
 if [[ -f "$CONFIG" ]]; then
-  # Preserve user-edited fields
+  TOP_MODULE=$(json_get "$CONFIG" "top_module")
+  FILELIST=$(json_get "$CONFIG" "filelist")
   LIBERTY=$(json_get "$CONFIG" "liberty")
   SRAM_LIB=$(json_get "$CONFIG" "sram_lib")
   TARGET=$(json_get "$CONFIG" "target")
   NAND2_PATTERN=$(json_get "$CONFIG" "nand2_cell_pattern")
-  TOP_MODULE=$(json_get "$CONFIG" "top_module")
-  FILELIST=$(json_get "$CONFIG" "filelist")
   SEEDS=$(json_get "$CONFIG" "seeds")
-  # Preserve waivers
-  W_VERILATOR=$(json_get "$CONFIG" "verilator")  # under waivers context
-  W_VERIBLE=$(json_get "$CONFIG" "verible")
-  W_SG_LINT=$(json_get "$CONFIG" "spyglass_lint")
-  W_SG_CDC=$(json_get "$CONFIG" "spyglass_cdc")
-  W_CDC=$(json_get "$CONFIG" "cdc")
-  echo "Preserving user-edited fields from existing config"
+  W_VERILATOR=$(json_get_tool_field "$CONFIG" "verilator" "verilator" 2>/dev/null || echo "")
+  W_VERIBLE=$(json_get_tool_field "$CONFIG" "verible" "verible" 2>/dev/null || echo "")
+  W_SG_LINT=$(json_get_tool_field "$CONFIG" "spyglass_lint" "spyglass_lint" 2>/dev/null || echo "")
+  W_SG_CDC=$(json_get_tool_field "$CONFIG" "spyglass_cdc" "spyglass_cdc" 2>/dev/null || echo "")
+  W_CDC=$(json_get_tool_field "$CONFIG" "cdc" "cdc" 2>/dev/null || echo "")
 else
+  TOP_MODULE=""
+  FILELIST="rtl/filelist_top.f"
   LIBERTY=""
   SRAM_LIB=""
   TARGET=""
   NAND2_PATTERN="NAND2X1"
-  TOP_MODULE=""
-  FILELIST="rtl/filelist_top.f"
   SEEDS="42 123 456 789 1337"
   W_VERILATOR=""
   W_VERIBLE=""
@@ -144,12 +146,76 @@ else
   W_CDC=""
 fi
 
-# ─── NAND2 area extraction from liberty ────────────────────────────────────
+# ─── Detect all tools ──────────────────────────────────────────────────────
+echo "=== EDA Tool Detection ==="
+
+declare -A DET_STATUS=()
+declare -A DET_PATH=()
+
+for entry in "${ALL_TOOLS[@]}"; do
+  read -r cat key bin <<< "$entry"
+  env_src="${SAVED_ENV[$key]:-}"
+  exp_path="${SAVED_PATH[$key]:-}"
+
+  found_path=""
+  if found_path=$(tool_detect "$bin" "$env_src" "$exp_path"); then
+    DET_STATUS[$cat/$key]=true
+    DET_PATH[$cat/$key]="$found_path"
+  else
+    DET_STATUS[$cat/$key]=false
+    DET_PATH[$cat/$key]=""
+  fi
+done
+
+# structural CDC is always available
+DET_STATUS["cdc/structural"]=true
+DET_PATH["cdc/structural"]="(built-in)"
+
+# Print summary
+PREV_CAT=""
+for entry in "${ALL_TOOLS[@]}"; do
+  read -r cat key bin <<< "$entry"
+  if [[ "$cat" != "$PREV_CAT" ]]; then
+    [[ -n "$PREV_CAT" ]] && echo ""
+    printf "  %-12s" "$cat:"
+    PREV_CAT="$cat"
+  fi
+  if [[ "${DET_STATUS[$cat/$key]}" == "true" ]]; then
+    printf " %s(OK)" "$key"
+  else
+    printf " %s(-)" "$key"
+  fi
+done
+echo ""
+echo ""
+
+# ─── Determine preferences ────────────────────────────────────────────────
+# Priority: commercial first within each category
+pick_pref() {
+  local cat="$1"; shift
+  local candidates=("$@")
+  for key in "${candidates[@]}"; do
+    if [[ "${DET_STATUS[$cat/$key]:-false}" == "true" ]]; then
+      echo "$key"
+      return
+    fi
+  done
+  echo ""
+}
+
+PREF_SIM=$(pick_pref simulators vcs xrun vsim verilator iverilog)
+PREF_SYN=$(pick_pref synthesis dc_shell genus yosys)
+PREF_LINT=$(pick_pref lint sg_shell slang verilator verible)
+PREF_FORMAL=$(pick_pref formal jg vcf sby)
+PREF_CDC=$(pick_pref cdc sg_shell slang_cdc)
+if [[ -z "$PREF_CDC" ]]; then PREF_CDC="structural"; fi
+
+echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC"
+
+# ─── NAND2 area extraction ────────────────────────────────────────────────
 NAND2_AREA="null"
-NAND2_NOTE=""
 if [[ -n "$LIBERTY" && -f "$LIBERTY" ]]; then
   NAND2_PAT="${NAND2_PATTERN:-NAND2X1}"
-  # Parse liberty: find cell(<pattern>) { ... area : <value>; ... }
   EXTRACTED=$(awk -v pat="$NAND2_PAT" '
     $0 ~ "cell[[:space:]]*\\("pat"\\)" { found=1 }
     found && /area[[:space:]]*:/ {
@@ -162,54 +228,62 @@ if [[ -n "$LIBERTY" && -f "$LIBERTY" ]]; then
 
   if [[ -n "$EXTRACTED" ]]; then
     NAND2_AREA="$EXTRACTED"
-    NAND2_NOTE=" (extracted from liberty: $NAND2_PAT)"
-    echo "NAND2 area: ${EXTRACTED} um2${NAND2_NOTE}"
+    echo "NAND2 area: ${EXTRACTED} um2 (from liberty: $NAND2_PAT)"
   else
-    echo "WARNING: $NAND2_PAT not found in $LIBERTY — using null (will default to 0.798 NanGate45)"
-  fi
-else
-  if [[ -n "$LIBERTY" ]]; then
-    echo "WARNING: Liberty file not found: $LIBERTY"
+    echo "WARNING: $NAND2_PAT not found in $LIBERTY — nand2_area_um2 left as null"
   fi
 fi
 
-# ─── Preserve env_setup from existing config ───────────────────────────────
-ES_VCS="${ENV_SETUP[vcs]:-}"
-ES_XRUN="${ENV_SETUP[xrun]:-}"
-ES_VSIM="${ENV_SETUP[vsim]:-}"
-ES_DC="${ENV_SETUP[dc_shell]:-}"
-ES_GENUS="${ENV_SETUP[genus]:-}"
-ES_SG="${ENV_SETUP[sg_shell]:-}"
-ES_SBY="${ENV_SETUP[sby]:-}"
-ES_VERILATOR="${ENV_SETUP[verilator]:-}"
-ES_SLANG="${ENV_SETUP[slang]:-}"
+# ─── Generate tool JSON block ─────────────────────────────────────────────
+tool_json() {
+  local cat="$1" key="$2"
+  local det="${DET_STATUS[$cat/$key]:-false}"
+  local path="${DET_PATH[$cat/$key]:-}"
+  local env="${SAVED_ENV[$key]:-}"
+  printf '      "%s": { "detected": %s, "path": "%s", "env_source": "%s" }' \
+    "$key" "$det" "$path" "$env"
+}
+
+category_json() {
+  local cat="$1"; shift
+  local keys=("$@")
+  echo "    \"$cat\": {"
+  for i in "${!keys[@]}"; do
+    tool_json "$cat" "${keys[$i]}"
+    if [[ $i -lt $((${#keys[@]} - 1)) ]]; then echo ","; else echo ""; fi
+  done
+  echo "    }"
+}
 
 # ─── Write config ──────────────────────────────────────────────────────────
-cat > "$CONFIG" << CONFIG_EOF
+cat > "$CONFIG" << OUTER_EOF
 {
   "project": {
     "name": "$PROJECT_NAME",
     "top_module": "$TOP_MODULE",
     "filelist": "$FILELIST"
   },
-  "env_setup": {
-    "_comment": "Shell commands to source before running each tool. Leave empty if tool is already in PATH.",
-    "vcs": "$ES_VCS",
-    "xrun": "$ES_XRUN",
-    "vsim": "$ES_VSIM",
-    "dc_shell": "$ES_DC",
-    "genus": "$ES_GENUS",
-    "sg_shell": "$ES_SG",
-    "sby": "$ES_SBY",
-    "verilator": "$ES_VERILATOR",
-    "slang": "$ES_SLANG"
-  },
   "tools": {
-    "simulator":  { "preferred": "${SIM_PREF:-}", "available": $SIM_ARR },
-    "synthesis":  { "preferred": "${SYN_PREF:-}", "available": $SYN_ARR },
-    "lint":       { "preferred": "${LINT_PREF:-}", "available": $LINT_ARR },
-    "formal":     { "preferred": "${FORMAL_PREF:-}", "available": $FORMAL_ARR },
-    "cdc":        { "preferred": "$CDC_PREF", "available": $CDC_ARR }
+    "_comment": "All known EDA tools. 'detected' is auto-filled. Edit 'path' or 'env_source' for tools needing setup, then re-run generate_config.sh.",
+$(category_json simulators vcs xrun vsim verilator iverilog),
+$(category_json synthesis yosys dc_shell genus),
+$(category_json lint verilator verible slang sg_shell),
+$(category_json formal sby jg vcf),
+    "cdc": {
+      "structural": { "detected": true, "path": "(built-in)", "env_source": "" },
+$(tool_json cdc slang_cdc),
+$(tool_json cdc sg_shell)
+    },
+$(category_json debug verdi simvision),
+$(category_json coverage urg imc vcover)
+  },
+  "preferences": {
+    "_comment": "Preferred tool per category. Auto-set to first detected (commercial priority). User-overridable.",
+    "simulator": "$PREF_SIM",
+    "synthesis": "$PREF_SYN",
+    "lint": "$PREF_LINT",
+    "formal": "$PREF_FORMAL",
+    "cdc": "$PREF_CDC"
   },
   "technology": {
     "target": "$TARGET",
@@ -231,10 +305,14 @@ cat > "$CONFIG" << CONFIG_EOF
     "cdc": "$W_CDC"
   }
 }
-CONFIG_EOF
+OUTER_EOF
 
 echo ""
 echo "Config written: $CONFIG"
-echo "  Edit env_setup to add tool sourcing scripts (e.g., \"source /tools/synopsys/vcs/setup.sh\")"
-echo "  Edit technology.liberty to set target library path"
-echo "  Re-run to refresh tool detection (user fields preserved)"
+echo ""
+echo "Next steps:"
+echo "  1. Edit 'env_source' for tools needing setup (e.g., \"source /tools/synopsys/vcs/setup.sh\")"
+echo "  2. Edit 'path' for tools in non-standard locations"
+echo "  3. Set technology.liberty for accurate NAND2 gate count"
+echo "  4. Set waivers paths for lint/CDC waiver files"
+echo "  5. Re-run to refresh detection: bash generate_config.sh"
