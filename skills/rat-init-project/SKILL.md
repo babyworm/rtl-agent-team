@@ -96,7 +96,21 @@ This skill ensures the project workspace is ready before design work begins.
    ```
    Idempotent — safe to re-run on every `rat-init-project` invocation.
 
-2b. **Deploy rules** (skip if already deployed globally via `rat-setup`):
+2b. **Generate project config** (`rat_config.json`):
+   Run the config generator to detect available EDA tools and create the project configuration file.
+   If `rat_config.json` already exists, only tool availability is refreshed (user-edited fields preserved).
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh" . "$(basename $(pwd))"
+   ```
+   The config file stores:
+   - `env_setup`: sourcing scripts for tools not in PATH (e.g., `"vcs": "source /tools/synopsys/vcs/setup.sh"`)
+   - `tools`: detected EDA tools by category (simulator, synthesis, lint, formal, cdc) with preferred tool
+   - `technology`: target library path, SRAM lib, NAND2 cell pattern (auto-extracted from liberty if set)
+   - `coverage`: targets (line≥90%, toggle≥80%, FSM≥70%, branch≥80%, functional≥95%), seeds, fail rate
+   - `waivers`: custom paths for lint/CDC waiver files
+   Users should edit `env_setup`, `technology.liberty`, and `waivers` after generation.
+
+2c. **Deploy rules** (skip if already deployed globally via `rat-setup`):
    For each rule file, check `~/.claude/rules/` first. If the same file exists globally,
    skip the local copy to avoid duplicate injection. Only deploy locally if neither exists.
    Diagram rules are injected into `~/.claude/CLAUDE.md` by `rat-setup` via `<markdown_diagram_rule>` tag.
@@ -123,7 +137,7 @@ This skill ensures the project workspace is ready before design work begins.
    | **ASCII flow diagram** | **Prohibited** | Do NOT use ASCII art — use D2 or Mermaid |
    ```
 
-2c. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
+2d. **Deploy guides** (copy CLAUDE.md to each directory if not already present):
    ```bash
    # Copy guide files as CLAUDE.md into each artifact directory (non-destructive)
    [ ! -f rtl/CLAUDE.md ] && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/guides/rtl-guide.md" rtl/CLAUDE.md

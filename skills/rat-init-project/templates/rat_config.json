@@ -1,0 +1,45 @@
+{
+  "project": {
+    "name": "",
+    "top_module": "",
+    "filelist": "rtl/filelist_top.f"
+  },
+  "env_setup": {
+    "_comment": "Shell commands to source before running each tool (e.g., 'source /tools/synopsys/vcs/setup.sh'). Leave empty if tool is already in PATH.",
+    "vcs": "",
+    "xrun": "",
+    "vsim": "",
+    "dc_shell": "",
+    "genus": "",
+    "sg_shell": "",
+    "sby": "",
+    "verilator": "",
+    "slang": ""
+  },
+  "tools": {
+    "simulator":  { "preferred": "", "available": [] },
+    "synthesis":  { "preferred": "", "available": [] },
+    "lint":       { "preferred": "", "available": [] },
+    "formal":     { "preferred": "", "available": [] },
+    "cdc":        { "preferred": "", "available": [] }
+  },
+  "technology": {
+    "target": "",
+    "liberty": "",
+    "sram_lib": "",
+    "nand2_cell_pattern": "NAND2X1",
+    "nand2_area_um2": null
+  },
+  "coverage": {
+    "targets": { "line": 90, "toggle": 80, "fsm": 70, "branch": 80, "functional": 95 },
+    "seeds": "42 123 456 789 1337",
+    "max_fail_rate": 5
+  },
+  "waivers": {
+    "verilator": "",
+    "verible": "",
+    "spyglass_lint": "",
+    "spyglass_cdc": "",
+    "cdc": ""
+  }
+}
