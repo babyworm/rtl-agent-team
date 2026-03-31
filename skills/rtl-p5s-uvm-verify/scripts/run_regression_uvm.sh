@@ -425,3 +425,5 @@ echo " Verdict: $([ "$FAILED" -eq 0 ] && echo "PASS" || echo "FAIL")"
 echo "========================================"
 
 exit "$FAILED"
+
+# rat-version: 0.8.14

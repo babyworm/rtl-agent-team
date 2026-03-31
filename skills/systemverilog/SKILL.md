@@ -336,7 +336,10 @@ module sram_tdp #(
 
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
-  // Single always_ff to avoid multi-driver on mem (slang -Weverything)
+  // Single always_ff to avoid multi-driver on mem (slang -Weverything).
+  // WARNING: Same-address write collision (i_we_a && i_we_b && i_addr_a == i_addr_b)
+  // is UNDEFINED in real SRAM macros. This behavioral model lets port B win silently.
+  // Designs must prevent same-address simultaneous writes at the protocol level.
   always_ff @(posedge clk) begin
     if (i_ce_a) begin
       if (i_we_a) mem[i_addr_a] <= i_wdata_a;
