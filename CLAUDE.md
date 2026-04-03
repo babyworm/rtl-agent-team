@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 94 specialized agents, 93 skills, 14 hooks,
+When installed as a plugin, it provides 94 specialized agents, 94 skills, 14 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -138,7 +138,7 @@ rtl-agent-team/                          # Plugin root
 │                                        #     team-worker-protocol.md, team-fallback.md,
 │                                        #     domain-expert-discovery-protocol.md,
 │                                        #     audit-output-protocol.md, step0-template.md)
-├── skills/                              # 93 skills: 53 action entry-points + 31 policies + 4 tool profiles + 4 conventions + 1 internal
+├── skills/                              # 94 skills: 54 action entry-points + 31 policies + 4 tool profiles + 4 conventions + 1 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
 │   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project

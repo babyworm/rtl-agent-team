@@ -198,6 +198,40 @@ Independent UNIT_FIX failures in different modules: fix in parallel.
 Same-module failures: fix sequentially within a single task.
 INTEGRATION_FIX: always sequential (cross-module dependencies).
 
+### UARCH_FIX (P5→P3 Feedback Path)
+
+When P5 verification reveals a μArch-level issue that cannot be fixed in RTL alone
+(e.g., pipeline balance infeasible, missing metadata in FIFO struct, architectural
+throughput bottleneck):
+
+1. Classify as UARCH_FIX → STOP current P5 verification for affected module
+2. Generate `reviews/phase-5-verify/uarch-feedback-{module}.md` with:
+   - Root cause analysis (why RTL fix is insufficient)
+   - Affected P3 uarch spec section(s)
+   - Proposed uarch change
+3. Escalate to user for P3 uarch document update
+4. After P3 update → P4 RTL re-implementation → P5 re-verification
+
+### Feedback Loop Decision Recording
+
+Every feedback loop iteration MUST produce a decision record at
+`.rat/scratch/phase-5/feedback-loop-decision-{N}.md` with:
+
+```markdown
+# Feedback Loop Decision #{N}
+- Module: {module}
+- Check: V{x} ({category})
+- Classification: UNIT_FIX | INTEGRATION_FIX | DESIGN_FIX | UARCH_FIX
+- Root cause: {description}
+- Fix applied: {description of change}
+- Alternatives considered: {rejected options with rationale}
+- Affected artifacts: {list of modified files}
+- Re-verification scope: {which checks to re-run}
+```
+
+This enables post-mortem analysis of verification efficiency and identifies
+recurring patterns that should become preventive rules.
+
 ## Integration with rat-auto-design
 
 When invoked from rat-auto-design, state is tracked in `.rat/state/rat-auto-design-state.json`:

@@ -100,6 +100,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "RTL conformance", "RTL conformance test", "RTL golden comparison" | `/rtl-agent-team:rtl-conformance-test` | Action Skill |
 | "bug reproduction", "bug repro", "waveform debug" | `/rtl-agent-team:rtl-bug-repro` | Action Skill |
 | "model consistency", "RTL-model comparison" | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
+| "cross-phase", "contract validation", "spec consistency", "phase boundary check" | `/rtl-agent-team:cross-phase-contract-validator` | Action Skill |
 | "cross-review", "codex review", "2nd reviewer", "second opinion", "cross check" | `/rtl-agent-team:codex-cross-review` | Action Skill |
 | "routing help", "which skill to use", "routing reference" | `rtl-orchestrate` (internal context only) | Internal Reference |
 
@@ -611,6 +612,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | RTL conformance, golden comparison | `/rtl-agent-team:rtl-conformance-test` | Action Skill |
 | bug reproduction, waveform debug | `/rtl-agent-team:rtl-bug-repro` | Action Skill |
 | model consistency, RTL-model compare | `/rtl-agent-team:rtl-model-consistency` | Action Skill |
+| cross-phase contract, spec consistency | `/rtl-agent-team:cross-phase-contract-validator` | Action Skill |
 | design review, Phase 6, design note | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | exploration, Phase 7, free exploration | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
 | ultraloop, autonomous loop, unattended | `/rtl-agent-team:rat-ultraloop` | Action Skill |

@@ -99,6 +99,15 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
          Recommend pipeline register split unless uArch requires single-cycle or technology
          provides dedicated resources (e.g., FPGA carry chains, balanced adder trees,
          low-frequency clock domains — must have documented justification per rtl-p4-implement-policy)
+     f3. Bus width derivation: any `localparam` ending in `_WIDTH` or `_W` set to a literal number?
+         If the same module has BPC/DATA_WIDTH/NUM_COMPONENTS parameters, flag as MAJOR —
+         datapath widths must derive from design parameters, not hardcoded constants
+     f4. Memory pattern detection: `logic [...] name [DEPTH]` where DEPTH > 512?
+         If read access is in `always_comb` (combinational read): flag as CRITICAL —
+         must use SRAM wrapper with synchronous read (per rtl-p3-uarch-policy storage criteria)
+     f5. Unreachable code: `if (PARAM > literal)` where PARAM is a localparam with a known
+         compile-time value and condition is always false? Flag as INFO — dead code,
+         recommend excluding from coverage metrics
      g. Module size: >300 lines suggests splitting; >50 states in FSM suggests decomposition
      h. Sensitivity lists: correct for `always_comb` (automatic)? No manual sensitivity lists?
      i. Blocking/non-blocking discipline: mixed usage in same block?
