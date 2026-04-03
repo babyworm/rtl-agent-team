@@ -65,6 +65,26 @@ case "$SHORT_NAME" in
     ;;
 esac
 
+# Phase entry soft prerequisites (WARNING only, not blocking — per Asymmetric Phase Gate Design)
+PHASE_PREREQ_WARN=""
+case "$SHORT_NAME" in
+  rtl-p4-*|rtl-p4s-*|rat-p4p5-*)
+    if [ ! -d "$CWD/docs/phase-3-uarch" ] || [ -z "$(ls "$CWD/docs/phase-3-uarch/" 2>/dev/null)" ]; then
+      PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 3 uArch docs not found (docs/phase-3-uarch/). P4 skills expect upstream uArch artifacts."
+    fi ;;
+  rtl-p5-*|rtl-p5s-*|rtl-p5a-*|rtl-p5b-*)
+    if [ ! -d "$CWD/rtl" ] || [ -z "$(ls "$CWD/rtl/" 2>/dev/null)" ]; then
+      PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 4 RTL not found (rtl/). P5 skills expect RTL artifacts."
+    fi ;;
+  rtl-p6-*)
+    if [ ! -f "$CWD/reviews/phase-5-verify/final-compliance.md" ]; then
+      PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 5 final-compliance.md not found. P6 requires Phase 5 PASS verdict."
+    fi ;;
+esac
+if [ -n "$PHASE_PREREQ_WARN" ]; then
+  SETUP_EXTRA_CONTEXT="$SETUP_EXTRA_CONTEXT $PHASE_PREREQ_WARN"
+fi
+
 STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 CRITERIA_FILE="$PLUGIN_ROOT/skill-completion-criteria.json"
