@@ -90,16 +90,11 @@ Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r3.md.")
 Rounds are sequential per module (each builds on the previous).
 Multiple modules can run their round sequences in parallel.
 
-## Step 3: sv2v Conversion (mandatory before SymbiYosys)
+## Step 3: sv2v Conversion (Layer 2 — handled by scripts)
 
-```
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Convert all RTL .sv files to Verilog for SymbiYosys compatibility.
-For each module: sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
-SymbiYosys uses Yosys internally with limited SV support; .v files are required.
-Verify conversion completes without errors. SVA property files (sim/formal/*_props.sv)
-do NOT need conversion — they use formal-only constructs.")
-```
+sv2v conversion is a Layer 2 concern. The .sby task script or formal runner handles
+sv2v internally before invoking SymbiYosys. Do NOT instruct manual sv2v execution.
+SVA property files (sim/formal/*_props.sv) do NOT need conversion.
 
 ## Step 4: Generate .sby Configuration and Run BMC
 

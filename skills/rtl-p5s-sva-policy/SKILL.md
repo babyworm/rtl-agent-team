@@ -64,10 +64,10 @@ See `references/sva-patterns.md` for complete temporal operator reference and pa
 
 **sv2v conversion note:**
 SymbiYosys relies on Yosys for reading design files. Yosys has limited SystemVerilog support,
-so all RTL `.sv` files must be converted to Verilog via `sv2v` before running `sby`.
+so RTL `.sv` files need Verilog conversion before `sby`. This is a **Layer 2 concern** —
+formal verification scripts handle sv2v conversion internally. Do NOT run sv2v manually.
 SVA property files (sim/formal/*_props.sv) are read with `-formal -sv` and do NOT need conversion.
 ```bash
-# Convert before every sby run:
-sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
-sby -f sim/formal/{module}.sby   # .sby references _v2v.v, not .sv
+# Scripts handle sv2v internally:
+sby -f sim/formal/{module}.sby   # .sby task script runs sv2v as a pre-step
 ```

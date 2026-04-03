@@ -114,7 +114,7 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 **V2: SVA Completion + Formal Verification** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
-     prompt="Run SVA/formal verification pipeline for module {module}. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. 3-round iterative refinement (Draft→Strengthen→Harden), sv2v conversion, SymbiYosys BMC+induction. Report proved/failed/timeout per property. IMPORTANT: namespace all outputs by module — iteration notes to sva-iteration-{module}-r{N}.md, formal results to sim/formal/formal_verify_{module}.json.",
+     prompt="Run SVA/formal verification pipeline for module {module}. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. 3-round iterative refinement (Draft→Strengthen→Harden). Scripts handle sv2v conversion internally (Layer 2). SymbiYosys BMC+induction. Report proved/failed/timeout per property. IMPORTANT: namespace all outputs by module — iteration notes to sva-iteration-{module}-r{N}.md, formal results to sim/formal/formal_verify_{module}.json.",
      run_in_background=true)
 ```
 
@@ -153,9 +153,9 @@ Task(subagent_type="rtl-agent-team:constraint-writer",
      prompt="Generate per-module SDC constraints for {module}. Read docs/phase-3-uarch/{module}.md for clock/IO spec. Write syn/constraints/{module}.sdc.",
      run_in_background=true)
 
-# Step 2: sv2v + Yosys synthesis with NanGate45 (uses ordering contract from Step 1)
+# Step 2: Synthesis estimation via wrapper (handles sv2v + tool selection internally)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Convert RTL then run ASIC synthesis estimation with NanGate45 (TSMC 28nm proxy) for {module}: sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v && yosys -p 'read_verilog rtl/{module}/{module}_v2v.v; synth -top {module}; dfflibmap -liberty NangateOpenCellLibrary_typical.lib; abc -liberty NangateOpenCellLibrary_typical.lib; stat -liberty NangateOpenCellLibrary_typical.lib' | tee syn/reports/{module}_synth.txt. Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag inferred latches. Save to docs/phase-5-verify/{module}_ppa_estimate.md.",
+     prompt="Run ASIC synthesis estimation for {module} using the replayable wrapper: syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable --outdir syn/reports. Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag inferred latches. Save to docs/phase-5-verify/{module}_ppa_estimate.md. If synthesis was SKIPPED (tool unavailable), record SKIPPED status.",
      run_in_background=true)
 ```
 
@@ -227,7 +227,7 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 **T2: System-Level SVA + Formal**
 ```
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Write system-level SVA properties for top module. Focus on cross-module data integrity, end-to-end protocol compliance, and system-level safety properties. Convert RTL before SymbiYosys: sv2v rtl/*/*.sv -o rtl/top/design_v2v.v. Ensure .sby references _v2v.v (not .sv). Run SymbiYosys.",
+     prompt="Write system-level SVA properties for top module. Focus on cross-module data integrity, end-to-end protocol compliance, and system-level safety properties. Scripts handle sv2v conversion internally (Layer 2). Run SymbiYosys.",
      run_in_background=true)
 ```
 
@@ -257,9 +257,9 @@ Task(subagent_type="rtl-agent-team:protocol-checker",
 Task(subagent_type="rtl-agent-team:constraint-writer",
      prompt="Generate/update SDC for top-level design. Read requirements.json, docs/phase-3-uarch/*.md, RTL top port list. Write syn/constraints/design.sdc. Validate with tclsh.")
 
-# Step 2: ASIC synthesis estimation with NanGate45
+# Step 2: ASIC synthesis estimation via wrapper (handles sv2v + tool selection internally)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Convert RTL then run ASIC synthesis estimation with NanGate45 (TSMC 28nm proxy) on top-level: sv2v rtl/*/*.sv -o rtl/top/design_v2v.v && yosys -p 'read_verilog rtl/top/design_v2v.v; synth -top {top}; dfflibmap -liberty NangateOpenCellLibrary_typical.lib; abc -liberty NangateOpenCellLibrary_typical.lib; stat -liberty NangateOpenCellLibrary_typical.lib' | tee syn/reports/{top}_synth.txt. Compute NAND2-FO2 gate count (area / 0.798).")
+     prompt="Run ASIC synthesis estimation for top-level using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable --outdir syn/reports. Compute NAND2-FO2 gate count (area / 0.798). If SKIPPED, record status.")
 
 # Step 3: Parse results
 Task(subagent_type="rtl-agent-team:synthesis-reporter",

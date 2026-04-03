@@ -240,7 +240,7 @@ Create top-level verification tasks with dependencies:
 t_top_lint  = TaskCreate(subject="T1: Top-Level Lint",
                          description="Run lint on full design via rtl/filelist_top.f. Verify inter-module signal consistency.")
 t_top_sva   = TaskCreate(subject="T2: System SVA/Formal",
-                         description="Write system-level SVA properties for top module. Cross-module data integrity, end-to-end protocol. Convert via sv2v before SymbiYosys.")
+                         description="Write system-level SVA properties for top module. Cross-module data integrity, end-to-end protocol. Scripts handle sv2v internally (Layer 2).")
 t_top_cdc   = TaskCreate(subject="T3: System CDC",
                          description="Full system-level CDC analysis. Identify ALL cross-module clock domain crossings. Generate system-level SDC.")
 t_top_proto = TaskCreate(subject="T4: System Protocol",

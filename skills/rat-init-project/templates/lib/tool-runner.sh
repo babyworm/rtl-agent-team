@@ -114,4 +114,68 @@ tool_runner_cleanup() {
   rm -f "$_TOOL_RUNNER_STATE_FILE"
 }
 
-# rat-version: 0.7.7
+# --- Tool Availability & Licensing Utilities ---
+
+# Check if a tool binary is available (local or Docker)
+# Usage: check_tool_available verilator && echo "found"
+check_tool_available() {
+  local tool="$1"
+  if command -v "$tool" >/dev/null 2>&1; then
+    return 0
+  fi
+  # Check Docker fallback
+  if command -v docker >/dev/null 2>&1 && _tool_runner_has_image; then
+    docker run --rm "$RTL_EDA_IMAGE" command -v "$tool" >/dev/null 2>&1
+    return $?
+  fi
+  return 1
+}
+
+# Check if a commercial tool has an active license
+# Returns 0 if licensed, 1 if not. Probes tool-specific license check.
+check_tool_licensed() {
+  local tool="$1"
+  case "$tool" in
+    dc_shell|design_compiler)
+      dc_shell -help </dev/null >/dev/null 2>&1; return $? ;;
+    genus)
+      genus -help </dev/null >/dev/null 2>&1; return $? ;;
+    vcs)
+      vcs -ID </dev/null >/dev/null 2>&1; return $? ;;
+    xrun|xcelium)
+      xrun -version </dev/null >/dev/null 2>&1; return $? ;;
+    vsim|questa)
+      vsim -version </dev/null >/dev/null 2>&1; return $? ;;
+    sg_shell|spyglass)
+      sg_shell -help </dev/null >/dev/null 2>&1; return $? ;;
+    *)
+      # Open-source tools: no license needed, just availability
+      check_tool_available "$tool"; return $? ;;
+  esac
+}
+
+# Determine synthesis tool tier
+# Returns: "commercial" | "oss" | "none" (printed to stdout)
+get_synthesis_tier() {
+  if check_tool_available dc_shell || check_tool_available genus; then
+    echo "commercial"
+  elif check_tool_available yosys; then
+    echo "oss"
+  else
+    echo "none"
+  fi
+}
+
+# Determine formal verification tool tier
+# Returns: "commercial" | "oss" | "none" (printed to stdout)
+get_formal_tier() {
+  if check_tool_available vcformal || check_tool_available jg; then
+    echo "commercial"
+  elif check_tool_available sby; then
+    echo "oss"
+  else
+    echo "none"
+  fi
+}
+
+# rat-version: 0.8.16

@@ -57,25 +57,27 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    - Validates Tcl syntax: `tclsh syn/constraints/design.sdc`
    - **SDC must exist before synthesis estimation proceeds**
 
-3. **sv2v conversion** (mandatory before Yosys):
-   Yosys has limited SystemVerilog support. Convert all RTL .sv files to Verilog first.
-   **Always include `rtl/common/`** (SRAM wrappers, shared utilities):
+3. **Synthesis execution** (via replayable wrapper):
+   `run_syn.sh` handles tool selection, sv2v conversion (Yosys path), and output normalization
+   internally. Do NOT run sv2v manually — the script manages it as a Layer 2 concern.
    ```bash
-   # Per-module (include common wrappers):
-   sv2v rtl/common/*.sv rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
-   # For top-level (all modules):
-   sv2v rtl/common/*.sv rtl/*/*.sv -o rtl/top/design_v2v.v
+   # Preferred: replayable wrapper (auto-includes rtl/common/, handles sv2v internally)
+   syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --liberty NangateOpenCellLibrary_typical.lib
+
+   # With commercial tool (no sv2v needed):
+   syn/scripts/run_syn.sh --tool dc_shell --top {module} -f rtl/filelist_{module}.f
+
+   # Optional: skip if tool unavailable (for non-blocking estimation)
+   syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --skip-if-unavailable
    ```
-   All subsequent Yosys commands use `read_verilog` (NOT `read_verilog -sv`) on the converted `.v` files.
 
 4. **ASIC synthesis estimation** (NanGate45 liberty — TSMC 28nm proxy):
    Use the replayable wrapper or `templates/yosys-synth-script.ys` for script template:
    ```bash
-   # Preferred: replayable wrapper (auto-includes rtl/common/, handles sv2v)
    syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --liberty NangateOpenCellLibrary_typical.lib
-
-   # Manual (for debugging):
-   sv2v rtl/common/*.sv rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
+   ```
+   For manual debugging:
+   ```bash
    yosys -p "read_verilog rtl/{module}/{module}_v2v.v; \
      hierarchy -check -top {module}; proc; opt; fsm; opt; \
      memory; opt; techmap; opt; \
@@ -140,10 +142,10 @@ Task(subagent_type="rtl-agent-team:constraint-writer",
      prompt="Generate comprehensive SDC for design top module. Read requirements.json for clock frequencies, docs/phase-3-uarch/*.md for multicycle paths, RTL top-level for port list. Use templates/design-constraints.sdc as scaffold. Write syn/constraints/design.sdc with: create_clock for all clocks using {domain}_clk naming, set_input_delay/set_output_delay for all i_*/o_* ports, set_false_path for async resets with justification, set_multicycle_path (both -setup and -hold) from uarch pipeline specs, design rules (set_max_fanout, set_max_transition). Validate with tclsh. See references/sdc-best-practices.md for rules.")
 
 # ============================================================
-# Step 3-4: sv2v + ASIC Synthesis Estimation (NanGate45 / TSMC 28nm proxy)
+# Step 3-4: ASIC Synthesis Estimation via wrapper (NanGate45 / TSMC 28nm proxy)
 # ============================================================
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Convert RTL to Verilog then run ASIC synthesis estimation with NanGate45 liberty (TSMC 28nm proxy). Commands: sv2v rtl/*/*.sv -o rtl/top/cabac_top_v2v.v && yosys -p 'read_verilog rtl/top/cabac_top_v2v.v; synth -top cabac_top; dfflibmap -liberty NangateOpenCellLibrary_typical.lib; abc -liberty NangateOpenCellLibrary_typical.lib; stat -liberty NangateOpenCellLibrary_typical.lib' | tee syn/reports/cabac_top_synth.txt. Check output for inferred latches.")
+     prompt="Run ASIC synthesis estimation using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable --outdir syn/reports. Script handles sv2v conversion internally. Check output for inferred latches. If SKIPPED, record status.")
 
 # ============================================================
 # Step 6-9: Parse results → gate count (NAND2-FO2 equivalent)

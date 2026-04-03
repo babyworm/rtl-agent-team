@@ -30,6 +30,7 @@ SCRIPT_PATH=""
 FILES=()
 VERBOSE=0
 FLATTEN=0
+SKIP_IF_UNAVAILABLE=0
 
 # ─── Usage ──────────────────────────────────────────────────────────────────
 usage() {
@@ -44,6 +45,7 @@ Options:
   --liberty <file>  Liberty (.lib) file for technology mapping
   --script <file>   Tool script/Tcl file (dc_shell/genus/vivado)
   --flatten         Flatten design before synthesis
+  --skip-if-unavailable  Exit cleanly (exit 0) with WARNING if tool not available/licensed
   -v, --verbose     Verbose output
   -h, --help        Show this help
 USAGE
@@ -60,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     --liberty) LIBERTY="$2"; shift 2 ;;
     --script)  SCRIPT_PATH="$2"; shift 2 ;;
     --flatten) FLATTEN=1; shift ;;
+    --skip-if-unavailable) SKIP_IF_UNAVAILABLE=1; shift ;;
     -v|--verbose) VERBOSE=1; shift ;;
     -h|--help) usage ;;
     -*)        echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
@@ -74,6 +77,41 @@ fi
 if [[ -z "$TOP" ]]; then
   echo "ERROR: --top <module> is required" >&2
   exit 1
+fi
+
+# ─── Tool availability & license pre-check ─────────────────────────────────
+_tool_bin=""
+case "$TOOL" in
+  yosys)    _tool_bin="yosys" ;;
+  dc_shell) _tool_bin="dc_shell" ;;
+  genus)    _tool_bin="genus" ;;
+  *)        _tool_bin="$TOOL" ;;
+esac
+
+if ! command -v "$_tool_bin" >/dev/null 2>&1; then
+  if [[ "$SKIP_IF_UNAVAILABLE" -eq 1 ]]; then
+    echo "WARNING: Synthesis tool '$TOOL' not available — skipping synthesis." >&2
+    echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"tool_not_available"}' > "${OUTDIR:-syn/reports}/syn_result.json" 2>/dev/null || true
+    exit 0
+  fi
+  echo "ERROR: Synthesis tool '$_tool_bin' not found in PATH." >&2
+  exit 127
+fi
+
+# License check for commercial tools
+if type check_tool_licensed >/dev/null 2>&1; then
+  case "$TOOL" in
+    dc_shell|genus)
+      if ! check_tool_licensed "$TOOL"; then
+        if [[ "$SKIP_IF_UNAVAILABLE" -eq 1 ]]; then
+          echo "WARNING: '$TOOL' license not available — skipping synthesis." >&2
+          echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"license_unavailable"}' > "${OUTDIR:-syn/reports}/syn_result.json" 2>/dev/null || true
+          exit 0
+        fi
+        echo "ERROR: '$TOOL' license check failed." >&2
+        exit 1
+      fi ;;
+  esac
 fi
 
 mkdir -p "$OUTDIR"

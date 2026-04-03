@@ -300,11 +300,11 @@ Output to docs/phase-4-rtl/stream-b-tb-skeletons.md.",
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Stream B synthesis smoke test: for each module in rtl/*/,
-run sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v &&
-yosys -p 'read_verilog rtl/{module}/{module}_v2v.v; synth -top {module}; stat' 2>&1.
+run syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --skip-if-unavailable --outdir syn/reports.
 Check for: (1) inferred latches (CRITICAL), (2) unmappable constructs (CRITICAL),
 (3) gross cell count anomalies. Do NOT run full PPA with liberty file -- this is a
-quick smoke test only. Save summary to docs/phase-4-rtl/stream-b-synth-estimate.md
+quick smoke test only. If synthesis was SKIPPED, note in report.
+Save summary to docs/phase-4-rtl/stream-b-synth-estimate.md
 with per-module cell count and any CRITICAL findings.",
      run_in_background=true)
 ```
