@@ -187,8 +187,56 @@ case "$FILE_PATH" in
     printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[TB Verify Gate] Testbench %s modified — previous verification results invalidated. Re-run functional verification to confirm RTL correctness with updated tests."}}\n' "$SAFE_TB"
     exit 0
     ;;
+  */docs/phase-1-research/*|*/docs/phase-2-architecture/*|*/docs/phase-3-uarch/*)
+    # Spec Change Cascade: upstream phase doc modified → check downstream staleness
+    _CASCADE_WARN=""
+    _CASCADE_PHASE=""
+    _CASCADE_DOWNSTREAM=""
+    case "$FILE_PATH" in
+      */docs/phase-1-research/*) _CASCADE_PHASE=1; _CASCADE_DOWNSTREAM="P2, P3, P4, P5" ;;
+      */docs/phase-2-architecture/*) _CASCADE_PHASE=2; _CASCADE_DOWNSTREAM="P3, P4, P5" ;;
+      */docs/phase-3-uarch/*) _CASCADE_PHASE=3; _CASCADE_DOWNSTREAM="P4, P5" ;;
+    esac
+    if [ -n "$_CASCADE_PHASE" ]; then
+      _HAS_DOWNSTREAM=false
+      case "$_CASCADE_PHASE" in
+        1|2)
+          [ -d "$CWD/docs/phase-3-uarch" ] && [ -n "$(ls "$CWD/docs/phase-3-uarch/" 2>/dev/null)" ] && _HAS_DOWNSTREAM=true
+          ;;
+      esac
+      if [ "$_HAS_DOWNSTREAM" = "false" ]; then
+        [ -d "$CWD/rtl" ] && [ -n "$(ls "$CWD/rtl/" 2>/dev/null)" ] && _HAS_DOWNSTREAM=true
+      fi
+      if [ "$_HAS_DOWNSTREAM" = "true" ]; then
+        _setup_tracking
+        _CASCADE_SEV="WARNING"
+        case "$FILE_PATH" in *.json) _CASCADE_SEV="CRITICAL" ;; esac
+        mkdir -p "$STATE_DIR"
+        touch "$STATE_DIR/spec-cascade-stale-p${_CASCADE_PHASE}"
+        _CASCADE_WARN="[SPEC CASCADE ${_CASCADE_SEV}] Phase ${_CASCADE_PHASE} document modified. Downstream artifacts (${_CASCADE_DOWNSTREAM}) may be inconsistent. Run /rtl-agent-team:cross-phase-contract-validator to verify."
+      fi
+    fi
+    # Audit: log artifact_write
+    _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
+    if [ -f "$_AUDIT_LIB" ]; then
+      . "$_AUDIT_LIB"
+      _ART_SID=$(audit_session_id "$CWD")
+      if [ -n "$_ART_SID" ] && [ -d "$RAT_DIR/audit/$_ART_SID" ]; then
+        _ART_SAFE=$(jsonu_escape "$FILE_PATH")
+        audit_trace_append "$CWD" \
+          "{\"event\":\"artifact_write\",\"agent\":\"system\",\"detail\":\"${_ART_SAFE}\",\"status\":\"success\"}" \
+          >/dev/null
+      fi
+    fi
+    if [ -n "$_CASCADE_WARN" ]; then
+      _SAFE_WARN=$(printf '%s' "$_CASCADE_WARN" | sed 's/"/\\"/g')
+      printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$_SAFE_WARN"
+      exit 0
+    fi
+    emit_post_continue
+    ;;
   */docs/*|*/reviews/*)
-    # Audit: log artifact_write for design documents
+    # Non-phase docs/reviews: audit only
     _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
     if [ -f "$_AUDIT_LIB" ]; then
       . "$_AUDIT_LIB"

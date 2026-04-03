@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 94 specialized agents, 94 skills, 14 hooks,
+When installed as a plugin, it provides 94 specialized agents, 94 skills, 15 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -155,6 +155,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
 │   ├── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
+│   ├── rtl-coverage-exclusion-gate.sh  #   Stop: coverage exclusion approval enforcement
 │   ├── rtl-audit-init.sh                #   PostToolUse:TaskCreate: audit session initialization
 │   ├── rtl-audit-subagent.sh            #   PostToolUse:Task: per-subagent audit capture
 │   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:TaskCreate: audit spawn completion
@@ -272,6 +273,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
+| `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval (non-standard bins require user confirmation) |
 | `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns |
 | `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |
 | `rtl-audit-init.sh` | SessionStart | Initialize audit session directory and trace log |

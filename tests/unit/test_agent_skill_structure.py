@@ -1086,6 +1086,7 @@ class TestHooksJsonMatrix:
             "rtl-verify-stop-gate.sh",
             "rtl-p6-cascade-gate.sh",
             "rtl-skill-completion-gate.sh",
+            "rtl-coverage-exclusion-gate.sh",
             "stop-gate.sh",
         ]
         assert commands == expected_order, (

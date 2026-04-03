@@ -125,6 +125,7 @@ class TestHookRuntimeContract:
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-verify-stop-gate.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-p6-cascade-gate.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-completion-gate.sh"',
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-coverage-exclusion-gate.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh"',
         ]
 
