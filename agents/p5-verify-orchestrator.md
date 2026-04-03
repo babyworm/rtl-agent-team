@@ -118,6 +118,13 @@ Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
      run_in_background=true)
 ```
 
+**V2b: Formal Quality Review** (after V2 results)
+```
+Task(subagent_type="rtl-agent-team:formal-reviewer",
+     prompt="Review SVA assertions for {module}. Check: vacuity, assume/assert balance, cover properties, proof strategy completeness. Write reviews/phase-5-verify/{module}-formal-review.md.",
+     run_in_background=true)
+```
+
 **V3: CDC/RDC Analysis** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-cdc-orchestrator",
@@ -144,6 +151,13 @@ Task(subagent_type="rtl-agent-team:p5s-protocol-orchestrator",
      run_in_background=true)
 ```
 
+**V4b: Protocol Design Review** (after V4 results)
+```
+Task(subagent_type="rtl-agent-team:protocol-reviewer",
+     prompt="Review bus protocol architecture for {module}. Assess AXI/AHB/APB interface design choices, burst strategies, error handling, QoS. Write reviews/phase-5-verify/{module}-protocol-review.md.",
+     run_in_background=true)
+```
+
 **V8: Synthesizability + PPA Estimation** (per module, ASIC 28nm, SDC-first)
 ```
 # Step 1: Generate per-module SDC (MANDATORY before synthesis, per policy)
@@ -159,6 +173,20 @@ Task(subagent_type="rtl-agent-team:eda-runner",
      run_in_background=true)
 ```
 
+**V8b: Synthesis Results Review** (after V8 results)
+```
+Task(subagent_type="rtl-agent-team:synthesis-reviewer",
+     prompt="Review synthesis results for {module}. Assess area/timing/resource utilization, critical paths, optimization opportunities. Write reviews/phase-5-verify/{module}-synthesis-review.md.",
+     run_in_background=true)
+```
+
+**V8c: DFT Readiness Assessment** (after V8, parallel with V8b)
+```
+Task(subagent_type="rtl-agent-team:dft-designer",
+     prompt="Assess DFT readiness for {module}. Review scan chain compatibility, BIST opportunities, JTAG integration points. Write reviews/phase-5-verify/{module}-dft-assessment.md.",
+     run_in_background=true)
+```
+
 ### Group B (after V1 pass): V5
 
 **V5: Functional Regression** (per module, via sub-orchestrator)
@@ -169,6 +197,16 @@ Task(subagent_type="rtl-agent-team:p5s-func-verify-orchestrator",
 Load Tier 2 baseline from sim/{module}/{module}_unit_results.json for each module.
 Pass baseline coverage data to CDTG for incremental gap closure.
 If Tier 2 results not found for a module, proceed without baseline (graceful degradation).",
+     run_in_background=true)
+```
+
+**V5b: Testbench Quality Review** (after V5 results)
+```
+Task(subagent_type="rtl-agent-team:cocotb-reviewer",
+     prompt="Review cocotb testbench quality for {module}. Check: stimulus generation, assertion patterns, async/await correctness, BFM integration. Write reviews/phase-5-verify/{module}-cocotb-review.md.",
+     run_in_background=true)
+Task(subagent_type="rtl-agent-team:regression-analyzer",
+     prompt="Analyze regression results for {module}. Track multi-seed pass/fail trends, detect flaky tests, analyze coverage convergence, identify seed-bug correlations. Write reviews/phase-5-verify/{module}-regression-analysis.md.",
      run_in_background=true)
 ```
 
@@ -194,6 +232,10 @@ Task(subagent_type="rtl-agent-team:p5s-perf-orchestrator",
 ```
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="Intensive code review of rtl/{module}/*.sv. Check for quality regressions from verification debug. Report findings by severity (CRITICAL/HIGH/MEDIUM/LOW). READ-ONLY.")
+
+Task(subagent_type="rtl-agent-team:security-reviewer",
+     prompt="Security review of rtl/{module}/*.sv. Check: side-channel vulnerabilities, fault injection resilience, secure reset/boot, secret handling. Write reviews/phase-5-verify/{module}-security-review.md. READ-ONLY.",
+     run_in_background=true)
 
 # If findings exist:
 Skill("rtl-agent-team:rtl-p4s-refactor",
