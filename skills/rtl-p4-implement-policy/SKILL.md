@@ -131,6 +131,25 @@ Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use sta
 
 **Wave 1 responsibility**: rtl-coder creates `rtl/common/sram_*.sv` wrappers if not already present, then instantiates them in modules per μArch spec.
 
+## Combinational Chain Depth Heuristic
+
+Sequential dependency loops in always_comb (e.g., error diffusion, SAD accumulation,
+carry chains) create deep combinational paths that risk timing closure.
+
+- **Threshold**: > 4 sequential-dependency iterations in a single always_comb block is a timing risk
+- **If uArch budgets extra latency**: split into sub-stages with pipeline registers at N/2
+- **If uArch requires single-cycle**: do NOT split — escalate to rtl-architect/timing-advisor for review
+- **Exceptions**: FPGA carry chains, balanced adder trees, and low-frequency clock domains
+  may tolerate deeper chains — document the justification
+
+**Pattern**: `for (s = 0; s < N; s++)` where iteration s depends on iteration s-1
+  → split at N/2 with registered intermediate results (when latency budget allows)
+
+Examples where split was beneficial (ASIC):
+- Error diffusion: 4-sample chain × 2 sub-blocks → split into 2+2
+- SAD accumulation: 8 abs-diff + sum → register after 4
+- Carry chain: 16-bit ripple → register at bit 8 (ASIC only — FPGA carry chains are an exception)
+
 ## Code Review Focus Areas (Wave 4)
 
 Per-module review by rtl-critic:

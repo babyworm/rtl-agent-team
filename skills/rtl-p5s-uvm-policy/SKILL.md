@@ -35,15 +35,48 @@ testbench. Covergroups must be mapped to requirements (REQ-U-*).
 
 ## Coverage-Driven Verification (CDV) Feedback Loop
 
-When merged coverage falls below targets after regression:
-1. `coverage-analyst` identifies uncovered bins, states, branches
-2. Produces CDTG (Coverage-Driven Test Generation) feedback table:
+When merged coverage falls below targets after regression, run a structured 3-round loop:
+
+```
+Round N: coverage-analyst → CDTG feedback table (gap analysis)
+         test-plan-writer  → systematic test plan (ECP/BVA for config-dependent gaps)
+         testbench-dev    → directed UVM sequences per gap row + test plan
+         eda-runner       → regression with new tests → re-merge coverage
+Round N+1: coverage-analyst re-analyzes → new guidance for remaining gaps
+```
+
+1. `coverage-analyst` identifies uncovered bins, states, branches. Produces CDTG feedback table:
    ```
    | Gap ID | Uncovered Bin | REQ | Constraint | Sequence | Expected |
    ```
-3. `testbench-dev` writes one directed UVM sequence per gap row
+2. `test-plan-writer` applies ECP/BVA methodology for config-dependent gaps (parameter combinations)
+3. `testbench-dev` writes directed UVM sequences per gap row using the systematic test plan
 4. Re-run regression with new tests → re-merge → re-analyze
-5. Maximum 3 iterations before escalation to user
+5. Maximum 3 iterations. Convergence detection: 2 consecutive rounds with < 0.5% improvement
+6. On convergence: apply Coverage Exclusion Protocol per `rtl-p5s-coverage-policy`
+   (classify remaining bins as STIMULUS_GAP/STRUCTURAL_DEAD/INFRA_CODE, generate exclusion artifacts)
+7. If post-exclusion targets still not met after 3 rounds → escalate to user
+
+## UVM Stimulus-to-DUT Connectivity Verification
+
+Before running regression, verify stimulus actually reaches the DUT:
+
+1. **Randomization check**: All `rand` fields in test class must be randomized
+   - Required: `this.randomize()` called in `build_phase` or `run_phase`
+   - Anti-pattern: `rand logic` field declared but never `randomize()`-d
+2. **DUT connectivity check**: Every test knob must have a path to DUT port
+   - Required: config variable → config_db / virtual_if / backdoor → DUT signal
+   - Anti-pattern: `rand cfg_xxx` in test class but DUT port hardcoded in TB top
+3. **Effectiveness gate** (after first iteration): verify coverage CHANGED across seeds
+   - If coverage delta < 0.1% across all seeds → stimulus is NOT reaching DUT
+   - Root cause: missing randomization or disconnected config path
+   - Action: HALT regression, debug stimulus connectivity before proceeding
+
+### Enforcement in Orchestrator
+
+p5s-uvm-orchestrator checks coverage delta after first regression iteration (Step 4).
+If delta < 0.1% across seeds → invoke uvm-reviewer to diagnose stimulus connectivity
+before running additional iterations.
 
 ## Regression Runner
 
@@ -86,27 +119,35 @@ Simulator-specific coverage flags — **both compile and run must enable coverag
 # VCS — compile + run
 vcs -full64 -sverilog -ntb_opts uvm-1.2 \
     -cm line+cond+fsm+tgl+branch \
-    -timescale=1ns/1ps rtl/*/*.sv sim/uvm/*.sv -o simv
+    -cm_hier sim/uvm/coverage/hier.cfg \
+    -timescale=1ns/1ps -f rtl/filelist_top.f \
+    sim/uvm/agents/*/*.sv sim/uvm/env/*.sv sim/uvm/seq/*.sv \
+    sim/uvm/tests/*.sv sim/uvm/tb/*.sv -o simv
 ./simv +UVM_TESTNAME={test} +ntb_random_seed={seed} \
-    -cm line+cond+fsm+tgl+branch -cm_dir coverage/seed_{seed}.vdb
+    -cm line+cond+fsm+tgl+branch -cm_dir sim/uvm/coverage/seed_{seed}.vdb
 
 # VCS — merge (text + XML for coverage-analyst parsing)
-urg -dir coverage/seed_*.vdb -report coverage/merged -format both
+urg -dir sim/uvm/coverage/seed_*.vdb -report sim/uvm/coverage/merged \
+    -elfile sim/uvm/coverage/exclusion.el -format both
 
 # Questa — compile (MUST include +cover) + run
-vlog -sv +cover=bcestf +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv
+vlog -sv +cover=bcestf +incdir+sim/uvm \
+    -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
+    sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv
 vsim -c -coverage tb_top +UVM_TESTNAME={test} -sv_seed {seed} \
-    -do "coverage save -onexit coverage/seed_{seed}.ucdb; run -all; quit -f"
+    -do "coverage save -onexit sim/uvm/coverage/seed_{seed}.ucdb; run -all; quit -f"
 
 # Questa — merge
-vcover merge coverage/merged.ucdb coverage/seed_*.ucdb
-vcover report -details coverage/merged.ucdb
+vcover merge sim/uvm/coverage/merged.ucdb sim/uvm/coverage/seed_*.ucdb
+vcover report -details sim/uvm/coverage/merged.ucdb
 
 # Xcelium — compile + run (separate phases)
 xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
-    rtl/*/*.sv sim/uvm/*.sv -xmlibdirpath build/xcelium
+    -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
+    sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
+    -xmlibdirpath build/xcelium
 xrun -R +UVM_TESTNAME={test} -seed {seed} \
-    -coverage all -covworkdir coverage/seed_{seed}/cov_work -covscope tb_top \
+    -coverage all -covworkdir sim/uvm/coverage/seed_{seed}/cov_work -covscope tb_top \
     -xmlibdirpath build/xcelium
 
 # Xcelium — merge (via imc TCL script)

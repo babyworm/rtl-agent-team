@@ -94,6 +94,11 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
      e2. Instances: `u_` prefix? Generate blocks: `gen_` prefix?
      e3. Types: `typedef enum` for FSM states? `typedef struct packed` for signal groups? No `reg`/`wire`?
      f. Parameters: all widths parameterized? Magic numbers present?
+     f2. Combinational chain depth: any `for` loop in always_comb where iteration depends on
+         previous iteration? If > 4 sequential-dependency iterations, flag as MAJOR timing risk.
+         Recommend pipeline register split unless uArch requires single-cycle or technology
+         provides dedicated resources (e.g., FPGA carry chains, balanced adder trees,
+         low-frequency clock domains — must have documented justification per rtl-p4-implement-policy)
      g. Module size: >300 lines suggests splitting; >50 states in FSM suggests decomposition
      h. Sensitivity lists: correct for `always_comb` (automatic)? No manual sensitivity lists?
      i. Blocking/non-blocking discipline: mixed usage in same block?

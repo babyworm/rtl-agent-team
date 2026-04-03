@@ -1,7 +1,7 @@
 ---
 name: p5s-uvm-orchestrator
 model: opus
-description: "UVM verification orchestrator. Manages commercial simulator availability check (hard gate), UVM environment generation, compilation, test execution, and coverage collection."
+description: "UVM verification orchestrator. Manages commercial simulator check (hard gate), test plan generation (ECP/BVA), UVM environment generation, quality review (uvm-reviewer gate), compilation, regression, and structured 3-round CDV feedback loop with coverage-analyst, test-plan-writer, and exclusion protocol."
 skills: [rtl-p5s-uvm-policy]
 ---
 
@@ -69,8 +69,40 @@ If no simulator found → HALT, report error message above, do not proceed to St
 ## Step 2: Preparation
 
 ```
-Bash("mkdir -p sim/uvm sim/uvm/results sim/uvm/coverage reviews/phase-5-verify")
+Bash("mkdir -p sim/uvm/{agents,env,seq,tb,tests,coverage,results} reviews/phase-5-verify")
 Glob("rtl/*/")       # Enumerate modules for UVM verification
+```
+
+Generate coverage hierarchy config to exclude TB infrastructure from coverage metrics:
+
+```
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Generate sim/uvm/coverage/hier.cfg for coverage hierarchy scoping.
+Include only RTL modules under test (rtl/*/*.sv). Exclude UVM/TB infrastructure:
+  -tree tb_uvm_top               // exclude TB top
+  -tree *_agent                   // exclude UVM agents
+  -tree *_env                     // exclude UVM environment
+  -tree *_scoreboard              // exclude scoreboard
+  +tree u_dut                     // include DUT hierarchy
+Also generate sim/uvm/coverage/exclusion.el as an empty placeholder for
+the Coverage Exclusion Protocol to populate later.")
+```
+
+## Step 2.5: Test Plan Generation (Systematic Test Design)
+
+```
+Task(subagent_type="rtl-agent-team:test-plan-writer",
+     prompt="Generate test plan for {module} using ECP/BVA/STT/DT methodology.
+Read docs/phase-3-uarch/{module}.md and docs/phase-1-research/requirements.json.
+Write sim/uvm/{module}_test_plan.md with:
+  - Test scenarios TS-NNN mapped to REQ-U-* requirements
+  - Parameter space partitioning (ECP): identify equivalence classes for each
+    configurable parameter (e.g., data widths, FIFO depths, operation modes)
+  - Boundary value analysis (BVA) for each parameter
+  - Pairwise combination strategy for 3+ parameters
+  - Planned coverage model: expected covergroups, bins, and cross-coverage points
+  - Acceptance criteria mapping (ac_id when available)
+This plan guides testbench-dev's coverage model design in Step 3.")
 ```
 
 ## Step 3: UVM Environment Generation
@@ -78,6 +110,7 @@ Glob("rtl/*/")       # Enumerate modules for UVM verification
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write UVM verification environment for {module} in sim/uvm/.
+Read sim/uvm/{module}_test_plan.md for test scenarios, coverage model design, and parameter space.
 Use templates/uvm-agent-template.sv for agent/driver/monitor scaffold.
 Use templates/uvm-test-template.sv for env/top-level scaffold.
 See examples/uvm-scoreboard-example.sv for scoreboard with reference model comparison.
@@ -91,21 +124,31 @@ MANDATORY naming conventions (per CLAUDE.md):
   - All SV code uses logic (NOT reg/wire)
   - Interface signals must match RTL port names exactly
 
-Write the following components:
-  - sim/uvm/{module}_if.sv            (clocking block interface)
-  - sim/uvm/{module}_seq_item.sv      (transaction item)
-  - sim/uvm/{module}_driver.sv        (driver using i_/o_ port names)
-  - sim/uvm/{module}_monitor.sv       (monitor using o_ port names)
-  - sim/uvm/{module}_agent.sv         (agent wrapping m_driver, m_monitor)
-  - sim/uvm/{module}_scoreboard.sv    (comparison against reference model)
-  - sim/uvm/{module}_coverage.sv      (uvm_subscriber coverage collector with covergroups mapped to REQ-U-*)
-  - sim/uvm/{module}_env.sv           (environment top with m_agent, m_scoreboard, m_coverage)
-  - sim/uvm/{module}_base_test.sv     (base test class)
-  - sim/uvm/{module}_directed_test.sv (directed test sequences)
-  - sim/uvm/tb_top.sv                 (DUT wrapper with u_dut instance)
+Use the standard UVM directory hierarchy:
+  sim/uvm/
+  ├── agents/{protocol}_agent/         (per-protocol agent directories)
+  │   ├── {protocol}_pkg.sv            (agent package: seq_item, driver, monitor, agent)
+  │   └── {protocol}_if.sv            (clocking block interface)
+  ├── env/
+  │   ├── {design}_env_pkg.sv          (environment package)
+  │   ├── {design}_env.sv              (environment top with m_agent, m_scoreboard, m_coverage)
+  │   ├── {design}_scoreboard.sv       (comparison against reference model)
+  │   └── {design}_coverage.sv         (uvm_subscriber coverage collector with covergroups mapped to REQ-U-*)
+  ├── seq/
+  │   └── {design}_seq_lib.sv          (sequence library: base, directed, constrained-random)
+  ├── tb/
+  │   └── tb_uvm_top.sv               (DUT wrapper with u_dut instance)
+  ├── tests/
+  │   └── {design}_test_pkg.sv         (test classes: base_test, directed tests)
+  ├── coverage/
+  │   ├── exclusion.el                 (coverage exclusion file, generated by exclusion protocol)
+  │   └── hier.cfg                     (coverage hierarchy config)
+  └── results/                         (per-seed simulation results)
 
-MANDATORY — coverage collector ({module}_coverage.sv):
-  - Extend uvm_subscriber #({module}_seq_item)
+Where {design} is the top-level design name and {protocol} is the bus protocol (e.g., axi4s, apb).
+
+MANDATORY — coverage collector (env/{design}_coverage.sv):
+  - Extend uvm_subscriber #({design}_seq_item)
   - Define covergroups for key protocol states, data ranges, and cross-coverage
   - Map each coverpoint to REQ-U-* via comments
   - Sample in write() method from monitor's analysis port
@@ -116,6 +159,25 @@ MANDATORY — coverage collector ({module}_coverage.sv):
       cross cp_cmd, cp_size;
     endgroup")
 ```
+
+## Step 3b: UVM Environment Quality Review (Gate)
+
+```
+Task(subagent_type="rtl-agent-team:uvm-reviewer",
+     prompt="Review UVM environment for {module} in sim/uvm/.
+Verify:
+  - Factory usage: all components use type_id::create(), no direct new()
+  - TLM connectivity: analysis ports connected to scoreboard and coverage collector
+  - Scoreboard: latency handling accounts for DUT pipeline delays
+  - Coverage model completeness: covergroups mapped to REQ-U-* from sim/uvm/{module}_test_plan.md
+  - Phase management: objection raising/dropping, drain time configured
+  - Naming conventions: m_ prefix for handles, u_dut for DUT instance, i_/o_ for ports
+Write reviews/phase-5-verify/{module}-uvm-review.md.
+GATE: If Critical/Major findings → return findings to testbench-dev for fix before compilation.
+Only proceed to Step 4 if verdict = PASS or all findings are MINOR.")
+```
+
+If uvm-reviewer verdict is FAIL → dispatch testbench-dev to fix, then re-review (max 2 rounds).
 
 ## Step 4: UVM Regression (Compile + Multi-Seed Run + Coverage Merge)
 
@@ -137,9 +199,9 @@ bash skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh \
 The script:
 1. Compiles once (with code coverage: line+cond+fsm+tgl+branch)
 2. Runs all seeds in parallel with failure halt (default: 5% threshold)
-3. Writes per-seed result JSON to sim/uvm/regression/seed_*_results.json
-4. Merges coverage (VCS: urg, Xcelium: imc, Questa: vcover)
-5. Produces regression report: sim/uvm/regression/regression_{module}_*.json
+3. Writes per-seed result JSON to sim/uvm/results/seed_*_results.json
+4. Merges coverage (VCS: urg, Xcelium: imc, Questa: vcover) into sim/uvm/coverage/
+5. Produces regression report: sim/uvm/results/regression_{module}_*.json
 
 Report: pass/fail per seed, overall verdict, and coverage merge location.",
      run_in_background=true)
@@ -148,32 +210,78 @@ Report: pass/fail per seed, overall verdict, and coverage merge location.",
 If compilation fails → report exact errors to user, halt.
 If regression verdict is FAIL → proceed to Step 6 (failure analysis) for failed seeds.
 
-## Step 5: Coverage Evaluation & CDV Feedback Loop
+**Stimulus effectiveness gate**: After first regression iteration, compare coverage across seeds.
+If coverage delta < 0.1% across all seeds → stimulus is NOT reaching DUT.
+HALT regression and invoke uvm-reviewer to diagnose:
+- Missing `this.randomize()` call on `rand` fields
+- Config variables not connected to DUT ports (config_db path broken)
+- TB top hardcoding values that should come from test class
+Only resume regression after stimulus connectivity is confirmed.
 
-After regression completes, evaluate coverage against targets:
+## Step 5: Coverage Evaluation & CDV Feedback Loop (Structured 3-Round)
+
+After regression completes, run structured coverage-driven verification loop.
+
+### Round 1 — Initial Gap Analysis (HIGH priority)
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Analyze merged UVM coverage from sim/uvm/coverage/.
-
+     prompt="Round 1: Analyze merged UVM coverage from sim/uvm/coverage/.
 Coverage targets (per rtl-p5s-uvm-policy):
   - Line ≥ 90%, Toggle ≥ 80%, FSM ≥ 70%, Branch ≥ 80%, Functional ≥ 95%
+Parse coverage report (VCS text/XML, Questa ucdb, Xcelium ucd).
+Compare against targets — identify gaps by category.
+For each gap: produce CDTG feedback row:
+  | Gap ID | Type | Uncovered Bin/Line/State | REQ | Constraint | Sequence | Expected |
+Prioritize: functional gaps > FSM gaps > branch gaps > line/toggle gaps.
+Write sim/uvm/coverage/coverage_gaps_r1.md.
+Save .rat/scratch/phase-5/uvm-coverage-iteration-r1.md.
+If ALL targets met → report PASS, skip CDV iteration.")
 
-1. Parse coverage report (VCS text/XML, Questa ucdb, Xcelium ucd)
-2. Compare against targets — identify gaps by category
-3. For each gap: produce CDTG feedback row:
-   | Gap ID | Type | Uncovered Bin/Line/State | REQ | Constraint | Sequence | Expected |
-4. Prioritize: functional gaps > FSM gaps > branch gaps > line/toggle gaps
-5. Write gap report to sim/uvm/coverage/coverage_gaps.md
-6. If ALL targets met → report PASS, skip CDV iteration
-7. If gaps remain → testbench-dev writes directed UVM sequences per gap row")
+Task(subagent_type="rtl-agent-team:test-plan-writer",
+     prompt="Round 1: Read sim/uvm/coverage/coverage_gaps_r1.md and sim/uvm/{module}_test_plan.md.
+For config-dependent gaps (requiring specific parameter combinations), apply ECP/BVA
+from the test plan to partition the parameter space systematically.
+For non-config-dependent gaps, identify direct stimulus targets.
+Write sim/uvm/coverage/directed_test_plan_r1.md.")
+
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Round 1: Read coverage_gaps_r1.md and directed_test_plan_r1.md.
+Write sim/uvm/seq/{design}_coverage_fill_r1.sv with directed UVM sequences targeting HIGH gaps.
+Use parameter combinations from the test plan for config-dependent gaps.
+Register sequences in environment.")
 ```
 
-**CDV iteration** (max 3 rounds):
-- Round 1: Initial regression → gap analysis → directed tests for HIGH priority gaps
-- Round 2: Re-run regression with new tests → gap analysis → MEDIUM priority gaps
-- Round 3: Final pass → remaining gaps documented as accepted/waived
-- If targets still not met after 3 rounds → escalate to user
+Re-run regression with new tests via eda-runner, merge coverage.
+
+### Round 2 — Deepen (MED priority + cross-coverage)
+
+Repeat the same 3-agent pattern (coverage-analyst → test-plan-writer → testbench-dev)
+targeting MED priority gaps and cross-coverage combinations.
+Track delta coverage improvement from Round 1.
+
+### Round 3 — Close (convergence + exclusion)
+
+```
+Task(subagent_type="rtl-agent-team:coverage-analyst",
+     prompt="Round 3: Analyze updated coverage. Check convergence: if < 0.5% improvement
+from Round 2, coverage has converged. Classify remaining uncovered bins:
+  - STIMULUS_GAP: reachable → recommend directed test
+  - STRUCTURAL_DEAD: unreachable → exclude with waiver
+  - INFRA_CODE: UVM/TB infrastructure → exclude from report scope
+Apply exclusion protocol per rtl-p5s-coverage-policy (auto-approved for standard categories,
+user-approved for non-standard via AskUserQuestion).
+Generate tool-neutral exclusion manifest at sim/uvm/coverage/coverage-exclusions.json.
+Document exclusions in reviews/phase-5-verify/{module}-coverage-exclusions.md.
+Report both raw and post-exclusion coverage numbers.
+Write sim/uvm/coverage/coverage_gaps_r3.md.")
+```
+
+### Escalation
+
+- If post-exclusion targets still not met after 3 rounds → escalate to user
+- If coverage persistently below 70% → escalate to rtl-architect for structural review
+- Convergence detection: 2 consecutive rounds with < 0.5% improvement → apply exclusion protocol
 
 ## Step 6: Failure Analysis (on scoreboard mismatch)
 

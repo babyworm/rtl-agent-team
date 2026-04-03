@@ -83,12 +83,25 @@ Save iteration note to .rat/scratch/phase-5/coverage-iteration-r1.md.
 Report: current coverage percentages (line/toggle/FSM), total gap count by priority.")
 ```
 
-Generate first directed tests for HIGH gaps:
+Design systematic test strategy for HIGH gaps:
+
+```
+Task(subagent_type="rtl-agent-team:test-plan-writer",
+     prompt="Read sim/{module}/coverage/coverage_gaps.md. For config-dependent gaps
+(gaps that require specific parameter combinations to reach), apply ECP/BVA methodology:
+partition parameter space into equivalence classes, identify boundary values, use pairwise
+combination for 3+ parameters. For non-config-dependent gaps, pass through as direct
+stimulus targets. Write sim/{module}/coverage/directed_test_plan.md with test strategy.")
+```
+
+Generate directed tests based on gap analysis and test plan:
 
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read sim/{module}/coverage/coverage_gaps.md. Write sim/{module}/coverage/test_coverage_fill.py.
-Target ALL HIGH priority gaps. Each test must exercise the specific uncovered condition.
+     prompt="Read sim/{module}/coverage/coverage_gaps.md and sim/{module}/coverage/directed_test_plan.md.
+Write sim/{module}/coverage/test_coverage_fill.py.
+Target ALL HIGH priority gaps using the systematic test plan (ECP/BVA parameter combinations
+for config-dependent gaps, direct stimulus for others).
 Test signals MUST reference RTL ports with correct i_/o_ prefixes.
 Clock driven as {domain}_clk, reset as {domain}_rst_n.
 Do not use random stimulus — write directed tests that deterministically reach each gap.")
@@ -122,10 +135,18 @@ Update sim/{module}/coverage/coverage_gaps.md with Round 2 findings.
 Save iteration note to .rat/scratch/phase-5/coverage-iteration-r2.md.
 Report: delta coverage improvement from Round 1, remaining gap count.")
 
-Task(subagent_type="rtl-agent-team:testbench-dev",
+Task(subagent_type="rtl-agent-team:test-plan-writer",
      prompt="Read sim/{module}/coverage/coverage_gaps.md (Round 2 update).
+Update sim/{module}/coverage/directed_test_plan.md with strategies for:
+  - Newly identified reachable gaps (parameter-dependent analysis via ECP/BVA if applicable)
+  - Cross-coverage combinations (cmd × size, state × error)
+  - MED priority gaps that are deterministically reachable")
+
+Task(subagent_type="rtl-agent-team:testbench-dev",
+     prompt="Read sim/{module}/coverage/coverage_gaps.md (Round 2 update) and
+sim/{module}/coverage/directed_test_plan.md.
 Extend sim/{module}/coverage/test_coverage_fill.py with tests for:
-  - Newly identified reachable gaps
+  - Newly identified reachable gaps (using test plan parameter combinations)
   - Cross-coverage combinations (cmd × size, state × error)
   - MED priority gaps that are deterministically reachable
 Do not add random tests. Each test must target a specific uncovered bin.")
@@ -174,16 +195,44 @@ If coverage targets are not met after Round 3 and open bins remain without waive
 - Each additional round produces `.rat/scratch/phase-5/coverage-iteration-r{N}.md`
 - If coverage remains below 70% after directed gap fill → escalate to rtl-architect
 
-## Step 6: Final Coverage Report
+## Step 6: Coverage Exclusion Protocol (on convergence)
+
+If 2 consecutive iterations show < 0.5% improvement → convergence detected.
+Apply exclusion protocol before final report:
+
+```
+Task(subagent_type="rtl-agent-team:coverage-analyst",
+     prompt="Coverage has converged. Classify each remaining uncovered bin as:
+  - STIMULUS_GAP: Reachable but not exercised → recommend directed test
+  - STRUCTURAL_DEAD: Unreachable code (parameter guard, unimplemented feature) → exclude with waiver
+  - INFRA_CODE: TB/UVM infrastructure not under test → exclude from report scope
+Auto-approved exclusion categories (coverage-analyst decides):
+  - UVM/TB infrastructure (uvm_pkg, tb_*, axi4s_if): always exclude
+  - Parameter guards (e.g., if BPC > 16): exclude (dead by design)
+  - Toggle on wide buses (upper bits): exclude if functionally verified
+User-approved exclusions (require AskUserQuestion before finalizing):
+  - Unimplemented features (e.g., 4:2:2 chroma paths): exclude only if explicitly out-of-scope or parameter-disabled; escalate if required by spec
+  - Ambiguous spec applicability: any bin where it is unclear whether the spec requires coverage
+Generate tool-neutral exclusion manifest at sim/{module}/coverage/coverage-exclusions.json listing each excluded bin.
+Generate per-tool exclusion exports as defined in rtl-p5s-coverage-policy (Verilator/lcov, VCS, Xcelium, Questa — whichever is in use).
+Document each exclusion in reviews/phase-5-verify/{module}-coverage-exclusions.md with:
+  bin name, module, reason, approver.
+Report both RAW and EXCLUDED (post-exclusion) coverage numbers.")
+```
+
+If STIMULUS_GAP bins remain, generate one more round of directed tests, re-run regression to
+refresh coverage data, and re-classify any newly covered bins before proceeding to the final report.
+
+## Step 7: Final Coverage Report
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
      prompt="Write reviews/phase-5-verify/{module}-coverage-report.md with:
-  - Final coverage percentages: line/toggle/FSM (post-waiver)
+  - Final coverage percentages: line/toggle/FSM — both RAW and POST-EXCLUSION
   - Total iterations completed
-  - Waived bins with justification
+  - Exclusion summary: number of excluded bins by category (STRUCTURAL_DEAD, INFRA_CODE)
   - Open bins without waiver (if any)
-  - Overall verdict: PASS if all targets met (line >= 90%, toggle >= 80%, FSM >= 70%), else FAIL
+  - Overall verdict: PASS if post-exclusion targets met (line >= 90%, toggle >= 80%, FSM >= 70%), else FAIL
   Format:
     # Phase 5 Review: Coverage Analysis
     - Date: (today)
@@ -191,9 +240,9 @@ Task(subagent_type="rtl-agent-team:coverage-analyst",
     - Iterations: {N} rounds
     - Verdict: PASS | FAIL
     ## Coverage Summary
-    | Metric | Target | Achieved | Status |
-    ## Waived Bins
-    | File:Line | Reason |
+    | Metric | Target | Raw Achieved | Post-Exclusion Achieved | Status |
+    ## Exclusions Applied
+    | Bin | Category | Reason |
     ## Open Gaps (if any)")
 ```
 

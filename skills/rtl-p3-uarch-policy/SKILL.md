@@ -89,6 +89,29 @@ Every storage element in the μArch spec MUST include a storage type decision wi
 - DP ports (dual-port, dual clock): `wclk`, `i_wen`, `i_waddr`, `i_wdata`, `rclk`, `i_ren`, `i_raddr`, `o_rdata`
 - Banking strategy: if capacity > single macro limit, specify bank count and address decode
 
+## Bus Width Parameterization Rule
+
+Every internal bus, FIFO, and result packing width MUST be derived from design parameters — 
+hardcoded width constants are prohibited in parameterized designs.
+
+- **FIFO width**: computed from design parameters (e.g., `BLOCK_PIXELS * NUM_COMPONENTS * (BPC+1) + META_BITS`)
+- **Result packing**: derived from algorithm parameters, not literal constants
+- **μArch document MUST include**: width derivation formula per FIFO/bus with parameter dependencies
+
+### Why This Matters
+When bus widths are hardcoded for a specific parameter set (e.g., BPC=12), switching parameters
+(e.g., BPC=8) leaves unused upper bits that:
+- Create structurally unreachable toggle coverage (wastes verification effort)
+- Consume unnecessary area and power
+- Hide the actual parameter dependency from downstream engineers
+
+### Enforcement
+- **uarch-designer** (Phase 3): FIFO/bus width definitions MUST include derivation formula
+- **rtl-coder** (Phase 4): `localparam WIDTH = <literal>` for datapath widths is flagged — 
+  must derive from upper parameters (e.g., `localparam L_FIFO_W = BLK_PIXELS * COMPONENTS * (BPC+1) + META`)
+- **rtl-critic** (Phase 4 review): check that every datapath width localparam references 
+  a design parameter, not a magic number
+
 ## BFM Validation Requirements (MANDATORY)
 
 Three sub-gates, applied in order (G4a → G4b → G4c):

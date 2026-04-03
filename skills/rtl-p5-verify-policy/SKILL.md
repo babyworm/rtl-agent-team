@@ -57,7 +57,7 @@ A module graduates when ALL of (PARTIAL_PASS accepted for V5 AC-level checks —
 - [x] V3: CDC — zero VIOLATION (CAUTION acceptable with justification)
 - [x] V4: protocol — PASS or n/a
 - [x] V5: functional — all scenarios × all seeds PASS
-- [x] V6: coverage — targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%)
+- [x] V6: coverage — post-exclusion targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%), raw coverage reported, exclusion record approved (standard categories: auto-approved by coverage-analyst; non-standard: user-approved)
 - [x] V7: performance — all metrics within 10% of BFM baseline
 - [x] V8: synthesizable — no latches, PPA estimate in NAND2-FO2 gate count
 - [x] V9: code review — no critical findings
@@ -134,14 +134,18 @@ Minimum 3 rounds: Draft → Strengthen → Harden.
 
 ## Coverage Targets
 
-| Metric | Target |
-|--------|--------|
-| Line coverage | ≥ 90% |
-| Toggle coverage | ≥ 80% |
-| FSM coverage | ≥ 70% |
+| Metric | Target | Evaluated On |
+|--------|--------|-------------|
+| Line coverage | ≥ 90% | Post-exclusion |
+| Toggle coverage | ≥ 80% | Post-exclusion |
+| FSM coverage | ≥ 70% | Post-exclusion |
 
 Iterative coverpoint refinement (minimum 3 rounds).
 Generate additional tests for HIGH priority gaps. Re-run regression for new tests.
+When convergence is detected (2 consecutive iterations with < 0.5% improvement),
+apply Coverage Exclusion Protocol per `rtl-p5s-coverage-policy`: classify unreachable bins,
+generate exclusion files, document in `reviews/phase-5-verify/{module}-coverage-exclusions.md`,
+and report both raw and post-exclusion numbers.
 
 ## Synthesis Estimation Policy (ASIC TSMC 28nm)
 
@@ -235,7 +239,9 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 - [ ] V3: CDC — zero VIOLATION, CAUTIONs justified
 - [ ] V4: protocol PASS or n/a
 - [ ] V5: functional — all scenarios × all seeds PASS
-- [ ] V6: coverage targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%)
+- [ ] V6: post-exclusion coverage targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%)
+- [ ] V6: raw coverage reported alongside post-exclusion numbers
+- [ ] V6: exclusion record approved (if exclusions applied)
 - [ ] V7: performance — within 10% of BFM baseline
 - [ ] V8: synthesizable — no latches, NAND2-FO2 gate count (NanGate45/28nm)
 - [ ] V9: code review — no critical findings, refactoring applied if needed
@@ -247,7 +253,8 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 - [ ] T3: system CDC PASS (zero VIOLATION)
 - [ ] T4: system protocol PASS
 - [ ] T5: integration test (Tier 4) PASS
-- [ ] T6: system coverage targets met
+- [ ] T6: system post-exclusion coverage targets met, raw coverage reported
+- [ ] T6: system exclusion record approved (if exclusions applied; non-standard require user approval)
 - [ ] T7: system performance within spec
 - [ ] T8: ASIC 28nm synthesis estimation saved (NanGate45, NAND2-FO2, SDC applied)
 - [ ] T9: top-level code review — no critical findings

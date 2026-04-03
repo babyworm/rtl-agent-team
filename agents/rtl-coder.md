@@ -66,6 +66,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     - Use `typedef struct packed` for grouping related signals (e.g., pipeline stage bundles).
     - Define shared types/constants in a package file (`module_name_pkg.sv`) and import them.
     - No `for` loops with non-constant bounds in synthesizable always blocks unless explicitly approved.
+    - Combinational chain depth heuristic: > 4 sequential-dependency iterations in a single always_comb block
+      is a timing risk (e.g., error diffusion, SAD accumulation, carry chains).
+      If the uArch spec budgets extra latency: split into sub-stages with pipeline registers at N/2.
+      If the uArch spec requires single-cycle: do NOT split autonomously — flag the risk and escalate
+      to rtl-architect/timing-advisor for review.
+      Exceptions (document justification): FPGA carry chains, balanced adder trees, low-frequency clock domains.
     - Parameterize widths and depths using parameters, not hardcoded constants.
     - Port list must use ANSI style (type and direction in the port declaration).
     - No forward references (IEEE 1800 §12.5): declare all signals, types, and localparams before any `assign`, `always_comb`, `always_ff`, or submodule instance that references them. Xcelium strictly enforces sequential declaration visibility — follow the mandatory module structure order.

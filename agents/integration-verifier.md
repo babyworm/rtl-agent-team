@@ -87,7 +87,16 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
        a. Verify all channel signals are connected (AW, W, B, AR, R for AXI).
        b. Verify master↔slave pairing is correct (no master-to-master connections).
        c. Verify ID width, data width, address width match between master and slave.
-    8. **Unconnected Port Analysis**:
+    8. **Cross-Module Metadata Propagation**:
+       a. For FIFO-decoupled pipelines: verify that metadata fields (e.g., QP, mode, tag)
+          written into a FIFO by producer are read and used by consumer.
+       b. Check for unit mismatches: producer writes bits but consumer expects bytes (or vice versa).
+       c. Verify that result FIFOs carry all fields needed by downstream modules
+          (compare producer's write-data struct with consumer's read-data struct).
+       d. For broadcast signals: verify the signal reaches all dependent modules,
+          not just the first one in the instantiation chain.
+       e. Report: "Module A writes {fields} to FIFO, Module B reads {fields} — missing: {gap}" as CRITICAL.
+    9. **Unconnected Port Analysis**:
        a. List all unconnected input ports — these read X (undefined).
        b. List all unconnected output ports — these are dead logic.
        c. Classify: intentional tie-off vs wiring error.

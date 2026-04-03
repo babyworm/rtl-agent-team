@@ -177,7 +177,7 @@ If Tier 2 results not found for a module, proceed without baseline (graceful deg
 **V6: Coverage Analysis** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-coverage-orchestrator",
-     prompt="Run coverage analysis pipeline for module {module}. 3-round iterative gap closure (Initial→Deepen→Close) with directed test generation. Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%. Write coverage report and waiver list.",
+     prompt="Run coverage analysis pipeline for module {module}. 3-round iterative gap closure (Initial→Deepen→Close) with directed test generation. Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70% (post-exclusion). Apply Coverage Exclusion Protocol on convergence. Write coverage report with raw and post-exclusion numbers plus exclusion record.",
      run_in_background=true)
 ```
 
@@ -278,7 +278,7 @@ Skill("rtl-agent-team:rtl-p5s-integration-test")
 **T6: System-Level Coverage**
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge all module-level coverage + integration test coverage. Analyze system-level coverage targets. Generate final coverage report. Write reviews/phase-5-verify/coverage-report.md.")
+     prompt="Merge all module-level coverage + integration test coverage. Step 1: Apply module-level exclusion records — glob reviews/phase-5-verify/*-coverage-exclusions.md but EXCLUDE system-coverage-exclusions.md (that is a system-level artifact, not module-level). Step 2: For integration-only uncovered bins (not attributable to any module), apply the same exclusion protocol: classify as STIMULUS_GAP/STRUCTURAL_DEAD/INFRA_CODE. Standard categories (UVM/TB, parameter guards, toggle) are auto-approved; non-standard exclusions (unimplemented features, ambiguous spec applicability) require user approval via AskUserQuestion. Generate system-level exclusion record at reviews/phase-5-verify/system-coverage-exclusions.md. Step 3: Analyze system-level post-exclusion coverage targets (line >= 90%, toggle >= 80%, FSM >= 70%). Report both raw and post-exclusion numbers. Generate final coverage report. Write reviews/phase-5-verify/coverage-report.md.")
 ```
 
 **T7: System-Level Performance**

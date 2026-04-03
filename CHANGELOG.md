@@ -7,6 +7,29 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.16] - 2026-04-03
+
+### Added
+- Coverage Exclusion Protocol: convergence detection, bin classification (STIMULUS_GAP/STRUCTURAL_DEAD/INFRA_CODE), tool-neutral exclusion manifest, module-namespaced documentation, auto/user approval workflow
+- Combinational Chain Depth Heuristic: >4 sequential-dependency iterations flagged as timing risk with escalation path and technology exceptions (FPGA carry chains, balanced adder trees, low-frequency domains)
+- Bus Width Parameterization Rule (P3): FIFO/bus widths must derive from design parameters, hardcoded constants prohibited
+- Toggle Coverage Interpretation: per-signal analysis distinguishing STIMULUS vs PARAMETERIZATION vs STRUCTURAL root causes
+- UVM Stimulus-to-DUT Connectivity Verification: randomization check, DUT connectivity check, effectiveness gate (coverage delta < 0.1% → halt and debug)
+- UVM orchestrator restructure: Step 2.5 (test-plan-writer ECP/BVA), Step 3b (uvm-reviewer quality gate), structured 3-round CDV loop with test-plan-writer integration and exclusion protocol
+- UVM directory hierarchy: hierarchical layout (agents/, env/, seq/, tb/, tests/, coverage/, results/) matching real project patterns
+- Coverage policy: benign vs critical gap assessment framework, per-metric convergence tracking, config-to-code-path mapping
+- test-plan-writer integration in coverage CDTG loop (both cocotb and UVM flows)
+- Cross-module metadata propagation check in integration-verifier (FIFO sideband verification, unit mismatch detection)
+- hier.cfg generation step in UVM orchestrator for TB infrastructure exclusion
+- Coverage targets evaluated on post-exclusion numbers across all policies (V6/T6 gates updated)
+- System-level coverage exclusion path in p5-verify-orchestrator T6
+
+### Fixed
+- UVM policy compile flags: paths updated from flat sim/uvm/*.sv to hierarchical subdirectories
+- UVM orchestrator results path: sim/uvm/regression/ → sim/uvm/results/ (matching real project)
+- 20 cross-file consistency issues resolved via Codex gpt-5.4 cross-review (11 rounds)
+- Coverage exclusion record path standardized to {module}-coverage-exclusions.md across all files
+
 ## [0.8.15] - 2026-03-31
 
 ### Added
