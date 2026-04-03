@@ -113,6 +113,27 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 - Memory access infeasible (bandwidth exceeds technology) → escalate, propose alternative
 - Architecture ↔ ref model fundamental mismatch → escalate, may require ref model rewrite
 
+## Architecture Feature Completeness Gate
+
+Phase 2 architecture review MUST verify that ALL spec features flow through to the design:
+
+1. **Spec-to-architecture mapping**: Every REQ-F-* from P1 must map to an architecture block
+   - Missing mapping → CRITICAL finding (spec feature not architected)
+
+2. **Ref model-to-architecture alignment**: When C reference model exists:
+   - Compare ref model function coverage against spec feature list
+   - "Enum declared but not called in any function" → COVERAGE_GAP
+   - Escalate gaps to user: "Spec feature X exists in enum but ref model doesn't implement it"
+
+3. **Omission justification**: Spec features omitted from architecture require:
+   - User-approved ADR from Phase 1 (with documented impact)
+   - ADR-less omissions → Phase 2 gate FAIL
+
+4. **Impact quantification** (domain-specific):
+   - Codec: BD-rate impact of omitted modes/tools
+   - Processor: missing instruction coverage
+   - Generic: functional coverage percentage vs spec
+
 ## Open Resolution Protocol
 
 Phase 2 receives `docs/phase-1-research/open-requirements.json` containing OPEN-1-* research topics.

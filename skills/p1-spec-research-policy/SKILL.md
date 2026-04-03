@@ -145,6 +145,33 @@ Save to `reviews/phase-1-research/research-review.md`:
 PASS | FAIL: [reason]
 ```
 
+## Spec Feature Completeness Audit
+
+Phase 1 spec analysis MUST enumerate ALL features defined in the specification and track
+their implementation status throughout the pipeline:
+
+1. **Feature enumeration**: Extract every algorithm, mode, format, or capability from the spec
+   - Example: intra prediction modes, encoding modes, color formats, block sizes
+   - Assign each feature a REQ-F-* ID in iron-requirements.json
+
+2. **Reference model coverage check** (if ref model exists at P1 or provided externally):
+   - Compare spec feature list against ref model implementation
+   - enum/define declarations vs actual function implementations
+   - "Enum declared but function not implemented" → COVERAGE_GAP warning
+
+3. **Gap escalation**: When feature coverage < 100%, MUST ask user via AskUserQuestion:
+   - "Spec defines N features but model implements M. Omitting K features may reduce
+     [quality metric]. Approve omission?"
+   - User-approved omissions → record in ADR with rationale and impact estimate
+   - Unapproved omissions → feature stays in iron-requirements as MUST_IMPLEMENT
+
+4. **Documentation**: Save `docs/phase-1-research/feature-coverage.md`:
+   ```
+   | Feature | Spec Count | Model Count | Coverage | Status |
+   |---------|-----------|-------------|----------|--------|
+   | Intra modes | 8 | 4 | 50% | USER_APPROVED / MUST_IMPLEMENT |
+   ```
+
 ## Escalation & Stop Conditions
 
 - Spec document not found → report to user, halt
