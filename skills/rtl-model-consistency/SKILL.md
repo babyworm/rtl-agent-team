@@ -86,6 +86,11 @@ cause rtl-p5s-perf-verify to produce wrong baseline comparisons.
 - Vector set missing → generate minimal 10-vector set before proceeding
 </Escalation_And_Stop_Conditions>
 
+## Output
+
+- `reviews/model-consistency-report.md` — 3-way comparison matrix (C ref model vs BFM vs RTL) with per-vector PASS/FAIL and first-divergence details
+- Diagnosis identifying which model is the likely source of each mismatch
+
 <Final_Checklist>
 - [ ] All three models run on identical input vectors
 - [ ] Pairwise comparison done for all three pairs

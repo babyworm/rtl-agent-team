@@ -115,21 +115,13 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 ## Expert Review → Agent Delegation (spawn directly or through skills)
 | Request Pattern | Delegate to Agent |
 |---|---|
-| CDC review, synchronization strategy | `cdc-reviewer` |
-| Protocol/AXI design review | `protocol-reviewer` |
-| Formal/SVA quality review | `formal-reviewer` |
-| Power analysis/estimation | `power-analyzer` |
-| Synthesis area/timing review | `synthesis-reviewer` |
-| UVM testbench quality | `uvm-reviewer` |
-| Requirement tracing, feature coverage | `requirement-tracer` |
-| cocotb testbench review | `cocotb-reviewer` |
-| Ref model review | `ref-model-reviewer` |
-| Regression/flaky test analysis | `regression-analyzer` |
-| Equivalence checking | `equivalence-checker` |
-| Integration/top-level verification | `integration-verifier` |
-| Hardware security | `security-reviewer` |
-| DFT/scan chain/BIST/JTAG | `dft-designer` |
-| Clock architecture/PLL | `clock-architect` |
+| CDC, synchronization, clock architecture, PLL | `cdc-reviewer`, `clock-architect` |
+| Protocol/AXI design, formal/SVA quality | `protocol-reviewer`, `formal-reviewer` |
+| Power analysis, synthesis area/timing | `power-analyzer`, `synthesis-reviewer` |
+| UVM/cocotb testbench quality, regression analysis | `uvm-reviewer`, `cocotb-reviewer`, `regression-analyzer` |
+| Requirement tracing, ref model review | `requirement-tracer`, `ref-model-reviewer` |
+| Equivalence checking, integration verification | `equivalence-checker`, `integration-verifier` |
+| Hardware security, DFT/scan/BIST/JTAG | `security-reviewer`, `dft-designer` |
 
 ## Core Design Principles
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.

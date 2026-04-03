@@ -49,3 +49,9 @@ Task(subagent_type="rtl-agent-team:p5s-uvm-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages simulator availability checking, UVM environment
 generation, compilation, test execution, and coverage collection.
+
+## Output
+
+- `sim/uvm/results/run_summary.log` — test pass/fail summary across all UVM sequences
+- `sim/uvm/coverage/` — merged functional and code coverage data
+- `reviews/phase-5-verify/{module}-uvm-review.md` — UVM verification review with coverage analysis

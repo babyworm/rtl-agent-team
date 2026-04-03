@@ -63,4 +63,9 @@ Task(subagent_type="rtl-agent-team:p5s-integration-orchestrator",
 
 Do not perform any work directly.
 The orchestrator agent manages connectivity checks, data flow tests, and reference comparison.
+
+## Output
+
+- `reviews/phase-5-verify/integration-test-report.md` — cross-module data flow, reset propagation, and clock connectivity results
+- `sim/top/integration_results.json` — per-test PASS/FAIL with failure details
 </Delegation>

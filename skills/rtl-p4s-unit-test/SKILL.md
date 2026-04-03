@@ -57,4 +57,9 @@ Task(subagent_type="rtl-agent-team:p4s-unit-test-orchestrator",
 
 Do not perform any work directly.
 The orchestrator agent manages testbench generation, simulation, and failure triage.
+
+## Output
+
+- `sim/{module}/tb_{module}.sv` — Tier 2 unit test testbenches
+- `sim/{module}/{module}_unit_results.json` — results with `ref_mismatches=0`, coverage thresholds met, and `req_ids` populated
 </Delegation>

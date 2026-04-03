@@ -51,3 +51,10 @@ parallel task dispatch, and phase gate verification.
 - Per-wave compliance ensures regressions are caught before the integration gate (W10)
 - Wave 0 includes test plan generation (Step 0b) — test scenarios are derived from
   uarch spec before RTL implementation begins, following TDD principles.
+
+## Output
+
+- `rtl/*/*.sv` — lint-clean SystemVerilog modules
+- `sim/*/tb_*.sv` — per-module unit test testbenches
+- `docs/phase-4-rtl/` — Stream B design documents and implementation summary
+- `reviews/phase-4-rtl/` — lint reports, code review reports, and wave completion records

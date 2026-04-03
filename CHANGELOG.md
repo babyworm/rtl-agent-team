@@ -7,6 +7,21 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.18] - 2026-04-03
+
+### Added
+- Completion criteria for 20 missing action skills (100% coverage: 54/54)
+- Output sections for 14 action skills lacking output specification
+- Coverage exclusion approval gate (Stop hook, 15th hook)
+- Spec change cascade detection (PostToolUse hook in edit-tracker)
+- Phase entry prerequisite checks in skill-activation (P4→P3, P5→P4, P6→P5)
+- Testbench Python file change tracking in edit-tracker (sim/*.py)
+
+### Changed
+- 5 oversized agents trimmed by 658 lines total (policy references instead of inline rules)
+- Context budget reduced from 133 to 125 lines (expert delegation table compressed)
+- Hook export regenerated via sync_orchestrator_inject.sh
+
 ## [0.8.17] - 2026-04-03
 
 ### Added

@@ -85,6 +85,11 @@ IP-XACT that diverges from implementation when RTL is updated.
 - Complex parameterized widths → document as expressions in IP-XACT spirit element
 </Escalation_And_Stop_Conditions>
 
+## Output
+
+- `ipxact/{module_name}.xml` — IEEE 1685-2014 IP-XACT XML with component description, port maps, bus interfaces, and register maps
+- Schema validation result (PASS/FAIL) against IEEE 1685-2014
+
 <Final_Checklist>
 - [ ] All RTL ports present in IP-XACT ports section
 - [ ] All RTL parameters present in IP-XACT parameters section

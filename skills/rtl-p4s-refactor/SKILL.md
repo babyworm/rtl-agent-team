@@ -40,6 +40,11 @@ Task(subagent_type="rtl-agent-team:p4s-refactor-orchestrator",
 
 Do not perform any work directly.
 The orchestrator agent manages the full analyze → refactor → lint → equivalence cycle.
+
+## Output
+
+- Refactored RTL file(s) with lint re-pass confirmation
+- Equivalence verification report confirming no behavioral change
 </Delegation>
 
 <Examples>

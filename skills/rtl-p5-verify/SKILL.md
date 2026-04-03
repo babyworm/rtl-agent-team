@@ -61,3 +61,8 @@ parallel agent spawning, and compliance review.
   operates at REQ level.
 - Final compliance check compares test results against P1+P2+P3 `acceptance_criteria`
 - Phase 5 PASS requires zero unmet iron requirements across all verification categories
+
+## Output
+
+- `reviews/phase-5-verify/` — 9 category verification reports (lint, formal, CDC, protocol, functional, coverage, performance, synthesis, code review)
+- `reviews/phase-5-verify/final-compliance.md` — overall PASS/FAIL verdict with requirement traceability

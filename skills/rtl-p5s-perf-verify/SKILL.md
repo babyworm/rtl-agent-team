@@ -49,3 +49,8 @@ Task(subagent_type="rtl-agent-team:p5s-perf-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages performance simulation, BFM baseline comparison,
 throughput/latency/stall measurement, and deviation flagging.
+
+## Output
+
+- `reviews/phase-5-verify/{module}-performance-report.md` — throughput and latency measurements vs BFM baseline, with PASS if deviation is within 10%
+- `sim/{module}/{module}_perf.json` — raw measured vs expected metric values

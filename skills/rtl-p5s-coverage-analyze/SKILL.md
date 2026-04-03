@@ -50,3 +50,8 @@ Task(subagent_type="rtl-agent-team:p5s-coverage-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages 3-round iterative coverage analysis,
 directed test generation, and coverage convergence tracking.
+
+## Output
+
+- `reviews/phase-5-verify/{module}-coverage-report.md` — raw and post-exclusion coverage numbers, prioritized gap list, and PASS/FAIL verdict
+- `sim/coverage/test_coverage_fill.py` — directed tests generated to close identified gaps

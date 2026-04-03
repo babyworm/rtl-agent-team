@@ -204,14 +204,8 @@ After refactoring: re-run V1 (lint) to confirm lint-clean.
 
 ### Module Graduation Gate
 
-Check all 9 categories per policy skill. All PASS (or PARTIAL_PASS for V5 AC checks) → module graduates.
-
-**On FAIL**: invoke feedback loop (max 2 per module per check):
-```
-Skill("rtl-agent-team:rtl-p4s-bugfix",
-      args="Fix {failure_description} in {module}. feedback_origin={sub_phase}")
-# After fix: re-verify ONLY the failed categories (not all 9)
-```
+Per rtl-p5-verify-policy Module Graduation Gate: all 9 categories PASS (PARTIAL_PASS for V5 AC checks).
+On FAIL: `Skill("rtl-agent-team:rtl-p4s-bugfix")` (max 2 per module per check), re-verify failed categories only.
 
 ## Stage 2: Top-Level Verification (after ALL modules graduate)
 
@@ -278,7 +272,7 @@ Skill("rtl-agent-team:rtl-p5s-integration-test")
 **T6: System-Level Coverage**
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge all module-level coverage + integration test coverage. Step 1: Apply module-level exclusion records — glob reviews/phase-5-verify/*-coverage-exclusions.md but EXCLUDE system-coverage-exclusions.md (that is a system-level artifact, not module-level). Step 2: For integration-only uncovered bins (not attributable to any module), apply the same exclusion protocol: classify as STIMULUS_GAP/STRUCTURAL_DEAD/INFRA_CODE. Standard categories (UVM/TB, parameter guards, toggle) are auto-approved; non-standard exclusions (unimplemented features, ambiguous spec applicability) require user approval via AskUserQuestion. Generate system-level exclusion record at reviews/phase-5-verify/system-coverage-exclusions.md. Step 3: Analyze system-level post-exclusion coverage targets (line >= 90%, toggle >= 80%, FSM >= 70%). Report both raw and post-exclusion numbers. Generate final coverage report. Write reviews/phase-5-verify/coverage-report.md.")
+     prompt="Merge module + integration coverage. Apply exclusion protocol per rtl-p5-verify-policy coverage targets (line>=90%, toggle>=80%, FSM>=70% post-exclusion). System-level exclusions: standard auto-approved, non-standard require user approval. Write reviews/phase-5-verify/coverage-report.md with raw and post-exclusion numbers.")
 ```
 
 **T7: System-Level Performance**
@@ -297,8 +291,7 @@ Task(subagent_type="rtl-agent-team:rtl-critic",
 
 ### Top-Level Gate
 
-All top-level checks PASS → proceed to Stage 3.
-On FAIL: classify per policy (UNIT_FIX/INTEGRATION_FIX/DESIGN_FIX).
+Per rtl-p5-verify-policy Top-Level Gate: all checks PASS → Stage 3. On FAIL: classify per policy feedback loop.
 
 ## Stage 3: Final Compliance + Summary
 
@@ -312,26 +305,11 @@ Task(subagent_type="rtl-agent-team:requirement-tracer",
      prompt="Build unified end-to-end traceability: REQ → Arch → μArch → RTL → Test → Result. When traces_to field exists in iron-requirements, include cross-phase decomposition chain (REQ-F → REQ-A → REQ-U). Save reviews/phase-5-verify/e2e-traceability.md.")
 
 # 3.2b Requirement Traceability Audit (MANDATORY gate for P6 entry)
-# After 3.1 and 3.2, verify traceability completeness before final compliance.
-# This is a hard quality gate: untested Critical/High requirements block P6 entry.
+# Per rtl-p5-verify-policy Requirement Traceability Gate (P6 Entry Blocker).
 Task(subagent_type="rtl-agent-team:requirement-tracer",
-     prompt="Formal Traceability Audit: Read reviews/phase-5-verify/requirement-traceability.md.
-     Verify: every Critical/High priority REQ-NNN in requirements.json has status VERIFIED or FORMAL.
-     Produce reviews/phase-5-verify/traceability-audit.md with:
-     - Total requirements: N
-     - VERIFIED: N (with test file:line citations)
-     - FORMAL: N (with SVA property citations)
-     - PARTIAL: N (with gap descriptions)
-     - UNTESTED: N (with priority — Critical/High UNTESTED = AUDIT FAIL)
-     - Verdict: PASS if zero Critical/High UNTESTED or PARTIAL, FAIL otherwise.
-     NOTE: UNTESTED or PARTIAL Critical/High requirements are FAIL (blocking P6 entry).
-     PARTIAL must be upgraded to VERIFIED or FORMAL before P6 entry is allowed.
-
-     AC-Level Traceability Audit:
-     Audit AC-level coverage for Critical/High requirements. Read iron-requirements.json for acceptance_criteria.
-     For each Critical/High ac_id: verify VERIFIED or FORMAL status.
-     UNTESTED or PARTIAL Critical/High ac_id blocks P6 entry.
-     When no structured AC: existing REQ-level audit applies.")
+     prompt="Formal Traceability Audit per rtl-p5-verify-policy: verify every Critical/High REQ
+     has VERIFIED or FORMAL status. Include AC-level audit when structured acceptance_criteria exist.
+     UNTESTED/PARTIAL Critical/High = FAIL (blocks P6). Save reviews/phase-5-verify/traceability-audit.md.")
 
 # 3.3 Final Compliance Review
 Task(subagent_type="rtl-agent-team:rtl-architect",
@@ -394,8 +372,5 @@ This stops and removes the container tracked in `.rat/state/docker-container.txt
 **Bad**: Yosys synthesis without liberty file — meaningless gate count. Always NanGate45 + SDC.
 
 ## Completion Criteria: ac-coverage-check
-To satisfy the `ac-coverage-check` completion criterion:
-- Stage 3 traceability audit must confirm: every Critical/High ac_id has
-  VERIFIED or FORMAL status (PARTIAL → FAIL at Stage 3)
-- If no structured acceptance_criteria exist: criterion automatically satisfied
-- Mark complete when traceability-audit.md verdict = PASS
+Per rtl-p5-verify-policy AC-Level Module Graduation: traceability-audit.md verdict = PASS.
+If no structured acceptance_criteria exist: criterion automatically satisfied.

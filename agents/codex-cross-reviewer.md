@@ -290,25 +290,12 @@ If the finding is incorrect or misguided:
 ```
 
 ### Track Resolution State
-Maintain `.rat/cross-review/phase-{N}/resolution-state.json`:
-```json
-{
-  "round": 1,
-  "total_findings": 8,
-  "fixed": ["F-001", "F-003"],
-  "rebutted": ["F-002", "F-005"],
-  "unresolved": ["F-004", "F-006", "F-007", "F-008"],
-  "pending_confirmations": ["F-001", "F-002"],
-  "agreement_ledger": {},
-  "stability_streak": 0,
-  "oscillation_count": 0
-}
-```
-- `pending_confirmations`: items proposed (fix/rebuttal) in current round, awaiting Codex verdict in next round
-- `agreement_ledger`: ONLY confirmed-settled items (populated when Codex returns `accepted_fix`/`accepted_rebuttal` via `resolved_items`)
-- Items move from `pending_confirmations` → `agreement_ledger` only after Codex confirms. Items with `still_disagree` stay in active disputes.
-- `stability_streak`: consecutive rounds where Codex verdict == APPROVE + no new critical/major + no still_disagree + no oscillation
-- `oscillation_count`: times a settled item was re-raised without new evidence
+Maintain `.rat/cross-review/phase-{N}/resolution-state.json` with fields:
+`round`, `total_findings`, `fixed[]`, `rebutted[]`, `unresolved[]`,
+`pending_confirmations[]` (awaiting Codex verdict next round),
+`agreement_ledger{}` (confirmed-settled only — see Protocol section below),
+`stability_streak`, `oscillation_count`.
+Items move `pending_confirmations` → `agreement_ledger` only after Codex confirms.
 
 ## Step 4: Subsequent Rounds (Round 2–5)
 
@@ -317,44 +304,12 @@ Let `R` denote the current round number (2, 3, 4, or 5). `N` remains the phase n
 ### 4a. Construct Follow-up Prompt
 Write to `.rat/cross-review/phase-{N}/prompt-round-${R}.txt`.
 
-**IMPORTANT — Reference, Don't Embed:**
-- Reference previous round's JSON by path, not inline: `Read .rat/cross-review/phase-{N}/round-${PREV_R}.json`
-- Summarize fixes/rebuttals concisely (file:line + one-line description). Do NOT paste full diffs.
-- Keep the prompt under 4KB. If context is large, write a `round-${R}-context.md` file and reference it.
+**IMPORTANT — Reference, Don't Embed** (same discipline as Step 2a: paths only, under 4KB).
 
-```text
-You are continuing a cross-review dialogue. This is round R.
-
-## Previous Round
-Read previous findings at: .rat/cross-review/phase-{N}/round-{R-1}.json
-
-## Fixes Applied (Round {R-1})
-[One-line per fix: finding ID, file:line, what changed]
-
-## Rebuttals (Round {R-1})
-[One-line per rebuttal: finding ID, why, key evidence reference]
-
-## Pending Confirmation (Round {R-1} — awaiting your verdict)
-[Items from pending_confirmations list:
- finding ID, proposed resolution (fix/rebuttal). Please confirm or dispute.]
-
-## Settled Items (DO NOT re-raise without NEW evidence)
-[Items from agreement_ledger (confirmed-settled only):
- finding ID, status, settled round, consecutive agrees]
-
-## Your Task
-1. Verify each fix is adequate (read the updated files)
-2. Evaluate each rebuttal — accept if convincing, maintain if not
-3. Check if fixes introduced new issues
-4. Update your verdict
-
-For previously raised items, use resolved_items array:
-- "accepted_fix" — the fix addresses your concern
-- "accepted_rebuttal" — you accept the counter-argument
-- "still_disagree" — you maintain your position (explain why)
-
-New issues go in the findings array with new IDs.
-```
+Prompt structure: Previous round JSON path, one-line fix/rebuttal summaries,
+pending confirmations from `pending_confirmations`, settled items from `agreement_ledger`,
+then task (verify fixes, evaluate rebuttals, check for new issues, update verdict).
+Codex uses `resolved_items` array with `accepted_fix`/`accepted_rebuttal`/`still_disagree`.
 
 ### 4b. Execute and Parse (reuse Step 2b procedure)
 
@@ -370,35 +325,9 @@ then output the round progress summary (same format as Step 2c) and
 Claude's response summary (same format as Step 3).
 
 ### 4c. Check Consensus and Report
-After each round, output consensus status:
-```
-═══ Consensus Check (Round R) ══════════════════════════
-  Resolved: X/{total} | Still disputed: Y | New: Z
-  Codex verdict: {verdict}
-  → {CONSENSUS REACHED — proceeding to report | CONTINUING — (5-R) rounds remaining | ESCALATING to user}
-═════════════════════════════════════════════════════════
-```
-
-After the status output, update stability tracking and evaluate:
-
-**Update stability_streak:**
-```
-if (Codex verdict == APPROVE) AND (no new critical/major findings) AND (no still_disagree items) AND (no oscillation this round):
-  stability_streak += 1
-  # Also increment consecutive_agrees for each settled item in agreement_ledger
-else:
-  stability_streak = 0
-```
-
-**Consensus reached** if:
-- `stability_streak >= 2` AND latest verdict == APPROVE (2+ consecutive rounds of stable agreement)
-
-**Continue loop** if:
-- `stability_streak < 2` AND round < 5
-- Any `critical` or `major` findings with `still_disagree` or new
-
-**Note**: A single APPROVE verdict is necessary but NOT sufficient — stability must be confirmed
-over 2 consecutive rounds to prevent oscillation-driven false consensus.
+After each round, output consensus status (resolved/disputed/new counts, Codex verdict,
+next action). Update `stability_streak` per the Agreement Ledger & Anti-Oscillation Protocol above.
+Consensus reached when `stability_streak >= 2 AND verdict == APPROVE`. Continue if `stability_streak < 2 AND round < 5`.
 
 ### 4d. Update Resolution State
 Update `.rat/cross-review/phase-{N}/resolution-state.json` with current round data.
@@ -494,77 +423,19 @@ touch .rat/state/cross-review-phase-${N}-done
 ```
 Example: Phase 2 produces `.rat/state/cross-review-phase-2-done`.
 
-## Agreement Ledger Protocol
+## Agreement Ledger & Anti-Oscillation Protocol
 
-Each round's prompt MUST include the cumulative agreement ledger — a list of all
-items that have been settled in prior rounds. This prevents the reviewer from
-re-raising issues that were already resolved.
+Maintain cumulative `agreement_ledger` in `resolution-state.json` (keyed by finding ID,
+with `status`, `settled_round`, `consecutive_agrees`). Inject settled items into every
+follow-up prompt (Step 4a) to prevent re-raises.
 
-### Ledger Structure
-Maintain in `resolution-state.json`:
-```json
-{
-  "round": 3,
-  "agreement_ledger": {
-    "F-001": {"status": "accepted_fix", "settled_round": 2, "consecutive_agrees": 2},
-    "F-002": {"status": "accepted_rebuttal", "settled_round": 2, "consecutive_agrees": 2},
-    "F-003": {"status": "accepted_fix", "settled_round": 3, "consecutive_agrees": 1}
-  },
-  "active_disputes": ["F-004"],
-  "stability_streak": 1
-}
-```
+**Anti-oscillation**: settled items CANNOT be re-raised without **new evidence** (modified file,
+contradicting finding, or previously unexamined file). Re-phrasing is insufficient.
+On baseless re-raise: increment `oscillation_count`, reject, do not count as new finding.
 
-### Ledger Injection in Follow-up Prompts
-In Step 4a follow-up prompts, add BEFORE the task description:
-```text
-## Settled Items (DO NOT re-raise without NEW evidence)
-The following items were agreed upon in prior rounds. Re-raising them
-requires NEW evidence not available in the original round.
-- F-001: accepted_fix (settled Round 2, 2 consecutive agrees)
-- F-002: accepted_rebuttal (settled Round 2, 2 consecutive agrees)
-- F-003: accepted_fix (settled Round 3, 1 consecutive agree)
-```
-
-## Anti-Oscillation Rule
-
-An item that was ACCEPTED (fix or rebuttal) in Round N CANNOT be re-raised
-in Round N+1 unless the reviewer provides **new evidence** — specifically:
-- A file that was modified AFTER the acceptance round
-- A new finding that contradicts the previous acceptance
-- Evidence from a file not examined in the original round
-
-**Simple re-phrasing or re-interpretation is NOT sufficient to re-open a settled item.**
-
-If Codex re-raises a settled item WITHOUT new evidence:
-1. Increment `oscillation_count` in resolution state
-2. Respond: "This item was settled in Round {N}. No new evidence provided. Maintaining prior decision."
-3. Do NOT count the re-raise as a new finding
-
-## Stability Criterion
-
-**Consensus requires 2+ consecutive rounds where Codex verdict == APPROVE**, not just a single APPROVE verdict.
-
-- **stability_streak**: counter tracking consecutive rounds where Codex verdict == APPROVE
-  AND no new critical/major findings AND no `still_disagree` on existing items AND no oscillation
-- **stability_streak >= 2 AND verdict == APPROVE**: CONSENSUS REACHED (stable agreement)
-- **stability_streak == 1**: continue for one more round to confirm stability
-- **stability_streak == 0**: active disputes remain, continue loop
-
-Update `stability_streak` after each round (must match Step 4c logic):
-```
-if (Codex verdict == APPROVE) AND (no new critical/major findings) AND (no still_disagree items) AND (no oscillation):
-  stability_streak += 1
-else:
-  stability_streak = 0
-
-if stability_streak >= 2 AND latest verdict == APPROVE:
-  CONSENSUS — proceed to final report
-```
-
-**Modified consensus check (replaces Step 4c logic):**
-- Old: "Consensus if verdict=APPROVE or all findings resolved"
-- New: "Consensus if stability_streak >= 2 AND latest verdict == APPROVE"
+**Stability criterion**: consensus requires `stability_streak >= 2 AND verdict == APPROVE`.
+A single APPROVE is necessary but not sufficient — stability must be confirmed over 2 consecutive rounds.
+`stability_streak` resets to 0 if any new critical/major, `still_disagree`, or oscillation occurs.
 
 ## Important Rules
 

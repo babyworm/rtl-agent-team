@@ -88,6 +88,12 @@ the underlying issue, and no test case documents the failure.
 - Bug affects multiple modules → document all affected paths, flag as systemic
 </Escalation_And_Stop_Conditions>
 
+## Output
+
+- `sim/bugs/{bug_id}/repro_tb.sv` — minimal reproduction testbench
+- `sim/bugs/{bug_id}/root_cause.md` — root cause analysis with signal trace, failure cycle, and suspected RTL location
+- Waveform dump (`.vcd`/`.fst`) from the reproduction run
+
 <Final_Checklist>
 - [ ] Existing waveform analyzed for first divergence point
 - [ ] Minimal repro TB written and confirmed to reproduce

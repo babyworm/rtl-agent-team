@@ -239,159 +239,70 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Self-verification of all Phase 1 artifacts:
-1. Count spec features vs docs/phase-1-research/iron-requirements.json + open-requirements.json items — flag suspected omissions
-2. Verify docs/phase-1-research/io_definition.json port names comply with i_/o_/io_ prefix convention
-3. Verify docs/phase-1-research/timing_constraints.json exists with per-block timing targets (rough estimates)
-4. Produce docs/phase-1-research/domain-analysis.md with candidate survey, comparison tables, cross-block dependencies, and per-block timing targets
-5. Validate all JSON files are well-formed (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json)
-Save all artifacts using Write tool to docs/phase-1-research/.")
+     prompt="Self-verification of all Phase 1 artifacts per p1-spec-research-policy Final Checklist:
+     spec feature count vs REQ count, i_/o_ port convention, timing_constraints.json,
+     domain-analysis.md, JSON validation. Save all to docs/phase-1-research/.")
 
-# Verify all required files exist — FAIL if any missing
-Glob("docs/phase-1-research/iron-requirements.json")
-Glob("docs/phase-1-research/open-requirements.json")
-Glob("docs/phase-1-research/io_definition.json")
-Glob("docs/phase-1-research/timing_constraints.json")
-Glob("docs/phase-1-research/domain-analysis.md")
-Glob("docs/phase-1-research/candidate-comparison.md")
-Glob("docs/phase-1-research/selected-approach.md")
-Glob("docs/phase-1-research/literature-survey.md")
-Glob("docs/phase-1-research/solution-tree.json")
-
-# Verify per-round review artifacts (3-round review protocol per policy) — FAIL if any missing
-Glob("reviews/phase-1-research/research-review-r1.md")
-Glob("reviews/phase-1-research/research-review-r2.md")
-Glob("reviews/phase-1-research/research-review-r3.md")
-Glob("reviews/phase-1-research/research-review.md")
-
-# Verify rebuttal evidence in R2: R2 must contain accept/reject entries with rationale
-# for each R1 finding (not just a "converged" statement). FAIL if rebuttal section absent.
-Read("reviews/phase-1-research/research-review-r2.md")
-# Check for accept/reject entries — if absent, re-invoke review coordinator to produce rebuttal
+# Verify all required files per policy Final Checklist (FAIL if any missing):
+# docs/phase-1-research/: iron-requirements.json, open-requirements.json, io_definition.json,
+#   timing_constraints.json, domain-analysis.md, candidate-comparison.md,
+#   selected-approach.md, literature-survey.md, solution-tree.json
+# reviews/phase-1-research/: research-review-r1.md, r2.md, r3.md, research-review.md
+# Verify R2 contains rebuttal section (accept/reject entries, not just "converged")
 ```
 
 ## Step 7.5a: Ambiguity Gate
 
-After self-verification, assess overall specification ambiguity:
+Per p1-spec-research-policy Ambiguity Score Protocol (3 axes: Goal 40%, Constraint 30%, AC 30%).
 
 ```
-# 1. Review spec-analyst output for Ambiguity_Assessment section
-Read("docs/phase-1-research/iron-requirements.json")
-# Check if spec-analyst included Ambiguity_Assessment in its output
-
-# 2. If no assessment exists, instruct spec-analyst to generate one
+# If no assessment exists, instruct spec-analyst to generate one
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Generate Ambiguity_Assessment for the current requirements. Score on 3 axes:
-     Goal Ambiguity (40%), Constraint Ambiguity (30%), AC Ambiguity (30%).
-     Each axis: 0.0=fully clear, 1.0=fully ambiguous.
-     Compute ambiguity_score = weighted_average(axes).
-     Save assessment to docs/phase-1-research/ambiguity-assessment.md using Write tool.")
+     prompt="Generate Ambiguity_Assessment for the current requirements per p1-spec-research-policy.
+     Score on 3 axes, compute weighted ambiguity_score.
+     Save to docs/phase-1-research/ambiguity-assessment.md using Write tool.")
 
-# 3. Gate criteria
 Read("docs/phase-1-research/ambiguity-assessment.md")
-# - ambiguity_score ≤ 0.3 → PASS (proceed to Step 8)
-# - ambiguity_score 0.3–0.5 → CONDITIONAL PASS (log warnings, proceed with caution flag)
-# - ambiguity_score > 0.5 → FAIL (use AskUserQuestion to resolve top-3 ambiguous items, then re-score)
-
-# 4. On FAIL: resolve ambiguities via user interaction
-# AskUserQuestion("Specification ambiguity score is {score} (threshold: 0.3).
-#   Top ambiguous items requiring clarification:
-#   1. {item_1}
-#   2. {item_2}
-#   3. {item_3}
-#   Please clarify these items so we can proceed.")
-# After user response: re-run spec-analyst Ambiguity_Assessment, re-check gate
+# Gate: ≤0.3 PASS, 0.3-0.5 CONDITIONAL, >0.5 FAIL → AskUserQuestion top-3 items → re-score
 ```
-
-Gate decision is recorded in `docs/phase-1-research/ambiguity-assessment.md`.
 
 ## Step 7.5b: Iron/Open Classification Verification
 
-Verify that iron/open classification is correct before proceeding to cross-review:
+Per p1-spec-research-policy Iron/Open Classification Verification (FAIL/WARN conditions).
 
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Verify iron/open classification in Phase 1 artifacts:
-     1. Every iron REQ has measurable acceptance_criteria (reject vague terms: 'should support', 'adequate', 'sufficient')
-     2. Every iron REQ has violation_policy: 'user_escalation'
-     3. Every open item has >= 2 candidates and evaluation_criteria
-     4. File-level target_phase = 'phase-2-architecture' in open-requirements.json
-     5. Iron ratio >= 30% of total items (WARN if most items pushed to open)
-     6. No CONDITIONAL PASS ambiguity axis items classified as iron
-     If FAIL conditions detected: fix and re-classify.
-     If WARN conditions detected: log and proceed.
-     Save final versions:
-     - docs/phase-1-research/iron-requirements.json
-     - docs/phase-1-research/open-requirements.json")
+     prompt="Verify iron/open classification per p1-spec-research-policy:
+     Check FAIL conditions (vague AC, missing violation_policy, single-candidate opens)
+     and WARN conditions (low iron ratio, empty related_iron).
+     Fix FAILs, log WARNs. Save final iron-requirements.json and open-requirements.json.")
 
-# Verify files exist after classification
 Glob("docs/phase-1-research/iron-requirements.json")
 Glob("docs/phase-1-research/open-requirements.json")
 ```
 
 ## Step 7.6: Adversarial Reinterpretation
 
-Spawn a separate spec-analyst subagent with adversarial prompt to challenge
-the iron-requirements.json produced in Step 7. This surfaces ambiguities
-the initial analysis accepted without question.
+Per p1-spec-research-policy Adversarial Interpretation Gate protocol.
 
 ```
-# Save v1 to scratch for stability report
 Bash("mkdir -p .rat/scratch/stability/phase-1")
 Bash("cp docs/phase-1-research/iron-requirements.json .rat/scratch/stability/phase-1/output-v1.json")
 
 Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="ADVERSARIAL REINTERPRETATION MODE.
-     You are NOT extracting requirements. You are CHALLENGING an existing extraction.
-
-     Read the original spec documents and the iron-requirements.json at
-     docs/phase-1-research/iron-requirements.json.
-
-     For each requirement, find ALTERNATIVE VALID interpretations that differ
-     from the current extraction. Ground alternatives in the spec text.
-
+     Challenge iron-requirements.json per p1-spec-research-policy adversarial protocol.
      Reference items by source.section (NOT requirement ID).
-
-     Severity classification:
-     - HIGH: alternative would produce different RTL behavior (different logic, waveform)
-     - MEDIUM: alternative would produce different parameters (same logic, different constants)
-     - LOW: cosmetic differences only (naming, formatting)
-
-     Boundary rule: if alternative causes a different RTL module to be written → HIGH.
-     Same module but different parameter values → MEDIUM.
-
-     Output JSON challenge report following the schema at
-     skills/p1-spec-research/templates/challenge-report-schema.json.
-     Save to .rat/scratch/stability/phase-1/challenge-report.json
-     using the Write tool.
-
-     Max 30 challenges, ranked by severity (HIGH first).")
+     Severity: HIGH (different RTL behavior), MEDIUM (different parameters), LOW (cosmetic).
+     Schema: skills/p1-spec-research/templates/challenge-report-schema.json.
+     Save to .rat/scratch/stability/phase-1/challenge-report.json. Max 30 challenges.")
 ```
 
 ## Step 7.7: User Resolution
 
-Present adversarial challenges to the user for resolution.
-
-```
-Read(".rat/scratch/stability/phase-1/challenge-report.json")
-
-# For each HIGH challenge:
-#   AskUserQuestion("Adversarial reinterpretation found an ambiguity:
-#     Spec section: {target_source.section}
-#     Current interpretation: {original_interpretation}
-#     Alternative interpretation: {alternative_interpretation}
-#     Evidence: {spec_evidence}
-#     Impact: {impact}
-#     Which interpretation is correct? Or mark as NOT_GENUINE if forced.")
-
-# For MEDIUM challenges (if ≤10): AskUserQuestion batched
-# For MEDIUM challenges (if >10): present summary, ask "review these assumptions?"
-# For LOW challenges: auto-document as assumptions, no user interaction
-
-# User may mark any challenge as NOT_GENUINE (forced disagreement)
-# Accumulate clarifications for Step 7.8
-# Update challenge-report.json with resolution status (RESOLVED/DOCUMENTED/NOT_GENUINE)
-```
+Per p1-spec-research-policy: present HIGH challenges via AskUserQuestion individually,
+MEDIUM batched (or summary if >10), LOW auto-documented. User may mark NOT_GENUINE.
+Update challenge-report.json with resolution status. Accumulate clarifications for Step 7.8.
 
 ## Step 7.8: Re-run with Clarifications
 
@@ -415,26 +326,13 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 
 ## Step 7.9: Adversarial Gate Check
 
-Compute the adversarial gate and generate stability audit report.
+Per p1-spec-research-policy Gate Metric: gate_pass = (all HIGH resolved) AND (resolution_ratio >= 0.8).
+On FAIL: loop back to Step 7.7 (max 1 re-loop), then escalate.
 
 ```
 Read(".rat/scratch/stability/phase-1/challenge-report.json")
-
-# Compute gate (per p1-spec-research-policy):
-#   genuine = (HIGH + MEDIUM) - NOT_GENUINE
-#   resolved = RESOLVED + DOCUMENTED
-#   resolution_ratio = resolved / genuine (if genuine == 0: pass)
-#   gate_pass = (all HIGH resolved) AND (resolution_ratio ≥ 0.8)
-#
-# If FAIL: loop back to Step 7.7 (max 1 re-loop)
-# If PASS after 2nd attempt still FAIL: escalate to user with full report
-
-# Generate stability audit report (informational, not the gate)
+# Compute gate per policy formula
 Bash("python3 scripts/stability_check.py .rat/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
-
-# Record gate result
-# If PASS: proceed to Step 8
-# If FAIL: escalate
 ```
 
 ## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)

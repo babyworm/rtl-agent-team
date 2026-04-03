@@ -85,3 +85,10 @@ else:
 Team mode uses native teams within each phase for parallel execution (Orchestrator as Teammate pattern).
 Each phase team skill handles its own TeamCreate/TeamDelete lifecycle with a coordinator teammate + 3-5 workers.
 Sequential mode delegates everything to the autopilot-orchestrator.
+
+## Output
+
+- Complete 6-phase artifact set: `docs/phase-1-research/` through `docs/phase-6-review/`
+- `rtl/*/*.sv` — lint-clean, unit-tested RTL modules
+- `sim/` — testbenches, regression results, and coverage data
+- `reviews/` — per-phase review reports with final compliance verdict

@@ -52,4 +52,10 @@ Task(subagent_type="rtl-agent-team:p4s-bugfix-orchestrator",
 
 Do not perform any work directly.
 The orchestrator agent manages the full analyze → fix → lint → TB → simulation cycle.
+
+## Output
+
+- Fixed RTL file(s) with lint re-pass confirmation
+- Updated or new testbench with passing functional simulation results
+- `.rat/scratch/phase-4/bugfix-decision-{N}.md` — decision record documenting root cause, fix rationale, and verification evidence
 </Delegation>

@@ -48,3 +48,8 @@ Task(subagent_type="rtl-agent-team:p5s-cdc-orchestrator",
 Do not perform any work directly.
 The orchestrator agent manages clock domain identification, cross-domain analysis,
 SDC constraint generation, and optional commercial CDC tool integration.
+
+## Output
+
+- `reviews/phase-5-verify/{module}-cdc-report.md` — CDC analysis with VIOLATION/CAUTION/PASS verdict
+- `syn/constraints/cdc_constraints.sdc` — generated SDC constraints for identified crossings
