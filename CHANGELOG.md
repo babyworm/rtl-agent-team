@@ -7,6 +7,25 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.17] - 2026-04-03
+
+### Added
+- New skill: cross-phase-contract-validator — validates P3→P4→P5 spec consistency
+  (port widths, memory classification, pipeline depth, bus parameterization, REQ traceability)
+- rtl-critic static analysis: bus width derivation check (f3), memory pattern detection (f4),
+  unreachable code detection (f5)
+- P5 verify policy: UARCH_FIX feedback path (P5→P3), feedback loop decision recording
+- Tool abstraction layer: 3-tier model (commercial/oss/none) with sv2v internalized in Layer 2
+- lib/tool-runner.sh: check_tool_available, check_tool_licensed, get_synthesis_tier, get_formal_tier
+- run_syn.sh: --skip-if-unavailable flag with license pre-check and clean exit
+- syn-tool-profiles: tool availability tiers + sv2v Layer 2 policy
+
+### Changed
+- V8/T8 synthesis estimation delegated to run_syn.sh --skip-if-unavailable (no explicit sv2v)
+- Stream B smoke test delegated to wrapper with skip support
+- SVA/formal: sv2v references changed to "scripts handle internally (Layer 2)"
+- 8 explicit sv2v invocations removed from agent/orchestrator prompts
+
 ## [0.8.16] - 2026-04-03
 
 ### Added
