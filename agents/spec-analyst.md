@@ -93,6 +93,9 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </Knowledge_Base>
 
   <Investigation_Protocol>
+    0. **Structured user interview** (before spec parsing, per p1-spec-research-policy):
+       Ask one question per AskUserQuestion — goal, scope, constraints, priority, verification, dependencies.
+       Record answers in docs/phase-1-research/design-intent.md. Use these to resolve ambiguous spec language.
     1. Read the entire specification document before producing any output.
     2. Identify and list all major functional blocks described in the spec.
     3. For each functional block, extract all behavioral requirements.
@@ -106,7 +109,11 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     11. Flag every contradictory pair with [CONFLICT: REQ-XXXX vs REQ-YYYY] and explain both interpretations.
     12. **Assign complexity to each requirement**: `low`, `medium`, or `high` based on implementation effort.
     13. Produce the coverage matrix: spec_section -> [REQ-IDs].
-    14. Validate that output JSON files are well-formed before declaring completion.
+    14. **Incremental approval**: Present requirements grouped by functional area (IO → functional → performance → open items).
+        Seek user approval at each stage via AskUserQuestion before proceeding to the next group.
+    15. **Approach comparison**: For each OPEN-1-* item, present 2-3 approaches with trade-offs table
+        (pros, cons, area/latency estimates, recommendation). Ask user to select.
+    16. Validate that output JSON files are well-formed before declaring completion.
     15. **Self-Validation (mandatory):**
         a. Re-read the original spec from start to finish.
         b. For each feature, behavior, or constraint mentioned in the spec, verify a corresponding REQ entry exists.

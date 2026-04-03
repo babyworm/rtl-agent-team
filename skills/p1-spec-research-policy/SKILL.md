@@ -13,6 +13,57 @@ Every ambiguity, design choice, or scope decision MUST be resolved via AskUserQu
 BEFORE proceeding. Do not assume — ask. The cost of asking is low; the cost of a wrong
 assumption cascades to all later phases.
 
+### Structured Interview Protocol (before spec parsing)
+
+Before analyzing spec documents, conduct a structured user interview to understand
+intent, priorities, and constraints. Ask **one question per message** — do not batch.
+
+Interview sequence (adapt to context, skip if already clear from spec):
+1. **Goal**: "What is the primary purpose of this design? What problem does it solve?"
+2. **Scope**: "Which features from the spec are in-scope for this implementation?
+   Any intentional omissions?"
+3. **Constraints**: "Target frequency? Area budget? Power envelope? Technology node?"
+4. **Priority**: "If trade-offs arise (area vs performance vs power), which takes precedence?"
+5. **Verification**: "What is the verification strategy? cocotb/UVM? Formal? Target coverage?"
+6. **Dependencies**: "Any existing IP/modules to integrate? Reference models to match?"
+
+Record answers in `docs/phase-1-research/design-intent.md`. These answers become
+the interpretive context for all spec parsing — ambiguous spec language is resolved
+using the user's stated intent, not agent assumptions.
+
+### Approach Comparison for Open Items
+
+When the spec allows multiple implementation paths (algorithm choices, architecture options,
+protocol selections), present structured comparisons to the user:
+
+```markdown
+## OPEN-1-NNN: {topic}
+
+| Approach | Pros | Cons | Area Est. | Latency Est. | Recommendation |
+|----------|------|------|-----------|-------------|----------------|
+| A: {name} | ... | ... | ... | ... | |
+| B: {name} | ... | ... | ... | ... | ★ Recommended |
+| C: {name} | ... | ... | ... | ... | |
+
+Trade-off summary: {1-2 sentences}
+```
+
+Ask user to select via AskUserQuestion. Record choice + rationale in open-requirements.json
+`resolution_rationale` field.
+
+### Incremental Requirement Approval
+
+Do NOT present all requirements at once. Group by functional area and seek approval
+in stages:
+
+1. Present **interface/IO requirements** first (ports, protocols, clocks) → user approves
+2. Present **functional requirements** by block → user approves per block
+3. Present **performance requirements** (timing, throughput, area) → user approves
+4. Present **open items** with approach comparisons → user selects
+
+At each stage, the user can correct misinterpretations before they propagate.
+Only after all stages are approved, finalize iron-requirements.json.
+
 ### Domain-Consult-First
 Actively invoke domain-consult to acquire domain expert knowledge on algorithms, standards,
 coding tools, filter characteristics, and HW implementation trade-offs. Do not research
