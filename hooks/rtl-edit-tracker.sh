@@ -174,7 +174,7 @@ case "$FILE_PATH" in
     SAFE_BASENAME=$(jsonu_escape "$(basename "$FILE_PATH")")
     printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] %s modified (%s unverified RTL files). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. Lint alone cannot guarantee functional correctness. When done: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
     ;;
-  */sim/*.py|*/sim/*/*.py)
+  */sim/*.py)
     # Testbench Python file modified — invalidate previous verification results
     _setup_tracking
     if acquire_lock "$TRACK_FILE"; then
