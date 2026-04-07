@@ -7,6 +7,28 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.21] - 2026-04-07
+
+### Fixed
+- Codex cross-review findings (10 rounds):
+  - config.mk: skip empty PREF_*/SEEDS to prevent broken Make dispatch
+  - generate_config.sh: normalize tool names for Makefile targets (dc_shell→dc, jg→jasper, vsim→questa, sg_shell→spyglass)
+  - generate_config.sh: safe_formal_pref uses DET_STATUS for env_source-aware sby detection
+  - run_syn.sh: SDC default always project-relative, not SYN_ROOT-relative
+  - run_syn.sh: timestamp in auto-generated script filenames (parallel safety)
+  - run_syn.sh: Yosys JSON netlist → syn/db/ (vnet/ for .v only)
+  - run_syn.sh: Yosys stat extraction with multi-marker version compatibility
+  - run_cdc.sh: svlens availability check includes run_tool Docker fallback
+  - Makefile: sim_regression passes SIM + TOPLEVEL to cocotb sub-make
+  - Makefile: svlens targets route through _run_tool wrapper
+  - Makefile: add sim_questa target
+  - Makefile: POSIX-portable regression (no bash-only PIPESTATUS)
+  - Complete syn/reports → syn/{rpt,log,vnet,svf,scr}/ path migration across
+    all consumers (equivalence-checker, formality, conformal, synth-check,
+    syn-guide, syn-tool-profiles, module-doc-template, yosys-commands)
+  - equivalence-checker: SVF path syn/output/ → syn/svf/
+  - rat-setup: clarify env-config.json not yet consumed
+
 ## [0.8.20] - 2026-04-07
 
 ### Added
