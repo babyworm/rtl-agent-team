@@ -3,6 +3,7 @@ node_modules/
 .rtl-agent-team/
 .worktrees/
 **/.omc/
+.remember/
 *.log
 .DS_Store
 .env
