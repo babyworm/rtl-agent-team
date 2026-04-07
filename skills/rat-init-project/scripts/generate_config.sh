@@ -217,6 +217,7 @@ PREF_EQUIV=$(pick_pref equivalence fm_shell lec)
 # generate_config.sh uses internal keys (dc_shell, jg, vsim, sg_shell)
 # but Makefile targets use normalized names (dc, jasper, questa, spyglass)
 normalize_for_make() {
+  local category="${2:-}"
   case "$1" in
     dc_shell) echo "dc" ;;
     jg)       echo "jasper" ;;
@@ -227,10 +228,19 @@ normalize_for_make() {
   esac
 }
 
+# Commercial formal tools (jg, vcf) require project-specific TCL scripts.
+# Auto-selecting them as default causes immediate failure. Fall back to sby.
+safe_formal_pref() {
+  case "$1" in
+    jg|vcf) echo "sby" ;;
+    *)      echo "$1" ;;
+  esac
+}
+
 MK_SIM=$(normalize_for_make "$PREF_SIM")
 MK_SYN=$(normalize_for_make "$PREF_SYN")
 MK_LINT=$(normalize_for_make "$PREF_LINT")
-MK_FORMAL=$(normalize_for_make "$PREF_FORMAL")
+MK_FORMAL=$(normalize_for_make "$(safe_formal_pref "$PREF_FORMAL")")
 MK_CDC=$(normalize_for_make "$PREF_CDC")
 MK_EQUIV=$(normalize_for_make "$PREF_EQUIV")
 

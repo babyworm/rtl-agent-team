@@ -145,13 +145,13 @@ Task(subagent_type="rtl-agent-team:constraint-writer",
 # Step 3-4: ASIC Synthesis Estimation via wrapper (NanGate45 / TSMC 28nm proxy)
 # ============================================================
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run ASIC synthesis estimation using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable --outdir syn/reports. Script handles sv2v conversion internally. Check output for inferred latches. If SKIPPED, record status.")
+     prompt="Run ASIC synthesis estimation using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable. Script handles sv2v conversion internally. Outputs: syn/rpt/ (reports), syn/vnet/ (netlist), syn/log/ (logs). Check output for inferred latches. If SKIPPED, record status.")
 
 # ============================================================
 # Step 6-9: Parse results → gate count (NAND2-FO2 equivalent)
 # ============================================================
 Task(subagent_type="rtl-agent-team:synthesis-reporter",
-     prompt="Parse syn/reports/ Yosys output. Extract cell count, area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag any inferred latches as hard errors. Write syn/summary.json with gate_count_nand2 field. Technology: ASIC TSMC 28nm (NanGate45 proxy).")
+     prompt="Parse syn/log/ and syn/rpt/ Yosys output. Extract cell count, area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag any inferred latches as hard errors. Write syn/summary.json with gate_count_nand2 field. Technology: ASIC TSMC 28nm (NanGate45 proxy).")
 ```
 </Tool_Usage>
 

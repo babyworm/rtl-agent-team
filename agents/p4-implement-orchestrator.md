@@ -300,7 +300,7 @@ Output to docs/phase-4-rtl/stream-b-tb-skeletons.md.",
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Stream B synthesis smoke test: for each module in rtl/*/,
-run syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --skip-if-unavailable --outdir syn/reports.
+run syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --skip-if-unavailable.
 Check for: (1) inferred latches (CRITICAL), (2) unmappable constructs (CRITICAL),
 (3) gross cell count anomalies. Do NOT run full PPA with liberty file -- this is a
 quick smoke test only. If synthesis was SKIPPED, note in report.

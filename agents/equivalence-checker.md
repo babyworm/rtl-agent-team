@@ -88,7 +88,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   <Investigation_Protocol>
     1. Identify the two designs to compare:
        a. Reference: RTL source files (rtl/*/*.sv) — include rtl/common/ for SRAM wrappers
-       b. Implementation: synthesis netlist (syn/netlist/*.v or syn/reports/*_netlist.v) OR modified RTL
+       b. Implementation: synthesis netlist (syn/netlist/*.v or syn/vnet/*_netlist.v) OR modified RTL
     2. Identify synthesis tool used (DC/Genus/Yosys) from synthesis logs or rat_config.json
     3. Select equivalence tool per Tool_Selection_Protocol
     4. Prepare blackbox list: SRAM wrappers (sram_sp, sram_tp, sram_dp), hard macros, analog blocks
@@ -110,7 +110,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ### Prerequisite: SVF file
     DC automatically generates `.svf` during `compile_ultra`. Location:
     - Default: `./default.svf` or specified via `set_svf filename.svf` in DC script
-    - Check `syn/output/*.svf` or `syn/reports/*.svf`
+    - Check `syn/output/*.svf` or `syn/svf/*.svf`
     - **Always use SVF when available** — without it, Formality must infer transformations
 
     ### Preferred: Use replayable wrapper
@@ -118,7 +118,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     syn/scripts/run_formality.sh \
       --top {module} \
       --rtl rtl/filelist_{module}.f \
-      --netlist syn/reports/{module}_netlist.v \
+      --netlist syn/vnet/{module}.v \
       --svf syn/output/{module}.svf \
       --liberty {technology.liberty from rat_config.json}
     ```
@@ -193,7 +193,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     syn/scripts/run_conformal.sh \
       --top {module} \
       --rtl rtl/filelist_{module}.f \
-      --netlist syn/reports/{module}_netlist.v \
+      --netlist syn/vnet/{module}.v \
       --liberty {technology.liberty from rat_config.json}
     ```
 

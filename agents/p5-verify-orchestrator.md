@@ -169,7 +169,7 @@ Task(subagent_type="rtl-agent-team:constraint-writer",
 
 # Step 2: Synthesis estimation via wrapper (handles sv2v + tool selection internally)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run ASIC synthesis estimation for {module} using the replayable wrapper: syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable --outdir syn/reports. Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag inferred latches. Save to docs/phase-5-verify/{module}_ppa_estimate.md. If synthesis was SKIPPED (tool unavailable), record SKIPPED status.",
+     prompt="Run ASIC synthesis estimation for {module} using the replayable wrapper: syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable. Outputs: syn/rpt/ (reports), syn/vnet/ (netlist), syn/log/ (logs). Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Flag inferred latches. Save to docs/phase-5-verify/{module}_ppa_estimate.md. If synthesis was SKIPPED (tool unavailable), record SKIPPED status.",
      run_in_background=true)
 ```
 
@@ -295,11 +295,11 @@ Task(subagent_type="rtl-agent-team:constraint-writer",
 
 # Step 2: ASIC synthesis estimation via wrapper (handles sv2v + tool selection internally)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run ASIC synthesis estimation for top-level using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable --outdir syn/reports. Compute NAND2-FO2 gate count (area / 0.798). If SKIPPED, record status.")
+     prompt="Run ASIC synthesis estimation for top-level using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable. Outputs: syn/rpt/ (reports), syn/vnet/ (netlist). Compute NAND2-FO2 gate count (area / 0.798). If SKIPPED, record status.")
 
 # Step 3: Parse results
 Task(subagent_type="rtl-agent-team:synthesis-reporter",
-     prompt="Parse syn/reports/{top}_synth.txt. Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Technology: ASIC TSMC 28nm (NanGate45 proxy). Write syn/summary.json.")
+     prompt="Parse syn/log/ and syn/rpt/ for {top} synthesis output. Extract area (um2), compute NAND2-FO2 gate count (area / 0.798). Technology: ASIC TSMC 28nm (NanGate45 proxy). Write syn/summary.json.")
 ```
 
 ### Group 2B (after T1 pass)

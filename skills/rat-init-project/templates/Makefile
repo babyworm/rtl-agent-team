@@ -111,7 +111,7 @@ sim_regression:
 	for seed in $(SEEDS); do \
 	  echo "--- Seed: $$seed ---"; \
 	  RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
-	    python3 -m pytest sim/$(TOP)/ --tb=short -q 2>&1 \
+	    $(MAKE) -C sim/$(TOP) 2>&1 \
 	    | tee sim/$(TOP)/regression_seed_$$seed.log; \
 	  if [ $${PIPESTATUS[0]} -ne 0 ]; then FAIL=1; fi; \
 	done; \
