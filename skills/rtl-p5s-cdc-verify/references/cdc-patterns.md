@@ -204,16 +204,20 @@ set_max_delay -datapath_only 5.0 \
 
 | Tool | Capability | Command |
 |------|------------|---------|
-| **slang-cdc** | AST-based structural CDC: 8 sync patterns, quality checks, SDC gen | `slang-cdc --top <top> -f filelist.f -o reports/` |
+| **svlens** | Unified structural analysis: CDC (8 sync patterns) + connectivity + metrics | `svlens cdc --top <top> -f filelist.f -o reports/` |
 | Yosys + custom script | Basic crossing detection | `yosys -p "read_verilog -sv *.sv; hierarchy -check; proc; scc"` |
 | Verilator | `SYNCASYNCNET` warning | `verilator --lint-only -Wall` |
 | slang | CDC-aware semantic checks | `slang --lint-only` |
 
-**slang-cdc** (https://github.com/babyworm/slang-cdc) is the recommended open-source CDC tool.
-It detects 8 synchronizer patterns (2-FF, 3-FF, gray code, handshake, async FIFO, MUX, pulse,
-Johnson counter) and performs quality checks (reconvergence, glitch path, fan-out-before-sync,
-reset synchronizer, non-2^N FIFO depth). Outputs: Markdown + JSON + SDC + waiver YAML.
-Install: `git clone ... && make build && make install`.
+**svlens** (https://github.com/babyworm/svlens) is the recommended open-source structural analysis tool.
+It provides three analysis modes under a single binary:
+- `svlens cdc` — 8 synchronizer patterns (2-FF, 3-FF, gray code, handshake, async FIFO, MUX, pulse,
+  Johnson counter) with quality checks (reconvergence, glitch path, fan-out-before-sync,
+  reset synchronizer, non-2^N FIFO depth). Outputs: Markdown + JSON + SDC + waiver YAML.
+- `svlens conn` — port connectivity, width/type mismatch, protocol completeness, naming conventions.
+- `svlens metrics` — transformation cone complexity, logic depth estimation, FF-to-FF path analysis.
 
-For comprehensive CDC analysis with formal proof, commercial tools (Synopsys SpyGlass CDC,
-Cadence Conformal CDC, Siemens Questa CDC) are still the industry standard.
+svlens provides **quantitative measurements** to complement the LLM's qualitative judgment.
+Phase gate decisions require both: quantitative tool data and LLM assessment must agree.
+When commercial tools (SpyGlass, Conformal CDC, Questa CDC) are available, svlens serves
+as a supplementary crosscheck — commercial tools remain the signoff authority.

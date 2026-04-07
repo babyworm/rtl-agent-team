@@ -60,8 +60,25 @@ that LT blocking transport cannot capture.
 4. Build BFM via Bash CLI: `mkdir -p bfm/build && cd bfm/build && cmake .. && make`
 5. Run smoke test via Bash CLI: `cd bfm/build && ./smoke_test`
 6. Fix compile errors and smoke test failures
-7. Record smoke test result in bfm/smoke_test_result.txt
-8. If DPI-C co-simulation required: implement bfm/dpi/ interface
+7. **Feature coverage verification against iron-requirements.json** (MANDATORY):
+   - Read `docs/phase-1-research/iron-requirements.json` — extract all REQ-F-* items
+   - Read `reviews/phase-2-architecture/ref-model-feature-coverage.md` if available
+   - For EACH REQ-F-*, verify the BFM has a corresponding transaction-level model
+     that exercises the feature (module method, transaction handler, data path — not just a stub)
+   - This is a **structural** check: bitexact comparison with refc/ verifies data correctness,
+     but may miss features not exercised by the specific test vectors used
+   - Save `reviews/phase-3-uarch/bfm-feature-coverage.md`:
+     ```
+     | REQ-F-* | Feature | BFM Module/Method | Ref Model Match | Status |
+     |---------|---------|-------------------|-----------------|--------|
+     | REQ-F-001 | Intra 4x4 | intra_pred_module::b_transport | intra_predict_4x4() | IMPLEMENTED |
+     | REQ-F-002 | Intra 8x8 | — | intra_predict_8x8() | MISSING |
+     ```
+   - Coverage < 100%: escalate to user via AskUserQuestion —
+     "BFM does not model REQ-F-NNN ({feature}). Approve omission or require implementation?"
+   - User-approved omissions must have ADR with documented impact on downstream verification
+8. Record smoke test result in bfm/smoke_test_result.txt
+9. If DPI-C co-simulation required: implement bfm/dpi/ interface
 </Steps>
 
 <Tool_Usage>
@@ -109,6 +126,9 @@ No Memory Manager — payload leaks accumulate during simulation.
 - [ ] PEQ (peq_with_cb_and_phase) used for phase scheduling
 - [ ] Smoke test passes (at least one AT transaction)
 - [ ] BFM per-block functional output matches refc/ output (shared test vectors, bitexact or documented tolerance)
+- [ ] Feature coverage verified against iron-requirements.json (ALL REQ-F-* mapped to BFM modules)
+- [ ] `reviews/phase-3-uarch/bfm-feature-coverage.md` saved
+- [ ] Missing features escalated to user — omissions have ADR with impact estimate
 - [ ] bfm/smoke_test_result.txt written
 - [ ] DPI-C interface provided if SV co-simulation required
 </Final_Checklist>

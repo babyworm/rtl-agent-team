@@ -68,7 +68,7 @@ Categorize tools into three tiers and check each:
 | Tool | Check Command | Purpose |
 |------|--------------|---------|
 | jq | `jq --version` | Hook JSON parser (robust state gating) |
-| slang-cdc | `slang-cdc --version` | AST-based CDC analysis (crosscheck with structural) |
+| svlens | `svlens help` | Structural analysis (CDC + connectivity + metrics) |
 | sv-renamer | `python3 -c "import sv_renamer"` or `sv_renamer.py --help` | SV identifier rename + semantic diff |
 | sv_to_ipxact | `sv_to_ipxact --help` | SV → IP-XACT XML auto-generation |
 | slang-server | `slang-server --version` | SV Language Server (LSP for Claude Code) |
@@ -170,7 +170,7 @@ Before installing missing required tools, ask the user:
 > 3. slang-server — SV LSP integration for Claude Code
 > 4. iverilog — fallback simulator
 > 5. gtkwave — waveform viewer
-> 6. slang-cdc — AST-based CDC analysis (crosscheck with structural)
+> 6. svlens — Structural analysis (CDC, connectivity, metrics)
 
 ### Q3: Plugin Global Configuration
 
@@ -318,7 +318,7 @@ Bash: slang --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 2: Recommended ---
 Bash: jq --version 2>&1 || echo "NOT_FOUND"
-Bash: slang-cdc --version 2>&1 || echo "NOT_FOUND"
+Bash: svlens help 2>&1 | head -1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 3: Optional ---
@@ -368,7 +368,7 @@ echo "SystemC latest stable candidate: ${SYSTEMC_LATEST_TAG}"
 ## RHEL/CentOS GCC Toolset (source builds requiring C++17/C++20)
 
 RHEL, CentOS, Rocky, Alma and other EL-based distros ship older GCC by default (often GCC 8-11),
-which may lack full C++20 support needed by tools like **slang**, **slang-cdc**, and recent **Verilator**.
+which may lack full C++20 support needed by tools like **slang**, **svlens**, and recent **Verilator**.
 
 Before source-building these tools, detect the distro and activate a newer GCC toolset:
 
@@ -423,12 +423,14 @@ ln -sf "$HOME/tools/verible/bin/verible-verilog-format" "$HOME/.local/bin/veribl
 # ===== slang (prebuilt binary or source) =====
 # See: https://sv-lang.com / https://github.com/MikePopoloski/slang/releases
 
-# ===== slang-cdc (AST-based CDC analysis) =====
-git clone https://github.com/babyworm/slang-cdc.git "$HOME/tools/slang-cdc"
-cd "$HOME/tools/slang-cdc"
-make build
-make install
-# Binary installs to ~/.local/bin/slang-cdc
+# ===== svlens (structural analysis: CDC + connectivity + metrics) =====
+git clone https://github.com/babyworm/svlens.git "$HOME/tools/svlens"
+cd "$HOME/tools/svlens"
+./scripts/setup-deps.sh --prefix "$HOME/.local"
+cmake -B build -DCMAKE_PREFIX_PATH="$HOME/.local"
+cmake --build build -j$(nproc)
+cmake --install build --prefix "$HOME/.local"
+# Binary installs to ~/.local/bin/svlens
 
 # ===== slang-server (SystemVerilog LSP for Claude Code) =====
 bash scripts/install-slang-server.sh install

@@ -3,14 +3,15 @@
 # Usage: sim/cdc/run_cdc.sh [OPTIONS] [SV_FILES...]
 #
 # Supports:
-#   - structural (default): grep heuristic + slang-cdc crosscheck (if installed)
-#   - slang-cdc: AST-based CDC analysis (https://github.com/babyworm/slang-cdc)
+#   - structural (default): grep heuristic + svlens crosscheck (if installed)
+#   - svlens: unified structural analysis via svlens cdc (https://github.com/babyworm/svlens)
 #   - spyglass: Synopsys SpyGlass CDC
 #   - vc_cdc: Synopsys VC CDC
 #   - questa_cdc: Siemens Questa CDC
 #
 # Examples:
 #   sim/cdc/run_cdc.sh --tool structural -f rtl/filelist_top.f --outdir sim/cdc/reports
+#   sim/cdc/run_cdc.sh --tool svlens --top my_top -f rtl/filelist_top.f
 #   sim/cdc/run_cdc.sh --tool spyglass --script sim/cdc/spyglass_cdc.tcl -f rtl/filelist_top.f
 
 set -euo pipefail
@@ -37,7 +38,7 @@ usage() {
 Usage: sim/cdc/run_cdc.sh [OPTIONS] [SV_FILES...]
 
 Options:
-  --tool <name>     structural|slang-cdc|spyglass|vc_cdc|questa_cdc (default: structural)
+  --tool <name>     structural|svlens|spyglass|vc_cdc|questa_cdc (default: structural)
   --top <module>    Top-level module name
   -f <filelist>     Source filelist (.f file)
   --outdir <dir>    Report output directory (default: sim/cdc/reports)
@@ -116,49 +117,52 @@ case "$TOOL" in
     } | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
 
-    # slang-cdc crosscheck: run AST-based analysis if installed
-    if command -v slang-cdc &>/dev/null; then
+    # svlens crosscheck: run AST-based CDC analysis if installed
+    if command -v svlens &>/dev/null; then
       echo ""
-      echo "=== slang-cdc Crosscheck (AST-based) ==="
-      SLANG_CDC_OUTDIR="$OUTDIR/slang-cdc"
-      mkdir -p "$SLANG_CDC_OUTDIR"
-      SLANG_CDC_ARGS=(slang-cdc --format all -o "$SLANG_CDC_OUTDIR")
-      [[ -n "$TOP" ]] && SLANG_CDC_ARGS+=(--top "$TOP")
-      [[ -n "$FILELIST" ]] && SLANG_CDC_ARGS+=(-f "$FILELIST")
-      SLANG_CDC_ARGS+=("${SRC_FILES[@]}")
-      echo "CMD: ${SLANG_CDC_ARGS[*]}"
-      write_replay "${SLANG_CDC_ARGS[*]}"
-      if run_tool "${SLANG_CDC_ARGS[@]}" 2>&1 | tee -a "$REPORT"; then
-        echo "[slang-cdc] Crosscheck complete (0 violations). Reports in $SLANG_CDC_OUTDIR/"
+      echo "=== svlens CDC Crosscheck (AST-based) ==="
+      SVLENS_OUTDIR="$OUTDIR/svlens"
+      mkdir -p "$SVLENS_OUTDIR"
+      SVLENS_ARGS=(svlens cdc --format all -o "$SVLENS_OUTDIR")
+      [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
+      [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
+      SVLENS_ARGS+=("${SRC_FILES[@]}")
+      echo "CMD: ${SVLENS_ARGS[*]}"
+      write_replay "${SVLENS_ARGS[*]}"
+      if run_tool "${SVLENS_ARGS[@]}" 2>&1 | tee -a "$REPORT"; then
+        echo "[svlens] Crosscheck complete (0 violations). Reports in $SVLENS_OUTDIR/"
       else
-        SLANG_CDC_EXIT=$?
-        echo "[slang-cdc] Crosscheck failed (exit $SLANG_CDC_EXIT). Reports in $SLANG_CDC_OUTDIR/"
-        # slang-cdc exit code = violation count; use as authoritative result
-        EXIT_CODE=$SLANG_CDC_EXIT
+        SVLENS_EXIT=$?
+        echo "[svlens] Crosscheck failed (exit $SVLENS_EXIT). Reports in $SVLENS_OUTDIR/"
+        EXIT_CODE=$SVLENS_EXIT
       fi
     else
       echo ""
-      echo "[INFO] slang-cdc not installed. Install for AST-based CDC crosscheck:"
-      echo "  git clone https://github.com/babyworm/slang-cdc.git ~/tools/slang-cdc"
-      echo "  cd ~/tools/slang-cdc && make build && make install"
+      echo "[INFO] svlens not installed. Install for AST-based CDC crosscheck:"
+      echo "  git clone https://github.com/babyworm/svlens.git ~/tools/svlens"
+      echo "  cd ~/tools/svlens && ./scripts/setup-deps.sh --prefix ~/.local"
+      echo "  cmake -B build -DCMAKE_PREFIX_PATH=~/.local && cmake --build build -j\$(nproc)"
+      echo "  cmake --install build --prefix ~/.local"
     fi
     ;;
 
-  slang-cdc)
-    if ! command -v slang-cdc &>/dev/null; then
-      echo "ERROR: slang-cdc not found. Install:" >&2
-      echo "  git clone https://github.com/babyworm/slang-cdc.git ~/tools/slang-cdc" >&2
-      echo "  cd ~/tools/slang-cdc && make build && make install" >&2
+  svlens)
+    if ! command -v svlens &>/dev/null; then
+      echo "ERROR: svlens not found. Install:" >&2
+      echo "  git clone https://github.com/babyworm/svlens.git ~/tools/svlens" >&2
+      echo "  cd ~/tools/svlens && ./scripts/setup-deps.sh --prefix ~/.local" >&2
+      echo "  cmake -B build -DCMAKE_PREFIX_PATH=~/.local && cmake --build build -j\$(nproc)" >&2
+      echo "  cmake --install build --prefix ~/.local" >&2
       exit 1
     fi
-    SLANG_CDC_ARGS=(slang-cdc --format all -o "$OUTDIR")
-    [[ -n "$TOP" ]] && SLANG_CDC_ARGS+=(--top "$TOP")
-    [[ -n "$FILELIST" ]] && SLANG_CDC_ARGS+=(-f "$FILELIST")
-    SLANG_CDC_ARGS+=("${SRC_FILES[@]}")
-    echo "=== slang-cdc (AST-based CDC analysis) ==="
-    echo "CMD: ${SLANG_CDC_ARGS[*]}"
-    write_replay "${SLANG_CDC_ARGS[*]}"
-    run_tool "${SLANG_CDC_ARGS[@]}" 2>&1 | tee "$REPORT"
+    SVLENS_ARGS=(svlens cdc --format all -o "$OUTDIR")
+    [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
+    [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
+    SVLENS_ARGS+=("${SRC_FILES[@]}")
+    echo "=== svlens cdc (AST-based CDC analysis) ==="
+    echo "CMD: ${SVLENS_ARGS[*]}"
+    write_replay "${SVLENS_ARGS[*]}"
+    run_tool "${SVLENS_ARGS[@]}" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -231,7 +235,7 @@ case "$TOOL" in
 
   *)
     echo "ERROR: Unknown CDC tool: $TOOL" >&2
-    echo "Supported: structural, slang-cdc, spyglass, vc_cdc, questa_cdc" >&2
+    echo "Supported: structural, svlens, spyglass, vc_cdc, questa_cdc" >&2
     exit 1
     ;;
 esac

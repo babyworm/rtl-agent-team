@@ -189,17 +189,38 @@ else ifeq ($(UVM_SIM),questa)
 endif
 
 # =============================================================================
-# CDC Analysis — default: structural + slang-cdc
+# CDC Analysis — default: structural + svlens crosscheck
 # =============================================================================
-.PHONY: cdc cdc_spyglass
+.PHONY: cdc cdc_svlens cdc_spyglass
 
 cdc:
 	$(call _require_top)
 	$(CDC_SCRIPT) --tool structural --top $(TOP) -f $(FILELIST)
 
+cdc_svlens:
+	$(call _require_top)
+	$(CDC_SCRIPT) --tool svlens --top $(TOP) -f $(FILELIST)
+
 cdc_spyglass:
 	$(call _require_top)
 	$(CDC_SCRIPT) --tool spyglass --top $(TOP) -f $(FILELIST)
+
+# =============================================================================
+# Structural Analysis (svlens) — connectivity, metrics, combined
+# =============================================================================
+.PHONY: conn metrics svlens_all
+
+conn:
+	$(call _require_top)
+	svlens conn --format all --top $(TOP) -f $(FILELIST) -o sim/conn/reports
+
+metrics:
+	$(call _require_top)
+	svlens metrics --format all --top $(TOP) -f $(FILELIST) -o sim/metrics/reports
+
+svlens_all:
+	$(call _require_top)
+	svlens all --format all --top $(TOP) -f $(FILELIST) -o sim/svlens/reports
 
 # =============================================================================
 # Utility
@@ -239,8 +260,14 @@ help:
 	@echo "    uvm_coverage      Merge and report coverage"
 	@echo ""
 	@echo "  CDC Analysis"
-	@echo "    cdc               structural + slang-cdc"
+	@echo "    cdc               structural + svlens crosscheck"
+	@echo "    cdc_svlens        svlens cdc (standalone)"
 	@echo "    cdc_spyglass      Synopsys SpyGlass CDC"
+	@echo ""
+	@echo "  Structural Analysis (svlens)"
+	@echo "    conn              Port connectivity analysis"
+	@echo "    metrics           RTL transformation complexity"
+	@echo "    svlens_all        Combined (cdc + conn + metrics)"
 	@echo ""
 	@echo "  Utility"
 	@echo "    help              Show this help"

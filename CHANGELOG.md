@@ -7,6 +7,23 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.19] - 2026-04-07
+
+### Changed
+- slang-cdc → svlens migration: unified structural analysis (CDC + connectivity + metrics)
+  - `run_cdc.sh`: `slang-cdc` CLI replaced with `svlens cdc` subcommand
+  - `rat-setup`: Tier 2 detection/install updated to svlens (cmake-based build)
+  - `cdc-tool-profiles`: rewritten for svlens 3-mode architecture + quantitative/qualitative gate philosophy
+  - `generate_config.sh` / `rat_config.json`: tool key `slang_cdc` → `svlens`
+  - `cdc-patterns.md`: tool recommendation updated to svlens
+- Makefile: added `conn`, `metrics`, `svlens_all` targets for structural analysis
+- rat-tutorial: auto-detect user language from conversation context (remove forced English default)
+
+### Added
+- Feature coverage gate in ref-model skill (Phase 2): structural verification of ALL REQ-F-* against C model implementation
+- Feature coverage gate in bfm-develop skill (Phase 3): structural verification of ALL REQ-F-* against SystemC BFM
+- Quantitative + qualitative gate philosophy documented in cdc-tool-profiles (svlens provides numbers, LLM provides judgment, both required)
+
 ## [0.8.18] - 2026-04-03
 
 ### Added

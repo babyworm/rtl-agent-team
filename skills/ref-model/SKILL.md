@@ -69,9 +69,28 @@ SystemVerilog testbenches without wrapper overhead.
    (reports ext_mem access count/pattern + estimated cycle counts per block
     using MEM_LATENCY_INTERNAL=1, MEM_LATENCY_EXTERNAL=500 defaults)
 6. Fix any mismatches (iterate until all vectors pass)
-7. Run independent review via ref-model-reviewer (algorithm fidelity, numeric precision, UB/memory safety)
-8. Write conformance_report.json with pass/fail per vector and JM/HM version
-9. Write bandwidth_report.json with external memory access statistics per block
+7. **Feature coverage verification against iron-requirements.json** (MANDATORY):
+   - Read `docs/phase-1-research/iron-requirements.json` — extract all REQ-F-* items
+   - For EACH REQ-F-*, verify the ref model has a corresponding code path that exercises
+     the feature (function call, branch, algorithm implementation — not just an enum declaration)
+   - Bitexact tests depend on input vectors and may miss unimplemented features.
+     This step is a **structural** check: does the code actually implement the feature?
+   - When an input C model is provided (e.g., JM/HM, user-supplied model), extract features
+     from that model and verify the architectural ref model preserves ALL of them
+   - Save `reviews/phase-2-architecture/ref-model-feature-coverage.md`:
+     ```
+     | REQ-F-* | Feature | Ref Model Function/Path | Status |
+     |---------|---------|------------------------|--------|
+     | REQ-F-001 | Intra 4x4 pred | intra_predict_4x4() | IMPLEMENTED |
+     | REQ-F-002 | Intra 8x8 pred | — | MISSING |
+     ```
+   - Coverage < 100%: escalate to user via AskUserQuestion —
+     "Ref model does not implement REQ-F-NNN ({feature}). Approve omission or require implementation?"
+   - User-approved omissions → record in ADR with impact estimate
+   - Unapproved missing features → MUST be implemented before ref model gate passes
+8. Run independent review via ref-model-reviewer (algorithm fidelity, numeric precision, UB/memory safety)
+9. Write conformance_report.json with pass/fail per vector and JM/HM version
+10. Write bandwidth_report.json with external memory access statistics per block
 </Steps>
 
 <Tool_Usage>
@@ -142,6 +161,9 @@ unnecessary complexity for a functional model.
 - [ ] External memory access uses ext_mem_read/ext_mem_write abstraction
 - [ ] PARALLEL_LANES parameterizable for datapath width exploration
 - [ ] All test vectors pass bitexact comparison vs JM/HM
+- [ ] Feature coverage verified against iron-requirements.json (ALL REQ-F-* mapped to code paths)
+- [ ] `reviews/phase-2-architecture/ref-model-feature-coverage.md` saved
+- [ ] Missing features escalated to user — omissions have ADR with impact estimate
 - [ ] ref-model-reviewer report saved with PASS verdict for oracle use
 - [ ] conformance_report.json written with JM/HM version and vector results
 - [ ] bandwidth_report.json written with external memory access statistics
