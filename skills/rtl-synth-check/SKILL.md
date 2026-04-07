@@ -11,7 +11,7 @@ Area is reported in **NAND2 gate equivalents** (NAND2X1 fanout-of-2, ≈ 0.798 �
 **SDC-first flow**: SDC constraints are generated BEFORE synthesis to ensure timing-aware optimization.
 Flow: 1. SDC generation → 2. sv2v conversion → 3. Yosys synthesis with NanGate45 liberty → 4. PPA report
 
-Outputs: syn/reports/{module}_synth.txt, syn/summary.json, and syn/constraints/design.sdc.
+Outputs: syn/log/ (logs), syn/rpt/ (reports), syn/vnet/ (netlist), syn/summary.json, and syn/constraints/design.sdc.
 
 See `references/yosys-commands.md` for command reference and latch detection guide.
 See `references/sdc-best-practices.md` for SDC writing rules and tool-specific commands.
@@ -39,7 +39,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 <Execution_Policy>
 - **SDC-first**: constraint-writer generates SDC BEFORE synthesis (mandatory, not optional)
 - eda-runner executes Yosys synthesis estimation with NanGate45 liberty
-- For replayable execution, use `syn/scripts/run_syn.sh` (creates `syn/reports/replay/run_syn_*_latest.sh`)
+- For replayable execution, use `syn/scripts/run_syn.sh` (creates `syn/scr/replay/run_syn_*_latest.sh`)
 - synthesis-reporter parses output, computes NAND2-FO2 gate count, and produces structured summary
 - Target: ASIC TSMC 28nm estimation (NanGate45 as proxy)
 - Area metric: NAND2 gate equivalents (total_area_um2 / 0.798)
@@ -84,7 +84,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
      dfflibmap -liberty NangateOpenCellLibrary_typical.lib; \
      abc -liberty NangateOpenCellLibrary_typical.lib; clean; \
      stat -liberty NangateOpenCellLibrary_typical.lib" \
-     | tee syn/reports/{module}_synth.txt
+     | tee syn/log/{module}_synth.log
    ```
    **Note**: Always use NanGate45 (ASIC target). Do NOT use generic synthesis (no liberty) or FPGA synthesis.
 
@@ -95,7 +95,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    - Check `synth-summary.json` `memory_inference` field to verify correct inference
    - If SRAM incorrectly inferred as FFs → check `memory -nomap; stat` to debug
 
-5. Capture syn/reports/{module}_synth.txt (raw Yosys output)
+5. Capture syn/log/{module}_synth.log (raw Yosys output)
 
 6. synthesis-reporter parses: cell count, area (μm²), NAND2-FO2 gate count, critical path depth
    - **Gate count formula**: `gate_count = total_area_um2 / 0.798` (NAND2X1 area in NanGate45)
@@ -110,7 +110,7 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 9. Write syn/summary.json (see `templates/synth-summary.json` for format).
    Use `skills/rtl-synth-check/scripts/parse_yosys_stat.py` to automate parsing:
    ```bash
-   python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/reports/{module}_synth.txt
+   python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/log/{module}_synth.log
    ```
    Output includes: area_um2, gate_count_nand2, technology target
 

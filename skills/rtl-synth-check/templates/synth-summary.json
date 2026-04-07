@@ -30,5 +30,5 @@
   "sdc_applied": true,
   "sdc_path": "syn/constraints/design.sdc",
   "verdict": "PASS | FAIL: reason",
-  "source_file": "syn/reports/{{MODULE_NAME}}_synth.txt"
+  "source_file": "syn/log/{{MODULE_NAME}}_synth.log"
 }

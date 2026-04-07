@@ -51,7 +51,7 @@
 
 ## Synthesis Summary
 
-> Populated from `syn/reports/{{MODULE_NAME}}_synth.rpt` if available.
+> Populated from `syn/rpt/{{MODULE_NAME}}_stat.rpt` if available.
 
 | Metric | Value |
 |--------|-------|

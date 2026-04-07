@@ -307,7 +307,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       equiv_induct -seq 5
       # Final status
       equiv_status -assert
-    " 2>&1 | tee syn/reports/equiv_{module}.txt
+    " 2>&1 | tee syn/rpt/equiv_{module}.txt
     ```
 
     ### Yosys Limitations to Document
@@ -336,7 +336,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       syn/scripts/run_conformal.sh --top {module} --rtl rtl/filelist_{module}.f --netlist {netlist}
     else
       # Yosys fallback
-      yosys -p "..." 2>&1 | tee syn/reports/equiv_{module}.txt
+      yosys -p "..." 2>&1 | tee syn/rpt/equiv_{module}.txt
     fi
     ```
   </Tool_Usage>

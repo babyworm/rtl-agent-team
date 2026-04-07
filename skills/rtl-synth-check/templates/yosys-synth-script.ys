@@ -1,6 +1,6 @@
 # Yosys ASIC Synthesis Estimation Script Template
 # Target: TSMC 28nm (approximated via NanGate45 / FreePDK45)
-# Usage: yosys -s synth_{{MODULE}}.ys | tee syn/reports/{{MODULE}}_synth.txt
+# Usage: yosys -s synth_{{MODULE}}.ys | tee syn/log/{{MODULE}}_synth.log
 #
 # PREREQUISITE: SDC must be generated BEFORE running this script
 # PREREQUISITE: sv2v conversion must be done BEFORE running this script
@@ -61,4 +61,4 @@ scc -max_depth 10
 
 # Export netlist (optional — only when user requests full synthesis)
 # write_verilog syn/netlist/{{MODULE}}_netlist.v
-# write_json syn/reports/{{MODULE}}_synth.json
+# write_json syn/vnet/{{MODULE}}.json

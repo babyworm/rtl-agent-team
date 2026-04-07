@@ -6,8 +6,8 @@
 # to prove functional equivalence after synthesis.
 #
 # Examples:
-#   syn/scripts/run_conformal.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/reports/top_netlist.v
-#   syn/scripts/run_conformal.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/reports/top_netlist.v --liberty tech.lib
+#   syn/scripts/run_conformal.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/vnet/top_module.v
+#   syn/scripts/run_conformal.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/vnet/top_module.v --liberty tech.lib
 
 set -euo pipefail
 
@@ -25,7 +25,7 @@ TOP=""
 RTL_FILELIST=""
 NETLIST=""
 LIBERTY=""
-OUTDIR="syn/reports"
+OUTDIR="syn/rpt"
 SCRIPT_PATH=""
 VERBOSE=0
 
@@ -39,7 +39,7 @@ Options:
   --rtl <filelist>    RTL source filelist (.f file, golden)
   --netlist <file>    Gate-level netlist (.v, revised)
   --liberty <file>    Liberty (.lib) technology library
-  --outdir <dir>      Report output directory (default: syn/reports)
+  --outdir <dir>      Report output directory (default: syn/rpt)
   --script <file>     Custom Conformal dofile
   -v, --verbose       Verbose output
   -h, --help          Show this help

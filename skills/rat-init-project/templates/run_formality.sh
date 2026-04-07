@@ -6,8 +6,8 @@
 # to prove functional equivalence after synthesis.
 #
 # Examples:
-#   syn/scripts/run_formality.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/reports/top_netlist.v
-#   syn/scripts/run_formality.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/reports/top_netlist.v --svf syn/output/top.svf
+#   syn/scripts/run_formality.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/vnet/top_module.v
+#   syn/scripts/run_formality.sh --top top_module --rtl rtl/filelist_top.f --netlist syn/vnet/top_module.v --svf syn/svf/top_module.svf
 
 set -euo pipefail
 
@@ -26,7 +26,7 @@ RTL_FILELIST=""
 NETLIST=""
 SVF=""
 LIBERTY=""
-OUTDIR="syn/reports"
+OUTDIR="syn/rpt"
 SCRIPT_PATH=""
 VERBOSE=0
 
@@ -41,7 +41,7 @@ Options:
   --netlist <file>    Gate-level netlist (.v, implementation)
   --svf <file>        SVF guidance file from DC (optional)
   --liberty <file>    Liberty (.lib) technology library
-  --outdir <dir>      Report output directory (default: syn/reports)
+  --outdir <dir>      Report output directory (default: syn/rpt)
   --script <file>     Custom Formality Tcl script
   -v, --verbose       Verbose output
   -h, --help          Show this help

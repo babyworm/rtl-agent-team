@@ -87,7 +87,7 @@ show -format dot -prefix syn/schematic
 scc -max_depth 10
 
 # Report timing estimate (logic levels)
-tee -q -o syn/reports/timing.txt stat
+tee -q -o syn/rpt/timing.txt stat
 ```
 
 ## Synthesis Warnings to Watch
