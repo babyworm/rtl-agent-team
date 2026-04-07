@@ -372,7 +372,7 @@ CONFIG_MK="$PROJECT_ROOT/config.mk"
   echo "SDC_FILE     ?= ${SDC_FILE:-syn/constraints/design.sdc}"
   echo ""
   echo "# Regression"
-  echo "SEEDS        ?= ${SEEDS}"
+  [[ -n "$SEEDS" ]] && echo "SEEDS        ?= ${SEEDS}"
 } > "$CONFIG_MK"
 
 echo "Config.mk written: $CONFIG_MK"
