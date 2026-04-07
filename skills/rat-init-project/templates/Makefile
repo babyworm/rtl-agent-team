@@ -116,7 +116,7 @@ sim_regression:
 	@FAIL=0; \
 	for seed in $(SEEDS); do \
 	  echo "--- Seed: $$seed ---"; \
-	  SIM=$(_cocotb_sim) RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
+	  SIM=$(_cocotb_sim) TOPLEVEL=$(TOP) RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
 	    $(MAKE) -C sim/$(TOP) > sim/$(TOP)/regression_seed_$$seed.log 2>&1; \
 	  RC=$$?; cat sim/$(TOP)/regression_seed_$$seed.log; \
 	  if [ $$RC -ne 0 ]; then FAIL=1; fi; \
