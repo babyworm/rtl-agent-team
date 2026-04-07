@@ -1,6 +1,6 @@
 {
   "name": "rtl-agent-team",
-  "version": "0.8.19",
+  "version": "0.8.20",
   "description": "RTL design and verification automation agents for Claude Code",
   "author": {
     "name": "RTL Agent Team contributors"

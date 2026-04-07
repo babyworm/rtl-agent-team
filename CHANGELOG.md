@@ -7,6 +7,30 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.8.20] - 2026-04-07
+
+### Added
+- EDA build infrastructure: DC-standard synthesis directory layout
+  (`syn/{db,vnet,svf,scr,rpt,log,temp,work}/`)
+- `config.mk` auto-generation from `rat_config.json` (Makefile-includable tool preferences)
+- `make sim-regression` target for cocotb multi-seed regression
+- Dynamic tool selection via `config.mk`: `make sim/syn/formal/cdc` auto-dispatch to preferred tool
+- `${CLAUDE_PLUGIN_DATA}/env-config.json` for machine-wide EDA environment persistence
+- `run_syn.sh`: `.synopsys_dc.setup` auto-generation, SVF output, proper DC/Genus work dirs
+- Dockerfile: svlens build step (CDC + connectivity + metrics)
+- P2/P3 orchestrator gate checks for `ref-model-feature-coverage.md` and `bfm-feature-coverage.md`
+- `reviews-guide.md`: new feature coverage artifacts listed
+
+### Changed
+- `run_syn.sh` rewritten: `--outdir` flat output → structured `syn/{db,vnet,svf,...}/` layout
+- Makefile: `-include config.mk`, expanded `clean` (all EDA outputs), dynamic help text
+- `rat-setup`: detection command `svlens --version` (was `svlens help`)
+- `bfm-develop`: smoke test default corrected to LT (was incorrectly AT)
+
+### Fixed
+- `.gitignore`: add `.remember/`, `config.mk`
+- Test: updated replay path expectation for new syn directory structure
+
 ## [0.8.19] - 2026-04-07
 
 ### Changed
