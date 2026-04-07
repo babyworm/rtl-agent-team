@@ -55,6 +55,12 @@ _top_flag     = $(if $(TOP),--top $(TOP))
 _liberty_flag = $(if $(LIBERTY),--liberty $(LIBERTY))
 _sdc_flag     = $(if $(SDC_FILE),--sdc $(SDC_FILE))
 
+# Map Makefile sim names to cocotb SIM variable names
+_cocotb_sim   = $(if $(filter xrun,$(PREF_SIM)),xcelium,$(if $(filter iverilog,$(PREF_SIM)),icarus,$(PREF_SIM)))
+
+# Tool runner wrapper (for targets that call tools directly)
+_run_tool     = . lib/tool-runner.sh 2>/dev/null && run_tool
+
 # Parse filelist for tools that don't support -f (iverilog)
 _src_files = $(or $(shell grep -v '^\s*//' $(FILELIST) 2>/dev/null \
                | grep -v '^\s*+' | grep -v '^\s*$$'), \
@@ -110,7 +116,7 @@ sim_regression:
 	@FAIL=0; \
 	for seed in $(SEEDS); do \
 	  echo "--- Seed: $$seed ---"; \
-	  RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
+	  SIM=$(_cocotb_sim) RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
 	    $(MAKE) -C sim/$(TOP) > sim/$(TOP)/regression_seed_$$seed.log 2>&1; \
 	  RC=$$?; cat sim/$(TOP)/regression_seed_$$seed.log; \
 	  if [ $$RC -ne 0 ]; then FAIL=1; fi; \
@@ -252,15 +258,15 @@ cdc_spyglass:
 
 conn:
 	$(call _require_top)
-	svlens conn --format all --top $(TOP) -f $(FILELIST) -o sim/conn/reports
+	$(_run_tool) svlens conn --format all --top $(TOP) -f $(FILELIST) -o sim/conn/reports
 
 metrics:
 	$(call _require_top)
-	svlens metrics --format all --top $(TOP) -f $(FILELIST) -o sim/metrics/reports
+	$(_run_tool) svlens metrics --format all --top $(TOP) -f $(FILELIST) -o sim/metrics/reports
 
 svlens_all:
 	$(call _require_top)
-	svlens all --format all --top $(TOP) -f $(FILELIST) -o sim/svlens/reports
+	$(_run_tool) svlens all --format all --top $(TOP) -f $(FILELIST) -o sim/svlens/reports
 
 # =============================================================================
 # Utility
