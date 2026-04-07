@@ -12,19 +12,36 @@ user-invocable: false
 - Normalize output into:
   - `tool`, `status`, `area`, `timing_summary`, `log_path`, `replay_path`
 
+## Output Directory Structure (DC-standard)
+```
+syn/
+├── db/      — Binary databases (.ddc, .db, .genus_db)
+├── vnet/    — Gate-level netlists (.v, .json)
+├── svf/     — Setup Verification Flow (.svf, DC only)
+├── scr/     — Generated scripts (.tcl, .ys) + replay/
+├── rpt/     — Reports (area, timing, power, qor)
+├── log/     — Synthesis logs
+├── temp/    — Cache and temporary files
+└── work/    — Tool work directories
+```
+
 ## Open-Source Baseline
 - `yosys`:
-  - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f --outdir syn/reports`
+  - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f`
   - Optional lib mapping:
-    - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f --liberty <lib> --outdir syn/reports`
+    - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f --liberty <lib>`
 
 ## Commercial Profiles
 - `dc_shell`:
-  - `syn/scripts/run_syn.sh --tool dc_shell --top <top> -f rtl/filelist_top.f --outdir syn/reports`
+  - `syn/scripts/run_syn.sh --tool dc_shell --top <top> -f rtl/filelist_top.f`
   - Optional:
-    - `--liberty <tech.lib> --script <dc.tcl>`
+    - `--liberty <tech.lib> --sdc <design.sdc> --script <dc.tcl>`
+  - Outputs: `.ddc` → `syn/db/`, netlist → `syn/vnet/`, `.svf` → `syn/svf/`, `.synopsys_dc.setup` → `syn/scr/`
 - `genus`:
-  - `syn/scripts/run_syn.sh --tool genus --top <top> -f rtl/filelist_top.f --script <genus.tcl> --outdir syn/reports`
+  - `syn/scripts/run_syn.sh --tool genus --top <top> -f rtl/filelist_top.f`
+  - Optional:
+    - `--liberty <tech.lib> --sdc <design.sdc> --script <genus.tcl>`
+  - Outputs: `.genus_db` → `syn/db/`, netlist → `syn/vnet/`
 
 ## Tool Availability Tiers
 
