@@ -297,6 +297,9 @@ After Step 5 review completes, verify all gate items:
 4. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
 5. Verify `refc/` has compilable C reference model
 6. Verify `reviews/phase-2-architecture/ref-model-review.md` exists with verdict
+6b. Verify `reviews/phase-2-architecture/ref-model-feature-coverage.md` has 100% REQ-F-* coverage
+    (structural check: every iron requirement mapped to ref model code path, not just bitexact test).
+    Omissions require user-approved ADR with impact estimate.
 7. Per-round artifacts (enforces dynamic convergence review protocol):
    - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
    - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal

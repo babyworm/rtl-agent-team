@@ -361,7 +361,8 @@ Read(".rat/state/compliance-report.json")
 ## Step 6.5: Phase 3 Gate (MANDATORY — matches team orchestrator)
 
 Verify all gate items per rtl-p3-uarch-policy Final Checklist and Artifacts saved sections.
-Key checks: review verdict=PASS, feature-preservation 100%, clock-domain-map, protocol-assignments,
+Key checks: review verdict=PASS, feature-preservation 100%, bfm-feature-coverage 100% (structural
+REQ-F-* check — omissions require user-approved ADR), clock-domain-map, protocol-assignments,
 req-uarch-traceability (100% REQ coverage), pipeline diagram, min 2 round artifacts with rebuttals,
 wonder-log (High-risk resolved), upstream-feedback-report, phase-3-summary.
 

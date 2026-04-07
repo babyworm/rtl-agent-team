@@ -346,6 +346,9 @@ TaskUpdate(taskId=t_clock, addBlockedBy=[t3])  # After BFM validation
 After T10 (final consolidation) completes, verify all gate items:
 1. Verify `reviews/phase-3-uarch/uarch-review.md` verdict=PASS
 2. Verify `reviews/phase-3-uarch/feature-preservation.md` has 100% preserved
+2b. Verify `reviews/phase-3-uarch/bfm-feature-coverage.md` has 100% REQ-F-* coverage
+    (structural check: every iron requirement mapped to BFM module/method).
+    Omissions require user-approved ADR with impact estimate.
 3. Verify `docs/phase-3-uarch/clock-domain-map.md` exists
 4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
 5. Verify pipeline diagram exists

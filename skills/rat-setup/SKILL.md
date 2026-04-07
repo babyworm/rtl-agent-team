@@ -68,7 +68,7 @@ Categorize tools into three tiers and check each:
 | Tool | Check Command | Purpose |
 |------|--------------|---------|
 | jq | `jq --version` | Hook JSON parser (robust state gating) |
-| svlens | `svlens help` | Structural analysis (CDC + connectivity + metrics) |
+| svlens | `svlens --version` | Structural analysis (CDC + connectivity + metrics) |
 | sv-renamer | `python3 -c "import sv_renamer"` or `sv_renamer.py --help` | SV identifier rename + semantic diff |
 | sv_to_ipxact | `sv_to_ipxact --help` | SV → IP-XACT XML auto-generation |
 | slang-server | `slang-server --version` | SV Language Server (LSP for Claude Code) |
@@ -318,7 +318,7 @@ Bash: slang --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 2: Recommended ---
 Bash: jq --version 2>&1 || echo "NOT_FOUND"
-Bash: svlens help 2>&1 | head -1 || echo "NOT_FOUND"
+Bash: svlens --version 2>&1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 3: Optional ---

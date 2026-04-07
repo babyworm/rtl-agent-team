@@ -14,12 +14,14 @@ reviews/
 ├── phase-2-architecture/
 │   ├── architecture-review-r{1,2,3}.md    # 3-round iterative
 │   ├── architecture-review.md             # Consolidated verdict
-│   ├── feature-coverage.md                # 100% REQ mapping
+│   ├── feature-coverage.md                # 100% REQ mapping to arch blocks
+│   ├── ref-model-feature-coverage.md      # 100% REQ-F-* to C model code paths
 │   └── architecture-diagram.md            # D2 block diagram
 ├── phase-3-uarch/
 │   ├── uarch-review-r{1,2,3}.md           # 3-round iterative
 │   ├── uarch-review.md                    # Consolidated verdict
 │   ├── feature-preservation.md            # 100% preserved
+│   ├── bfm-feature-coverage.md            # 100% REQ-F-* to BFM modules
 │   └── pipeline-diagram.md               # Mermaid pipeline/flow
 ├── phase-4-rtl/
 │   ├── functional-completeness.md         # REQ → uarch → RTL traceability

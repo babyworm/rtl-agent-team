@@ -129,6 +129,19 @@ RUN cd /tmp && \
     rm -rf /tmp/slang
 
 # -----------------------------------------------------------------------------
+# svlens (structural analysis: CDC + connectivity + metrics) — build from source
+# https://github.com/babyworm/svlens
+# Depends on slang (installed above)
+# -----------------------------------------------------------------------------
+RUN cd /tmp && \
+    git clone --depth 1 https://github.com/babyworm/svlens.git && \
+    cd svlens && \
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release -G Ninja && \
+    cmake --build build -j$(nproc) && \
+    cmake --install build && \
+    rm -rf /tmp/svlens
+
+# -----------------------------------------------------------------------------
 # slang-server (SystemVerilog LSP) — build from source
 # https://github.com/hudson-trading/slang-server
 # -----------------------------------------------------------------------------

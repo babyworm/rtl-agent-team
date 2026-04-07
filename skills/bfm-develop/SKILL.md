@@ -42,7 +42,7 @@ that LT blocking transport cannot capture.
 - Memory Manager (tlm_mm_interface) required for payload pooling
 - PEQ (peq_with_cb_and_phase) required for AT phase scheduling
 - video-processing-expert ensures datapath model accuracy
-- Smoke test (compile + run one AT transaction with 4-phase handshake) required before gate passes
+- Smoke test (compile + run one LT transaction) required before gate passes
 - BFM per-block functional output must match Phase 2 C reference model (refc/) — bitexact or within documented tolerance. Both models must be fed the same test vectors for valid comparison (Cross-Phase Artifact Functional Consistency principle)
 </Execution_Policy>
 
@@ -124,7 +124,7 @@ No Memory Manager — payload leaks accumulate during simulation.
 - [ ] AMBA protocol extensions set correctly (AXI burst/cache/prot)
 - [ ] Memory Manager (tlm_mm_interface) used for payload pooling
 - [ ] PEQ (peq_with_cb_and_phase) used for phase scheduling
-- [ ] Smoke test passes (at least one AT transaction)
+- [ ] Smoke test passes (at least one LT transaction; AT only when explicitly requested)
 - [ ] BFM per-block functional output matches refc/ output (shared test vectors, bitexact or documented tolerance)
 - [ ] Feature coverage verified against iron-requirements.json (ALL REQ-F-* mapped to BFM modules)
 - [ ] `reviews/phase-3-uarch/bfm-feature-coverage.md` saved

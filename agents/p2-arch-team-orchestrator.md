@@ -229,6 +229,9 @@ After T13 (final consolidation) completes:
 3. Verify `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
 4. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
 5. Verify `refc/` has compilable C reference model
+5b. Verify `reviews/phase-2-architecture/ref-model-feature-coverage.md` has 100% REQ-F-* coverage
+    (structural check: every iron requirement mapped to ref model code path).
+    Omissions require user-approved ADR with impact estimate.
 6. Generate `docs/phase-2-architecture/phase-2-summary.md`
 7. **Per-round artifacts** (enforces dynamic convergence review protocol per p2-arch-design-policy):
    - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
