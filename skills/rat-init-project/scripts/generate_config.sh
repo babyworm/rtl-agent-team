@@ -229,12 +229,12 @@ normalize_for_make() {
 }
 
 # Commercial formal tools (jg, vcf) require project-specific TCL scripts.
-# Fall back to sby if available; otherwise keep normalized commercial name
-# (user gets a clear "JASPER_TCL required" error rather than "sby: not found").
+# Fall back to sby if detected (including env_source paths); otherwise keep
+# normalized commercial name (user gets clear "JASPER_TCL required" error).
 safe_formal_pref() {
   case "$1" in
     jg|vcf)
-      if command -v sby >/dev/null 2>&1; then echo "sby"
+      if [[ "${DET_STATUS[formal/sby]:-false}" == "true" ]]; then echo "sby"
       else normalize_for_make "$1"
       fi ;;
     *) echo "$1" ;;

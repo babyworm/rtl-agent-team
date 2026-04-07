@@ -110,7 +110,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ### Prerequisite: SVF file
     DC automatically generates `.svf` during `compile_ultra`. Location:
     - Default: `./default.svf` or specified via `set_svf filename.svf` in DC script
-    - Check `syn/output/*.svf` or `syn/svf/*.svf`
+    - Check `syn/svf/*.svf` or `syn/svf/*.svf`
     - **Always use SVF when available** — without it, Formality must infer transformations
 
     ### Preferred: Use replayable wrapper
@@ -119,14 +119,14 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
       --top {module} \
       --rtl rtl/filelist_{module}.f \
       --netlist syn/vnet/{module}.v \
-      --svf syn/output/{module}.svf \
+      --svf syn/svf/{module}.svf \
       --liberty {technology.liberty from rat_config.json}
     ```
 
     ### Manual Tcl flow (when wrapper is insufficient)
     ```tcl
     # 1. Load SVF guidance (MUST be before reading designs)
-    set_svf "syn/output/top.svf"
+    set_svf "syn/svf/top.svf"
 
     # 2. Reference design (RTL)
     read_verilog -container r -libname WORK -05 {rtl_files}

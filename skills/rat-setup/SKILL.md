@@ -300,7 +300,8 @@ mkdir -p "$PLUGIN_DIR"
 date -u '+%Y-%m-%dT%H:%M:%SZ' > "$PLUGIN_DIR/.setup-complete"
 
 # Machine-wide EDA environment config (tool paths + preferences)
-# This is read by rat-init-project as a starting point for per-project config.
+# Persisted for future use by rat-init-project and other tools.
+# Not yet consumed — foundation for per-project config seeding.
 # Structure mirrors rat_config.json preferences section.
 cat > "$PLUGIN_DIR/env-config.json" <<ENVEOF
 {
