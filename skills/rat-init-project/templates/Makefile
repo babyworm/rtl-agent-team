@@ -63,7 +63,7 @@ _src_files = $(or $(shell grep -v '^\s*//' $(FILELIST) 2>/dev/null \
 # =============================================================================
 # Simulation — default: preferred tool
 # =============================================================================
-.PHONY: sim sim_verilator sim_iverilog sim_xrun sim_vcs sim_regression
+.PHONY: sim sim_verilator sim_iverilog sim_xrun sim_vcs sim_questa sim_regression
 
 sim: sim_$(PREF_SIM)
 
@@ -97,16 +97,26 @@ sim_vcs:
 	  -o $(BUILD_DIR)/simv
 	$(BUILD_DIR)/simv
 
+sim_questa:
+	$(call _require_top)
+	@mkdir -p $(BUILD_DIR)/questa
+	vlib $(BUILD_DIR)/questa/work 2>/dev/null || true
+	vlog -sv -work $(BUILD_DIR)/questa/work -f $(FILELIST) $(TB)
+	vsim -c -work $(BUILD_DIR)/questa/work -do "run -all; quit -f" $(TOP)
+
 sim_regression:
 	$(call _require_top)
 	@echo "=== cocotb Multi-Seed Regression ==="
-	@for seed in $(SEEDS); do \
+	@FAIL=0; \
+	for seed in $(SEEDS); do \
 	  echo "--- Seed: $$seed ---"; \
 	  RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
 	    python3 -m pytest sim/$(TOP)/ --tb=short -q 2>&1 \
-	    | tee sim/$(TOP)/regression_seed_$$seed.log || true; \
-	done
-	@echo "=== Regression Complete (seeds: $(SEEDS)) ==="
+	    | tee sim/$(TOP)/regression_seed_$$seed.log; \
+	  if [ $${PIPESTATUS[0]} -ne 0 ]; then FAIL=1; fi; \
+	done; \
+	echo "=== Regression Complete (seeds: $(SEEDS)) ==="; \
+	if [ $$FAIL -ne 0 ]; then echo "FAIL: one or more seeds failed"; exit 1; fi
 
 # =============================================================================
 # Lint — default: verilator + verible + slang (all open-source)
@@ -268,6 +278,7 @@ help:
 	@echo "    sim_iverilog      Icarus Verilog"
 	@echo "    sim_xrun          Cadence Xcelium"
 	@echo "    sim_vcs           Synopsys VCS"
+	@echo "    sim_questa        Siemens Questa"
 	@echo "    sim_regression    cocotb multi-seed regression"
 	@echo ""
 	@echo "  Lint (default: all open-source)"

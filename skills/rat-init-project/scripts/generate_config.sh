@@ -213,7 +213,29 @@ PREF_CDC=$(pick_pref cdc sg_shell svlens)
 if [[ -z "$PREF_CDC" ]]; then PREF_CDC="structural"; fi
 PREF_EQUIV=$(pick_pref equivalence fm_shell lec)
 
+# ─── Normalize keys to Makefile target suffixes ──────────────────────────
+# generate_config.sh uses internal keys (dc_shell, jg, vsim, sg_shell)
+# but Makefile targets use normalized names (dc, jasper, questa, spyglass)
+normalize_for_make() {
+  case "$1" in
+    dc_shell) echo "dc" ;;
+    jg)       echo "jasper" ;;
+    vcf)      echo "vcf" ;;
+    vsim)     echo "questa" ;;
+    sg_shell) echo "spyglass" ;;
+    *)        echo "$1" ;;
+  esac
+}
+
+MK_SIM=$(normalize_for_make "$PREF_SIM")
+MK_SYN=$(normalize_for_make "$PREF_SYN")
+MK_LINT=$(normalize_for_make "$PREF_LINT")
+MK_FORMAL=$(normalize_for_make "$PREF_FORMAL")
+MK_CDC=$(normalize_for_make "$PREF_CDC")
+MK_EQUIV=$(normalize_for_make "$PREF_EQUIV")
+
 echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC equiv=${PREF_EQUIV:-(yosys)}"
+echo "Make targets: sim=$MK_SIM syn=$MK_SYN lint=$MK_LINT formal=$MK_FORMAL cdc=$MK_CDC"
 
 # ─── NAND2 area extraction ────────────────────────────────────────────────
 NAND2_AREA="null"
@@ -322,13 +344,13 @@ cat > "$CONFIG_MK" <<MK_EOF
 # Re-generate: bash generate_config.sh
 # Included by Makefile via: -include config.mk
 
-# Preferred tool per category (first detected, commercial priority)
-PREF_SIM     ?= ${PREF_SIM}
-PREF_SYN     ?= ${PREF_SYN}
-PREF_LINT    ?= ${PREF_LINT}
-PREF_FORMAL  ?= ${PREF_FORMAL}
-PREF_CDC     ?= ${PREF_CDC}
-PREF_EQUIV   ?= ${PREF_EQUIV}
+# Preferred tool per category (normalized to Makefile target suffixes)
+PREF_SIM     ?= ${MK_SIM}
+PREF_SYN     ?= ${MK_SYN}
+PREF_LINT    ?= ${MK_LINT}
+PREF_FORMAL  ?= ${MK_FORMAL}
+PREF_CDC     ?= ${MK_CDC}
+PREF_EQUIV   ?= ${MK_EQUIV}
 
 # Technology
 LIBERTY      ?= ${LIBERTY}
