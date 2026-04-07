@@ -102,9 +102,9 @@ if [[ -z "$TOP" ]]; then
   exit 1
 fi
 
-# Default SDC path
+# Default SDC path (always project-relative, not SYN_ROOT-relative)
 if [[ -z "$SDC_FILE" ]]; then
-  SDC_FILE="${SYN_ROOT}/constraints/design.sdc"
+  SDC_FILE="syn/constraints/design.sdc"
 fi
 
 # ─── Directory setup ──────────────────────────────────────────────────────
@@ -279,7 +279,8 @@ case "$TOOL" in
         echo "# Date: $(date)"
         echo "# Liberty: ${LIBERTY:-none}"
         echo ""
-        grep -A 30 "Number of cells:" "$LOG" 2>/dev/null || true
+        # Extract stats — try multiple markers for Yosys version compatibility
+        grep -A 30 "Number of cells:\|Number of wires:\|=== $TOP ===\|Printing statistics" "$LOG" 2>/dev/null || true
       } > "${DIR_RPT}/${TOP}_stat.rpt"
     fi
     ;;

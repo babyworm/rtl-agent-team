@@ -111,9 +111,9 @@ sim_regression:
 	for seed in $(SEEDS); do \
 	  echo "--- Seed: $$seed ---"; \
 	  RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
-	    $(MAKE) -C sim/$(TOP) 2>&1 \
-	    | tee sim/$(TOP)/regression_seed_$$seed.log; \
-	  if [ $${PIPESTATUS[0]} -ne 0 ]; then FAIL=1; fi; \
+	    $(MAKE) -C sim/$(TOP) > sim/$(TOP)/regression_seed_$$seed.log 2>&1; \
+	  RC=$$?; cat sim/$(TOP)/regression_seed_$$seed.log; \
+	  if [ $$RC -ne 0 ]; then FAIL=1; fi; \
 	done; \
 	echo "=== Regression Complete (seeds: $(SEEDS)) ==="; \
 	if [ $$FAIL -ne 0 ]; then echo "FAIL: one or more seeds failed"; exit 1; fi

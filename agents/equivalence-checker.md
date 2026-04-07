@@ -88,7 +88,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   <Investigation_Protocol>
     1. Identify the two designs to compare:
        a. Reference: RTL source files (rtl/*/*.sv) — include rtl/common/ for SRAM wrappers
-       b. Implementation: synthesis netlist (syn/netlist/*.v or syn/vnet/*_netlist.v) OR modified RTL
+       b. Implementation: synthesis netlist (syn/vnet/*.v or syn/netlist/*.v) OR modified RTL
     2. Identify synthesis tool used (DC/Genus/Yosys) from synthesis logs or rat_config.json
     3. Select equivalence tool per Tool_Selection_Protocol
     4. Prepare blackbox list: SRAM wrappers (sram_sp, sram_tp, sram_dp), hard macros, analog blocks
