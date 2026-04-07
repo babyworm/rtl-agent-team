@@ -117,8 +117,8 @@ case "$TOOL" in
     } | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
 
-    # svlens crosscheck: run AST-based CDC analysis if installed
-    if command -v svlens &>/dev/null; then
+    # svlens crosscheck: run AST-based CDC analysis if available (incl. Docker fallback)
+    if command -v svlens &>/dev/null || run_tool svlens --version &>/dev/null; then
       echo ""
       echo "=== svlens CDC Crosscheck (AST-based) ==="
       SVLENS_OUTDIR="$OUTDIR/svlens"
@@ -147,7 +147,7 @@ case "$TOOL" in
     ;;
 
   svlens)
-    if ! command -v svlens &>/dev/null; then
+    if ! command -v svlens &>/dev/null && ! run_tool svlens --version &>/dev/null; then
       echo "ERROR: svlens not found. Install:" >&2
       echo "  git clone https://github.com/babyworm/svlens.git ~/tools/svlens" >&2
       echo "  cd ~/tools/svlens && ./scripts/setup-deps.sh --prefix ~/.local" >&2

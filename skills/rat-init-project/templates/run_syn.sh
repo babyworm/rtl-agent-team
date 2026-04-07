@@ -197,9 +197,9 @@ case "$TOOL" in
   # Yosys (open-source)
   # =========================================================================
   yosys)
-    SCRIPT="${DIR_SCR}/synth_${TOP}.ys"
+    SCRIPT="${DIR_SCR}/synth_${TOP}_${TIMESTAMP}.ys"
     LOG="${DIR_LOG}/yosys_${TOP}_${TIMESTAMP}.log"
-    NETLIST_JSON="${DIR_VNET}/${TOP}.json"
+    NETLIST_JSON="${DIR_DB}/${TOP}.json"
     NETLIST_V="${DIR_VNET}/${TOP}.v"
 
     # sv2v conversion (SystemVerilog → Verilog for Yosys compatibility)
@@ -290,7 +290,7 @@ case "$TOOL" in
   # =========================================================================
   dc_shell)
     LOG="${DIR_LOG}/dc_${TOP}_${TIMESTAMP}.log"
-    SCRIPT="${SCRIPT_PATH:-${DIR_SCR}/dc_syn_${TOP}.tcl}"
+    SCRIPT="${SCRIPT_PATH:-${DIR_SCR}/dc_syn_${TOP}_${TIMESTAMP}.tcl}"
 
     NETLIST="${DIR_VNET}/${TOP}.v"
     DDC="${DIR_DB}/${TOP}.ddc"
@@ -398,7 +398,7 @@ case "$TOOL" in
   # =========================================================================
   genus)
     LOG="${DIR_LOG}/genus_${TOP}_${TIMESTAMP}.log"
-    SCRIPT="${SCRIPT_PATH:-${DIR_SCR}/genus_syn_${TOP}.tcl}"
+    SCRIPT="${SCRIPT_PATH:-${DIR_SCR}/genus_syn_${TOP}_${TIMESTAMP}.tcl}"
 
     NETLIST="${DIR_VNET}/${TOP}.v"
     AREA_RPT="${DIR_RPT}/${TOP}_area.rpt"
