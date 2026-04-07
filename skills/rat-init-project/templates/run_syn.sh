@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # run_syn.sh — Synthesis runner for RTL modules
-# Usage: syn/scripts/run_syn.sh [OPTIONS]
+# Usage: syn/scripts/run_syn.sh [OPTIONS] [SV_FILES...]
 #
-# Supports: yosys (default)
-# Commercial: dc_shell/design_compiler, genus, vivado (via --tool flag)
+# Directory structure (DC-standard, adapted for all tools):
+#   syn/db/      — Binary databases (.ddc, .db)
+#   syn/vnet/    — Gate-level netlists (.v)
+#   syn/svf/     — Setup Verification Flow files (.svf)
+#   syn/scr/     — Generated synthesis scripts (.tcl, .ys)
+#   syn/rpt/     — Reports (area, timing, power, qor)
+#   syn/log/     — Synthesis logs
+#   syn/temp/    — Synthesis cache and temporary files
+#   syn/work/    — Tool work directories (alib, elaboration)
+#
+# Supports: yosys (default), dc_shell/design_compiler, genus, vivado
 #
 # Examples:
 #   syn/scripts/run_syn.sh --tool yosys --top top_module -f rtl/filelist_top.f
-#   syn/scripts/run_syn.sh --tool yosys --top entropy_coder -f rtl/filelist_entropy.f --liberty sky130.lib
+#   syn/scripts/run_syn.sh --tool dc_shell --top my_top -f rtl/filelist_top.f --liberty sky130.lib
+#   syn/scripts/run_syn.sh --tool genus --top my_top -f rtl/filelist_top.f --liberty sky130.lib
 
 set -euo pipefail
 
@@ -24,8 +34,9 @@ fi
 TOOL="yosys"
 TOP=""
 FILELIST=""
-OUTDIR="syn/reports"
+SYN_ROOT="syn"
 LIBERTY=""
+SDC_FILE=""
 SCRIPT_PATH=""
 FILES=()
 VERBOSE=0
@@ -41,13 +52,24 @@ Options:
   --tool <name>     yosys|dc_shell|design_compiler|genus|vivado (default: yosys)
   --top <module>    Top-level module name (required)
   -f <filelist>     Source filelist (.f file)
-  --outdir <dir>    Report output directory (default: syn/reports)
+  --syn-root <dir>  Synthesis root directory (default: syn)
   --liberty <file>  Liberty (.lib) file for technology mapping
-  --script <file>   Tool script/Tcl file (dc_shell/genus/vivado)
+  --sdc <file>      SDC constraints file (default: syn/constraints/design.sdc)
+  --script <file>   User-provided tool script/Tcl (skips auto-generation)
   --flatten         Flatten design before synthesis
-  --skip-if-unavailable  Exit cleanly (exit 0) with WARNING if tool not available/licensed
+  --skip-if-unavailable  Exit cleanly (exit 0) if tool not available/licensed
   -v, --verbose     Verbose output
   -h, --help        Show this help
+
+Output directories (under --syn-root):
+  db/               Binary databases (.ddc, .db)
+  vnet/             Gate-level netlists (.v)
+  svf/              Setup Verification Flow (.svf)
+  scr/              Generated scripts (.tcl, .ys) + replay/
+  rpt/              Reports (area, timing, power, qor)
+  log/              Synthesis logs
+  temp/             Cache and temporary files
+  work/             Tool work directories
 USAGE
   exit 0
 }
@@ -55,18 +77,19 @@ USAGE
 # ─── Parse args ─────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tool)    TOOL="$2"; shift 2 ;;
-    --top)     TOP="$2"; shift 2 ;;
-    -f)        FILELIST="$2"; shift 2 ;;
-    --outdir)  OUTDIR="$2"; shift 2 ;;
-    --liberty) LIBERTY="$2"; shift 2 ;;
-    --script)  SCRIPT_PATH="$2"; shift 2 ;;
-    --flatten) FLATTEN=1; shift ;;
+    --tool)      TOOL="$2"; shift 2 ;;
+    --top)       TOP="$2"; shift 2 ;;
+    -f)          FILELIST="$2"; shift 2 ;;
+    --syn-root|--outdir) SYN_ROOT="$2"; shift 2 ;;
+    --liberty)   LIBERTY="$2"; shift 2 ;;
+    --sdc)       SDC_FILE="$2"; shift 2 ;;
+    --script)    SCRIPT_PATH="$2"; shift 2 ;;
+    --flatten)   FLATTEN=1; shift ;;
     --skip-if-unavailable) SKIP_IF_UNAVAILABLE=1; shift ;;
     -v|--verbose) VERBOSE=1; shift ;;
-    -h|--help) usage ;;
-    -*)        echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
-    *)         FILES+=("$1"); shift ;;
+    -h|--help)   usage ;;
+    -*)          echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
+    *)           FILES+=("$1"); shift ;;
   esac
 done
 
@@ -78,6 +101,25 @@ if [[ -z "$TOP" ]]; then
   echo "ERROR: --top <module> is required" >&2
   exit 1
 fi
+
+# Default SDC path
+if [[ -z "$SDC_FILE" ]]; then
+  SDC_FILE="${SYN_ROOT}/constraints/design.sdc"
+fi
+
+# ─── Directory setup ──────────────────────────────────────────────────────
+DIR_DB="${SYN_ROOT}/db"
+DIR_VNET="${SYN_ROOT}/vnet"
+DIR_SVF="${SYN_ROOT}/svf"
+DIR_SCR="${SYN_ROOT}/scr"
+DIR_RPT="${SYN_ROOT}/rpt"
+DIR_LOG="${SYN_ROOT}/log"
+DIR_TEMP="${SYN_ROOT}/temp"
+DIR_WORK="${SYN_ROOT}/work"
+DIR_REPLAY="${DIR_SCR}/replay"
+
+mkdir -p "$DIR_DB" "$DIR_VNET" "$DIR_SVF" "$DIR_SCR" "$DIR_RPT" \
+         "$DIR_LOG" "$DIR_TEMP" "$DIR_WORK" "$DIR_REPLAY"
 
 # ─── Tool availability & license pre-check ─────────────────────────────────
 _tool_bin=""
@@ -91,7 +133,7 @@ esac
 if ! command -v "$_tool_bin" >/dev/null 2>&1; then
   if [[ "$SKIP_IF_UNAVAILABLE" -eq 1 ]]; then
     echo "WARNING: Synthesis tool '$TOOL' not available — skipping synthesis." >&2
-    echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"tool_not_available"}' > "${OUTDIR:-syn/reports}/syn_result.json" 2>/dev/null || true
+    echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"tool_not_available"}' > "${DIR_RPT}/syn_result.json" 2>/dev/null || true
     exit 0
   fi
   echo "ERROR: Synthesis tool '$_tool_bin' not found in PATH." >&2
@@ -105,7 +147,7 @@ if type check_tool_licensed >/dev/null 2>&1; then
       if ! check_tool_licensed "$TOOL"; then
         if [[ "$SKIP_IF_UNAVAILABLE" -eq 1 ]]; then
           echo "WARNING: '$TOOL' license not available — skipping synthesis." >&2
-          echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"license_unavailable"}' > "${OUTDIR:-syn/reports}/syn_result.json" 2>/dev/null || true
+          echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"license_unavailable"}' > "${DIR_RPT}/syn_result.json" 2>/dev/null || true
           exit 0
         fi
         echo "ERROR: '$TOOL' license check failed." >&2
@@ -113,8 +155,6 @@ if type check_tool_licensed >/dev/null 2>&1; then
       fi ;;
   esac
 fi
-
-mkdir -p "$OUTDIR"
 
 # ─── Collect source files ──────────────────────────────────────────────────
 SRC_FILES=()
@@ -135,33 +175,37 @@ fi
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_CWD="$(pwd)"
-REPLAY_DIR="$OUTDIR/replay"
-REPLAY_SCRIPT="$REPLAY_DIR/run_syn_${TOOL}_${TOP}_${TIMESTAMP}.sh"
-mkdir -p "$REPLAY_DIR"
 
 write_replay() {
   local cmd="$1"
-  cat > "$REPLAY_SCRIPT" <<EOF
+  local replay_file="${DIR_REPLAY}/run_syn_${TOOL}_${TOP}_${TIMESTAMP}.sh"
+  cat > "$replay_file" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$RUN_CWD"
 $cmd
 EOF
-  chmod +x "$REPLAY_SCRIPT"
-  cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_syn_${TOOL}_latest.sh"
+  chmod +x "$replay_file"
+  cp "$replay_file" "${DIR_REPLAY}/run_syn_${TOOL}_latest.sh"
 }
 
 # ─── Tool-specific synthesis ───────────────────────────────────────────────
+EXIT_CODE=0
+
 case "$TOOL" in
+  # =========================================================================
+  # Yosys (open-source)
+  # =========================================================================
   yosys)
-    SCRIPT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.ys"
-    REPORT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.log"
-    NETLIST="$OUTDIR/${TOP}_netlist.json"
+    SCRIPT="${DIR_SCR}/synth_${TOP}.ys"
+    LOG="${DIR_LOG}/yosys_${TOP}_${TIMESTAMP}.log"
+    NETLIST_JSON="${DIR_VNET}/${TOP}.json"
+    NETLIST_V="${DIR_VNET}/${TOP}.v"
 
     # sv2v conversion (SystemVerilog → Verilog for Yosys compatibility)
-    SV2V_OUT="$OUTDIR/${TOP}_v2v.v"
+    SV2V_OUT="${DIR_TEMP}/${TOP}_sv2v.v"
+    USE_SV2V=0
     if command -v sv2v >/dev/null 2>&1; then
-      # Auto-include rtl/common/ (SRAM wrappers, shared utilities)
       COMMON_FILES=()
       if [[ -d rtl/common ]]; then
         while IFS= read -r cf; do
@@ -174,7 +218,6 @@ case "$TOOL" in
       USE_SV2V=1
     else
       echo "WARNING: sv2v not found — using read_verilog -sv (limited SV support in Yosys)"
-      USE_SV2V=0
     fi
 
     # Generate Yosys script
@@ -188,7 +231,6 @@ case "$TOOL" in
         for f in "${SRC_FILES[@]}"; do
           echo "read_verilog -sv $f"
         done
-        # Auto-include rtl/common/ for SRAM wrappers
         if [[ -d rtl/common ]]; then
           for f in rtl/common/*.sv rtl/common/*.v; do
             [[ -f "$f" ]] && echo "read_verilog -sv $f"
@@ -200,7 +242,7 @@ case "$TOOL" in
       echo "proc; opt; fsm; opt"
       [[ $FLATTEN -eq 1 ]] && echo "flatten"
       echo ""
-      echo "# Memory handling (SRAM wrappers → inferred memory blocks)"
+      echo "# Memory handling"
       echo "memory; opt"
       echo ""
       if [[ -n "$LIBERTY" ]]; then
@@ -212,50 +254,84 @@ case "$TOOL" in
         echo ""
         echo "stat -liberty $LIBERTY"
       else
-        echo "# Generic synthesis (no technology mapping — area estimates less accurate)"
+        echo "# Generic synthesis (no technology mapping)"
         echo "techmap; opt"
         echo "stat -top $TOP"
       fi
       echo ""
       echo "# Post-synthesis checks"
       echo "scc -max_depth 10"
-      echo "write_json $NETLIST"
+      echo "write_json $NETLIST_JSON"
+      echo "write_verilog $NETLIST_V"
     } > "$SCRIPT"
 
     echo "=== Yosys Synthesis ==="
     echo "Script: $SCRIPT"
     echo "CMD: yosys -s $SCRIPT"
     write_replay "yosys -s \"$SCRIPT\""
-    run_tool yosys -s "$SCRIPT" 2>&1 | tee "$REPORT"
+    run_tool yosys -s "$SCRIPT" 2>&1 | tee "$LOG"
     EXIT_CODE=${PIPESTATUS[0]}
+
+    # Extract stats to report
+    if [[ -f "$LOG" ]]; then
+      {
+        echo "# Yosys Synthesis Report: $TOP"
+        echo "# Date: $(date)"
+        echo "# Liberty: ${LIBERTY:-none}"
+        echo ""
+        grep -A 30 "Number of cells:" "$LOG" 2>/dev/null || true
+      } > "${DIR_RPT}/${TOP}_stat.rpt"
+    fi
     ;;
 
+  # =========================================================================
+  # Synopsys Design Compiler
+  # =========================================================================
   dc_shell)
-    REPORT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.log"
-    NETLIST="$OUTDIR/${TOP}_netlist.v"
-    AREA_RPT="$OUTDIR/${TOP}_area_${TIMESTAMP}.rpt"
-    TIMING_RPT="$OUTDIR/${TOP}_timing_${TIMESTAMP}.rpt"
-    SCRIPT="$SCRIPT_PATH"
-    if [[ -z "$SCRIPT" ]]; then
-      SCRIPT="${DC_SYN_TCL:-$OUTDIR/dc_syn_${TOP}_${TIMESTAMP}.tcl}"
-    fi
+    LOG="${DIR_LOG}/dc_${TOP}_${TIMESTAMP}.log"
+    SCRIPT="${SCRIPT_PATH:-${DIR_SCR}/dc_syn_${TOP}.tcl}"
 
-    if [[ ! -f "$SCRIPT" ]]; then
-      SDC_FILE="syn/constraints/design.sdc"
-      POWER_RPT="$OUTDIR/${TOP}_power_${TIMESTAMP}.rpt"
-      QOR_RPT="$OUTDIR/${TOP}_qor_${TIMESTAMP}.rpt"
+    NETLIST="${DIR_VNET}/${TOP}.v"
+    DDC="${DIR_DB}/${TOP}.ddc"
+    SVF="${DIR_SVF}/${TOP}.svf"
+    AREA_RPT="${DIR_RPT}/${TOP}_area.rpt"
+    TIMING_RPT="${DIR_RPT}/${TOP}_timing.rpt"
+    POWER_RPT="${DIR_RPT}/${TOP}_power.rpt"
+    QOR_RPT="${DIR_RPT}/${TOP}_qor.rpt"
+    DC_WORK="${DIR_WORK}/dc"
+    DC_TEMP="${DIR_TEMP}/dc"
+
+    mkdir -p "$DC_WORK" "$DC_TEMP"
+
+    # Generate .synopsys_dc.setup
+    DC_SETUP="${DIR_SCR}/.synopsys_dc.setup"
+    {
+      echo "# Auto-generated .synopsys_dc.setup"
+      echo "# Generated: $(date)"
+      echo ""
+      echo "set_app_var search_path [list . ${DIR_DB} ${DIR_WORK}/dc]"
+      if [[ -n "$LIBERTY" ]]; then
+        echo "set_app_var target_library [list \"$LIBERTY\"]"
+        echo "set_app_var link_library [list \"*\" \"$LIBERTY\"]"
+      fi
+      echo ""
+      echo "# Work directories"
+      echo "define_design_lib WORK -path \"${DC_WORK}\""
+      echo "set_app_var alib_library_analysis_path \"${DC_TEMP}\""
+      echo ""
+      echo "# SVF for Formality verification"
+      echo "set_svf \"${SVF}\""
+    } > "$DC_SETUP"
+
+    if [[ ! -f "$SCRIPT" || -z "$SCRIPT_PATH" ]]; then
       {
-        echo "# Auto-generated Design Compiler script"
+        echo "# Design Compiler synthesis script for $TOP"
         echo "# Generated: $(date)"
         echo ""
-        echo "set_app_var search_path [list .]"
-        if [[ -n "$LIBERTY" ]]; then
-          echo "set_app_var target_library [list \"$LIBERTY\"]"
-          echo "set_app_var link_library [list \"*\" \"$LIBERTY\"]"
-        fi
+        echo "# --- Setup (sourced from .synopsys_dc.setup or inline) ---"
+        echo "source \"${DC_SETUP}\""
         echo ""
         echo "# --- Read RTL ---"
-        # Auto-include rtl/common/ for SRAM wrappers
         if [[ -d rtl/common ]]; then
           for f in rtl/common/*.sv rtl/common/*.v; do
             [[ -f "$f" ]] && echo "analyze -format sverilog \"$f\""
@@ -278,8 +354,7 @@ case "$TOOL" in
         echo "}"
         echo ""
         echo "# --- SRAM wrapper handling ---"
-        echo "# Preserve SRAM wrappers as black boxes if foundry macros are intended"
-        echo "# Uncomment and adjust for your target library:"
+        echo "# Uncomment for foundry macros:"
         echo "# set_dont_touch [get_designs sram_sp]"
         echo "# set_dont_touch [get_designs sram_tp]"
         echo "# set_dont_touch [get_designs sram_dp]"
@@ -298,8 +373,9 @@ case "$TOOL" in
         echo "report_qor > \"$QOR_RPT\""
         echo "report_constraint -all_violators"
         echo ""
-        echo "# --- Netlist ---"
+        echo "# --- Save outputs ---"
         echo "change_names -rules verilog -hierarchy"
+        echo "write -hierarchy -format ddc -output \"$DDC\""
         echo "write -hierarchy -format verilog -output \"$NETLIST\""
         echo ""
         echo "quit"
@@ -309,28 +385,33 @@ case "$TOOL" in
     CMD="dc_shell -64bit -f \"$SCRIPT\""
     echo "=== Design Compiler Synthesis ==="
     echo "Script: $SCRIPT"
+    echo "Setup:  $DC_SETUP"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    eval "run_tool $CMD" 2>&1 | tee "$LOG"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
+  # =========================================================================
+  # Cadence Genus
+  # =========================================================================
   genus)
-    REPORT="$OUTDIR/synth_${TOP}_${TIMESTAMP}.log"
-    NETLIST="$OUTDIR/${TOP}_netlist.v"
-    AREA_RPT="$OUTDIR/${TOP}_area_${TIMESTAMP}.rpt"
-    TIMING_RPT="$OUTDIR/${TOP}_timing_${TIMESTAMP}.rpt"
-    SCRIPT="$SCRIPT_PATH"
-    if [[ -z "$SCRIPT" ]]; then
-      SCRIPT="${GENUS_SYN_TCL:-$OUTDIR/genus_syn_${TOP}_${TIMESTAMP}.tcl}"
-    fi
+    LOG="${DIR_LOG}/genus_${TOP}_${TIMESTAMP}.log"
+    SCRIPT="${SCRIPT_PATH:-${DIR_SCR}/genus_syn_${TOP}.tcl}"
 
-    if [[ ! -f "$SCRIPT" ]]; then
-      SDC_FILE="syn/constraints/design.sdc"
-      POWER_RPT="$OUTDIR/${TOP}_power_${TIMESTAMP}.rpt"
-      QOR_RPT="$OUTDIR/${TOP}_qor_${TIMESTAMP}.rpt"
+    NETLIST="${DIR_VNET}/${TOP}.v"
+    AREA_RPT="${DIR_RPT}/${TOP}_area.rpt"
+    TIMING_RPT="${DIR_RPT}/${TOP}_timing.rpt"
+    POWER_RPT="${DIR_RPT}/${TOP}_power.rpt"
+    QOR_RPT="${DIR_RPT}/${TOP}_qor.rpt"
+    GENUS_WORK="${DIR_WORK}/genus"
+    GENUS_TEMP="${DIR_TEMP}/genus"
+
+    mkdir -p "$GENUS_WORK" "$GENUS_TEMP"
+
+    if [[ ! -f "$SCRIPT" || -z "$SCRIPT_PATH" ]]; then
       {
-        echo "# Auto-generated Cadence Genus synthesis script"
+        echo "# Cadence Genus synthesis script for $TOP"
         echo "# Generated: $(date)"
         echo ""
         if [[ -n "$LIBERTY" ]]; then
@@ -338,8 +419,12 @@ case "$TOOL" in
           echo "set_db library [list \"$LIBERTY\"]"
         fi
         echo ""
+        echo "# Work directory"
+        echo "set_db hdl_work_directory \"${GENUS_WORK}\""
+        echo "set_db log_directory \"${DIR_LOG}\""
+        echo "set_db temp_directory \"${GENUS_TEMP}\""
+        echo ""
         echo "# --- Read RTL ---"
-        # Auto-include rtl/common/ for SRAM wrappers
         if [[ -d rtl/common ]]; then
           for f in rtl/common/*.sv rtl/common/*.v; do
             [[ -f "$f" ]] && echo "read_hdl -sv \"$f\""
@@ -361,8 +446,7 @@ case "$TOOL" in
         echo "}"
         echo ""
         echo "# --- SRAM wrapper handling ---"
-        echo "# Preserve SRAM wrappers as black boxes if foundry macros are intended"
-        echo "# Uncomment and adjust for your target library:"
+        echo "# Uncomment for foundry macros:"
         echo "# set_db [get_db designs sram_sp] .dont_touch true"
         echo "# set_db [get_db designs sram_tp] .dont_touch true"
         echo "# set_db [get_db designs sram_dp] .dont_touch true"
@@ -382,8 +466,9 @@ case "$TOOL" in
         echo "report_power > \"$POWER_RPT\""
         echo "report_qor > \"$QOR_RPT\""
         echo ""
-        echo "# --- Netlist ---"
+        echo "# --- Save outputs ---"
         echo "write_hdl -mapped > \"$NETLIST\""
+        echo "write_db -to_file \"${DIR_DB}/${TOP}.genus_db\""
         echo ""
         echo "exit"
       } > "$SCRIPT"
@@ -394,10 +479,13 @@ case "$TOOL" in
     echo "Script: $SCRIPT"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    eval "run_tool $CMD" 2>&1 | tee "$LOG"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
+  # =========================================================================
+  # Vivado (requires user-provided script)
+  # =========================================================================
   vivado)
     echo "ERROR: Vivado requires project-specific configuration." >&2
     echo "Provide --script <tcl> and execute your project flow command manually." >&2
@@ -417,24 +505,20 @@ echo "=== Synthesis Summary ==="
 echo "Tool:     $TOOL"
 echo "Top:      $TOP"
 echo "Files:    ${#SRC_FILES[@]}"
-echo "Report:   $REPORT"
-echo "Replay:   $REPLAY_SCRIPT"
-
-if [[ "$TOOL" == "yosys" && -f "$REPORT" ]]; then
-  echo ""
-  echo "--- Cell Statistics ---"
-  grep -A 30 "Number of cells:" "$REPORT" 2>/dev/null || echo "(no cell stats found)"
-  echo ""
-  echo "--- Flip-flops ---"
-  grep -i 'flip-flop\|DFF\|\$_DFF_' "$REPORT" 2>/dev/null || echo "(no FF stats found)"
-  echo ""
-  # Check for unmapped cells
-  UNMAPPED=$(grep -c 'UNMAP\|\$_.*_\$' "$REPORT" 2>/dev/null || echo 0)
-  echo "Unmapped cells: $UNMAPPED"
-  echo "Netlist: $NETLIST"
-fi
-
+echo "Liberty:  ${LIBERTY:-none}"
+echo "SDC:      ${SDC_FILE}"
+echo ""
+echo "Outputs:"
+echo "  Log:      ${DIR_LOG}/"
+echo "  Netlist:  ${DIR_VNET}/"
+[[ "$TOOL" == "dc_shell" ]] && echo "  DDC:      ${DIR_DB}/"
+[[ "$TOOL" == "dc_shell" ]] && echo "  SVF:      ${DIR_SVF}/"
+[[ "$TOOL" == "genus" ]]    && echo "  DB:       ${DIR_DB}/"
+echo "  Reports:  ${DIR_RPT}/"
+echo "  Scripts:  ${DIR_SCR}/"
+echo "  Replay:   ${DIR_REPLAY}/run_syn_${TOOL}_latest.sh"
+echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 0.8.14
+# rat-version: 0.8.19

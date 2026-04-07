@@ -34,6 +34,9 @@ bfm/
 syn/
 lint/
 
+# Project config (auto-generated, machine-specific)
+config.mk
+
 # Legacy directories (pre-convention)
 ref_model/
 

@@ -285,16 +285,46 @@ Re-check installed tools and present final status:
 | Global rules | Deployed to ~/.claude/rules/ |
 | Test infra | pytest, cocotb, numpy installed |
 
-### Setup Marker (advisory)
-Write setup completion marker for `rat-init-project` to detect (soft gate, not enforced by hooks).
+### Setup Marker + Environment Config (advisory)
+Write setup completion marker and machine-wide EDA environment config to
+`${CLAUDE_PLUGIN_DATA}` (persistent plugin data directory, survives plugin updates).
 The actual enforcement gate remains `.claude/rules/rtl-coding-conventions.md` (project-level).
+
 ```bash
-# Primary: CLAUDE_PLUGIN_DATA (set by Claude Code plugin runtime)
-# Fallback: ~/.config/rtl-agent-team/ (reliable when env var is unset)
-MARKER_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}"
-mkdir -p "$MARKER_DIR"
-date -u '+%Y-%m-%dT%H:%M:%SZ' > "$MARKER_DIR/.setup-complete"
+# CLAUDE_PLUGIN_DATA: ~/.claude/plugins/data/rtl-agent-team-rtl-agent-marketplace/
+# Fallback: ~/.config/rtl-agent-team/ (for environments where CLAUDE_PLUGIN_DATA is unavailable)
+PLUGIN_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}"
+mkdir -p "$PLUGIN_DIR"
+
+# Setup completion marker
+date -u '+%Y-%m-%dT%H:%M:%SZ' > "$PLUGIN_DIR/.setup-complete"
+
+# Machine-wide EDA environment config (tool paths + preferences)
+# This is read by rat-init-project as a starting point for per-project config.
+# Structure mirrors rat_config.json preferences section.
+cat > "$PLUGIN_DIR/env-config.json" <<ENVEOF
+{
+  "generated": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+  "tools": {
+    "_comment": "Machine-wide EDA tool availability from rat-setup scan.",
+    <... insert detected tool status from Phase 1 scan results ...>
+  },
+  "preferences": {
+    "_comment": "Auto-detected preferences (commercial priority). Per-project rat_config.json overrides these.",
+    "simulator": "<detected preferred sim>",
+    "synthesis": "<detected preferred syn>",
+    "lint": "<detected preferred lint>",
+    "formal": "<detected preferred formal>",
+    "cdc": "<detected preferred cdc>"
+  }
+}
+ENVEOF
 ```
+
+**Note to orchestrator**: The `<... insert ...>` placeholders above must be replaced
+with actual Phase 1 scan results. Use the same detection logic and output format as
+`generate_config.sh` (tools section + preferences section). The LLM executing this
+skill should construct the JSON from the Bash tool check results collected in Phase 1.
 
 ### Next Steps
 - Run `/rtl-agent-team:rat-init-project` in your project directory to initialize project structure

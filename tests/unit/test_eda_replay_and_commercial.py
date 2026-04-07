@@ -130,7 +130,7 @@ class TestCommercialLintSynthCdcWrappers:
             timeout=20,
         )
         assert result.returncode == 0
-        replay = outdir / "replay" / "run_syn_dc_shell_latest.sh"
+        replay = outdir / "scr" / "replay" / "run_syn_dc_shell_latest.sh"
         assert replay.exists()
         assert "dc_shell -64bit -f" in replay.read_text()
 
