@@ -1,6 +1,45 @@
 # Contributing
 
 RTL Agent Marketplace에 기여하는 방법을 설명합니다.
+이 프로젝트는 [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md)를 따릅니다.
+
+---
+
+## 시작하기
+
+### 개발 환경 셋업
+
+```bash
+# 1. 저장소 클론
+git clone https://github.com/babyworm/rtl-agent-team.git
+cd rtl-agent-team
+
+# 2. 로컬 심볼릭 링크 (Claude Code에서 바로 테스트)
+ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
+
+# 3. 테스트 의존성 설치
+python3 -m pip install --user -r tests/requirements-test.txt
+
+# 4. 테스트 실행
+python3 -m pytest tests/unit/ -x -q
+```
+
+### Issue 제출
+
+- **버그 리포트**: [Bug Report 템플릿](.github/ISSUE_TEMPLATE/bug_report.md) 사용
+- **기능 제안**: [Feature Request 템플릿](.github/ISSUE_TEMPLATE/feature_request.md) 사용
+
+### Pull Request 제출
+
+1. Fork 후 feature 브랜치에서 작업
+2. 테스트 통과 확인: `python3 -m pytest tests/unit/ -x -q`
+3. Hook 수정 시 shellcheck 통과: `shellcheck -s sh hooks/*.sh hooks/lib/*.sh`
+4. [PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)의 체크리스트 확인
+5. PR 생성
+
+---
+
+## 기여 유형
 
 기여 유형은 크게 세 가지입니다:
 1. **기존 플러그인 개선** — 에이전트, 스킬, 레퍼런스 추가/수정
