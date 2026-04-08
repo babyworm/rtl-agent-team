@@ -292,7 +292,9 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | dc_shell (Design Compiler) | 상용 합성 | 선택 |
 | vc_cdc / questa_cdc | 상용 CDC 분석 | 선택 |
 
-`/rtl-agent-team:rat-setup`으로 도구 설치 상태를 확인할 수 있습니다.
+`/rtl-agent-team:rat-setup`으로 도구 설치 상태를 확인하고 상용 도구를 대화형으로 설정할 수 있습니다.
+
+상용 도구 설정 상세 안내(env_source, 타겟 라이브러리, 벤더별 예시)는 **[EDA Setup Guide](plugin_docs/eda-setup-guide.md)**를 참조하세요.
 
 ### EDA Wrapper 스크립트
 

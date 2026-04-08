@@ -297,7 +297,9 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 | dc_shell (Design Compiler) | Commercial synthesis | Optional |
 | vc_cdc / questa_cdc | Commercial CDC analysis | Optional |
 
-Use `/rtl-agent-team:rat-setup` to check tool installation status.
+Use `/rtl-agent-team:rat-setup` to check tool installation status and configure commercial tools interactively.
+
+For detailed commercial tool setup (env_source, technology library, vendor examples), see the **[EDA Setup Guide](plugin_docs/eda-setup-guide.md)**.
 
 ### EDA Wrapper Scripts
 

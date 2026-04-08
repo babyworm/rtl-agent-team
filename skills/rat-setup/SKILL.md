@@ -106,6 +106,27 @@ test -f ~/.claude/settings.json && cat ~/.claude/settings.json
 test -f ~/.claude/plugins.json && cat ~/.claude/plugins.json
 ```
 
+### 1d. Commercial Tool Scan
+
+Probe commonly used commercial EDA tools. These are optional but significantly
+enhance the pipeline when available. Check each tool's availability in PATH:
+
+| Tool | Check Command | Vendor | Category |
+|------|--------------|--------|----------|
+| vcs | `vcs -ID 2>&1 \| head -1` | Synopsys | Simulator |
+| xrun | `xrun -version 2>&1 \| head -1` | Cadence | Simulator |
+| vsim | `vsim -version 2>&1 \| head -1` | Siemens | Simulator |
+| dc_shell | `which dc_shell 2>/dev/null` | Synopsys | Synthesis |
+| genus | `which genus 2>/dev/null` | Cadence | Synthesis |
+| sg_shell | `which sg_shell 2>/dev/null` | Synopsys | Lint/CDC |
+| fm_shell | `which fm_shell 2>/dev/null` | Synopsys | Equivalence |
+| lec | `which lec 2>/dev/null` | Cadence | Equivalence |
+| verdi | `which verdi 2>/dev/null` | Synopsys | Debug |
+| simvision | `which simvision 2>/dev/null` | Cadence | Debug |
+
+Record for each: detected (true/false), path, version string (if available).
+Separate detected tools from undetected for Phase 3 Q2b.
+
 ---
 
 ## Phase 2: Report (show categorized results)
@@ -133,6 +154,17 @@ Present results in a clear categorized table:
 ### Test Infrastructure
 | Component | Status |
 | ... |
+
+### Commercial Tools (PATH scan)
+| Tool | Vendor | Status | Path |
+|------|--------|--------|------|
+| vcs | Synopsys | OK / NOT FOUND | /path/to/vcs |
+| dc_shell | Synopsys | OK / NOT FOUND | — |
+| xrun | Cadence | OK / NOT FOUND | — |
+| ... |
+
+> Commercial tools not found in PATH may still be available via setup scripts.
+> You will be asked about this in the next step.
 
 ### Plugin Configuration
 | Item | Status |
@@ -171,6 +203,69 @@ Before installing missing required tools, ask the user:
 > 4. iverilog — fallback simulator
 > 5. gtkwave — waveform viewer
 > 6. svlens — Structural analysis (CDC, connectivity, metrics)
+
+### Q2b: Commercial Tool Configuration
+
+Only ask this if any commercial tools were scanned in Phase 1d.
+Group tools into two lists: detected and undetected.
+
+**For detected commercial tools** — confirm correctness:
+
+> **Commercial tools found in your PATH:**
+> | # | Tool | Vendor | Path |
+> |---|------|--------|------|
+> | 1 | vcs | Synopsys | /opt/synopsys/vcs/bin/vcs |
+> | 2 | dc_shell | Synopsys | /opt/synopsys/dc/bin/dc_shell |
+>
+> Are these the versions you want to use? (yes / no — I'll correct individually / skip)
+
+If user says "no", ask which tool to correct and what `env_source` command to use instead.
+
+**For undetected commercial tools** — ask if the user has a setup script:
+
+> **The following commercial tools were not found in PATH.**
+> If any of these are installed but require environment setup (e.g., `source setup.sh`
+> or `module load`), provide the sourcing command. Otherwise skip.
+>
+> Available tools:
+> | # | Tool | Vendor | Purpose |
+> |---|------|--------|---------|
+> | 1 | vcs | Synopsys | Simulator |
+> | 2 | xrun | Cadence | Simulator |
+> | 3 | dc_shell | Synopsys | Synthesis |
+> | ... |
+>
+> Enter sourcing commands (format: `number: command`), or `skip`:
+> ```
+> 1: source /tools/synopsys/vcs/2024.03/setup.sh
+> 3: module load synopsys/dc/2024.03
+> ```
+
+After collecting responses, verify each provided `env_source` by running:
+```bash
+bash -c "$env_source && command -v $tool" 2>/dev/null
+```
+Report results: if the tool is now found, mark as OK. If still not found, warn the user
+and offer to re-enter or skip.
+
+### Q2c: Synthesis Target Library (optional)
+
+> **Synthesis target library configuration.**
+> Providing a Liberty timing library (.lib) enables accurate gate-count estimation
+> and is required for commercial synthesis (DC/Genus).
+> Yosys works without a Liberty file using built-in models.
+>
+> 1. Provide path to Liberty file (.lib)
+> 2. `skip` — no library (Yosys built-in model only)
+>
+> If providing a path, optionally specify:
+> - Technology description (e.g., "TSMC 28nm", "Sky130")
+> - NAND2 cell name pattern if different from default (default: `NAND2X1`)
+
+If user provides a Liberty path, validate file exists:
+```bash
+test -f "$liberty_path" && echo "OK" || echo "File not found"
+```
 
 ### Q3: Plugin Global Configuration
 
@@ -222,7 +317,7 @@ fi
 
 ---
 
-**IMPORTANT: After receiving all Q1-Q4 answers, immediately proceed to Phase 4 execution
+**IMPORTANT: After receiving all Q1-Q5 answers, immediately proceed to Phase 4 execution
 in the same response. Do NOT pause or wait for user confirmation between Phase 3 and Phase 4.
 The user has already made their decisions — execute them without an extra turn boundary.**
 
@@ -238,7 +333,63 @@ Execute installation commands based on Q1/Q2 answers.
 **Actively look up the latest stable version** from official upstream sources
 before giving install commands for fast-moving tools such as Verilator and SystemC.
 
-### 4b. Plugin Config Deployment (if Q3 = yes)
+### 4b. Commercial Tool Configuration (if Q2b answered)
+
+For each tool where the user provided an `env_source` command or corrected a path,
+record the information in the machine-wide env-config.json:
+
+```bash
+PLUGIN_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}"
+mkdir -p "$PLUGIN_DIR"
+```
+
+Store collected commercial tool sourcing commands in the `tools` section
+of `$PLUGIN_DIR/env-config.json`. These values will be seeded into
+per-project `rat_config.json` when `rat-init-project` runs `generate_config.sh`.
+
+For each provided `env_source`, verify the tool is accessible:
+```bash
+bash -c "$env_source && command -v $tool" 2>/dev/null
+```
+
+Report verification results:
+```
+### Commercial Tool Verification
+| Tool | env_source | Status |
+|------|-----------|--------|
+| vcs | source /tools/.../setup.sh | OK (found at /tools/.../bin/vcs) |
+| dc_shell | module load synopsys/dc | FAILED (not found after sourcing) |
+```
+
+If a tool is not found after sourcing, warn but proceed — the user can
+fix `env_source` later in `rat_config.json` and re-run `generate_config.sh`.
+
+### 4b-tech. Target Library Configuration (if Q2c answered)
+
+If the user provided a Liberty file path:
+1. Validate the file exists
+2. Extract NAND2 area using the same logic as `generate_config.sh`:
+   ```bash
+   awk -v pat="${nand2_pattern:-NAND2X1}" '
+     $0 ~ "cell[[:space:]]*\\("pat"\\)" { found=1 }
+     found && /area[[:space:]]*:/ {
+       gsub(/[^0-9.]/, "", $NF); print $NF; exit
+     }
+     found && /^\s*\}/ { found=0 }
+   ' "$liberty_path"
+   ```
+3. Record in env-config.json `technology` section:
+   ```json
+   "technology": {
+     "target": "<user-provided description>",
+     "liberty": "<absolute path to .lib>",
+     "nand2_cell_pattern": "<pattern or NAND2X1>",
+     "nand2_area_um2": <extracted or null>
+   }
+   ```
+4. Report result: technology name, liberty path, extracted NAND2 area (or "not found in lib").
+
+### 4c. Plugin Config Deployment (if Q3 = yes)
 
 **RTL rules → `~/.claude/rules/`** (path-scoped, RTL files only):
 ```bash
@@ -257,7 +408,7 @@ fi
 ```
 See Q3 section for the exact block content.
 
-### 4c. Test Infra Installation (if Q4 = yes)
+### 4d. Test Infra Installation (if Q4 = yes)
 
 ```bash
 python3 -m pip install --user pytest cocotb cocotb-bus numpy hjson
@@ -278,6 +429,22 @@ Re-check installed tools and present final status:
 | Required | 7 | 7 | PASS |
 | Recommended | 3 | 4 | PARTIAL |
 | Optional | 2 | 6 | — |
+
+### Commercial Tools
+| Tool | Vendor | Status | env_source |
+|------|--------|--------|-----------|
+| vcs | Synopsys | OK (via env_source) | source /tools/.../setup.sh |
+| dc_shell | Synopsys | SKIPPED | — |
+| ... |
+
+### Target Technology
+| Item | Value |
+|------|-------|
+| Technology | TSMC 28nm |
+| Liberty | /path/to/lib.lib |
+| NAND2 area | 1.26 um2 |
+
+(or "Not configured — Yosys built-in model will be used" if skipped)
 
 ### Plugin Configuration
 | Item | Status |
@@ -365,6 +532,18 @@ Bash: python3 -m pytest --version 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import cocotb_bus; print(cocotb_bus.__version__)" 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import numpy; print(numpy.__version__)" 2>&1 || echo "NOT_FOUND"
 Bash: python3 -c "import hjson; print(hjson.__version__)" 2>&1 || echo "NOT_FOUND"
+
+# --- Commercial Tools (Phase 1d) ---
+Bash: vcs -ID 2>&1 | head -1 || echo "NOT_FOUND"
+Bash: xrun -version 2>&1 | head -1 || echo "NOT_FOUND"
+Bash: vsim -version 2>&1 | head -1 || echo "NOT_FOUND"
+Bash: which dc_shell 2>/dev/null || echo "NOT_FOUND"
+Bash: which genus 2>/dev/null || echo "NOT_FOUND"
+Bash: which sg_shell 2>/dev/null || echo "NOT_FOUND"
+Bash: which fm_shell 2>/dev/null || echo "NOT_FOUND"
+Bash: which lec 2>/dev/null || echo "NOT_FOUND"
+Bash: which verdi 2>/dev/null || echo "NOT_FOUND"
+Bash: which simvision 2>/dev/null || echo "NOT_FOUND"
 
 # --- Plugin Config State ---
 Bash: ls ~/.claude/rules/ 2>/dev/null || echo "NO_RULES"
@@ -586,6 +765,11 @@ docker run -it --rm \
 - Before deploying global rules → confirm with user (never overwrite existing)
 - `jq` not found → report as recommended (hooks fall back to python/sed)
 - Python version < 3.9 → report incompatibility
+- Commercial tool detected → confirm with user before recording (Q2b)
+- Commercial tool not detected → offer env_source entry, verify in subshell (Q2b)
+- User-provided env_source fails verification → warn, allow re-entry or skip
+- Liberty file path not found → warn, allow re-entry or skip (Q2c)
+- NAND2 pattern not found in Liberty → warn, record liberty path with null area
 </Escalation_And_Stop_Conditions>
 
 <Final_Checklist>
@@ -600,6 +784,13 @@ docker run -it --rm \
 - [ ] Lint tool gate: at least one of verible/slang installed
 - [ ] Fast-moving tools version-pinned from official upstream
 - [ ] Docker EDA image status checked
+- [ ] Commercial tools scanned (Phase 1d) and reported in Phase 2
+- [ ] Detected commercial tools confirmed with user (Q2b)
+- [ ] Undetected commercial tools: user offered env_source entry (Q2b)
+- [ ] User-provided env_source commands verified via subshell test
+- [ ] Target Liberty path collected or skipped (Q2c)
+- [ ] If Liberty provided: NAND2 area extraction attempted
+- [ ] Commercial tool + technology config written to env-config.json
 - [ ] Final verification re-check after installation
 - [ ] Next steps shown (rat-init-project, rat-tutorial)
 </Final_Checklist>
