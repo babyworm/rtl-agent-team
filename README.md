@@ -33,11 +33,17 @@ Additional plugins (domain knowledge packages, MCP servers, specialized skills, 
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (optional) SV LSP
 
-# 3. Check environment
+# 3. Check environment (global tool check and setup - interactive interview; check EDA and liberty file to synthesis)
 /rtl-agent-team:rat-setup
 
-# 4. Full automation (or "Design an H.264 TQ subsystem")
+# 4. setup project skelecton (on your (empty) project directory)
+/rtl-agent-team:rat-init-project
+
+# 5. Full automation 
+# Eg) /rat-auto-design "Design an H.264 TQ subsystem" or /rat-auto-design "implement VDC-M 1.2 encoder using reference C model in ../vdc-m/refc. It should support 4K 60fps, at 500MHz (margin 40% under TSMC 28nm process )"
 /rtl-agent-team:rat-auto-design
+
+
 ```
 
 If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
