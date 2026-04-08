@@ -7,6 +7,20 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-08
+
+### Added
+- `plugin_docs/eda-setup-guide.md`: comprehensive EDA tool setup guide covering
+  env_source patterns, vendor-specific examples (Synopsys/Cadence/Siemens),
+  rat_config.json field reference, and technology configuration
+- `rat-setup` Phase 1d: commercial tool PATH scan (vcs, xrun, vsim, dc_shell,
+  genus, sg_shell, fm_shell, lec, verdi, simvision)
+- `rat-setup` Q2b: interactive commercial tool confirmation (detected tools) and
+  env_source entry (undetected tools) with subshell verification
+- `rat-setup` Q2c: synthesis target Liberty library path collection with
+  NAND2 area auto-extraction
+- README/README_kr: EDA Setup Guide link in EDA Tools section
+
 ## [0.8.21] - 2026-04-07
 
 ### Fixed
