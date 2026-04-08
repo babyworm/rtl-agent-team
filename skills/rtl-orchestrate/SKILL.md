@@ -441,7 +441,7 @@ Phase 1: Research    → docs/phase-1-research/       (spec, domain knowledge)
 Phase 2: Arch/Ref    → docs/phase-2-architecture/    + refc/ (C golden)
 Phase 3: μArch/TLM   → docs/phase-3-uarch/           + BFM
 Phase 4: RTL+Unit    → rtl/{module}/ + sim/{module}/  + docs/phase-4-rtl/
-Phase 5: Verify      → sim/formal/ + docs/phase-5-verify/
+Phase 5: Verify      → formal/ + docs/phase-5-verify/
 Phase 6: Design Note → reviews/phase-6-review/
 Phase 7: Exploration → docs/phase-7-exploration/      (optional, no pipeline rules)
 ```

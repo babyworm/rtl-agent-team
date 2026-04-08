@@ -50,7 +50,7 @@ and update them in the same task.
 - Formal equivalence via SymbiYosys (requires sv2v conversion first):
   ```bash
   sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
-  cd sim/formal/ && sby -f {module}.sby   # .sby must reference _v2v.v, not .sv
+  cd formal/ && sby -f {module}.sby   # .sby must reference _v2v.v, not .sv
   ```
 
 ## Escalation & Stop Conditions

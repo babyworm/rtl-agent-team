@@ -84,7 +84,7 @@ install_script_if_missing \
 
 install_script_if_missing \
   "$PLUGIN_ROOT/skills/rat-init-project/templates/run_cdc.sh" \
-  "$WORKSPACE/sim/cdc/run_cdc.sh" \
+  "$WORKSPACE/lint/scripts/run_cdc.sh" \
   755
 
 install_script_if_missing \

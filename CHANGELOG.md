@@ -7,6 +7,31 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-04-08
+
+### Changed
+- **EDA tool working directory isolation**: each tool category now runs from its
+  own dedicated directory instead of project root, preventing intermediate file
+  pollution (`csrc/`, `work/`, `command.log`, etc.)
+  - Synthesis (DC/Genus/Yosys): `cd syn/`
+  - Simulation (VCS/Xrun/Questa): `cd $OUTDIR` (default `sim/build`)
+  - Syntax lint: `cd lint/lint/`
+  - CDC analysis: `cd lint/cdc/`
+  - Formal verification: `cd formal/`
+  - VCS in Makefile: `cd build/vcs/`
+- Runner scripts (`run_syn.sh`, `run_sim.sh`, `run_lint.sh`, `run_cdc.sh`,
+  `run_regression_uvm.sh`) resolve all input paths to absolute before `cd`
+- Makefile formal targets use `cd formal && ...` with `$(abspath)` for inputs
+- CDC script deployment path: `sim/cdc/run_cdc.sh` → `lint/scripts/run_cdc.sh`
+- SBY_FILE default: `sim/formal/$(TOP).sby` → `formal/$(TOP).sby`
+- Makefile clean target updated for new directory layout
+
+### Fixed
+- VCS `csrc/` directory polluting project root in Makefile `sim_vcs` and `uvm_compile`
+- Questa missing `vlib`/`-work` in `run_sim.sh` (would fail or create `work/` in root)
+- DC `command.log` now redirected to `syn/log/` via `sh_command_log_file`
+- CDC script file collection ordering bug (resolve ran before files were collected)
+
 ## [0.9.0] - 2026-04-08
 
 ### Added

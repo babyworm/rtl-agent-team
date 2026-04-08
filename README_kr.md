@@ -18,7 +18,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 94-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.0 |
+| **rtl-agent-team** | 94-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.1 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.1 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
@@ -169,7 +169,7 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 | `docs/phase-N-*/` | Phase별 설계 문서 (가이드 파이프라인) | Phase N → Phase N+1 입력 |
 | `reviews/phase-N-*/` | 상위 스펙 준수 verdict (PASS/FAIL) | 데이터 없이 판정만 |
 | `rtl/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
-| `sim/`, `sim/formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
+| `sim/`, `formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
 | `refc/` | C 골든 레퍼런스 모델 (DPI-C 호환) | Phase 2 코드 산출물 |
 | `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 설계 결정 근거 |
 | `docs/lessons-learned.md` | 피드백 루프에서 축적된 교훈 | Phase 전체에 걸쳐 누적 |
@@ -305,7 +305,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
 | `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
 | `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
-| `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
+| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in) |
 
 스크립트는 `rat-init-project` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.

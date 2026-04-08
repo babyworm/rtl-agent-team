@@ -32,9 +32,9 @@ in addition to any CDC violations.
 - [ ] All clock domains identified in RTL (expect `{domain}_clk` format)
 - [ ] All cross-domain paths analyzed
 - [ ] Non-conformant clock/reset names flagged as CONVENTION violations
-- [ ] sim/cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
+- [ ] lint/cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
 - [ ] syn/constraints/cdc_constraints.sdc written with correct clock domain names
-- [ ] CDC replay script exists (sim/cdc/reports/replay/run_cdc_*_latest.sh)
+- [ ] CDC replay script exists (lint/cdc/replay/run_cdc_*_latest.sh)
 - [ ] RTL not modified
 - [ ] Violation count reported to user
 

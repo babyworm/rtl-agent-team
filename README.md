@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 94-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.0 |
+| **rtl-agent-team** | 94-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.1 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.1 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -169,7 +169,7 @@ docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase
 | `docs/phase-N-*/` | Phase-specific design documents (guide pipeline) | Phase N → Phase N+1 input |
 | `reviews/phase-N-*/` | Spec compliance verdict (PASS/FAIL) | Verdict only, no data |
 | `rtl/` | RTL SystemVerilog source code | Phase 4 code artifact |
-| `sim/`, `sim/formal/` | Testbenches | Phase 4-5 code artifacts |
+| `sim/`, `formal/` | Testbenches | Phase 4-5 code artifacts |
 | `refc/` | C golden reference model (DPI-C compatible) | Phase 2 code artifact |
 | `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 decision rationale |
 | `docs/lessons-learned.md` | Lessons learned from feedback loops | Accumulated across phases |
@@ -310,7 +310,7 @@ All EDA operations use replayable wrapper scripts that generate timestamped + `_
 | `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
 | `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
 | `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
-| `run_cdc.sh` | `sim/cdc/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
+| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb regression (local-first, AWS opt-in) |
 
 Scripts are auto-installed by the `rat-init-project` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.

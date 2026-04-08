@@ -1390,7 +1390,7 @@ class TestSkillActivation:
         run_sim = tmp_project / "scripts" / "run_sim.sh"
         run_lint = tmp_project / "lint" / "scripts" / "run_lint.sh"
         run_syn = tmp_project / "syn" / "scripts" / "run_syn.sh"
-        run_cdc = tmp_project / "sim" / "cdc" / "run_cdc.sh"
+        run_cdc = tmp_project / "lint" / "scripts" / "run_cdc.sh"
 
         for path in [run_sim, run_lint, run_syn, run_cdc]:
             assert path.exists(), f"Missing auto-installed script: {path}"

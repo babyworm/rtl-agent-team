@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 
 <Purpose>
 Extract SystemVerilog Assertions from RTL and run formal verification.
-Outputs: sim/formal/*.sv assertion files + formal_verify.json with prove/fail status per property.
+Outputs: formal/*.sv assertion files + formal_verify.json with prove/fail status per property.
 
 See `references/sva-patterns.md` for SVA temporal operator reference, common assertion patterns,
 and SymbiYosys engine selection guide.

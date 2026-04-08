@@ -103,7 +103,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Preparation
 
 ```
-Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage sim/formal sim/cdc")
+Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage formal lint/cdc")
 ```
 
 Read Phase 4 artifacts to discover modules:

@@ -23,7 +23,7 @@
     "docs/lessons-learned.md"
   ],
   "outputs": [
-    "sim/formal/*.sv",
+    "formal/*.sv",
     "sim/*/test_*.py",
     "docs/phase-5-verify/unit-test-report.md",
     "docs/phase-5-verify/integration-report.md",

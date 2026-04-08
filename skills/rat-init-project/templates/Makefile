@@ -27,7 +27,7 @@ FILELIST    ?= rtl/filelist_top.f
 BUILD_DIR   ?= build
 LIBERTY     ?=
 SDC_FILE    ?= syn/constraints/design.sdc
-SBY_FILE    ?= sim/formal/$(TOP).sby
+SBY_FILE    ?= formal/$(TOP).sby
 TB          ?=
 
 # Tool preferences (from config.mk or defaults)
@@ -43,7 +43,7 @@ SEEDS       ?= 42 123 456 789 1337
 # Script locations (deployed by rat-init-project)
 LINT_SCRIPT := lint/scripts/run_lint.sh
 SYN_SCRIPT  := syn/scripts/run_syn.sh
-CDC_SCRIPT  := sim/cdc/run_cdc.sh
+CDC_SCRIPT  := lint/scripts/run_cdc.sh
 SIM_SCRIPT  := scripts/run_sim.sh
 
 # ─── Internal helpers ───────────────────────────────────────────────────────
@@ -97,11 +97,11 @@ sim_xrun:
 
 sim_vcs:
 	$(call _require_top)
-	@mkdir -p $(BUILD_DIR)
-	vcs -full64 -sverilog -top $(TOP) \
-	  -f $(FILELIST) $(TB) \
-	  -o $(BUILD_DIR)/simv
-	$(BUILD_DIR)/simv
+	@mkdir -p $(BUILD_DIR)/vcs
+	cd $(BUILD_DIR)/vcs && vcs -full64 -sverilog -top $(TOP) \
+	  -f $(abspath $(FILELIST)) $(if $(TB),$(abspath $(TB)),) \
+	  -o simv
+	cd $(BUILD_DIR)/vcs && ./simv
 
 sim_questa:
 	$(call _require_top)
@@ -170,17 +170,20 @@ formal: formal_$(PREF_FORMAL)
 
 formal_sby:
 	$(call _require_top)
-	sby -f $(SBY_FILE)
+	@mkdir -p formal
+	cd formal && sby -f $(abspath $(SBY_FILE))
 
 formal_jasper:
 	$(call _require_top)
 	$(if $(JASPER_TCL),,$(error JASPER_TCL required. Usage: make formal_jasper TOP=<m> JASPER_TCL=<tcl>))
-	jg -batch $(JASPER_TCL)
+	@mkdir -p formal
+	cd formal && jg -batch $(abspath $(JASPER_TCL))
 
 formal_vcf:
 	$(call _require_top)
 	$(if $(VCF_TCL),,$(error VCF_TCL required. Usage: make formal_vcf TOP=<m> VCF_TCL=<tcl>))
-	vcf -f $(VCF_TCL) -batch
+	@mkdir -p formal
+	cd formal && vcf -f $(abspath $(VCF_TCL)) -batch
 
 # =============================================================================
 # UVM Verification — commercial simulators only
@@ -196,8 +199,9 @@ uvm_compile:
 	$(call _require_top)
 	@echo "=== UVM Compile ($(UVM_SIM)) ==="
 ifeq ($(UVM_SIM),vcs)
-	vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl+branch \
-	  -timescale=1ns/1ps -f $(FILELIST) $(UVM_TB_DIR)/*.sv -o build/simv
+	@mkdir -p build/vcs
+	cd build/vcs && vcs -full64 -sverilog -ntb_opts uvm-1.2 -cm line+cond+fsm+tgl+branch \
+	  -timescale=1ns/1ps -f $(abspath $(FILELIST)) $(abspath $(UVM_TB_DIR))/*.sv -o simv
 else ifeq ($(UVM_SIM),xrun)
 	xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
 	  -f $(FILELIST) $(UVM_TB_DIR)/*.sv -xmlibdirpath build/xcelium
@@ -210,8 +214,8 @@ uvm_run: uvm_compile
 	$(call _require_top)
 	@echo "=== UVM Run: $(UVM_TEST) ==="
 ifeq ($(UVM_SIM),vcs)
-	build/simv +UVM_TESTNAME=$(UVM_TEST) +ntb_random_seed=42 \
-	  -cm line+cond+fsm+tgl+branch -cm_dir sim/uvm/coverage/seed_42.vdb
+	cd build/vcs && ./simv +UVM_TESTNAME=$(UVM_TEST) +ntb_random_seed=42 \
+	  -cm line+cond+fsm+tgl+branch -cm_dir $(abspath sim/uvm/coverage/seed_42.vdb)
 else ifeq ($(UVM_SIM),xrun)
 	xrun -sv -uvm -R +UVM_TESTNAME=$(UVM_TEST) -seed 42 -coverage all \
 	  -xmlibdirpath build/xcelium
@@ -330,7 +334,7 @@ help:
 	@echo "    TB=<file>         Testbench file"
 	@echo "    LIBERTY=<.lib>    Liberty file for technology mapping"
 	@echo "    SDC_FILE=<.sdc>   SDC constraints (default: syn/constraints/design.sdc)"
-	@echo "    SBY_FILE=<.sby>   SymbiYosys config (default: sim/formal/\$$TOP.sby)"
+	@echo "    SBY_FILE=<.sby>   SymbiYosys config (default: formal/\$$TOP.sby)"
 	@echo "    SEEDS=\"...\"       Seed list for regression (default: 42 123 456 789 1337)"
 	@echo "    JASPER_TCL=<tcl>  JasperGold script"
 	@echo "    VCF_TCL=<tcl>     VC Formal script"
@@ -349,8 +353,7 @@ help:
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -rf lint/reports
-	rm -rf syn/db syn/vnet syn/svf syn/rpt syn/log syn/temp syn/work
-	rm -rf sim/cdc/reports sim/conn/reports sim/metrics/reports sim/svlens/reports
-	rm -rf sim/build
-	@echo "Cleaned: build/, lint/reports/, syn/{db,vnet,svf,rpt,log,temp,work}/, sim/*/reports/"
+	rm -rf lint/lint lint/cdc
+	rm -rf syn/db syn/vnet syn/svf syn/scr syn/rpt syn/log syn/temp syn/work
+	rm -rf sim/build sim/conn/reports sim/metrics/reports sim/svlens/reports
+	@echo "Cleaned: $(BUILD_DIR)/, lint/{lint,cdc}/, syn/*, sim/build/"

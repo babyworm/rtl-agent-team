@@ -76,7 +76,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read all .sva files in sim/formal/ directory. Catalog every assertion, assume, and cover property.
+    1. Read all .sva files in formal/ directory. Catalog every assertion, assume, and cover property.
     2. Read all .sby files. Extract solver configuration, depth, engine, and task definitions.
     3. Read requirements.json and map assertions to requirements (REQ-XXXX → assertion name).
     4. For each assertion:
@@ -119,7 +119,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
   <Tool_Usage>
     - Read: read .sva files, .sby files, requirements.json
     - Grep: find assert/assume/cover property patterns across all formal files
-    - Glob: find all sim/formal/*.sva, sim/formal/*.sby files
+    - Glob: find all formal/*.sva, formal/*.sby files
     - Bash: run `sby -f *.sby` to check formal results (if not already run)
     - Write: save review report to reviews/ path
 
@@ -127,17 +127,17 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ```bash
     # Count assert/assume/cover balance
     echo "=== Formal Property Balance ==="
-    echo -n "Assertions: "; grep -rc "assert property" sim/formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
-    echo -n "Assumptions: "; grep -rc "assume property" sim/formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
-    echo -n "Covers: "; grep -rc "cover property" sim/formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
+    echo -n "Assertions: "; grep -rc "assert property" formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
+    echo -n "Assumptions: "; grep -rc "assume property" formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
+    echo -n "Covers: "; grep -rc "cover property" formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
     ```
 
     Vacuity risk detection:
     ```bash
     # Find assertions with complex antecedents (potential vacuity)
-    grep -n "assert property" sim/formal/*.sva | grep "|[-=]>"
+    grep -n "assert property" formal/*.sva | grep "|[-=]>"
     # Cross-reference with cover properties
-    grep -n "cover property" sim/formal/*.sva
+    grep -n "cover property" formal/*.sva
     ```
   </Tool_Usage>
 
@@ -161,9 +161,9 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ## Property Balance
     | Type | Count | Files |
     |------|-------|-------|
-    | assert property | N | sim/formal/*.sva |
-    | assume property | N | sim/formal/*.sva |
-    | cover property | N | sim/formal/*.sva |
+    | assert property | N | formal/*.sva |
+    | assume property | N | formal/*.sva |
+    | cover property | N | formal/*.sva |
     | Ratio (assert:assume) | X:Y | (healthy > 2:1) |
 
     ## Requirement Traceability

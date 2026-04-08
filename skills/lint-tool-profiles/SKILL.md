@@ -14,11 +14,11 @@ user-invocable: false
 
 ## Open-Source Baseline
 - `verilator`:
-  - `lint/scripts/run_lint.sh --tool verilator -f rtl/filelist_top.f --outdir lint/reports`
+  - `lint/scripts/run_lint.sh --tool verilator -f rtl/filelist_top.f --outdir lint/lint`
 - `verible`:
-  - `lint/scripts/run_lint.sh --tool verible -f rtl/filelist_top.f --outdir lint/reports`
+  - `lint/scripts/run_lint.sh --tool verible -f rtl/filelist_top.f --outdir lint/lint`
 - `slang`:
-  - `lint/scripts/run_lint.sh --tool slang -f rtl/filelist_top.f --outdir lint/reports`
+  - `lint/scripts/run_lint.sh --tool slang -f rtl/filelist_top.f --outdir lint/lint`
   - **Auto-detects RTL vs TB** based on source file paths:
     - RTL (`rtl/`): runs with `-Weverything` for maximum strictness — catches `always_ff` multi-driver violations (VCS ICPD), uninitialized variables, width mismatches, etc.
     - TB (`sim/`): runs with `--allow-dup-initial-drivers` — permits `initial` + `always_ff` on same signal (common testbench pattern)
@@ -26,7 +26,7 @@ user-invocable: false
 
 ## Commercial Profile
 - `spyglass` (binary: `sg_shell`, config key: `sg_shell`, script flag: `--tool spyglass`):
-  - `lint/scripts/run_lint.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir lint/reports`
+  - `lint/scripts/run_lint.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir lint/lint`
   - Note: `rat_config.json` uses `sg_shell` as tool key; runner scripts accept `--tool spyglass`
 
 ## Severity Mapping

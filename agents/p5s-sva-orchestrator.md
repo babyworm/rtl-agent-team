@@ -52,7 +52,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Preparation
 
 ```
-Bash("mkdir -p sim/formal reviews/phase-5-verify .rat/scratch/phase-5")
+Bash("mkdir -p formal reviews/phase-5-verify .rat/scratch/phase-5")
 Glob("rtl/*/")       # Enumerate modules
 ```
 
@@ -64,7 +64,7 @@ For each module, dispatch sva-extractor for 3-round refinement:
 # Round 1 (Draft): Initial safety and protocol properties
 Task(subagent_type="rtl-agent-team:sva-extractor",
      prompt="Read rtl/{module}/{module}.sv and docs/phase-3-uarch/*.md.
-Write initial SVA properties at sim/formal/{module}_props.sv.
+Write initial SVA properties at formal/{module}_props.sv.
 Round 1 (Draft): Focus on safety properties (no overflow, no deadlock) and protocol
 handshake properties. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md.
 Guard $past() with past_valid register. Use |-> and |=> temporal operators correctly.
@@ -72,18 +72,18 @@ Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r1.md.")
 
 # Round 2 (Strengthen): Edge cases and cover properties
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read sim/formal/{module}_props.sv (Round 1 output).
+     prompt="Read formal/{module}_props.sv (Round 1 output).
 Round 2 (Strengthen): Review for completeness. Add missing edge cases: reset behavior,
 boundary conditions, back-to-back transactions, error paths. Add cover properties
-for reachability. Check for vacuous assertions. Update sim/formal/{module}_props.sv.
+for reachability. Check for vacuous assertions. Update formal/{module}_props.sv.
 Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r2.md.")
 
 # Round 3 (Harden): Liveness and spec cross-check
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read sim/formal/{module}_props.sv (Round 2 output) and requirements.json.
+     prompt="Read formal/{module}_props.sv (Round 2 output) and requirements.json.
 Round 3 (Harden): Cross-check against spec requirements. Add liveness properties
 (##[1:N] bounded eventually). Verify assume/assert balance (not over-constrained).
-Add cross-module interface properties if applicable. Finalize sim/formal/{module}_props.sv.
+Add cross-module interface properties if applicable. Finalize formal/{module}_props.sv.
 Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r3.md.")
 ```
 
@@ -94,17 +94,17 @@ Multiple modules can run their round sequences in parallel.
 
 sv2v conversion is a Layer 2 concern. The .sby task script or formal runner handles
 sv2v internally before invoking SymbiYosys. Do NOT instruct manual sv2v execution.
-SVA property files (sim/formal/*_props.sv) do NOT need conversion.
+SVA property files (formal/*_props.sv) do NOT need conversion.
 
 ## Step 4: Generate .sby Configuration and Run BMC
 
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="For each module, generate SymbiYosys .sby config at sim/formal/{module}.sby.
+     prompt="For each module, generate SymbiYosys .sby config at formal/{module}.sby.
 Use templates/sby-config.sby as template. [files] section MUST reference _v2v.v files, not .sv.
 Engine selection: smtbmc boolector (default), smtbmc yices (bitvector-heavy), abc pdr (unbounded).
 Generate both BMC (mode bmc) and prove (mode prove) configurations.
-Then run BMC: sby -f sim/formal/{module}.sby
+Then run BMC: sby -f formal/{module}.sby
 Parse stdout for PASS/FAIL per property. Record depth on failure.")
 ```
 
@@ -113,7 +113,7 @@ Parse stdout for PASS/FAIL per property. Record depth on failure.")
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="For properties that passed BMC, run induction (prove mode):
-sby -f sim/formal/{module}_prove.sby
+sby -f formal/{module}_prove.sby
 Induction proves properties hold for all reachable states beyond BMC depth.
 Report proved/failed/timeout per property. Timeout threshold: 200 depth.")
 ```
@@ -122,7 +122,7 @@ Report proved/failed/timeout per property. Timeout threshold: 200 depth.")
 
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Aggregate all sby output into sim/formal/formal_verify_{module}.json.
+     prompt="Aggregate all sby output into formal/formal_verify_{module}.json.
 Format per property: {property, module, status: proved|failed|timeout, depth, engine}
 Mark timeouts as 'timeout' with note recommending simulation fallback.
 Do NOT mark a property as proved unless both BMC and induction passed.")
@@ -135,7 +135,7 @@ For each property with status=failed:
 ```
 Task(subagent_type="rtl-agent-team:waveform-analyzer",
      prompt="Analyze SymbiYosys counterexample trace for failed property '{property}'
-in module {module}. Trace file: sim/formal/{module}_bmc/engine_0/trace.vcd (or .smtc).
+in module {module}. Trace file: formal/{module}_bmc/engine_0/trace.vcd (or .smtc).
 Identify the input sequence that triggers the violation.
 Attach counterexample summary to formal_verify_{module}.json entry for '{property}'.")
 ```

@@ -1,6 +1,6 @@
 # SymbiYosys Configuration Template
-# Usage: sby -f sim/formal/{{MODULE}}.sby
-# Generates: sim/formal/{{MODULE}}/{{ENGINE}}/
+# Usage: sby -f formal/{{MODULE}}.sby
+# Generates: formal/{{MODULE}}/{{ENGINE}}/
 
 [tasks]
 bmc       # Bounded Model Checking
@@ -29,10 +29,10 @@ cover: smtbmc boolector
 # Convert before running sby: sv2v {{RTL_SRC_DIR}}/*.sv -o {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
 read -formal {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
 # SVA property files: read with -sv (formal constructs, no sv2v needed)
-read -formal -sv sim/formal/{{MODULE}}_props.sv
+read -formal -sv formal/{{MODULE}}_props.sv
 prep -top {{MODULE}}
 
 [files]
 # sv2v-converted RTL (run: sv2v {{RTL_SRC_DIR}}/*.sv -o {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v)
 {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
-sim/formal/{{MODULE}}_props.sv
+formal/{{MODULE}}_props.sv

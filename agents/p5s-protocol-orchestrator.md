@@ -54,7 +54,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Preparation
 
 ```
-Bash("mkdir -p sim/formal reviews/phase-5-verify")
+Bash("mkdir -p formal reviews/phase-5-verify")
 Glob("rtl/*/")       # Enumerate modules with bus interfaces
 ```
 
@@ -87,7 +87,7 @@ For each module with an identified bus interface:
 Task(subagent_type="rtl-agent-team:protocol-checker",
      prompt="Write complete {AXI4|AHB-Lite|APB3} protocol SVA assertions for {module}.sv.
 Use i_/o_ signal names per CLAUDE.md conventions. Clock: sys_clk (or axi_clk if multi-domain),
-disable iff (!sys_rst_n). Save to sim/formal/{bus}_assertions.sv.
+disable iff (!sys_rst_n). Save to formal/{bus}_assertions.sv.
 
 For AXI4: cover all mandatory rules —
   1. VALID must not depend on READY (xVALID asserts independently)
@@ -107,7 +107,7 @@ Use templates/protocol-report.md as format reference for the final report.")
 
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Bind sim/formal/{bus}_assertions.sv to rtl/{module}/{module}.sv.
+     prompt="Bind formal/{bus}_assertions.sv to rtl/{module}/{module}.sv.
 Run cocotb regression with assertions enabled via Bash CLI:
   make -C sim/{module} SIM=verilator TOPLEVEL={module} MODULE=test_{module}
 Report ALL assertion violations with:

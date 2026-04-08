@@ -51,7 +51,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 
 <Execution_Policy>
 - lint-checker runs both tools in parallel on the target file(s) via Bash CLI
-- Prefer replayable wrapper: `lint/scripts/run_lint.sh` (creates `lint/reports/replay/run_lint_*_latest.sh`)
+- Prefer replayable wrapper: `lint/scripts/run_lint.sh` (creates `lint/lint/replay/run_lint_*_latest.sh`)
 - Additionally checks naming conventions not caught by standard tools
 - Results merged and de-duplicated
 - Zero-error gate: skill reports PASS or FAIL with full violation list
@@ -80,7 +80,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
    The `run_lint.sh` wrapper auto-detects RTL vs TB based on file paths.
 4.5. If commercial lint signoff is requested, run SpyGlass lint:
    ```bash
-   lint/scripts/run_lint.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/reports
+   lint/scripts/run_lint.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/lint
    ```
 
 5. Run supplementary convention checks via Bash CLI:

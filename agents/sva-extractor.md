@@ -99,7 +99,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
   <Tool_Usage>
     - Read: read requirements.json, docs/phase-3-uarch/*.md, io_definition.json
-    - Write: create sim/formal/module_name.sva, sim/formal/module_name.sby
+    - Write: create formal/module_name.sva, formal/module_name.sby
     - Bash: run `sby -f module_name.sby bmc`, `sby -f module_name.sby prove`
     - Grep: search RTL for signal names referenced in assertions
 
@@ -154,12 +154,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     [script]
     read -formal rtl/{module}/module_name.sv
-    read -formal sim/formal/module_name.sva
+    read -formal formal/module_name.sva
     prep -top module_name
 
     [files]
     rtl/{module}/module_name.sv
-    sim/formal/module_name.sva
+    formal/module_name.sva
     ```
 
     ```
@@ -175,12 +175,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     [script]
     read -formal rtl/{module}/module_name.sv
-    read -formal sim/formal/module_name.sva
+    read -formal formal/module_name.sva
     prep -top module_name
 
     [files]
     rtl/{module}/module_name.sv
-    sim/formal/module_name.sva
+    formal/module_name.sva
     ```
 
     ```
@@ -194,12 +194,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     [script]
     read -formal rtl/{module}/module_name.sv
-    read -formal sim/formal/module_name.sva
+    read -formal formal/module_name.sva
     prep -top module_name
 
     [files]
     rtl/{module}/module_name.sv
-    sim/formal/module_name.sva
+    formal/module_name.sva
     ```
   </Tool_Usage>
 
@@ -272,7 +272,7 @@ When spawned with `team_name` parameter as part of a native team:
    - Extract SVA assertions from spec/uarch docs
    - Write `.sva` bind files
    - Run SymbiYosys BMC + induction
-   - Save report to `sim/formal/{module}/` and `reviews/phase-5-verify/sva-{module}.md`
+   - Save report to `formal/{module}/` and `reviews/phase-5-verify/sva-{module}.md`
    - TaskUpdate(completed) + SendMessage to coordinator with PASS/FAIL + counterexample count
 4. When no more SVA tasks are available, notify coordinator and wait for shutdown
 

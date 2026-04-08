@@ -23,7 +23,7 @@ supplementary crosscheck data — useful for early-stage CI, pre-signoff screeni
 quantitative rigor to LLM-driven reviews.
 
 ## Common Contract
-- Prefer wrapper: `sim/cdc/run_cdc.sh`
+- Prefer wrapper: `lint/scripts/run_cdc.sh`
 - Output classes:
   - `VIOLATION`
   - `CAUTION`
@@ -37,9 +37,9 @@ quantitative rigor to LLM-driven reviews.
 svlens is a unified structural analysis toolkit with three modes sharing one elaboration:
 
 ### svlens cdc — Clock Domain Crossing Analysis
-- `sim/cdc/run_cdc.sh --tool structural --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+- `lint/scripts/run_cdc.sh --tool structural --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
   (structural mode auto-runs svlens crosscheck when installed)
-- `sim/cdc/run_cdc.sh --tool svlens --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+- `lint/scripts/run_cdc.sh --tool svlens --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
   (standalone mode)
 - 8 synchronizer patterns (2-FF, 3-FF, gray, handshake, async FIFO, MUX, pulse, Johnson)
 - Quality checks: reconvergence, glitch path, fan-out-before-sync, reset sync, non-2^N FIFO
@@ -78,12 +78,12 @@ cmake --install build --prefix ~/.local
 
 ## Commercial Profiles
 - `spyglass` (binary: `sg_shell`, config key: `sg_shell`, script flag: `--tool spyglass`):
-  - `sim/cdc/run_cdc.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+  - `lint/scripts/run_cdc.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
   - Note: `rat_config.json` uses `sg_shell` as tool key; runner scripts accept `--tool spyglass`
 - `vc_cdc`:
-  - `sim/cdc/run_cdc.sh --tool vc_cdc --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+  - `lint/scripts/run_cdc.sh --tool vc_cdc --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
 - `questa_cdc`:
-  - `sim/cdc/run_cdc.sh --tool questa_cdc --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+  - `lint/scripts/run_cdc.sh --tool questa_cdc --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
 
 ## Normalized Result Fields
 - `tool`

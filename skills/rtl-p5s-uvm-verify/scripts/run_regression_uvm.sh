@@ -13,6 +13,8 @@
 
 set -euo pipefail
 
+PROJECT_ROOT="$(pwd)"
+
 # ─── Defaults ───────────────────────────────────────────────────────────────
 SEEDS="${SEEDS:-42 123 456 789 1337}"
 SIM="${SIM:-vcs}"
@@ -126,6 +128,17 @@ if [[ -d "$TB_DIR" ]]; then
   done < <(find "$TB_DIR" -name '*.sv' -o -name '*.svh' 2>/dev/null | sort)
 fi
 
+# ─── Resolve paths to absolute ─────────────────────────────────────────
+[[ "$RESULTS_DIR" != /* ]] && RESULTS_DIR="$PROJECT_ROOT/$RESULTS_DIR"
+[[ "$COVERAGE_DIR" != /* ]] && COVERAGE_DIR="$PROJECT_ROOT/$COVERAGE_DIR"
+[[ "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
+[[ "$TB_DIR" != /* ]] && TB_DIR="$PROJECT_ROOT/$TB_DIR"
+_abs_src=()
+for f in "${SRC_FILES[@]}"; do
+  case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
+done
+SRC_FILES=("${_abs_src[@]}")
+
 # ─── Directory setup ───────────────────────────────────────────────────────
 mkdir -p "$RESULTS_DIR" "$COVERAGE_DIR"
 RUN_DIR="$RESULTS_DIR/run_${TIMESTAMP}"
@@ -138,11 +151,11 @@ compile_uvm() {
 
   case "$SIM" in
     vcs)
-      vcs -full64 -sverilog -ntb_opts uvm-1.2 \
+      (cd "$RUN_DIR" && vcs -full64 -sverilog -ntb_opts uvm-1.2 \
         -cm line+cond+fsm+tgl+branch \
         -timescale=1ns/1ps \
         "${SRC_FILES[@]}" \
-        -o "$RUN_DIR/simv" \
+        -o simv) \
         2>&1 | tee "$compile_log"
       RUN_BIN="$RUN_DIR/simv"
       ;;

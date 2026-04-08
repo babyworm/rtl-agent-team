@@ -9,7 +9,7 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 <Purpose>
 Verify that RTL bus interfaces comply with AXI, AHB, or APB protocol specifications
 using formal SVA assertions and simulation-based protocol checking.
-Outputs: reviews/phase-5-verify/protocol-report.md + sim/formal/{bus}_assertions.sv.
+Outputs: reviews/phase-5-verify/protocol-report.md + formal/{bus}_assertions.sv.
 </Purpose>
 
 <Use_When>

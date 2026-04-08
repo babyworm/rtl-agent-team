@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 
 <Purpose>
 Perform static CDC analysis on RTL to identify missing synchronizers, metastability risks,
-and CDC constraint gaps. Outputs: sim/cdc/cdc_report.md + syn/constraints/cdc_constraints.sdc.
+and CDC constraint gaps. Outputs: lint/cdc/cdc_report.md + syn/constraints/cdc_constraints.sdc.
 
 See `references/cdc-patterns.md` for synchronizer types, common violations, and SDC constraint templates.
 </Purpose>

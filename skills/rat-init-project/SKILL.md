@@ -185,7 +185,7 @@ This skill ensures the project workspace is ready before design work begins.
    - **Lint**: `lint/scripts/run_lint.sh` — verilator/verible/slang + spyglass
    - **Synthesis**: `syn/scripts/run_syn.sh` — yosys + dc_shell (Synopsys) + genus (Cadence)
    - **Equivalence checking**: `syn/scripts/run_formality.sh` (Synopsys) + `syn/scripts/run_conformal.sh` (Cadence)
-   - **CDC**: `sim/cdc/run_cdc.sh` — structural quick check + spyglass/vc_cdc/questa_cdc
+   - **CDC**: `lint/scripts/run_cdc.sh` — structural quick check + spyglass/vc_cdc/questa_cdc
    - Runtime hook integration: `hooks/rtl-skill-activation.sh` runs
      `skills/rat-init-project/scripts/install_project_templates.sh` automatically when `rat-init-project` starts.
 
@@ -262,7 +262,7 @@ This skill ensures the project workspace is ready before design work begins.
 <Tool_Usage>
 ```
 # Directory creation (Bash CLI)
-Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include rtl/top sim/top sim/formal sim/cdc sim/cdc/reports lint/scripts lint/reports syn/{scripts,constraints,db,vnet,svf,scr,rpt,log,temp,work} docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-review,7-exploration} .rat/state .rat/scratch
+Bash: mkdir -p specs refc/include refc/build bfm/include rtl/common rtl/include rtl/top sim/top formal lint/cdc lint/cdc/reports lint/scripts lint/lint syn/{scripts,constraints,db,vnet,svf,scr,rpt,log,temp,work} docs/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,7-exploration} docs/decisions reviews/phase-{1-research,2-architecture,3-uarch,4-rtl,5-verify,6-review,7-exploration} .rat/state .rat/scratch
 
 # Rules deployment (skip if already global, non-destructive)
 Bash: mkdir -p .claude/rules
@@ -291,11 +291,11 @@ Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/cocotb-makefil
 Bash: mkdir -p lib && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/lib/tool-runner.sh" lib/tool-runner.sh
 Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_lint.sh" lint/scripts/run_lint.sh
 Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_syn.sh" syn/scripts/run_syn.sh
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_cdc.sh" sim/cdc/run_cdc.sh
+Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_cdc.sh" lint/scripts/run_cdc.sh
 Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_formality.sh" syn/scripts/run_formality.sh
 Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_conformal.sh" syn/scripts/run_conformal.sh
 Bash: mkdir -p reviews/phase-6-review && cp -n "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/phase6-pdf-makefile" reviews/phase-6-review/Makefile
-Bash: chmod +x lib/tool-runner.sh lint/scripts/run_lint.sh syn/scripts/run_syn.sh sim/cdc/run_cdc.sh syn/scripts/run_formality.sh syn/scripts/run_conformal.sh
+Bash: chmod +x lib/tool-runner.sh lint/scripts/run_lint.sh syn/scripts/run_syn.sh lint/scripts/run_cdc.sh syn/scripts/run_formality.sh syn/scripts/run_conformal.sh
 Bash: chmod +x scripts/run_sim.sh
 # Hook-safe bootstrap (non-destructive, idempotent)
 Bash: bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/install_project_templates.sh" "$PWD"

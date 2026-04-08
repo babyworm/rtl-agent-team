@@ -7,6 +7,8 @@
 
 set -euo pipefail
 
+PROJECT_ROOT="$(pwd)"
+
 # ─── Defaults ───────────────────────────────────────────────────────────────
 SIM="iverilog"
 TOP=""
@@ -280,8 +282,6 @@ build_plusargs() {
 
 # ─── Setup ──────────────────────────────────────────────────────────────────
 mkdir -p "$OUTDIR"
-init_replay
-trap 'finalize_replay' EXIT
 
 DEFINE_FLAGS=""
 if [[ ${#DEFINES[@]} -gt 0 ]]; then
@@ -300,6 +300,13 @@ fi
 
 FILES="${SV_FILES[*]:-}"
 PLUSARGS=$(build_plusargs "$SIM")
+
+# ─── cd to output directory — all tool artifacts stay contained ────────
+cd "$OUTDIR"
+RUN_CWD="$(pwd)"
+init_replay
+trap 'finalize_replay' EXIT
+echo "[run_sim] Working directory: $(pwd)"
 
 # ─── Per-Simulator Compile + Run ────────────────────────────────────────────
 
@@ -400,7 +407,8 @@ run_xrun() {
 }
 
 compile_questa() {
-  local cmd="vlog -sv"
+  run_cmd "compile" "vlib work"
+  local cmd="vlog -sv -work work"
   cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
   cmd+=" ${TOOL_ARGS} ${FILES}"
 
@@ -408,7 +416,7 @@ compile_questa() {
   run_cmd "compile" "$cmd"
 
   # Optimize
-  local opt_cmd="vopt +acc ${TOP} -o ${TOP}_opt"
+  local opt_cmd="vopt +acc -work work ${TOP} -o ${TOP}_opt"
   if [[ -n "$DPI_LIB" ]]; then
     opt_cmd+=" -sv_lib ${DPI_LIB}"
   fi
@@ -419,9 +427,9 @@ compile_questa() {
 run_questa() {
   local do_cmds="run -all; quit -f"
   if [[ $TRACE -eq 1 ]]; then
-    do_cmds="vcd file ${OUTDIR}/${TOP}.vcd; vcd add -r /*; run -all; quit -f"
+    do_cmds="vcd file ${TOP}.vcd; vcd add -r /*; run -all; quit -f"
   fi
-  local cmd="vsim -c ${TOP}_opt -do \"${do_cmds}\""
+  local cmd="vsim -c -work work ${TOP}_opt -do \"${do_cmds}\""
   cmd+=" ${PLUSARGS}"
 
   log "Run: $cmd"

@@ -50,7 +50,7 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Preparation
 
 ```
-Bash("mkdir -p sim/cdc sim/cdc/reports syn/constraints reviews/phase-5-verify")
+Bash("mkdir -p lint/cdc lint/cdc syn/constraints reviews/phase-5-verify")
 Glob("rtl/*/")       # Enumerate modules
 ```
 
@@ -83,7 +83,7 @@ Step 2: Analyze all cross-domain signal paths:
   - Fanout from a synchronized signal that may cause coherency issues
   - Reset domain crossings (e.g., sys_rst_n used in axi_clk domain)
 Also flag non-conformant reset names (rst_ni is non-conformant; expect {domain}_rst_n).
-Write sim/cdc/cdc_report_{MODULE_NAME}.md using templates/cdc-report.md as format template.
+Write lint/cdc/cdc_report_{MODULE_NAME}.md using templates/cdc-report.md as format template.
 Categorize findings:
   VIOLATION: unsynced crossing (file:line, source clock, dest clock)
   CAUTION: complex multi-bit crossing needing review
@@ -96,7 +96,7 @@ Do NOT auto-insert synchronizers. Report only.")
 
 ```
 Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Read sim/cdc/cdc_report_{MODULE_NAME}.md and {RTL_GLOB}.
+     prompt="Read lint/cdc/cdc_report_{MODULE_NAME}.md and {RTL_GLOB}.
 Write syn/constraints/cdc_constraints_{MODULE_NAME}.sdc defining clock groups for all identified clock domains.
 Use templates/cdc-constraints.sdc as the SDC template.
 Use {domain}_clk names consistent with RTL (e.g., sys_clk, axi_clk, codec_clk).
@@ -113,10 +113,10 @@ Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Check commercial CDC tool availability via Bash CLI:
 which sg_shell || which vc_cdc || which questa_cdc
 If available, run replayable CDC script (note: sg_shell detected → pass --tool spyglass to script):
-  sim/cdc/run_cdc.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir sim/cdc/reports
-Replay artifact must be saved to: sim/cdc/reports/replay/run_cdc_spyglass_latest.sh
+  lint/scripts/run_cdc.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/cdc
+Replay artifact must be saved to: lint/cdc/replay/run_cdc_spyglass_latest.sh
 If SpyGlass is unavailable, fall back to structural analysis:
-  sim/cdc/run_cdc.sh --tool structural --top {top} -f rtl/filelist_top.f --outdir sim/cdc/reports
+  lint/scripts/run_cdc.sh --tool structural --top {top} -f rtl/filelist_top.f --outdir lint/cdc
 Report tool used, violation count, and output directory.")
 ```
 
@@ -128,7 +128,7 @@ After all analysis completes, verify the cdc_report_{MODULE_NAME}.md is complete
 - Report total VIOLATION count to user
 - If any VIOLATION found: surface immediately, do NOT attempt auto-fix
 - If CONVENTION violation found: report alongside CDC violations, recommend fix before sign-off
-- Verify CDC replay script exists at `sim/cdc/reports/replay/run_cdc_*_latest.sh`
+- Verify CDC replay script exists at `lint/cdc/replay/run_cdc_*_latest.sh`
 
 # Parallel Execution Patterns
 

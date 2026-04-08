@@ -61,8 +61,8 @@ Merge: Phase 4→5 Gate (Stream A PASS + Stream B artifacts ready)
 
 ## Other Directories
 
-- `sim/formal/` — SVA formal verification (.sby configs)
-- `sim/cdc/` — CDC analysis reports
+- `formal/` — SVA formal verification (.sby configs)
+- `lint/cdc/` — CDC analysis reports
 - `sim/uvm/` — UVM testbenches (commercial sim required)
 - `sim/bugs/{bug_id}/` — Bug reproduction TBs + root_cause.md
 - `sim/regression/` — Multi-seed regression outputs

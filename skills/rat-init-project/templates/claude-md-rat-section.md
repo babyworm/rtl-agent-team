@@ -37,7 +37,7 @@ make help                    All targets + commercial EDA options (_xrun, _vcs, 
 | P2 Architecture | `docs/phase-2-architecture/` + `refc/` | `reviews/phase-2-architecture/` |
 | P3 μArch/BFM | `docs/phase-3-uarch/` + `bfm/` | `reviews/phase-3-uarch/` |
 | P4 RTL+Unit | `rtl/` + `sim/` + `docs/phase-4-rtl/` | `reviews/phase-4-rtl/` |
-| P5 Verify | `sim/formal/` + `docs/phase-5-verify/` | `reviews/phase-5-verify/` |
+| P5 Verify | `formal/` + `docs/phase-5-verify/` | `reviews/phase-5-verify/` |
 | P6 Design Note | — | `reviews/phase-6-review/` |
 | P7 Exploration | `docs/phase-7-exploration/` (optional) | — |
 

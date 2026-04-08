@@ -143,7 +143,7 @@ Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
 Task(subagent_type="rtl-agent-team:sva-extractor",
      prompt="Generate SVA property skeletons from docs/phase-3-uarch/*.md.
 Each property must reference μArch source: // Source: docs/phase-3-uarch/{module}.md, Section: {section}.
-Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and sim/formal/.",
+Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and formal/.",
      run_in_background=true)
 
 Task(subagent_type="rtl-agent-team:cdc-checker",

@@ -21,11 +21,13 @@ else
   run_tool() { "$@"; }
 fi
 
+PROJECT_ROOT="$(pwd)"
+
 # ─── Defaults ───────────────────────────────────────────────────────────────
 TOOL="verilator"
 TOP=""
 FILELIST=""
-OUTDIR="lint/reports"
+OUTDIR="lint/lint"
 WAIVER=""
 SCRIPT_PATH=""
 FILES=()
@@ -40,7 +42,7 @@ Options:
   --tool <name>     verilator|verible|slang|spyglass (default: verilator)
   --top <module>    Top-level module name (for hierarchy-aware lint)
   -f <filelist>     Source filelist (.f file)
-  --outdir <dir>    Report output directory (default: lint/reports)
+  --outdir <dir>    Report output directory (default: lint/lint)
   --waiver <file>   Waiver file (verilator .vlt, verible .rules)
   --script <file>   Tool script/Tcl file (spyglass)
   -v, --verbose     Verbose output
@@ -65,6 +67,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ─── Resolve paths to absolute (before cd) ────────────────────────────
+case "$OUTDIR" in /*) ;; *) OUTDIR="$PROJECT_ROOT/$OUTDIR" ;; esac
+[[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
+[[ -n "$WAIVER" && "$WAIVER" != /* ]] && WAIVER="$PROJECT_ROOT/$WAIVER"
+[[ -n "$SCRIPT_PATH" && "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$PROJECT_ROOT/$SCRIPT_PATH"
+
 mkdir -p "$OUTDIR"
 
 # ─── Collect source files ──────────────────────────────────────────────────
@@ -83,6 +91,17 @@ if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
   echo "ERROR: No source files specified. Use -f <filelist> or pass .sv files directly." >&2
   exit 1
 fi
+
+# Resolve source files to absolute paths (before cd)
+_abs_src=()
+for f in "${SRC_FILES[@]}"; do
+  case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
+done
+SRC_FILES=("${_abs_src[@]}")
+
+# cd to lint directory — all tool artifacts stay contained
+cd "$OUTDIR"
+echo "[run_lint] Working directory: $(pwd)"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_CWD="$(pwd)"

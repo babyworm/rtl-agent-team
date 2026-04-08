@@ -36,7 +36,7 @@ Each round produces a review note at `.rat/scratch/phase-5/sva-iteration-r{N}.md
 
 ## Final Checklist
 
-- [ ] sim/formal/*.sv written with meaningful properties
+- [ ] formal/*.sv written with meaningful properties
 - [ ] All SVA signal references match RTL port names (`i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`)
 - [ ] formal_verify.json produced with status per property
 - [ ] No "failed" status without counterexample attached
@@ -66,8 +66,8 @@ See `references/sva-patterns.md` for complete temporal operator reference and pa
 SymbiYosys relies on Yosys for reading design files. Yosys has limited SystemVerilog support,
 so RTL `.sv` files need Verilog conversion before `sby`. This is a **Layer 2 concern** —
 formal verification scripts handle sv2v conversion internally. Do NOT run sv2v manually.
-SVA property files (sim/formal/*_props.sv) are read with `-formal -sv` and do NOT need conversion.
+SVA property files (formal/*_props.sv) are read with `-formal -sv` and do NOT need conversion.
 ```bash
 # Scripts handle sv2v internally:
-sby -f sim/formal/{module}.sby   # .sby task script runs sv2v as a pre-step
+sby -f formal/{module}.sby   # .sby task script runs sv2v as a pre-step
 ```

@@ -14,9 +14,9 @@ user-invocable: false
 
 ## Recommended Commands (open-source baseline)
 - Lint:
-  - `lint/scripts/run_lint.sh --tool verilator -f rtl/filelist_top.f --outdir lint/reports`
+  - `lint/scripts/run_lint.sh --tool verilator -f rtl/filelist_top.f --outdir lint/lint`
 - CDC:
-  - `sim/cdc/run_cdc.sh --tool structural --top <top> -f rtl/filelist_top.f --outdir sim/cdc/reports`
+  - `lint/scripts/run_cdc.sh --tool structural --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
 - Functional smoke/regression:
   - `scripts/run_sim.sh --sim verilator --top <tb_top> -f rtl/filelist_top.f --outdir sim/reports`
   - `bash skills/rtl-p5s-func-verify/scripts/run_regression.sh --mode local --seeds "1 42 123 1337 65536" --sim verilator`

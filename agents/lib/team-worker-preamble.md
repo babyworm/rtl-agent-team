@@ -107,8 +107,8 @@ Workers save results following the phase directory convention:
 ```
 reviews/phase-N-*/          # Verdict reports (lint-{module}.md, etc.)
 sim/coverage/               # Coverage data
-sim/formal/                 # Formal verification results
-sim/cdc/                    # CDC analysis results
+formal/                 # Formal verification results
+lint/cdc/                    # CDC analysis results
 ```
 
 ## Non-Team Fallback

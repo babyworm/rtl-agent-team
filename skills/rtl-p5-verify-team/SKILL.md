@@ -54,7 +54,7 @@ Write(".rat/state/team-config.json", json.dumps({
 }))
 
 # Step 3: Prepare directories
-Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage sim/formal sim/cdc .rat/scratch/phase-5")
+Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage formal lint/cdc .rat/scratch/phase-5")
 
 # Step 4: No initial tasks from skill — coordinator creates per-module V1-V9 after discovering modules
 
@@ -81,7 +81,7 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:sva-extractor",
       name="verify-1", description="P5 formal and CDC verification",
       prompt="You are a Phase 5 verification worker in team 'p5-verify'. "
              "Coordinator: 'coordinator' (send results via SendMessage). "
-             "Phase artifacts: sim/formal/, sim/cdc/, reviews/phase-5-verify/. "
+             "Phase artifacts: formal/, lint/cdc/, reviews/phase-5-verify/. "
              "Specialty: SVA/formal (V2), CDC (V3), protocol (V4). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: cdc-checker for V3, protocol-checker for V4, constraint-writer for SDC. "

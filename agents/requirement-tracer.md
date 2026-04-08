@@ -112,7 +112,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
        a. Glob all cocotb test files: `sim/*/test_*.py`
        b. Glob all SV unit tests: `sim/*/*.sv`
        c. Glob all UVM tests: `sim/*/test_*.sv`
-       d. Glob all formal assertions: `sim/formal/*.sva`
+       d. Glob all formal assertions: `formal/*.sva`
        e. Read test plan document if available.
 
     4. **Forward trace (Spec → Test)** for each REQ-XXXX:

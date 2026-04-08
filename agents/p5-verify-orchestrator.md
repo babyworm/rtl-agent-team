@@ -86,7 +86,7 @@ If no manifests found → proceed with hardcoded references (backward compatible
 ## Stage 0: Preparation
 
 ```
-Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage sim/formal sim/cdc")
+Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage formal lint/cdc")
 
 # Read Phase 4 artifacts
 Read("docs/phase-4-rtl/module-descriptions.md")      # Module list (fallback: Glob("rtl/*/"))
@@ -114,7 +114,7 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 **V2: SVA Completion + Formal Verification** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
-     prompt="Run SVA/formal verification pipeline for module {module}. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. 3-round iterative refinement (Draft→Strengthen→Harden). Scripts handle sv2v conversion internally (Layer 2). SymbiYosys BMC+induction. Report proved/failed/timeout per property. IMPORTANT: namespace all outputs by module — iteration notes to sva-iteration-{module}-r{N}.md, formal results to sim/formal/formal_verify_{module}.json.",
+     prompt="Run SVA/formal verification pipeline for module {module}. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. 3-round iterative refinement (Draft→Strengthen→Harden). Scripts handle sv2v conversion internally (Layer 2). SymbiYosys BMC+induction. Report proved/failed/timeout per property. IMPORTANT: namespace all outputs by module — iteration notes to sva-iteration-{module}-r{N}.md, formal results to formal/formal_verify_{module}.json.",
      run_in_background=true)
 ```
 
@@ -128,7 +128,7 @@ Task(subagent_type="rtl-agent-team:formal-reviewer",
 **V3: CDC/RDC Analysis** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-cdc-orchestrator",
-     prompt="Run CDC verification pipeline for module {module}. Extend from docs/phase-4-rtl/stream-b-cdc-preliminary.md if available. Identify clock domains, analyze cross-domain paths, generate SDC constraints, run commercial CDC tool if available. Report violations and convention issues. IMPORTANT: namespace outputs by module — CDC report to sim/cdc/cdc_report_{module}.md, constraints to syn/constraints/cdc_constraints_{module}.sdc.",
+     prompt="Run CDC verification pipeline for module {module}. Extend from docs/phase-4-rtl/stream-b-cdc-preliminary.md if available. Identify clock domains, analyze cross-domain paths, generate SDC constraints, run commercial CDC tool if available. Report violations and convention issues. IMPORTANT: namespace outputs by module — CDC report to lint/cdc/cdc_report_{module}.md, constraints to syn/constraints/cdc_constraints_{module}.sdc.",
      run_in_background=true)
 ```
 
@@ -270,7 +270,7 @@ Task(subagent_type="rtl-agent-team:sva-extractor",
 **T3: System-Level CDC**
 ```
 Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Full system-level CDC analysis. Read rtl/filelist_top.f. Identify ALL cross-module clock domain crossings. Generate system-level SDC constraints. Write sim/cdc/system_cdc_report.md.",
+     prompt="Full system-level CDC analysis. Read rtl/filelist_top.f. Identify ALL cross-module clock domain crossings. Generate system-level SDC constraints. Write lint/cdc/system_cdc_report.md.",
      run_in_background=true)
 
 if repeated CDC findings map to clock-tree assumptions:

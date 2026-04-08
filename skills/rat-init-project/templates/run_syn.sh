@@ -30,6 +30,8 @@ else
   run_tool() { "$@"; }
 fi
 
+PROJECT_ROOT="$(pwd)"
+
 # ─── Defaults ───────────────────────────────────────────────────────────────
 TOOL="yosys"
 TOP=""
@@ -107,6 +109,13 @@ if [[ -z "$SDC_FILE" ]]; then
   SDC_FILE="syn/constraints/design.sdc"
 fi
 
+# ─── Resolve paths to absolute (before cd to synthesis root) ──────────
+case "$SYN_ROOT" in /*) ;; *) SYN_ROOT="$PROJECT_ROOT/$SYN_ROOT" ;; esac
+[[ -n "$LIBERTY" && "$LIBERTY" != /* ]] && LIBERTY="$PROJECT_ROOT/$LIBERTY"
+[[ -n "$SDC_FILE" && "$SDC_FILE" != /* ]] && SDC_FILE="$PROJECT_ROOT/$SDC_FILE"
+[[ -n "$SCRIPT_PATH" && "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$PROJECT_ROOT/$SCRIPT_PATH"
+[[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
+
 # ─── Directory setup ──────────────────────────────────────────────────────
 DIR_DB="${SYN_ROOT}/db"
 DIR_VNET="${SYN_ROOT}/vnet"
@@ -173,6 +182,17 @@ if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
   exit 1
 fi
 
+# Resolve source files to absolute paths (before cd)
+_abs_src=()
+for f in "${SRC_FILES[@]}"; do
+  case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
+done
+SRC_FILES=("${_abs_src[@]}")
+
+# ─── cd to synthesis root — all tool artifacts stay contained ─────────
+cd "$SYN_ROOT"
+echo "[run_syn] Working directory: $(pwd)"
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_CWD="$(pwd)"
 
@@ -207,10 +227,10 @@ case "$TOOL" in
     USE_SV2V=0
     if command -v sv2v >/dev/null 2>&1; then
       COMMON_FILES=()
-      if [[ -d rtl/common ]]; then
+      if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
         while IFS= read -r cf; do
           COMMON_FILES+=("$cf")
-        done < <(find rtl/common -name '*.sv' -o -name '*.v' 2>/dev/null | sort)
+        done < <(find "$PROJECT_ROOT/rtl/common" -name '*.sv' -o -name '*.v' 2>/dev/null | sort)
       fi
       echo "=== sv2v Conversion ==="
       sv2v "${COMMON_FILES[@]}" "${SRC_FILES[@]}" -o "$SV2V_OUT"
@@ -231,8 +251,8 @@ case "$TOOL" in
         for f in "${SRC_FILES[@]}"; do
           echo "read_verilog -sv $f"
         done
-        if [[ -d rtl/common ]]; then
-          for f in rtl/common/*.sv rtl/common/*.v; do
+        if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
+          for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
             [[ -f "$f" ]] && echo "read_verilog -sv $f"
           done
         fi
@@ -311,6 +331,7 @@ case "$TOOL" in
       echo "# Generated: $(date)"
       echo ""
       echo "set_app_var search_path [list . ${DIR_DB} ${DIR_WORK}/dc]"
+      echo "set_app_var sh_command_log_file \"${DIR_LOG}/command.log\""
       if [[ -n "$LIBERTY" ]]; then
         echo "set_app_var target_library [list \"$LIBERTY\"]"
         echo "set_app_var link_library [list \"*\" \"$LIBERTY\"]"
@@ -333,8 +354,8 @@ case "$TOOL" in
         echo "source \"${DC_SETUP}\""
         echo ""
         echo "# --- Read RTL ---"
-        if [[ -d rtl/common ]]; then
-          for f in rtl/common/*.sv rtl/common/*.v; do
+        if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
+          for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
             [[ -f "$f" ]] && echo "analyze -format sverilog \"$f\""
           done
         fi
@@ -426,8 +447,8 @@ case "$TOOL" in
         echo "set_db temp_directory \"${GENUS_TEMP}\""
         echo ""
         echo "# --- Read RTL ---"
-        if [[ -d rtl/common ]]; then
-          for f in rtl/common/*.sv rtl/common/*.v; do
+        if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
+          for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
             [[ -f "$f" ]] && echo "read_hdl -sv \"$f\""
           done
         fi

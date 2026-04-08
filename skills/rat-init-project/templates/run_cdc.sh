@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # run_cdc.sh — CDC analysis runner for RTL modules
-# Usage: sim/cdc/run_cdc.sh [OPTIONS] [SV_FILES...]
+# Usage: lint/scripts/run_cdc.sh [OPTIONS] [SV_FILES...]
 #
 # Supports:
 #   - structural (default): grep heuristic + svlens crosscheck (if installed)
@@ -10,9 +10,9 @@
 #   - questa_cdc: Siemens Questa CDC
 #
 # Examples:
-#   sim/cdc/run_cdc.sh --tool structural -f rtl/filelist_top.f --outdir sim/cdc/reports
-#   sim/cdc/run_cdc.sh --tool svlens --top my_top -f rtl/filelist_top.f
-#   sim/cdc/run_cdc.sh --tool spyglass --script sim/cdc/spyglass_cdc.tcl -f rtl/filelist_top.f
+#   lint/scripts/run_cdc.sh --tool structural -f rtl/filelist_top.f --outdir lint/cdc
+#   lint/scripts/run_cdc.sh --tool svlens --top my_top -f rtl/filelist_top.f
+#   lint/scripts/run_cdc.sh --tool spyglass --script lint/cdc/spyglass_cdc.tcl -f rtl/filelist_top.f
 
 set -euo pipefail
 
@@ -25,23 +25,25 @@ else
   run_tool() { "$@"; }
 fi
 
+PROJECT_ROOT="$(pwd)"
+
 TOOL="structural"
 TOP=""
 FILELIST=""
-OUTDIR="sim/cdc/reports"
+OUTDIR="lint/cdc"
 SCRIPT_PATH=""
 FILES=()
 VERBOSE=0
 
 usage() {
   cat <<'USAGE'
-Usage: sim/cdc/run_cdc.sh [OPTIONS] [SV_FILES...]
+Usage: lint/scripts/run_cdc.sh [OPTIONS] [SV_FILES...]
 
 Options:
   --tool <name>     structural|svlens|spyglass|vc_cdc|questa_cdc (default: structural)
   --top <module>    Top-level module name
   -f <filelist>     Source filelist (.f file)
-  --outdir <dir>    Report output directory (default: sim/cdc/reports)
+  --outdir <dir>    Report output directory (default: lint/cdc)
   --script <file>   Tool script/Tcl file (commercial tools)
   -v, --verbose     Verbose output
   -h, --help        Show this help
@@ -63,7 +65,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ─── Resolve paths to absolute (before cd) ────────────────────────────
+case "$OUTDIR" in /*) ;; *) OUTDIR="$PROJECT_ROOT/$OUTDIR" ;; esac
+[[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
+[[ -n "$SCRIPT_PATH" && "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$PROJECT_ROOT/$SCRIPT_PATH"
+
 mkdir -p "$OUTDIR"
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_CWD="$(pwd)"
 REPLAY_DIR="$OUTDIR/replay"
@@ -97,6 +105,18 @@ if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
   echo "ERROR: No source files specified. Use -f <filelist> or pass .sv files directly." >&2
   exit 1
 fi
+
+# Resolve source files to absolute paths (before cd)
+_abs_src=()
+for f in "${SRC_FILES[@]}"; do
+  case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
+done
+SRC_FILES=("${_abs_src[@]}")
+
+# cd to CDC directory — all tool artifacts stay contained
+cd "$OUTDIR"
+RUN_CWD="$(pwd)"
+echo "[run_cdc] Working directory: $(pwd)"
 
 REPORT="$OUTDIR/cdc_${TOOL}_${TIMESTAMP}.log"
 EXIT_CODE=0

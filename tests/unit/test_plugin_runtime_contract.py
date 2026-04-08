@@ -470,7 +470,7 @@ class TestToolProfileRuntimeContract:
 
     def test_cdc_tool_profiles_include_open_source_invocation(self):
         content = CDC_TOOL_PROFILES.read_text()
-        assert "sim/cdc/run_cdc.sh --tool structural" in content
+        assert "lint/scripts/run_cdc.sh --tool structural" in content
         assert "Gate fail when unwaived `VIOLATION` exists." in content
 
     def test_syn_tool_profiles_include_open_source_invocation(self):

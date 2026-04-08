@@ -187,7 +187,7 @@ When spawned with `team_name` parameter as part of a native team:
 3. For each CDC task:
    - Analyze clock domain crossings using slang AST analysis
    - Verify synchronizer presence and correctness
-   - Save report to `sim/cdc/{module}/` and `reviews/phase-5-verify/cdc-{module}.md`
+   - Save report to `lint/cdc/{module}/` and `reviews/phase-5-verify/cdc-{module}.md`
    - TaskUpdate(completed) + SendMessage to coordinator with PASS/FAIL + crossing count
 4. When no more CDC tasks are available, notify coordinator and wait for shutdown
 
