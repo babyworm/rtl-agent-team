@@ -48,14 +48,19 @@ Installs the plugin, audits the EDA toolchain interactively, and optionally depl
 /plugin install systemverilog-lsp   # (optional) SV LSP
 
 # A3. EDA toolchain audit (interactive interview — all steps are opt-in)
-#     - Q1 Required tools: verilator, verible/slang, svlens (CDC), cocotb, systemc
-#            — prompt to install any missing ones (local/global/docker/skip)
-#     - Q2 Recommended/optional tools (jq, yosys, sby, iverilog, gtkwave, ...)
-#            — user picks which to install
+#     - Q1 Required tools: python3, g++, make, verilator, cocotb, systemc
+#            + lint (verible AND/OR slang — at least one)
+#            + CDC (svlens OR sg_shell OR vc_cdc OR questa_cdc — at least one)
+#            — prompt to install missing ones (local/global/docker/skip)
+#     - Q2 Recommended/optional tools — user picks which to install:
+#            jq, yosys + sby, slang-server, iverilog, gtkwave
 #     - Q2b Commercial tool scan (vcs, xrun, dc_shell, sg_shell, vc_cdc, ...)
 #            — scan + collect env_source; not an install
 #     - Q2c Liberty file path for synthesis (optional)
-#     - Q3 Optional: deploy global coding conventions to ~/.claude/rules/ (yes/no)
+#     - Q3 Optional global deployment (yes/no) — deploys:
+#            ~/.claude/rules/rtl-coding-conventions.md
+#            ~/.claude/rules/rtl-verification-gate.md
+#            ~/.claude/CLAUDE.md diagram rule block (if tag missing)
 /rtl-agent-team:rat-setup
 ```
 

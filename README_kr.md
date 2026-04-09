@@ -48,14 +48,19 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 /plugin install systemverilog-lsp   # (선택) SV LSP
 
 # A3. EDA 툴체인 점검 (대화형 인터뷰 — 모든 단계는 opt-in)
-#     - Q1 필수 도구: verilator, verible/slang, svlens (CDC), cocotb, systemc
+#     - Q1 필수 도구: python3, g++, make, verilator, cocotb, systemc
+#            + lint (verible AND/OR slang — 최소 1개)
+#            + CDC (svlens OR sg_shell OR vc_cdc OR questa_cdc — 최소 1개)
 #            — 누락 시 설치 여부 선택 (local/global/docker/skip)
-#     - Q2 추천/선택 도구 (jq, yosys, sby, iverilog, gtkwave, ...)
-#            — 사용자가 설치 항목 선택
+#     - Q2 추천/선택 도구 — 사용자가 설치 항목 선택:
+#            jq, yosys + sby, slang-server, iverilog, gtkwave
 #     - Q2b 상용 도구 스캔 (vcs, xrun, dc_shell, sg_shell, vc_cdc, ...)
 #            — 감지 + env_source 수집 (설치 아님)
 #     - Q2c 합성용 Liberty 파일 경로 (선택)
-#     - Q3 선택: ~/.claude/rules/에 전역 코딩 규칙 배포 (yes/no)
+#     - Q3 선택 전역 배포 (yes/no) — 다음을 배포:
+#            ~/.claude/rules/rtl-coding-conventions.md
+#            ~/.claude/rules/rtl-verification-gate.md
+#            ~/.claude/CLAUDE.md diagram rule block (태그 없을 시)
 /rtl-agent-team:rat-setup
 ```
 

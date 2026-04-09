@@ -37,6 +37,19 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   a stricter precondition.
 - **README EDA Wrapper Scripts table**: `run_cdc.sh` Supports column now lists
   `svlens` explicitly (the script already supported it; only the docs were stale).
+- **Stage A Q1/Q2/Q3 prose precision** (README.md + README_kr.md): the first
+  follow-up rewrite had minor inaccuracies caught by a second Codex review.
+  Corrections:
+  - Q1 required set now lists `python3`, `g++`, `make` (previously omitted —
+    they are in `skills/rat-setup/SKILL.md` Tier 1 table).
+  - Q1 CDC requirement now shows the full "at-least-one" alternatives
+    (`svlens OR sg_shell OR vc_cdc OR questa_cdc`).
+  - Q2 menu now matches the SKILL.md numbered list exactly: `jq`, `yosys + sby`
+    (bundled), `slang-server`, `iverilog`, `gtkwave`. Previously missed
+    `slang-server` and split `yosys + sby`.
+  - Q3 deployment scope now explicitly lists the three files that get
+    deployed (`rtl-coding-conventions.md`, `rtl-verification-gate.md`, and
+    the `<markdown_diagram_rule>` block injected into `~/.claude/CLAUDE.md`).
 
 ## [0.9.2] - 2026-04-09
 
