@@ -387,7 +387,7 @@ Are you satisfied with these results?
 - Report: algorithm candidates per block, architecture candidates compared,
   μArch modules, BFM status, ref C model status, compliance verdicts, reviews, ADRs
 - Suggest: "Run `/rtl-agent-team:rtl-p4-implement` for Phase 4 RTL implementation.
-  All iron requirements (P1+P2+P3) will serve as absolute rules for implementation."
+  All iron requirements (P1+P2+P3) will serve as binding constraints for implementation."
 - **Do NOT proceed to Phase 4.** The pipeline stops here for human review.
 
 # Examples

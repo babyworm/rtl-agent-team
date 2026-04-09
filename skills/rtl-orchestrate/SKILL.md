@@ -501,7 +501,7 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and absolute rules |
+| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and pipeline rules |
 | `rtl-project-init-advisor.sh` | SessionStart | Advise rat-init-project if project not initialized |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track RTL file modifications |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop + same-skill re-invocation counter reset |
@@ -557,7 +557,7 @@ This block is the single source for SessionStart routing injection.
 9. Phase 7 is exempt — free exploration allowed without pipeline Gate
 
 ## Iron Requirements Protocol
-- Each phase produces iron-requirements.json (absolute rules) and open-requirements.json (homework for next phase)
+- Each phase produces iron-requirements.json (binding constraints for downstream) and open-requirements.json (homework for next phase)
 - Iron requirements from upper phases MUST NOT be violated
 - Authority hierarchy: P1(functional) > P2(architecture) > P3(micro-arch)
 - Violation triggers graduated escalation; infeasibility triggers Upstream Challenge with quantitative PPA evidence

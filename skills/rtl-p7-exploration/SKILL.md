@@ -1,6 +1,6 @@
 ---
 name: rtl-p7-exploration
-description: "Phase 7: Free exploration mode for algorithm alternatives, optimization experiments, and technology evaluation. Exempt from pipeline absolute rules."
+description: "Phase 7: Free exploration mode for algorithm alternatives, optimization experiments, and technology evaluation. Exempt from pipeline rules (Rule 9)."
 user-invocable: true
 argument-hint: "[exploration topic]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
@@ -26,7 +26,7 @@ experiments, and technology evaluations without pipeline gate constraints.
 ## Prerequisites
 
 Phase 6 completion is recommended but NOT required.
-Phase 7 is **exempt from pipeline absolute rules** — free exploration allowed.
+Phase 7 is **exempt from pipeline rules** (Rule 9) — free exploration allowed.
 
 ## Execution
 

@@ -144,7 +144,7 @@ Repeat until user is satisfied. Each iteration compares against the latest commi
 ### Completion
 
 When user is satisfied, report the pre-implementation package summary:
-- Iron requirements (P1+P2+P3) = absolute rules for Phase 4
+- Iron requirements (P1+P2+P3) = binding constraints for Phase 4
 - Architecture + ref C model = structural blueprint
 - μArch specs + BFM = executable design model
 - DPI bridge template = ready for RTL comparison

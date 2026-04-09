@@ -6,7 +6,7 @@
 # WHY THIS EXISTS:
 # Plugin CLAUDE.md is NOT loaded in user projects — only skills, agents, hooks,
 # and MCP servers are loaded from plugins. This hook replaces CLAUDE.md's function
-# by auto-injecting the routing rules and absolute rules that Claude needs to
+# by auto-injecting the routing rules and pipeline rules that Claude needs to
 # correctly orchestrate RTL design tasks.
 #
 # NOTE: This hook outputs raw markdown text (not JSON) because the content is ~96
@@ -41,7 +41,7 @@ cat << 'RULES_EOF'
 9. Phase 7 is exempt — free exploration allowed without pipeline Gate
 
 ## Iron Requirements Protocol
-- Each phase produces iron-requirements.json (absolute rules) and open-requirements.json (homework for next phase)
+- Each phase produces iron-requirements.json (binding constraints for downstream) and open-requirements.json (homework for next phase)
 - Iron requirements from upper phases MUST NOT be violated
 - Authority hierarchy: P1(functional) > P2(architecture) > P3(micro-arch)
 - Violation triggers graduated escalation; infeasibility triggers Upstream Challenge with quantitative PPA evidence

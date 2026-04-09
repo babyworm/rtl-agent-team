@@ -111,6 +111,34 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **"absolute rules" lowercase phrasing propagation** (caught by tenth
+  Codex review): Round 9 renamed the CLAUDE.md section heading and
+  cleaned the exact "Absolute Rules" title from the SSOT, but 11 residual
+  lowercase "absolute rules" phrasings were still emitted or asserted
+  across CLAUDE.md, SSOT, hook comments, Phase 7 docs, and iron-requirements
+  descriptions. Round 10 disambiguates two distinct intents:
+  - **Pipeline Rules meaning** (section references): `CLAUDE.md:288`,
+    `hooks/rtl-orchestrator-inject.sh:9`, `skills/rtl-orchestrate/SKILL.md:504`,
+    `agents/p7-exploration-orchestrator.md:4, 40`,
+    `skills/rtl-p7-exploration/SKILL.md:3, 29`,
+    `skills/rtl-p7-exploration-policy/SKILL.md:20` — all migrated to
+    "pipeline rules" or "pipeline rules (Rule 9)" for Phase 7 exemption
+    references.
+  - **Iron requirements binding meaning** (downstream authority):
+    `agents/spec-analyst.md:17`, `agents/dse-orchestrator.md:390`,
+    `skills/rat-dse/SKILL.md:147`, `skills/p1-spec-research-policy/SKILL.md:123`,
+    Iron Requirements Protocol in `skills/rtl-orchestrate/SKILL.md:560`
+    (regenerated into hook:44) — all migrated to "binding constraints
+    for downstream phases" to disambiguate from the Pipeline Rules
+    section while preserving the authority=1 semantics.
+  - `skills/p1-spec-research-policy/SKILL.md:120` heading "iron-requirements.json
+    — Settled Rules (Authority = 1)" renamed to "Settled Requirements
+    (Authority = 1)".
+
+  Historical plan/spec documents under `plugin_docs/plans/` and
+  `plugin_docs/specs/` intentionally retain the original "absolute rules"
+  phrasing as period-accurate artifacts.
+
 - **Pipeline Rules rename propagation + metadata/allowed-tools drift**
   (caught by ninth Codex review): the Round 8 rename of CLAUDE.md's
   "Absolute Rules" section to "Pipeline Rules (policy + enforcement

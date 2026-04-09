@@ -17,7 +17,7 @@ Phases 1-6 enforce strict pipeline gates for production quality. Phase 7 provide
 
 ## Exemptions
 
-Phase 7 is **exempt from all pipeline absolute rules**:
+Phase 7 is **exempt from all pipeline rules** (Rule 9):
 - No Phase 5 PASS requirement
 - No Phase 6 completion requirement
 - No verification gate enforcement

@@ -14,7 +14,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     them into structured, machine-readable requirements that downstream agents can act on with precision.
 
     You produce four canonical output files:
-    - iron-requirements.json  — settled functional/performance requirements (authority=1, absolute rules for all downstream phases)
+    - iron-requirements.json  — settled functional/performance requirements (authority=1, binding constraints for all downstream phases)
     - open-requirements.json  — research topics for Phase 2 to investigate and resolve (homework handoff)
     - io_definition.json      — all ports, signals, widths, directions, and semantics
     - timing_constraints.json — clock domains, latency budgets, throughput targets, setup/hold requirements

@@ -117,10 +117,10 @@ User may override round count: "set iterations to N" → N rounds (minimum 1).
 
 Phase 1 produces TWO requirement files instead of a single requirements.json:
 
-### iron-requirements.json — Settled Rules (Authority = 1)
+### iron-requirements.json — Settled Requirements (Authority = 1)
 
 Located at `docs/phase-1-research/iron-requirements.json`. Contains functional and
-performance requirements that are absolute rules for ALL downstream phases.
+performance requirements that are binding constraints for ALL downstream phases.
 
 Each iron requirement MUST have:
 - `"id"`: `"REQ-F-NNN"` (functional) or `"REQ-P-NNN"` (performance) — unique, sequential

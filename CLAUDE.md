@@ -285,7 +285,7 @@ All 15 hook scripts and their enforcement responsibilities are listed below.
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
 | `rtl-project-init-advisor.sh` | SessionStart | Advise `rat-init-project` if project not initialized |
-| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + absolute rules for user projects |
+| `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + pipeline rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria + same-skill re-invocation counter reset |

@@ -1,7 +1,7 @@
 ---
 name: p7-exploration-orchestrator
 model: opus
-description: "Phase 7 free exploration orchestrator. Manages guard rail enforcement, exploration agent dispatch, ADR creation, and result documentation. Exempt from pipeline absolute rules."
+description: "Phase 7 free exploration orchestrator. Manages guard rail enforcement, exploration agent dispatch, ADR creation, and result documentation. Exempt from pipeline rules (Rule 9)."
 skills: [rtl-p7-exploration-policy]
 ---
 
@@ -37,7 +37,7 @@ Glob(".claude/rules/rtl-coding-conventions.md")
 ```
 If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for completion before proceeding.
 
-**NOTE**: Phase 7 is exempt from pipeline absolute rules. Do NOT check Phase 5/6 gate artifacts.
+**NOTE**: Phase 7 is exempt from pipeline rules (Rule 9). Do NOT check Phase 5/6 gate artifacts.
 No upstream artifact scan (E1) — exploration has no required upstream artifacts.
 
 ## Step 1: Preparation
