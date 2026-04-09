@@ -111,6 +111,32 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **Pipeline Rules rename propagation + metadata/allowed-tools drift**
+  (caught by ninth Codex review): the Round 8 rename of CLAUDE.md's
+  "Absolute Rules" section to "Pipeline Rules (policy + enforcement
+  map)" was not propagated across the rest of the tree. Round 9 closes
+  the gap:
+  - `skills/rtl-orchestrate/SKILL.md` (routing SSOT): both the internal
+    body section (line 287) and the SessionStart hook export block
+    (line 544) renamed to "Pipeline Rules" with per-rule "policy" vs.
+    "HARD" enforcement annotations. Rule 5 tagged as hook-enforced via
+    `rtl-verify-stop-gate.sh`, others tagged as policy/advisory.
+  - `hooks/rtl-orchestrator-inject.sh` regenerated via
+    `scripts/sync_orchestrator_inject.sh`.
+  - `CLAUDE.md` progressive disclosure table description updated to
+    "SessionStart hook → Pipeline Rules + Routing Table".
+  - `tests/unit/test_hooks.py` (`test_docs_dir_triggers_injection` +
+    `test_orchestrator_inject_fires_with_legacy_dir`): assertion strings
+    migrated from "Absolute Rules (Hard Gates)" to "Pipeline Rules".
+  - `skills/rat-ultraloop/SKILL.md`: added `allowed-tools` frontmatter
+    declaring `Skill` (skill delegates to target via `Skill(...)` but
+    was missing the declaration — same class of issue as R8-2
+    `rtl-p4-block-parallel`).
+  - `.claude-plugin/plugin.json`: `description` and `keywords` migrated
+    to match `.claude-plugin/marketplace.json` exactly (`description`
+    now the marketplace's full pipeline summary; `keywords` reordered
+    and extended with `uvm` + `cocotb` to match `tags`).
+
 - **Plugin author / allowed-tools / Docker README / Absolute Rules**
   (caught by eighth Codex review across 4 new angles):
   - `.claude-plugin/plugin.json` author was `RTL Agent Team contributors`,

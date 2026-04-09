@@ -29,15 +29,15 @@ cat << 'RULES_EOF'
 # BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh
 # RTL Agent Team — Active Project Rules
 
-## Absolute Rules (Hard Gates)
-1. No RTL coding without specification (run spec-analyst first)
-2. No Testbench without Reference Model
-3. No synthesis without RTL code
-4. No Formal verification without passing Lint
-5. No completion after RTL modification without functional verification (lint alone is insufficient)
-6. No Phase 5 without per-module unit tests upon Phase 4 completion + Stream B early verification artifacts
-7. Phase 5 FAIL → max 2 Phase 4 feedback loops; escalate to user if exceeded
-8. No Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required)
+## Pipeline Rules (Rule 5 hard-enforced; others advisory)
+1. No RTL coding without specification (run spec-analyst first) — policy
+2. No Testbench without Reference Model — policy
+3. No synthesis without RTL code — policy
+4. No Formal verification without passing Lint — policy (skill warning)
+5. **No completion after RTL modification without functional verification** (lint alone is insufficient) — HARD (rtl-verify-stop-gate.sh)
+6. No Phase 5 without per-module unit tests upon Phase 4 completion + Stream B early verification artifacts — policy (skill warning)
+7. Phase 5 FAIL → max 2 Phase 4 feedback loops; escalate to user if exceeded — policy (orchestrator counter)
+8. No Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) — policy (skill warning)
 9. Phase 7 is exempt — free exploration allowed without pipeline Gate
 
 ## Iron Requirements Protocol

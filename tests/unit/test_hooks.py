@@ -43,7 +43,7 @@ class TestRtlOrchestratorInject:
         (tmp_path / "docs").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         output = result.get("raw_stdout", "")
-        assert "## Absolute Rules (Hard Gates)" in output
+        assert "## Pipeline Rules" in output
         assert "/rtl-agent-team:p1-spec-research" in output
 
     def test_rtl_state_dir_triggers_injection(self, tmp_path):
@@ -3161,7 +3161,7 @@ class TestLegacyDirFallback:
     def test_orchestrator_inject_fires_with_legacy_dir(self, tmp_legacy_project):
         result = run_hook(self.INJECT_HOOK, {"cwd": str(tmp_legacy_project)})
         raw = result.get("raw_stdout", "")
-        assert "Routing" in raw or "Absolute Rules" in raw
+        assert "Routing" in raw or "Pipeline Rules" in raw
 
     def test_hooks_exit_cleanly_in_non_project(self, tmp_path):
         """Hooks should emit {"continue":true} when no .rat or .rtl-agent-team exists."""

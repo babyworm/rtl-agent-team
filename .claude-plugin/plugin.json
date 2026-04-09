@@ -1,7 +1,7 @@
 {
   "name": "rtl-agent-team",
   "version": "0.9.2",
-  "description": "RTL design and verification automation agents for Claude Code",
+  "description": "94-agent RTL design pipeline with 94 skills for 6-Phase hardware design automation (Research → Architecture → μArch → RTL → Verify → Design Note)",
   "author": {
     "name": "babyworm"
   },
@@ -9,17 +9,17 @@
   "homepage": "https://github.com/babyworm/rtl-agent-team",
   "license": "MIT",
   "keywords": [
-    "claude-code",
-    "plugin",
     "rtl",
     "hdl",
     "verilog",
     "systemverilog",
-    "eda",
     "fpga",
     "asic",
+    "eda",
     "verification",
-    "formal"
+    "formal",
+    "uvm",
+    "cocotb"
   ],
   "skills": "./skills/",
   "lspServers": "./.lsp.json"

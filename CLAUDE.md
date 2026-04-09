@@ -51,7 +51,7 @@ Plugin CLAUDE.md is **NOT loaded** in user projects (Claude Code plugin architec
 Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver rules and context:
 
 ```
-[Always-on]  SessionStart hook  → Absolute Rules + Routing Table (~79 lines auto-injected)
+[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~79 lines auto-injected)
 [Path-scoped] .claude/rules/    → Coding conventions, verification gates (on .sv file access)
 [On-demand]  Subdirectory CLAUDE.md → Phase-specific guides (on directory entry)
 [Invoked]    Skill SKILL.md     → Full workflow instructions (on skill invocation)
