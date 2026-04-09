@@ -111,6 +111,20 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **Test dependency completeness + README marketplace.json path R14
+  knock-on** (caught by fourteenth Codex review):
+  - `tests/requirements-test.txt` was missing `pytest-cov` and
+    `pytest-timeout` even though `tests/Makefile`'s `test-coverage`
+    target uses `--cov` and `test-docker` target uses `--timeout=3600`.
+    On a clean environment `install-deps` → `test-coverage` /
+    `test-docker` would fail before running any tests. Both
+    dependencies added with comments pointing to the consuming
+    Makefile targets.
+  - `README.md:423` and `README_kr.md:422` Marketplace-add instructions
+    still referenced the root-level `marketplace.json` short name
+    (same category as R13-1, but in README rather than CONTRIBUTING).
+    Both qualified to `.claude-plugin/marketplace.json`.
+
 - **`CONTRIBUTING.md` marketplace.json path + `bump-version.sh` stale
   check grep pattern** (caught by thirteenth Codex review, LOW severity):
   - `CONTRIBUTING.md` referenced `marketplace.json` by short name in 5

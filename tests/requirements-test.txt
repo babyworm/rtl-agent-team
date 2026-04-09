@@ -1,5 +1,7 @@
 # Test dependencies for rtl-agent-team plugin
 pytest>=7.0
 pytest-xdist>=3.0     # parallel test execution
+pytest-cov            # test-coverage target in tests/Makefile
+pytest-timeout        # test-docker target (integration tests with --timeout=3600)
 numpy                  # required by bd_rate.py, compare_output.py
 hjson                  # required by run_eval.py, run_conformance.py

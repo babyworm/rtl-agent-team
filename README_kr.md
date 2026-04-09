@@ -419,7 +419,7 @@ rtl-agent-team/                          # Marketplace root
     └── video-processing/                # 색공간, 노이즈 제거, HDR/ISP
 ```
 
-Marketplace에 새 플러그인을 추가하려면 `marketplace.json`의 `plugins` 배열에 항목을 추가합니다:
+Marketplace에 새 플러그인을 추가하려면 `.claude-plugin/marketplace.json`의 `plugins` 배열에 항목을 추가합니다:
 - 같은 repo 내: `"source": "./plugins/new-plugin"`
 - 외부 repo: `"source": {"source": "github", "repo": "owner/repo"}`
 

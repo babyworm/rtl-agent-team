@@ -420,7 +420,7 @@ rtl-agent-team/                          # Marketplace root
     └── video-processing/                # Color, denoise, HDR/ISP
 ```
 
-To add a new plugin to the Marketplace, add an entry to the `plugins` array in `marketplace.json`:
+To add a new plugin to the Marketplace, add an entry to the `plugins` array in `.claude-plugin/marketplace.json`:
 - Same repo: `"source": "./plugins/new-plugin"`
 - External repo: `"source": {"source": "github", "repo": "owner/repo"}`
 
