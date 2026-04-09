@@ -111,6 +111,24 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **`plugin_docs/eda-setup-guide.md` phantom `generate_config.sh` path**
+  (caught by twelfth Codex review, LOW severity): the "After editing
+  `rat_config.json`" and troubleshooting sections instructed users to
+  run `bash generate_config.sh`, but that script is **not installed into
+  the project workspace** — `install_project_templates.sh` only copies
+  `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`, `run_formality.sh`,
+  `run_conformal.sh`, `run_sim.sh`, and `tool-runner.sh` into the
+  workspace. The generator lives at
+  `${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh`
+  and is only invoked by the plugin itself. Following the guide's
+  original instruction would have produced "command not found".
+  Rewrote the "After editing" section to present two explicit paths:
+  Option A — re-run `/rtl-agent-team:rat-init-project` (recommended,
+  idempotent, preserves user-edited fields), Option B — invoke the
+  plugin path directly with `${CLAUDE_PLUGIN_ROOT}`. All four
+  troubleshooting references also updated to point to the correct
+  invocation paths.
+
 - **`scripts/add-rat-protocol.sh` orphan → documented in CONTRIBUTING.md**
   (caught by eleventh Codex review, LOW severity): the script is an
   idempotent bootstrap tool that inserts the audit-output-protocol

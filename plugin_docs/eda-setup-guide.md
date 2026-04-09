@@ -253,13 +253,27 @@ your actual installation locations.
 
 ### After editing `rat_config.json`
 
-Re-run `generate_config.sh` to refresh detection status:
+The generator script `generate_config.sh` lives **inside the plugin directory**
+(it is not copied into the project workspace). To refresh detection status after
+editing `rat_config.json`, use **either** of these two paths:
 
-```bash
-bash generate_config.sh
+**Option A — Re-run `rat-init-project` (recommended, simplest)**:
 ```
+/rtl-agent-team:rat-init-project
+```
+The skill is idempotent and will re-run the generator without touching your
+user-edited fields (`env_source`, `path` overrides, `technology`, `waivers`,
+`coverage` are all preserved).
 
-This will:
+**Option B — Invoke the plugin's generator directly**:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh" . "$(basename "$(pwd)")"
+```
+Use this when you want to refresh `rat_config.json` without going through the
+full `rat-init-project` flow. `CLAUDE_PLUGIN_ROOT` is set by the Claude Code
+runtime when the plugin is active.
+
+Both paths will:
 1. Read your `env_source` values (preserved across re-runs)
 2. Attempt detection by sourcing each environment
 3. Update `detected` and `path` fields
@@ -421,8 +435,10 @@ Override `path` to point to the desired version:
    ```bash
    bash -c "source /your/setup.sh && which vcs"
    ```
-2. If this works but `generate_config.sh` still fails, check that the setup script
-   doesn't require interactive input or TTY allocation.
+2. If this works but the plugin's `generate_config.sh` still fails
+   (see "After editing `rat_config.json`" above for invocation paths),
+   check that the setup script doesn't require interactive input or TTY
+   allocation.
 3. Some `module load` systems need initialization first:
    ```json
    "env_source": "source /etc/profile.d/modules.sh && module load synopsys/vcs/2024.03"
@@ -431,7 +447,8 @@ Override `path` to point to the desired version:
 ### Multiple versions of the same tool
 
 Only one version per tool key is supported. If you need to switch versions,
-update `env_source` and re-run `generate_config.sh`.
+update `env_source` and re-run the generator (either `/rtl-agent-team:rat-init-project`
+or the plugin path shown in "After editing `rat_config.json`" above).
 
 ### Preferences not matching expectations
 
@@ -445,8 +462,10 @@ Override manually in `rat_config.json` or `config.mk`:
 }
 ```
 
-### `generate_config.sh` overwrites my edits
+### Regenerating overwrites my edits
 
 It doesn't — user-edited fields (`env_source`, `path` overrides, `technology`,
-`waivers`, `coverage`) are preserved across re-runs. Only `detected` status
-is refreshed.
+`waivers`, `coverage`) are preserved across re-runs of the plugin generator,
+whether invoked via `/rtl-agent-team:rat-init-project` or directly via
+`${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh`.
+Only `detected` status is refreshed.
