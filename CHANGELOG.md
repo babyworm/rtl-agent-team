@@ -111,6 +111,26 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **Plugin author / allowed-tools / Docker README / Absolute Rules**
+  (caught by eighth Codex review across 4 new angles):
+  - `.claude-plugin/plugin.json` author was `RTL Agent Team contributors`,
+    but `.claude-plugin/marketplace.json` used `babyworm`. Harmonized to
+    `babyworm` to match the marketplace publishing identity.
+  - `skills/rtl-p4-block-parallel/SKILL.md` frontmatter `allowed-tools`
+    was missing `Skill`, but the body delegates to `rtl-p4-implement` via
+    `Skill(...)` in the fallback path. A strict allowlist enforcement
+    would have blocked the documented fallback. Added `Skill` to the list.
+  - `README.md` and `README_kr.md` Docker "Included tools" list omitted
+    `svlens` (CDC + structural analysis) and `slang-server` (SV LSP),
+    even though `docker/Dockerfile` builds both. Added both to the list.
+  - `CLAUDE.md` section "Absolute Rules" was misleading: Rule 5 is the only
+    hook-enforced hard gate (via `rtl-verify-stop-gate.sh`); rules 1-4 and
+    6-8 are policy declarations enforced via skill entry warnings, per the
+    "Asymmetric Phase Gate Design" principle. Renamed the section to
+    "Pipeline Rules (policy + enforcement map)" and added an explicit
+    enforcement column so the table honestly reflects what is hard-blocked
+    vs. advisory.
+
 - **Skill and hook counts corrected** (caught by third Codex review):
   - `README.md`, `README_kr.md`, and `.claude-plugin/marketplace.json` previously
     said "93 skills". Actual count is **94** (CLAUDE.md file-tree header:

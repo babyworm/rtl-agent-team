@@ -200,17 +200,37 @@ When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md`
 - `sh scripts/sync_orchestrator_inject.sh`
 to regenerate the condensed routing block in `hooks/rtl-orchestrator-inject.sh`.
 
-## Absolute Rules
+## Pipeline Rules (policy + enforcement map)
 
-1. Do not start RTL coding without a specification (spec-analyst first)
-2. Do not write a Testbench without a Reference Model
-3. Do not run synthesis without RTL code
-4. Do not run Formal verification without passing Lint
-5. **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient)
-6. **Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion** + Stream B artifacts
-7. **When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded**
-8. **Do not proceed to Phase 6 without Phase 5 PASS** (final-compliance.md verdict=PASS required)
-9. **Phase 7 is exempt from absolute rules** — free exploration allowed without pipeline Gate
+These rules define the canonical pipeline order. Enforcement is intentionally
+asymmetric: **Rule 5 is hook-enforced (hard gate)**, the rest are **policy
+declarations** carried through skill entry prerequisites. Missing upstream
+artifacts at skill entry produce `WARNING: ... not found — proceeding with
+reduced scope` rather than a hard block, per the "Asymmetric Phase Gate
+Design" principle (exit gates strict, entry gates flexible — see Core
+Principles below). Direct skill invocation that bypasses the pipeline
+order will therefore warn but still execute with adaptive scope.
+
+| # | Rule | Enforcement |
+|---|------|-------------|
+| 1 | Do not start RTL coding without a specification (spec-analyst first) | Policy — skill entry warning |
+| 2 | Do not write a Testbench without a Reference Model | Policy — skill entry warning |
+| 3 | Do not run synthesis without RTL code | Policy — skill entry warning |
+| 4 | Do not run Formal verification without passing Lint | Policy — skill entry warning (`rtl-p5s-sva-check`) |
+| 5 | **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient) | **Hard — `rtl-verify-stop-gate.sh` blocks session stop until `.rat/state/rtl-verify-done` or `rtl-verify-waiver` is present** |
+| 6 | Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion + Stream B artifacts | Policy — skill entry warning (`rtl-p5-verify[-team]`) |
+| 7 | When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded | Policy — loop counter tracked by phase state; escalation advisory |
+| 8 | Do not proceed to Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) | Policy — skill entry warning (`rtl-p6-design-review`); orchestrator rechecks verdict |
+| 9 | Phase 7 is exempt from pipeline rules | N/A (by design) |
+
+**Intent**: The pipeline rules act as an **SSOT contract**, not as executable
+guards. Hook-enforcement is reserved for cases where a silent bypass would
+compromise correctness guarantees (Rule 5, because RTL-without-verify is the
+single most likely source of undetected regressions). All other rules rely on
+phase skills emitting warnings and orchestrators adapting scope — this keeps
+the pipeline resumable and tolerant of partial re-runs. If you need stricter
+enforcement for a specific rule, add a hook in `hooks/*.sh` rather than
+strengthening the policy text here.
 
 ## 6+1 Phase Design Pipeline
 

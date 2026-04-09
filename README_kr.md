@@ -397,7 +397,7 @@ docker build -t rtl-eda-tools \
   docker/
 ```
 
-포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
+포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, svlens (CDC + 구조 분석), slang-server (SV LSP), SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
 
 Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rat-setup` 실행 후 Docker 옵션 선택.
 

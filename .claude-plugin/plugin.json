@@ -3,7 +3,7 @@
   "version": "0.9.2",
   "description": "RTL design and verification automation agents for Claude Code",
   "author": {
-    "name": "RTL Agent Team contributors"
+    "name": "babyworm"
   },
   "repository": "https://github.com/babyworm/rtl-agent-team",
   "homepage": "https://github.com/babyworm/rtl-agent-team",

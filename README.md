@@ -398,7 +398,7 @@ docker build -t rtl-eda-tools \
   docker/
 ```
 
-Included tools: Verilator, Verible, Yosys, Icarus Verilog, slang, SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
+Included tools: Verilator, Verible, Yosys, Icarus Verilog, slang, svlens (CDC + structural analysis), slang-server (SV LSP), SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
 
 You can also build from Claude Code: "Build the EDA Docker image" or run `/rtl-agent-team:rat-setup` and select the Docker option.
 
