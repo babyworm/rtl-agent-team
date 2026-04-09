@@ -62,13 +62,13 @@ Categorize tools into three tiers and check each:
 | cocotb | `python3 -c "import cocotb; print(cocotb.__version__)"` | Functional verification |
 | systemc | `pkg-config --modversion systemc` or `$SYSTEMC_HOME` | SystemC/TLM-2.0 (ref model, BFM) |
 | lint tool | `verible-verilog-lint --version` AND/OR `slang --version` | At least ONE required |
+| cdc tool | `svlens --version` OR `which sg_shell/vc_cdc/questa_cdc` | CDC/Structural analysis — at least ONE required. svlens also supplements lint (width/type/dangling checks via `svlens conn`) when verible/slang are missing |
 
 **Tier 2 — Recommended** (significantly improves workflow):
 
 | Tool | Check Command | Purpose |
 |------|--------------|---------|
 | jq | `jq --version` | Hook JSON parser (robust state gating) |
-| svlens | `svlens --version` | Structural analysis (CDC + connectivity + metrics) |
 | sv-renamer | `python3 -c "import sv_renamer"` or `sv_renamer.py --help` | SV identifier rename + semantic diff |
 | sv_to_ipxact | `sv_to_ipxact --help` | SV → IP-XACT XML auto-generation |
 | slang-server | `slang-server --version` | SV Language Server (LSP for Claude Code) |
@@ -119,6 +119,8 @@ enhance the pipeline when available. Check each tool's availability in PATH:
 | dc_shell | `which dc_shell 2>/dev/null` | Synopsys | Synthesis |
 | genus | `which genus 2>/dev/null` | Cadence | Synthesis |
 | sg_shell | `which sg_shell 2>/dev/null` | Synopsys | Lint/CDC |
+| vc_cdc | `which vc_cdc 2>/dev/null` | Synopsys | CDC |
+| questa_cdc | `which questa_cdc 2>/dev/null` | Siemens | CDC |
 | fm_shell | `which fm_shell 2>/dev/null` | Synopsys | Equivalence |
 | lec | `which lec 2>/dev/null` | Cadence | Equivalence |
 | verdi | `which verdi 2>/dev/null` | Synopsys | Debug |
@@ -141,6 +143,8 @@ Present results in a clear categorized table:
 |------|--------|---------|---------------|
 | python3 | OK | 3.11.2 | — |
 | verilator | MISSING | — | Install required |
+| verible/slang (lint) | OK / MISSING | — | At least ONE required |
+| svlens (cdc/structural) | OK / MISSING | — | Install required unless commercial CDC present |
 | ... | | | |
 
 ### Tier 2 — Recommended Tools
@@ -184,6 +188,18 @@ Only ask questions for items that need action. Skip categories where everything 
 
 If required tools are missing, installation is required before real design work can begin.
 
+**CDC tool special rule**: The Tier 1 `cdc tool` requirement is satisfied if ANY of
+the following is present: `svlens`, `sg_shell`, `vc_cdc`, `questa_cdc`. Check Phase 1d
+results first — if a commercial CDC tool is detected, mark the cdc tool requirement as
+satisfied and skip svlens from the missing list. Otherwise, include svlens in the
+missing required tools list and install it (open-source, no license required).
+
+**Lint tool rule**: The Tier 1 `lint tool` requirement is satisfied if at least one of
+`verible-verilog-lint` or `slang` is present. If neither is present AND svlens is also
+missing, install BOTH svlens (for CDC) and at least one lint tool. If svlens is present
+but lint is missing, still install a lint tool — svlens `conn` mode catches some lint
+issues (width/type/dangling) but does not replace style/semantic lint.
+
 Before installing missing required tools, ask the user:
 
 > **Required tools missing: [list]**
@@ -202,7 +218,6 @@ Before installing missing required tools, ask the user:
 > 3. slang-server — SV LSP integration for Claude Code
 > 4. iverilog — fallback simulator
 > 5. gtkwave — waveform viewer
-> 6. svlens — Structural analysis (CDC, connectivity, metrics)
 
 ### Q2b: Commercial Tool Configuration
 
@@ -513,10 +528,10 @@ Bash: python3 -c "import cocotb; print(cocotb.__version__)" 2>&1 || echo "NOT_FO
 Bash: pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && test -f "$SYSTEMC_HOME/lib-linux64/libsystemc.a" && echo "$SYSTEMC_HOME (found via SYSTEMC_HOME)") || echo "NOT_FOUND"
 Bash: verible-verilog-lint --version 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
+Bash: svlens --version 2>&1 || echo "NOT_FOUND"  # CDC/structural analysis (Tier 1 — or any commercial CDC from Phase 1d)
 
 # --- Tier 2: Recommended ---
 Bash: jq --version 2>&1 || echo "NOT_FOUND"
-Bash: svlens --version 2>&1 || echo "NOT_FOUND"
 Bash: slang-server --version 2>&1 || echo "NOT_FOUND"
 
 # --- Tier 3: Optional ---
@@ -540,6 +555,8 @@ Bash: vsim -version 2>&1 | head -1 || echo "NOT_FOUND"
 Bash: which dc_shell 2>/dev/null || echo "NOT_FOUND"
 Bash: which genus 2>/dev/null || echo "NOT_FOUND"
 Bash: which sg_shell 2>/dev/null || echo "NOT_FOUND"
+Bash: which vc_cdc 2>/dev/null || echo "NOT_FOUND"
+Bash: which questa_cdc 2>/dev/null || echo "NOT_FOUND"
 Bash: which fm_shell 2>/dev/null || echo "NOT_FOUND"
 Bash: which lec 2>/dev/null || echo "NOT_FOUND"
 Bash: which verdi 2>/dev/null || echo "NOT_FOUND"
@@ -760,6 +777,8 @@ docker run -it --rm \
 - Required tool not found → report with install commands, require installation
 - Neither verible nor slang found → report as REQUIRED
 - Only one of verible/slang → proceed with WARNING recommending the other
+- Neither svlens nor commercial CDC tool (sg_shell/vc_cdc/questa_cdc) found → report as REQUIRED (svlens is open-source default)
+- svlens missing but commercial CDC tool present → mark CDC requirement satisfied, still offer svlens install as open-source supplement
 - Before installing → ask user: local (default) / global / docker / skip
 - Before installing fast-moving tools → verify latest stable version from upstream
 - Before deploying global rules → confirm with user (never overwrite existing)
@@ -782,6 +801,7 @@ docker run -it --rm \
 - [ ] Global rule deployment offered via Q3 (non-destructive)
 - [ ] Test infra installation offered via Q4
 - [ ] Lint tool gate: at least one of verible/slang installed
+- [ ] CDC tool gate: svlens OR commercial CDC (sg_shell/vc_cdc/questa_cdc) installed
 - [ ] Fast-moving tools version-pinned from official upstream
 - [ ] Docker EDA image status checked
 - [ ] Commercial tools scanned (Phase 1d) and reported in Phase 2

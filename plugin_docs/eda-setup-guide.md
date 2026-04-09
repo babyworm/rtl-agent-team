@@ -32,8 +32,8 @@ environment configuration via `rat_config.json`.
 
 | Path | Tools | Setup | Configuration |
 |------|-------|-------|---------------|
-| **Auto-install** | Verilator, Verible, slang, cocotb, Yosys, SystemC, ... | `/rat-setup` handles everything | Automatic |
-| **Commercial** | VCS, DC, Xcelium, Genus, SpyGlass, Questa, Formality, ... | User provides environment setup | `rat_config.json` → `env_source` field |
+| **Auto-install** | Verilator, Verible, slang, svlens, cocotb, Yosys, SystemC, ... | `/rat-setup` handles everything | Automatic |
+| **Commercial** | VCS, DC, Xcelium, Genus, SpyGlass, Questa, Formality, VC-CDC, Questa CDC, ... | User provides environment setup | `rat_config.json` → `env_source` field |
 | **Docker fallback** | All open-source tools bundled | `docker build -t rtl-eda-tools docker/` | Transparent via `lib/tool-runner.sh` |
 
 ---
@@ -43,6 +43,19 @@ environment configuration via `rat_config.json`.
 Run `/rat-setup` and follow the interactive wizard. It detects missing tools,
 offers installation choices (`local` / `global` / `docker` / `skip`), and verifies
 the result. No manual configuration needed.
+
+### Tier 1 "at-least-one" requirements
+
+Two Tier 1 categories accept multiple alternatives — at least one must be installed:
+
+| Category | Accepted tools | Rationale |
+|----------|----------------|-----------|
+| **lint tool** | `verible-verilog-lint` AND/OR `slang` | verible handles style, slang catches IEEE 1800 semantic violations. Either alone satisfies the gate. |
+| **cdc tool** | `svlens` OR `sg_shell` OR `vc_cdc` OR `questa_cdc` | svlens is the open-source default (auto-installed by `/rat-setup`). Any commercial CDC tool also satisfies the requirement. |
+
+Note: svlens supplements lint when verible/slang are missing — `svlens conn` catches
+width mismatch, dangling output, and undriven input. However, svlens does not replace
+style/semantic lint, so installing both a lint tool AND svlens is recommended.
 
 For details, see the [README — EDA Tools section](../README.md#eda-tools).
 

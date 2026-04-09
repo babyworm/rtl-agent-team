@@ -7,6 +7,37 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-04-09
+
+### Changed
+- **svlens promoted to Tier 1 Required** in `/rat-setup` — CDC/structural analysis
+  is now a Tier 1 requirement alongside lint. svlens is the open-source default;
+  the requirement is also satisfied by any commercial CDC tool (`sg_shell`,
+  `vc_cdc`, `questa_cdc`). `svlens conn` additionally supplements lint (width,
+  type, dangling checks) when verible/slang are missing, but does not replace
+  style/semantic lint.
+- **Phase 1d Commercial Tool Scan extended**: `vc_cdc` (Synopsys) and `questa_cdc`
+  (Siemens) added to the commercial CDC detection table.
+- **Phase 2 Report example** now explicitly lists svlens row so users do not miss
+  the detection status.
+- **Q1 remediation logic rewritten**: CDC tool requirement is checked against
+  both Phase 1a (svlens) and Phase 1d (commercial CDC) results; svlens install
+  is skipped automatically when any commercial CDC tool is detected.
+
+### Docs
+- **README restructured into 3-stage workflow**: "A. Machine Setup" (one-time per
+  machine), "B. Project Initialization" (one-time per project), "C. Design Work"
+  (recurring, inside project). Removed duplicate "Project initialization" section
+  from Usage — now consolidated under Stage B. Stage scope/frequency table added
+  at the top of Quick Start.
+- `README.md` and `README_kr.md` EDA Tools table: added `svlens` (Tier 1 Required)
+  and explicit "satisfies CDC requirement" note for commercial CDC tools.
+  `README_kr.md` table previously missed `python3`/`g++`/`make`/`systemc`/`slang-server`
+  rows — now synced with English version.
+- `plugin_docs/eda-setup-guide.md`: new "Tier 1 at-least-one requirements" section
+  explains the lint/CDC alternative patterns. `svlens` added to Auto-install path
+  and `vc_cdc`/`questa_cdc` added to Commercial path in the integration table.
+
 ## [0.9.1] - 2026-04-08
 
 ### Changed

@@ -18,31 +18,88 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 94-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.1 |
+| **rtl-agent-team** | 94-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.2 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.1 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
 
 ## Quick Start
 
+워크플로는 **세 가지 단계**로 명확히 구분되며, 각 단계는 범위와 빈도가 다릅니다:
+
+| 단계 | 범위 | 빈도 | 명령어 |
+|------|------|------|--------|
+| **A. 머신 설정** | 머신 단위 (전역) | 머신당 1회 | `/plugin install` + `/rtl-agent-team:rat-setup` |
+| **B. 프로젝트 초기화** | 프로젝트 디렉토리 단위 | 프로젝트당 1회 | `/rtl-agent-team:rat-init-project` |
+| **C. 설계 작업** | 프로젝트 내부 | 반복 수행 | `/rtl-agent-team:rat-auto-design`, phase/sub 스킬 |
+
+각 단계는 올바른 작업 디렉토리에서 실행해야 합니다: Stage A는 어디서든 실행 가능하지만, Stage B와 Stage C는 **반드시 대상 프로젝트 디렉토리 안에서** 실행해야 합니다.
+
+### Stage A — 머신 설정 (머신당 1회)
+
+플러그인과 모든 EDA 도구를 설치합니다. 전역 코딩 규칙을 `~/.claude/rules/`에 배포합니다.
+
 ```bash
-# 1. Marketplace 등록
+# A1. Marketplace 등록 (1회)
 /plugin marketplace add babyworm/rtl-agent-team
 
-# 2. 플러그인 설치
+# A2. 플러그인 설치 (1회)
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (선택) SV LSP
 
-# 3. 환경 점검
+# A3. EDA 툴체인 점검 + 설치 (대화형 인터뷰)
+#     - verilator, verible/slang, svlens (CDC), cocotb, systemc, 상용 도구 점검
+#     - 합성용 Liberty 파일 경로 수집 (선택)
+#     - 전역 코딩 규칙을 ~/.claude/rules/에 배포
 /rtl-agent-team:rat-setup
-
-# 4. 전체 자동화 (또는 "H.264 TQ 서브시스템 설계해줘")
-/rtl-agent-team:rat-auto-design
 ```
 
-`systemverilog-lsp`가 설치되어 있지만 `slang-server`가 없으면, 서브플러그인이 `SessionStart`에서 이를 점검하고 `local`(`~/.local/bin`, 권장), `global`, `skip` 중 하나를 고르도록 안내합니다.
+> `systemverilog-lsp`가 설치되어 있지만 `slang-server`가 없으면, 서브플러그인이 `SessionStart`에서 이를 점검하고 `local`(`~/.local/bin`, 권장), `global`, `skip` 중 하나를 고르도록 안내합니다.
 
-## 설치
+### Stage B — 프로젝트 초기화 (프로젝트당 1회)
+
+프로젝트 디렉토리 구조 생성, 프로젝트별 규칙/가이드 배포, EDA wrapper 스크립트 자동 설치를 수행합니다. **(비어 있는) 프로젝트 디렉토리 안에서 실행하세요.**
+
+```bash
+# B1. 프로젝트 디렉토리로 이동
+cd ~/work/my-rtl-project
+
+# B2. 프로젝트 구조 초기화 (프로젝트 내부에서 실행)
+#     - docs/, rtl/, sim/, refc/, lint/, syn/, formal/, reviews/ 생성
+#     - .claude/rules/ 배포 (코딩 컨벤션, 검증 게이트)
+#     - 서브디렉토리 CLAUDE.md 배포 (Phase별 가이드)
+#     - run_sim.sh, run_lint.sh, run_syn.sh, run_cdc.sh 자동 설치
+#     - Non-destructive: 기존 파일은 절대 덮어쓰지 않음
+/rtl-agent-team:rat-init-project
+```
+
+### Stage C — 설계 작업 (프로젝트 내에서 반복)
+
+RTL 설계 및 검증 파이프라인을 실행합니다. **초기화된 프로젝트 내부에서 실행하세요.**
+
+```bash
+# C1. 전체 자동화 (6-Phase 파이프라인)
+/rtl-agent-team:rat-auto-design
+# 자연어 사용 예시:
+#   /rtl-agent-team:rat-auto-design "H.264 TQ 서브시스템 설계해줘"
+#   /rtl-agent-team:rat-auto-design "../vdc-m/refc의 레퍼런스 C 모델로 VDC-M 1.2
+#     인코더 구현. TSMC 28nm, 4K 60fps @ 500MHz, margin 40%"
+
+# C2. 또는 분할 파이프라인 (단계 사이 인간 리뷰 가능)
+/rtl-agent-team:rat-dse               # Phase 1→2: DSE (알고리즘 + 아키텍처)
+/rtl-agent-team:rat-p1p3-spec-uarch   # Phase 1→3: Spec → μArch 설계 문서
+/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: RTL 구현 + 검증
+
+# C3. 또는 개별 phase/sub-phase 스킬 (아래 사용법 섹션 참조)
+```
+
+---
+
+## 설치 (Stage A 대체 방법)
+
+위의 [Quick Start](#quick-start) Stage A에서 이미 플러그인 설치가 다뤄집니다. 아래는
+CLI나 개발용 심볼릭 링크를 선호하는 사용자를 위한 대체 방법입니다. 플러그인 설치
+후에도 EDA 툴체인 점검을 위해 `/rtl-agent-team:rat-setup`을 1회 실행해야 합니다.
 
 ### Claude Code 대화창에서 설치 (권장)
 
@@ -69,7 +126,11 @@ git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
-## 사용법
+## 사용법 (Stage C — 프로젝트 내 설계 작업)
+
+이 섹션은 **Stage A(머신 설정)와 Stage B(프로젝트 초기화)가 이미 완료된 상태**를
+전제로 합니다. 아래 모든 명령어는 **초기화된 프로젝트 디렉토리 안에서** 실행하세요.
+전체 단계 맵은 [Quick Start](#quick-start)를 참조하세요.
 
 ### 라우팅 계약
 
@@ -115,15 +176,8 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 
 `rat-auto-design` 실행 중 중단되면 진행 상태가 자동 저장됩니다. 동일 명령을 다시 실행하면 완료된 Phase를 건너뛰고 마지막 미완료 단계부터 재개합니다.
 
-### 프로젝트 초기화
-
-```
-/rtl-agent-team:rat-init-project
-```
-
-프로젝트 디렉토리 구조 생성, 코딩 규칙 배포, **EDA wrapper 스크립트 자동 배포**(`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`)를 수행합니다. Hook-driven bootstrap으로 기존 스크립트는 절대 덮어쓰지 않습니다 (non-destructive 정책).
-
-EDA 도구 확인 및 설치는 `/rtl-agent-team:rat-setup`을 실행하세요 (머신당 1회).
+> **참고:** 프로젝트 초기화(`rat-init-project`)와 EDA 도구 설정(`rat-setup`)은
+> Stage A/B에 해당하며 [Quick Start](#quick-start)에서 설명됩니다.
 
 ### 개별 스킬
 
@@ -280,17 +334,23 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | 도구 | 용도 | 필수 여부 |
 |------|------|----------|
 | verilator | 시뮬레이션 + Lint | 필수 |
-| verible | 스타일 Lint + 포매팅 | 필수 |
-| yosys | 합성 | 필수 |
+| verible | 스타일 Lint + 포매팅 | 필수 (verible/slang 중 최소 1개) |
+| slang | IEEE 1800 시맨틱 Lint | 필수 (verible/slang 중 최소 1개) |
+| svlens | CDC + 구조 분석 (conn/metrics) | 필수 (또는 sg_shell/vc_cdc/questa_cdc 중 1개) |
+| slang-server | SV Language Server (LSP) | 권장 |
 | cocotb (Python) | 기능 검증 | 필수 |
-| iverilog | 대안 시뮬레이터 | 선택 |
-| slang | IEEE 1800 시맨틱 Lint | 선택 |
+| python3 | cocotb 런타임 | 필수 |
+| g++ | 레퍼런스 모델 빌드 | 필수 |
+| make | 빌드 시스템 | 필수 |
+| systemc | SystemC/TLM-2.0 (ref model, BFM) | 필수 |
+| iverilog | 대안 시뮬레이터 | 선택 (verilator 설치 시) |
+| yosys | 합성 (Phase 5B+) | 선택 |
 | sby (SymbiYosys) | Formal 검증 | 선택 |
 | gtkwave | 파형 뷰어 | 선택 |
 | vcs / xrun / questa | 상용 시뮬레이터 | 선택 |
-| spyglass | 상용 lint + CDC | 선택 |
+| spyglass (sg_shell) | 상용 lint + CDC | 선택 |
 | dc_shell (Design Compiler) | 상용 합성 | 선택 |
-| vc_cdc / questa_cdc | 상용 CDC 분석 | 선택 |
+| vc_cdc / questa_cdc | 상용 CDC 분석 | 선택 (CDC 요구사항 충족) |
 
 `/rtl-agent-team:rat-setup`으로 도구 설치 상태를 확인하고 상용 도구를 대화형으로 설정할 수 있습니다.
 

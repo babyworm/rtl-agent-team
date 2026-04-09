@@ -18,37 +18,89 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 94-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.1 |
+| **rtl-agent-team** | 94-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.2 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.1 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
 
 ## Quick Start
 
+The workflow has **three distinct stages**, each with a different scope and frequency:
+
+| Stage | Scope | Frequency | Commands |
+|-------|-------|-----------|----------|
+| **A. Machine Setup** | Per machine (global) | Once per machine | `/plugin install` + `/rtl-agent-team:rat-setup` |
+| **B. Project Init** | Per project directory | Once per project | `/rtl-agent-team:rat-init-project` |
+| **C. Design Work** | Inside project | Recurring | `/rtl-agent-team:rat-auto-design`, phase/sub-skills |
+
+Run each stage from its appropriate working directory: Stages A run anywhere; Stages B and C must run **inside** the target project directory.
+
+### Stage A — Machine Setup (one-time, per machine)
+
+Installs the plugin and all EDA tools. Deploys global coding conventions to `~/.claude/rules/`.
+
 ```bash
-# 1. Register the Marketplace
+# A1. Register the Marketplace (one-time)
 /plugin marketplace add babyworm/rtl-agent-team
 
-# 2. Install plugins
+# A2. Install plugins (one-time)
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (optional) SV LSP
 
-# 3. Check environment (global tool check and setup - interactive interview; check EDA and liberty file to synthesis)
+# A3. Audit + install EDA toolchain (interactive interview)
+#     - Checks verilator, verible/slang, svlens (CDC), cocotb, systemc, commercial tools
+#     - Collects Liberty file path for synthesis (optional)
+#     - Deploys global coding conventions to ~/.claude/rules/
 /rtl-agent-team:rat-setup
-
-# 4. setup project skelecton (on your (empty) project directory)
-/rtl-agent-team:rat-init-project
-
-# 5. Full automation 
-# Eg) /rat-auto-design "Design an H.264 TQ subsystem" or /rat-auto-design "implement VDC-M 1.2 encoder using reference C model in ../vdc-m/refc. It should support 4K 60fps, at 500MHz (margin 40% under TSMC 28nm process )"
-/rtl-agent-team:rat-auto-design
-
-
 ```
 
-If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
+> If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
 
-## Installation
+### Stage B — Project Initialization (one-time, per project)
+
+Scaffolds project directory structure, deploys per-project rules and guides, auto-installs EDA wrapper scripts. **Run from inside your (empty) project directory.**
+
+```bash
+# B1. cd into your project directory
+cd ~/work/my-rtl-project
+
+# B2. Initialize project structure (run inside project)
+#     - Creates docs/, rtl/, sim/, refc/, lint/, syn/, formal/, reviews/
+#     - Deploys .claude/rules/ (coding conventions, verification gate)
+#     - Deploys subdirectory CLAUDE.md (phase-specific guides)
+#     - Auto-installs run_sim.sh, run_lint.sh, run_syn.sh, run_cdc.sh
+#     - Non-destructive: never overwrites existing files
+/rtl-agent-team:rat-init-project
+```
+
+### Stage C — Design Work (recurring, inside project)
+
+Execute RTL design and verification pipeline. **Run from inside an initialized project.**
+
+```bash
+# C1. Full automation (6-Phase pipeline)
+/rtl-agent-team:rat-auto-design
+# Example natural-language usage:
+#   /rtl-agent-team:rat-auto-design "Design an H.264 TQ subsystem"
+#   /rtl-agent-team:rat-auto-design "implement VDC-M 1.2 encoder using reference C
+#     model in ../vdc-m/refc. Target 4K 60fps at 500MHz, margin 40% under TSMC 28nm"
+
+# C2. OR split pipeline (for human review between stages)
+/rtl-agent-team:rat-dse               # Phase 1→2: DSE (algorithm + architecture)
+/rtl-agent-team:rat-p1p3-spec-uarch   # Phase 1→3: Spec → μArch design docs
+/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: RTL implementation + verification
+
+# C3. OR individual phase/sub-phase skills (see Usage section below)
+```
+
+---
+
+## Installation (Stage A alternatives)
+
+The [Quick Start](#quick-start) Stage A already covers plugin installation. The
+alternatives below are for users who prefer CLI or development symlinks. After
+installing the plugin, still run `/rtl-agent-team:rat-setup` once to audit the EDA
+toolchain.
 
 ### Install from Claude Code chat (recommended)
 
@@ -75,7 +127,11 @@ git clone https://github.com/babyworm/rtl-agent-team.git
 ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
 ```
 
-## Usage
+## Usage (Stage C — in-project design work)
+
+This section assumes **Stage A (machine setup) and Stage B (project init) are
+already complete**. All commands in this section run from **inside an initialized
+project directory**. See [Quick Start](#quick-start) for the full stage map.
 
 ### Routing contract
 
@@ -121,15 +177,8 @@ Split the pipeline for human review between design and implementation:
 
 If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the same command to resume from the last incomplete step — completed phases are skipped.
 
-### Project initialization
-
-```
-/rtl-agent-team:rat-init-project
-```
-
-Creates the project directory structure, deploys coding convention rules, and **auto-installs EDA wrapper scripts** (`run_sim.sh`, `run_lint.sh`, `run_syn.sh`, `run_cdc.sh`) into the project via a hook-driven bootstrap. Existing scripts are never overwritten (non-destructive policy).
-
-For EDA tool verification and installation, run `/rtl-agent-team:rat-setup` (one-time per machine).
+> **Note:** Project initialization (`rat-init-project`) and EDA tool setup
+> (`rat-setup`) belong to Stages A/B and are described in [Quick Start](#quick-start).
 
 ### Individual skills
 
@@ -288,6 +337,7 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 | verilator | Simulation + Lint | Required |
 | verible | Style Lint + Formatting | Required (at least one of verible/slang) |
 | slang | IEEE 1800 semantic Lint | Required (at least one of verible/slang) |
+| svlens | CDC + structural analysis (conn/metrics) | Required (or one of sg_shell/vc_cdc/questa_cdc) |
 | slang-server | SV Language Server (LSP) | Recommended |
 | cocotb (Python) | Functional verification | Required |
 | python3 | cocotb runtime | Required |
@@ -299,9 +349,9 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 | sby (SymbiYosys) | Formal verification | Optional |
 | gtkwave | Waveform viewer | Optional |
 | vcs / xrun / questa | Commercial simulators | Optional |
-| spyglass | Commercial lint + CDC | Optional |
+| spyglass (sg_shell) | Commercial lint + CDC | Optional |
 | dc_shell (Design Compiler) | Commercial synthesis | Optional |
-| vc_cdc / questa_cdc | Commercial CDC analysis | Optional |
+| vc_cdc / questa_cdc | Commercial CDC analysis | Optional (satisfies CDC requirement) |
 
 Use `/rtl-agent-team:rat-setup` to check tool installation status and configure commercial tools interactively.
 
