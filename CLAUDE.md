@@ -260,7 +260,7 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 ## Hook-Based Enforcement
 
-All 14 hook scripts and their enforcement responsibilities are listed below.
+All 15 hook scripts and their enforcement responsibilities are listed below.
 
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|

@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 94 specialized AI agents + 93 skills automate the 6-Phase pipeline:
+> 94 specialized AI agents + 94 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 94 specialized AI agents + 93 skills + 12 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 94 specialized AI agents + 94 skills + 12 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -201,22 +201,18 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 /rtl-agent-team:domain-consult           # Domain expert consultation
 ```
 
-### Skill categories (93 skills)
+### Skill categories (94 skills)
 
-| Category | Count | Description | Assets |
-|----------|-------|-------------|--------|
-| **Pipeline** | 11 | Full pipeline orchestration (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...) | T,S,R (32) |
-| **Phase 1-3** | 6 | Spec research, architecture, uArch (+ team modes) | — |
-| **Phase 4** | 7 | RTL implementation, bugfix, refactor, unit test, block-parallel | T (1) |
-| **Phase 5** | 12 | Verification: functional, formal, CDC, protocol, perf, coverage, UVM, integration | T,S,R,E (28) |
-| **Phase 6-7** | 2 | Design review, free exploration | — |
-| **Utility** | 13 | Lint, synthesis, IP-XACT, conformance, document, review, codec eval | T,S,R,E (52) |
-| **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC | T,R,E (11) |
-| **Policy** | 31 | Rules/criteria referenced by agents (non-user-invocable) | T (5) |
-| **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations | — |
-| **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) | — |
+| Category | Count | Description |
+|----------|-------|-------------|
+| **Action Entry Points** | 54 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
+| **Policy** | 31 | Rules/criteria referenced by agents (`*-policy`, non-user-invocable) |
+| **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC |
+| **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations |
+| **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
+| **Total** | **94** | |
 
-Asset legend: **T**=Templates, **S**=Scripts, **R**=References, **E**=Examples. Number in parentheses is total asset file count.
+Assets (Templates, Scripts, References, Examples) are distributed across the 94 skills — see each skill directory for its bundled assets.
 
 ## Project Artifact Structure
 
@@ -250,7 +246,7 @@ rtl-agent-team/
 ├── agents/                     # 94 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 93 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 94 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -269,7 +265,7 @@ rtl-agent-team/
 │       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
 │       └── ...                     # + 9 more (CDC, UVM, Yosys, SDC, etc.)
-├── hooks/                      # Event-driven enforcement (14 hook scripts / 17 registrations)
+├── hooks/                      # Event-driven enforcement (15 hook scripts / 16 registrations)
 │   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup check + template bootstrap
 │   └── ...                     # + 13 more (routing inject, verify gate, cascade, etc.)
 ├── docker/                     # EDA tool Docker image

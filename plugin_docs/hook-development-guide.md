@@ -6,7 +6,7 @@ Hooks are event-driven shell scripts that enforce quality gates, track state, an
 context into Claude Code sessions. They execute automatically on specific events (session
 start, tool use, session stop) without requiring user invocation.
 
-All 14 hooks are registered in `hooks/hooks.json` and run by the Claude Code plugin runtime.
+All 15 hooks are registered in `hooks/hooks.json` and run by the Claude Code plugin runtime.
 
 ## POSIX sh Constraint
 

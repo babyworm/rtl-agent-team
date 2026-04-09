@@ -50,6 +50,17 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   - Q3 deployment scope now explicitly lists the three files that get
     deployed (`rtl-coding-conventions.md`, `rtl-verification-gate.md`, and
     the `<markdown_diagram_rule>` block injected into `~/.claude/CLAUDE.md`).
+- **Skill and hook counts corrected** (caught by third Codex review):
+  - `README.md`, `README_kr.md`, and `.claude-plugin/marketplace.json` previously
+    said "93 skills". Actual count is **94** (CLAUDE.md file-tree header:
+    "54 action entry-points + 31 policies + 4 tool profiles + 4 conventions
+    + 1 internal = 94"). The README Skill categories table has been restructured
+    to the 5-category CLAUDE.md taxonomy so the sum visibly equals 94 (the
+    previous table summed to 91, a self-inconsistency).
+  - `README.md`, `README_kr.md`, `CLAUDE.md`, and `plugin_docs/hook-development-guide.md`
+    previously said "14 hook scripts". Actual count is **15** (verified via
+    `find hooks -maxdepth 1 -name '*.sh'`). README's "17 registrations" was
+    also wrong; actual registration count in `hooks/hooks.json` is **16**.
 
 ## [0.9.2] - 2026-04-09
 
