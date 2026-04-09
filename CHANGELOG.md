@@ -111,6 +111,22 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **3 vcodec expert agents had `disallowedTools` vs body Tool Usage
+  conflict** (caught by fifteenth Codex review, MEDIUM severity):
+  `vcodec-intra-pred-expert.md`, `vcodec-me-expert.md`, and
+  `vcodec-mc-expert.md` declared `disallowedTools: Write, Edit` in
+  frontmatter, but their `<Tool_Usage>` sections explicitly instructed
+  "Use Write/Edit to produce algorithm definition documents". A strict
+  Claude Code allow/deny enforcement would block the documented
+  workflow. Removed `disallowedTools` from all three frontmatters since
+  the body clearly intends them as document-producing experts.
+  `vcodec-architecture-expert.md` retains `disallowedTools` because it
+  is explicitly declared READ-ONLY in its body and never references
+  Write/Edit (so the constraint is consistent). The other 4 vcodec
+  experts (`chief-standard`, `filter-recon`, `syntax-entropy`,
+  `transform-quant`) had no `disallowedTools` declaration to begin
+  with, so no change needed.
+
 - **Test dependency completeness + README marketplace.json path R14
   knock-on** (caught by fourteenth Codex review):
   - `tests/requirements-test.txt` was missing `pytest-cov` and
