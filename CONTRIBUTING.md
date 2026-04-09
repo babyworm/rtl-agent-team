@@ -108,6 +108,10 @@ color: blue
 - [ ] CLAUDE.md 위임 테이블에 에이전트를 추가했는가
 - [ ] README.md, README_kr.md, CLAUDE.md의 에이전트 카운트를 업데이트했는가
 - [ ] marketplace.json의 에이전트 카운트 설명을 업데이트했는가
+- [ ] `sh scripts/add-rat-protocol.sh` 실행하여 audit-output-protocol 참조를
+      frontmatter 바로 뒤에 삽입 (멱등적 — 이미 포함된 파일은 건너뜀).
+      orchestrator-류 에이전트는 Step 0 Context Bootstrap도 필요하므로
+      `bash scripts/sync_step0.sh --dry-run`으로 미리 확인 후 동기화하는 것을 권장
 
 ### 스킬 추가
 

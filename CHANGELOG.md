@@ -111,6 +111,20 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **`scripts/add-rat-protocol.sh` orphan → documented in CONTRIBUTING.md**
+  (caught by eleventh Codex review, LOW severity): the script is an
+  idempotent bootstrap tool that inserts the audit-output-protocol
+  reference into agent markdown frontmatter (skips files that already
+  have it). Codex flagged it as orphaned because no other file in the
+  repo referenced it, suggesting it was dead maintenance surface.
+  **Disposition: refute + link**. The script is intentionally kept as a
+  contributor utility for adding new agents — it's not dead code, it's
+  an under-documented tool. Added a reference to the "에이전트 추가"
+  checklist in `CONTRIBUTING.md` so contributors know to run it when
+  adding a new agent file. Also flagged `bash scripts/sync_step0.sh`
+  for orchestrator-class agents. This resolves the orphan state
+  without deleting a useful utility.
+
 - **"absolute rules" lowercase phrasing propagation** (caught by tenth
   Codex review): Round 9 renamed the CLAUDE.md section heading and
   cleaned the exact "Absolute Rules" title from the SSOT, but 11 residual
