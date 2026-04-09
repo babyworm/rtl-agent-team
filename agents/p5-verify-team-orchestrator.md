@@ -92,9 +92,10 @@ Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/iron-requirements.json")  # Phase 1 settled requirements (required)
+Glob("docs/phase-1-research/open-requirements.json")  # Phase 1 deferred research (optional)
 Glob("sim/**/*_unit_results.json")                  # Tier 2 baseline (GAP 2 coverage handoff)
-Glob("docs/phase-3-uarch/iron-requirements.json")  # Iron requirements with acceptance_criteria
+Glob("docs/phase-3-uarch/iron-requirements.json")  # Phase 3 iron requirements with acceptance_criteria
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -277,7 +278,7 @@ After top-level gate passes:
 
 ```python
 t_req_trace = TaskCreate(subject="S3.1: Requirement Traceability",
-                         description="Read requirements.json and iron-requirements.json (if available). Map each REQ-NNN to test(s) that verify it. When structured acceptance_criteria exist, map at AC level (ac_id). Save reviews/phase-5-verify/requirement-traceability.md.",
+                         description="Read docs/phase-1-research/iron-requirements.json (REQ-F/REQ-P) and docs/phase-3-uarch/iron-requirements.json (REQ-U). Also read docs/phase-1-research/open-requirements.json if present. Map each REQ-NNN to test(s) that verify it. When structured acceptance_criteria exist, map at AC level (ac_id). Save reviews/phase-5-verify/requirement-traceability.md.",
                          blockedBy=[t_top_review])
 
 t_e2e_trace = TaskCreate(subject="S3.2: E2E Traceability",
@@ -289,7 +290,7 @@ t_trace_audit = TaskCreate(subject="S3.3: Traceability Audit",
                            blockedBy=[t_req_trace, t_e2e_trace])
 
 t_compliance = TaskCreate(subject="S3.4: Final Compliance Review",
-                          description="READ-ONLY final spec compliance review. Read requirements.json, iron-requirements.json (if available), io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Require traceability-audit.md verdict=PASS before issuing PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.",
+                          description="READ-ONLY final spec compliance review. Read docs/phase-1-research/iron-requirements.json (REQ-F/REQ-P), docs/phase-1-research/open-requirements.json (if present), docs/phase-3-uarch/iron-requirements.json (REQ-U), io_definition.json, architecture.md, rtl/*/*.sv, and ALL Phase 5 review results. Verify RTL implements ALL spec requirements. Require traceability-audit.md verdict=PASS before issuing PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.",
                           blockedBy=[t_trace_audit])
 
 t_summary = TaskCreate(subject="S3.5: Phase 5 Summary",
@@ -308,7 +309,7 @@ Set final verdict based on `reviews/phase-5-verify/final-compliance.md`.
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 5 Verification.
      Phase intent: Comprehensive verification — unit tests, functional regression, formal SVA, CDC, protocol, coverage, integration, performance, synthesis.
-     Input artifacts: rtl/*/*.sv (RTL), docs/phase-1-research/requirements.json (spec).
+     Input artifacts: rtl/*/*.sv (RTL), docs/phase-1-research/iron-requirements.json (spec, settled), docs/phase-1-research/open-requirements.json (spec, deferred research, optional).
      Output artifacts: docs/phase-5-verify/ (phase-5-summary.md), sim/ (test results).
      Review verdicts: reviews/phase-5-verify/ (final-compliance.md, traceability-audit.md, requirement-traceability.md, e2e-traceability.md).
      Focus: verification completeness, requirement traceability gaps, coverage adequacy, test quality.")

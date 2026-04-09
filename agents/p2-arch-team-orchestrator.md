@@ -257,7 +257,7 @@ Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 2 Architecture.
      Phase intent: Architecture design, HW candidate selection, C reference model development.
-     Input artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json).
+     Input artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json [optional], io_definition.json, timing_constraints.json).
      Output artifacts: docs/phase-2-architecture/ (architecture.md, hw-candidate-review.md, phase-2-summary.md), refc/ (C reference model).
      Review verdicts: reviews/phase-2-architecture/ (architecture-review.md, feature-coverage.md, ref-model-review.md).
      ADRs: docs/decisions/ADR-*.md.

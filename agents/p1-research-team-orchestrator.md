@@ -52,7 +52,7 @@ T6b3: MC requirements (CONDITIONAL: vcodec-mc-expert if video-codec domain, bloc
 T6c: Transform/quant requirements (CONDITIONAL: vcodec-transform-quant-expert if video-codec domain, blockedBy: T5)
 T6d: Filter/recon requirements (CONDITIONAL: vcodec-filter-recon-expert if video-codec domain, blockedBy: T5)
 T6e: Signal processing requirements (CONDITIONAL: video-processing-expert if video-codec domain, blockedBy: T5)
-T6f: Requirements + timing merge (spec-analyst, blockedBy: T5) — produces requirements.json, io_definition.json, timing_constraints.json
+T6f: Requirements + timing merge (spec-analyst, blockedBy: T5) — produces iron-requirements.json (settled REQs) + open-requirements.json (deferred research, optional), io_definition.json, timing_constraints.json
 T7:  Review R1 (rtl-architect; + domain chief if available, blockedBy: ALL T6* + T5b + T5c)
 T8:  Revision R1 (DYNAMIC — created only if T7 finds issues, blockedBy: T7)
 T9:  Review R2 (blockedBy: T8 or T7 if no issues)
@@ -296,7 +296,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 1 Research.
      Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
      Input artifacts: user-provided spec documents.
-     Output artifacts: docs/phase-1-research/ (requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
+     Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json [optional], io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
      Review verdicts: reviews/phase-1-research/ (research-review-r1.md, research-review-r2.md, research-review-r3.md, research-review.md).
      Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
 

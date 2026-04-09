@@ -76,11 +76,30 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   - `skills/rat-auto-design/SKILL.md`: Team-mode Phase 1 task prompt and
     artifact completeness gate use iron/open contract.
 
-  **Known technical debt (out of scope for this commit)**: the sequential
+  **Round 6 follow-up**: Round 5 migration was incomplete. The sixth Codex
+  review found 7 residual team-path references that the Round 5 commit
+  missed — most critically, `agents/p5-verify-team-orchestrator.md` (the
+  Phase 5 team coordinator) was not touched by Round 5 at all, so its
+  upstream scan, requirement traceability task, final compliance review,
+  and cross-review prompt were all still expecting
+  `docs/phase-1-research/requirements.json` — a file the migrated team
+  Phase 1 no longer produces. Round 6 closes the remaining team-path gap:
+  - `agents/p1-research-team-orchestrator.md`: task graph summary (T6f
+    description in the "Task Graph" section) and Step 5 output artifacts
+    summary now both list `iron-requirements.json` + `open-requirements.json`.
+  - `agents/p2-arch-team-orchestrator.md`: Step 5 Codex cross-review input
+    artifacts migrated.
+  - `agents/p5-verify-team-orchestrator.md`: upstream artifact scan,
+    S3.1 requirement traceability task, S3.4 final compliance review, and
+    Step 6 Codex cross-review input all migrated to read Phase 1
+    `iron-requirements.json` + `open-requirements.json` (and continue to
+    read Phase 3 `iron-requirements.json` for REQ-U).
+
+  **Known technical debt (still out of scope)**: the sequential
   (non-team) orchestrators (`p1-research-orchestrator`, `autopilot-orchestrator`,
   `uarch-to-verify-orchestrator`, etc.) and several P4/P5 sub-orchestrators
-  still reference `requirements.json`. Codex Round 5 flagged only the team
-  path because that is the `rat-auto-design` default. A follow-up patch will
+  still reference `requirements.json`. Codex Round 5/6 intentionally limited
+  scope to the team path (`rat-auto-design` default). A follow-up patch will
   migrate the sequential path to match.
 
 - **`skills/rat-auto-design/SKILL.md` Output section Phase 6 path corrected**
