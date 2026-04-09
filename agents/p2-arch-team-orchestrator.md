@@ -87,10 +87,11 @@ If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for comp
 Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING, not BLOCK.
 
 ```
-Glob("docs/phase-1-research/requirements.json")    # Structured requirements
-Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
-Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
-Glob("docs/phase-1-research/timing_constraints.json")  # Rough timing estimates per block
+Glob("docs/phase-1-research/iron-requirements.json")    # Settled REQ-F/REQ-P with acceptance_criteria (required)
+Glob("docs/phase-1-research/open-requirements.json")    # Deferred research items OPEN-1-* (optional)
+Glob("docs/phase-1-research/io_definition.json")        # I/O port definitions
+Glob("docs/phase-1-research/domain-analysis.md")        # Domain analysis
+Glob("docs/phase-1-research/timing_constraints.json")   # Rough timing estimates per block
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -99,8 +100,9 @@ Adjust execution plan based on available artifacts.
 ## Step 1: Preparation
 
 ```
-# Read P1 artifacts
-Read("docs/phase-1-research/requirements.json")
+# Read P1 artifacts (iron = settled REQ, open = deferred research items to resolve in Phase 2)
+Read("docs/phase-1-research/iron-requirements.json")
+Read("docs/phase-1-research/open-requirements.json")  # may not exist if P1 had no open items
 Read("docs/phase-1-research/io_definition.json")
 Read("docs/phase-1-research/timing_constraints.json")  # Per-block timing targets (rough estimates from P1)
 Read("docs/phase-1-research/domain-analysis.md")

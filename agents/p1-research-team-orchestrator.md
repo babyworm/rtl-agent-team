@@ -194,7 +194,7 @@ while not all_tasks_complete:
         # T6a-e: Conditional domain expert tasks (only if domain package exists)
         # T6f: Always created (spec-analyst requirements + timing merge)
         t6f = TaskCreate(subject="T6f: Requirements + timing merge",
-                         description="Parse specs/ and produce docs/phase-1-research/requirements.json, docs/phase-1-research/io_definition.json, and docs/phase-1-research/timing_constraints.json. Each requirement MUST have unique 'id': 'REQ-001', etc. Port names: i_/o_/io_ prefix, clocks: {domain}_clk, resets: {domain}_rst_n. timing_constraints.json: rough per-block timing targets (throughput, latency budget, clock frequency). Self-verify: count spec features vs REQ items. Save review to reviews/phase-1-research/research-review.md. Save all artifacts using Write tool.")
+                         description="Parse specs/ and produce (A) docs/phase-1-research/iron-requirements.json — settled REQ-F-*/REQ-P-* with `acceptance_criteria` defined (no research_needed), (B) docs/phase-1-research/open-requirements.json — deferred research topics OPEN-1-* with `research_needed` mandate for Phase 2, (C) docs/phase-1-research/io_definition.json, and (D) docs/phase-1-research/timing_constraints.json. Each requirement MUST have unique 'id': iron uses 'REQ-F-001'/'REQ-P-001' style, open uses 'OPEN-1-001' style. Port names: i_/o_/io_ prefix, clocks: {domain}_clk, resets: {domain}_rst_n. timing_constraints.json: rough per-block timing targets (throughput, latency budget, clock frequency). Each requirement MUST be classified as iron (acceptance_criteria present) or open (research_needed present) — never both, never neither. Self-verify: count spec features vs (iron ∪ open) REQ items. Save review to reviews/phase-1-research/research-review.md. Save all artifacts using Write tool.")
         TaskUpdate(taskId=t6f, addBlockedBy=[t5])
 
         # T7 blocked by ALL T6* + T5b + T5c
@@ -212,7 +212,7 @@ while not all_tasks_complete:
     # === T12 creation (after T11 completes) ===
     if "T12" not in created_groups and task_completed(t11):
         t12 = TaskCreate(subject="T12: Final verification + artifacts",
-                         description="Generate and verify Phase 1 artifacts: FIRST, generate docs/phase-1-research/domain-analysis.md sourcing from expert outputs (T6a-e) and the T5b selected approach — include: candidate survey summary, comparison tables, cross-block dependencies, and per-block timing targets. Use Write tool to save. THEN self-verify all Phase 1 artifacts: 1. Count spec features vs requirements.json items. 2. Verify io_definition.json port naming convention. 3. Verify timing_constraints.json exists with per-block timing targets. 4. Verify domain-analysis.md has cross-block dependencies and per-block timing targets. 5. Validate all JSON files well-formed.")
+                         description="Generate and verify Phase 1 artifacts: FIRST, generate docs/phase-1-research/domain-analysis.md sourcing from expert outputs (T6a-e) and the T5b selected approach — include: candidate survey summary, comparison tables, cross-block dependencies, and per-block timing targets. Use Write tool to save. THEN self-verify all Phase 1 artifacts: 1. Count spec features vs (iron-requirements.json ∪ open-requirements.json) items — every spec feature must be classified as iron or open. 2. Verify iron-requirements.json every entry has `acceptance_criteria` array (non-empty). 3. Verify open-requirements.json every entry has `research_needed` description. 4. Verify io_definition.json port naming convention. 5. Verify timing_constraints.json exists with per-block timing targets. 6. Verify domain-analysis.md has cross-block dependencies and per-block timing targets. 7. Validate all JSON files well-formed.")
         TaskUpdate(taskId=t12, addBlockedBy=[t11])
         created_groups.add("T12")
 
@@ -267,7 +267,7 @@ TaskUpdate(taskId=t_ambiguity, addBlockedBy=[t12])
 ## Step 4: Phase 1 Gate
 
 After T12 (final verification + artifacts) AND ambiguity gate completes:
-1. Verify `docs/phase-1-research/requirements.json` exists and is valid JSON
+1. Verify `docs/phase-1-research/iron-requirements.json` exists and is valid JSON (REQUIRED — settled requirements). `docs/phase-1-research/open-requirements.json` is OPTIONAL (absent is OK if Phase 1 had no deferred research items)
 2. Verify `docs/phase-1-research/io_definition.json` exists with i_/o_/io_ port prefixes
 3. Verify `docs/phase-1-research/timing_constraints.json` exists with per-block timing targets
 4. Verify `docs/phase-1-research/domain-analysis.md` exists

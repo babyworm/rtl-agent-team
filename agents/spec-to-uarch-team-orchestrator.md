@@ -100,12 +100,12 @@ Write(".rat/state/rat-p1p3-spec-uarch-state.json",
 Bash("mkdir -p reviews/phase-1-research")
 
 Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
-     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md.")
+     prompt="Execute Phase 1 research using native teams. Context: Specs at specs/. Produce iron-requirements.json (settled REQ-F/REQ-P with acceptance_criteria), open-requirements.json (deferred OPEN-1-* with research_needed), io_definition.json, timing_constraints.json, domain-analysis.md.")
 ```
 
-**Artifact Completeness Gate** (per policy: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md):
+**Artifact Completeness Gate** (per policy: iron-requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md; open-requirements.json is optional):
 ```
-Glob("docs/phase-1-research/requirements.json")
+Glob("docs/phase-1-research/iron-requirements.json")
 Glob("docs/phase-1-research/io_definition.json")
 Glob("docs/phase-1-research/timing_constraints.json")
 Glob("docs/phase-1-research/domain-analysis.md")
@@ -115,14 +115,14 @@ All four files must exist. If any missing: FAIL + list specific missing files.
 **Phase 1→2 Quality Gate** (criteria in policy):
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="READ-ONLY self-review. Read requirements.json. Verify completeness,
+     prompt="READ-ONLY self-review. Read iron-requirements.json and open-requirements.json (if present). Verify completeness,
 consistency, traceability. io_definition.json port naming: i_/o_/io_ prefix,
 {domain}_clk/{domain}_rst_n.
 Save to reviews/phase-1-research/research-review.md.
 verdict: PASS or FAIL + findings[]")
 
 Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="READ-ONLY feasibility review. Read requirements.json, io_definition.json.
+     prompt="READ-ONLY feasibility review. Read iron-requirements.json, io_definition.json.
 Evaluate each requirement for RTL implementation feasibility.
 verdict: PASS or FAIL + findings[]")
 ```
@@ -140,7 +140,7 @@ Update state: `phases.1.status = "completed"`, `phases.1.gate_passed_at = now()`
 ## Step 3: Phase 2 — Architecture + Reference Model (Team)
 
 **Context Preload**: Verify required upstream files exist before starting Phase 2:
-- `docs/phase-1-research/requirements.json`
+- `docs/phase-1-research/iron-requirements.json` (required) + `docs/phase-1-research/open-requirements.json` (optional)
 - `docs/phase-1-research/io_definition.json`
 - `docs/phase-1-research/timing_constraints.json`
 - `docs/phase-1-research/domain-analysis.md`
@@ -150,7 +150,7 @@ STOP if any missing.
 Bash("mkdir -p reviews/phase-2-architecture .rat/scratch/phase-2")
 
 Task(subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
-     prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for requirements.json, io_definition.json, domain-analysis.md.")
+     prompt="Execute Phase 2 architecture design using native teams. Context: Phase 1 artifacts complete. Read docs/phase-1-research/ for iron-requirements.json (settled REQs), open-requirements.json (deferred research to resolve in P2, if present), io_definition.json, domain-analysis.md.")
 ```
 
 **Phase 2→3 Quality Gate** (criteria in policy):
@@ -218,13 +218,13 @@ After Phase 3 completes, before declaring P1-3 pipeline done:
 ### 1. Requirement Implementability Scan
 
 ```
-# For each REQ-XXXX in requirements.json, verify P3 μArch can implement it
-Read("docs/phase-1-research/requirements.json")
+# For each REQ-XXXX in iron-requirements.json, verify P3 μArch can implement it
+Read("docs/phase-1-research/iron-requirements.json")
 Read("docs/phase-3-uarch/req-uarch-traceability.md")
 
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Requirement implementability scan:
-     1. Read requirements.json and req-uarch-traceability.md
+     1. Read iron-requirements.json and req-uarch-traceability.md
      2. For each REQ-XXXX, verify P3 μArch can implement it
      3. Flag any REQ where P3 review identified implementation concerns
      4. Check: latency constraints achievable? throughput targets met? area budget feasible?

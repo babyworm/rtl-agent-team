@@ -88,7 +88,9 @@ Sequential mode delegates everything to the autopilot-orchestrator.
 
 ## Output
 
-- Complete 6-phase artifact set: `docs/phase-1-research/` through `docs/phase-6-review/`
+- Design artifacts: `docs/phase-1-research/` through `docs/phase-5-verify/`
+- Phase 6 design note and review verdicts: `reviews/phase-6-review/`
+  (Phase 6 is the design review + documentation phase; its outputs live under `reviews/`, not `docs/`)
 - `rtl/*/*.sv` — lint-clean, unit-tested RTL modules
 - `sim/` — testbenches, regression results, and coverage data
 - `reviews/` — per-phase review reports with final compliance verdict

@@ -50,6 +50,48 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   - Q3 deployment scope now explicitly lists the three files that get
     deployed (`rtl-coding-conventions.md`, `rtl-verification-gate.md`, and
     the `<markdown_diagram_rule>` block injected into `~/.claude/CLAUDE.md`).
+- **Team-mode Phase 1→2 artifact contract migrated to iron/open-requirements**
+  (caught by fifth Codex review — HIGH severity): the team-mode orchestrators
+  and pipeline skills were still producing, verifying, and consuming the legacy
+  `docs/phase-1-research/requirements.json` single-file contract, while
+  `skills/rtl-p1-research-team/SKILL.md` and `skills/rtl-p2-arch-team/SKILL.md`
+  declared `iron-requirements.json` + `open-requirements.json` as the SSOT
+  (per the v0.8.6 Cross-Phase Artifact Functional Consistency principle).
+  This made the default `rat-auto-design` team path silently violate the
+  declared contract. Fixed in:
+  - `agents/p1-research-team-orchestrator.md`: T6f now produces both
+    `iron-requirements.json` (settled `REQ-F-*`/`REQ-P-*` with
+    `acceptance_criteria`) and `open-requirements.json` (deferred `OPEN-1-*`
+    with `research_needed`). T12 verification counts spec features against
+    `iron ∪ open`. Phase 1 Gate verifies iron-requirements (required) and
+    treats open-requirements as optional.
+  - `agents/p2-arch-team-orchestrator.md`: Upstream Artifact Scan and Step 1
+    Read both use `iron-requirements.json` (required) + `open-requirements.json`
+    (optional).
+  - `agents/spec-to-uarch-team-orchestrator.md`: All `requirements.json`
+    references (task prompts, gate glob, review prompts, trace reads)
+    migrated to `iron-requirements.json` with open-requirements side-context.
+  - `skills/rat-p1p3-spec-uarch-team/SKILL.md`: Phase 1→2 artifact gate
+    now checks `iron-requirements.json`.
+  - `skills/rat-auto-design/SKILL.md`: Team-mode Phase 1 task prompt and
+    artifact completeness gate use iron/open contract.
+
+  **Known technical debt (out of scope for this commit)**: the sequential
+  (non-team) orchestrators (`p1-research-orchestrator`, `autopilot-orchestrator`,
+  `uarch-to-verify-orchestrator`, etc.) and several P4/P5 sub-orchestrators
+  still reference `requirements.json`. Codex Round 5 flagged only the team
+  path because that is the `rat-auto-design` default. A follow-up patch will
+  migrate the sequential path to match.
+
+- **`skills/rat-auto-design/SKILL.md` Output section Phase 6 path corrected**
+  (Codex Round 5 MEDIUM): the Output section described Phase 6 artifacts as
+  `docs/phase-6-review/`, but the skill's own execution body, `README.md`, and
+  `CLAUDE.md` all correctly place Phase 6 outputs under `reviews/phase-6-review/`
+  (Phase 6 is the design review + documentation phase, whose outputs live under
+  `reviews/`). The Output section has been rewritten to explicitly split
+  `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
+  and `reviews/phase-6-review/` for the Phase 6 design note.
+
 - **Skill and hook counts corrected** (caught by third Codex review):
   - `README.md`, `README_kr.md`, and `.claude-plugin/marketplace.json` previously
     said "93 skills". Actual count is **94** (CLAUDE.md file-tree header:

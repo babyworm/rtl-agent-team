@@ -61,12 +61,13 @@ else:
 if phases["1"]["status"] != "completed":
     Skill(skill="rtl-agent-team:rtl-p1-research-team", args="$ARGUMENTS")
 
-    # Phase 1→2 artifact gate
-    Glob("docs/phase-1-research/requirements.json")
+    # Phase 1→2 artifact gate (iron-requirements is the settled SSOT;
+    # open-requirements is optional — absent if Phase 1 had no deferred research)
+    Glob("docs/phase-1-research/iron-requirements.json")
     Glob("docs/phase-1-research/io_definition.json")
     Glob("docs/phase-1-research/timing_constraints.json")
     Glob("docs/phase-1-research/domain-analysis.md")
-    # All four must exist. If missing: FAIL.
+    # All four required artifacts must exist. If missing: FAIL.
 
     # Update state
     # phases["1"]["status"] = "completed"
