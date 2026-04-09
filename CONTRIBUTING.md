@@ -107,7 +107,7 @@ color: blue
 - [ ] `description:`이 에이전트의 전문성과 사용 시점을 설명하는가
 - [ ] CLAUDE.md 위임 테이블에 에이전트를 추가했는가
 - [ ] README.md, README_kr.md, CLAUDE.md의 에이전트 카운트를 업데이트했는가
-- [ ] marketplace.json의 에이전트 카운트 설명을 업데이트했는가
+- [ ] `.claude-plugin/marketplace.json`의 에이전트 카운트 설명을 업데이트했는가
 - [ ] `sh scripts/add-rat-protocol.sh` 실행하여 audit-output-protocol 참조를
       frontmatter 바로 뒤에 삽입 (멱등적 — 이미 포함된 파일은 건너뜀).
       orchestrator-류 에이전트는 Step 0 Context Bootstrap도 필요하므로
@@ -322,7 +322,7 @@ Chief 에이전트의 역할:
 - [ ] (3+ 에이전트) 도메인 패키지 `domain-packages/{domain}/manifest.json` 생성
 - [ ] (4+ 에이전트) Chief 에이전트 추가 권장
 - [ ] 기존 스킬(p1-spec-research, domain-consult 등)의 라우팅 테이블에 새 도메인 추가
-- [ ] 에이전트/스킬 카운트 업데이트 (README.md, marketplace.json)
+- [ ] 에이전트/스킬 카운트 업데이트 (README.md, `.claude-plugin/marketplace.json`)
 
 ---
 
@@ -453,7 +453,7 @@ plugins/{plugin-name}/
 └── hooks/                 # (선택) 훅
 ```
 
-**marketplace.json에 등록**:
+**`.claude-plugin/marketplace.json`에 등록**:
 
 ```json
 {
@@ -468,7 +468,7 @@ plugins/{plugin-name}/
 
 ### 경량 플러그인 (plugin.json 없이)
 
-LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 marketplace.json에서 직접 정의할 수 있습니다.
+LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 `.claude-plugin/marketplace.json`에서 직접 정의할 수 있습니다.
 
 ```json
 {
@@ -482,7 +482,7 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 mark
 }
 ```
 
-참조: marketplace.json의 `systemverilog-lsp` 항목
+참조: `.claude-plugin/marketplace.json`의 `systemverilog-lsp` 항목
 
 ### 외부 repo 플러그인
 

@@ -145,15 +145,21 @@ bump_file "$ROOT_DIR/README_kr.md" \
 
 echo ""
 
-# Validate no stale references of OLD version remain in the 6 files
+# Validate no stale references of OLD version remain in the 5 files.
+# NOTE: We match both quoted (`"0.9.1"` for JSON/package.json) AND raw
+# token forms (the plain-text `0.9.1` used in README marketplace tables).
+# Raw-token regex uses word boundaries to avoid matching unrelated
+# substrings like 0.9.10, 10.9.1, etc.
 STALE_FILES=""
+STALE_VER_RE='(^|[^0-9.])'"$OLD_VER"'([^0-9]|$)'
 for f in \
   "$ROOT_DIR/package.json" \
   "$ROOT_DIR/.claude-plugin/plugin.json" \
   "$ROOT_DIR/.claude-plugin/marketplace.json" \
   "$ROOT_DIR/README.md" \
   "$ROOT_DIR/README_kr.md"; do
-  if [ "$DRY_RUN" -eq 0 ] && grep -q "\"$OLD_VER\"" "$f" 2>/dev/null; then
+  [ "$DRY_RUN" -eq 0 ] || continue
+  if grep -Eq "$STALE_VER_RE" "$f" 2>/dev/null; then
     STALE_FILES="$STALE_FILES ${f#"$ROOT_DIR"/}"
   fi
 done

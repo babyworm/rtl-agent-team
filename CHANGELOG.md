@@ -111,6 +111,24 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   `docs/phase-1-research/` through `docs/phase-5-verify/` for design artifacts
   and `reviews/phase-6-review/` for the Phase 6 design note.
 
+- **`CONTRIBUTING.md` marketplace.json path + `bump-version.sh` stale
+  check grep pattern** (caught by thirteenth Codex review, LOW severity):
+  - `CONTRIBUTING.md` referenced `marketplace.json` by short name in 5
+    places (checklists + plugin-add walkthrough), but the actual file
+    is `.claude-plugin/marketplace.json`. Contributors following the
+    literal paths would have searched for a non-existent repo-root file.
+    All 5 references now use the fully-qualified path.
+  - `scripts/bump-version.sh` stale-version validator previously
+    grep'd for `"$OLD_VER"` (quoted form only), which catches JSON
+    version fields but misses the plain-text `0.9.1` format used in
+    the Marketplace table rows of `README.md` and `README_kr.md`.
+    The checklist in `CLAUDE.md` rule 14 explicitly lists README
+    version rows, so the validator was silently failing to enforce
+    what the docs promised. Rewrote the check to use an extended
+    regex with word boundaries (`'(^|[^0-9.])'"$OLD_VER"'([^0-9]|$)'`)
+    so both quoted and raw forms are caught without false-matching
+    `0.9.10`/`10.9.1` substrings.
+
 - **`plugin_docs/eda-setup-guide.md` phantom `generate_config.sh` path**
   (caught by twelfth Codex review, LOW severity): the "After editing
   `rat_config.json`" and troubleshooting sections instructed users to
