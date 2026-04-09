@@ -33,11 +33,11 @@ The workflow has **three distinct stages**, each with a different scope and freq
 | **B. Project Init** | Per project directory | Once per project | `/rtl-agent-team:rat-init-project` |
 | **C. Design Work** | Inside project | Recurring | `/rtl-agent-team:rat-auto-design`, phase/sub-skills |
 
-Run each stage from its appropriate working directory: Stages A run anywhere; Stages B and C must run **inside** the target project directory.
+Run each stage from its appropriate working directory: Stage A runs anywhere; Stages B and C should run from **inside** the target project directory (artifacts like `docs/phase-*/`, `rtl/`, `.rat/state/` are written relative to CWD).
 
 ### Stage A — Machine Setup (one-time, per machine)
 
-Installs the plugin and all EDA tools. Deploys global coding conventions to `~/.claude/rules/`.
+Installs the plugin, audits the EDA toolchain interactively, and optionally deploys global coding conventions.
 
 ```bash
 # A1. Register the Marketplace (one-time)
@@ -47,10 +47,15 @@ Installs the plugin and all EDA tools. Deploys global coding conventions to `~/.
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (optional) SV LSP
 
-# A3. Audit + install EDA toolchain (interactive interview)
-#     - Checks verilator, verible/slang, svlens (CDC), cocotb, systemc, commercial tools
-#     - Collects Liberty file path for synthesis (optional)
-#     - Deploys global coding conventions to ~/.claude/rules/
+# A3. EDA toolchain audit (interactive interview — all steps are opt-in)
+#     - Q1 Required tools: verilator, verible/slang, svlens (CDC), cocotb, systemc
+#            — prompt to install any missing ones (local/global/docker/skip)
+#     - Q2 Recommended/optional tools (jq, yosys, sby, iverilog, gtkwave, ...)
+#            — user picks which to install
+#     - Q2b Commercial tool scan (vcs, xrun, dc_shell, sg_shell, vc_cdc, ...)
+#            — scan + collect env_source; not an install
+#     - Q2c Liberty file path for synthesis (optional)
+#     - Q3 Optional: deploy global coding conventions to ~/.claude/rules/ (yes/no)
 /rtl-agent-team:rat-setup
 ```
 
@@ -58,7 +63,7 @@ Installs the plugin and all EDA tools. Deploys global coding conventions to `~/.
 
 ### Stage B — Project Initialization (one-time, per project)
 
-Scaffolds project directory structure, deploys per-project rules and guides, auto-installs EDA wrapper scripts. **Run from inside your (empty) project directory.**
+Scaffolds project directory structure, deploys per-project rules and guides, auto-installs EDA wrapper scripts. Run from inside the project directory — non-destructive, so existing projects are safe (files are only created if missing).
 
 ```bash
 # B1. cd into your project directory
@@ -75,7 +80,7 @@ cd ~/work/my-rtl-project
 
 ### Stage C — Design Work (recurring, inside project)
 
-Execute RTL design and verification pipeline. **Run from inside an initialized project.**
+Execute RTL design and verification pipeline. Run from inside an initialized project — artifacts are created relative to CWD, so an uninitialized directory will not have the expected structure.
 
 ```bash
 # C1. Full automation (6-Phase pipeline)
@@ -366,7 +371,7 @@ All EDA operations use replayable wrapper scripts that generate timestamped + `_
 | `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
 | `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
 | `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
-| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
+| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), svlens, spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb regression (local-first, AWS opt-in) |
 
 Scripts are auto-installed by the `rat-init-project` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.

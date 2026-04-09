@@ -33,11 +33,11 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 | **B. 프로젝트 초기화** | 프로젝트 디렉토리 단위 | 프로젝트당 1회 | `/rtl-agent-team:rat-init-project` |
 | **C. 설계 작업** | 프로젝트 내부 | 반복 수행 | `/rtl-agent-team:rat-auto-design`, phase/sub 스킬 |
 
-각 단계는 올바른 작업 디렉토리에서 실행해야 합니다: Stage A는 어디서든 실행 가능하지만, Stage B와 Stage C는 **반드시 대상 프로젝트 디렉토리 안에서** 실행해야 합니다.
+각 단계는 올바른 작업 디렉토리에서 실행해야 합니다. Stage A는 어디서든 실행 가능합니다. Stage B와 Stage C는 **프로젝트 디렉토리 안에서** 실행하세요 (`docs/phase-*/`, `rtl/`, `.rat/state/` 등 산출물이 CWD 기준으로 생성됩니다).
 
 ### Stage A — 머신 설정 (머신당 1회)
 
-플러그인과 모든 EDA 도구를 설치합니다. 전역 코딩 규칙을 `~/.claude/rules/`에 배포합니다.
+플러그인을 설치하고, EDA 툴체인을 대화형으로 점검하며, 선택 시 전역 코딩 규칙을 배포합니다.
 
 ```bash
 # A1. Marketplace 등록 (1회)
@@ -47,10 +47,15 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (선택) SV LSP
 
-# A3. EDA 툴체인 점검 + 설치 (대화형 인터뷰)
-#     - verilator, verible/slang, svlens (CDC), cocotb, systemc, 상용 도구 점검
-#     - 합성용 Liberty 파일 경로 수집 (선택)
-#     - 전역 코딩 규칙을 ~/.claude/rules/에 배포
+# A3. EDA 툴체인 점검 (대화형 인터뷰 — 모든 단계는 opt-in)
+#     - Q1 필수 도구: verilator, verible/slang, svlens (CDC), cocotb, systemc
+#            — 누락 시 설치 여부 선택 (local/global/docker/skip)
+#     - Q2 추천/선택 도구 (jq, yosys, sby, iverilog, gtkwave, ...)
+#            — 사용자가 설치 항목 선택
+#     - Q2b 상용 도구 스캔 (vcs, xrun, dc_shell, sg_shell, vc_cdc, ...)
+#            — 감지 + env_source 수집 (설치 아님)
+#     - Q2c 합성용 Liberty 파일 경로 (선택)
+#     - Q3 선택: ~/.claude/rules/에 전역 코딩 규칙 배포 (yes/no)
 /rtl-agent-team:rat-setup
 ```
 
@@ -58,7 +63,7 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 
 ### Stage B — 프로젝트 초기화 (프로젝트당 1회)
 
-프로젝트 디렉토리 구조 생성, 프로젝트별 규칙/가이드 배포, EDA wrapper 스크립트 자동 설치를 수행합니다. **(비어 있는) 프로젝트 디렉토리 안에서 실행하세요.**
+프로젝트 디렉토리 구조 생성, 프로젝트별 규칙/가이드 배포, EDA wrapper 스크립트 자동 설치를 수행합니다. 프로젝트 디렉토리 내부에서 실행하세요 — non-destructive 정책이므로 기존 프로젝트도 안전합니다 (누락된 파일만 생성).
 
 ```bash
 # B1. 프로젝트 디렉토리로 이동
@@ -75,7 +80,7 @@ cd ~/work/my-rtl-project
 
 ### Stage C — 설계 작업 (프로젝트 내에서 반복)
 
-RTL 설계 및 검증 파이프라인을 실행합니다. **초기화된 프로젝트 내부에서 실행하세요.**
+RTL 설계 및 검증 파이프라인을 실행합니다. 초기화된 프로젝트 내부에서 실행하세요 — 산출물이 CWD 기준으로 생성되므로, 초기화되지 않은 디렉토리에서는 예상 구조가 형성되지 않습니다.
 
 ```bash
 # C1. 전체 자동화 (6-Phase 파이프라인)
@@ -365,7 +370,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 | `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
 | `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
 | `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
-| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), spyglass, vc_cdc, questa_cdc |
+| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), svlens, spyglass, vc_cdc, questa_cdc |
 | `run_regression.sh` | `sim/regression/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in) |
 
 스크립트는 `rat-init-project` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.

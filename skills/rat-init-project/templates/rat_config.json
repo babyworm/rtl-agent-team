@@ -32,7 +32,9 @@
     "cdc": {
       "structural": { "detected": true,  "path": "(built-in)", "env_source": "" },
       "svlens":     { "detected": false, "path": "", "env_source": "" },
-      "sg_shell":   { "detected": false, "path": "", "env_source": "" }
+      "sg_shell":   { "detected": false, "path": "", "env_source": "" },
+      "vc_cdc":     { "detected": false, "path": "", "env_source": "" },
+      "questa_cdc": { "detected": false, "path": "", "env_source": "" }
     },
     "equivalence": {
       "fm_shell":  { "detected": false, "path": "", "env_source": "" },

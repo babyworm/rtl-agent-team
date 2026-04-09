@@ -7,6 +7,37 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Fixed
+- **Stage B ecosystem gap for commercial CDC tools**: `rat-init-project`'s
+  `rat_config.json` template and `generate_config.sh` previously only knew
+  `svlens` and `sg_shell` in the CDC category, so `vc_cdc` (Synopsys) and
+  `questa_cdc` (Siemens) detected in Stage A by `rat-setup` were not persisted
+  into per-project config. Now:
+  - `rat_config.json` template lists all four CDC tools (`svlens`, `sg_shell`,
+    `vc_cdc`, `questa_cdc`) so user `env_source` / `path` edits survive.
+  - `generate_config.sh` `ALL_TOOLS` array scans all four CDC tools, and
+    `pick_pref cdc` uses commercial-first priority (`sg_shell → vc_cdc →
+    questa_cdc → svlens`) so the preferred CDC tool is auto-selected.
+  - `run_cdc.sh` already accepted `--tool vc_cdc/questa_cdc`; this commit
+    closes the Stage A → Stage B handoff.
+
+### Docs
+- **README Stage A wording corrected** (both `README.md` and `README_kr.md`):
+  - "Installs the plugin and all EDA tools. Deploys global coding conventions"
+    was misleading — `rat-setup` is fully interactive (Q1 required-tool
+    remediation is the only install prompt; Q2 recommended tools are opt-in;
+    Q2b commercial tools are scanned, not installed; Q3 rule deployment is a
+    yes/no prompt). Stage A now explicitly lists what each Q step does.
+- **README Stage B/C enforcement wording softened** — "must run inside" was
+  too strong. `rat-init-project` and `rat-auto-design` use CWD-relative paths
+  but are not hook-enforced. Rewritten as "should run from inside ... (artifacts
+  are created relative to CWD)".
+- **"empty project directory" claim dropped** — `rat-init-project` is
+  non-destructive, so existing projects are safe. The phrase falsely implied
+  a stricter precondition.
+- **README EDA Wrapper Scripts table**: `run_cdc.sh` Supports column now lists
+  `svlens` explicitly (the script already supported it; only the docs were stale).
+
 ## [0.9.2] - 2026-04-09
 
 ### Changed

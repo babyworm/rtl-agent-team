@@ -91,6 +91,8 @@ ALL_TOOLS=(
   "equivalence lec        lec"
   "cdc         svlens     svlens"
   "cdc         sg_shell   sg_shell"
+  "cdc         vc_cdc     vc_cdc"
+  "cdc         questa_cdc questa_cdc"
   "debug       verdi      verdi"
   "debug       simvision  simvision"
   "coverage    urg        urg"
@@ -209,7 +211,7 @@ PREF_SIM=$(pick_pref simulators vcs xrun vsim verilator iverilog)
 PREF_SYN=$(pick_pref synthesis dc_shell genus yosys)
 PREF_LINT=$(pick_pref lint sg_shell slang verilator verible)
 PREF_FORMAL=$(pick_pref formal jg vcf sby)
-PREF_CDC=$(pick_pref cdc sg_shell svlens)
+PREF_CDC=$(pick_pref cdc sg_shell vc_cdc questa_cdc svlens)
 if [[ -z "$PREF_CDC" ]]; then PREF_CDC="structural"; fi
 PREF_EQUIV=$(pick_pref equivalence fm_shell lec)
 
@@ -311,7 +313,9 @@ $(category_json formal sby jg vcf),
     "cdc": {
       "structural": { "detected": true, "path": "(built-in)", "env_source": "" },
 $(tool_json cdc svlens),
-$(tool_json cdc sg_shell)
+$(tool_json cdc sg_shell),
+$(tool_json cdc vc_cdc),
+$(tool_json cdc questa_cdc)
     },
 $(category_json equivalence fm_shell lec),
 $(category_json debug verdi simvision),
