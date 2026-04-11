@@ -17,12 +17,6 @@ SKILLS_DIR = REPO_ROOT / "skills"
 
 
 @pytest.fixture
-def repo_root():
-    """Return the repository root as a Path object."""
-    return REPO_ROOT
-
-
-@pytest.fixture
 def tmp_project(tmp_path):
     """Create a temporary project directory with .rat/state/."""
     state_dir = tmp_path / ".rat" / "state"
@@ -60,34 +54,6 @@ module good_module (
   end
 
   assign o_result = r_data;
-
-endmodule
-""")
-    return sv
-
-
-@pytest.fixture
-def sample_sv_violations(tmp_path):
-    """Create an SV file with convention violations."""
-    sv = tmp_path / "bad_module.sv"
-    sv.write_text("""\
-module bad_module (
-  input  wire        clk_i,
-  input  reg         rst_ni,
-  input  logic [7:0] data_i,
-  output logic [7:0] result_o
-);
-
-  wire [7:0] w_data;
-
-  sub_module inst0 (
-    .clk(clk_i),
-    .data(data_i)
-  );
-
-  my_label: for (genvar i = 0; i < 4; i++) begin
-    assign w_data[i] = data_i[i];
-  end
 
 endmodule
 """)
