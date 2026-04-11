@@ -1,17 +1,13 @@
 r"""Tests for check_conventions.sh -- RTL naming convention checker.
 
-Known Issues:
+Bug History:
 - BUG-001: FIXED. ``set -euo pipefail`` + ``((VIOLATIONS++))`` previously caused
   silent exit when VIOLATIONS was 0 (post-increment returns 0, treated as failure
   by set -e). Fixed by replacing ``((VIOLATIONS++))`` with
   ``VIOLATIONS=$((VIOLATIONS + 1))``.
-- BUG-002: Rule 5 (INSTANCE_PREFIX) uses ``grep -n`` producing line-number prefixed
-  output, but the ``-vE`` exclude filter matches against ``^\s*(module|...)`` which
-  fails because the line starts with ``N:module`` not ``module``. This causes false
-  positives on module declarations.
-
-Tests are written to document ACTUAL behavior. Tests marked with
-``# DOCUMENTS BUG`` note where behavior diverges from intended behavior.
+- BUG-002: FIXED. Rule 5 (INSTANCE_PREFIX) ``grep -n`` produced line-number prefixed
+  output (``N:module``), but the ``-vE`` exclude filter expected ``^\s*(module|...)``.
+  Fixed by updating the exclude pattern to ``^[0-9]+:\s*(module|...)``.
 """
 
 import subprocess
@@ -27,12 +23,10 @@ CHECK_CONVENTIONS = SKILLS_DIR / "rtl-lint-check" / "scripts" / "check_conventio
 class TestCheckConventions:
     """Tests for check_conventions.sh."""
 
-    def test_clean_file_triggers_false_positive(self, sample_sv_clean):
-        """DOCUMENTS BUG: Clean module declaration triggers INSTANCE_PREFIX false positive
-        due to BUG-002 (grep -n line-number prefix defeats exclude filter)."""
+    def test_clean_file_passes(self, sample_sv_clean):
+        """Clean SV file with proper conventions should pass all checks."""
         result = run_script(CHECK_CONVENTIONS, str(sample_sv_clean))
-        # Expected: rc=0, "PASS". Actual: rc=1, INSTANCE_PREFIX false positive (BUG-002)
-        assert result.returncode == 1  # DOCUMENTS BUG
+        assert result.returncode == 0
 
     def test_nonexistent_target(self):
         result = run_script(CHECK_CONVENTIONS, "/nonexistent/path")
@@ -43,8 +37,7 @@ class TestCheckConventions:
         sv = tmp_path / "a.sv"
         sv.write_text("module a;\n  logic l;\nendmodule\n")
         result = run_script(CHECK_CONVENTIONS, str(tmp_path))
-        # Even clean files may trigger false positive due to BUG-002
-        assert result.returncode in (0, 1)
+        assert result.returncode == 0
 
     def test_no_reg_wire_rule_exists(self, tmp_path):
         """Verify that wire/reg IS detected (even if script exits early via BUG-001)."""
@@ -72,9 +65,8 @@ class TestCheckConventions:
         result = run_script(CHECK_CONVENTIONS, str(sv))
         assert result.returncode == 1
 
-    def test_valid_instance_prefix_still_caught(self, tmp_path):
-        """DOCUMENTS BUG: Even with u_ prefix instances, module declaration itself
-        triggers false positive (BUG-002)."""
+    def test_valid_instance_prefix_passes(self, tmp_path):
+        """Module with properly u_ prefixed instances should pass Rule 5."""
         sv = tmp_path / "test.sv"
         sv.write_text("""\
 module m (
@@ -87,12 +79,10 @@ module m (
 endmodule
 """)
         result = run_script(CHECK_CONVENTIONS, str(sv))
-        # Expected: rc=0 (u_ prefix correct). Actual: rc=1 (module decl false positive)
-        assert result.returncode == 1  # DOCUMENTS BUG
+        assert result.returncode == 0
 
     def test_file_without_module_decl(self, tmp_path):
-        """A file with only assign statements should pass (no module declaration
-        to trigger BUG-002)."""
+        """A file with only preprocessor directives and no violations should pass."""
         sv = tmp_path / "assigns.sv"
         sv.write_text("""\
 // Just some assignments, no module declaration
@@ -144,5 +134,5 @@ endmodule
   end
 """)
         result = run_script(CHECK_CONVENTIONS, str(sv))
-        # No DECL_ORDER violation expected (other violations like BUG-002 may appear)
+        # No DECL_ORDER violation expected
         assert "DECL_ORDER" not in result.stdout

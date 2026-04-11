@@ -49,7 +49,7 @@ check_file() {
     if [[ -n "$inst_name" && ! "$inst_name" =~ ^u_ && ! "$inst_name" =~ ^gen_ ]]; then
       add_violation "$file" "$lineno" "INSTANCE_PREFIX" "Instance '$inst_name' missing u_ prefix: $content"
     fi
-  done < <(grep -nE '^\s*\w+\s+\w+\s*\(' "$file" 2>/dev/null | grep -vE '^\s*(if|for|while|case|always|assign|function|task|module|generate|initial|assert|assume|cover)\b' || true)
+  done < <(grep -nE '^\s*\w+\s+\w+\s*\(' "$file" 2>/dev/null | grep -vE '^[0-9]+:\s*(if|for|while|case|always|assign|function|task|module|generate|initial|assert|assume|cover)\b' || true)
 
   # Rule 6: Generate prefix gen_
   while IFS=: read -r lineno content; do

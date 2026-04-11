@@ -221,6 +221,8 @@ read_filelist() {
   local sim="$1"
   local flist="$2"
   local result=""
+  local flist_dir
+  flist_dir="$(cd "$(dirname "$flist")" && pwd)"
 
   if [[ ! -f "$flist" ]]; then
     echo "ERROR: Filelist not found: $flist" >&2
@@ -229,6 +231,7 @@ read_filelist() {
 
   if [[ "$sim" == "iverilog" ]]; then
     # iverilog: convert +incdir+ to -I, skip comments and empty lines
+    # Resolve relative paths against filelist directory for cd-safety
     while IFS= read -r line || [[ -n "$line" ]]; do
       # Strip comments and whitespace
       line="${line%%//*}"
@@ -238,11 +241,13 @@ read_filelist() {
 
       if [[ "$line" == +incdir+* ]]; then
         local dir="${line#+incdir+}"
+        [[ "$dir" != /* ]] && dir="${flist_dir}/${dir}"
         result+=" -I${dir}"
       elif [[ "$line" == -* || "$line" == +* ]]; then
         # Skip other directives not supported by iverilog
         log "Skipping unsupported directive for iverilog: $line"
       else
+        [[ "$line" != /* ]] && line="${flist_dir}/${line}"
         result+=" ${line}"
       fi
     done < "$flist"
@@ -282,6 +287,19 @@ build_plusargs() {
 
 # ─── Setup ──────────────────────────────────────────────────────────────────
 mkdir -p "$OUTDIR"
+
+# Convert paths to absolute BEFORE cd to avoid relative path breakage
+OUTDIR="$(cd "$OUTDIR" && pwd)"
+if [[ -n "$FILELIST" ]]; then
+  if [[ ! -f "$FILELIST" ]]; then
+    echo "ERROR: Filelist not found: $FILELIST" >&2
+    exit 1
+  fi
+  FILELIST="$(cd "$(dirname "$FILELIST")" && pwd)/$(basename "$FILELIST")"
+fi
+for _i in "${!SV_FILES[@]}"; do
+  [[ "${SV_FILES[$_i]}" == /* ]] || SV_FILES[$_i]="$(pwd)/${SV_FILES[$_i]}"
+done
 
 DEFINE_FLAGS=""
 if [[ ${#DEFINES[@]} -gt 0 ]]; then

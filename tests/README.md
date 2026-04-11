@@ -8,7 +8,7 @@
 
 | 계층 | 디렉토리 | EDA 도구 필요 | 테스트 수 | 실행 시간 |
 |------|----------|:---:|:---:|:---:|
-| Unit | `tests/unit/` | X | 804 | ~20초 |
+| Unit | `tests/unit/` | X | 1085 | ~30초 |
 | Integration | `tests/integration/` | O (Docker/Yosys) | 45 | ~1분 |
 
 ## 빠른 시작
@@ -176,11 +176,9 @@ class TestNewHook:
 
 | ID | 위치 | 심각도 | 설명 |
 |----|------|--------|------|
-| BUG-001 | `check_conventions.sh:17` | 높음 | `((VIOLATIONS++))` + `set -e` → 첫 위반 시 무출력 종료. `VIOLATIONS=0`일 때 post-increment 결과가 0(거짓)이므로 `set -e`가 스크립트를 즉시 종료시킴 |
-| BUG-002 | `check_conventions.sh:52` | 중간 | `grep -n`이 라인번호 접두사(`N:`)를 붙여 `grep -vE '^module'` 필터가 `1:module ...` 라인을 제외하지 못함. 모든 모듈 선언이 false positive 발생 |
-| BUG-003 | `run_regression.sh:67` | 높음 | BUG-001과 동일. `((TOTAL++))` 에서 `set -e`로 인해 첫 시드 반복에서 스크립트 종료. 시드가 하나도 실행되지 않음 |
-
-**수정 방법:** `((VAR++))` → `VIOLATIONS=$((VIOLATIONS + 1))` 또는 `((VAR++)) || true`
+| BUG-001 | `check_conventions.sh:17` | 높음 | **FIXED.** `((VIOLATIONS++))` → `VIOLATIONS=$((VIOLATIONS + 1))` |
+| BUG-002 | `check_conventions.sh:52` | 중간 | **FIXED.** `grep -vE` 패턴에 `^[0-9]+:\s*` 접두사 추가로 라인번호 prefix 처리 |
+| BUG-003 | `run_regression.sh:67` | 높음 | **FIXED.** `((TOTAL++))` → `TOTAL=$((TOTAL + 1))` |
 
 ## 디렉토리 구조
 

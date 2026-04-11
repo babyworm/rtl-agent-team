@@ -202,9 +202,8 @@ $_apr_d"
   if [ "$_APR_COUNT" -gt "$_APR_MAX" ]; then
     _APR_REMOVE=$((_APR_COUNT - _APR_MAX))
     # Sort by mtime ascending — use ls -1td for reverse chronological, then tail
-    # shellcheck disable=SC2012  # ls -1td is safe here: audit dirs have predictable names
-    _APR_SORTED=$(ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n "$_APR_REMOVE")
-    for _apr_old in $_APR_SORTED; do
+    # Use while-read to handle paths with spaces safely
+    ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n "$_APR_REMOVE" | while IFS= read -r _apr_old; do
       [ -d "$_apr_old" ] && rm -rf "$_apr_old"
     done
   fi
@@ -213,9 +212,9 @@ $_apr_d"
   _APR_SIZE_KB=$(du -sk "$_APR_AUDIT_DIR" 2>/dev/null | cut -f1)
   _APR_MAX_KB=$((AUDIT_MAX_SIZE_MB * 1024))
   if [ -n "$_APR_SIZE_KB" ] && [ "$_APR_SIZE_KB" -gt "$_APR_MAX_KB" ] 2>/dev/null; then
-    # Remove oldest sessions until under limit
-    # shellcheck disable=SC2012  # ls -1td is safe here: audit dirs have predictable names
-    for _apr_old in $(ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n +2); do
+    # Remove oldest sessions first until under limit
+    # ls -1td = newest first; tail -n +2 = skip newest; awk reverses to oldest-first
+    ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n +2 | awk '{a[NR]=$0}END{for(i=NR;i>=1;i--)print a[i]}' | while IFS= read -r _apr_old; do
       [ -d "$_apr_old" ] || continue
       rm -rf "$_apr_old"
       _APR_SIZE_KB=$(du -sk "$_APR_AUDIT_DIR" 2>/dev/null | cut -f1)

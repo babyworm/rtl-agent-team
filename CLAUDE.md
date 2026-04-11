@@ -161,9 +161,10 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:TaskCreate: audit spawn completion
 │   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest
 │   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
-│   └── lib/                             #   8 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
+│   └── lib/                             #   10 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
 │                                        #     hook-output-util.sh, spawn-context-util.sh,
-│                                        #     team-gate-util.sh, audit-util.sh, artifact-map.sh)
+│                                        #     team-gate-util.sh, audit-util.sh, artifact-map.sh,
+│                                        #     compliance-gate-util.sh, rat-dir-util.sh)
 ├── plugin_docs/                         # Plugin development documents (tracked)
 │   ├── specs/                           #   Design specifications
 │   └── plans/                           #   Implementation plans
