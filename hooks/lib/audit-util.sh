@@ -203,6 +203,7 @@ $_apr_d"
     _APR_REMOVE=$((_APR_COUNT - _APR_MAX))
     # Sort by mtime ascending — use ls -1td for reverse chronological, then tail
     # Use while-read to handle paths with spaces safely
+    # shellcheck disable=SC2012  # Session dirs use controlled naming; POSIX find lacks mtime sort
     ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n "$_APR_REMOVE" | while IFS= read -r _apr_old; do
       [ -d "$_apr_old" ] && rm -rf "$_apr_old"
     done
@@ -214,6 +215,7 @@ $_apr_d"
   if [ -n "$_APR_SIZE_KB" ] && [ "$_APR_SIZE_KB" -gt "$_APR_MAX_KB" ] 2>/dev/null; then
     # Remove oldest sessions first until under limit
     # ls -1td = newest first; tail -n +2 = skip newest; awk reverses to oldest-first
+    # shellcheck disable=SC2012  # Session dirs use controlled naming; POSIX find lacks mtime sort
     ls -1td "$_APR_AUDIT_DIR"/*/ 2>/dev/null | tail -n +2 | awk '{a[NR]=$0}END{for(i=NR;i>=1;i--)print a[i]}' | while IFS= read -r _apr_old; do
       [ -d "$_apr_old" ] || continue
       rm -rf "$_apr_old"
