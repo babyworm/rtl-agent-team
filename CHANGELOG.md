@@ -7,6 +7,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-04-17
+
 ### Fixed
 - **Stage B ecosystem gap for commercial CDC tools**: `rat-init-project`'s
   `rat_config.json` template and `generate_config.sh` previously only knew
