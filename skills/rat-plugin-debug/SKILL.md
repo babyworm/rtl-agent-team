@@ -120,8 +120,8 @@ If stale files are found, suggest cleanup command:
 HOOK_DIR="${CLAUDE_PLUGIN_ROOT}/hooks"
 for h in stop-gate.sh rtl-verify-stop-gate.sh rtl-skill-completion-gate.sh \
          rtl-orchestrator-inject.sh rtl-edit-tracker.sh rtl-phase-state-bootstrap.sh \
-         rtl-skill-activation.sh rtl-p6-cascade-gate.sh rtl-spawn-context.sh rtl-team-progress.sh \
-         rtl-project-init-advisor.sh; do
+         rtl-skill-activation.sh rtl-p6-cascade-gate.sh rtl-spawn-context.sh \
+         rtl-team-progress.sh; do
   if [ -f "$HOOK_DIR/$h" ]; then
     echo "[OK] $h"
   else

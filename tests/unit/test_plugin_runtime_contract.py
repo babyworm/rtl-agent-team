@@ -89,7 +89,6 @@ class TestHookRuntimeContract:
         assert entries[0]["matcher"] == "*"
         commands = [h["command"] for h in entries[0]["hooks"]]
         assert commands == [
-            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-project-init-advisor.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-init.sh"',
         ]

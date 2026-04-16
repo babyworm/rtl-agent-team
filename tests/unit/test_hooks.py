@@ -54,59 +54,6 @@ class TestRtlOrchestratorInject:
         assert "/rtl-agent-team:rtl-p6-design-review" in output
 
 
-class TestRtlProjectInitAdvisor:
-    """Tests for hooks/rtl-project-init-advisor.sh."""
-
-    HOOK = HOOKS_DIR / "rtl-project-init-advisor.sh"
-
-    def test_git_repo_no_rtl_no_docs_advises_setup(self, tmp_path):
-        """Git repo without rtl/ or docs/ → advise rat-init-project."""
-        (tmp_path / ".git").mkdir()
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert "additionalContext" in result.get("hookSpecificOutput", {})
-        assert "rat-init-project" in result["hookSpecificOutput"]["additionalContext"]
-
-    def test_git_repo_with_rtl_dir_silent(self, tmp_path):
-        """Git repo with rtl/ → no output (happy path)."""
-        (tmp_path / ".git").mkdir()
-        (tmp_path / "rtl").mkdir()
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert result.get("raw_stdout", "") == ""
-
-    def test_git_repo_with_docs_dir_silent(self, tmp_path):
-        """Git repo with docs/ → no output (happy path)."""
-        (tmp_path / ".git").mkdir()
-        (tmp_path / "docs").mkdir()
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert result.get("raw_stdout", "") == ""
-
-    def test_git_repo_with_both_dirs_silent(self, tmp_path):
-        """Git repo with both rtl/ and docs/ → no output."""
-        (tmp_path / ".git").mkdir()
-        (tmp_path / "rtl").mkdir()
-        (tmp_path / "docs").mkdir()
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert result.get("raw_stdout", "") == ""
-
-    def test_no_git_repo_silent(self, tmp_path):
-        """Not a git repo (no .git) → no output regardless of missing dirs."""
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert result.get("raw_stdout", "") == ""
-
-    def test_git_file_worktree_advises_setup(self, tmp_path):
-        """Git worktree (.git is a file, not dir) without project dirs → advise setup."""
-        (tmp_path / ".git").write_text("gitdir: /somewhere/.git/worktrees/branch")
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert "rat-init-project" in result.get("hookSpecificOutput", {}).get("additionalContext", "")
-
-    def test_git_file_worktree_with_rtl_silent(self, tmp_path):
-        """Git worktree with rtl/ dir → no output."""
-        (tmp_path / ".git").write_text("gitdir: /somewhere/.git/worktrees/branch")
-        (tmp_path / "rtl").mkdir()
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        assert result.get("raw_stdout", "") == ""
-
-
 class TestRtlEditTracker:
     """Tests for hooks/rtl-edit-tracker.sh."""
 

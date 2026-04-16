@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 94 specialized agents, 94 skills, 15 hooks,
+When installed as a plugin, it provides 94 specialized agents, 94 skills, 14 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -146,7 +146,6 @@ rtl-agent-team/                          # Plugin root
 │   └── {skill-name}/SKILL.md            #   Phase-specific workflow
 ├── hooks/                               # Event-driven enforcement
 │   ├── hooks.json                       #   Hook registration config
-│   ├── rtl-project-init-advisor.sh      #   SessionStart: setup advisor
 │   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
 │   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write/Bash: RTL modification tracking + P6 stale detection
 │   ├── rtl-phase-state-bootstrap.sh     #   PreToolUse:Skill: phase state bootstrap
@@ -281,11 +280,10 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 ## Hook-Based Enforcement
 
-All 15 hook scripts and their enforcement responsibilities are listed below.
+All 14 hook scripts and their enforcement responsibilities are listed below.
 
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
-| `rtl-project-init-advisor.sh` | SessionStart | Advise `rat-init-project` if project not initialized |
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + pipeline rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |

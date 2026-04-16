@@ -502,7 +502,6 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 | Hook | Event | Purpose |
 |------|-------|---------|
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and pipeline rules |
-| `rtl-project-init-advisor.sh` | SessionStart | Advise rat-init-project if project not initialized |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track RTL file modifications |
 | `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop + same-skill re-invocation counter reset |
 | `stop-gate.sh` | Stop | Autopilot escalation ladder enforcement + dynamic prompt injection |

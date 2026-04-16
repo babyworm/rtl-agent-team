@@ -1055,7 +1055,7 @@ class TestHooksJsonMatrix:
     """hooks.json must match the documented hook event matrix and Stop gate order."""
 
     EXPECTED_EVENTS = {
-        "SessionStart": ["rtl-project-init-advisor.sh", "rtl-orchestrator-inject.sh", "rtl-audit-init.sh"],
+        "SessionStart": ["rtl-orchestrator-inject.sh", "rtl-audit-init.sh"],
         "PreToolUse": {
             "Skill": ["rtl-phase-state-bootstrap.sh", "rtl-skill-activation.sh"],
             "TaskCreate": ["rtl-spawn-context.sh"],
@@ -1068,7 +1068,8 @@ class TestHooksJsonMatrix:
         "SubagentStart": ["rtl-audit-subagent.sh"],
         "SubagentStop": ["rtl-audit-subagent.sh"],
         "Stop": ["rtl-verify-stop-gate.sh", "rtl-p6-cascade-gate.sh",
-                  "rtl-skill-completion-gate.sh", "stop-gate.sh"],
+                  "rtl-skill-completion-gate.sh", "rtl-coverage-exclusion-gate.sh",
+                  "stop-gate.sh"],
     }
 
     def test_stop_gate_order(self):
