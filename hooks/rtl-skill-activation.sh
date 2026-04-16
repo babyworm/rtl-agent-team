@@ -12,8 +12,6 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-RAT_DIR=$(rat_project_dir "$CWD")
-[ -z "$RAT_DIR" ] && { emit_continue; }
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # Extract skill name from tool input
@@ -28,6 +26,22 @@ case "$SKILL_NAME" in
     emit_continue ""
     ;;
 esac
+
+# Init advisory: if project not initialized (.rat / .rtl-agent-team missing),
+# point users at rat-init-project. Exempt skills that must run pre-init:
+# self-reference (rat-init-project, rat-setup), passive policies (*-policy),
+# file-extension conventions, and routing-only references.
+if ! rat_is_project "$CWD"; then
+  case "$SHORT_NAME" in
+    rat-init-project|rat-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
+      emit_continue ""
+      ;;
+    *)
+      emit_continue "[SETUP REQUIRED] RTL project not initialized (.rat/ missing). Run /rtl-agent-team:rat-init-project first to install rules, guides, and directory layout."
+      ;;
+  esac
+fi
+RAT_DIR=$(rat_project_dir "$CWD")
 
 SETUP_EXTRA_CONTEXT=""
 if [ "$SHORT_NAME" = "rat-init-project" ]; then
