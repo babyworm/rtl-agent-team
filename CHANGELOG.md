@@ -8,6 +8,13 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 ## [Unreleased]
 
 ### Changed
+- **systemverilog-lsp marketplace pin bumped to `v1.1.3`** (sha
+  `b1a6c83627d05b36418e5679be38f4a0a6d26e12`). The standalone repo's
+  `v1.1.3` release ships proper docs (`README.md`, `CHANGELOG.md`,
+  `.gitignore`) and corrects the `plugin.json` `repository` field
+  (was still pointing at this monorepo as a leftover from the split
+  point). See <https://github.com/babyworm/systemverilog-lsp/blob/main/CHANGELOG.md#113---2026-04-17>
+  for the standalone repo's release notes.
 - **systemverilog-lsp split into standalone repository.** The
   `systemverilog-lsp` plugin (formerly bundled at
   `plugins/systemverilog-lsp/`) was extracted to its own repo at
