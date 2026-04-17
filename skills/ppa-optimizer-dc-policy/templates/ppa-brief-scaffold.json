@@ -1,4 +1,5 @@
 {
+  "clock_hz": 800000000,
   "ppa_targets": {
     "power_mw": 100.0,
     "timing_slack_ns": 0.10,
