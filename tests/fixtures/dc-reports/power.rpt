@@ -1,0 +1,43 @@
+****************************************
+Report : power
+        -analysis_effort high
+Design : vc_transform_8x8
+Version: U-2023.12
+Date   : Wed Apr 17 12:15:12 2026
+****************************************
+
+Library(s) Used:
+
+    tcbn07bwp7t30p140ffg0p88v0c (File: /libs/tcbn07.lib)
+
+Operating Conditions: ffg0p88v0c   Library: tcbn07bwp7t30p140ffg0p88v0c
+Wire Load Model Mode: top
+
+Global Operating Voltage = 0.88
+Power-specific unit information :
+    Voltage Units = 1V
+    Capacitance Units = 1.000000pf
+    Time Units = 1ns
+    Dynamic Power Units = 1mW    (derived from V,C,T units)
+    Leakage Power Units = 1nW
+
+  Cell Internal Power  =  14.92 mW   (12%)
+  Net Switching Power  =  83.29 mW   (67%)
+                         ---------
+Total Dynamic Power    =  98.21 mW   (79%)
+
+Cell Leakage Power     =  26.16 mW
+
+                 Internal     Switching     Leakage      Total
+Power Group      Power        Power         Power        Power    (  %)  Attrs
+---------------------------------------------------------------------------
+clock_network      14.1          28.0          0.0        42.10   (33.87%)
+register            2.2           4.7          8.0        14.92   (12.00%)
+combinational       1.1           1.2          0.5         2.75   ( 2.21%)
+black_box           0.0           0.0          0.0         0.00   ( 0.00%)
+---------------------------------------------------------------------------
+Total           17.4 mW       38.44 mW      26.16 mW    124.37 mW
+
+Total Power = 124.37 mW
+
+1

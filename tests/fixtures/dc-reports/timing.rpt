@@ -1,0 +1,52 @@
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -max_paths 10
+        -sort_by group
+Design : vc_transform_8x8
+Version: U-2023.12
+Date   : Wed Apr 17 12:14:45 2026
+****************************************
+
+Operating Conditions: ffg0p88v0c   Library: tcbn07bwp7t30p140ffg0p88v0c
+Wire Load Model Mode: top
+
+  Startpoint: u_core/u_s1/pix_reg[7] (rising edge-triggered flip-flop clocked by sys_clk)
+  Endpoint: u_core/u_s2/sum_reg[15] (rising edge-triggered flip-flop clocked by sys_clk)
+  Path Group: sys_clk
+  Path Type: max
+
+  Point                                    Incr       Path
+  -----------------------------------------------------------
+  clock sys_clk (rise edge)                0.00       0.00
+  clock network delay (ideal)              0.00       0.00
+  u_core/u_s1/pix_reg[7]/CP (DFCNQD4BWP)   0.00       0.00 r
+  ...
+  u_core/u_s2/sum_reg[15]/D (DFCNQD4BWP)   0.00       1.201
+  data arrival time                                    1.201
+
+  clock sys_clk (rise edge)                1.250      1.250
+  clock network delay (ideal)              0.000      1.250
+  u_core/u_s2/sum_reg[15]/CP (DFCNQD4BWP)              1.250 r
+  library setup time                      -0.034      1.216
+  data required time                                   1.216
+  -----------------------------------------------------------
+  data required time                                   1.216
+  data arrival time                                   -1.201
+  -----------------------------------------------------------
+  slack (VIOLATED)                                    -0.083
+
+
+  Startpoint: u_core/u_s2/mul_a_reg[11] (rising edge-triggered flip-flop clocked by sys_clk)
+  Endpoint: u_core/u_s3/acc_reg[27] (rising edge-triggered flip-flop clocked by sys_clk)
+  Path Group: sys_clk
+  Path Type: max
+
+  data arrival time                                    1.150
+  data required time                                   1.216
+  slack (MET)                                          0.066
+
+Clock sys_clk (rise edge) at period 1.25 ns
+
+1

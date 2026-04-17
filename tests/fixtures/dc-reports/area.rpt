@@ -1,0 +1,37 @@
+****************************************
+Report : area
+Design : vc_transform_8x8
+Version: U-2023.12
+Date   : Wed Apr 17 12:14:22 2026
+****************************************
+
+Library(s) Used:
+
+    tcbn07bwp7t30p140ffg0p88v0c (File: /libs/tcbn07.lib)
+
+Number of ports:                         412
+Number of nets:                         4821
+Number of cells:                        3102
+Number of combinational cells:          1814
+Number of sequential cells:             1245
+Number of macros/black boxes:              0
+Number of buf/inv:                       412
+Number of references:                     42
+
+Combinational area:              28150.200012
+Buf/Inv area:                     2341.700001
+Noncombinational area:           17080.300022
+Macro/Black Box area:                0.000000
+Net Interconnect area:             undefined  (Wire load has zero net area)
+
+Total cell area:                 45230.500034
+Total area:                        undefined
+
+Hierarchical area distribution:
+  top                                   45230.5  100.00%
+    top/u_core                          12345.6   27.30%
+    top/u_core/u_s1                      4821.2   10.66%
+    top/u_core/u_s2                      4221.7    9.33%
+    top/u_io_ctrl                        3200.4    7.07%
+    top/u_ram_ctrl                       2100.0    4.64%
+1
