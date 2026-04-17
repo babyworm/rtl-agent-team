@@ -201,6 +201,7 @@ def parse_power(path):
         r"\s+[\d.]+"                            # leak power
         r"\s+([\d.]+)"                          # total power (captured)
         r"\s+([\d.]+)"                          # pct (captured)
+        r"(?:\s+[A-Za-z][\w,]*)?"              # optional Attrs column (letter+word chars+commas)
         r"\s*$",
         re.MULTILINE,
     )

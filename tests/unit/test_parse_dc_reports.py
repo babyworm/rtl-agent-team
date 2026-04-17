@@ -83,6 +83,9 @@ class TestParsePower:
         u_core_entry = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
         assert u_core_entry["pct"] == pytest.approx(57.27, rel=0.01)
         assert u_core_entry["total_mw"] == pytest.approx(71.22, rel=0.01)
+        # The u_core row has an 'H' Attrs annotation — it must still be parsed
+        u_core = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
+        assert u_core["total_mw"] == pytest.approx(71.22, rel=0.01)
 
 
 class TestParseQor:

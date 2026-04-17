@@ -45,7 +45,7 @@ Hierarchical Power Report:
 Hierarchy                            Switch Power    Int Power    Leak Power   Total Power    %  Attrs
 --------------------------------------------------------------------------------------------------------
 top                                      83.29         14.92        26.16         124.37  100.00
-  top/u_core                             47.80          8.50        14.92          71.22   57.27
+  top/u_core                             47.80          8.50        14.92          71.22   57.27  H
   top/u_io_ctrl                           8.15          1.85         3.20          13.20   10.61
   top/u_ram_ctrl                          6.20          1.40         2.40           9.99    8.04
   top/u_core/u_s1                        20.10          3.60         6.40          30.10   24.20
