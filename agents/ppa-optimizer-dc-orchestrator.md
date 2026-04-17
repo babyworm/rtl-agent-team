@@ -166,8 +166,26 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
         .rat/state/ppa-loop-state.json \
         requirements.json
     ```
-    Output ∈ {CONTINUE, CONVERGED_STREAK, CONVERGED_TARGETS, EARLY_PLATEAU, MAX_CYCLES}.
+    Output ∈ {CONTINUE, CONVERGED_STREAK, CONVERGED_TARGETS, EARLY_PLATEAU, MAX_CYCLES, TIMING_REGRESSION}.
     Write the verdict to `docs/ppa-opt/iter-{N}/verdict.txt`.
+
+    ### Step 11b: Rule 5 satisfaction marker (when spawned directly via Task())
+
+    If the orchestrator was spawned directly via `Task()` (bypassing the
+    `rtl-ppa-optimize-dc` action skill) AND the verdict is `CONVERGED_STREAK`
+    or `CONVERGED_TARGETS`, write the verify-done marker here so Rule 5 (no
+    session stop after RTL modification without functional verification) is
+    satisfied:
+    ```bash
+    # Detect direct-Task() spawn: action skill sets CLAUDE_SKILL_NAME;
+    # when absent, the orchestrator is responsible for the marker.
+    if [ -z "${CLAUDE_SKILL_NAME:-}" ]; then
+        mkdir -p .rat/state
+        printf 'orchestrator-direct-converge iter %s\n' "$N" > .rat/state/rtl-verify-done
+    fi
+    ```
+    When invoked through the action skill, the skill writes this marker
+    instead; do not duplicate.
 
     ### Step 12: Append to convergence.csv
     ```bash
