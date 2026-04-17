@@ -32,7 +32,9 @@ iteration until convergence, use `rat-ultraloop-ppa` instead.
   warns and proceeds if absent)
 - `dc_shell` OR `genus` in PATH (HARD — fail on absence)
 - `requirements.json["ppa_targets"]` populated (HARD — writeback scaffold and halt)
-- Git working tree clean under `allowed_edit_scope`
+- Git working tree clean under `allowed_edit_scope` (no uncommitted changes AND no
+  untracked files in `rtl/${PPA_TOP}` — untracked files would be silently deleted by
+  rollback `git clean -fd`)
 - `syn/scripts/run_syn.sh` deployed by `rat-init-project`
 
 ## Invocation
@@ -56,8 +58,14 @@ if not exists(".rat/state/ppa-loop-state.json"):
 # Step 2: Check preconditions (fail fast)
 assert shutil_which("dc_shell") or shutil_which("genus"), \
     "Commercial synthesis (dc_shell or genus) required"
-assert git_clean_under(allowed_edit_scope), \
-    "Working tree must be clean; commit or stash first"
+
+# Hard precondition: no uncommitted changes AND no untracked files in allowed_edit_scope
+if [ -n "$(git status --porcelain -- rtl/${PPA_TOP})" ]; then
+    echo "ERROR: working tree must be clean under rtl/${PPA_TOP} (commit or stash first)" >&2
+    exit 1
+fi
+# Note: Untracked files within `rtl/${PPA_TOP}` MUST be committed or removed before
+# starting — otherwise rollback `git clean -fd` would delete them silently.
 
 # Step 3: Advance cycle counter
 state.cycle += 1
