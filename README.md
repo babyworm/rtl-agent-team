@@ -3,12 +3,12 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 94 specialized AI agents + 94 skills automate the 6-Phase pipeline:
+> 97 specialized AI agents + 97 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 94 specialized AI agents + 94 skills + 11 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 97 specialized AI agents + 97 skills + 11 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 94-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.3 |
+| **rtl-agent-team** | 97-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.10.0 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.1 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -201,7 +201,7 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 /rtl-agent-team:domain-consult           # Domain expert consultation
 ```
 
-### Skill categories (94 skills)
+### Skill categories (97 skills)
 
 | Category | Count | Description |
 |----------|-------|-------------|
@@ -212,7 +212,7 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 | **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
 | **Total** | **94** | |
 
-Assets (Templates, Scripts, References, Examples) are distributed across the 94 skills — see each skill directory for its bundled assets.
+Assets (Templates, Scripts, References, Examples) are distributed across the 97 skills — see each skill directory for its bundled assets.
 
 ## Project Artifact Structure
 
@@ -243,10 +243,10 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 94 agents (design/verification/review/EDA/domain/orchestrators)
+├── agents/                     # 97 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 94 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 97 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -286,7 +286,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## Agent Team
 
-### Agent Composition (94 agents, all Opus)
+### Agent Composition (97 agents, all Opus)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|

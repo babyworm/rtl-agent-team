@@ -3,7 +3,7 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 94 specialized AI agents + 94 skills automate the 6-Phase pipeline:
+> 97 specialized AI agents + 97 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
@@ -18,7 +18,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 94-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.9.3 |
+| **rtl-agent-team** | 97-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.10.0 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.1 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
