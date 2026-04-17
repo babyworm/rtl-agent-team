@@ -110,10 +110,12 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ```
     Copy `syn/ppa-report.json` → `docs/ppa-opt/iter-{N}/ppa-report.json`.
 
-    ### Step 3: Snapshot pre-patch RTL
-    ```bash
-    git stash create  # reference for potential rollback
-    ```
+    ### Step 3: (Reserved — rollback uses `git checkout -- "rtl/${PPA_TOP}"` directly)
+
+    No explicit snapshot is taken: rollback steps 7/8/10 restore the pre-patch state
+    via `git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"` (the
+    clean-tree precondition enforced at skill entry guarantees HEAD is the pre-patch
+    state).
 
     ### Step 4: Generate RTL patch
     ```
@@ -189,25 +191,19 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     Output ∈ {CONTINUE, CONVERGED_STREAK, CONVERGED_TARGETS, EARLY_PLATEAU, MAX_CYCLES, TIMING_REGRESSION}.
     Write the verdict to `docs/ppa-opt/iter-{N}/verdict.txt`.
 
-    ### Step 11b: Rule 5 satisfaction marker (when spawned directly via Task())
+    ### Step 11b: Rule 5 satisfaction marker (idempotent, always writes on convergence)
 
-    If the orchestrator was spawned directly via `Task()` (bypassing the
-    `rtl-ppa-optimize-dc` action skill) AND the verdict is `CONVERGED_STREAK`
-    or `CONVERGED_TARGETS`, write the verify-done marker here so Rule 5 (no
-    session stop after RTL modification without functional verification) is
-    satisfied:
+    When the verdict is `CONVERGED_STREAK` or `CONVERGED_TARGETS`, write the Rule 5
+    verify-done marker. The write is idempotent — safe to run from both the skill
+    and the orchestrator without coordination.
     ```bash
-    # Detect direct-Task() spawn by absence of skill sentinel
-    if [ ! -f ".rat/state/ppa-skill-active" ]; then
-        mkdir -p .rat/state
-        printf 'orchestrator-direct-converge iter %s\n' "$N" > .rat/state/rtl-verify-done
-    fi
+    case "$VERDICT" in
+        CONVERGED_STREAK|CONVERGED_TARGETS)
+            mkdir -p .rat/state
+            printf 'ppa-opt-converge iter %s verdict %s\n' "$N" "$VERDICT" > .rat/state/rtl-verify-done
+            ;;
+    esac
     ```
-    Detects direct `Task()` spawn by the absence of `.rat/state/ppa-skill-active`
-    sentinel. The action skill creates this file immediately before dispatching
-    the orchestrator and removes it after the orchestrator returns. When invoked
-    through the action skill, the skill writes the verify-done marker instead;
-    do not duplicate.
 
     ### Step 12: Append to convergence.csv
     ```bash
