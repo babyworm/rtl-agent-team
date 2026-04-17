@@ -120,9 +120,14 @@ synthesis / parsing / patching / equivalence / convergence.
 
 The skill reports the verdict returned by the orchestrator. If verdict is
 `CONVERGED_STREAK` or `CONVERGED_TARGETS`:
-- Write `.rat/state/rtl-verify-done` (Rule 5 satisfaction marker)
-- Write `.rat/state/ppa-opt-done` (P6 cascade trigger)
-- Recommend `rtl-p5-verify` for full regression confirmation
+- Write `.rat/state/rtl-verify-done` (Rule 5 satisfaction marker — orchestrator
+  also writes this idempotently; both writes are safe)
+- Recommend running `rtl-p5-verify` for full regression confirmation
+
+NOTE: The one-shot skill does NOT emit `ppa-opt-done`. To declare true
+convergence (and trigger Phase 6 cascade re-review), use `rat-ultraloop-ppa`
+which runs the mandatory final `/rtl-agent-team:rtl-p5-verify --mode=final
+--source=ppa-opt` regression before writing `ppa-opt-done`.
 
 Otherwise, the skill returns the verdict and exits. For `CONTINUE`, the user
 invokes again or switches to `rat-ultraloop-ppa`.
