@@ -73,3 +73,15 @@ class TestCheckScope:
             ["docs/notes.md"], allowed, frozen
         )
         assert not ok
+
+    def test_double_star_zero_depth(self):
+        allowed = ["rtl/core/**/*.sv"]
+        frozen = []
+        ok, _ = vps.check_scope(["rtl/core/top.sv"], allowed, frozen)
+        assert ok, "** should match zero-depth (flat file)"
+
+    def test_double_star_deep_depth(self):
+        allowed = ["rtl/core/**/*.sv"]
+        frozen = []
+        ok, _ = vps.check_scope(["rtl/core/sub/deep/foo.sv"], allowed, frozen)
+        assert ok, "** should match multi-level depth"

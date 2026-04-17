@@ -22,16 +22,38 @@ def extract_changed_files(diff_text):
 
 
 def _match(path, glob_list):
+    """Match path against a glob list with proper ** (recursive) support."""
+    import re as _re
     for g in glob_list:
-        if fnmatch.fnmatchcase(path, g):
-            return True
-        # support ** prefix style by substituting to * walks
         if "**" in g:
-            simple = g.replace("**", "*")
-            if fnmatch.fnmatchcase(path, simple):
+            # Build a regex from the glob where ** matches zero or more path segments.
+            # Strategy: split on "/" and translate each segment independently.
+            parts = g.split("/")
+            regex_segments = []
+            for part in parts:
+                if part == "**":
+                    # ** matches zero or more path components (including none)
+                    regex_segments.append("__DOUBLESTAR__")
+                else:
+                    # Translate fnmatch pattern for a single segment (no slashes)
+                    translated = fnmatch.translate(part)
+                    # fnmatch.translate wraps in (?s:...)\Z — strip that wrapper
+                    translated = translated.replace(r"\Z", "").replace(r"(?s:", "").rstrip(")")
+                    regex_segments.append(translated)
+            # Join segments with "/" and collapse __DOUBLESTAR__ properly
+            regex = "/".join(regex_segments)
+            # __DOUBLESTAR__ between slashes: matches zero or more path components
+            regex = regex.replace("/__DOUBLESTAR__/", "(?:/.+)?/")
+            # __DOUBLESTAR__ at start
+            regex = regex.replace("__DOUBLESTAR__/", "(?:.+/)?")
+            # __DOUBLESTAR__ at end
+            regex = regex.replace("/__DOUBLESTAR__", "(?:/.+)?")
+            # __DOUBLESTAR__ alone (whole pattern)
+            regex = regex.replace("__DOUBLESTAR__", ".*")
+            if _re.match("^" + regex + "$", path):
                 return True
-            no_dstar = g.replace("**/", "")
-            if fnmatch.fnmatchcase(path, no_dstar):
+        else:
+            if fnmatch.fnmatchcase(path, g):
                 return True
     return False
 
