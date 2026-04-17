@@ -51,6 +51,24 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
             exit 1
             ;;
     esac
+
+    # Validate PPA_LIBERTY and PPA_SDC paths — reject shell metachars, must be existing regular files
+    for _var in PPA_LIBERTY PPA_SDC; do
+        _val=$(eval "printf '%s' \"\${$_var:-}\"")
+        if [ -z "${_val}" ]; then
+            continue   # unset is OK; orchestrator checks specifics later
+        fi
+        case "${_val}" in
+            *[\`\$\;\&\|\<\>\"\'\ ]*)
+                echo "ERROR: ${_var}='${_val}' contains unsafe shell characters" >&2
+                exit 1
+                ;;
+        esac
+        if [ ! -f "${_val}" ]; then
+            echo "ERROR: ${_var}='${_val}' is not a regular file" >&2
+            exit 1
+        fi
+    done
     ```
   </Step_0_Context_Bootstrap>
 
@@ -83,7 +101,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     current_design \$top
     link
 
-    read_sdc ${PPA_SDC}
+    read_sdc "${PPA_SDC}"
 
     source skills/ppa-optimizer-dc-policy/templates/dc-compile-ppa.tcl
 
@@ -96,7 +114,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
         --tool ${PPA_TOOL:-dc_shell} \
         --top ${PPA_TOP} \
         -f rtl/filelist_${PPA_TOP}.f \
-        --liberty ${PPA_LIBERTY} \
+        --liberty "${PPA_LIBERTY}" \
         --script syn/scr/dc-ppa-wrapper.tcl
     ```
     Expected: `syn/rpt/{area,timing,power,qor,clock_gating,vt}.rpt` written.

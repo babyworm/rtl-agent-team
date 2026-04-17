@@ -74,6 +74,24 @@ case "${PPA_TOP}" in
         ;;
 esac
 
+# Validate PPA_LIBERTY and PPA_SDC paths — reject shell metachars, must be existing regular files
+for _var in PPA_LIBERTY PPA_SDC; do
+    _val=$(eval "printf '%s' \"\${$_var:-}\"")
+    if [ -z "${_val}" ]; then
+        continue   # unset is OK; orchestrator checks specifics later
+    fi
+    case "${_val}" in
+        *[\`\$\;\&\|\<\>\"\'\ ]*)
+            echo "ERROR: ${_var}='${_val}' contains unsafe shell characters" >&2
+            exit 1
+            ;;
+    esac
+    if [ ! -f "${_val}" ]; then
+        echo "ERROR: ${_var}='${_val}' is not a regular file" >&2
+        exit 1
+    fi
+done
+
 assert shutil_which("dc_shell") or shutil_which("genus"), \
     "Commercial synthesis (dc_shell or genus) required"
 
