@@ -37,14 +37,18 @@
     },
     {
       "name": "systemverilog-lsp",
-      "source": "./plugins/systemverilog-lsp",
+      "source": {
+        "source": "github",
+        "repo": "babyworm/systemverilog-lsp",
+        "ref": "v1.1.2",
+        "sha": "515d95550e9b0ff6f4056b93bf0e1c65af22aea3"
+      },
       "description": "SystemVerilog/Verilog language server for Claude Code, powered by slang-server (hudson-trading). Provides diagnostics, hover, completion, go-to-definition, references, rename, and inlay hints for .sv/.svh/.v/.vh files.",
-      "version": "1.1.2",
       "author": {
         "name": "RTL Agent Team contributors"
       },
       "homepage": "https://github.com/hudson-trading/slang-server",
-      "repository": "https://github.com/babyworm/rtl-agent-team",
+      "repository": "https://github.com/babyworm/systemverilog-lsp",
       "license": "MIT",
       "category": "development",
       "tags": [
@@ -54,20 +58,7 @@
         "hdl",
         "rtl",
         "slang"
-      ],
-      "strict": false,
-      "lspServers": {
-        "systemverilog": {
-          "command": "slang-server",
-          "args": [],
-          "extensionToLanguage": {
-            ".sv": "systemverilog",
-            ".svh": "systemverilog",
-            ".v": "verilog",
-            ".vh": "verilog"
-          }
-        }
-      }
+      ]
     }
   ]
 }
