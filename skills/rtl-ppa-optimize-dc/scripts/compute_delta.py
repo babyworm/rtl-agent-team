@@ -40,11 +40,17 @@ def normalize_weights(w):
     return {k: v / s for k, v in w.items()}
 
 
-def weighted_delta(curr, prev, targets, weights):
-    target_period = float(targets.get("timing_slack_ns", 0.10)) + 0.01
+def weighted_delta(curr, prev, targets, weights, clock_hz=None):
+    # Compute target_period_ns from clock_hz; fallback to a conservative default.
+    if clock_hz and clock_hz > 0:
+        target_period_ns = 1e9 / float(clock_hz)
+    else:
+        # Fallback when clock_hz is missing — use a conservative 1.0 ns period
+        # (800 MHz default design target) so pre-clock_hz states still compute.
+        target_period_ns = 1.0
     target_power = float(targets.get("power_mw", 100.0))
     target_area = float(targets.get("area_um2", 50000.0))
-    d_timing = (curr["timing"]["wns_ns"] - prev["timing"]["wns_ns"]) / target_period
+    d_timing = (curr["timing"]["wns_ns"] - prev["timing"]["wns_ns"]) / target_period_ns
     d_power = (prev["power"]["total_mw"] - curr["power"]["total_mw"]) / target_power
     d_area = (prev["area"]["total_um2"] - curr["area"]["total_um2"]) / target_area
     w = normalize_weights(weights)
@@ -60,7 +66,7 @@ def targets_met(report, targets):
     }
 
 
-def evaluate_convergence(state, curr_report, targets, weights):
+def evaluate_convergence(state, curr_report, targets, weights, clock_hz=None):
     conv = state.setdefault("convergence", {})
     history = conv.setdefault("history", [])
     iter_n = int(state.get("cycle", len(history) + 1))
@@ -80,7 +86,7 @@ def evaluate_convergence(state, curr_report, targets, weights):
             "area": {"total_um2": prev_entry["area_um2"]},
         }
         entry["weighted_delta_pct"] = weighted_delta(
-            curr_report, prev_report, targets, weights
+            curr_report, prev_report, targets, weights, clock_hz=clock_hz
         )
     history.append(entry)
 
@@ -136,6 +142,7 @@ def main(argv):
     req = load_json(argv[3])
     targets = req.get("ppa_targets", {})
     weights = targets.get("weights", {"timing": 0.7, "power": 0.2, "area": 0.1})
+    clock_hz = req.get("clock_hz")
 
     # Use a dedicated lock file that never moves so the lock remains valid
     # across os.replace (which swaps the state file's inode).
@@ -144,7 +151,7 @@ def main(argv):
         fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
         try:
             state = load_json(state_path)     # now safe inside critical section
-            verdict = evaluate_convergence(state, curr, targets, weights)
+            verdict = evaluate_convergence(state, curr, targets, weights, clock_hz=clock_hz)
             if verdict not in VALID_VERDICTS:
                 print(f"Internal error: invalid verdict '{verdict}'", file=sys.stderr)
                 return 2

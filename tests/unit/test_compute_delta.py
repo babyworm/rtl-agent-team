@@ -33,11 +33,12 @@ def _state(cycle, max_cycles=4, history=None, streak_req=3, delta_pct=2.0, early
     }
 
 
-def _targets(period=1.25, power=100.0, area=50000.0):
+def _targets(clock_hz=800_000_000, power=100.0, area=50000.0):
     return {
         "timing_slack_ns": 0.10,
         "power_mw": power,
         "area_um2": area,
+        "clock_hz": clock_hz,
         "weights": {"timing": 0.7, "power": 0.2, "area": 0.1},
     }
 
@@ -62,21 +63,29 @@ class TestWeightedDelta:
     def test_improvement_is_positive(self):
         prev = _report(-0.12, 135.0, 48000.0)
         curr = _report(-0.08, 127.0, 46000.0)
-        delta = cd.weighted_delta(curr, prev, _targets(), _targets()["weights"])
+        delta = cd.weighted_delta(curr, prev, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert delta > 0
 
     def test_regression_is_negative(self):
         prev = _report(-0.08, 127.0, 46000.0)
         curr = _report(-0.12, 135.0, 48000.0)
-        delta = cd.weighted_delta(curr, prev, _targets(), _targets()["weights"])
+        delta = cd.weighted_delta(curr, prev, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert delta < 0
+
+    def test_weighted_delta_uses_clock_period(self):
+        prev = _report(-0.10, 100.0, 50000.0)
+        curr = _report(0.00, 100.0, 50000.0)  # 100 ps of timing improvement
+        # At 800 MHz, period=1.25ns → d_timing = 0.10 / 1.25 = 0.08
+        # weighted (timing weight 0.7): 100.0 * 0.7 * 0.08 = 5.6%
+        delta = cd.weighted_delta(curr, prev, _targets(), {"timing": 0.7, "power": 0.2, "area": 0.1}, clock_hz=800_000_000)
+        assert 5.0 < delta < 6.5  # not 100% or 70% as old buggy calc would give
 
 
 class TestEvaluateConvergence:
     def test_first_iter_no_delta(self):
         state = _state(cycle=1)
         curr = _report(-0.12, 135.0, 48000.0)
-        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert verdict == "CONTINUE"
         assert state["convergence"]["history"][-1]["weighted_delta_pct"] is None
 
@@ -88,13 +97,13 @@ class TestEvaluateConvergence:
         ]
         state = _state(cycle=4, history=history)
         curr = _report(-0.094, 129.5, 47100.0)
-        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert verdict == "CONVERGED_STREAK"
 
     def test_all_targets_met(self):
         state = _state(cycle=2)
         curr = _report(0.15, 80.0, 44000.0)  # wns=0.15 >= timing_slack_ns=0.10
-        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert verdict == "CONVERGED_TARGETS"
 
     def test_converged_targets_respects_timing_slack(self):
@@ -103,7 +112,7 @@ class TestEvaluateConvergence:
         curr = _report(0.05, 80.0, 44000.0)  # slack 0.05 < target 0.10
         t = _targets()
         t["timing_slack_ns"] = 0.10
-        verdict = cd.evaluate_convergence(state, curr, t, t["weights"])
+        verdict = cd.evaluate_convergence(state, curr, t, t["weights"], clock_hz=800_000_000)
         assert verdict != "CONVERGED_TARGETS"
 
     def test_converged_targets_at_or_above_slack(self):
@@ -112,7 +121,7 @@ class TestEvaluateConvergence:
         curr = _report(0.15, 80.0, 44000.0)
         t = _targets()
         t["timing_slack_ns"] = 0.10
-        verdict = cd.evaluate_convergence(state, curr, t, t["weights"])
+        verdict = cd.evaluate_convergence(state, curr, t, t["weights"], clock_hz=800_000_000)
         assert verdict == "CONVERGED_TARGETS"
 
     def test_early_plateau(self):
@@ -121,7 +130,7 @@ class TestEvaluateConvergence:
         ]
         state = _state(cycle=2, history=history)
         curr = _report(-0.1195, 134.8, 47990.0)
-        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert verdict == "EARLY_PLATEAU"
 
     def test_max_cycles(self):
@@ -131,7 +140,7 @@ class TestEvaluateConvergence:
         ]
         state = _state(cycle=4, max_cycles=4, history=history)
         curr = _report(-0.08, 125.0, 46500.0)
-        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert verdict == "MAX_CYCLES"
 
     def test_timing_regression_verdict_triggers(self):
@@ -142,7 +151,7 @@ class TestEvaluateConvergence:
         state = _state(cycle=2, history=history)
         # Power improves (130 → 120), area improves, but timing gets 50 ps worse
         curr = _report(-0.15, 120.0, 46000.0)
-        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"], clock_hz=800_000_000)
         assert verdict == "TIMING_REGRESSION"
         reg = state["convergence"]["timing_regression"]
         assert reg["delta_wns"] < 0
