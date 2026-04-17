@@ -84,6 +84,20 @@ For each cycle in 1..max_cycles:
    This runs exactly one PPA iteration via the orchestrator, which writes
    `docs/ppa-opt/iter-{cycle}/verdict.txt` on completion.
 
+1a. **Refresh auto-continue timestamp** — update `last_cycle_timestamp` in
+    `.rat/state/ppa-loop-state.json` to the current epoch seconds BEFORE
+    invoking `rtl-ppa-optimize-dc`. This ensures the 30-minute
+    `stop-gate.sh` window restarts each cycle, not only at loop start.
+    ```python
+    import json, time, pathlib
+    s = json.loads(pathlib.Path(".rat/state/ppa-loop-state.json").read_text())
+    s["last_cycle_timestamp"] = int(time.time())
+    pathlib.Path(".rat/state/ppa-loop-state.json").write_text(json.dumps(s, indent=2))
+    ```
+    (In practice, the skill uses the same `compute_delta.py`-style atomic
+    lock-file pattern so this update is safe under concurrent reads by the
+    stop-gate hook.)
+
 2. **Read verdict** — read `docs/ppa-opt/iter-{cycle}/verdict.txt`. Expected
    values: `CONTINUE`, `CONVERGED_STREAK`, `CONVERGED_TARGETS`, `EARLY_PLATEAU`,
    `MAX_CYCLES`, `TIMING_REGRESSION`.
@@ -123,6 +137,11 @@ For each cycle in 1..max_cycles:
 4. **Safety net** — if the loop falls through `max_cycles` without a terminal
    verdict (should not happen), generate final-report with exit_reason
    `LOOP_EXIT_UNEXPECTED` and remove the state file.
+
+> **Note**: The per-cycle refresh of `last_cycle_timestamp` (step 1a) is
+> critical: `stop-gate.sh` uses it to decide whether the 30-min auto-continue
+> window is still active. Without it, long DC iterations would be interrupted
+> 30 minutes after loop start even when the loop is making progress.
 
 ## Final Report (`docs/ppa-opt/final-report.md`)
 
