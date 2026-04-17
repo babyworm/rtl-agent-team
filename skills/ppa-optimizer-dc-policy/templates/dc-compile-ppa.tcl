@@ -24,7 +24,10 @@ set_power_opt -leakage
 
 # Additional reports to enable PPA analysis
 report_clock_gating -verbose > syn/rpt/clock_gating.rpt
+# Emit BOTH flat summary AND hierarchical breakdown in the same report
+# (the parser extracts both sections).
 report_power -analysis_effort high > syn/rpt/power.rpt
+report_power -hier -hier_level 2 >> syn/rpt/power.rpt
 report_threshold_voltage_group > syn/rpt/vt.rpt
 report_timing -max_paths 10 -delay_type max > syn/rpt/timing.rpt
 report_area -hier > syn/rpt/area.rpt
