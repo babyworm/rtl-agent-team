@@ -257,6 +257,20 @@
       "iron_upstream": [],
       "open_requirements": "",
       "completion_criteria": "target-skill-executed|design-freeze-intact|cycle-summary-written"
+    },
+    "rtl-ppa-optimize-dc": {
+      "phase": "ppa-opt",
+      "primary": true,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "ppa-iteration-complete|ppa-report-written|verdict-recorded"
+    },
+    "rat-ultraloop-ppa": {
+      "phase": "ppa-opt",
+      "primary": true,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "ppa-loop-complete|final-report-written"
     }
   },
   "agents": {
@@ -292,7 +306,10 @@
     "p3-uarch-team-orchestrator": "rtl-p3-uarch-team",
     "p4-implement-team-orchestrator": "rtl-p4-implement-team",
     "p5-verify-team-orchestrator": "rtl-p5-verify-team",
-    "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team"
+    "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team",
+    "ppa-optimizer-dc-orchestrator": "rtl-ppa-optimize-dc",
+    "ppa-optimizer-dc": "rtl-ppa-optimize-dc",
+    "dc-report-parser": "rtl-ppa-optimize-dc"
   },
   "phases": {
     "1": {
@@ -365,6 +382,18 @@
       "optional": [
         {"path": "reviews/phase-6-review/improvements.md", "role": "p6-improvements"},
         {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"}
+      ]
+    },
+    "ppa-opt": {
+      "order": 5.5,
+      "name": "Post-Verify PPA Optimization",
+      "skills": ["rtl-ppa-optimize-dc", "rat-ultraloop-ppa"],
+      "upstream": ["phase-5-verify"],
+      "downstream": ["phase-6-design-note"],
+      "required": [],
+      "optional": [
+        {"path": "reviews/phase-5-verify/final-compliance.md", "role": "p5-compliance"},
+        {"path": "docs/ppa-opt", "role": "ppa-iteration-artifacts"}
       ]
     }
   }
