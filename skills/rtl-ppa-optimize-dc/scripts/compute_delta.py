@@ -87,7 +87,6 @@ def evaluate_convergence(state, curr_report, targets, weights):
     if len(history) >= 2:
         delta_wns = history[-1]["wns_ns"] - history[-2]["wns_ns"]
         if delta_wns < -0.02:
-            conv.setdefault("timing_regression", {})
             state["convergence"]["timing_regression"] = {
                 "iter": iter_n,
                 "delta_wns": delta_wns,
