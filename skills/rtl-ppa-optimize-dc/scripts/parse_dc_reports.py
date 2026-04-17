@@ -286,7 +286,7 @@ def run(rpt_dir, out_path):
         "tool": os.environ.get("PPA_TOOL", "dc_shell"),
         "design": os.environ.get("PPA_TOP", "unknown"),
         "iteration": int(os.environ.get("PPA_ITER", "0")),
-        "timestamp": datetime.datetime.utcnow().strftime(
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         ),
         "liberty": os.environ.get("PPA_LIBERTY", ""),
