@@ -8,7 +8,7 @@
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-94개 전문 AI 에이전트 + 94개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+97개 전문 AI 에이전트 + 97개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -200,7 +200,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:domain-consult           # 도메인 전문가 상담
 ```
 
-### 스킬 카테고리 (94개)
+### 스킬 카테고리 (97개)
 
 | 카테고리 | 수량 | 설명 |
 |----------|------|------|
@@ -209,9 +209,9 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 | **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC |
 | **Tool Profile** | 4 | 시뮬레이터/린터/합성기/CDC 도구 설정 |
 | **Internal** | 1 | 라우팅 SSOT (`rtl-orchestrate`) |
-| **합계** | **94** | |
+| **합계** | **97** | |
 
-에셋(템플릿/스크립트/레퍼런스/예제)은 94개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
+에셋(템플릿/스크립트/레퍼런스/예제)은 97개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
 
 ## 프로젝트 산출물 구조
 
@@ -242,10 +242,10 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 94개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
+├── agents/                     # 97개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 94개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 97개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -285,7 +285,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## 에이전트 팀
 
-### 에이전트 구성 (94개, 전체 Opus)
+### 에이전트 구성 (97개, 전체 Opus)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
@@ -410,8 +410,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (94개)
-├── skills/                              # rtl-agent-team 스킬 (94개, 11개 레퍼런스 문서 포함)
+├── agents/                              # rtl-agent-team 에이전트 (97개)
+├── skills/                              # rtl-agent-team 스킬 (97개, 11개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지

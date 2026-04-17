@@ -210,7 +210,7 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 | **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC |
 | **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations |
 | **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
-| **Total** | **94** | |
+| **Total** | **97** | |
 
 Assets (Templates, Scripts, References, Examples) are distributed across the 97 skills — see each skill directory for its bundled assets.
 
@@ -411,8 +411,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (94)
-├── skills/                              # rtl-agent-team skills (94, with 11 reference docs)
+├── agents/                              # rtl-agent-team agents (97)
+├── skills/                              # rtl-agent-team skills (97, with 11 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages
