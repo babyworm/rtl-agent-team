@@ -134,7 +134,7 @@ def test_all_targets_met_triggers_converged_targets(tmp_path):
     s = _initial_state(cycle=2)
     state.write_text(json.dumps(s))
     curr = tmp_path / "targets_met.json"
-    _write_report(curr, 0.05, 80.0, 44000.0)
+    _write_report(curr, 0.15, 80.0, 44000.0)  # wns >= timing_slack_ns (0.10)
     rc, out, err = _run_compute_delta(curr, state, req)
     assert rc == 0, err
     assert out == "CONVERGED_TARGETS"
