@@ -89,14 +89,36 @@ For each cycle in 1..max_cycles:
     invoking `rtl-ppa-optimize-dc`. This ensures the 30-minute
     `stop-gate.sh` window restarts each cycle, not only at loop start.
     ```python
-    import json, time, pathlib
-    s = json.loads(pathlib.Path(".rat/state/ppa-loop-state.json").read_text())
-    s["last_cycle_timestamp"] = int(time.time())
-    pathlib.Path(".rat/state/ppa-loop-state.json").write_text(json.dumps(s, indent=2))
+    import json, time, pathlib, os, tempfile, fcntl
+
+    STATE_PATH = pathlib.Path(".rat/state/ppa-loop-state.json")
+    LOCK_PATH = str(STATE_PATH) + ".lock"
+
+    with open(LOCK_PATH, "a") as lock_f:                 # long-lived lock file; never replaced
+        fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
+        try:
+            s = json.loads(STATE_PATH.read_text())
+            s["last_cycle_timestamp"] = int(time.time())
+            dir_ = STATE_PATH.parent
+            fd, tmp = tempfile.mkstemp(prefix=".ppa-state-", dir=str(dir_))
+            try:
+                with os.fdopen(fd, "w") as tmp_f:
+                    json.dump(s, tmp_f, indent=2)
+                os.replace(tmp, str(STATE_PATH))         # atomic swap
+            except BaseException:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+                raise
+        finally:
+            fcntl.flock(lock_f.fileno(), fcntl.LOCK_UN)
     ```
-    (In practice, the skill uses the same `compute_delta.py`-style atomic
-    lock-file pattern so this update is safe under concurrent reads by the
-    stop-gate hook.)
+    Uses the same atomic lock-file + `os.replace()` pattern as `compute_delta.py`:
+    a `.lock` file is held via `fcntl.flock` during the read-modify-write cycle,
+    and the updated state is written to a temp file then atomically renamed
+    onto the canonical path. This prevents `stop-gate.sh` from observing a
+    truncated state file between steps.
 
 2. **Read verdict** — read `docs/ppa-opt/iter-{cycle}/verdict.txt`. Expected
    values: `CONTINUE`, `CONVERGED_STREAK`, `CONVERGED_TARGETS`, `EARLY_PLATEAU`,
