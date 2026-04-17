@@ -163,6 +163,22 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ```
     Failure → halt with the git error.
 
+    ### Step 6b: Register patched files with rtl-edit-tracker
+    ```bash
+    # The rtl-edit-tracker.sh hook does not observe `git apply`; manually
+    # record the touched RTL files so rtl-verify-stop-gate.sh arms correctly.
+    TRACK_FILE=".rat/state/rtl-modified-files.txt"
+    mkdir -p "$(dirname "$TRACK_FILE")"
+    git diff --name-only HEAD -- '*.sv' '*.svh' '*.v' '*.vh' 2>/dev/null \
+        | while read -r modified_file; do
+            [ -n "$modified_file" ] && echo "$modified_file" >> "$TRACK_FILE"
+        done
+    # Deduplicate
+    if [ -f "$TRACK_FILE" ]; then
+        sort -u "$TRACK_FILE" -o "$TRACK_FILE"
+    fi
+    ```
+
     ### Step 7: Equivalence check
     ```
     Task(subagent_type="rtl-agent-team:equivalence-checker",
