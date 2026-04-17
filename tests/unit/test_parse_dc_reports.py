@@ -54,6 +54,14 @@ class TestParseTiming:
         assert "u_core/u_s2/sum_reg[15]" in worst["to"]
         assert worst["slack_ns"] == pytest.approx(-0.083)
 
+    def test_tns_ns_cross_populated(self, tmp_path):
+        # parse_timing alone doesn't know TNS; it's populated by run() from qor.
+        out = tmp_path / "report.json"
+        pdr.run(str(FIXTURES), str(out))
+        data = json.loads(out.read_text())
+        assert data["timing"]["tns_ns"] == pytest.approx(-2.410, rel=0.01)
+        assert data["timing"]["num_violating_paths"] == 17
+
 
 class TestParsePower:
     def test_total_power(self):
@@ -97,6 +105,10 @@ class TestParseQor:
     def test_status_violated(self):
         result = pdr.parse_qor(FIXTURES / "qor.rpt")
         assert result["status"] == "TIMING_VIOLATION"
+
+    def test_num_violating_paths(self):
+        result = pdr.parse_qor(FIXTURES / "qor.rpt")
+        assert result["num_violating_paths"] == 17
 
 
 class TestParseClockGating:

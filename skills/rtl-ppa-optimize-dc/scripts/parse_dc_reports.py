@@ -224,6 +224,7 @@ def parse_qor(path):
         "design_wns_ns": 0.0,
         "design_tns_ns": 0.0,
         "worst_hold_slack_ns": 0.0,
+        "num_violating_paths": 0,
         "status": "PASS",
     }
     m = re.search(r"Design WNS:\s+(-?[\d.]+)", text)
@@ -235,6 +236,9 @@ def parse_qor(path):
     m = re.search(r"Worst Hold Slack:\s+(-?[\d.]+)", text)
     if m:
         result["worst_hold_slack_ns"] = float(m.group(1))
+    m = re.search(r"No\.?\s+of\s+Violating\s+Paths:\s+([\d.]+)", text)
+    if m:
+        result["num_violating_paths"] = int(float(m.group(1)))
     if result["design_wns_ns"] < 0:
         result["status"] = "TIMING_VIOLATION"
     return result
@@ -326,6 +330,16 @@ def run(rpt_dir, out_path):
     report["clock_gating"] = parse_clock_gating(files["clock_gating"])
     report["vt_group"] = parse_vt_group(files["vt_group"])
     report["warnings"] = parse_warnings(rpt_dir)
+
+    # Cross-populate timing.tns_ns and timing.num_violating_paths from qor
+    # (DC's report_timing does not include TNS; it lives in report_qor).
+    qor = report.get("qor", {})
+    timing = report.get("timing", {})
+    if timing:
+        if timing.get("tns_ns", 0.0) == 0.0 and qor.get("design_tns_ns") is not None:
+            timing["tns_ns"] = qor["design_tns_ns"]
+        if timing.get("num_violating_paths", 0) == 0:
+            timing["num_violating_paths"] = qor.get("num_violating_paths", 0)
 
     out = pathlib.Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
