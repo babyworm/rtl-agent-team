@@ -19,16 +19,6 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
 
-# Skip staleness accumulation while a PPA-opt loop is active —
-# every iteration's RTL edits are verified by equivalence + smoke inside the loop.
-if [ -f ".rat/state/ppa-loop-state.json" ]; then
-    mode=$(python3 -c "import json,sys; print(json.load(open('.rat/state/ppa-loop-state.json')).get('mode',''))" 2>/dev/null || echo "")
-    if [ "$mode" = "ppa-loop" ]; then
-        emit_continue "ppa-loop active — skipping rtl-edit staleness accumulation"
-        exit 0
-    fi
-fi
-
 # --- Shared helpers (used by both Bash and Edit/Write paths) ---
 
 # Phase 6 stale detection helper
@@ -45,6 +35,31 @@ _check_p6_stale() {
     touch "$_P6_STATE/phase6-stale"
     printf '%s' " Phase 6 review documents marked as stale — update code-review, design-review, design-note, and improvements after verification."
   fi
+}
+
+# Returns 0 if $1 matches any allowed_edit_scope glob in ppa-loop-state.json
+# while mode == "ppa-loop". Returns 1 otherwise.
+_rat_in_ppa_scope() {
+  _ppa_file="$1"
+  _ppa_state="$RAT_DIR/state/ppa-loop-state.json"
+  [ ! -f "$_ppa_state" ] && return 1
+  _ppa_mode=$(python3 -c "import json,sys; print(json.load(open('$_ppa_state')).get('mode',''))" 2>/dev/null || echo "")
+  [ "$_ppa_mode" != "ppa-loop" ] && return 1
+  python3 - "$_ppa_file" "$_ppa_state" <<'PY'
+import json, fnmatch, sys
+filepath = sys.argv[1]
+state_path = sys.argv[2]
+try:
+    state = json.load(open(state_path))
+except Exception:
+    sys.exit(1)
+scope = state.get('allowed_edit_scope', [])
+for g in scope:
+    if fnmatch.fnmatchcase(filepath, g) or fnmatch.fnmatchcase(filepath, g.replace('**', '*')):
+        sys.exit(0)
+sys.exit(1)
+PY
+  return $?
 }
 
 # Set up STATE_DIR and TRACK_FILE with team mode awareness.
@@ -169,6 +184,18 @@ if [ -z "$FILE_PATH" ]; then
     emit_post_continue
   fi
   _setup_tracking
+  # PPA-loop scope check: skip accumulation only for files inside allowed_edit_scope.
+  _PPA_SKIP=true
+  for _brf in $(printf '%s\n' "$BASH_RTL_FILES"); do
+    if ! _rat_in_ppa_scope "$_brf"; then
+      _PPA_SKIP=false
+      break
+    fi
+  done
+  if [ "$_PPA_SKIP" = "true" ]; then
+    emit_continue "ppa-loop scope edit — skipping rtl-edit staleness"
+    exit 0
+  fi
   _track_and_invalidate "$BASH_RTL_FILES"
   _prepare_gate_output
   printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
@@ -179,6 +206,10 @@ fi
 case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     _setup_tracking
+    if _rat_in_ppa_scope "$FILE_PATH"; then
+      emit_continue "ppa-loop scope edit — skipping rtl-edit staleness"
+      exit 0
+    fi
     _track_and_invalidate "$FILE_PATH"
     _prepare_gate_output
     SAFE_BASENAME=$(jsonu_escape "$(basename "$FILE_PATH")")
