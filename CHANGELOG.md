@@ -7,6 +7,26 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Changed
+- **systemverilog-lsp split into standalone repository.** The
+  `systemverilog-lsp` plugin (formerly bundled at
+  `plugins/systemverilog-lsp/`) was extracted to its own repo at
+  https://github.com/babyworm/systemverilog-lsp using `git filter-repo
+  --subdirectory-filter`, preserving full commit history. The
+  marketplace entry now uses a `github` source pinned to `v1.1.2`
+  (sha `515d95550e9b0ff6f4056b93bf0e1c65af22aea3`), giving the plugin
+  its own independent tag namespace and release cadence so future
+  systemverilog-lsp patches don't pollute rtl-agent-team git history
+  (this v1.1.2 commit was exactly the case that triggered the split).
+  The `version` field was dropped from the marketplace entry per
+  Claude Code docs (for non-relative-path sources, `plugin.json` is
+  authoritative). The inline `lspServers` definition and `strict:
+  false` were also removed since they duplicate the standalone repo's
+  `plugin.json` + `.lsp.json`. **No user action required** —
+  `/reload-plugins` re-fetches from the new source automatically and
+  the cached v1.1.2 install transparently switches to the
+  GitHub-sourced copy.
+
 ### Fixed
 - **systemverilog-lsp bumped to `1.1.2`** (cache-invalidation release; manifest
   version only). The `.lsp.json` fix from `a2c7687` ("remove unrecognized `name`
