@@ -197,15 +197,17 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     session stop after RTL modification without functional verification) is
     satisfied:
     ```bash
-    # Detect direct-Task() spawn: action skill sets CLAUDE_SKILL_NAME;
-    # when absent, the orchestrator is responsible for the marker.
-    if [ -z "${CLAUDE_SKILL_NAME:-}" ]; then
+    # Detect direct-Task() spawn by absence of skill sentinel
+    if [ ! -f ".rat/state/ppa-skill-active" ]; then
         mkdir -p .rat/state
         printf 'orchestrator-direct-converge iter %s\n' "$N" > .rat/state/rtl-verify-done
     fi
     ```
-    When invoked through the action skill, the skill writes this marker
-    instead; do not duplicate.
+    Detects direct `Task()` spawn by the absence of `.rat/state/ppa-skill-active`
+    sentinel. The action skill creates this file immediately before dispatching
+    the orchestrator and removes it after the orchestrator returns. When invoked
+    through the action skill, the skill writes the verify-done marker instead;
+    do not duplicate.
 
     ### Step 12: Append to convergence.csv
     ```bash

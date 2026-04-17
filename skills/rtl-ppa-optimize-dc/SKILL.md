@@ -90,9 +90,17 @@ state.cycle += 1
 Write(".rat/state/ppa-loop-state.json", state)
 
 # Step 4: Dispatch orchestrator
+# Mark that the skill is the invocation path so the orchestrator can detect
+# direct-Task() spawns (in which case the orchestrator must write the Rule 5
+# satisfaction marker itself).
+mkdir -p .rat/state
+touch .rat/state/ppa-skill-active
+
 Task(subagent_type="rtl-agent-team:ppa-optimizer-dc-orchestrator",
      description=f"PPA iteration {state.cycle}",
      prompt="Execute one PPA optimization iteration. Read .rat/state/ppa-loop-state.json for scope and history.")
+
+rm -f .rat/state/ppa-skill-active
 ```
 
 Do not perform per-iteration work directly. The orchestrator handles all
