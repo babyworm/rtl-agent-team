@@ -46,16 +46,39 @@ _rat_in_ppa_scope() {
   _ppa_mode=$(python3 -c "import json,sys; print(json.load(open('$_ppa_state')).get('mode',''))" 2>/dev/null || echo "")
   [ "$_ppa_mode" != "ppa-loop" ] && return 1
   python3 - "$_ppa_file" "$_ppa_state" <<'PY'
-import json, fnmatch, sys
+# Mirror the recursive ** matcher used by
+# skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py so that
+# zero-depth matches (e.g. rtl/stub/top.sv against rtl/stub/**/*.sv)
+# are accepted consistently on both sides (Codex R2 H2).
+import json, fnmatch, re, sys
 filepath = sys.argv[1]
 state_path = sys.argv[2]
 try:
     state = json.load(open(state_path))
 except Exception:
     sys.exit(1)
-scope = state.get('allowed_edit_scope', [])
+
+def _match_one(path, g):
+    if "**" in g:
+        regex_parts = []
+        for part in g.split("/"):
+            if part == "**":
+                regex_parts.append(".*")
+            else:
+                regex_parts.append(
+                    fnmatch.translate(part)
+                    .replace(r"\Z", "")
+                    .replace(r"(?s:", "")
+                    .rstrip(")")
+                )
+        regex = "^" + "/".join(p for p in regex_parts if p) + "$"
+        regex = regex.replace("/.*/", "(/.*)?/")
+        return bool(re.match(regex, path))
+    return fnmatch.fnmatchcase(path, g)
+
+scope = state.get("allowed_edit_scope", [])
 for g in scope:
-    if fnmatch.fnmatchcase(filepath, g) or fnmatch.fnmatchcase(filepath, g.replace('**', '*')):
+    if _match_one(filepath, g):
         sys.exit(0)
 sys.exit(1)
 PY
