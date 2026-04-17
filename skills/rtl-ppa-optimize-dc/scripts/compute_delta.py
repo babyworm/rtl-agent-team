@@ -11,9 +11,11 @@ Writes updated state file in place and prints verdict:
 """
 from __future__ import annotations
 
+import fcntl
 import json
-import pathlib
+import os
 import sys
+import tempfile
 
 
 VALID_VERDICTS = {
@@ -130,15 +132,36 @@ def main(argv):
         )
         return 1
     curr = load_json(argv[1])
-    state = load_json(argv[2])
+    state_path = argv[2]
     req = load_json(argv[3])
     targets = req.get("ppa_targets", {})
     weights = targets.get("weights", {"timing": 0.7, "power": 0.2, "area": 0.1})
-    verdict = evaluate_convergence(state, curr, targets, weights)
-    if verdict not in VALID_VERDICTS:
-        print(f"Internal error: invalid verdict '{verdict}'", file=sys.stderr)
-        return 2
-    pathlib.Path(argv[2]).write_text(json.dumps(state, indent=2))
+
+    # Lock the state file during the read-mutate-write sequence to prevent
+    # concurrent ppa-loop processes from corrupting the shared state JSON.
+    with open(state_path, "r+") as lock_f:
+        fcntl.flock(lock_f, fcntl.LOCK_EX)
+        try:
+            state = json.load(lock_f)
+            verdict = evaluate_convergence(state, curr, targets, weights)
+            if verdict not in VALID_VERDICTS:
+                print(f"Internal error: invalid verdict '{verdict}'", file=sys.stderr)
+                return 2
+            # Atomic write via temp file + os.replace to avoid partial-write corruption.
+            dir_ = os.path.dirname(state_path) or "."
+            fd, tmp_path = tempfile.mkstemp(prefix=".ppa-state-", dir=dir_)
+            try:
+                with os.fdopen(fd, "w") as tmp_f:
+                    json.dump(state, tmp_f, indent=2)
+                os.replace(tmp_path, state_path)
+            except BaseException:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
+        finally:
+            fcntl.flock(lock_f, fcntl.LOCK_UN)
     print(verdict)
     return 0
 
