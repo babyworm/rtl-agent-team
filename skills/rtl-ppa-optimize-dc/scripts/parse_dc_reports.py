@@ -88,6 +88,9 @@ def parse_area(path):
     )
     for m in hier_re.finditer(text):
         hier, um2, pct = m.groups()
+        # Skip the synthetic root ('top' alone) to avoid poisoning per_module ranking
+        if hier == "top" or float(pct) >= 99.99:
+            continue
         result["per_module"].append(
             {"hier": hier, "um2": float(um2), "pct": float(pct), "cells": 0}
         )
@@ -207,7 +210,9 @@ def parse_power(path):
     )
     for m in hier_re.finditer(text):
         hier, total_mw, pct = m.groups()
-        # Skip the top-level entry if it matches the grand total (avoid duplicate)
+        # Skip the synthetic root row
+        if hier == "top" or float(pct) >= 99.99:
+            continue
         result["per_module"].append({
             "hier": hier,
             "total_mw": float(total_mw),

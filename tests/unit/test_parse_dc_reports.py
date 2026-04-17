@@ -27,6 +27,7 @@ class TestParseArea:
         hiers = [m["hier"] for m in result["per_module"]]
         assert "top/u_core" in hiers
         assert "top/u_core/u_s1" in hiers
+        assert "top" not in hiers, "root 'top' row must be excluded from per_module"
         u_core = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
         assert u_core["um2"] == pytest.approx(12345.6)
         assert u_core["pct"] == pytest.approx(27.30, rel=0.01)
@@ -86,8 +87,8 @@ class TestParsePower:
         result = pdr.parse_power(FIXTURES / "power.rpt")
         assert len(result["per_module"]) >= 3, "must parse hierarchical entries"
         hiers = [m["hier"] for m in result["per_module"]]
-        assert any("u_core" in h for h in hiers), "u_core expected in per_module"
-        # top/u_core should appear with ~57% of total
+        assert "top" not in hiers, "root 'top' row must be excluded from per_module"
+        assert any("u_core" in h for h in hiers)
         u_core_entry = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
         assert u_core_entry["pct"] == pytest.approx(57.27, rel=0.01)
         assert u_core_entry["total_mw"] == pytest.approx(71.22, rel=0.01)
