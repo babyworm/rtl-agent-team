@@ -45,9 +45,9 @@ def weighted_delta(curr, prev, targets, weights, clock_hz=None):
     if clock_hz and clock_hz > 0:
         target_period_ns = 1e9 / float(clock_hz)
     else:
-        # Fallback when clock_hz is missing — use a conservative 1.0 ns period
-        # (800 MHz default design target) so pre-clock_hz states still compute.
-        target_period_ns = 1.0
+        # Fallback when clock_hz is missing — 1.25 ns period matches the
+        # default 800 MHz design target documented in the PPA brief scaffold.
+        target_period_ns = 1.25
     target_power = float(targets.get("power_mw", 100.0))
     target_area = float(targets.get("area_um2", 50000.0))
     d_timing = (curr["timing"]["wns_ns"] - prev["timing"]["wns_ns"]) / target_period_ns
