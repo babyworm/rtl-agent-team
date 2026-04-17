@@ -89,7 +89,7 @@ frozen_scope:
 ```
 
 Every iteration runs `validate_patch_scope.py` on the generated `patch.diff`.
-Violation → rollback (`git checkout .`) + halt.
+Violation → rollback (scoped `git checkout -- 'rtl/<target>/'`) + halt.
 
 ## Rollback Protocol
 
@@ -100,7 +100,9 @@ All of these trigger rollback + halt:
 - Smoke regression FAIL
 - Timing regression > 20 ps (Δ_wns < −0.02 ns)
 
-Rollback is implemented as `git checkout .` in the target RTL scope. Prior to
+Rollback is implemented as `git checkout -- 'rtl/<target>/' && git clean -fd -- 'rtl/<target>/'`
+to confine reversion to `allowed_edit_scope`. Iteration artifacts under
+`docs/ppa-opt/iter-{N}/` are preserved for forensics. Prior to
 the loop starting, the skill asserts a clean working tree.
 
 ## DC Tcl Fragment

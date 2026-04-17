@@ -129,7 +129,11 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
                 "at iter-{N-1} (or HEAD~1 for iter-1). Blackbox rtl/common/sram_*. "
                 "Report EQUIVALENT or NOT_EQUIVALENT with counterexample.")
     ```
-    On NOT_EQUIVALENT: `git checkout .`, write `reviews/ppa-opt/equiv-fail-iter-{N}.md`, halt.
+    On NOT_EQUIVALENT:
+    ```bash
+    git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"
+    ```
+    Write `reviews/ppa-opt/equiv-fail-iter-{N}.md`, halt.
 
     ### Step 8: Smoke regression
     ```bash
@@ -139,14 +143,21 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
         echo "WARNING: no smoke target for ${PPA_TOP}" >&2
     fi
     ```
-    Non-zero exit → `git checkout .`, write `reviews/ppa-opt/smoke-fail-iter-{N}.md`, halt.
+    Non-zero exit:
+    ```bash
+    git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"
+    ```
+    Write `reviews/ppa-opt/smoke-fail-iter-{N}.md`, halt.
 
     ### Step 9: Re-synthesis (post-patch)
     Same as Step 1, write to iter-{N} directory.
 
     ### Step 10: Timing regression guard
     Compare WNS (post-patch) vs. WNS (pre-patch). If `Δ_wns < -0.02 ns`:
-    `git checkout .`, write `reviews/ppa-opt/timing-regression-iter-{N}.md`, halt.
+    ```bash
+    git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"
+    ```
+    Write `reviews/ppa-opt/timing-regression-iter-{N}.md`, halt.
 
     ### Step 11: Delta computation & convergence verdict
     ```bash
