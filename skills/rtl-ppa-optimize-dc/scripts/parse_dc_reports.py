@@ -193,6 +193,25 @@ def parse_power(path):
             result["clock_pct"] = float(pct)
         elif group == "combinational":
             result["combinational_mw"] = float(total)
+    # Parse hierarchical power breakdown (from report_power -hier)
+    hier_re = re.compile(
+        r"^\s+(top(?:/[\w\[\]\.]+)*)"         # hierarchy path starting with top
+        r"\s+[\d.]+"                            # switch power
+        r"\s+[\d.]+"                            # int power
+        r"\s+[\d.]+"                            # leak power
+        r"\s+([\d.]+)"                          # total power (captured)
+        r"\s+([\d.]+)"                          # pct (captured)
+        r"\s*$",
+        re.MULTILINE,
+    )
+    for m in hier_re.finditer(text):
+        hier, total_mw, pct = m.groups()
+        # Skip the top-level entry if it matches the grand total (avoid duplicate)
+        result["per_module"].append({
+            "hier": hier,
+            "total_mw": float(total_mw),
+            "pct": float(pct),
+        })
     return result
 
 

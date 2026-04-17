@@ -74,6 +74,16 @@ class TestParsePower:
         result = pdr.parse_power(FIXTURES / "power.rpt")
         assert result["internal_mw"] == result["register_mw"]
 
+    def test_hierarchical_per_module(self):
+        result = pdr.parse_power(FIXTURES / "power.rpt")
+        assert len(result["per_module"]) >= 3, "must parse hierarchical entries"
+        hiers = [m["hier"] for m in result["per_module"]]
+        assert any("u_core" in h for h in hiers), "u_core expected in per_module"
+        # top/u_core should appear with ~57% of total
+        u_core_entry = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
+        assert u_core_entry["pct"] == pytest.approx(57.27, rel=0.01)
+        assert u_core_entry["total_mw"] == pytest.approx(71.22, rel=0.01)
+
 
 class TestParseQor:
     def test_wns_tns(self):
@@ -124,6 +134,7 @@ class TestIntegration:
         assert data["area"]["total_um2"] == pytest.approx(45230.5, rel=0.01)
         assert data["timing"]["wns_ns"] == pytest.approx(-0.083)
         assert data["power"]["total_mw"] == pytest.approx(124.37, rel=0.01)
+        assert len(data["power"]["per_module"]) >= 3, "per_module must be non-empty"
         assert data["qor"]["status"] == "TIMING_VIOLATION"
         assert data["clock_gating"]["total_registers"] == 3421
         assert data["vt_group"]["LVT_pct"] == pytest.approx(4.2)
