@@ -159,7 +159,8 @@ def parse_power(path):
         "clock_mw": 0.0,
         "clock_pct": 0.0,
         "net_mw": 0.0,
-        "register_mw": 0.0,
+        "internal_mw": 0.0,       # canonical name (schema 1.1)
+        "register_mw": 0.0,       # legacy alias for internal_mw (schema 1.0 compatibility)
         "combinational_mw": 0.0,
         "macro_mw": 0.0,
         "per_module": [],
@@ -168,7 +169,7 @@ def parse_power(path):
         ("Total Dynamic Power", "dynamic_mw"),
         ("Cell Leakage Power",  "leakage_mw"),
         ("Net Switching Power", "net_mw"),
-        ("Cell Internal Power", "register_mw"),
+        ("Cell Internal Power", "internal_mw"),
         ("Total Power",         "total_mw"),
     ]
     for label, key in labels:
@@ -178,6 +179,8 @@ def parse_power(path):
         )
         if m:
             result[key] = _to_mw(float(m.group(1)), m.group(2))
+    # Keep register_mw in sync with internal_mw for backward compatibility
+    result["register_mw"] = result["internal_mw"]
     group_re = re.compile(
         r"^(clock_network|register|combinational|black_box)\s+"
         r"([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+\(\s*([\d.]+)%\)",
@@ -282,7 +285,7 @@ def parse_warnings(rpt_dir):
 
 def run(rpt_dir, out_path):
     report = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "tool": os.environ.get("PPA_TOOL", "dc_shell"),
         "design": os.environ.get("PPA_TOP", "unknown"),
         "iteration": int(os.environ.get("PPA_ITER", "0")),

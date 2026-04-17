@@ -170,7 +170,7 @@ emits `.rat/state/rtl-verify-done` so the existing Stop-gate does not block.
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "tool": "dc_shell",
   "design": "vc_transform_8x8",
   "iteration": 3,
@@ -216,7 +216,9 @@ emits `.rat/state/rtl-verify-done` so the existing Stop-gate does not block.
     "clock_mw": 42.10,
     "clock_pct": 42.8,
     "net_mw": 38.44,
+    "internal_mw": 14.92,
     "register_mw": 14.92,
+    // register_mw is a legacy alias for internal_mw (schema 1.0 compatibility).
     "combinational_mw": 2.75,
     "per_module": [
       {"hier": "top/u_core", "total_mw": 71.2, "pct": 57.3}

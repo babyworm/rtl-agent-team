@@ -70,6 +70,10 @@ class TestParsePower:
         assert result["clock_mw"] == pytest.approx(42.10, rel=0.01)
         assert result["clock_pct"] == pytest.approx(33.87, rel=0.05)
 
+    def test_internal_mw_alias_matches_register_mw(self):
+        result = pdr.parse_power(FIXTURES / "power.rpt")
+        assert result["internal_mw"] == result["register_mw"]
+
 
 class TestParseQor:
     def test_wns_tns(self):
@@ -113,7 +117,7 @@ class TestIntegration:
         monkeypatch.setenv("PPA_SDC", "syn/constraints/design.sdc")
         pdr.run(str(FIXTURES), str(out_path))
         data = json.loads(out_path.read_text())
-        assert data["schema_version"] == "1.0"
+        assert data["schema_version"] == "1.1"
         assert data["tool"] == "dc_shell"
         assert data["design"] == "vc_transform_8x8"
         assert data["iteration"] == 3
