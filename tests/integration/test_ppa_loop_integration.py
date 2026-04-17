@@ -108,9 +108,11 @@ def test_loop_progression_to_streak_convergence(tmp_path):
     assert rc == 0, err
     assert out in ("CONTINUE", "EARLY_PLATEAU")
 
-    # --- iter 3-4: small deltas — should reach CONVERGED_STREAK
+    # --- iter 3-5: small deltas — should reach CONVERGED_STREAK
+    final_out = None
     for cycle, (w, p, a) in [(3, (-0.094, 129.5, 47300.0)),
-                              (4, (-0.093, 129.2, 47200.0))]:
+                              (4, (-0.093, 129.2, 47200.0)),
+                              (5, (-0.093, 129.0, 47100.0))]:
         s = json.loads(state.read_text())
         s["cycle"] = cycle
         state.write_text(json.dumps(s))
@@ -118,9 +120,11 @@ def test_loop_progression_to_streak_convergence(tmp_path):
         _write_report(curr, *(w, p, a))
         rc, out, err = _run_compute_delta(curr, state, req)
         assert rc == 0, err
-    # By iter 4 the streak should be met (three consecutive small deltas)
-    final_state = json.loads(state.read_text())
-    assert final_state["convergence"]["current_streak"] >= 2
+        final_out = out
+    # By iter 5, three consecutive small-delta iterations must have triggered convergence
+    assert final_out == "CONVERGED_STREAK", (
+        f"Expected CONVERGED_STREAK after 3 consecutive small-delta iterations, got {final_out!r}"
+    )
 
 
 def test_all_targets_met_triggers_converged_targets(tmp_path):
