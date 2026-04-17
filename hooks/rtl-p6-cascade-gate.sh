@@ -80,5 +80,21 @@ if [ -f "$CASCADE_DONE" ]; then
   emit_post_continue
 fi
 
+# If PPA optimization completed after Phase 6 artifacts were written, flag re-review.
+# This handles the case where ppa-opt-done was written by the PPA optimizer after
+# design-note.md was last updated, meaning the Phase 6 review is now stale.
+if [ -f "$STATE_DIR/ppa-opt-done" ]; then
+  ppa_mtime=$(get_mtime_epoch "$STATE_DIR/ppa-opt-done")
+  [ -z "$ppa_mtime" ] && ppa_mtime=0
+  DESIGN_NOTE="$CWD/reviews/phase-6-review/design-note.md"
+  if [ -f "$DESIGN_NOTE" ]; then
+    p6_mtime=$(get_mtime_epoch "$DESIGN_NOTE")
+    [ -z "$p6_mtime" ] && p6_mtime=0
+    if [ "$ppa_mtime" -gt "$p6_mtime" ] 2>/dev/null; then
+      emit_stop_block "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note.md was last written. RTL may have changed. Required: re-run rtl-p6-design-review to reflect PPA-Opt results."
+    fi
+  fi
+fi
+
 # Phase 6 stale and cascade not yet confirmed — BLOCK exit
 emit_stop_block "[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified. Required steps: (1) Re-run lint (verilator --lint-only -Wall) (2) Update code-review.md (3) Update design-review.md (4) Update design-note*.md (single or split files per P6 policy) (5) Update improvements.md. When done: touch .rat/state/phase6-cascade-done"
