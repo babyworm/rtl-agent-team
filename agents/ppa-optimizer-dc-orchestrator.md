@@ -52,15 +52,17 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
             ;;
     esac
 
-    # Validate PPA_LIBERTY and PPA_SDC paths — reject shell metachars, must be existing regular files
+    # Validate PPA_LIBERTY and PPA_SDC paths — reject shell AND Tcl metachars, must be existing regular files.
+    # Note: Tcl evaluates [...] as command substitution inside double-quoted strings, so [ ] \ must also
+    # be rejected even after shell quoting (Codex R2 H1).
     for _var in PPA_LIBERTY PPA_SDC; do
         _val=$(eval "printf '%s' \"\${$_var:-}\"")
         if [ -z "${_val}" ]; then
             continue   # unset is OK; orchestrator checks specifics later
         fi
         case "${_val}" in
-            *[\`\$\;\&\|\<\>\"\'\ ]*)
-                echo "ERROR: ${_var}='${_val}' contains unsafe shell characters" >&2
+            *[\`\$\;\&\|\<\>\"\'\ \[\]\\]*)
+                echo "ERROR: ${_var}='${_val}' contains unsafe shell/Tcl characters (one of \` \$ ; & | < > \" ' space [ ] \\\\)" >&2
                 exit 1
                 ;;
         esac
