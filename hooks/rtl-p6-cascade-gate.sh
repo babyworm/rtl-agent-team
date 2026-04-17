@@ -82,17 +82,24 @@ fi
 
 # If PPA optimization completed after Phase 6 artifacts were written, flag re-review.
 # This handles the case where ppa-opt-done was written by the PPA optimizer after
-# design-note.md was last updated, meaning the Phase 6 review is now stale.
+# design-note*.md was last updated, meaning the Phase 6 review is now stale.
+# Supports split files per P6 policy: design-note-overview.md, design-note-{module}.md, etc.
 if [ -f "$STATE_DIR/ppa-opt-done" ]; then
   ppa_mtime=$(get_mtime_epoch "$STATE_DIR/ppa-opt-done")
   [ -z "$ppa_mtime" ] && ppa_mtime=0
-  DESIGN_NOTE="$CWD/reviews/phase-6-review/design-note.md"
-  if [ -f "$DESIGN_NOTE" ]; then
-    p6_mtime=$(get_mtime_epoch "$DESIGN_NOTE")
+  # Find any design-note*.md file with mtime older than ppa-opt-done
+  stale=0
+  for design_note in "$CWD/reviews/phase-6-review"/design-note*.md; do
+    [ ! -f "$design_note" ] && continue
+    p6_mtime=$(get_mtime_epoch "$design_note")
     [ -z "$p6_mtime" ] && p6_mtime=0
     if [ "$ppa_mtime" -gt "$p6_mtime" ] 2>/dev/null; then
-      emit_stop_block "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note.md was last written. RTL may have changed. Required: re-run rtl-p6-design-review to reflect PPA-Opt results."
+      stale=1
+      break
     fi
+  done
+  if [ "$stale" = "1" ]; then
+    emit_stop_block "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note*.md was last written. RTL may have changed. Required: re-run rtl-p6-design-review to reflect PPA-Opt results."
   fi
 fi
 
