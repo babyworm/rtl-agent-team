@@ -22,6 +22,7 @@ VALID_VERDICTS = {
     "CONVERGED_TARGETS",
     "EARLY_PLATEAU",
     "MAX_CYCLES",
+    "TIMING_REGRESSION",
 }
 
 
@@ -79,6 +80,17 @@ def evaluate_convergence(state, curr_report, targets, weights):
             curr_report, prev_report, targets, weights
         )
     history.append(entry)
+
+    # Timing regression guard: if WNS worsens by more than 20 ps, short-circuit.
+    if len(history) >= 2:
+        delta_wns = history[-1]["wns_ns"] - history[-2]["wns_ns"]
+        if delta_wns < -0.02:
+            conv.setdefault("timing_regression", {})
+            state["convergence"]["timing_regression"] = {
+                "iter": iter_n,
+                "delta_wns": delta_wns,
+            }
+            return "TIMING_REGRESSION"
 
     conv["targets_met"] = targets_met(curr_report, targets)
 

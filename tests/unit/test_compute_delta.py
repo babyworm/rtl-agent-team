@@ -115,3 +115,17 @@ class TestEvaluateConvergence:
         curr = _report(-0.08, 125.0, 46500.0)
         verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
         assert verdict == "MAX_CYCLES"
+
+    def test_timing_regression_verdict_triggers(self):
+        # prev WNS = -0.1, curr WNS = -0.15: 50 ps worse → TIMING_REGRESSION
+        history = [
+            {"iter": 1, "wns_ns": -0.1, "power_mw": 130.0, "area_um2": 47000.0, "weighted_delta_pct": None},
+        ]
+        state = _state(cycle=2, history=history)
+        # Power improves (130 → 120), area improves, but timing gets 50 ps worse
+        curr = _report(-0.15, 120.0, 46000.0)
+        verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        assert verdict == "TIMING_REGRESSION"
+        reg = state["convergence"]["timing_regression"]
+        assert reg["delta_wns"] < 0
+        assert reg["iter"] == 2
