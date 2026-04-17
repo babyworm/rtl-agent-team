@@ -70,38 +70,59 @@ if not state_path.exists():
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(json.dumps(state, indent=2))
 
-# Iterate
-for cycle in range(1, max_cycles + 1):
-    verdict = Skill(skill="rtl-agent-team:rtl-ppa-optimize-dc", prompt=TOP)
-    verdict = verdict.strip().splitlines()[-1].strip()
-
-    if verdict in ("CONVERGED_STREAK", "CONVERGED_TARGETS"):
-        # Full Phase 5 regression confirmation
-        Skill(skill="rtl-agent-team:rtl-p5-verify", prompt="--mode=final --source=ppa-opt")
-        pathlib.Path(".rat/state/rtl-verify-done").write_text(f"ppa-opt-converge cycle {cycle}\n")
-        pathlib.Path(".rat/state/ppa-opt-done").write_text(f"converge cycle {cycle}\n")
-        generate_final_report("CONVERGED", cycle)
-        pathlib.Path(state_path).unlink()
-        break
-
-    if verdict == "EARLY_PLATEAU":
-        generate_plateau_report(cycle)
-        pathlib.Path(state_path).unlink()
-        break
-
-    if verdict == "MAX_CYCLES":
-        generate_final_report("MAX_CYCLES", cycle)
-        pathlib.Path(state_path).unlink()
-        break
-
-    # CONTINUE — next iteration
-    continue
-
-else:
-    # Safety net (should not reach here due to MAX_CYCLES check above)
-    generate_final_report("LOOP_EXIT_UNEXPECTED", cycle)
-    pathlib.Path(state_path).unlink()
+# The LLM executes the following iterative protocol. The block below is
+# CONCEPTUAL pseudo-code (Skill() is not a callable Python function) —
+# the real mechanism is a slash-command invocation followed by reading
+# the verdict file that the orchestrator writes.
 ```
+
+## Loop Protocol (the LLM executes these steps iteratively)
+
+For each cycle in 1..max_cycles:
+
+1. **Invoke action skill** — call `/rtl-agent-team:rtl-ppa-optimize-dc <TOP>`.
+   This runs exactly one PPA iteration via the orchestrator, which writes
+   `docs/ppa-opt/iter-{cycle}/verdict.txt` on completion.
+
+2. **Read verdict** — read `docs/ppa-opt/iter-{cycle}/verdict.txt`. Expected
+   values: `CONTINUE`, `CONVERGED_STREAK`, `CONVERGED_TARGETS`, `EARLY_PLATEAU`,
+   `MAX_CYCLES`, `TIMING_REGRESSION`.
+
+3. **Dispatch by verdict:**
+
+   - **`CONVERGED_STREAK` or `CONVERGED_TARGETS`**:
+     - Invoke `/rtl-agent-team:rtl-p5-verify --mode=final --source=ppa-opt`
+       for full regression confirmation.
+     - Write `.rat/state/rtl-verify-done` with `ppa-opt-converge cycle {cycle}\n`.
+     - Write `.rat/state/ppa-opt-done` with `converge cycle {cycle}\n` (triggers
+       P6 cascade re-review if the design-note was written prior).
+     - Generate `docs/ppa-opt/final-report.md` (see template below).
+     - Remove `.rat/state/ppa-loop-state.json`.
+     - Exit the loop.
+
+   - **`EARLY_PLATEAU`**:
+     - Generate `reviews/ppa-opt/early-plateau-escalation.md`.
+     - Remove `.rat/state/ppa-loop-state.json`.
+     - Exit the loop.
+
+   - **`MAX_CYCLES`**:
+     - Generate `docs/ppa-opt/final-report.md` with exit_reason `MAX_CYCLES`
+       (best-so-far iteration recorded).
+     - Remove `.rat/state/ppa-loop-state.json`.
+     - Exit the loop.
+
+   - **`TIMING_REGRESSION`**:
+     - Orchestrator already rolled back the patch via `git checkout -- rtl/<top>`.
+     - Generate `reviews/ppa-opt/timing-regression-escalation.md`.
+     - Remove `.rat/state/ppa-loop-state.json`.
+     - Exit the loop.
+
+   - **`CONTINUE`**:
+     - Proceed to the next cycle (increment cycle counter, re-enter step 1).
+
+4. **Safety net** — if the loop falls through `max_cycles` without a terminal
+   verdict (should not happen), generate final-report with exit_reason
+   `LOOP_EXIT_UNEXPECTED` and remove the state file.
 
 ## Final Report (`docs/ppa-opt/final-report.md`)
 
