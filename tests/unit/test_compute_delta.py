@@ -93,8 +93,26 @@ class TestEvaluateConvergence:
 
     def test_all_targets_met(self):
         state = _state(cycle=2)
-        curr = _report(0.05, 80.0, 44000.0)
+        curr = _report(0.15, 80.0, 44000.0)  # wns=0.15 >= timing_slack_ns=0.10
         verdict = cd.evaluate_convergence(state, curr, _targets(), _targets()["weights"])
+        assert verdict == "CONVERGED_TARGETS"
+
+    def test_converged_targets_respects_timing_slack(self):
+        """wns=0.05 with target=0.10 must NOT declare CONVERGED_TARGETS."""
+        state = _state(cycle=2)
+        curr = _report(0.05, 80.0, 44000.0)  # slack 0.05 < target 0.10
+        t = _targets()
+        t["timing_slack_ns"] = 0.10
+        verdict = cd.evaluate_convergence(state, curr, t, t["weights"])
+        assert verdict != "CONVERGED_TARGETS"
+
+    def test_converged_targets_at_or_above_slack(self):
+        """wns=0.15 with target=0.10 (and power/area met) must declare CONVERGED_TARGETS."""
+        state = _state(cycle=2)
+        curr = _report(0.15, 80.0, 44000.0)
+        t = _targets()
+        t["timing_slack_ns"] = 0.10
+        verdict = cd.evaluate_convergence(state, curr, t, t["weights"])
         assert verdict == "CONVERGED_TARGETS"
 
     def test_early_plateau(self):

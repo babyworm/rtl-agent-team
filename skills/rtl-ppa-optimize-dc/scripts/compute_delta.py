@@ -52,8 +52,9 @@ def weighted_delta(curr, prev, targets, weights):
 
 
 def targets_met(report, targets):
+    target_slack = float(targets.get("timing_slack_ns", 0.0))
     return {
-        "timing": report["timing"]["wns_ns"] >= -0.001,
+        "timing": report["timing"]["wns_ns"] >= target_slack,
         "power": report["power"]["total_mw"] <= float(targets.get("power_mw", 1e9)),
         "area": report["area"]["total_um2"] <= float(targets.get("area_um2", 1e9)),
     }
