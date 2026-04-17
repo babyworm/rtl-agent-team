@@ -223,7 +223,7 @@ order will therefore warn but still execute with adaptive scope.
 | 8 | Do not proceed to Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) | Policy — skill entry warning (`rtl-p6-design-review`); orchestrator rechecks verdict |
 | 9 | Phase 7 is exempt from pipeline rules | N/A (by design) |
 | 10 | Do not start DC-based PPA optimization without Phase 5 PASS | Policy — skill entry warning |
-| 11 | Every PPA-Opt iteration must pass equivalence + smoke before accepting patch | Hard — `rat-ultraloop-ppa` internal guard (fail → rollback) |
+| 11 | Every PPA-Opt iteration must pass equivalence + smoke before accepting patch | Policy — orchestrator/skill internal guard (fail → rollback; not hook-enforced) |
 
 **Intent**: The pipeline rules act as an **SSOT contract**, not as executable
 guards. Hook-enforcement is reserved for cases where a silent bypass would
