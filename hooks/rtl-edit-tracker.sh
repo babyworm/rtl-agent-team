@@ -19,6 +19,16 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
 
+# Skip staleness accumulation while a PPA-opt loop is active —
+# every iteration's RTL edits are verified by equivalence + smoke inside the loop.
+if [ -f ".rat/state/ppa-loop-state.json" ]; then
+    mode=$(python3 -c "import json,sys; print(json.load(open('.rat/state/ppa-loop-state.json')).get('mode',''))" 2>/dev/null || echo "")
+    if [ "$mode" = "ppa-loop" ]; then
+        emit_continue "ppa-loop active — skipping rtl-edit staleness accumulation"
+        exit 0
+    fi
+fi
+
 # --- Shared helpers (used by both Bash and Edit/Write paths) ---
 
 # Phase 6 stale detection helper
