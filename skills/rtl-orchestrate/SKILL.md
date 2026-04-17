@@ -87,6 +87,8 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "CDC", "clock domain" | `/rtl-agent-team:rtl-p5s-cdc-verify` | Action Skill |
 | "AXI", "APB", "AHB", "protocol" (RTL context) | `/rtl-agent-team:rtl-p5s-protocol-verify` | Action Skill |
 | "coverage" | `/rtl-agent-team:rtl-p5s-coverage-analyze` | Action Skill |
+| PPA optimize, DC PPA, power/timing/area optimize | `/rtl-agent-team:rtl-ppa-optimize-dc` | Action Skill |
+| PPA auto-loop, ultraloop PPA, converge PPA | `/rtl-agent-team:rat-ultraloop-ppa` | Action Skill |
 | **--- Phase 6: Design Note ---** | | |
 | "design review", "Phase 6", "design note", "code review documentation" | `/rtl-agent-team:rtl-p6-design-review` | Action Skill |
 | **--- Phase 7: Exploration (optional) ---** | | |
@@ -610,6 +612,8 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | CDC, clock domain | `/rtl-agent-team:rtl-p5s-cdc-verify` | Action Skill |
 | AXI, APB, AHB, protocol | `/rtl-agent-team:rtl-p5s-protocol-verify` | Action Skill |
 | coverage | `/rtl-agent-team:rtl-p5s-coverage-analyze` | Action Skill |
+| PPA optimize, DC PPA, power/timing/area optimize | `/rtl-agent-team:rtl-ppa-optimize-dc` | Action Skill |
+| PPA auto-loop, ultraloop PPA, converge PPA | `/rtl-agent-team:rat-ultraloop-ppa` | Action Skill |
 | integration test, cross-module, Tier 4 | `/rtl-agent-team:rtl-p5s-integration-test` | Action Skill |
 | regression, multi-seed | `/rtl-agent-team:rtl-p5s-func-verify` (Tier 3) | Action Skill |
 | RTL conformance, golden comparison | `/rtl-agent-team:rtl-conformance-test` | Action Skill |
