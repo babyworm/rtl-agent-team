@@ -1,0 +1,20 @@
+{
+  "ppa_targets": {
+    "power_mw": 100.0,
+    "timing_slack_ns": 0.10,
+    "area_um2": 50000.0,
+    "weights": {
+      "timing": 0.7,
+      "power": 0.2,
+      "area": 0.1
+    },
+    "max_fanout": 32,
+    "max_transition_ns": 0.30,
+    "convergence": {
+      "delta_pct": 2.0,
+      "streak": 3,
+      "early_plateau_pct": 1.0,
+      "max_cycles": 4
+    }
+  }
+}
