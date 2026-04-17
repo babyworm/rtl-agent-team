@@ -120,6 +120,13 @@ content of `templates/ppa-brief-scaffold.json` and halts with user prompt.
 
 ## Verdict: EARLY_PLATEAU
 
+{if data_points < 2}
+> **Caution:** Only {N} iteration delta point(s) observed before plateau detection.
+> Single-point plateau detection indicates the loop halted conservatively; consider
+> forcing one additional iteration via `requirements.json["ppa_targets"]["convergence"]["max_cycles"]`
+> before relying on this conclusion.
+{endif}
+
 EDA tool auto-optimization appears saturated; RTL-level patches yielded
 < {early_plateau_pct}% weighted improvement over the observed iterations.
 
