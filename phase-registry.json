@@ -386,6 +386,7 @@
     },
     "ppa-opt": {
       "order": 5.5,
+      "integer_map": 8,
       "name": "Post-Verify PPA Optimization",
       "skills": ["rtl-ppa-optimize-dc", "rat-ultraloop-ppa"],
       "upstream": ["phase-5-verify"],

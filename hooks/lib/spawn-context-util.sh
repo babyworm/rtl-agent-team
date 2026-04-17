@@ -26,12 +26,8 @@ sctx_skill_to_phase() {
     rtl-p7-exploration) echo 7 ;;
     rat-auto-design|rat-p1p3-spec-uarch|rat-p1p3-spec-uarch-team|rat-dse) echo 1 ;;
     rat-p4p5-impl-verify) echo 4 ;;
-    # END GENERATED PHASE_MAP
-    # NOTE: ppa-opt entries are maintained manually below because
-    # generate-phase-maps.sh only emits integer-phase blocks.
-    # Phase 8 is used to represent the Post-Verify PPA optimization stage
-    # (between P5 and P6 logically; mapped to 8 for integer compatibility).
     rtl-ppa-optimize-dc|rat-ultraloop-ppa) echo 8 ;;
+    # END GENERATED PHASE_MAP
     *) echo "" ;;
   esac
 }
