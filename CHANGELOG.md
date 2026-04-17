@@ -7,6 +7,20 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Fixed
+- **systemverilog-lsp bumped to `1.1.2`** (cache-invalidation release; manifest
+  version only). The `.lsp.json` fix from `a2c7687` ("remove unrecognized `name`
+  key from .lsp.json files that caused plugin load errors in Claude Code") was
+  already present in `v1.1.1` source, but users who installed `v1.1.1` *before*
+  the marketplace propagated the corrected file received a stale cache that
+  Claude Code did not invalidate (the manifest version had not changed). The
+  symptom was a noisy `unrecognized_keys` Zod error on every `/reload-plugins`:
+  `Invalid LSP server config for ".lsp.json": Unrecognized key: "name"`.
+  Bumping to `v1.1.2` forces cache eviction so all stale `v1.1.1` installs
+  get the corrected `.lsp.json` on next plugin reload. No file contents
+  changed in this release — only `plugins/systemverilog-lsp/.claude-plugin/plugin.json`
+  and the `systemverilog-lsp` entry in `.claude-plugin/marketplace.json`.
+
 ## [0.9.3] - 2026-04-17
 
 ### Fixed
