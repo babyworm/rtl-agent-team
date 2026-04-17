@@ -2496,6 +2496,9 @@ class TestSpawnContextStructuralContracts:
         "rat-p1p3-spec-uarch-team": 1,
         "rat-dse": 1,
         "rat-p4p5-impl-verify": 4,
+        # PPA optimization (post-verify; phase 8 represents post-P5/pre-P6 slot)
+        "rtl-ppa-optimize-dc": 8,
+        "rat-ultraloop-ppa": 8,
     }
 
     def test_skill_to_phase_mapping_complete(self):
@@ -2556,6 +2559,10 @@ class TestSpawnContextStructuralContracts:
         "p4-implement-team-orchestrator": "rtl-p4-implement-team",
         "p5-verify-team-orchestrator": "rtl-p5-verify-team",
         "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team",
+        # PPA optimization (post-verify)
+        "ppa-optimizer-dc-orchestrator": "rtl-ppa-optimize-dc",
+        "ppa-optimizer-dc": "rtl-ppa-optimize-dc",
+        "dc-report-parser": "rtl-ppa-optimize-dc",
     }
 
     def test_taskcreate_agent_mapping_complete(self, tmp_project):
