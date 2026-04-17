@@ -204,8 +204,8 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 
 | 카테고리 | 수량 | 설명 |
 |----------|------|------|
-| **Action Entry Points** | 54 | 사용자 호출 가능 slash 커맨드: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, utility (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
-| **Policy** | 31 | 에이전트가 참조하는 규칙/기준 (`*-policy`, 비사용자 호출) |
+| **Action Entry Points** | 56 | 사용자 호출 가능 slash 커맨드: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, utility (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
+| **Policy** | 32 | 에이전트가 참조하는 규칙/기준 (`*-policy`, 비사용자 호출) |
 | **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC |
 | **Tool Profile** | 4 | 시뮬레이터/린터/합성기/CDC 도구 설정 |
 | **Internal** | 1 | 라우팅 SSOT (`rtl-orchestrate`) |

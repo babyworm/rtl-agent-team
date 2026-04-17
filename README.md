@@ -205,8 +205,8 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| **Action Entry Points** | 54 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
-| **Policy** | 31 | Rules/criteria referenced by agents (`*-policy`, non-user-invocable) |
+| **Action Entry Points** | 56 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
+| **Policy** | 32 | Rules/criteria referenced by agents (`*-policy`, non-user-invocable) |
 | **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC |
 | **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations |
 | **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
