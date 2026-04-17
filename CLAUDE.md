@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 94 specialized agents, 94 skills, 14 hooks,
+When installed as a plugin, it provides 97 specialized agents, 97 skills, 14 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -133,12 +133,12 @@ When modifying this plugin:
 rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
-├── agents/                              # 94 specialized agent definitions (.md)
+├── agents/                              # 97 specialized agent definitions (.md)
 │   └── lib/                             #   Shared agent protocols (team-worker-preamble.md,
 │                                        #     team-worker-protocol.md, team-fallback.md,
 │                                        #     domain-expert-discovery-protocol.md,
 │                                        #     audit-output-protocol.md, step0-template.md)
-├── skills/                              # 94 skills: 54 action entry-points + 31 policies + 4 tool profiles + 4 conventions + 1 internal
+├── skills/                              # 97 skills: 56 action entry-points + 32 policies + 4 tool profiles + 4 conventions + 1 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
 │   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project
@@ -222,6 +222,8 @@ order will therefore warn but still execute with adaptive scope.
 | 7 | When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded | Policy — loop counter tracked by phase state; escalation advisory |
 | 8 | Do not proceed to Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) | Policy — skill entry warning (`rtl-p6-design-review`); orchestrator rechecks verdict |
 | 9 | Phase 7 is exempt from pipeline rules | N/A (by design) |
+| 10 | Do not start DC-based PPA optimization without Phase 5 PASS | Policy — skill entry warning |
+| 11 | Every PPA-Opt iteration must pass equivalence + smoke before accepting patch | Hard — `rat-ultraloop-ppa` internal guard (fail → rollback) |
 
 **Intent**: The pipeline rules act as an **SSOT contract**, not as executable
 guards. Hook-enforcement is reserved for cases where a silent bypass would
@@ -242,6 +244,7 @@ Phase 4: RTL+Unit     → rtl/{module}/ + sim/{module}/  + docs/phase-4-rtl/
 Phase 5: Verify       → formal/ + docs/phase-5-verify/
 Phase 6: Design Note  → reviews/phase-6-review/
 Phase 7: Exploration  → docs/phase-7-exploration/      (optional, no pipeline rules)
+(optional) Post-Verify PPA  → docs/ppa-opt/             (DC-based loop, between P5 and P6)
 ```
 
 Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). Details in each directory's CLAUDE.md.
