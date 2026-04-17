@@ -32,6 +32,26 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
     If `.rat/state/ppa-loop-state.json` is missing, halt with:
     "PPA loop state not initialized — invoke via rtl-ppa-optimize-dc or rat-ultraloop-ppa skill".
+
+    After reading state, validate PPA_TOP before any command that interpolates it:
+    ```bash
+    # Validate PPA_TOP: must be a non-empty, strict SV identifier
+    PPA_TOP="${ARGUMENTS:-$(python3 -c 'import json; print(json.load(open("requirements.json"))["top_module"])' 2>/dev/null)}"
+
+    if [ -z "${PPA_TOP}" ]; then
+        echo "ERROR: PPA_TOP must be provided via argument or requirements.json['top_module']" >&2
+        exit 1
+    fi
+
+    # Reject any PPA_TOP that is not a plain identifier — prevents shell injection
+    # and the 'empty scope wipes rtl/' footgun when PPA_TOP expansion defaults.
+    case "${PPA_TOP}" in
+        *[!A-Za-z0-9_]*|[!A-Za-z_]*)
+            echo "ERROR: PPA_TOP='${PPA_TOP}' must match [A-Za-z_][A-Za-z0-9_]* (no shell metachars, no path segments)" >&2
+            exit 1
+            ;;
+    esac
+    ```
   </Step_0_Context_Bootstrap>
 
   <Preconditions>
