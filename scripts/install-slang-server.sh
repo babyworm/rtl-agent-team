@@ -211,7 +211,7 @@ setup_claude_plugin() {
     cat > "${plugin_json_dir}/plugin.json" << 'PLUGIN_EOF'
 {
   "name": "systemverilog-lsp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "SystemVerilog/Verilog language server integration for Claude Code (slang-server)",
   "author": "rtl-agent-team",
   "repository": "https://github.com/hudson-trading/slang-server",
