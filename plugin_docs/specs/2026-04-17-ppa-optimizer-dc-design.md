@@ -97,7 +97,7 @@ design-note was written prior to PPA optimization.
 | # | Rule | Enforcement |
 |---|------|-------------|
 | 10 | Do not start DC-based PPA optimization without Phase 5 PASS | Policy — skill entry warning |
-| 11 | Every PPA-Opt iteration must pass equivalence + smoke before accepting patch | Hard — `rat-ultraloop-ppa` internal guard (fail → rollback) |
+| 11 | Every PPA-Opt iteration must pass equivalence + smoke before accepting patch | Policy — orchestrator/skill internal guard (fail → rollback; not hook-enforced) |
 
 Rule 5 (RTL modification requires functional verification) is satisfied because
 every iteration runs equivalence + smoke. On normal convergence, the wrapper

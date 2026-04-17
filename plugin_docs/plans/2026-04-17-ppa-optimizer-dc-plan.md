@@ -12,6 +12,10 @@
 
 ---
 
+> **Historical note (2026-04-17 post-merge):** References to `schema_version: "1.0"` and `register_mw` in this plan reflect the ORIGINAL design at the time of writing.
+> In shipped code, schema was bumped to `1.1` (commit `cc65728`) with `internal_mw` added as the canonical key and `register_mw` retained as a backward-compatibility alias.
+> Treat this document as an execution-history artifact, not a live spec — the authoritative schema is `parse_dc_reports.py` and the spec `plugin_docs/specs/2026-04-17-ppa-optimizer-dc-design.md` §7.1.
+
 ## File Map
 
 | Action | File | Purpose |

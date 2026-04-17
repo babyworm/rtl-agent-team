@@ -16,7 +16,7 @@ SCRIPTS = REPO / "skills" / "rtl-ppa-optimize-dc" / "scripts"
 
 def _write_report(path, wns, power, area):
     report = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "tool": "dc_shell",
         "design": "stub",
         "iteration": 1,
@@ -27,7 +27,7 @@ def _write_report(path, wns, power, area):
         "timing": {"clock": "sys_clk", "period_ns": 1.25, "wns_ns": wns,
                    "tns_ns": 0.0, "num_violating_paths": 0, "critical_paths": []},
         "power": {"total_mw": power, "dynamic_mw": power*0.8, "leakage_mw": power*0.2,
-                  "clock_mw": power*0.33, "clock_pct": 33.0, "net_mw": 0, "register_mw": 0,
+                  "clock_mw": power*0.33, "clock_pct": 33.0, "net_mw": 0, "internal_mw": power*0.15, "register_mw": 0,
                   "combinational_mw": 0, "macro_mw": 0, "analysis_effort": "high", "per_module": []},
         "qor": {"design_wns_ns": wns, "design_tns_ns": 0, "worst_hold_slack_ns": 0, "status": "PASS"},
         "clock_gating": {"total_registers": 100, "gated_registers": 80, "gating_efficiency_pct": 80.0, "ungated_banks": []},
