@@ -137,17 +137,17 @@ def main(argv):
     targets = req.get("ppa_targets", {})
     weights = targets.get("weights", {"timing": 0.7, "power": 0.2, "area": 0.1})
 
-    # Lock the state file during the read-mutate-write sequence to prevent
-    # concurrent ppa-loop processes from corrupting the shared state JSON.
-    with open(state_path, "r+") as lock_f:
-        fcntl.flock(lock_f, fcntl.LOCK_EX)
+    # Use a dedicated lock file that never moves so the lock remains valid
+    # across os.replace (which swaps the state file's inode).
+    lock_path = str(state_path) + ".lock"
+    with open(lock_path, "a") as lock_f:      # "a" so we neither truncate nor require pre-existence
+        fcntl.flock(lock_f.fileno(), fcntl.LOCK_EX)
         try:
-            state = json.load(lock_f)
+            state = load_json(state_path)     # now safe inside critical section
             verdict = evaluate_convergence(state, curr, targets, weights)
             if verdict not in VALID_VERDICTS:
                 print(f"Internal error: invalid verdict '{verdict}'", file=sys.stderr)
                 return 2
-            # Atomic write via temp file + os.replace to avoid partial-write corruption.
             dir_ = os.path.dirname(state_path) or "."
             fd, tmp_path = tempfile.mkstemp(prefix=".ppa-state-", dir=dir_)
             try:
@@ -161,7 +161,7 @@ def main(argv):
                     pass
                 raise
         finally:
-            fcntl.flock(lock_f, fcntl.LOCK_UN)
+            fcntl.flock(lock_f.fileno(), fcntl.LOCK_UN)
     print(verdict)
     return 0
 
