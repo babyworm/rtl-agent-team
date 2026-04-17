@@ -1,0 +1,84 @@
+---
+name: rtl-ppa-optimize-dc
+description: "One-shot Design Compiler–based PPA optimization iteration. Runs DC synthesis, parses reports into JSON, generates RTL patch, validates scope, verifies equivalence + smoke, computes delta, and emits convergence verdict. Requires Phase 5 PASS and dc_shell/genus in PATH."
+user-invocable: true
+argument-hint: "[top-module-name]"
+allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill
+---
+
+<Purpose>
+Execute ONE iteration of the DC-based PPA optimization loop against a verified
+RTL design. Produces `docs/ppa-opt/iter-{N}/` with the synthesis reports, RTL
+patch, equivalence/smoke evidence, and a convergence verdict. For automated
+iteration until convergence, use `rat-ultraloop-ppa` instead.
+</Purpose>
+
+<Use_When>
+- User says "PPA optimize", "DC PPA", "power/timing/area optimize"
+- A single exploratory PPA iteration is desired
+- Debugging the PPA loop mechanics without auto-continue
+</Use_When>
+
+<Do_Not_Use_When>
+- Phase 5 verification has not passed (use rtl-p5-verify first)
+- No `dc_shell` nor `genus` available (this skill hard-fails)
+- Full automatic iteration is wanted (use `rat-ultraloop-ppa`)
+- RTL still under active development (finish Phase 4 first)
+</Do_Not_Use_When>
+
+## Prerequisites
+
+- `reviews/phase-5-verify/final-compliance.md` verdict=PASS (soft advisory —
+  warns and proceeds if absent)
+- `dc_shell` OR `genus` in PATH (HARD — fail on absence)
+- `requirements.json["ppa_targets"]` populated (HARD — writeback scaffold and halt)
+- Git working tree clean under `allowed_edit_scope`
+- `syn/scripts/run_syn.sh` deployed by `rat-init-project`
+
+## Invocation
+
+```
+/rtl-agent-team:rtl-ppa-optimize-dc [top_module]
+```
+
+When `top_module` is omitted, reads from `requirements.json["top_module"]`.
+
+## Execution
+
+```
+# Step 1: Bootstrap ppa-loop-state.json if absent
+if not exists(".rat/state/ppa-loop-state.json"):
+    Write(".rat/state/ppa-loop-state.json", initial_state(
+        target_module=ARGUMENTS or requirements.top_module,
+        max_cycles=requirements.ppa_targets.convergence.max_cycles or 4
+    ))
+
+# Step 2: Check preconditions (fail fast)
+assert shutil_which("dc_shell") or shutil_which("genus"), \
+    "Commercial synthesis (dc_shell or genus) required"
+assert git_clean_under(allowed_edit_scope), \
+    "Working tree must be clean; commit or stash first"
+
+# Step 3: Advance cycle counter
+state.cycle += 1
+Write(".rat/state/ppa-loop-state.json", state)
+
+# Step 4: Dispatch orchestrator
+Task(subagent_type="rtl-agent-team:ppa-optimizer-dc-orchestrator",
+     description=f"PPA iteration {state.cycle}",
+     prompt="Execute one PPA optimization iteration. Read .rat/state/ppa-loop-state.json for scope and history.")
+```
+
+Do not perform per-iteration work directly. The orchestrator handles all
+synthesis / parsing / patching / equivalence / convergence.
+
+## Completion
+
+The skill reports the verdict returned by the orchestrator. If verdict is
+`CONVERGED_STREAK` or `CONVERGED_TARGETS`:
+- Write `.rat/state/rtl-verify-done` (Rule 5 satisfaction marker)
+- Write `.rat/state/ppa-opt-done` (P6 cascade trigger)
+- Recommend `rtl-p5-verify` for full regression confirmation
+
+Otherwise, the skill returns the verdict and exits. For `CONTINUE`, the user
+invokes again or switches to `rat-ultraloop-ppa`.
