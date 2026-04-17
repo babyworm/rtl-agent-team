@@ -153,6 +153,21 @@ EDA tool auto-optimization appears saturated; RTL-level patches yielded
    requirements.json["ppa_targets"]["convergence"]["max_cycles"] = N  (N > 4)
 ```
 
+## Phase Integer Mapping
+
+The `ppa-opt` phase is identified in `phase-registry.json` by the string key
+`"ppa-opt"` with `"order": 5.5` (semantic: between P5 verify and P6 design-note).
+For POSIX shell compatibility, `sctx_skill_to_phase()` emits integer `8`.
+
+| Registry phase | Integer | Role |
+|----------------|---------|------|
+| `"ppa-opt"`    | 8       | Post-Verify PPA optimization |
+
+Rationale: the integer space 1–7 is reserved for canonical pipeline phases.
+Integer 8 is used for the optional post-verify stage. Any future phases beyond
+7 should follow this extension pattern and also declare `"integer_map": <N>`
+in the registry entry so the dual encoding stays discoverable.
+
 ## References
 
 - Synopsys Design Compiler User Guide — `compile_ultra`, `set_clock_gating_style`
