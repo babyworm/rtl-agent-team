@@ -163,6 +163,24 @@ class TestParsePower:
         assert "design_top" not in hiers
         assert "design_top/u_only" in hiers
 
+    def test_hierarchical_power_scientific_notation(self, tmp_path):
+        """Scientific-notation power rows must still be parsed (Codex R16)."""
+        content = textwrap.dedent("""
+        Total Dynamic Power    =   9.821e+01 mW
+        Cell Leakage Power     =   2.616e+01 mW
+        Total Power            =  1.2437e+02 mW
+
+        Hierarchical Power Distribution:
+          top                  4.210e+01  8.50  14.92  1.2437e+02  100.00
+            top/u_core         2.000e+01  3.50   6.00  7.122e+01    57.27
+        """)
+        rpt = tmp_path / "power.rpt"
+        rpt.write_text(content)
+        result = pdr.parse_power(rpt)
+        u_core = next((m for m in result["per_module"] if m["hier"] == "top/u_core"), None)
+        assert u_core is not None, "scientific-notation child row must be retained"
+        assert u_core["total_mw"] == pytest.approx(71.22, rel=0.02)
+
     def test_hierarchical_power_uw_units_converted(self, tmp_path):
         """Dynamic Power Units = 1uW forces per_module values through _to_mw()."""
         content = textwrap.dedent("""

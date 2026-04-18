@@ -72,18 +72,18 @@ def parse_area(path):
         "per_module": [],
     }
     patterns = [
-        ("total_um2",          r"Total cell area:\s*([\d.]+)"),
-        ("combinational_um2",  r"Combinational area:\s*([\d.]+)"),
-        ("sequential_um2",     r"Noncombinational area:\s*([\d.]+)"),
-        ("buf_inv_um2",        r"Buf/Inv area:\s*([\d.]+)"),
-        ("macro_um2",          r"Macro/Black Box area:\s*([\d.]+)"),
+        ("total_um2",          r"Total cell area:\s*([\d.eE+-]+)"),
+        ("combinational_um2",  r"Combinational area:\s*([\d.eE+-]+)"),
+        ("sequential_um2",     r"Noncombinational area:\s*([\d.eE+-]+)"),
+        ("buf_inv_um2",        r"Buf/Inv area:\s*([\d.eE+-]+)"),
+        ("macro_um2",          r"Macro/Black Box area:\s*([\d.eE+-]+)"),
     ]
     for key, pat in patterns:
         m = re.search(pat, text)
         if m:
             result[key] = float(m.group(1))
     hier_re = re.compile(
-        r"^\s+([A-Za-z_][\w$]*(?:/[\w\[\]\.\$]+)*)\s+([\d.]+)\s+([\d.]+)%",
+        r"^\s+([A-Za-z_][\w$]*(?:/[\w\[\]\.\$]+)*)\s+([\d.eE+-]+)\s+([\d.eE+-]+)%",
         re.MULTILINE,
     )
     for m in hier_re.finditer(text):
@@ -111,7 +111,7 @@ def parse_timing(path):
         "num_violating_paths": 0,
         "critical_paths": [],
     }
-    m = re.search(r"Clock\s+(\S+)\s+\(rise edge\)\s+at period\s+([\d.]+)", text)
+    m = re.search(r"Clock\s+(\S+)\s+\(rise edge\)\s+at period\s+([\d.eE+-]+)", text)
     if m:
         result["clock"] = m.group(1)
         result["period_ns"] = float(m.group(2))
@@ -119,11 +119,11 @@ def parse_timing(path):
         m = re.search(r"clock\s+(\S+)\s+\(rise edge\)", text)
         if m:
             result["clock"] = m.group(1)
-        m = re.search(r"Path Group:\s+(\S+).*?period\s+([\d.]+)", text, re.DOTALL)
+        m = re.search(r"Path Group:\s+(\S+).*?period\s+([\d.eE+-]+)", text, re.DOTALL)
         if m:
             result["period_ns"] = float(m.group(2))
     worst_slack = None
-    for m in re.finditer(r"slack\s+\((?:VIOLATED|MET)\)\s+(-?[\d.]+)", text):
+    for m in re.finditer(r"slack\s+\((?:VIOLATED|MET)\)\s+(-?[\d.eE+-]+)", text):
         slack = float(m.group(1))
         if worst_slack is None or slack < worst_slack:
             worst_slack = slack
@@ -132,8 +132,8 @@ def parse_timing(path):
     path_re = re.compile(
         r"Startpoint:\s*(\S+).*?"
         r"Endpoint:\s*(\S+).*?"
-        r"data arrival time\s+(-?[\d.]+).*?"
-        r"slack\s+\((VIOLATED|MET)\)\s+(-?[\d.]+)",
+        r"data arrival time\s+(-?[\d.eE+-]+).*?"
+        r"slack\s+\((VIOLATED|MET)\)\s+(-?[\d.eE+-]+)",
         re.DOTALL,
     )
     for rank, m in enumerate(list(path_re.finditer(text))[:10], 1):
@@ -195,7 +195,7 @@ def parse_power(path):
 
     group_re = re.compile(
         r"^(clock_network|register|combinational|black_box)\s+"
-        r"([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+\(\s*([\d.]+)%\)",
+        r"([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+\(\s*([\d.eE+-]+)%\)",
         re.MULTILINE,
     )
     for m in group_re.finditer(text):
@@ -208,11 +208,11 @@ def parse_power(path):
     # Parse hierarchical power breakdown (from report_power -hier)
     hier_re = re.compile(
         r"^\s+([A-Za-z_][\w$]*(?:/[\w\[\]\.\$]+)*)"  # hierarchy path, any design top name
-        r"\s+[\d.]+"                                # switch power
-        r"\s+[\d.]+"                                # int power
-        r"\s+[\d.]+"                                # leak power
-        r"\s+([\d.]+)"                              # total power (captured)
-        r"\s+([\d.]+)"                              # pct (captured)
+        r"\s+[\d.eE+-]+"                                # switch power
+        r"\s+[\d.eE+-]+"                                # int power
+        r"\s+[\d.eE+-]+"                                # leak power
+        r"\s+([\d.eE+-]+)"                              # total power (captured)
+        r"\s+([\d.eE+-]+)"                              # pct (captured)
         r"(?:\s+[A-Za-z][\w,]*)?"                  # optional Attrs column (letter+word chars+commas)
         r"\s*$",
         re.MULTILINE,
@@ -242,16 +242,16 @@ def parse_qor(path):
         "num_violating_paths": 0,
         "status": "PASS",
     }
-    m = re.search(r"Design WNS:\s+(-?[\d.]+)", text)
+    m = re.search(r"Design WNS:\s+(-?[\d.eE+-]+)", text)
     if m:
         result["design_wns_ns"] = float(m.group(1))
-    m = re.search(r"Design TNS:\s+(-?[\d.]+)", text)
+    m = re.search(r"Design TNS:\s+(-?[\d.eE+-]+)", text)
     if m:
         result["design_tns_ns"] = float(m.group(1))
-    m = re.search(r"Worst Hold Slack:\s+(-?[\d.]+)", text)
+    m = re.search(r"Worst Hold Slack:\s+(-?[\d.eE+-]+)", text)
     if m:
         result["worst_hold_slack_ns"] = float(m.group(1))
-    m = re.search(r"No\.?\s+of\s+Violating\s+Paths:\s+([\d.]+)", text)
+    m = re.search(r"No\.?\s+of\s+Violating\s+Paths:\s+([\d.eE+-]+)", text)
     if m:
         result["num_violating_paths"] = int(float(m.group(1)))
     if result["design_wns_ns"] < 0:
@@ -298,7 +298,7 @@ def parse_vt_group(path):
         ("SVT", "SVT_pct"),
         ("HVT", "HVT_pct"),
     ]:
-        m = re.search(rf"^{label}:\s*([\d.]+)\s*%", text, re.MULTILINE)
+        m = re.search(rf"^{label}:\s*([\d.eE+-]+)\s*%", text, re.MULTILINE)
         if m:
             result[key] = float(m.group(1))
     return result
