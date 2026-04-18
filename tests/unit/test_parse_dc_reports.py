@@ -144,6 +144,45 @@ class TestParsePower:
         assert "vc_transform_8x8/u_core" in hiers
         assert "vc_transform_8x8/u_io" in hiers
 
+    def test_hierarchical_preserves_100pct_single_child(self, tmp_path):
+        """A legitimate single-child module at 100% must NOT be dropped (Codex R15 S1)."""
+        content = textwrap.dedent("""
+        Total Dynamic Power    =   10.00 mW
+        Cell Leakage Power     =    2.00 mW
+        Total Power            =   12.00 mW
+
+        Hierarchical Power Distribution:
+          design_top                   5.00   3.00  2.00   12.00   100.00
+            design_top/u_only          5.00   3.00  2.00   12.00   100.00
+        """)
+        rpt = tmp_path / "power.rpt"
+        rpt.write_text(content)
+        result = pdr.parse_power(rpt)
+        hiers = [m["hier"] for m in result["per_module"]]
+        # Synthetic root (no '/') excluded; legitimate 100% child retained
+        assert "design_top" not in hiers
+        assert "design_top/u_only" in hiers
+
+    def test_hierarchical_power_uw_units_converted(self, tmp_path):
+        """Dynamic Power Units = 1uW forces per_module values through _to_mw()."""
+        content = textwrap.dedent("""
+        Dynamic Power Units = 1uW    (derived from V,C,T units)
+
+        Total Dynamic Power    =   98210.00 uW
+        Cell Leakage Power     =   26160.00 uW
+        Total Power            =  124370.00 uW
+
+        Hierarchical Power Distribution:
+          top                       83290   14920  26160  124370  100.00
+            top/u_core              47800    8500  14920   71220   57.27
+        """)
+        rpt = tmp_path / "power.rpt"
+        rpt.write_text(content)
+        result = pdr.parse_power(rpt)
+        # 71220 uW == 71.22 mW (conversion applied in per_module)
+        u_core = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
+        assert u_core["total_mw"] == pytest.approx(71.22, rel=0.01)
+
 
 class TestParseQor:
     def test_wns_tns(self):

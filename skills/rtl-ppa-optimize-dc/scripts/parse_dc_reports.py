@@ -219,8 +219,9 @@ def parse_power(path):
     )
     for m in hier_re.finditer(text):
         hier, total_mw, pct = m.groups()
-        # Skip the synthetic root row (depth 0, no '/')
-        if "/" not in hier or float(pct) >= 99.99:
+        # Skip the synthetic root row (depth 0 — no '/'). A legitimate single-child
+        # module at 100.00% is NOT a root and must be preserved.
+        if "/" not in hier:
             continue
         result["per_module"].append({
             "hier": hier,
