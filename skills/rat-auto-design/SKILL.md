@@ -72,7 +72,8 @@ if TEAM_MODE:
 
     # Mark completed (stop-gate.sh reads top-level "status" to allow exit)
     # Write completed status BEFORE cleanup so stop hook sees it
-    Bash("sed -i 's/\"status\": \"running\"/\"status\": \"completed\"/' .rat/state/rat-auto-design-state.json")
+    # Portable in-place JSON edit — avoids GNU/BSD sed -i differences (macOS BSD sed requires `-i ''`).
+    Bash("python3 -c 'import json, pathlib; p = pathlib.Path(\".rat/state/rat-auto-design-state.json\"); d = json.loads(p.read_text()); d[\"status\"] = \"completed\"; p.write_text(json.dumps(d, indent=2))'")
     # Cleanup state
     Bash("rm -f .rat/state/rat-auto-design-state.json")
 

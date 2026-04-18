@@ -11,6 +11,18 @@ UPDATED=0
 SKIPPED=0
 TOTAL=0
 
+# Insert a blank line followed by $PROTOCOL_REF after line $1 of file $2.
+# Uses awk for BSD/GNU portability — BSD `sed -i "Na\..."` differs from GNU.
+insert_protocol_after_line() {
+  _IPAL_LINE="$1"
+  _IPAL_FILE="$2"
+  _IPAL_TMP=$(mktemp)
+  awk -v line="$_IPAL_LINE" -v ref="$PROTOCOL_REF" '
+    { print }
+    NR == line { print ""; print ref }
+  ' "$_IPAL_FILE" > "$_IPAL_TMP" && mv "$_IPAL_TMP" "$_IPAL_FILE"
+}
+
 for agent_file in "$AGENTS_DIR"/*.md; do
   [ -f "$agent_file" ] || continue
   TOTAL=$((TOTAL + 1))
@@ -32,9 +44,7 @@ for agent_file in "$AGENTS_DIR"/*.md; do
   fi
 
   # Insert blank line + protocol reference after frontmatter
-  sed -i "${FRONTMATTER_END}a\\
-\\
-${PROTOCOL_REF}" "$agent_file"
+  insert_protocol_after_line "$FRONTMATTER_END" "$agent_file"
 
   UPDATED=$((UPDATED + 1))
 done
@@ -60,9 +70,7 @@ for lib_file in "$AGENTS_DIR"/lib/*.md; do
   if head -n 1 "$lib_file" | grep -q '^---$'; then
     FRONTMATTER_END=$(awk '/^---$/{n++; if(n==2){print NR; exit}}' "$lib_file")
     if [ -n "$FRONTMATTER_END" ]; then
-      sed -i "${FRONTMATTER_END}a\\
-\\
-${PROTOCOL_REF}" "$lib_file"
+      insert_protocol_after_line "$FRONTMATTER_END" "$lib_file"
       UPDATED=$((UPDATED + 1))
       continue
     fi
@@ -71,9 +79,7 @@ ${PROTOCOL_REF}" "$lib_file"
   # No frontmatter — prepend after first heading
   FIRST_HEADING=$(grep -n '^#' "$lib_file" | head -n 1 | cut -d: -f1)
   if [ -n "$FIRST_HEADING" ]; then
-    sed -i "${FIRST_HEADING}a\\
-\\
-${PROTOCOL_REF}" "$lib_file"
+    insert_protocol_after_line "$FIRST_HEADING" "$lib_file"
     UPDATED=$((UPDATED + 1))
   else
     SKIPPED=$((SKIPPED + 1))

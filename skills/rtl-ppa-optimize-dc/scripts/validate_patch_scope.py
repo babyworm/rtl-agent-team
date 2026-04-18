@@ -37,8 +37,15 @@ def _match(path, glob_list):
                 else:
                     # Translate fnmatch pattern for a single segment (no slashes)
                     translated = fnmatch.translate(part)
-                    # fnmatch.translate wraps in (?s:...)\Z — strip that wrapper
-                    translated = translated.replace(r"\Z", "").replace(r"(?s:", "").rstrip(")")
+                    # fnmatch.translate wraps in (?s:...)\Z (Python <3.14) or
+                    # (?s:...)\z (Python 3.14+). Strip outer wrapper + end anchor
+                    # in either form.
+                    translated = (
+                        translated.replace(r"\Z", "")
+                                  .replace(r"\z", "")
+                                  .replace(r"(?s:", "")
+                                  .rstrip(")")
+                    )
                     regex_segments.append(translated)
             # Join segments with "/" and collapse __DOUBLESTAR__ properly
             regex = "/".join(regex_segments)

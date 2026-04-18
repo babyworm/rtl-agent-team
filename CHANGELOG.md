@@ -7,7 +7,34 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-04-18
+
+### Fixed
+- **Python 3.14 compatibility.** CPython 3.14 changed `fnmatch.translate()`
+  to emit the `\z` end anchor instead of `\Z`, which broke the
+  wrapper-stripping logic in both `validate_patch_scope.py` and the
+  embedded matcher in `hooks/rtl-edit-tracker.sh` (unbalanced parenthesis
+  when building the `**` regex). Both now strip `\Z` *and* `\z` so
+  glob-to-regex translation works across all supported Python 3.x
+  versions.
+- **macOS BSD `sed -i` incompatibility.** Three GNU-only `sed -i 'EXPR'
+  file` call sites were replaced with portable alternatives so the plugin
+  works on macOS without `brew install gnu-sed`:
+  - `scripts/bump-version.sh` (2 sites) — `mktemp` + `sed > tmp && mv` for
+    atomic in-place edits.
+  - `scripts/add-rat-protocol.sh` (3 sites) — new awk-based
+    `insert_protocol_after_line` helper (BSD's `sed -i "Na\..."` multi-line
+    append differs from GNU's and cannot be unified trivially).
+  - `skills/rat-auto-design/SKILL.md:75` — one-line `python3 -c` edit of
+    `.rat/state/rat-auto-design-state.json` (LLM-visible example that
+    previously instructed `sed -i` on a JSON state file).
+
 ### Changed
+- `agents/lib/step0-template.md` and
+  `agents/lib/domain-expert-discovery-protocol.md` now carry the
+  audit-output-protocol reference line. These lib files were previously
+  skipped silently by `add-rat-protocol.sh` under BSD `sed` and were
+  picked up once the script became portable.
 - **systemverilog-lsp marketplace pin bumped to `v1.1.3`** (sha
   `b1a6c83627d05b36418e5679be38f4a0a6d26e12`). The standalone repo's
   `v1.1.3` release ships proper docs (`README.md`, `CHANGELOG.md`,

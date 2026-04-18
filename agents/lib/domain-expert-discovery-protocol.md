@@ -1,5 +1,7 @@
 # Domain Expert Discovery Protocol
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 Orchestrators reference this protocol to dynamically discover and spawn domain experts
 from `domain-packages/*/manifest.json` and project-local directories.
 

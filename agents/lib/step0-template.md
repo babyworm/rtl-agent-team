@@ -1,5 +1,7 @@
 ## Step 0: Context Bootstrap (MANDATORY)
 
+Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+
 ```
 Read(".rat/state/spawn-context.json")
 ```

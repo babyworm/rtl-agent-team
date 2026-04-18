@@ -88,7 +88,11 @@ bump_file() {
     return 0
   fi
 
-  sed -i "$pattern" "$file"
+  # Portable in-place edit (BSD `sed -i` requires `-i ''`; avoid the split entirely)
+  local tmp_file
+  tmp_file=$(mktemp)
+  sed "$pattern" "$file" > "$tmp_file"
+  mv "$tmp_file" "$file"
   echo "  OK    $rel_path ($label)"
   CHANGED=$((CHANGED + 1))
 }
@@ -126,7 +130,10 @@ if [ "$DRY_RUN" -eq 1 ]; then
 else
   # Replace all occurrences of the old version (metadata + first plugin).
   # The systemverilog-lsp plugin has its own version, so only OLD_VER matches are ours.
-  sed -i "s/\"$OLD_VER\"/\"$NEW_VER\"/g" "$MKT_FILE"
+  # Portable in-place edit (see bump_file helper for rationale).
+  MKT_TMP=$(mktemp)
+  sed "s/\"$OLD_VER\"/\"$NEW_VER\"/g" "$MKT_FILE" > "$MKT_TMP"
+  mv "$MKT_TMP" "$MKT_FILE"
   echo "  OK    $MKT_REL (metadata.version + plugins[0].version)"
   CHANGED=$((CHANGED + 2))
 fi

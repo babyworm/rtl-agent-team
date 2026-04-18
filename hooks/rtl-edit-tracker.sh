@@ -65,9 +65,13 @@ def _match_one(path, g):
             if part == "**":
                 regex_parts.append(".*")
             else:
+                # fnmatch.translate wraps in (?s:...)\Z (Python <3.14) or
+                # (?s:...)\z (Python 3.14+). Strip outer wrapper + end anchor
+                # in either form.
                 regex_parts.append(
                     fnmatch.translate(part)
                     .replace(r"\Z", "")
+                    .replace(r"\z", "")
                     .replace(r"(?s:", "")
                     .rstrip(")")
                 )
