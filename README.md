@@ -317,6 +317,28 @@ Model policy:
 
 > **Additional pipeline artifacts:** Each Phase (1-5) generates `phase-N-summary.md` for downstream context compression. Phase 4 Stream B produces SVA/CDC/TB skeletons in parallel with RTL coding. Phase 2-3 record Architecture Decision Records in `docs/decisions/`.
 
+### Post-Verify PPA Optimization (new in v0.10.0)
+
+Optional stage between Phase 5 (verify PASS) and Phase 6 (design note). Runs
+an iterative Design Compiler synthesis → JSON report → RTL patch → equivalence
++ smoke → convergence-check loop until one of three termination tiers fires:
+**normal convergence** (3-iter streak × |Δ|<2%), **early plateau** (iter 1-2
+×|Δ|<1% → escalate to user, EDA tools already near optimum), or **max cycles**
+(default 4). Timing-first heuristic (default weights 0.7 / 0.2 / 0.1).
+
+| Command | Purpose |
+|---------|---------|
+| `/rtl-agent-team:rtl-ppa-optimize-dc [top]` | One-shot single iteration |
+| `/rtl-agent-team:rat-ultraloop-ppa [top]` | Auto-loop until convergence + 30-min auto-continue |
+
+**Requirements**:
+- `dc_shell` (Synopsys Design Compiler) OR `genus` (Cadence) in PATH
+- `requirements.json["ppa_targets"]` section (scaffold auto-written on first run)
+- Phase 5 PASS (`reviews/phase-5-verify/final-compliance.md` verdict=PASS)
+- Clean git tree under `rtl/${top}/`
+
+**Artifacts**: `docs/ppa-opt/iter-{N}/` (reports, patch, rationale, equiv/smoke evidence), `docs/ppa-opt/final-report.md`, `reviews/ppa-opt/convergence-review.md`. Every iteration that worsens WNS by >20 ps or fails equivalence/smoke is automatically rolled back. See `plugin_docs/specs/2026-04-17-ppa-optimizer-dc-design.md` for the full spec.
+
 ### Coding Convention Skills
 
 | Skill | Target | Key Content |

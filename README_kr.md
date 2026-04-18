@@ -316,6 +316,28 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 > **추가 파이프라인 산출물:** 각 Phase(1-5) 완료 시 `phase-N-summary.md`가 생성되어 하위 Phase의 컨텍스트 압축에 사용됩니다. Phase 4 Stream B는 RTL 코딩과 병렬로 SVA/CDC/TB 스켈레톤을 생성합니다. Phase 2-3은 주요 설계 결정을 `docs/decisions/`에 ADR로 기록합니다.
 
+### Post-Verify PPA 최적화 (v0.10.0 신규)
+
+Phase 5 (verify PASS)와 Phase 6 (design note) 사이에 위치한 **선택적 단계**.
+Design Compiler 합성 → JSON 리포트 → RTL patch → equivalence+smoke →
+수렴 판정 루프를 3가지 종료 조건 중 하나에 도달할 때까지 반복합니다:
+**정상 수렴** (3회 연속 |Δ|<2%), **early plateau** (iter 1-2 ×|Δ|<1%
+→ EDA 툴이 이미 최적점 근처라 판단, 사용자에게 escalate), **max cycles**
+(기본 4). Timing-first 휴리스틱 (기본 가중치 0.7 / 0.2 / 0.1).
+
+| 명령어 | 용도 |
+|--------|------|
+| `/rtl-agent-team:rtl-ppa-optimize-dc [top]` | 단일 반복 실행 |
+| `/rtl-agent-team:rat-ultraloop-ppa [top]` | 수렴까지 자동 루프 + 30분 auto-continue |
+
+**전제 조건**:
+- PATH에 `dc_shell` (Synopsys Design Compiler) 또는 `genus` (Cadence) 필요
+- `requirements.json["ppa_targets"]` 섹션 (최초 실행 시 scaffold 자동 생성)
+- Phase 5 PASS (`reviews/phase-5-verify/final-compliance.md` verdict=PASS)
+- `rtl/${top}/` 하위 clean git 상태
+
+**산출물**: `docs/ppa-opt/iter-{N}/` (리포트, patch, rationale, equiv/smoke 증거), `docs/ppa-opt/final-report.md`, `reviews/ppa-opt/convergence-review.md`. WNS가 20 ps 이상 악화되거나 equivalence/smoke가 실패하면 해당 iteration은 자동 rollback됩니다. 전체 스펙은 `plugin_docs/specs/2026-04-17-ppa-optimizer-dc-design.md` 참조.
+
 ### 코딩 컨벤션 스킬
 
 | 스킬 | 적용 대상 | 주요 내용 |
