@@ -88,8 +88,10 @@ def parse_area(path):
     )
     for m in hier_re.finditer(text):
         hier, um2, pct = m.groups()
-        # Skip the synthetic root (depth 0, no '/') to avoid poisoning per_module ranking
-        if "/" not in hier or float(pct) >= 99.99:
+        # Skip the synthetic root row (depth 0 — no '/').
+        # A legitimate single-child module at 100% is NOT a root, so do not
+        # drop rows solely on pct; depth-0 alone identifies the synthetic root.
+        if "/" not in hier:
             continue
         result["per_module"].append(
             {"hier": hier, "um2": float(um2), "pct": float(pct), "cells": 0}
@@ -184,6 +186,13 @@ def parse_power(path):
             result[key] = _to_mw(float(m.group(1)), m.group(2))
     # Keep register_mw in sync with internal_mw for backward compatibility
     result["register_mw"] = result["internal_mw"]
+
+    # Determine the per-table power unit from DC's "Dynamic Power Units" header
+    # (Codex R14 M2). If the header is absent, DC defaults to mW so values in the
+    # per-group and hierarchical tables are already in mW and the conversion is a no-op.
+    _unit_m = re.search(r"Dynamic Power Units\s*=\s*\d*\s*(\w+)", text)
+    power_unit = _unit_m.group(1) if _unit_m else "mW"
+
     group_re = re.compile(
         r"^(clock_network|register|combinational|black_box)\s+"
         r"([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+\(\s*([\d.]+)%\)",
@@ -192,10 +201,10 @@ def parse_power(path):
     for m in group_re.finditer(text):
         group, _internal, _switching, _leakage, total, pct = m.groups()
         if group == "clock_network":
-            result["clock_mw"] = float(total)
+            result["clock_mw"] = _to_mw(float(total), power_unit)
             result["clock_pct"] = float(pct)
         elif group == "combinational":
-            result["combinational_mw"] = float(total)
+            result["combinational_mw"] = _to_mw(float(total), power_unit)
     # Parse hierarchical power breakdown (from report_power -hier)
     hier_re = re.compile(
         r"^\s+([A-Za-z_][\w$]*(?:/[\w\[\]\.\$]+)*)"  # hierarchy path, any design top name
@@ -215,7 +224,7 @@ def parse_power(path):
             continue
         result["per_module"].append({
             "hier": hier,
-            "total_mw": float(total_mw),
+            "total_mw": _to_mw(float(total_mw), power_unit),
             "pct": float(pct),
         })
     return result
