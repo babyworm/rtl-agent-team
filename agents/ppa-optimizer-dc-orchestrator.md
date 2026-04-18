@@ -163,20 +163,34 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     ```
     Failure → halt with the git error.
 
-    ### Step 6b: Register patched files with rtl-edit-tracker
+    ### Step 6b: Register patched files with rtl-edit-tracker AND invalidate verify markers
     ```bash
     # The rtl-edit-tracker.sh hook does not observe `git apply`; manually
     # record the touched RTL files so rtl-verify-stop-gate.sh arms correctly.
+    # We also include untracked files (new modules introduced by the patch) via
+    # `git status --porcelain`, not just `git diff --name-only HEAD`.
+
     TRACK_FILE=".rat/state/rtl-modified-files.txt"
     mkdir -p "$(dirname "$TRACK_FILE")"
+
+    # Tracked modifications
     git diff --name-only HEAD -- '*.sv' '*.svh' '*.v' '*.vh' 2>/dev/null \
-        | while read -r modified_file; do
-            [ -n "$modified_file" ] && echo "$modified_file" >> "$TRACK_FILE"
-        done
+        >> "$TRACK_FILE"
+
+    # Untracked additions (new files created by git apply)
+    git status --porcelain -- '*.sv' '*.svh' '*.v' '*.vh' 2>/dev/null \
+        | awk '/^\?\?/ {print $2}' \
+        >> "$TRACK_FILE"
+
     # Deduplicate
     if [ -f "$TRACK_FILE" ]; then
         sort -u "$TRACK_FILE" -o "$TRACK_FILE"
     fi
+
+    # Invalidate any previously-written verify markers — the patch introduces new
+    # unverified RTL, so the prior verify-done / verify-waiver no longer applies.
+    # rtl-verify-stop-gate.sh would otherwise allow exit based on stale markers.
+    rm -f .rat/state/rtl-verify-done .rat/state/rtl-verify-waiver
     ```
 
     ### Step 7: Equivalence check
