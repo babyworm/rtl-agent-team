@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import sys
+import textwrap
 
 import pytest
 
@@ -31,6 +32,31 @@ class TestParseArea:
         u_core = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
         assert u_core["um2"] == pytest.approx(12345.6)
         assert u_core["pct"] == pytest.approx(27.30, rel=0.01)
+
+    def test_hierarchical_breakdown_with_non_top_name(self, tmp_path):
+        content = textwrap.dedent("""
+        Total cell area:                 10000.0
+        Combinational area:              6000.0
+        Noncombinational area:           3500.0
+        Buf/Inv area:                     500.0
+        Macro/Black Box area:               0.0
+
+        Hierarchical area distribution:
+          vc_transform_8x8                       10000.0  100.00%
+            vc_transform_8x8/u_core                4500.0   45.00%
+            vc_transform_8x8/u_core/u_s1           2500.0   25.00%
+            vc_transform_8x8/u_io                  1500.0   15.00%
+        """)
+        rpt = tmp_path / "area.rpt"
+        rpt.write_text(content)
+        result = pdr.parse_area(rpt)
+        hiers = [m["hier"] for m in result["per_module"]]
+        # Non-top root must be excluded (depth 0)
+        assert "vc_transform_8x8" not in hiers
+        # Child modules must be captured
+        assert "vc_transform_8x8/u_core" in hiers
+        assert "vc_transform_8x8/u_core/u_s1" in hiers
+        assert "vc_transform_8x8/u_io" in hiers
 
     def test_missing_file_returns_empty(self):
         result = pdr.parse_area(None)
@@ -95,6 +121,28 @@ class TestParsePower:
         # The u_core row has an 'H' Attrs annotation — it must still be parsed
         u_core = next(m for m in result["per_module"] if m["hier"] == "top/u_core")
         assert u_core["total_mw"] == pytest.approx(71.22, rel=0.01)
+
+    def test_hierarchical_per_module_with_non_top_name(self, tmp_path):
+        content = textwrap.dedent("""
+        Total Dynamic Power    =   98.21 mW
+        Cell Leakage Power     =   26.16 mW
+        Cell Internal Power    =   55.00 mW
+        Total Power            =  124.37 mW
+
+        Hierarchical Power Distribution:
+          vc_transform_8x8     10.00  20.00  5.00  124.37  100.00
+            vc_transform_8x8/u_core   5.00  10.00  2.50   71.22   57.27 H
+            vc_transform_8x8/u_io     2.00   4.00  1.00   30.00   24.13
+        """)
+        rpt = tmp_path / "power.rpt"
+        rpt.write_text(content)
+        result = pdr.parse_power(rpt)
+        hiers = [m["hier"] for m in result["per_module"]]
+        # Non-top root must be excluded (depth 0)
+        assert "vc_transform_8x8" not in hiers
+        # Child modules must be captured
+        assert "vc_transform_8x8/u_core" in hiers
+        assert "vc_transform_8x8/u_io" in hiers
 
 
 class TestParseQor:

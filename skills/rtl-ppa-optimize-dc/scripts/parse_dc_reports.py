@@ -83,13 +83,13 @@ def parse_area(path):
         if m:
             result[key] = float(m.group(1))
     hier_re = re.compile(
-        r"^\s+(top(?:/[\w\[\]\.]+)*)\s+([\d.]+)\s+([\d.]+)%",
+        r"^\s+([A-Za-z_][\w]*(?:/[\w\[\]\.]+)*)\s+([\d.]+)\s+([\d.]+)%",
         re.MULTILINE,
     )
     for m in hier_re.finditer(text):
         hier, um2, pct = m.groups()
-        # Skip the synthetic root ('top' alone) to avoid poisoning per_module ranking
-        if hier == "top" or float(pct) >= 99.99:
+        # Skip the synthetic root (depth 0, no '/') to avoid poisoning per_module ranking
+        if "/" not in hier or float(pct) >= 99.99:
             continue
         result["per_module"].append(
             {"hier": hier, "um2": float(um2), "pct": float(pct), "cells": 0}
@@ -198,20 +198,20 @@ def parse_power(path):
             result["combinational_mw"] = float(total)
     # Parse hierarchical power breakdown (from report_power -hier)
     hier_re = re.compile(
-        r"^\s+(top(?:/[\w\[\]\.]+)*)"         # hierarchy path starting with top
-        r"\s+[\d.]+"                            # switch power
-        r"\s+[\d.]+"                            # int power
-        r"\s+[\d.]+"                            # leak power
-        r"\s+([\d.]+)"                          # total power (captured)
-        r"\s+([\d.]+)"                          # pct (captured)
-        r"(?:\s+[A-Za-z][\w,]*)?"              # optional Attrs column (letter+word chars+commas)
+        r"^\s+([A-Za-z_][\w]*(?:/[\w\[\]\.]+)*)"  # hierarchy path, any design top name
+        r"\s+[\d.]+"                                # switch power
+        r"\s+[\d.]+"                                # int power
+        r"\s+[\d.]+"                                # leak power
+        r"\s+([\d.]+)"                              # total power (captured)
+        r"\s+([\d.]+)"                              # pct (captured)
+        r"(?:\s+[A-Za-z][\w,]*)?"                  # optional Attrs column (letter+word chars+commas)
         r"\s*$",
         re.MULTILINE,
     )
     for m in hier_re.finditer(text):
         hier, total_mw, pct = m.groups()
-        # Skip the synthetic root row
-        if hier == "top" or float(pct) >= 99.99:
+        # Skip the synthetic root row (depth 0, no '/')
+        if "/" not in hier or float(pct) >= 99.99:
             continue
         result["per_module"].append({
             "hier": hier,
