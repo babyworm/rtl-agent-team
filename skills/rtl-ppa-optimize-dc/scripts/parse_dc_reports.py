@@ -83,7 +83,7 @@ def parse_area(path):
         if m:
             result[key] = float(m.group(1))
     hier_re = re.compile(
-        r"^\s+([A-Za-z_][\w]*(?:/[\w\[\]\.]+)*)\s+([\d.]+)\s+([\d.]+)%",
+        r"^\s+([A-Za-z_][\w$]*(?:/[\w\[\]\.\$]+)*)\s+([\d.]+)\s+([\d.]+)%",
         re.MULTILINE,
     )
     for m in hier_re.finditer(text):
@@ -198,7 +198,7 @@ def parse_power(path):
             result["combinational_mw"] = float(total)
     # Parse hierarchical power breakdown (from report_power -hier)
     hier_re = re.compile(
-        r"^\s+([A-Za-z_][\w]*(?:/[\w\[\]\.]+)*)"  # hierarchy path, any design top name
+        r"^\s+([A-Za-z_][\w$]*(?:/[\w\[\]\.\$]+)*)"  # hierarchy path, any design top name
         r"\s+[\d.]+"                                # switch power
         r"\s+[\d.]+"                                # int power
         r"\s+[\d.]+"                                # leak power
