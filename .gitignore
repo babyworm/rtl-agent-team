@@ -45,3 +45,6 @@ __pycache__/
 .venv/
 .pytest_vendor/
 .omx/
+
+# Codex CLI scratch (see ask-codex prompt/review templates)
+.codex-*.txt
