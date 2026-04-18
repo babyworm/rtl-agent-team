@@ -37,6 +37,54 @@ _check_p6_stale() {
   fi
 }
 
+# Returns 0 if $1 matches any allowed_edit_scope glob in ppa-loop-state.json
+# while mode == "ppa-loop". Returns 1 otherwise.
+_rat_in_ppa_scope() {
+  _ppa_file="$1"
+  _ppa_state="$RAT_DIR/state/ppa-loop-state.json"
+  [ ! -f "$_ppa_state" ] && return 1
+  _ppa_mode=$(python3 -c "import json,sys; print(json.load(open('$_ppa_state')).get('mode',''))" 2>/dev/null || echo "")
+  [ "$_ppa_mode" != "ppa-loop" ] && return 1
+  python3 - "$_ppa_file" "$_ppa_state" <<'PY'
+# Mirror the recursive ** matcher used by
+# skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py so that
+# zero-depth matches (e.g. rtl/stub/top.sv against rtl/stub/**/*.sv)
+# are accepted consistently on both sides (Codex R2 H2).
+import json, fnmatch, re, sys
+filepath = sys.argv[1]
+state_path = sys.argv[2]
+try:
+    state = json.load(open(state_path))
+except Exception:
+    sys.exit(1)
+
+def _match_one(path, g):
+    if "**" in g:
+        regex_parts = []
+        for part in g.split("/"):
+            if part == "**":
+                regex_parts.append(".*")
+            else:
+                regex_parts.append(
+                    fnmatch.translate(part)
+                    .replace(r"\Z", "")
+                    .replace(r"(?s:", "")
+                    .rstrip(")")
+                )
+        regex = "^" + "/".join(p for p in regex_parts if p) + "$"
+        regex = regex.replace("/.*/", "(/.*)?/")
+        return bool(re.match(regex, path))
+    return fnmatch.fnmatchcase(path, g)
+
+scope = state.get("allowed_edit_scope", [])
+for g in scope:
+    if _match_one(filepath, g):
+        sys.exit(0)
+sys.exit(1)
+PY
+  return $?
+}
+
 # Set up STATE_DIR and TRACK_FILE with team mode awareness.
 # Sets globals: STATE_DIR, TRACK_FILE
 _setup_tracking() {
@@ -159,6 +207,18 @@ if [ -z "$FILE_PATH" ]; then
     emit_post_continue
   fi
   _setup_tracking
+  # PPA-loop scope check: skip accumulation only for files inside allowed_edit_scope.
+  _PPA_SKIP=true
+  for _brf in $(printf '%s\n' "$BASH_RTL_FILES"); do
+    if ! _rat_in_ppa_scope "$_brf"; then
+      _PPA_SKIP=false
+      break
+    fi
+  done
+  if [ "$_PPA_SKIP" = "true" ]; then
+    emit_continue "ppa-loop scope edit — skipping rtl-edit staleness"
+    exit 0
+  fi
   _track_and_invalidate "$BASH_RTL_FILES"
   _prepare_gate_output
   printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
@@ -169,6 +229,10 @@ fi
 case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     _setup_tracking
+    if _rat_in_ppa_scope "$FILE_PATH"; then
+      emit_continue "ppa-loop scope edit — skipping rtl-edit staleness"
+      exit 0
+    fi
     _track_and_invalidate "$FILE_PATH"
     _prepare_gate_output
     SAFE_BASENAME=$(jsonu_escape "$(basename "$FILE_PATH")")

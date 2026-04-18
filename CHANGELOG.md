@@ -34,6 +34,32 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   the cached v1.1.2 install transparently switches to the
   GitHub-sourced copy.
 
+## [0.10.0] - 2026-04-17
+
+### Added
+- DC-based PPA optimization loop (Post-Verify stage between P5 and P6)
+  - `rtl-ppa-optimize-dc` action skill (one-shot iteration)
+  - `rat-ultraloop-ppa` auto-loop wrapper with 30-min auto-continue
+  - `ppa-optimizer-dc-policy` reference skill (timing-first heuristic,
+    default weights 0.7/0.2/0.1, convergence: streak 3 × |Δ|<2%,
+    early-plateau at iter 1–2 × |Δ|<1%, default max_cycles=4)
+  - New agents: `ppa-optimizer-dc-orchestrator`, `ppa-optimizer-dc`, `dc-report-parser`
+  - `parse_dc_reports.py` — DC `.rpt` → `ppa-report.json` consolidation
+  - `compute_delta.py` — weighted Δ + convergence verdict
+  - `validate_patch_scope.py` — allowed/frozen scope enforcement for RTL patches
+- Pipeline Rules 10 & 11 (policy; Rule 11 enforced inside wrapper)
+
+### Changed
+- `hooks/rtl-edit-tracker.sh` skips staleness during active PPA-opt loop
+- `hooks/stop-gate.sh` recognizes `mode: "ppa-loop"` for auto-continue
+- `hooks/rtl-p6-cascade-gate.sh` flags P6 re-review after `.rat/state/ppa-opt-done`
+- `skills/rtl-orchestrate/SKILL.md` routing table extended with two entries
+- Component counts: skills 94 → 97, agents 94 → 97
+
+### Requirements
+- Commercial synthesis required at runtime: `dc_shell` or `genus` in PATH
+- `requirements.json["ppa_targets"]` section needed (scaffold auto-written on first run)
+
 ### Fixed
 - **systemverilog-lsp bumped to `1.1.2`** (cache-invalidation release; manifest
   version only). The `.lsp.json` fix from `a2c7687` ("remove unrecognized `name`

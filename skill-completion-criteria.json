@@ -33,5 +33,7 @@
   "rtl-review-refactor": "review-complete|refactor-verified",
   "codex-cross-review": "cross-review-report-written|verdict-recorded",
   "rtl-p4-block-parallel": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged|ac-coverage-advisory",
-  "rat-ultraloop": "target-skill-executed|design-freeze-intact|cycle-summary-written"
+  "rat-ultraloop": "target-skill-executed|design-freeze-intact|cycle-summary-written",
+  "rtl-ppa-optimize-dc": "ppa-iteration-complete|ppa-report-written|verdict-recorded",
+  "rat-ultraloop-ppa": "ppa-loop-complete|final-report-written"
 }

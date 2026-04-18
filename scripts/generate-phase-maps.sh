@@ -47,7 +47,7 @@ generate_skill_to_phase() {
   # have no phase mapping in sctx_skill_to_phase().
   # Phase 5 uses phase_group "a"/"b" to control the two-line split.
 
-  local p1_native p2 p3 p4_rtl p5_a p5_b p6 p7 p1_rat p4_rat
+  local p1_native p2 p3 p4_rtl p5_a p5_b p6 p7 p1_rat p4_rat ppa_opt
 
   p1_native=$(_skills_join '[.skills | to_entries[] | select(.value.phase == 1) | select(.key | test("^(p1-|rtl-p1-)")) | .key] | join("|")')
   p2=$(_skills_join '[.skills | to_entries[] | select(.value.phase == 2) | .key] | join("|")')
@@ -59,6 +59,7 @@ generate_skill_to_phase() {
   p7=$(_skills_join '[.skills | to_entries[] | select(.value.phase == 7) | .key] | join("|")')
   p1_rat=$(_skills_join '[.skills | to_entries[] | select(.value.phase == 1) | select(.key | test("^rat-")) | .key] | join("|")')
   p4_rat=$(_skills_join '[.skills | to_entries[] | select(.value.phase == 4) | select(.key | test("^rat-")) | .key] | join("|")')
+  ppa_opt=$(_skills_join '[.skills | to_entries[] | select(.value.phase == "ppa-opt") | .key] | join("|")')
 
   # Output with exact spacing to match original file format.
   # The second line (p2) has extra padding for visual alignment with "echo 2".
@@ -72,6 +73,7 @@ generate_skill_to_phase() {
   printf '    %s) echo 7 ;;\n' "$p7"
   printf '    %s) echo 1 ;;\n' "$p1_rat"
   printf '    %s) echo 4 ;;\n' "$p4_rat"
+  [ -n "$ppa_opt" ] && printf '    %s) echo 8 ;;\n' "$ppa_opt"
 }
 
 # ── Generator: compliance bootstrap case body ─────────────────────────────────

@@ -49,6 +49,24 @@ if [ -f "$ULTRALOOP_STATE" ]; then
   fi
 fi
 
+# PPA-Opt loop auto-continue: if ppa-loop is active and within its time window, keep going
+PPA_LOOP_STATE="$RAT_DIR/state/ppa-loop-state.json"
+if [ -f "$PPA_LOOP_STATE" ]; then
+  . "$SCRIPT_DIR/lib/posix-util.sh"
+  PPA_MODE=$(jsonu_get_file_path_string "$PPA_LOOP_STATE" "mode")
+  if [ "$PPA_MODE" = "ppa-loop" ]; then
+    PPA_TIMESTAMP=$(jsonu_get_file_path_num "$PPA_LOOP_STATE" "last_cycle_timestamp")
+    PPA_MINUTES=$(jsonu_get_file_path_num "$PPA_LOOP_STATE" "auto_continue_minutes")
+    [ -z "$PPA_MINUTES" ] && PPA_MINUTES=30
+    PPA_THRESHOLD=$((PPA_MINUTES * 60))
+    PPA_ELAPSED=$(posix_elapsed_seconds "$PPA_TIMESTAMP")
+    if [ "$PPA_ELAPSED" -lt "$PPA_THRESHOLD" ]; then
+      MSG="[PPA-Opt loop] auto-continue: ${PPA_ELAPSED}s elapsed (threshold=${PPA_THRESHOLD}s). Continuing PPA optimization loop."
+      emit_stop_block "$MSG"
+    fi
+  fi
+fi
+
 if [ ! -f "$STATE_FILE" ]; then
   emit_post_continue
 fi

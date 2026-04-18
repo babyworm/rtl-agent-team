@@ -65,6 +65,9 @@ case "$SHORT_NAME" in
   spec-to-uarch-orchestrator)     SKILL_NAME="rat-p1p3-spec-uarch" ;;
   uarch-to-verify-orchestrator)   SKILL_NAME="rat-p4p5-impl-verify" ;;
   dse-orchestrator)               SKILL_NAME="rat-dse" ;;
+  ppa-optimizer-dc-orchestrator)  SKILL_NAME="rtl-ppa-optimize-dc" ;;
+  ppa-optimizer-dc)               SKILL_NAME="rtl-ppa-optimize-dc" ;;
+  dc-report-parser)               SKILL_NAME="rtl-ppa-optimize-dc" ;;
   # Team orchestrators → team skills (1:1 mapping)
   p1-research-team-orchestrator)  SKILL_NAME="rtl-p1-research-team" ;;
   p2-arch-team-orchestrator)      SKILL_NAME="rtl-p2-arch-team" ;;

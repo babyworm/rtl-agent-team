@@ -1,0 +1,25 @@
+****************************************
+Report : clock_gating -verbose
+Design : vc_transform_8x8
+Version: U-2023.12
+Date   : Wed Apr 17 12:15:58 2026
+****************************************
+
+Clock gating summary:
+--------------------------------------------------
+|           |     Total |   Gated |   Ungated |
+|           | registers | regs    | regs      |
+--------------------------------------------------
+| Design    |      3421 |    2871 |       550 |
+--------------------------------------------------
+
+Total registers:  3421
+Gated registers:  2871
+Ungated registers: 550
+Gating efficiency: 83.92%
+
+Ungated bank details:
+    top/u_io_ctrl/cfg_reg     Ungated       32
+    top/u_ram_ctrl/addr_reg   Ungated        8
+    top/u_core/u_s1/stat_reg  Ungated       16
+1

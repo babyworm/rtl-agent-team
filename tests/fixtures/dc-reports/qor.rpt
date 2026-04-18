@@ -1,0 +1,36 @@
+****************************************
+Report : qor
+Design : vc_transform_8x8
+Version: U-2023.12
+Date   : Wed Apr 17 12:15:34 2026
+****************************************
+
+
+  Timing Path Group 'sys_clk'
+  -----------------------------------
+  Levels of Logic:             17.00
+  Critical Path Length:         1.20
+  Critical Path Slack:         -0.083
+  Critical Path Clk Period:     1.25
+  Total Negative Slack:        -2.410
+  No. of Violating Paths:      17.00
+  Worst Hold Violation:         0.000
+  Total Hold Violation:         0.000
+  No. of Hold Violations:        0.00
+  -----------------------------------
+
+
+  Design WNS:  -0.083
+  Design TNS:  -2.410
+  Worst Hold Slack:  0.023
+
+
+  DESIGN STATISTICS
+  -----------------------------------
+  Area Summary (based on 0.798 um2 per NAND2X1):
+    Total Cell Area:   45230.500
+  Cell Count:
+    Hierarchical Cell Count:    3102
+    Hierarchical Port Count:     412
+    Leaf Cell Count:            3102
+1
