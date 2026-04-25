@@ -7,6 +7,34 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.10.5] - 2026-04-25
+
+### Changed
+- **`systemverilog-lsp` sub-plugin pinned to v1.1.4.**
+  `.claude-plugin/marketplace.json` updates the `systemverilog-lsp`
+  source `ref` from `v1.1.3` to `v1.1.4` and refreshes the pinned
+  `sha` accordingly. v1.1.4 fixes the SessionStart hook
+  (`hooks/slang-server-check.sh`) JSON envelope — the previous
+  release emitted `{"hookSpecificOutput":{"additionalContext":"..."}}`
+  without the required `hookEventName` field, which Claude Code v2.1.x's
+  hook validator rejected with
+  `Hook JSON output validation failed — hookSpecificOutput is missing
+  required field "hookEventName"`. The error fired on every session
+  startup whenever `slang-server` was missing or off-PATH (the exact
+  case the advisory hook is designed to handle), masking the real
+  install instructions.
+
+  Net effect for users on the canonical marketplace install: a new
+  Claude Code session in any project will pull v1.1.4 on next plugin
+  reload and the schema error stops appearing. Cached v1.1.3 installs
+  are evicted by the `ref`/`sha` change.
+
+### Internal
+- Marketplace versioning is independent from the systemverilog-lsp
+  sub-plugin's own SemVer; the README "Marketplace" table is updated
+  in lockstep with both bumps so user-visible documentation stays
+  consistent.
+
 ## [0.10.4] - 2026-04-25
 
 ### Changed
