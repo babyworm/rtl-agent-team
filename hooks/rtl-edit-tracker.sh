@@ -39,13 +39,30 @@ _check_p6_stale() {
 
 # Returns 0 if $1 matches any allowed_edit_scope glob in ppa-loop-state.json
 # while mode == "ppa-loop". Returns 1 otherwise.
+#
+# Dependency profile (since v0.10.4):
+# - mode key read uses jsonu_get_file_path_string() — graceful tiered
+#   parser (jq → python3 → python → sed). No hard python3 dependency for
+#   the fast-exit "not in ppa-loop" path.
+# - Recursive `**` glob matching against allowed_edit_scope keeps a python
+#   step (fnmatch + custom regex is non-trivial to reproduce correctly in
+#   POSIX sh or jq). When neither python3 nor python is available, the
+#   function returns 1 (out-of-scope) so the verify gate stays active —
+#   safer to over-track than to silently skip a real RTL change.
 _rat_in_ppa_scope() {
   _ppa_file="$1"
   _ppa_state="$RAT_DIR/state/ppa-loop-state.json"
   [ ! -f "$_ppa_state" ] && return 1
-  _ppa_mode=$(python3 -c "import json,sys; print(json.load(open('$_ppa_state')).get('mode',''))" 2>/dev/null || echo "")
+  _ppa_mode=$(jsonu_get_file_path_string "$_ppa_state" "mode")
   [ "$_ppa_mode" != "ppa-loop" ] && return 1
-  python3 - "$_ppa_file" "$_ppa_state" <<'PY'
+  if command -v python3 >/dev/null 2>&1; then
+    _PPA_PY=python3
+  elif command -v python >/dev/null 2>&1; then
+    _PPA_PY=python
+  else
+    return 1
+  fi
+  "$_PPA_PY" - "$_ppa_file" "$_ppa_state" <<'PY'
 # Mirror the recursive ** matcher used by
 # skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py so that
 # zero-depth matches (e.g. rtl/stub/top.sv against rtl/stub/**/*.sv)

@@ -7,6 +7,26 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-04-25
+
+### Changed
+- **`hooks/rtl-edit-tracker.sh::_rat_in_ppa_scope` runtime dependency
+  reduced.** The mode key read in `.rat/state/ppa-loop-state.json` now
+  uses `jsonu_get_file_path_string` (jq → python3 → python → sed
+  tiered fallback in `hooks/lib/json-util.sh`) instead of a direct
+  `python3 -c "..."` call. The recursive `**` glob match against
+  `allowed_edit_scope` still uses a python step (fnmatch + custom
+  regex is non-trivial to reproduce correctly in POSIX sh or jq),
+  but when neither python3 nor python is available the function now
+  returns 1 (out-of-scope) so the RTL verify gate stays active —
+  safer to over-track than to silently skip a real RTL change.
+
+  Net effect: hook runtime no longer issues a direct `python3` call
+  outside the graceful fallback chain in `hooks/lib/json-util.sh`.
+  User-facing behavior is unchanged in the canonical setup
+  (jq + python3 both present); environments missing one of them now
+  degrade more predictably.
+
 ## [0.10.3] - 2026-04-25
 
 ### Fixed
