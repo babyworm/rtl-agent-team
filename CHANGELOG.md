@@ -7,6 +7,53 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-04-25
+
+### Fixed
+- **`marketplace.json` systemverilog-lsp sha now points to the commit,
+  not the annotated tag-object.** v0.10.5 pinned `062ea908...`, which
+  `git cat-file -t` resolves to `tag` (the annotated tag header
+  object), not `commit`. The historical v1.1.3 pin used the commit
+  sha (`b1a6c83...`), so v0.10.5 silently broke the project's pin
+  convention. Switched to `a874d3248d08606b50b71376c64ed8af99396c97`
+  (the commit referenced by v1.1.4).
+
+  Background: `git rev-parse <tag>` returns the tag-object sha for
+  annotated tags; the commit sha requires `^{commit}`. They are equal
+  only for lightweight tags. The mistake came from running
+  `git rev-parse v1.1.4` during v0.10.5 release prep without the
+  `^{commit}` suffix.
+
+### Changed
+- **CLAUDE.md "Version bump checklist" (item 14)** now includes an
+  explicit step for sub-plugin sha pins covering annotated vs lightweight
+  tags and the `git cat-file -t` verification — preventing the v0.10.5
+  drift from recurring.
+
+### Notes — Claude Code v2.1.x JSON schema migration (v0.10.3 → v0.10.6)
+This series addresses the SessionStart hook output schema enforcement
+that Claude Code v2.1.x introduced (`hookSpecificOutput.hookEventName`
+mandatory, must match the event name; raw-text stdout silently dropped):
+
+- **v0.10.3** — `rtl-orchestrator-inject.sh` rewritten to emit a JSON
+  envelope. Markdown JSON-encoded at sync time via
+  `scripts/sync_orchestrator_inject.sh`; runtime hook keeps zero
+  jq/python dependency. New CI `validate-plugin` job locks the contract.
+- **v0.10.4** — `rtl-edit-tracker.sh::_rat_in_ppa_scope` mode read
+  switched to `jsonu_get_file_path_string` graceful tier (jq → python →
+  sed), reducing direct python3 calls in hook runtime.
+- **v0.10.5** — pinned `systemverilog-lsp` v1.1.4 (its
+  `slang-server-check.sh` was emitting JSON without `hookEventName`).
+- **v0.10.6** (this release) — corrected the v0.10.5 sha pin format
+  (commit sha, not tag-object sha) and documented the sub-plugin pinning
+  convention so future bumps don't repeat the mistake.
+
+User-facing effect after v0.10.6: a fresh Claude Code session in any
+project pulls a coherent, schema-compliant plugin set on next reload.
+No more `Hook JSON output validation failed — hookSpecificOutput is
+missing required field "hookEventName"` from any rtl-agent-team-managed
+hook.
+
 ## [0.10.5] - 2026-04-25
 
 ### Changed
