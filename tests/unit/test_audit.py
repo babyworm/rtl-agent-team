@@ -271,10 +271,26 @@ class TestAuditInitHook:
         assert not audit_dir.exists()
 
     def test_silent_output(self, tmp_project):
-        """SessionStart audit hook should produce no stdout JSON."""
+        """SessionStart audit hook must not inject any additionalContext.
+
+        Since v0.10.2 the hook emits a minimal valid SessionStart envelope
+        ``{"hookSpecificOutput":{"hookEventName":"SessionStart"}}`` to satisfy
+        Claude Code's hook output schema (bare ``{}`` is now rejected with
+        ``hookSpecificOutput is missing required field "hookEventName"``). The
+        envelope intentionally carries no ``additionalContext`` so nothing is
+        surfaced to the user — preserving the original "silent" intent.
+        """
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        # run_hook returns raw_stdout for non-JSON output
-        assert "raw_stdout" in result or result == {}
+        # Legacy outputs (raw stdout / empty {}) remain acceptable.
+        if "raw_stdout" in result or result == {}:
+            return
+        hso = result.get("hookSpecificOutput", {})
+        assert hso.get("hookEventName") == "SessionStart", (
+            f"audit-init JSON output must declare hookEventName=SessionStart; got {result!r}"
+        )
+        assert "additionalContext" not in hso, (
+            f"audit-init must not inject additionalContext on SessionStart; got {result!r}"
+        )
 
 
 # ── rtl-audit-subagent.sh tests ──────────────────────────────────────────────

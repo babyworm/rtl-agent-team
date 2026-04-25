@@ -19,9 +19,17 @@ INPUT=$(cat)
 CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -z "$CWD" ] && CWD="$(pwd)"
 
-# Only inject when RTL project is detected
-if [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ] && [ ! -d "$CWD/.rat" ] && [ ! -d "$CWD/.rtl-agent-team" ]; then
-  printf '{}'
+# RAT project marker: .rat/ (current) or .rtl-agent-team/ (legacy v0.8.11-).
+# These directories are created by rtl-agent-team skills (including
+# rat-init-project) when first invoked. Their presence means the project
+# has actively used rtl-agent-team at least once. Generic directory names
+# like rtl/ or docs/ are NOT used as markers — too many false positives.
+#
+# When no marker is present, emit minimal valid SessionStart JSON and exit
+# silently. Per-skill init advisory (when a user invokes a rtl-agent-team
+# skill in an unmarked project) is handled by rtl-skill-activation.sh.
+if [ ! -d "$CWD/.rat" ] && [ ! -d "$CWD/.rtl-agent-team" ]; then
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
   exit 0
 fi
 

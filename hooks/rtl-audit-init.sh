@@ -14,9 +14,11 @@ jsonu_detect_parser
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 
-# Only initialize for RTL projects
-if [ ! -d "$CWD/.rat" ] && [ ! -d "$CWD/.rtl-agent-team" ] && [ ! -d "$CWD/rtl" ] && [ ! -d "$CWD/docs" ]; then
-  printf '{}'
+# Only initialize audit when RAT marker exists (.rat/ or legacy .rtl-agent-team/).
+# Generic directories like rtl/ or docs/ are not RAT markers — they only become
+# meaningful once a rtl-agent-team skill has been invoked at least once.
+if ! rat_is_project "$CWD"; then
+  printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
   exit 0
 fi
 
@@ -31,5 +33,6 @@ if audit_init_session "$CWD"; then
     >/dev/null
 fi
 
-# Minimal output to avoid Claude Code "startup hook error" on empty stdout
-printf '{}'
+# Minimal valid SessionStart JSON to satisfy hook output schema
+# (hookEventName is required by Claude Code's hook output validator).
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'

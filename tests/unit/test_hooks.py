@@ -27,31 +27,58 @@ class TestRtlOrchestratorInject:
 
     HOOK = HOOKS_DIR / "rtl-orchestrator-inject.sh"
 
-    def test_no_project_markers_no_injection(self, tmp_path):
+    def test_no_marker_emits_minimal_json(self, tmp_path):
+        """Without a RAT marker, the hook emits the minimal SessionStart
+        envelope (and no routing block) so Claude Code's hook output schema
+        is satisfied without leaking context into unrelated projects."""
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
+        # No raw markdown output.
+        assert result.get("raw_stdout", "") == ""
+        # JSON envelope must declare hookEventName and carry no context.
+        hso = result.get("hookSpecificOutput", {})
+        assert hso.get("hookEventName") == "SessionStart"
+        assert "additionalContext" not in hso
+
+    def test_rtl_dir_alone_no_injection(self, tmp_path):
+        """`rtl/` is too generic to be a RAT marker — many non-RAT repos
+        contain it. Marker check must require .rat/ or .rtl-agent-team/."""
+        (tmp_path / "rtl").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         assert result.get("raw_stdout", "") == ""
+        assert (
+            result.get("hookSpecificOutput", {}).get("hookEventName")
+            == "SessionStart"
+        )
 
-    def test_rtl_dir_triggers_injection(self, tmp_path):
-        (tmp_path / "rtl").mkdir()
+    def test_docs_dir_alone_no_injection(self, tmp_path):
+        """`docs/` is too generic to be a RAT marker."""
+        (tmp_path / "docs").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
+        assert result.get("raw_stdout", "") == ""
+        assert (
+            result.get("hookSpecificOutput", {}).get("hookEventName")
+            == "SessionStart"
+        )
+
+    def test_rat_marker_triggers_injection(self, tmp_path):
+        """`.rat/` is the canonical RAT marker (created when any rtl-agent-team
+        skill, including rat-init-project, runs at least once)."""
+        (tmp_path / ".rat").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         output = result.get("raw_stdout", "")
         assert "# RTL Agent Team — Active Project Rules" in output
         assert "/rtl-agent-team:rat-auto-design" in output
-        assert "Action Skills first" in output
+        assert "/rtl-agent-team:rtl-p5-verify" in output
+        assert "/rtl-agent-team:rtl-p6-design-review" in output
 
-    def test_docs_dir_triggers_injection(self, tmp_path):
-        (tmp_path / "docs").mkdir()
+    def test_legacy_marker_triggers_injection(self, tmp_path):
+        """`.rtl-agent-team/` is the legacy marker (v0.8.11 and earlier).
+        Honored for backward compatibility with existing user projects."""
+        (tmp_path / ".rtl-agent-team").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
         output = result.get("raw_stdout", "")
         assert "## Pipeline Rules" in output
         assert "/rtl-agent-team:p1-spec-research" in output
-
-    def test_rtl_state_dir_triggers_injection(self, tmp_path):
-        (tmp_path / ".rat").mkdir()
-        result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        output = result.get("raw_stdout", "")
-        assert "/rtl-agent-team:rtl-p5-verify" in output
-        assert "/rtl-agent-team:rtl-p6-design-review" in output
 
 
 class TestRtlEditTracker:

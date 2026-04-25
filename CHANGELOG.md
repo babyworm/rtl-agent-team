@@ -7,6 +7,34 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-04-25
+
+### Fixed
+- **SessionStart hook JSON validation error.** `hooks/rtl-audit-init.sh`
+  emitted a bare `{}`, which Claude Code now rejects with
+  `Hook JSON output validation failed — hookSpecificOutput is missing
+  required field "hookEventName"`. Both `rtl-audit-init.sh` and
+  `rtl-orchestrator-inject.sh` now emit a minimal valid SessionStart
+  payload (`{"hookSpecificOutput":{"hookEventName":"SessionStart"}}`)
+  whenever no RAT marker is present, satisfying the schema and exiting
+  silently as intended.
+
+### Changed
+- **SessionStart marker check simplified.**
+  `hooks/rtl-orchestrator-inject.sh` no longer treats generic
+  directories like `rtl/` or `docs/` as RTL-project markers
+  (false-positive prone — these names are common in non-RAT
+  repositories). Only `.rat/` (current) and `.rtl-agent-team/` (legacy
+  v0.8.11-) are recognized, matching the contract in
+  `hooks/lib/rat-dir-util.sh:rat_is_project()`. When no marker is
+  present the hook returns minimal valid JSON instead of injecting the
+  ~96-line routing block; per-skill init advisory is handled by
+  `hooks/rtl-skill-activation.sh` on demand.
+- `hooks/rtl-audit-init.sh` switched its directory check from a hand-
+  rolled four-way `[ -d ]` chain to `rat_is_project "$CWD"` for the
+  same reason — the old check fired audit-session bookkeeping for any
+  repository that happened to contain a `rtl/` or `docs/` directory.
+
 ## [0.10.1] - 2026-04-18
 
 ### Fixed
