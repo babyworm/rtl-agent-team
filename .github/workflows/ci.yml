@@ -20,3 +20,83 @@ jobs:
       - run: sudo apt-get install -y shellcheck
       - run: shellcheck -s sh hooks/*.sh
       - run: shellcheck -s sh hooks/lib/*.sh
+
+  validate-plugin:
+    # Deterministic plugin sanity checks. LLM-based reviews
+    # (plugin-dev:plugin-validator, plugin-dev:skill-reviewer) stay manual /
+    # release-time because they incur LLM cost; the checks below catch the
+    # regressions those agents would also flag (JSON schema, version drift,
+    # hook output shape, SSOT sync). No untrusted GitHub event inputs are
+    # consumed by the run: blocks below.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate JSON manifests parse cleanly
+        run: |
+          for f in package.json .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json; do
+            python3 -m json.tool "$f" > /dev/null
+          done
+
+      - name: Verify version sync across manifests
+        run: |
+          PKG=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')
+          PLUGIN=$(python3 -c 'import json; print(json.load(open(".claude-plugin/plugin.json"))["version"])')
+          MARKET_META=$(python3 -c 'import json; print(json.load(open(".claude-plugin/marketplace.json"))["metadata"]["version"])')
+          MARKET_PLUGIN=$(python3 -c 'import json; print(json.load(open(".claude-plugin/marketplace.json"))["plugins"][0]["version"])')
+          for v in "$PLUGIN" "$MARKET_META" "$MARKET_PLUGIN"; do
+            if [ "$PKG" != "$v" ]; then
+              echo "Version drift: package.json=$PKG, plugin.json=$PLUGIN, marketplace.metadata=$MARKET_META, marketplace.plugins[0]=$MARKET_PLUGIN"
+              exit 1
+            fi
+          done
+          echo "All versions aligned at $PKG"
+
+      - name: Verify SessionStart hook output schema
+        # Locks the contract that broke in v0.10.1/v0.10.2: hook stdout
+        # MUST be valid JSON with hookSpecificOutput.hookEventName, in BOTH
+        # the marker-absent and marker-present branches.
+        run: |
+          set -e
+          # Marker-absent path -> minimal envelope, no additionalContext.
+          mkdir -p /tmp/clean-no-marker
+          OUT=$(echo '{"cwd":"/tmp/clean-no-marker"}' | sh hooks/rtl-orchestrator-inject.sh)
+          printf '%s' "$OUT" | python3 -m json.tool > /dev/null
+          python3 - "$OUT" <<'PY'
+          import json, sys
+          d = json.loads(sys.argv[1])
+          hso = d.get("hookSpecificOutput", {})
+          assert hso.get("hookEventName") == "SessionStart", f"missing/wrong hookEventName: {hso}"
+          assert "additionalContext" not in hso, f"unexpected context in marker-absent path: {hso}"
+          PY
+
+          # Marker-present path -> envelope with non-empty additionalContext.
+          mkdir -p /tmp/rat-marker/.rat
+          OUT=$(echo '{"cwd":"/tmp/rat-marker"}' | sh hooks/rtl-orchestrator-inject.sh)
+          printf '%s' "$OUT" | python3 -m json.tool > /dev/null
+          python3 - "$OUT" <<'PY'
+          import json, sys
+          d = json.loads(sys.argv[1])
+          hso = d.get("hookSpecificOutput", {})
+          assert hso.get("hookEventName") == "SessionStart", f"missing/wrong hookEventName: {hso}"
+          ctx = hso.get("additionalContext", "")
+          assert "Pipeline Rules" in ctx, "routing markdown missing"
+          assert "/rtl-agent-team:rat-auto-design" in ctx, "skill route missing"
+          print(f"marker-present envelope OK ({len(ctx)} chars of additionalContext)")
+          PY
+
+      - name: Verify sync drift (SKILL.md SSOT to hook generated block)
+        # Catches the case where someone edits skills/rtl-orchestrate/SKILL.md
+        # but forgets `sh scripts/sync_orchestrator_inject.sh`. Re-running the
+        # sync should produce no diff if the hook is up to date.
+        run: |
+          sh scripts/sync_orchestrator_inject.sh
+          if ! git diff --exit-code -- hooks/rtl-orchestrator-inject.sh; then
+            echo "ERROR: hooks/rtl-orchestrator-inject.sh is stale relative to skills/rtl-orchestrate/SKILL.md."
+            echo "Fix: sh scripts/sync_orchestrator_inject.sh && commit the result."
+            exit 1
+          fi
+          echo "Hook is in sync with SKILL.md SSOT"

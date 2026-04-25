@@ -1,4 +1,21 @@
 #!/bin/sh
+# Sync the SessionStart routing markdown from skills/rtl-orchestrate/SKILL.md
+# into hooks/rtl-orchestrator-inject.sh as a JSON-encoded envelope.
+#
+# Why this exists:
+# Claude Code's SessionStart hook validator requires JSON output with a
+# `hookSpecificOutput.hookEventName` field. Raw markdown stdout fails schema
+# validation. To keep the runtime hook dependency-free (no jq/python at session
+# start) we encode the markdown into JSON here at sync time and embed the
+# resulting single line inside a `cat << 'JSON_EOF'` heredoc. The heredoc is
+# single-quoted, so all bytes are preserved literally — no runtime escaping.
+#
+# Output schema (after sync):
+#   # BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh
+#   cat << 'JSON_EOF'
+#   {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"..."}}
+#   JSON_EOF
+#   # END GENERATED ROUTING BLOCK
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
@@ -20,10 +37,17 @@ if [ ! -f "$HOOK_FILE" ]; then
   exit 1
 fi
 
-SRC_BLOCK=$(mktemp)
-OUT_FILE=$(mktemp)
-trap 'rm -f "$SRC_BLOCK" "$OUT_FILE"' EXIT
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 not found in PATH (required for JSON encoding)" >&2
+  exit 1
+fi
 
+SRC_BLOCK=$(mktemp)
+NEW_BLOCK=$(mktemp)
+OUT_FILE=$(mktemp)
+trap 'rm -f "$SRC_BLOCK" "$NEW_BLOCK" "$OUT_FILE"' EXIT
+
+# 1) Extract markdown export block from SKILL.md
 awk -v start="$SRC_START" -v end="$SRC_END" '
   $0 == start {in_block = 1; next}
   $0 == end {in_block = 0; exit}
@@ -35,7 +59,41 @@ if [ ! -s "$SRC_BLOCK" ]; then
   exit 1
 fi
 
-awk -v start="$DST_START" -v end="$DST_END" -v block="$SRC_BLOCK" '
+# 2) Encode markdown into a single-line JSON envelope.
+#    ensure_ascii=False preserves μ, →, etc. (UTF-8 is JSON-spec compliant).
+JSON_LINE=$(python3 - "$SRC_BLOCK" << 'PYEOF'
+import json, sys
+src = sys.argv[1]
+with open(src, "r", encoding="utf-8") as f:
+    content = f.read()
+out = {
+    "hookSpecificOutput": {
+        "hookEventName": "SessionStart",
+        "additionalContext": content,
+    }
+}
+sys.stdout.write(json.dumps(out, ensure_ascii=False))
+PYEOF
+)
+
+if [ -z "$JSON_LINE" ]; then
+  echo "error: python3 JSON encoding produced empty output" >&2
+  exit 1
+fi
+
+# Sanity-check: the encoded line must be valid JSON before we splice it in.
+printf '%s' "$JSON_LINE" | python3 -c 'import json,sys; json.loads(sys.stdin.read())' \
+  || { echo "error: encoded JSON failed self-validation" >&2; exit 1; }
+
+# 3) Build the new hook block: pre-encoded JSON inside a single-quoted heredoc.
+{
+  printf "cat << 'JSON_EOF'\n"
+  printf '%s\n' "$JSON_LINE"
+  printf 'JSON_EOF\n'
+} > "$NEW_BLOCK"
+
+# 4) Splice the new block between BEGIN/END markers in the hook file.
+awk -v start="$DST_START" -v end="$DST_END" -v block="$NEW_BLOCK" '
   BEGIN {
     while ((getline line < block) > 0) {
       lines[++n] = line
@@ -77,3 +135,4 @@ awk -v start="$DST_START" -v end="$DST_END" -v block="$SRC_BLOCK" '
 }
 
 mv "$OUT_FILE" "$HOOK_FILE"
+echo "synced: $HOOK_FILE (JSON envelope, $(printf '%s' "$JSON_LINE" | wc -c | tr -d ' ') bytes)"

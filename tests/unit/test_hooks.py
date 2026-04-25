@@ -62,10 +62,15 @@ class TestRtlOrchestratorInject:
 
     def test_rat_marker_triggers_injection(self, tmp_path):
         """`.rat/` is the canonical RAT marker (created when any rtl-agent-team
-        skill, including rat-init-project, runs at least once)."""
+        skill, including rat-init-project, runs at least once).
+
+        Since v0.10.3 the hook emits a JSON envelope; routing markdown is
+        delivered via `hookSpecificOutput.additionalContext`."""
         (tmp_path / ".rat").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        output = result.get("raw_stdout", "")
+        hso = result.get("hookSpecificOutput", {})
+        assert hso.get("hookEventName") == "SessionStart"
+        output = hso.get("additionalContext", "")
         assert "# RTL Agent Team — Active Project Rules" in output
         assert "/rtl-agent-team:rat-auto-design" in output
         assert "/rtl-agent-team:rtl-p5-verify" in output
@@ -73,10 +78,15 @@ class TestRtlOrchestratorInject:
 
     def test_legacy_marker_triggers_injection(self, tmp_path):
         """`.rtl-agent-team/` is the legacy marker (v0.8.11 and earlier).
-        Honored for backward compatibility with existing user projects."""
+        Honored for backward compatibility with existing user projects.
+
+        Since v0.10.3 the hook emits a JSON envelope; see comment in
+        `test_rat_marker_triggers_injection` above."""
         (tmp_path / ".rtl-agent-team").mkdir()
         result = run_hook(self.HOOK, {"cwd": str(tmp_path)})
-        output = result.get("raw_stdout", "")
+        hso = result.get("hookSpecificOutput", {})
+        assert hso.get("hookEventName") == "SessionStart"
+        output = hso.get("additionalContext", "")
         assert "## Pipeline Rules" in output
         assert "/rtl-agent-team:p1-spec-research" in output
 
@@ -3140,9 +3150,13 @@ class TestLegacyDirFallback:
         assert result["continue"] is False
 
     def test_orchestrator_inject_fires_with_legacy_dir(self, tmp_legacy_project):
+        # Since v0.10.3 the hook emits a JSON envelope; routing markdown is
+        # delivered via `hookSpecificOutput.additionalContext`.
         result = run_hook(self.INJECT_HOOK, {"cwd": str(tmp_legacy_project)})
-        raw = result.get("raw_stdout", "")
-        assert "Routing" in raw or "Pipeline Rules" in raw
+        hso = result.get("hookSpecificOutput", {})
+        assert hso.get("hookEventName") == "SessionStart"
+        ctx = hso.get("additionalContext", "")
+        assert "Routing" in ctx or "Pipeline Rules" in ctx
 
     def test_hooks_exit_cleanly_in_non_project(self, tmp_path):
         """Hooks should emit {"continue":true} when no .rat or .rtl-agent-team exists."""

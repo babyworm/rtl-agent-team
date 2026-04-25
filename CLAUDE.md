@@ -70,6 +70,25 @@ Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver 
 **Progressive disclosure**: Session starts with ~130 lines (Layer 1 + Layer 4).
 Additional layers load only when needed, keeping the context window efficient.
 
+**Hook output schema (SessionStart)**: Claude Code validates SessionStart hook stdout
+against a JSON schema — `hookSpecificOutput.hookEventName` is mandatory. Layer 1 above
+delivers its routing markdown via the `additionalContext` field of that envelope:
+
+```json
+{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<markdown>"}}
+```
+
+Raw markdown stdout fails schema validation and is silently dropped (with a validator
+error visible in `claude --debug` logs). To keep the runtime hook dependency-free
+(no jq/python at session start), JSON encoding is performed at **sync time** by
+`scripts/sync_orchestrator_inject.sh`, which reads the SSOT block in
+`skills/rtl-orchestrate/SKILL.md`, encodes it via `python3 -m json`, and embeds the
+resulting single-line JSON inside a `cat << 'JSON_EOF'` heredoc in the hook. The
+single-quoted heredoc preserves all bytes literally — no runtime escaping needed.
+The `.rat`/`.rtl-agent-team` marker check still emits the same minimal envelope
+(`{"hookSpecificOutput":{"hookEventName":"SessionStart"}}`) when no project marker
+is present, so non-RAT sessions stay context-clean.
+
 ### Plugin Component Architecture (Design Principles)
 
 This plugin follows a **Skill → Agent → Policy** architecture.
@@ -121,6 +140,7 @@ When modifying this plugin:
     - `README.md` + `README_kr.md` (Marketplace table version)
     - `CHANGELOG.md` (move `[Unreleased]` items into new versioned section with date)
     - Verify no stale version references remain: `grep -r '0\.OLD\.VER' package.json .claude-plugin/ README.md README_kr.md`
+15. **Hook stdout must be valid JSON when non-empty** — Claude Code validates hook output against per-event schemas (`hookSpecificOutput.hookEventName` is mandatory for SessionStart, PreToolUse, PostToolUse). Raw text stdout silently fails validation. To inject context, embed JSON-encoded content inside `additionalContext` (SessionStart) or `permissionDecisionReason` (PreToolUse). For large/multi-line content, perform the JSON encoding at **sync/build time** in a dev script — never at runtime — so the hook stays POSIX-only with zero jq/python dependency. Canonical pattern in this plugin: `hooks/rtl-orchestrator-inject.sh` + `scripts/sync_orchestrator_inject.sh`. Validation: `echo '{"cwd":"<dir>"}' | sh hooks/<hook>.sh | python3 -m json.tool`.
 
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 

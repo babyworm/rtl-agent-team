@@ -527,6 +527,8 @@ class TestCrossReferences:
         assert re.search(r"P1\s*-\s*P6|P1-P6", content)
 
     def test_rtl_orchestrate_hook_export_is_synced(self):
+        import json
+
         skill_block = extract_marked_block(
             RTL_ORCHESTRATE_SKILL,
             "<!-- SESSIONSTART_HOOK_EXPORT_START -->",
@@ -538,8 +540,24 @@ class TestCrossReferences:
             "# END GENERATED ROUTING BLOCK",
         )
         assert skill_block, "Export block in rtl-orchestrate must not be empty"
-        assert skill_block == hook_block, (
-            "Hook routing block is out of sync with skills/rtl-orchestrate/SKILL.md. "
+
+        # Since v0.10.3 the hook block wraps the routing markdown inside a
+        # single-quoted heredoc that emits one JSON envelope on stdout
+        # (see CLAUDE.md "Hook output schema (SessionStart)").
+        lines = hook_block.splitlines()
+        assert lines and lines[0] == "cat << 'JSON_EOF'", (
+            "Hook block must start with `cat << 'JSON_EOF'`. "
+            "Run: sh scripts/sync_orchestrator_inject.sh"
+        )
+        assert lines[-1] == "JSON_EOF", (
+            "Hook block must end with `JSON_EOF`. "
+            "Run: sh scripts/sync_orchestrator_inject.sh"
+        )
+        envelope = json.loads("\n".join(lines[1:-1]))
+        assert envelope["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+        additional = envelope["hookSpecificOutput"]["additionalContext"]
+        assert additional.strip() == skill_block, (
+            "Hook additionalContext is out of sync with skills/rtl-orchestrate/SKILL.md. "
             "Run: sh scripts/sync_orchestrator_inject.sh"
         )
 

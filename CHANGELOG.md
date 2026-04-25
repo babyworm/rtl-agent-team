@@ -7,6 +7,49 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-04-25
+
+### Fixed
+- **SessionStart hook JSON schema — marker-present path.** v0.10.2 fixed
+  the marker-*absent* branch (minimal envelope) but the marker-*present*
+  branch was still emitting ~10 KB of raw markdown via `cat << 'RULES_EOF'`,
+  which Claude Code rejected with the same
+  `hookSpecificOutput is missing required field "hookEventName"`
+  validation error reported by users running in active RAT projects.
+  `hooks/rtl-orchestrator-inject.sh` now emits a single JSON envelope
+  `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<markdown>"}}`
+  in both branches. Routing markdown is JSON-encoded once at sync time
+  (build step) and embedded inside a single-quoted heredoc, so the
+  runtime hook keeps zero jq/python dependency.
+
+### Changed
+- **`scripts/sync_orchestrator_inject.sh` now produces a JSON envelope.**
+  The build script extracts the routing markdown from
+  `skills/rtl-orchestrate/SKILL.md`, runs it through
+  `python3 json.dumps(ensure_ascii=False)`, self-validates the encoded
+  string, then splices the resulting `cat << 'JSON_EOF' …` heredoc
+  between the BEGIN/END markers in the hook. Re-run after editing the
+  SSOT block in `skills/rtl-orchestrate/SKILL.md` (no behavior change
+  for skill authors; just re-run the existing sync command).
+- **CLAUDE.md** documents the new SessionStart output schema in the
+  "Plugin Architecture: Dynamic Prompt Injection" section and adds a
+  best-practice item ("Hook stdout must be valid JSON when non-empty",
+  #15) so future contributors don't reintroduce raw-markdown output.
+
+### Tests
+- `tests/unit/test_agent_skill_structure.py::test_rtl_orchestrate_hook_export_is_synced`
+  now decodes the JSON envelope and compares `additionalContext`
+  against the SKILL export, rather than expecting raw-markdown
+  equality.
+- `tests/unit/test_plugin_runtime_contract.py::TestSessionStartRoutingBlockContract::generated_block`
+  fixture decodes the envelope so existing section-split assertions
+  continue to operate on the routing markdown unchanged.
+- `tests/unit/test_hooks.py` (`test_rat_marker_triggers_injection`,
+  `test_legacy_marker_triggers_injection`,
+  `test_orchestrator_inject_fires_with_legacy_dir`) read substrings
+  from `hookSpecificOutput.additionalContext` instead of
+  `raw_stdout`, matching the new envelope shape.
+
 ## [0.10.2] - 2026-04-25
 
 ### Fixed

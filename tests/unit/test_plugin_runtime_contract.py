@@ -187,9 +187,26 @@ class TestSessionStartRoutingBlockContract:
 
     @pytest.fixture
     def generated_block(self):
-        block = extract_marked_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
-        assert block.strip(), "Generated SessionStart block must not be empty"
-        return block
+        """Return the routing markdown delivered by the SessionStart hook.
+
+        Since v0.10.3 the BEGIN/END region in the hook is a `cat << 'JSON_EOF'`
+        heredoc wrapping a single JSON envelope (see CLAUDE.md "Hook output
+        schema (SessionStart)"). This fixture decodes the envelope and returns
+        the `additionalContext` markdown so existing section-split assertions
+        keep operating on the routing markdown directly.
+        """
+        import json
+
+        raw = extract_marked_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
+        assert raw.strip(), "Generated SessionStart block must not be empty"
+        lines = raw.splitlines()
+        assert lines and lines[0] == "cat << 'JSON_EOF'" and lines[-1] == "JSON_EOF", (
+            "Generated block must be `cat << 'JSON_EOF' ... JSON_EOF`. "
+            "Run: sh scripts/sync_orchestrator_inject.sh"
+        )
+        envelope = json.loads("\n".join(lines[1:-1]))
+        assert envelope["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+        return envelope["hookSpecificOutput"]["additionalContext"]
 
     @pytest.fixture
     def routing_section(self, generated_block):
