@@ -12,7 +12,7 @@
 | `rtl-ipxact-gen` | 88 | IP-XACT XML from RTL ports/params | XML template + integration example | M |
 | `rtl-ip-instantiate` | 101 | Wrapper for 3rd-party IP with port convention mapping | Wrapper module template + vendor port mapping guide | M |
 | `rtl-bug-repro` | 95 | Minimal repro TB from failing sim | Repro TB template + VCD diff script | M |
-| `rtl-document` | 105 | Port table + design summary from RTL/synth | Markdown doc template (port table, param table, hierarchy) | S |
+| `rtl-document` | 105 | Port table + design summary from RTL/synth | Markdown doc template (port table, param table, hierarchy) | ✅ done (2026-05-12) |
 | `rtl-model-consistency` | 93 | 3-way compare (refC vs BFM vs RTL) | Test vector alignment script + comparison report template | M |
 | `rtl-conformance-test` | 105 | Bitexact match vs JM/HM golden | Comparison script + golden metadata format | M |
 
@@ -54,3 +54,16 @@
 | `rtl-synth-check` | T,S,R (7) | synthesis scripts, SDC templates |
 | `rat-auto-design` | T,R (14) | state templates, phase guides |
 | `systemverilog` | T,R,E (4) | module template, reference doc, examples |
+
+## Reference Pattern
+
+`rtl-document` (completed 2026-05-12) is the reference implementation of the
+"asset bundle pattern". Spec: `plugin_docs/specs/2026-05-12-rtl-document-asset-bundle-design.md`.
+Plan: `plugin_docs/plans/2026-05-12-rtl-document-asset-bundle-plan.md`.
+
+Subsequent skill upgrades in this list follow that pattern: deterministic
+parser script with a JSON schema, snippet-composing renderer with
+`<!-- LLM_FILL: ... -->` markers, ≤200-line references guide, three worked
+examples covering the complexity spectrum, and a lean SKILL.md (~90-125 lines,
+~900 words) applying the Anthropic prompting + plugin-dev skill-development
+guidelines documented in §5.3 of the spec.

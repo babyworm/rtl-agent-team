@@ -1,0 +1,7 @@
+=== Area Report ===
+Total cell area: 12450.30 um^2
+
+=== Timing Report ===
+WNS: 0.21 ns
+TNS: -3.40 ns
+Number of violating paths: 2
