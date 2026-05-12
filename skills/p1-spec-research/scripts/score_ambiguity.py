@@ -34,13 +34,17 @@ def _validate(name: str, value: int) -> None:
 
 def compute(scores: dict[str, int]) -> dict:
     avg = sum(scores.values()) / len(scores)
-    ambiguity = round(100 - avg)
+    # Keep the raw float for the exit decision so values like 20.25
+    # (e.g., scores 80/80/80/79) are correctly treated as ABOVE the
+    # 20% threshold. The rounded int is reported for human display only.
+    ambiguity_raw = 100 - avg
+    ambiguity = round(ambiguity_raw)
     lowest = min(scores, key=scores.get)
     return {
         "ambiguity": ambiguity,
         "lowest": lowest,
         "lowest_score": scores[lowest],
-        "exit": ambiguity <= EXIT_THRESHOLD,
+        "exit": ambiguity_raw <= EXIT_THRESHOLD,
         "scores": scores,
     }
 

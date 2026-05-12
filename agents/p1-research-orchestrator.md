@@ -83,10 +83,14 @@ Glob("docs/phase-1-research/goal.md")           # Goal-clarifier output (from St
 A valid upstream input is ANY of:
 - one or more files matched by `specs/**/*`
 - `docs/phase-1-research/goal.md` (produced by Step 0a goal-clarifier when the user starts from a vague seed)
+- `$ARGUMENTS` resolves to an existing user-supplied spec file with extension `.md`, `.txt`, or `.rst` under CWD — this is the path-to-spec-file branch in Step 0a Rule 2; Step 0a passes it directly to spec-analyst as the seed file.
+- `$ARGUMENTS` itself is a rich seed (≥ 500 chars containing both a clock signal — mhz/ghz — and a PPA/coverage signal — coverage/bitexact/um^2/mm^2/gates/" mw"/" ns ") — this is the rich-seed branch in Step 0a Rule 3; the seed text is passed directly to spec-analyst.
 
-If BOTH are absent: HALT and report to user —
-`"No specification documents found in specs/ AND no goal-clarifier output at docs/phase-1-research/goal.md. Phase 1 cannot proceed without input. Provide spec documents, or re-invoke /rtl-agent-team:p1-spec-research with a seed so Step 0a runs the goal-clarifier."`
+If NONE are present: HALT and report to user —
+`"No upstream input available. Phase 1 cannot proceed. Provide one of: (a) spec documents under specs/, (b) re-invoke /rtl-agent-team:p1-spec-research with a sparse seed so Step 0a runs goal-clarifier and writes docs/phase-1-research/goal.md, (c) pass a path to an existing .md/.txt/.rst spec file as the argument, or (d) pass a rich seed (>= 500 chars with both a clock and a PPA/coverage signal)."`
 Otherwise: proceed normally — the available input(s) flow into Step 2 (solution tree) and the spec-analyst dispatch.
+
+The four valid sources are kept in lockstep with Step 0a's trigger heuristic — any change to the heuristic must be mirrored here so the gate remains reachable.
 
 ## Step 0.5: Domain Expert Discovery (CONDITIONAL)
 
