@@ -30,7 +30,11 @@ Let `a = $ARGUMENTS.strip()`.
 
 1. If `a` is empty → run goal-clarifier.
 2. If `a` is a path to an existing file ending in `.md`, `.txt`, or `.rst` → skip; pass the file to spec-analyst directly.
-3. If `len(a) >= 500` AND `a.lower()` contains any of {mhz, ghz, "ns ", coverage, bitexact, um^2, mm^2, gates} → skip; pass the seed to spec-analyst directly.
+3. Tightened rich-seed rule (requires **both** a clock signal AND a PPA/coverage signal — either alone is still under-specified):
+   - Let `text = a.lower()`.
+   - `has_clock = any(s in text for s in ["mhz", "ghz"])`.
+   - `has_ppa   = any(s in text for s in ["coverage", "bitexact", "um^2", "mm^2", "gates", " mw", " ns "])`.
+   - If `len(a) >= 500 AND has_clock AND has_ppa` → skip; pass the seed to spec-analyst directly.
 4. Otherwise → run goal-clarifier.
 
 **If running goal-clarifier:**

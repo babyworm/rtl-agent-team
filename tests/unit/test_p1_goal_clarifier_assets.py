@@ -23,9 +23,16 @@ def needs_clarifier(arguments: str, cwd: Path) -> bool:
     candidate = cwd / a
     if len(a) < 256 and candidate.is_file() and candidate.suffix in {".md", ".txt", ".rst"}:
         return False
-    # Already-rich seed (≥ 500 chars AND mentions PPA or coverage signals) → skip.
-    signals = ["mhz", "ghz", "ns ", "coverage", "bitexact", "um^2", "mm^2", "gates"]
-    if len(a) >= 500 and any(s in a.lower() for s in signals):
+    # Already-rich seed: require BOTH a clock signal AND a PPA/coverage signal.
+    # Either one alone is insufficient — a 500-char paragraph mentioning only
+    # "coverage" (no clock target) or only "200 MHz" (no PPA detail) is still
+    # under-specified and should still trigger the goal-clarifier interview.
+    text = a.lower()
+    clock_signals = ["mhz", "ghz"]
+    ppa_signals = ["coverage", "bitexact", "um^2", "mm^2", "gates", " mw", " ns "]
+    has_clock = any(s in text for s in clock_signals)
+    has_ppa = any(s in text for s in ppa_signals)
+    if len(a) >= 500 and has_clock and has_ppa:
         return False
     return True
 
@@ -74,6 +81,22 @@ def test_long_but_vague_seed_triggers_clarifier(tmp_path):
     vague = "Build some hardware that does encryption stuff. " * 20
     assert len(vague) >= 500
     assert needs_clarifier(vague, tmp_path) is True
+
+
+def test_long_seed_with_only_coverage_triggers_clarifier(tmp_path):
+    """Tightened heuristic: PPA-only signal (no clock target) → still vague."""
+    seed = ("This IP must hit 95% line coverage with bitexact match against the "
+            "vendor reference and exhaustive directed tests across all modes. ") * 10
+    assert len(seed) >= 500
+    assert needs_clarifier(seed, tmp_path) is True
+
+
+def test_long_seed_with_only_clock_triggers_clarifier(tmp_path):
+    """Tightened heuristic: clock-only signal (no PPA/coverage detail) → still vague."""
+    seed = ("This block runs at 200 MHz on a modern process node and processes "
+            "incoming data packets through a configurable pipeline. ") * 10
+    assert len(seed) >= 500
+    assert needs_clarifier(seed, tmp_path) is True
 
 
 # ------------------------------------------------------------------
