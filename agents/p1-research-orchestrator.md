@@ -20,6 +20,32 @@ review protocols, naming conventions, and checklists. Reference it for pass/fail
 
 # Workflow
 
+## Step 0a — Goal Clarifier Trigger
+
+Before invoking spec-analyst, decide whether to run goal-clarifier first.
+
+**Heuristic** (must match the Python reference in `tests/unit/test_p1_goal_clarifier_assets.py::needs_clarifier`):
+
+Let `a = $ARGUMENTS.strip()`.
+
+1. If `a` is empty → run goal-clarifier.
+2. If `a` is a path to an existing file ending in `.md`, `.txt`, or `.rst` → skip; pass the file to spec-analyst directly.
+3. If `len(a) >= 500` AND `a.lower()` contains any of {mhz, ghz, "ns ", coverage, bitexact, um^2, mm^2, gates} → skip; pass the seed to spec-analyst directly.
+4. Otherwise → run goal-clarifier.
+
+**If running goal-clarifier:**
+
+```
+Task(subagent_type="rtl-agent-team:goal-clarifier",
+     prompt="Run Phase 0 interview. seed=<$ARGUMENTS>, cwd=<CWD>, existing_goal_path=<docs/phase-1-research/goal.md if it exists else null>")
+```
+
+Wait for goal-clarifier to write `docs/phase-1-research/goal.md`. Then invoke spec-analyst with that file as the primary input (alongside any user-supplied spec).
+
+Log the trigger decision in the audit trace (see `agents/lib/audit-output-protocol.md`):
+- `goal_clarifier.triggered`: true | false
+- `goal_clarifier.reason`: one of "empty_seed", "short_idea", "long_vague_seed", "path_to_spec_file", "rich_seed"
+
 ## Step 0: Context Bootstrap (MANDATORY)
 
 ```
