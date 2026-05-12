@@ -25,8 +25,39 @@ VERIBLE_BIN = "verible-verilog-syntax"
 PORT_RE = re.compile(
     r"^\s*(input|output|inout)\s+(?:logic|wire|reg)?\s*"
     r"(\[[^\]]+\])?\s*"
-    r"([A-Za-z_][A-Za-z_0-9$\\]*)\s*(?:[,)]|$)",
+    r"([A-Za-z_][A-Za-z_0-9$\\]*)\s*(?=[,)]|$)",
 )
+# Trailing identifier(s) on the same declaration line, sharing the same
+# direction + width as the leading port matched by PORT_RE.
+# Example: `input logic [3:0] a, b, c,` → PORT_RE captures `a`, PORT_TRAIL_RE
+# then picks up `b` and `c`.
+PORT_TRAIL_RE = re.compile(
+    r"\s*,\s*([A-Za-z_][A-Za-z_0-9$\\]*)\s*(?=[,)]|$)"
+)
+
+
+def _parse_width(width: str | None) -> str:
+    """Parse an SV width declaration to a width expression.
+
+    Accepted forms:
+      - parametric:    [DATA_WIDTH-1:0]   → "DATA_WIDTH"
+      - literal:       [31:0], [7:0], ... → "32", "8", ... (computed as hi-lo+1)
+      - any non-zero-lo literal: [N:M]    → str(N-M+1)
+    Anything else falls back to "1" (single bit / unable to parse).
+    """
+    if not width:
+        return "1"
+    # Parametric form: [<expr>-1:0]
+    wm = re.match(r"\[\s*([^:]+)\s*-\s*1\s*:\s*0\s*\]", width)
+    if wm:
+        return wm.group(1).strip()
+    # Literal form: [N:M]
+    wm = re.match(r"\[\s*(\d+)\s*:\s*(\d+)\s*\]", width)
+    if wm:
+        hi, lo = int(wm.group(1)), int(wm.group(2))
+        if hi >= lo:
+            return str(hi - lo + 1)
+    return "1"
 PARAM_RE = re.compile(
     r"parameter\s+(?:int|logic|bit)?\s*([A-Z_][A-Z_0-9]*)\s*=\s*([^,)\n]+)"
 )
@@ -117,22 +148,27 @@ def _parse_text(rtl_path: Path) -> dict:
         module_name = m.group(1)
     ports = []
     domains: set[str] = set()
+
+    def _append_port(port_name: str, direction: str, width_str: str) -> None:
+        kind, domain = _classify(port_name)
+        if domain:
+            domains.add(domain)
+        ports.append({
+            "name": port_name, "dir": direction, "width": width_str,
+            "domain": domain or "?", "kind": kind,
+        })
+
     for line in text.splitlines():
         pm = PORT_RE.match(line)
         if pm:
             direction, width, name = pm.group(1), pm.group(2), pm.group(3)
-            kind, domain = _classify(name)
-            if domain:
-                domains.add(domain)
-            width_str = "1"
-            if width:
-                wm = re.match(r"\[\s*([^:]+)\s*-\s*1\s*:\s*0\s*\]", width)
-                if wm:
-                    width_str = wm.group(1).strip()
-            ports.append({
-                "name": name, "dir": direction, "width": width_str,
-                "domain": domain or "?", "kind": kind,
-            })
+            width_str = _parse_width(width)
+            _append_port(name, direction, width_str)
+            # Pick up trailing identifiers on the same line that share the
+            # leading port's direction + width (e.g. `input logic [3:0] a, b, c,`).
+            rest = line[pm.end():]
+            for tm in PORT_TRAIL_RE.finditer(rest):
+                _append_port(tm.group(1), direction, width_str)
     params = [
         {"name": pm.group(1).strip(), "type": "int", "default": pm.group(2).strip()}
         for pm in PARAM_RE.finditer(text)

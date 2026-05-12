@@ -133,3 +133,54 @@ def test_synth_summary(tmp_path):
     assert data["synth_summary"]["area_um2"] == 12450.30
     assert data["synth_summary"]["wns_ns"] == 0.21
     assert data["synth_summary"]["tns_ns"] == -3.40
+
+
+@needs_verible
+def test_literal_width_parsed(tmp_path):
+    """Literal bus widths like [31:0] should yield the bit count, not '1'."""
+    sv = tmp_path / "literal_width.sv"
+    sv.write_text(
+        "module literal_width (\n"
+        "  input  logic        sys_clk,\n"
+        "  input  logic        sys_rst_n,\n"
+        "  input  logic [31:0] i_addr,\n"
+        "  input  logic [7:0]  i_data,\n"
+        "  output logic [15:0] o_count\n"
+        ");\nendmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    by_name = {p["name"]: p for p in data["ports"]}
+    assert by_name["i_addr"]["width"] == "32"
+    assert by_name["i_data"]["width"] == "8"
+    assert by_name["o_count"]["width"] == "16"
+
+
+@needs_verible
+def test_multi_port_per_line(tmp_path):
+    """Comma-separated identifiers on one declaration line must all be captured,
+    inheriting the leading port's direction + width."""
+    sv = tmp_path / "multi_port.sv"
+    sv.write_text(
+        "module multi_port (\n"
+        "  input  logic       sys_clk,\n"
+        "  input  logic       sys_rst_n,\n"
+        "  input  logic [3:0] i_a, i_b, i_c,\n"
+        "  output logic       o_x, o_y\n"
+        ");\nendmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    names = {p["name"] for p in data["ports"]}
+    assert {"i_a", "i_b", "i_c", "o_x", "o_y"}.issubset(names)
+    by_name = {p["name"]: p for p in data["ports"]}
+    # i_a, i_b, i_c all inherit direction=input + width="4"
+    for n in ("i_a", "i_b", "i_c"):
+        assert by_name[n]["dir"] == "input"
+        assert by_name[n]["width"] == "4"
+    # o_x, o_y inherit direction=output + width="1"
+    for n in ("o_x", "o_y"):
+        assert by_name[n]["dir"] == "output"
+        assert by_name[n]["width"] == "1"
