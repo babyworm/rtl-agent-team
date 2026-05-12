@@ -40,7 +40,7 @@ If prerequisites are missing: WARNING — recommend completing Tier 2 and Tier 3
 | Path | Role |
 |------|------|
 | `templates/integration-tb-template.sv` | Top-level integration TB scaffold: multi-module DUT instantiation, clock/reset generation, connectivity checker, data flow monitors. |
-| `scripts/` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/check_connectivity.py` | Stub: static port width/direction checker across module boundaries. (deep-fill in follow-up PR) |
 | `references/integration-test-conventions.md` | Tier ordering, test categories, JSON schema, report structure, anti-patterns. |
 | `examples/` | (placeholder — deep-fill in follow-up PR) |
 </Assets>

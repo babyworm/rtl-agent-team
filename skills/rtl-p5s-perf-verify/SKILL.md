@@ -37,7 +37,7 @@ If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl
 | Path | Role |
 |------|------|
 | `templates/perf-monitor-template.sv` | SV measurement harness scaffold: cycle counter, throughput/latency monitors wired to DUT ports. |
-| `scripts/` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/parse_perf_report.py` | Stub: parse perf JSON + compare against BFM baseline. (deep-fill in follow-up PR) |
 | `references/perf-verify-conventions.md` | Metric naming, JSON schema, 10% deviation threshold, report structure, anti-patterns. |
 | `examples/` | (placeholder — deep-fill in follow-up PR) |
 </Assets>

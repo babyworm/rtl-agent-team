@@ -37,7 +37,7 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 | Path | Role |
 |------|------|
 | `templates/component-template.xml` | IP-XACT 2014 XML skeleton: vendor/library/name/version, busInterfaces, model/ports, parameters, memoryMaps stubs. |
-| `scripts/` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/gen_ipxact.py` | Stub: sv_to_ipxact wrapper + xmllint validation. (deep-fill in follow-up PR) |
 | `references/ipxact-conventions.md` | Port direction mapping, required XML sections, bus interface identification rules, anti-patterns. |
 | `examples/` | (placeholder — deep-fill in follow-up PR) |
 </Assets>

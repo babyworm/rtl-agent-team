@@ -36,7 +36,7 @@ If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p
 | Path | Role |
 |------|------|
 | `templates/coverage-gap-report.md` | Gap report scaffold: summary section, high-value gap table, unreachable table, directed tests list, exclusions section. |
-| `scripts/` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/parse_coverage.py` | Stub: parse coverage XML/DAT and emit structured gap data. (deep-fill in follow-up PR) |
 | `references/coverage-conventions.md` | Coverage targets, report schema, directed test style, exclusion approval rules, anti-patterns. |
 | `examples/` | (placeholder — deep-fill in follow-up PR) |
 </Assets>
