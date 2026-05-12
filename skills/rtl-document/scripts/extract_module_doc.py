@@ -59,12 +59,20 @@ def _parse_width(width: str | None) -> str:
             return str(hi - lo + 1)
     return "1"
 PARAM_RE = re.compile(
-    r"parameter\s+(?:int|logic|bit)?\s*([A-Z_][A-Z_0-9]*)\s*=\s*([^,)\n]+)"
+    r"parameter\s+(?:int|integer|logic|bit|byte|real)?\s*"
+    r"([A-Za-z_][A-Za-z_0-9]*)\s*=\s*([^,)\n]+)"
 )
 CLOCK_RE = re.compile(r"^(.+)_clk$")
 RESET_RE = re.compile(r"^(.+)_rst_n$")
+# Instance regex now accepts any valid SV identifier as the instance name.
+# `_RESERVED` (used downstream) filters out keyword-starting lines such as
+# `always_ff (...)`, `assign x = ...`, `if (cond) ...`, etc., so we don't
+# misclassify control-flow constructs as module instances. Instances that
+# violate the project's `u_*` naming convention are surfaced by the
+# convention-violation pass rather than silently dropped.
 INSTANCE_RE = re.compile(
-    r"^\s*([A-Za-z_][A-Za-z_0-9]*)\s*(?:#\s*\((?:[^()]*|\([^()]*\))*\))?\s+(u_[A-Za-z_0-9]+)\s*\(",
+    r"^\s*([A-Za-z_][A-Za-z_0-9]*)\s*(?:#\s*\((?:[^()]*|\([^()]*\))*\))?"
+    r"\s+([A-Za-z_][A-Za-z_0-9]*)\s*\(",
     re.MULTILINE,
 )
 SUFFIX_VIOLATION_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*_(i|o|io)$")
@@ -173,7 +181,37 @@ def _parse_text(rtl_path: Path) -> dict:
         {"name": pm.group(1).strip(), "type": "int", "default": pm.group(2).strip()}
         for pm in PARAM_RE.finditer(text)
     ]
-    _RESERVED = {"module", "input", "output", "inout", "logic", "wire", "reg"}
+    # SV keywords that look like a "type identifier followed by an instance name
+    # followed by `(`" to INSTANCE_RE but are NOT module instances. Expanded
+    # beyond the original 7-keyword set because INSTANCE_RE now accepts any
+    # identifier as the instance name (previously: only `u_*` was matched).
+    _RESERVED = {
+        # ports / nets
+        "input", "output", "inout", "logic", "wire", "reg", "tri", "supply0", "supply1",
+        # types
+        "bit", "byte", "shortint", "int", "integer", "longint", "real", "shortreal",
+        "string", "void", "var",
+        # control flow
+        "if", "else", "for", "foreach", "while", "do", "repeat", "forever",
+        "case", "casex", "casez", "endcase",
+        # blocks
+        "begin", "end", "fork", "join", "join_any", "join_none",
+        # processes
+        "initial", "final", "always", "always_ff", "always_comb", "always_latch",
+        # design constructs
+        "module", "endmodule", "interface", "endinterface",
+        "package", "endpackage", "program", "endprogram",
+        "function", "endfunction", "task", "endtask",
+        "generate", "endgenerate", "genvar",
+        # declarations
+        "assign", "parameter", "localparam", "typedef", "enum", "struct", "union",
+        "import", "export", "extern",
+        # assertions / properties
+        "assert", "assume", "cover", "property", "endproperty",
+        "sequence", "endsequence",
+        # misc
+        "return", "break", "continue", "default",
+    }
     instances = [
         {"name": m.group(2), "module": m.group(1)}
         for m in INSTANCE_RE.finditer(text)

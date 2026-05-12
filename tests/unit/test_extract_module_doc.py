@@ -184,3 +184,79 @@ def test_multi_port_per_line(tmp_path):
     for n in ("o_x", "o_y"):
         assert by_name[n]["dir"] == "output"
         assert by_name[n]["width"] == "1"
+
+
+@needs_verible
+def test_non_u_prefix_instance_captured(tmp_path):
+    """INSTANCE_RE captures instances regardless of naming convention.
+
+    Pre-fix, only u_* names were captured, silently dropping fifo0/inst_a/etc.
+    Post-fix, all identifier-named instances are emitted; convention violations
+    are surfaced separately (not silently dropped).
+    """
+    sv = tmp_path / "non_u.sv"
+    sv.write_text(
+        "module non_u (\n"
+        "  input  logic sys_clk,\n"
+        "  input  logic sys_rst_n,\n"
+        "  output logic o_x\n"
+        ");\n"
+        "  some_module fifo0  (.*);\n"
+        "  other_mod   inst_a (.*);\n"
+        "  yet_another u_legit (.*);\n"
+        "endmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    inst_names = {i["name"] for i in data["instances"]}
+    assert {"fifo0", "inst_a", "u_legit"}.issubset(inst_names)
+
+
+@needs_verible
+def test_reserved_keywords_not_instances(tmp_path):
+    """Expanded _RESERVED set must filter SV control-flow constructs out
+    of the instance list now that INSTANCE_RE accepts any identifier."""
+    sv = tmp_path / "reserved.sv"
+    sv.write_text(
+        "module reserved (\n"
+        "  input  logic sys_clk,\n"
+        "  input  logic sys_rst_n,\n"
+        "  output logic o_x\n"
+        ");\n"
+        "  some_module u_real (.*);\n"
+        "  always_ff @(posedge sys_clk) begin\n"
+        "    if (sys_rst_n) o_x <= 1'b0;\n"
+        "  end\n"
+        "  assign o_x = 1'b1;\n"
+        "endmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    inst_modules = {i["module"] for i in data["instances"]}
+    # Only the real instance survives; SV keywords are filtered.
+    assert "some_module" in inst_modules
+    for kw in ("always_ff", "if", "assign", "module", "endmodule"):
+        assert kw not in inst_modules, f"{kw} should be filtered as reserved"
+
+
+@needs_verible
+def test_lowercase_parameter_captured(tmp_path):
+    """PARAM_RE accepts any identifier casing, not just ALL_CAPS."""
+    sv = tmp_path / "lowercase_param.sv"
+    sv.write_text(
+        "module lowercase_param #(\n"
+        "  parameter int dataWidth = 32,\n"
+        "  parameter int depth = 16,\n"
+        "  parameter LATENCY = 4\n"
+        ") (\n"
+        "  input  logic sys_clk,\n"
+        "  input  logic sys_rst_n\n"
+        ");\nendmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    param_names = {p["name"] for p in data["parameters"]}
+    assert {"dataWidth", "depth", "LATENCY"}.issubset(param_names)
