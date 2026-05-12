@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -21,9 +22,81 @@ from pathlib import Path
 
 VERIBLE_BIN = "verible-verilog-syntax"
 
+PORT_RE = re.compile(
+    r"^\s*(input|output|inout)\s+(?:logic|wire|reg)?\s*"
+    r"(\[[^\]]+\])?\s*"
+    r"([A-Za-z_][A-Za-z_0-9$\\]*)\s*(?:[,)]|$)",
+)
+PARAM_RE = re.compile(
+    r"parameter\s+(?:int|logic|bit)?\s*([A-Z_][A-Z_0-9]*)\s*=\s*([^,)\n]+)"
+)
+CLOCK_RE = re.compile(r"^(.+)_clk$")
+RESET_RE = re.compile(r"^(.+)_rst_n$")
+
 
 def find_verible() -> str | None:
     return shutil.which(VERIBLE_BIN)
+
+
+def _classify(name: str) -> tuple[str, str | None]:
+    m = CLOCK_RE.match(name)
+    if m:
+        return "clock", m.group(1)
+    m = RESET_RE.match(name)
+    if m:
+        return "reset", m.group(1)
+    return "data", None
+
+
+def _verible_json(verible: str, rtl: str) -> dict:
+    r = subprocess.run(
+        [verible, "--export_json", rtl],
+        capture_output=True, text=True, check=False,
+    )
+    if r.returncode != 0:
+        return {"_error": r.stderr}
+    return json.loads(r.stdout)
+
+
+def _parse_text(rtl_path: Path) -> dict:
+    """Fallback regex-based parser; used standalone and to augment CST when fields missing."""
+    text = rtl_path.read_text()
+    module_name = rtl_path.stem
+    m = re.search(r"module\s+([A-Za-z_][A-Za-z_0-9]*)\s*[#(]", text)
+    if m:
+        module_name = m.group(1)
+    ports = []
+    domains: set[str] = set()
+    for line in text.splitlines():
+        pm = PORT_RE.match(line)
+        if pm:
+            direction, width, name = pm.group(1), pm.group(2), pm.group(3)
+            kind, domain = _classify(name)
+            if domain:
+                domains.add(domain)
+            width_int = 1
+            if width:
+                wm = re.match(r"\[\s*([^:]+)\s*-\s*1\s*:\s*0\s*\]", width)
+                if wm:
+                    width_int = wm.group(1).strip()
+            ports.append({
+                "name": name, "dir": direction, "width": width_int,
+                "domain": domain or "?", "kind": kind,
+            })
+    params = [
+        {"name": pm.group(1).strip(), "type": "int", "default": pm.group(2).strip()}
+        for pm in PARAM_RE.finditer(text)
+    ]
+    return {
+        "module_name": module_name,
+        "file": str(rtl_path),
+        "parameters": params,
+        "ports": ports,
+        "instances": [],
+        "fsm_candidates": [],
+        "clock_domains": sorted(domains),
+        "convention_violations": [],
+    }
 
 
 def main() -> int:
@@ -39,17 +112,11 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
-    # Stubbed: real CST processing comes in Task 3+.
-    payload = {
-        "module_name": Path(args.rtl).stem,
-        "file": args.rtl,
-        "parameters": [],
-        "ports": [],
-        "instances": [],
-        "fsm_candidates": [],
-        "clock_domains": [],
-        "convention_violations": [],
-    }
+    cst = _verible_json(verible, args.rtl)
+    if "_error" in cst:
+        print(f"error: SV parse failure:\n{cst['_error']}", file=sys.stderr)
+        return 3
+    payload = _parse_text(Path(args.rtl))
     text = json.dumps(payload, indent=2)
     if args.out:
         Path(args.out).write_text(text)
