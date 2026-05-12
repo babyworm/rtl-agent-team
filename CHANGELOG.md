@@ -7,6 +7,84 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-05-13
+
+### Added
+- **rtl-document asset bundle pattern (#3)** — Upgraded the `rtl-document`
+  skill from a single-template helper to the full asset-bundle layout:
+  deterministic Verible-based extractor (`scripts/extract_module_doc.py`),
+  snippet-composing renderer (`scripts/render_doc.py`), 4 templates,
+  `references/doc-conventions.md` (≤200 lines), and three dogfooded worked
+  examples (`simple_fifo.md`, `axi_stream_bridge.md`,
+  `cabac_encoder_excerpt.md`). Establishes the reference pattern for
+  migrating the remaining 10 candidate skills in
+  `plugin_docs/plans/2026-03-20-skill-improvement-candidates.md`.
+
+- **P1 goal-clarifier integration (#4)** — New `agents/goal-clarifier.md`
+  interview agent that runs an ambiguity-scored interview across 4 RTL
+  dimensions (Functionality / PPA Target / Scope / Verification) before
+  `spec-analyst` is dispatched. The `p1-research-orchestrator` gains a
+  Step 0a auto-detect trigger so existing runs with full specs or rich
+  seeds are unaffected; only sparse seeds invoke the interview. Inspired
+  by OMC `self-improve`'s `si-goal-clarifier`, adapted to spec-analyst's
+  iron/open requirement schema and the project's REQ-F/REQ-P ID system.
+
+### Changed
+- **Updated for the Claude Code Opus 4.7 (1M context) environment.**
+  Both feature branches were developed and verified against Claude Code
+  Opus 4.7. Agent prompts, skill bodies, and dispatch surfaces now apply
+  the latest Anthropic prompt-engineering guidance documented at
+  `https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices`:
+  XML-tag structuring of sections, third-person trigger phrases in
+  frontmatter, imperative verb-first body, explicit scope literalism in
+  `<Execution>` blocks (`"Apply to all such markers — do not stop after
+  the first."`), and `<example index="N">` blocks as few-shot anchors.
+  The lean `<Assets>` + `<Responsibility_Boundary>` pattern established
+  here is the template for the remaining utility-skill migrations.
+
+- **Agent count: 97 → 98** (`goal-clarifier` added). Propagated to
+  `CLAUDE.md`, `README.md`, `README_kr.md`, and
+  `.claude-plugin/marketplace.json` per item 14 of CLAUDE.md's
+  Plugin Development Best Practices.
+
+- **Extractor / renderer robustness (Codex P1/P2 review rounds).**
+  `skills/rtl-document/scripts/extract_module_doc.py` now handles:
+  literal bus widths (`[31:0]` → `"32"`), multi-port-per-line
+  declarations (`input logic a, b, c`), multi-line wrapped port
+  declarations, non-`u_*` instance names (with `_RESERVED` filter
+  expanded from 7 to ~50 SV keywords), any-case parameter names
+  (was: ALL_CAPS only), and comments interleaved with port
+  declarations. Convention violations are surfaced in the
+  documentation pass rather than silently dropped from the JSON.
+
+### Fixed
+- HARD prerequisite gate in `agents/p1-research-orchestrator.md`
+  accepts four upstream sources (`specs/**/*`,
+  `docs/phase-1-research/goal.md`, path-to-spec-file argument, rich-seed
+  argument) — keeps all Step 0a skip paths reachable.
+- Rich-seed bypass tightened from OR to AND combination (must have
+  BOTH a clock signal `{mhz, ghz}` AND a PPA/coverage signal
+  `{coverage, bitexact, um^2, mm^2, gates, " mw", " ns "}`) — avoids
+  sending under-specified inputs to spec-analyst.
+- `score_ambiguity.py` exit decision now uses the raw float
+  ambiguity, not the rounded display value — prevents 20.25% from
+  rounding to 20 and prematurely triggering exit.
+- `spec-analyst` dispatch prompts in `p1-research-orchestrator`
+  (Step 2 solution-tree, Step 4 iron-requirements) now consume
+  `goal.md` as complementary input alongside `specs/`. The
+  `STATUS: ambiguity=N%` footer is documented as a sizing hint for
+  OPEN-1-NNN.
+
+### Internal
+- 1146+ unit tests pass (38 new tests across the two PRs: 18 for the
+  rtl-document parser/renderer pipeline + 20 for the
+  goal-clarifier assets and `score_ambiguity` semantics).
+- 9 Codex bot review comments addressed across two review rounds with
+  zero pushback — every comment was verified valid via direct code
+  inspection before fix.
+- File overlap between the two feature branches: zero. Three-way merge
+  to `main` completed without conflict.
+
 ## [0.10.6] - 2026-04-25
 
 ### Fixed
