@@ -68,3 +68,34 @@ def test_simple_fifo_parameters(tmp_path):
     pnames = {p["name"]: p for p in data["parameters"]}
     assert pnames["DATA_WIDTH"]["default"] == "32"
     assert pnames["DEPTH"]["default"] == "16"
+
+
+@needs_verible
+def test_axi_bridge_instances(tmp_path):
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(FIXTURES / "axi_stream_bridge.sv"), "--out", str(out)])
+    data = json.loads(out.read_text())
+    inst_names = sorted(i["name"] for i in data["instances"])
+    assert inst_names == ["u_egress_fifo", "u_ingress_fifo"]
+    assert sorted(data["clock_domains"]) == ["pixel", "sys"]
+
+
+@needs_verible
+def test_cabac_fsm_candidates(tmp_path):
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(FIXTURES / "cabac_encoder_excerpt.sv"), "--out", str(out)])
+    data = json.loads(out.read_text())
+    assert len(data["fsm_candidates"]) >= 1
+    fsm = data["fsm_candidates"][0]
+    assert fsm["state_register"] == "state"
+    assert sorted(fsm["states"]) == ["ST_ENCODE", "ST_FLUSH", "ST_IDLE"]
+
+
+@needs_verible
+def test_parse_error_returns_exit_3(tmp_path):
+    bad = tmp_path / "bad.sv"
+    bad.write_text("module bad ( oops\n")  # unterminated
+    out = tmp_path / "x.json"
+    r = _run(["--rtl", str(bad), "--out", str(out)])
+    assert r.returncode == 3
+    assert "parse" in r.stderr.lower() or "syntax" in r.stderr.lower()

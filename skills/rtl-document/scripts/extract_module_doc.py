@@ -32,6 +32,17 @@ PARAM_RE = re.compile(
 )
 CLOCK_RE = re.compile(r"^(.+)_clk$")
 RESET_RE = re.compile(r"^(.+)_rst_n$")
+INSTANCE_RE = re.compile(
+    r"^\s*([A-Za-z_][A-Za-z_0-9]*)\s*(?:#\s*\((?:[^()]*|\([^()]*\))*\))?\s+(u_[A-Za-z_0-9]+)\s*\(",
+    re.MULTILINE,
+)
+ENUM_RE = re.compile(
+    r"typedef\s+enum\b[^{]*\{(?P<body>[^}]+)\}\s*(?P<type>[A-Za-z_][A-Za-z_0-9]*)\s*;",
+    re.DOTALL,
+)
+STATE_REG_RE = re.compile(
+    r"(?P<type>[A-Za-z_][A-Za-z_0-9]*)\s+(?P<name>[A-Za-z_][A-Za-z_0-9]*)\s*,\s*next_\w+\s*;",
+)
 
 
 def find_verible() -> str | None:
@@ -95,13 +106,32 @@ def _parse_text(rtl_path: Path) -> dict:
         {"name": pm.group(1).strip(), "type": "int", "default": pm.group(2).strip()}
         for pm in PARAM_RE.finditer(text)
     ]
+    _RESERVED = {"module", "input", "output", "inout", "logic", "wire", "reg"}
+    instances = [
+        {"name": m.group(2), "module": m.group(1)}
+        for m in INSTANCE_RE.finditer(text)
+        if m.group(1) not in _RESERVED
+    ]
+    enums = {m.group("type"): [s.split("=")[0].strip()
+                               for s in m.group("body").split(",")
+                               if s.strip()]
+             for m in ENUM_RE.finditer(text)}
+    fsm_candidates = []
+    for sr in STATE_REG_RE.finditer(text):
+        states = enums.get(sr.group("type"))
+        if states:
+            fsm_candidates.append({
+                "state_register": sr.group("name"),
+                "type_name": sr.group("type"),
+                "states": states,
+            })
     return {
         "module_name": module_name,
         "file": str(rtl_path),
         "parameters": params,
         "ports": ports,
-        "instances": [],
-        "fsm_candidates": [],
+        "instances": instances,
+        "fsm_candidates": fsm_candidates,
         "clock_domains": sorted(domains),
         "convention_violations": [],
     }
@@ -122,7 +152,7 @@ def main() -> int:
 
     cst = _verible_json(verible, args.rtl)
     if "_error" in cst:
-        print(f"error: SV parse failure:\n{cst['_error']}", file=sys.stderr)
+        print(f"error: SV parse/syntax failure:\n{cst['_error']}", file=sys.stderr)
         return 3
     payload = _parse_text(Path(args.rtl))
     text = json.dumps(payload, indent=2)
