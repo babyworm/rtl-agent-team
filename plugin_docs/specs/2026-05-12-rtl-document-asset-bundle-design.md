@@ -182,16 +182,18 @@ simple `{{KEY}}` substitution — no Jinja2).
 - Include `block-diagram-snippet.d2` only if `len(instances) >= 2`.
 - Always include `port-table-snippet.md` if `ports` is non-empty.
 
-**Marker locations**:
+**Marker categories** (renderer chooses instances per location, but kinds are
+fixed):
 
-```
-<!-- LLM_FILL: functional description (100-200 chars) -->
-<!-- LLM_FILL: FSM state semantics — per-state, 1-2 lines -->
-<!-- LLM_FILL: design rationale / integration notes -->
-```
+| Category | Locations | Length guide |
+|----------|-----------|--------------|
+| `functional description` | Module overview, per-port description, per-parameter description, per-clock-domain usage. | 100-200 chars (overview); 1 line per row. |
+| `FSM state semantics` | Per-FSM-state description, per-state transitions. | 1-2 lines per state. |
+| `design rationale / integration notes` | Module Design Notes, per-instance purpose. | Optional; only when non-obvious. |
 
-The marker list is fixed; adding new marker kinds requires updating both
-`doc-conventions.md` and SKILL.md `<Responsibility_Boundary>`.
+Each rendered cell uses the literal marker form `<!-- LLM_FILL: <category> -->`
+so the LLM can grep for all sites. Adding a new category requires updating
+both `references/doc-conventions.md` and SKILL.md `<Responsibility_Boundary>`.
 
 ### 4.3 `templates/`
 
