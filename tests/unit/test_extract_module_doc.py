@@ -56,6 +56,8 @@ def test_simple_fifo_ports(tmp_path):
     assert by_name["i_push"]["kind"] == "data"
     assert by_name["i_data"]["dir"] == "input"
     assert by_name["o_full"]["dir"] == "output"
+    assert isinstance(by_name["i_data"]["width"], str)
+    assert by_name["i_data"]["width"] in {"DATA_WIDTH", "1"}  # accept either form
 
 
 @needs_verible

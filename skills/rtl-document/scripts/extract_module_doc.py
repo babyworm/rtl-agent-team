@@ -49,13 +49,21 @@ def _classify(name: str) -> tuple[str, str | None]:
 
 
 def _verible_json(verible: str, rtl: str) -> dict:
-    r = subprocess.run(
-        [verible, "--export_json", rtl],
-        capture_output=True, text=True, check=False,
-    )
+    try:
+        r = subprocess.run(
+            [verible, "--export_json", rtl],
+            capture_output=True, text=True, check=False, timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        return {"_error": f"verible-verilog-syntax timed out after 30s on {rtl}"}
     if r.returncode != 0:
-        return {"_error": r.stderr}
-    return json.loads(r.stdout)
+        # Some verible errors arrive on stdout instead of stderr.
+        msg = r.stderr.strip() or r.stdout.strip() or f"exit={r.returncode}"
+        return {"_error": msg}
+    try:
+        return json.loads(r.stdout)
+    except json.JSONDecodeError as e:
+        return {"_error": f"verible JSON decode error: {e}"}
 
 
 def _parse_text(rtl_path: Path) -> dict:
@@ -74,13 +82,13 @@ def _parse_text(rtl_path: Path) -> dict:
             kind, domain = _classify(name)
             if domain:
                 domains.add(domain)
-            width_int = 1
+            width_str = "1"
             if width:
                 wm = re.match(r"\[\s*([^:]+)\s*-\s*1\s*:\s*0\s*\]", width)
                 if wm:
-                    width_int = wm.group(1).strip()
+                    width_str = wm.group(1).strip()
             ports.append({
-                "name": name, "dir": direction, "width": width_int,
+                "name": name, "dir": direction, "width": width_str,
                 "domain": domain or "?", "kind": kind,
             })
     params = [
