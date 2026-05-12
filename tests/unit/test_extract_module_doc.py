@@ -99,3 +99,37 @@ def test_parse_error_returns_exit_3(tmp_path):
     r = _run(["--rtl", str(bad), "--out", str(out)])
     assert r.returncode == 3
     assert "parse" in r.stderr.lower() or "syntax" in r.stderr.lower()
+
+
+@needs_verible
+def test_convention_violation_suffix_port(tmp_path):
+    bad = tmp_path / "bad_naming.sv"
+    # Ports split across lines — PORT_RE is line-anchored and cannot match
+    # single-line multi-port declarations. Fixture written one port per line.
+    bad.write_text(
+        "module bad_naming (\n"
+        "  input logic sys_clk,\n"
+        "  input logic sys_rst_n,\n"
+        "  input logic data_i,\n"
+        "  output logic data_o\n"
+        ");\nendmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(bad), "--out", str(out)])
+    data = json.loads(out.read_text())
+    sigs = {v["signal"] for v in data["convention_violations"]}
+    assert sigs == {"data_i", "data_o"}
+
+
+@needs_verible
+def test_synth_summary(tmp_path):
+    out = tmp_path / "x.json"
+    _run([
+        "--rtl", str(FIXTURES / "simple_fifo.sv"),
+        "--syn-report", str(FIXTURES / "synth_report.txt"),
+        "--out", str(out),
+    ])
+    data = json.loads(out.read_text())
+    assert data["synth_summary"]["area_um2"] == 12450.30
+    assert data["synth_summary"]["wns_ns"] == 0.21
+    assert data["synth_summary"]["tns_ns"] == -3.40

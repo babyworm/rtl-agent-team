@@ -36,6 +36,8 @@ INSTANCE_RE = re.compile(
     r"^\s*([A-Za-z_][A-Za-z_0-9]*)\s*(?:#\s*\((?:[^()]*|\([^()]*\))*\))?\s+(u_[A-Za-z_0-9]+)\s*\(",
     re.MULTILINE,
 )
+SUFFIX_VIOLATION_RE = re.compile(r"^[A-Za-z_][A-Za-z_0-9]*_(i|o|io)$")
+
 ENUM_RE = re.compile(
     r"typedef\s+enum\b[^{]*\{(?P<body>[^}]+)\}\s*(?P<type>[A-Za-z_][A-Za-z_0-9]*)\s*;",
     re.DOTALL,
@@ -43,6 +45,35 @@ ENUM_RE = re.compile(
 STATE_REG_RE = re.compile(
     r"(?P<type>[A-Za-z_][A-Za-z_0-9]*)\s+(?P<name>[A-Za-z_][A-Za-z_0-9]*)\s*,\s*next_\w+\s*;",
 )
+
+
+def _check_violations(ports: list[dict]) -> list[dict]:
+    violations = []
+    for p in ports:
+        if SUFFIX_VIOLATION_RE.match(p["name"]):
+            violations.append({
+                "signal": p["name"],
+                "rule": "Use i_/o_/io_ prefix (not suffix)",
+            })
+    return violations
+
+
+def _parse_synth_report(path: Path) -> dict:
+    text = path.read_text()
+    out: dict = {}
+    m = re.search(r"Total cell area:\s*([0-9.]+)", text)
+    if m:
+        out["area_um2"] = float(m.group(1))
+    m = re.search(r"WNS:\s*(-?[0-9.]+)", text)
+    if m:
+        out["wns_ns"] = float(m.group(1))
+    m = re.search(r"TNS:\s*(-?[0-9.]+)", text)
+    if m:
+        out["tns_ns"] = float(m.group(1))
+    m = re.search(r"Number of violating paths:\s*(\d+)", text)
+    if m:
+        out["num_violating_paths"] = int(m.group(1))
+    return out
 
 
 def find_verible() -> str | None:
@@ -133,7 +164,7 @@ def _parse_text(rtl_path: Path) -> dict:
         "instances": instances,
         "fsm_candidates": fsm_candidates,
         "clock_domains": sorted(domains),
-        "convention_violations": [],
+        "convention_violations": _check_violations(ports),
     }
 
 
@@ -155,6 +186,8 @@ def main() -> int:
         print(f"error: SV parse/syntax failure:\n{cst['_error']}", file=sys.stderr)
         return 3
     payload = _parse_text(Path(args.rtl))
+    if args.syn_report:
+        payload["synth_summary"] = _parse_synth_report(Path(args.syn_report))
     text = json.dumps(payload, indent=2)
     if args.out:
         Path(args.out).write_text(text)
