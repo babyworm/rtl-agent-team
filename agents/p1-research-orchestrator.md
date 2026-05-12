@@ -71,13 +71,18 @@ nothing to research. This is the one justified exception to the Asymmetric Phase
 "entry = soft warn" principle.
 
 ```
-# Phase 1 upstream: user-provided specs (HARD prerequisite)
-Glob("specs/**/*")                    # Spec documents (user-provided)
+# Phase 1 upstream: user-provided specs OR goal-clarifier output (HARD prerequisite)
+Glob("specs/**/*")                              # Spec documents (user-provided)
+Glob("docs/phase-1-research/goal.md")           # Goal-clarifier output (from Step 0a)
 ```
 
-If NO spec documents found: HALT and report to user —
-`"No specification documents found in specs/. Phase 1 cannot proceed without input specifications. Please provide spec documents and re-run."`
-If specs found: proceed normally.
+A valid upstream input is ANY of:
+- one or more files matched by `specs/**/*`
+- `docs/phase-1-research/goal.md` (produced by Step 0a goal-clarifier when the user starts from a vague seed)
+
+If BOTH are absent: HALT and report to user —
+`"No specification documents found in specs/ AND no goal-clarifier output at docs/phase-1-research/goal.md. Phase 1 cannot proceed without input. Provide spec documents, or re-invoke /rtl-agent-team:p1-spec-research with a seed so Step 0a runs the goal-clarifier."`
+Otherwise: proceed normally — the available input(s) flow into Step 2 (solution tree) and the spec-analyst dispatch.
 
 ## Step 0.5: Domain Expert Discovery (CONDITIONAL)
 
@@ -120,7 +125,7 @@ Skill("rtl-agent-team:domain-consult",
 **Phase A — Tree Construction (breadth-first discovery)**:
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="From specs/ and user requirements, construct a solution tree: Level 1 (scope variants), Level 2 (architecture variants per scope), Level 3 (algorithm choices per architecture). Identify ALL leaf candidates (target 8-20). Output structured tree as JSON. Save to docs/phase-1-research/solution-tree.json using Write tool.")
+     prompt="From specs/ AND docs/phase-1-research/goal.md (if it exists, produced by Step 0a goal-clarifier) and user requirements, construct a solution tree: Level 1 (scope variants), Level 2 (architecture variants per scope), Level 3 (algorithm choices per architecture). Identify ALL leaf candidates (target 8-20). Output structured tree as JSON. Save to docs/phase-1-research/solution-tree.json using Write tool.")
 
 # Default review coordinator: rtl-architect (domain-agnostic)
 Task(subagent_type="rtl-agent-team:rtl-architect",
@@ -187,7 +192,7 @@ Bash("mkdir -p reviews/phase-1-research")
 
 # --- Always-spawn agents (domain-agnostic) ---
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Parse specs/ and produce docs/phase-1-research/iron-requirements.json (settled REQ-F-NNN functional, REQ-P-NNN performance requirements with measurable acceptance_criteria and violation_policy: user_escalation), docs/phase-1-research/open-requirements.json (research topics as OPEN-1-NNN with candidates, evaluation_criteria, related_iron, target_phase: phase-2-architecture), docs/phase-1-research/io_definition.json, and docs/phase-1-research/timing_constraints.json. Port names MUST use i_/o_/io_ prefix (NOT suffix), clocks as {domain}_clk, resets as {domain}_rst_n. timing_constraints.json: rough performance estimates per block — target throughput, latency budget, clock frequency target. These are Phase 1 estimates, not final constraints. Self-verify: count spec features vs REQ items, list suspected omissions. Save review to reviews/phase-1-research/research-review.md using Write tool. Save all JSON artifacts using Write tool to docs/phase-1-research/.")
+     prompt="Parse specs/ AND docs/phase-1-research/goal.md (if it exists, produced by Step 0a goal-clarifier — read both as complementary input; goal.md provides high-level 4-dimension framing and Functionality/PPA/Scope/Verification anchors while specs/ provides any user-supplied detail) and produce docs/phase-1-research/iron-requirements.json (settled REQ-F-NNN functional, REQ-P-NNN performance requirements with measurable acceptance_criteria and violation_policy: user_escalation), docs/phase-1-research/open-requirements.json (research topics as OPEN-1-NNN with candidates, evaluation_criteria, related_iron, target_phase: phase-2-architecture), docs/phase-1-research/io_definition.json, and docs/phase-1-research/timing_constraints.json. When goal.md is the only input, the STATUS: ambiguity=N% footer is informational — produce more OPEN-1-NNN items proportional to the residual ambiguity (a dimension still vague becomes OPEN, a measurable dimension becomes iron). Port names MUST use i_/o_/io_ prefix (NOT suffix), clocks as {domain}_clk, resets as {domain}_rst_n. timing_constraints.json: rough performance estimates per block — target throughput, latency budget, clock frequency target. These are Phase 1 estimates, not final constraints. Self-verify: count spec features vs REQ items, list suspected omissions. Save review to reviews/phase-1-research/research-review.md using Write tool. Save all JSON artifacts using Write tool to docs/phase-1-research/.")
 
 Task(subagent_type="rtl-agent-team:power-analyzer", model="opus", run_in_background=true,
      prompt="Power budget estimation for the selected approach. Analyze: clock gating opportunities, expected switching activity, voltage domain candidates, power optimization strategies. Output power analysis summary.")
