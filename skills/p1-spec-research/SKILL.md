@@ -25,6 +25,30 @@ artifacts for Phase 2 architecture design.
 - Need architecture design (use p2-arch-design — requires Phase 1 completion)
 </Do_Not_Use_When>
 
+<Phase_Workflow>
+This skill runs as two stages inside the same Task() invocation:
+
+- **Phase 0 (goal-clarifier)**: when `$ARGUMENTS` is a sparse seed, the
+  orchestrator first dispatches `goal-clarifier` for an ambiguity-scored
+  interview across 4 RTL dimensions (Functionality / PPA Target / Scope /
+  Verification). Phase 0 writes `docs/phase-1-research/goal.md`.
+- **Phase 1 (spec-analyst + research)**: spec-analyst consumes `goal.md`
+  (plus any user-supplied spec document) and produces the iron/open
+  requirements set as before.
+
+When `$ARGUMENTS` points to an existing `.md`/`.txt`/`.rst` spec or is
+already a rich seed (≥ 500 chars with PPA/coverage signals), Phase 0
+is skipped automatically.
+</Phase_Workflow>
+
+<Assets>
+| Path | Role |
+|------|------|
+| `scripts/score_ambiguity.py` | Pure stdlib helper for 4-dimension scoring + ambiguity %. Used by goal-clarifier each round. |
+| `templates/goal.md` | Output skeleton for `docs/phase-1-research/goal.md`. |
+| `references/goal-dimensions.md` | 4-dimension scoring rubric + question seeds + anti-patterns. |
+</Assets>
+
 ## Prerequisites
 
 None — this is the first phase entry point.
