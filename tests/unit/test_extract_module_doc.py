@@ -260,3 +260,61 @@ def test_lowercase_parameter_captured(tmp_path):
     data = json.loads(out.read_text())
     param_names = {p["name"] for p in data["parameters"]}
     assert {"dataWidth", "depth", "LATENCY"}.issubset(param_names)
+
+
+@needs_verible
+def test_wrapped_port_declaration(tmp_path):
+    """Port declarations wrapped across multiple lines are still captured.
+
+    Multi-line port wrapping is a common SV formatting style for wide port
+    lists. Pre-fix, the line-anchored PORT_RE silently dropped the port
+    because direction/width/name landed on separate lines.
+    """
+    sv = tmp_path / "wrapped.sv"
+    sv.write_text(
+        "module wrapped (\n"
+        "  input  logic\n"
+        "                  sys_clk,\n"
+        "  input  logic\n"
+        "                  sys_rst_n,\n"
+        "  input  logic\n"
+        "         [31:0]\n"
+        "                  i_addr,\n"
+        "  output logic\n"
+        "         [15:0]\n"
+        "                  o_data\n"
+        ");\nendmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    names = [p["name"] for p in data["ports"]]
+    assert names == ["sys_clk", "sys_rst_n", "i_addr", "o_data"]
+    by_name = {p["name"]: p for p in data["ports"]}
+    assert by_name["i_addr"]["width"] == "32"
+    assert by_name["o_data"]["width"] == "16"
+    assert by_name["i_addr"]["dir"] == "input"
+    assert by_name["o_data"]["dir"] == "output"
+
+
+@needs_verible
+def test_comments_between_ports_do_not_fuse_declarations(tmp_path):
+    """Line and block comments between port declarations must not bridge
+    adjacent declarations after flattening (regression for // APB notes)."""
+    sv = tmp_path / "with_comments.sv"
+    sv.write_text(
+        "module with_comments (\n"
+        "  input  logic sys_clk,\n"
+        "  // line comment between declarations\n"
+        "  input  logic sys_rst_n,\n"
+        "  /* block comment\n"
+        "     spanning lines */\n"
+        "  input  logic [3:0] i_data,\n"
+        "  output logic       o_valid\n"
+        ");\nendmodule\n"
+    )
+    out = tmp_path / "x.json"
+    _run(["--rtl", str(sv), "--out", str(out)])
+    data = json.loads(out.read_text())
+    names = [p["name"] for p in data["ports"]]
+    assert names == ["sys_clk", "sys_rst_n", "i_data", "o_valid"]

@@ -147,6 +147,48 @@ def _verible_json(verible: str, rtl: str) -> dict:
         return {"_error": f"verible JSON decode error: {e}"}
 
 
+def _flatten_port_block(text: str) -> str:
+    """Extract the module's port-list block and normalise multi-line port
+    declarations into one logical line per declaration.
+
+    SystemVerilog frequently wraps a single port declaration across multiple
+    lines, e.g.::
+
+        input  logic
+              [31:0]
+              i_addr,
+
+    Such forms defeat a strict line-anchored PORT_RE. This helper:
+      1. Strips // and /* */ comments so they cannot fuse adjacent declarations.
+      2. Captures the module header's port list (text between the second `(`
+         and the matching `);`).
+      3. Collapses internal whitespace (newlines + indentation) to single spaces.
+      4. Re-splits the flattened text at every `input|output|inout` keyword
+         boundary using a lookahead, so each declaration ends up on its own
+         synthetic line while retaining any trailing multi-name list.
+
+    If no module header is found, returns the original text — callers fall
+    back to line-by-line parsing.
+    """
+    no_comments = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    no_comments = re.sub(r"//[^\n]*", "", no_comments)
+    m = re.search(
+        r"\bmodule\s+[A-Za-z_]\w*\s*(?:#\s*\([^)]*\))?\s*\((.*?)\)\s*;",
+        no_comments,
+        re.DOTALL,
+    )
+    if not m:
+        return text
+    port_list = m.group(1)
+    flat = re.sub(r"\s+", " ", port_list).strip()
+    decls = re.split(r"(?=\b(?:input|output|inout)\b)", flat)
+    return "\n".join(
+        "  " + d.strip().rstrip(",").strip()
+        for d in decls
+        if d.strip()
+    )
+
+
 def _parse_text(rtl_path: Path) -> dict:
     """Fallback regex-based parser; used standalone and to augment CST when fields missing."""
     text = rtl_path.read_text()
@@ -166,7 +208,12 @@ def _parse_text(rtl_path: Path) -> dict:
             "domain": domain or "?", "kind": kind,
         })
 
-    for line in text.splitlines():
+    # Use the flattened port block so multi-line wrapped declarations are
+    # collapsed to one logical line per declaration before PORT_RE runs.
+    # `_flatten_port_block` falls back to the original text when no module
+    # header is found, so this is safe for non-module input.
+    port_text = _flatten_port_block(text)
+    for line in port_text.splitlines():
         pm = PORT_RE.match(line)
         if pm:
             direction, width, name = pm.group(1), pm.group(2), pm.group(3)
