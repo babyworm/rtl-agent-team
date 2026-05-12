@@ -74,3 +74,49 @@ def test_long_but_vague_seed_triggers_clarifier(tmp_path):
     vague = "Build some hardware that does encryption stuff. " * 20
     assert len(vague) >= 500
     assert needs_clarifier(vague, tmp_path) is True
+
+
+# ------------------------------------------------------------------
+# Asset structural tests
+# ------------------------------------------------------------------
+
+TEMPLATE = ROOT / "skills" / "p1-spec-research" / "templates" / "goal.md"
+REFERENCE = ROOT / "skills" / "p1-spec-research" / "references" / "goal-dimensions.md"
+
+
+def test_template_has_all_four_dimensions():
+    body = TEMPLATE.read_text()
+    for section in ["## Functionality", "## PPA Target", "## Scope", "## Verification"]:
+        assert section in body, f"template missing {section}"
+
+
+def test_template_has_status_footer():
+    body = TEMPLATE.read_text()
+    assert "STATUS: ambiguity={{AMBIGUITY_PCT}}%" in body
+    assert "ROUNDS: {{ROUNDS_COUNT}}" in body
+
+
+def test_template_placeholders_renderable():
+    """Every {{PLACEHOLDER}} must use UPPER_SNAKE_CASE."""
+    import re
+    body = TEMPLATE.read_text()
+    placeholders = set(re.findall(r"\{\{([A-Z_]+)\}\}", body))
+    assert placeholders, "template has no placeholders"
+    for ph in placeholders:
+        assert ph.isupper(), f"bad placeholder: {ph}"
+
+
+def test_reference_doc_length_under_200_lines():
+    n = sum(1 for _ in REFERENCE.read_text().splitlines())
+    assert n <= 200, f"reference doc is {n} lines (must be ≤ 200)"
+
+
+def test_reference_doc_covers_all_four_dimensions():
+    body = REFERENCE.read_text().lower()
+    for dim in ["functionality", "ppa", "scope", "verification"]:
+        assert dim in body, f"reference doc missing {dim}"
+
+
+def test_reference_doc_has_anti_patterns_section():
+    body = REFERENCE.read_text()
+    assert "Anti-patterns" in body or "anti-patterns" in body.lower()
