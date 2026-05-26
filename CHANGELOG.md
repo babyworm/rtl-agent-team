@@ -7,6 +7,17 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-05-26
+
+### Added
+- **RTL design-style conventions** — two preferences documented in the SystemVerilog convention
+  skill (§4.6/§4.7) and the deployed `rtl-coding-conventions.md` rules: (1) **registered outputs** —
+  prefer driving module outputs directly from a flip-flop (register the output, not the input
+  followed by combinational logic to the port) for clean hierarchical timing; (2) **function/task
+  purity** — `function`/`task` should use only their arguments, and any unavoidable external
+  (non-argument) dependency must be documented in a header comment. Deployed rule-template
+  `rat-version` → 0.11.4.
+
 ## [0.11.3] - 2026-05-26
 
 ### Added

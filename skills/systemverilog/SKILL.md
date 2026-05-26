@@ -195,6 +195,44 @@ module_name.sv        <- Module implementation (order is MANDATORY):
 ```
 See `templates/module-template.sv` for complete scaffold.
 
+### 4.6 Registered Outputs (Preferred)
+Prefer driving a module's outputs directly from a flip-flop. When a register/pipeline stage is
+needed, place the register at the **output** (compute → register → output port), not at the input
+(register input → combinational logic → output port).
+
+```systemverilog
+// PREFERRED — registered output: the consumer gets a full clock period; the critical path stays
+// inside this module; hierarchical STA and reuse are clean.
+always_ff @(posedge clk or negedge rst_n) begin
+  if (!rst_n) o_data <= '0;
+  else        o_data <= func(a_q, b_q);   // combinational result captured into the output register
+end
+
+// DISCOURAGED — input registered, output driven through combinational logic: o_data is
+// combinational AT THE PORT, so the consumer loses part of its cycle and STA must trace through
+// this module's logic across the boundary.
+always_ff @(posedge clk or negedge rst_n) if (!rst_n) a_q <= '0; else a_q <= i_a;
+assign o_data = func(a_q);
+```
+
+Combinational (unregistered) outputs are acceptable for thin glue/passthrough logic, but should be
+a deliberate choice — not the default place to put a needed flop.
+
+### 4.7 Function / Task Purity (No Hidden External Dependencies)
+`function`/`task` should operate **only on their arguments** (pure). Avoid reading module-level
+signals/variables not passed in — hidden inputs cause simulation-sensitivity surprises, obscure
+synthesis intent, and hurt reuse/readability. Prefer passing the needed signals as arguments.
+
+If an external (non-argument) dependency is genuinely unavoidable, **document it in a header
+comment** at the top of the function/task:
+
+```systemverilog
+// External deps (read): cfg_mode, base_addr   <- MANDATORY when not argument-only
+function automatic logic [W-1:0] map_addr(input logic [W-1:0] offset);
+  map_addr = base_addr + (cfg_mode ? (offset << 1) : offset);  // reads module signals — discouraged
+endfunction
+```
+
 ## 5. Context-Specific Optimizations (Summary)
 
 > The items below apply only when specific optimizations are needed. See the `<Advanced>` section for detailed patterns and code examples.

@@ -27,6 +27,19 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 4. **CamelCase prohibited**: Parameter → `ALL_CAPS` (`DATA_WIDTH`). localparam → `L_` prefix (`L_ADDR_BITS`). Enum → `ALL_CAPS` (`ST_IDLE`). Only `snake_case` or `ALL_CAPS`
 5. **UVM exception**: `m_` prefix allowed for UVM class internal member handles. `u_` is for RTL instances only
 
+## Design Style (Preferred)
+
+- **Registered outputs**: drive module outputs directly from a flip-flop. When a register stage is
+  needed, register the **output** (compute → FF → output port), not the input followed by
+  combinational logic to the port. Registered outputs give consumers a full clock period and keep
+  the critical path inside the module (simpler hierarchical timing). Combinational outputs are OK
+  for thin glue/passthrough but should be a deliberate choice.
+- **Function/task purity**: SV `function`/`task` should use only their arguments. Avoid reading
+  module-level signals not passed in (hidden inputs hurt sim sensitivity, synthesis clarity, and
+  reuse). If an external dependency is unavoidable, document it in a header comment at the top of
+  the function/task (e.g., `// External deps (read): cfg_mode, base_addr`). Prefer passing signals
+  as arguments.
+
 ## iverilog Limitations
 
 - Flag: `-g2012` (basic SV syntax support)
@@ -81,4 +94,4 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 - `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
 - `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
 
-<!-- rat-version: 0.11.3 -->
+<!-- rat-version: 0.11.4 -->
