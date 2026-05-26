@@ -7,6 +7,22 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-05-26
+
+### Changed
+- **Asset-bundle clone-pack migration (#5)** — 10 utility skills migrated from
+  single-template helpers to the full asset-bundle layout (`references/` +
+  `examples/`, plus deterministic helper scripts where applicable), following the
+  `rtl-document` reference pattern established in 0.11.0: `bfm-develop`,
+  `ref-model`, `rtl-bug-repro`, `rtl-conformance-test`, `rtl-ip-instantiate`,
+  `rtl-ipxact-gen`, `rtl-model-consistency`, `rtl-p5s-coverage-analyze`,
+  `rtl-p5s-integration-test`, `rtl-p5s-perf-verify`. Each gains a
+  `references/*-conventions.md`; seven add deterministic helper scripts (e.g.
+  `run_bfm.py`, `gen_ipxact.py`, `parse_coverage.py`). Adds
+  `tests/unit/test_asset_bundle_pack.py` to validate the pack structure, and
+  completes the migration tracked in
+  `plugin_docs/plans/2026-03-20-skill-improvement-candidates.md`.
+
 ## [0.11.1] - 2026-05-26
 
 ### Added

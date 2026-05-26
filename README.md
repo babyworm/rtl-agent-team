@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 99-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.11.1 |
+| **rtl-agent-team** | 99-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.11.2 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.4 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
