@@ -7,22 +7,22 @@
 
 | Skill | Lines | Current Focus | Most Valuable Asset | Effort |
 |-------|-------|---------------|---------------------|--------|
-| `ref-model` | 173 | C ref model (no clock/reset, DPI-C, bitexact) | C skeleton: Makefile + DPI-C header + main.c template | M |
-| `bfm-develop` | 120 | SystemC TLM-2.0 AT BFM (AMBA, perf_baseline) | sc_module skeleton + TLM AT socket + functional parity assertion | M |
-| `rtl-ipxact-gen` | 88 | IP-XACT XML from RTL ports/params | XML template + integration example | M |
-| `rtl-ip-instantiate` | 101 | Wrapper for 3rd-party IP with port convention mapping | Wrapper module template + vendor port mapping guide | M |
-| `rtl-bug-repro` | 95 | Minimal repro TB from failing sim | Repro TB template + VCD diff script | M |
+| `ref-model` | 173 | C ref model (no clock/reset, DPI-C, bitexact) | C skeleton: Makefile + DPI-C header + main.c template | ✅ done |
+| `bfm-develop` | 120 | SystemC TLM-2.0 AT BFM (AMBA, perf_baseline) | sc_module skeleton + TLM AT socket + functional parity assertion | ✅ done |
+| `rtl-ipxact-gen` | 88 | IP-XACT XML from RTL ports/params | XML template + integration example | ✅ done |
+| `rtl-ip-instantiate` | 101 | Wrapper for 3rd-party IP with port convention mapping | Wrapper module template + vendor port mapping guide | ✅ done |
+| `rtl-bug-repro` | 95 | Minimal repro TB from failing sim | Repro TB template + VCD diff script | ✅ done |
 | `rtl-document` | 105 | Port table + design summary from RTL/synth | Markdown doc template (port table, param table, hierarchy) | ✅ done (2026-05-12) |
-| `rtl-model-consistency` | 93 | 3-way compare (refC vs BFM vs RTL) | Test vector alignment script + comparison report template | M |
-| `rtl-conformance-test` | 105 | Bitexact match vs JM/HM golden | Comparison script + golden metadata format | M |
+| `rtl-model-consistency` | 93 | 3-way compare (refC vs BFM vs RTL) | Test vector alignment script + comparison report template | ✅ done |
+| `rtl-conformance-test` | 105 | Bitexact match vs JM/HM golden | Comparison script + golden metadata format | ✅ done |
 
 ## Priority 2: Phase 5 Sub-Skills (verification quality)
 
 | Skill | Lines | Current Focus | Most Valuable Asset | Effort |
 |-------|-------|---------------|---------------------|--------|
-| `rtl-p5s-perf-verify` | 47 | Latency/throughput vs BFM baseline | Perf monitor TB template (cycle counter, throughput measure) | M |
-| `rtl-p5s-coverage-analyze` | 48 | Coverage gap analysis + risk ranking | Coverage report template + gap-to-test tracer format | M |
-| `rtl-p5s-integration-test` | 62 | Tier 4 cross-module verification | Integration TB skeleton + module boundary protocol template | M |
+| `rtl-p5s-perf-verify` | 47 | Latency/throughput vs BFM baseline | Perf monitor TB template (cycle counter, throughput measure) | ✅ done |
+| `rtl-p5s-coverage-analyze` | 48 | Coverage gap analysis + risk ranking | Coverage report template + gap-to-test tracer format | ✅ done |
+| `rtl-p5s-integration-test` | 62 | Tier 4 cross-module verification | Integration TB skeleton + module boundary protocol template | ✅ done |
 
 ## Implementation Order (by impact × effort)
 
@@ -67,3 +67,7 @@ parser script with a JSON schema, snippet-composing renderer with
 examples covering the complexity spectrum, and a lean SKILL.md (~90-125 lines,
 ~900 words) applying the Anthropic prompting + plugin-dev skill-development
 guidelines documented in §5.3 of the spec.
+
+## Update — v0.11.0 + clone pack PR (2026-05-13)
+
+All 11 candidates migrated. The reference pattern (asset-bundle layout: `templates/`, `scripts/`, `references/{name}-conventions.md`, `examples/`) is now in place across every utility skill in this list. Deep script/example fills are tracked per-skill in follow-up PRs.
