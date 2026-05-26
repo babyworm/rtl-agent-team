@@ -7,6 +7,28 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-05-26
+
+### Added
+- **Synthesis memory-wrapper blackbox + compiled-macro placeholder** — `run_syn.sh` (DC/Genus) now
+  handles behavioral SRAM wrappers (`sram_sp/tp/dp`) at synthesis. The behavioral 2-D array is
+  guarded by `// synopsys translate_off`, so DC/Genus never elaborate it into flip-flops — the root
+  cause of runaway synthesis time on array memories. A compiled macro is selected via
+  `--mem-process <NAME>` (activates an `` `ifdef RAT_MEM_<NAME> `` branch) + `--mem-lib <db|.lib>`
+  (links the macro). With no active macro, the wrapper is blackboxed (`set_dont_touch` +
+  `set_disable_timing`, emitted into the Tcl and gated on `get_cells` finding real cells) and the
+  tool prints a WARNING; `--mem-strict` makes it a hard error. New flags: `--mem-process`,
+  `--mem-lib`, `--mem-module`, `--mem-strict`. `systemverilog` A.2 wrapper examples updated to the
+  `translate_off` + `` `ifdef `` pattern. Deployed-template `rat-version` → 0.11.3 (picked up via
+  `rat-init-project --update`).
+
+### Security
+- **Tcl-injection hardening in `run_syn.sh`** — every path emitted into generated DC/Genus Tcl
+  (project/synth root, source files, `rtl/common`, `--liberty`, `--sdc`, `--mem-lib`) is rejected
+  if it contains Tcl-active characters (`[ ] { } $ ; " ` \`), and `--top`/`--mem-process`/
+  `--mem-module` must be plain identifiers — preventing a hostile path or name from breaking or
+  injecting into the generated synthesis script. Hardened across an 8-round Codex cross-review.
+
 ## [0.11.2] - 2026-05-26
 
 ### Changed

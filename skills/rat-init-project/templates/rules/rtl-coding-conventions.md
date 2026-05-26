@@ -62,7 +62,10 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 - SRAM instance prefix: `u_mem_` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
 - Wrapper parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)` inside wrapper)
 - SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (1-cycle read latency)
-- Behavioral for simulation; foundry macro swap via `` `ifdef SYNTHESIS `` guard inside wrapper
+- Synthesis: guard the behavioral array with `// synopsys translate_off`/`translate_on` (DC/Genus
+  skip it → blackbox); put compiled-macro instances in `` `ifdef RAT_MEM_<PROCESS> `` branches.
+  `run_syn.sh --mem-process/--mem-lib` selects/links the macro; without one the wrapper is
+  blackboxed (`set_dont_touch` + `set_disable_timing`) with a WARNING.
 
 ## Convention Skills (Auto-Applied by Extension/Phase)
 
@@ -78,4 +81,4 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 - `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
 - `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
 
-<!-- rat-version: 0.7.7 -->
+<!-- rat-version: 0.11.3 -->

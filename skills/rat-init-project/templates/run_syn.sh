@@ -47,6 +47,13 @@ SKIP_IF_UNAVAILABLE=0
 # Default multicore request. Keep in sync with dc-compile-ppa.tcl `max_cores`
 # default (the PPA-loop path sets it independently of this CLI default).
 MAX_CORES=8
+# Memory-compiler handling (DC/Genus). Behavioral SRAM wrappers are blackboxed at
+# synthesis (their `synopsys translate_off` body is skipped) unless a compiled macro
+# library is linked. See plugin_docs/specs/2026-05-26-synth-memory-blackbox-design.md.
+MEM_PROCESS=()      # --mem-process NAME  → +define+NAME (activates wrapper `ifdef branch)
+MEM_LIB=""          # --mem-lib FILE      → link compiled-macro timing library (real timing)
+MEM_MODULES=()      # --mem-module a,b    → extra memory-wrapper module names beyond sram_*
+MEM_STRICT=0        # --mem-strict        → blackboxed-memory warning becomes a hard error
 
 # ─── Usage ──────────────────────────────────────────────────────────────────
 usage() {
@@ -62,6 +69,13 @@ Options:
   --sdc <file>      SDC constraints file (default: syn/constraints/design.sdc)
   --max-cores <n>   Max CPU cores for multicore synthesis (default: 8).
                     DC/Genus auto-limit to the licensed/physical maximum.
+  --mem-process <N> Define +N for synthesis (activates an SRAM wrapper `ifdef
+                    branch, e.g. RAT_MEM_TSMC_N22). Repeatable.
+  --mem-lib <file>  Compiled memory-macro timing library (.db/.lib) to link.
+                    Without it, SRAM wrappers are blackboxed (timing disabled).
+  --mem-module <m>  Extra memory-wrapper module name(s) beyond sram_sp/tp/dp
+                    (comma-separated). Repeatable.
+  --mem-strict      Treat a blackboxed memory (no compiled macro) as an error.
   --script <file>   User-provided tool script/Tcl (skips auto-generation)
   --flatten         Flatten design before synthesis
   --skip-if-unavailable  Exit cleanly (exit 0) if tool not available/licensed
@@ -91,6 +105,12 @@ while [[ $# -gt 0 ]]; do
     --liberty)   LIBERTY="$2"; shift 2 ;;
     --sdc)       SDC_FILE="$2"; shift 2 ;;
     --max-cores) MAX_CORES="$2"; shift 2 ;;
+    --mem-process) if [[ -n "$2" ]]; then MEM_PROCESS+=("$2"); fi; shift 2 ;;
+    --mem-lib)   MEM_LIB="$2"; shift 2 ;;
+    --mem-module) IFS=',' read -ra _mm <<< "$2"
+                  for _t in "${_mm[@]}"; do if [[ -n "$_t" ]]; then MEM_MODULES+=("$_t"); fi; done
+                  shift 2 ;;
+    --mem-strict) MEM_STRICT=1; shift ;;
     --script)    SCRIPT_PATH="$2"; shift 2 ;;
     --flatten)   FLATTEN=1; shift ;;
     --skip-if-unavailable) SKIP_IF_UNAVAILABLE=1; shift ;;
@@ -109,11 +129,33 @@ if [[ -z "$TOP" ]]; then
   echo "ERROR: --top <module> is required" >&2
   exit 1
 fi
+# --top is emitted into Tcl (e.g. `elaborate $TOP`); require a plain module identifier.
+if ! [[ "$TOP" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "ERROR: --top must be a Verilog module identifier (got: '$TOP')" >&2
+  exit 1
+fi
 
 # --max-cores must be a positive integer (it is emitted verbatim into the Tcl)
 if ! [[ "$MAX_CORES" =~ ^[1-9][0-9]*$ ]]; then
   echo "ERROR: --max-cores must be a positive integer (got: '$MAX_CORES')" >&2
   exit 1
+fi
+
+# --mem-process / --mem-module tokens must be plain identifiers. A blank or glob-bearing
+# token would otherwise become `ref_name =~ *` in the Tcl filter and blackbox the WHOLE design.
+if [[ ${#MEM_PROCESS[@]} -gt 0 ]]; then
+  for _t in "${MEM_PROCESS[@]}"; do
+    if ! [[ "$_t" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      echo "ERROR: --mem-process must be a Verilog identifier (got: '$_t')" >&2; exit 1
+    fi
+  done
+fi
+if [[ ${#MEM_MODULES[@]} -gt 0 ]]; then
+  for _t in "${MEM_MODULES[@]}"; do
+    if ! [[ "$_t" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      echo "ERROR: --mem-module must be module identifier(s) (got: '$_t')" >&2; exit 1
+    fi
+  done
 fi
 
 # Default SDC path (always project-relative, not SYN_ROOT-relative)
@@ -127,6 +169,9 @@ case "$SYN_ROOT" in /*) ;; *) SYN_ROOT="$PROJECT_ROOT/$SYN_ROOT" ;; esac
 [[ -n "$SDC_FILE" && "$SDC_FILE" != /* ]] && SDC_FILE="$PROJECT_ROOT/$SDC_FILE"
 [[ -n "$SCRIPT_PATH" && "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$PROJECT_ROOT/$SCRIPT_PATH"
 [[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
+# Memory macro library: absolutize only if it resolves to a real file (else it may be a
+# logical library name the tool resolves via search_path).
+[[ -n "$MEM_LIB" && "$MEM_LIB" != /* && -e "$PROJECT_ROOT/$MEM_LIB" ]] && MEM_LIB="$PROJECT_ROOT/$MEM_LIB"
 
 # ─── Directory setup ──────────────────────────────────────────────────────
 DIR_DB="${SYN_ROOT}/db"
@@ -201,6 +246,28 @@ for f in "${SRC_FILES[@]}"; do
 done
 SRC_FILES=("${_abs_src[@]}")
 
+# DC/Genus emit EVERY source/library/work path into Tcl double quotes (`analyze ... "$f"`,
+# `read_hdl ... "$f"`, target/link library, SDC, --mem-lib). A path containing Tcl-active
+# characters ([ ] { } $ ; " ` \) would break or inject into the generated script. Validate ALL
+# finalized paths once, before Tcl generation, and fail with a clear message (not a cryptic Tcl
+# error). Relative args that become unsafe via $PROJECT_ROOT are caught here too.
+if [[ "$TOOL" == "dc_shell" || "$TOOL" == "genus" ]]; then
+  _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}"
+  for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+  if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
+    for _p in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
+      [[ -e "$_p" ]] && _tcl_paths="${_tcl_paths}|${_p}"
+    done
+  fi
+  case "$_tcl_paths" in
+    *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* )
+      echo "ERROR: a synthesis path (project/synth root, source file, rtl/common, --liberty," >&2
+      echo "       --sdc, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
+      echo "       DC/Genus emit paths into Tcl — rename/move so paths avoid these characters." >&2
+      exit 1 ;;
+  esac
+fi
+
 # ─── Relative $readmemh/$readmemb ROM guard ─────────────────────────────────
 # Source/SDC/filelist paths are absolutized above, but $readmemh("rel/path.mem")
 # strings INSIDE the RTL are not — the tool resolves them against CWD, and we cd
@@ -216,6 +283,34 @@ if [[ -n "$_relmem" ]]; then
   echo "         ensure the .mem files resolve relative to \$SYN_ROOT. Offending loads:" >&2
   echo "$_relmem" | sed 's/^/           /' >&2
 fi
+
+# ─── Memory-wrapper blackbox setup (DC/Genus) ───────────────────────────────
+# Behavioral SRAM wrappers (sram_sp/tp/dp + --mem-module) are blackboxed at synthesis
+# unless a compiled macro library is linked (--mem-lib). The blackbox (set_dont_touch +
+# set_disable_timing), the WARNING, and the --mem-strict check are emitted into the
+# generated Tcl, gated on `get_cells` finding ACTUAL memory cells in the ELABORATED
+# design. This is instantiation-aware: a declared-but-unused wrapper (or one defined in
+# rtl/common and not instantiated by this top) is handled correctly and never false-fails.
+# The behavioral 2-D array is kept under `synopsys translate_off`, so synthesis never
+# elaborates it into flip-flops.
+MEM_WRAP_NAMES=(sram_sp sram_tp sram_dp)
+[[ ${#MEM_MODULES[@]} -gt 0 ]] && MEM_WRAP_NAMES+=("${MEM_MODULES[@]}")
+# Real (non-blackboxed) memory needs BOTH: --mem-process to activate the wrapper's `ifdef
+# macro branch AND --mem-lib to resolve the macro's timing. With only one (or neither), the
+# wrapper resolves to its empty `synopsys translate_off behavioral `else (or an unresolved
+# macro) — both are blackboxed. (--mem-lib alone does NOT instantiate the macro.)
+MEM_BLACKBOX=1
+[[ -n "$MEM_LIB" && ${#MEM_PROCESS[@]} -gt 0 ]] && MEM_BLACKBOX=0
+# Tcl get_cells filter (ref_name glob per recognized wrapper module)
+MEM_CELL_FILTER=""
+for _name in "${MEM_WRAP_NAMES[@]}"; do
+  [[ -n "$MEM_CELL_FILTER" ]] && MEM_CELL_FILTER+=" || "
+  MEM_CELL_FILTER+="ref_name =~ ${_name}*"
+done
+
+# Verilog +define+ clause for the selected memory process(es), shared by DC/Genus
+MEM_DEFINE_TOKENS=""
+[[ ${#MEM_PROCESS[@]} -gt 0 ]] && MEM_DEFINE_TOKENS="${MEM_PROCESS[*]}"
 
 # ─── cd to synthesis root — all tool artifacts stay contained ─────────
 cd "$SYN_ROOT"
@@ -362,7 +457,13 @@ case "$TOOL" in
       echo "set_app_var sh_command_log_file \"${DIR_LOG}/command.log\""
       if [[ -n "$LIBERTY" ]]; then
         echo "set_app_var target_library [list \"$LIBERTY\"]"
-        echo "set_app_var link_library [list \"*\" \"$LIBERTY\"]"
+      fi
+      # link_library: wildcard + target liberty + optional compiled memory macro lib
+      if [[ -n "$LIBERTY" || -n "$MEM_LIB" ]]; then
+        _ll="\"*\""
+        [[ -n "$LIBERTY" ]] && _ll="$_ll \"$LIBERTY\""
+        [[ -n "$MEM_LIB" ]] && _ll="$_ll \"$MEM_LIB\""
+        echo "set_app_var link_library [list $_ll]"
       fi
       echo ""
       echo "# Work directories"
@@ -387,13 +488,15 @@ case "$TOOL" in
         echo "set_host_options -max_cores ${MAX_CORES}"
         echo ""
         echo "# --- Read RTL ---"
+        _dcdef=""
+        [[ -n "$MEM_DEFINE_TOKENS" ]] && _dcdef=" -define {$MEM_DEFINE_TOKENS}"
         if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
           for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-            [[ -f "$f" ]] && echo "analyze -format sverilog \"$f\""
+            [[ -f "$f" ]] && echo "analyze -format sverilog${_dcdef} \"$f\""
           done
         fi
         for f in "${SRC_FILES[@]}"; do
-          echo "analyze -format sverilog \"$f\""
+          echo "analyze -format sverilog${_dcdef} \"$f\""
         done
         echo ""
         echo "elaborate $TOP"
@@ -408,11 +511,25 @@ case "$TOOL" in
         echo "  puts \"WARNING: No SDC found at $SDC_FILE — timing estimates unreliable\""
         echo "}"
         echo ""
-        echo "# --- SRAM wrapper handling ---"
-        echo "# Uncomment for foundry macros:"
-        echo "# set_dont_touch [get_designs sram_sp]"
-        echo "# set_dont_touch [get_designs sram_tp]"
-        echo "# set_dont_touch [get_designs sram_dp]"
+        echo "# --- Memory wrapper handling ---"
+        if [[ $MEM_BLACKBOX -eq 0 ]]; then
+          echo "# Compiled memory macro active (--mem-process + --mem-lib) — real timing/area used."
+        else
+          echo "# No active compiled macro: blackbox any INSTANTIATED memory wrapper cells + disable timing."
+          echo "# (The wrapper's \`synopsys translate_off behavioral array is skipped by synthesis.)"
+          echo "set _mem_cells [get_cells -quiet -hierarchical -filter {$MEM_CELL_FILTER}]"
+          echo "if {[sizeof_collection \$_mem_cells] > 0} {"
+          echo "  set_dont_touch \$_mem_cells true"
+          echo "  set_disable_timing \$_mem_cells"
+          echo "  puts \"WARNING: [sizeof_collection \$_mem_cells] memory wrapper cell(s) blackboxed — no compiled macro (timing disabled). Provide --mem-process + --mem-lib for real timing/area.\""
+          if [[ $MEM_STRICT -eq 1 ]]; then
+            echo "  puts \"ERROR: --mem-strict: memory blackboxed without a compiled macro.\""
+            echo "  exit 1"
+          fi
+          echo "} else {"
+          echo "  puts \"INFO: no memory wrapper cells instantiated — nothing to blackbox.\""
+          echo "}"
+        fi
         echo ""
         if [[ $FLATTEN -eq 1 ]]; then
           echo "ungroup -all -flatten"
@@ -469,9 +586,12 @@ case "$TOOL" in
         echo "# Cadence Genus synthesis script for $TOP"
         echo "# Generated: $(date)"
         echo ""
-        if [[ -n "$LIBERTY" ]]; then
+        if [[ -n "$LIBERTY" || -n "$MEM_LIB" ]]; then
           echo "set_db init_lib_search_path ."
-          echo "set_db library [list \"$LIBERTY\"]"
+          _gl=""
+          [[ -n "$LIBERTY" ]] && _gl="$_gl \"$LIBERTY\""
+          [[ -n "$MEM_LIB" ]] && _gl="$_gl \"$MEM_LIB\""
+          echo "set_db library [list $_gl]"
         fi
         echo ""
         echo "# Work directory"
@@ -485,13 +605,15 @@ case "$TOOL" in
         echo "set_db max_cpus_per_server ${MAX_CORES}"
         echo ""
         echo "# --- Read RTL ---"
+        _gndef=""
+        [[ -n "$MEM_DEFINE_TOKENS" ]] && _gndef=" -define {$MEM_DEFINE_TOKENS}"
         if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
           for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-            [[ -f "$f" ]] && echo "read_hdl -sv \"$f\""
+            [[ -f "$f" ]] && echo "read_hdl -sv${_gndef} \"$f\""
           done
         fi
         for f in "${SRC_FILES[@]}"; do
-          echo "read_hdl -sv \"$f\""
+          echo "read_hdl -sv${_gndef} \"$f\""
         done
         echo ""
         echo "elaborate $TOP"
@@ -505,11 +627,26 @@ case "$TOOL" in
         echo "  puts \"WARNING: No SDC found at $SDC_FILE — timing estimates unreliable\""
         echo "}"
         echo ""
-        echo "# --- SRAM wrapper handling ---"
-        echo "# Uncomment for foundry macros:"
-        echo "# set_db [get_db designs sram_sp] .dont_touch true"
-        echo "# set_db [get_db designs sram_tp] .dont_touch true"
-        echo "# set_db [get_db designs sram_dp] .dont_touch true"
+        echo "# --- Memory wrapper handling ---"
+        if [[ $MEM_BLACKBOX -eq 0 ]]; then
+          echo "# Compiled memory macro active (--mem-process + --mem-lib) — real timing/area used."
+        else
+          echo "# No active compiled macro: blackbox any INSTANTIATED memory wrapper cells + disable timing."
+          echo "# (The wrapper's \`synopsys translate_off behavioral array is skipped by synthesis.)"
+          echo "if {[catch {set _mem_cells [get_cells -hierarchical -filter {$MEM_CELL_FILTER}]} _err]} {"
+          echo "  puts \"WARNING: memory cell selection failed (\$_err) — adjust for your Genus version.\""
+          echo "  set _mem_cells \"\""
+          echo "}"
+          echo "if {[sizeof_collection \$_mem_cells] > 0} {"
+          echo "  set_dont_touch \$_mem_cells true"
+          echo "  set_disable_timing \$_mem_cells"
+          echo "  puts \"WARNING: [sizeof_collection \$_mem_cells] memory wrapper cell(s) blackboxed — no compiled macro (timing disabled). Provide --mem-process + --mem-lib.\""
+          if [[ $MEM_STRICT -eq 1 ]]; then
+            echo "  puts \"ERROR: --mem-strict: memory blackboxed without a compiled macro.\""
+            echo "  exit 1"
+          fi
+          echo "}"
+        fi
         echo ""
         if [[ $FLATTEN -eq 1 ]]; then
           echo "ungroup -all -flatten"
@@ -581,4 +718,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 0.11.1
+# rat-version: 0.11.3

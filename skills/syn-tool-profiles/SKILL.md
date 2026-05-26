@@ -14,6 +14,11 @@ user-invocable: false
 - Multicore: DC/Genus scripts request `--max-cores` (default 8) via
   `set_host_options` / `set_db max_cpus_per_server`. Tools auto-limit to the
   licensed/physical maximum, so over-requesting is safe (graceful degradation).
+- Memory wrappers: behavioral SRAM (`sram_sp/tp/dp`) keeps its 2-D array under
+  `synopsys translate_off`, so DC/Genus skip it. With no compiled macro linked,
+  `run_syn.sh` blackboxes the wrapper (`set_dont_touch` + `set_disable_timing`) and
+  WARNs. Select a process with `--mem-process` and link the macro with `--mem-lib`
+  for real timing/area. See the synth-memory-blackbox design spec.
 
 ## Output Directory Structure (DC-standard)
 ```
@@ -39,11 +44,13 @@ syn/
   - `syn/scripts/run_syn.sh --tool dc_shell --top <top> -f rtl/filelist_top.f`
   - Optional:
     - `--liberty <tech.lib> --sdc <design.sdc> --script <dc.tcl> --max-cores <n>`
+    - Memory: `--mem-process <NAME> --mem-lib <macro.db> --mem-module <name> --mem-strict`
   - Outputs: `.ddc` → `syn/db/`, netlist → `syn/vnet/`, `.svf` → `syn/svf/`, `.synopsys_dc.setup` → `syn/scr/`
 - `genus`:
   - `syn/scripts/run_syn.sh --tool genus --top <top> -f rtl/filelist_top.f`
   - Optional:
     - `--liberty <tech.lib> --sdc <design.sdc> --script <genus.tcl> --max-cores <n>`
+    - Memory: `--mem-process <NAME> --mem-lib <macro.db> --mem-module <name> --mem-strict`
   - Outputs: `.genus_db` → `syn/db/`, netlist → `syn/vnet/`
 
 ## Tool Availability Tiers

@@ -265,19 +265,45 @@ module sram_sp #(
   output logic [WIDTH-1:0]        o_rdata
 );
 
+`ifdef RAT_MEM_TSMC_N22
+  // ── Compiled SRAM macro (TSMC N22) — replace with the real instance + pin map ──
+  // TS1N22ULLSBLVTC256X32M4SWBASO u_macro (
+  //   .CLK(clk), .CEB(~i_ce), .WEB(~i_we), .A(i_addr), .D(i_wdata), .Q(o_rdata));
+`elsif RAT_MEM_SKY130
+  // ── Compiled SRAM macro (SkyWater 130) ──
+  // sky130_sram_1rw1r_... u_macro ( ... );
+`else
+  // ── Behavioral model — SIMULATION ONLY (skipped at synthesis) ──
+  // synopsys translate_off
   logic [WIDTH-1:0] mem [0:DEPTH-1];
-
   always_ff @(posedge clk) begin
     if (i_ce) begin
-      if (i_we) begin
-        mem[i_addr] <= i_wdata;
-      end
+      if (i_we) mem[i_addr] <= i_wdata;
       o_rdata <= mem[i_addr];  // 1-cycle read latency
     end
   end
+  // synopsys translate_on
+`endif
 
 endmodule
 ```
+
+### Synthesis Behavior (translate_off blackbox + compiled macro)
+The behavioral array is wrapped in `// synopsys translate_off … translate_on`, so DC/Genus
+**skip it during synthesis** (simulators still run it) — the 2-D array is never elaborated into
+flip-flops. Selecting a process define (e.g. `+define+RAT_MEM_TSMC_N22`, passed by
+`run_syn.sh --mem-process`) activates a compiled-macro branch instead.
+
+`run_syn.sh` handles the rest automatically (DC/Genus). A real macro needs BOTH `--mem-process`
+(to activate the `` `ifdef `` branch) AND `--mem-lib` (to resolve its timing):
+- **Missing either** → the wrapper is **blackboxed** (`set_dont_touch` + `set_disable_timing` on
+  the instantiated memory cells, gated on `get_cells`) and the tool prints a WARNING. Fast
+  synthesis, no flop array, no STA through the memory boundary.
+- **`--mem-process <NAME>` + `--mem-lib <macro.db|.lib>`** → the macro is instantiated and the
+  library linked for real timing/area.
+
+Apply the **same `` `ifdef ``-macro + `translate_off`** structure to `sram_tp` and `sram_dp`.
+Detail: `plugin_docs/specs/2026-05-26-synth-memory-blackbox-design.md`.
 
 ### Standard SRAM Wrapper — Two-Port (TP)
 Place in `rtl/common/sram_tp.sv`. Separate read and write ports, **single clock**.
@@ -298,6 +324,9 @@ module sram_tp #(
   output logic [WIDTH-1:0]        o_rdata
 );
 
+  // Behavioral model — SIMULATION ONLY. For synthesis, add the sram_sp `ifdef
+  // compiled-macro branches above this block; the behavioral body stays translate_off-guarded.
+  // synopsys translate_off
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
   always_ff @(posedge clk) begin
@@ -308,6 +337,7 @@ module sram_tp #(
       o_rdata <= mem[i_raddr];  // 1-cycle read latency
     end
   end
+  // synopsys translate_on
 
 endmodule
 ```
@@ -332,6 +362,9 @@ module sram_dp #(
   output logic [WIDTH-1:0]        o_rdata
 );
 
+  // Behavioral model — SIMULATION ONLY. For synthesis, add the sram_sp `ifdef
+  // compiled-macro branches above this block; the behavioral body stays translate_off-guarded.
+  // synopsys translate_off
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
   always_ff @(posedge wclk) begin
@@ -345,6 +378,7 @@ module sram_dp #(
       o_rdata <= mem[i_raddr];  // 1-cycle read latency (rclk domain)
     end
   end
+  // synopsys translate_on
 
 endmodule
 ```
