@@ -107,8 +107,10 @@ the loop starting, the skill asserts a clean working tree.
 
 ## DC Tcl Fragment
 
-See `templates/dc-compile-ppa.tcl`. Sourced by `run_syn.sh --tool dc_shell` via
-the `--extra-script` option when `PPA_OPT_MODE=1`.
+See `templates/dc-compile-ppa.tcl`. The PPA orchestrator composes a thin wrapper
+Tcl that performs DC setup/analyze/elaborate/link, `source`s this fragment, then
+runs it via `run_syn.sh --tool dc_shell --script <wrapper.tcl>` (the `--script`
+path bypasses run_syn.sh auto-generation). Wiring: `agents/ppa-optimizer-dc-orchestrator.md`.
 
 ## PPA Brief Scaffold
 

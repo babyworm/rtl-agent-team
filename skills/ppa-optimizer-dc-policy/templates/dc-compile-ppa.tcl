@@ -8,6 +8,15 @@
 # `rpt_dir` (absolute or run-dir-relative); default preserves the repo-root layout.
 if {![info exists rpt_dir]} { set rpt_dir "syn/rpt" }
 
+# Multicore host options — request up to 8 cores before compile_ultra.
+# DC auto-limits to the licensed/physical maximum (graceful degradation, no
+# error). The PPA wrapper bypasses run_syn.sh auto-generation (--script path),
+# so set_host_options must be set here to enable multicore on the PPA loop.
+# Harness may override by setting `max_cores` before sourcing this fragment.
+# Default 8 mirrors run_syn.sh MAX_CORES — keep in sync.
+if {![info exists max_cores]} { set max_cores 8 }
+set_host_options -max_cores $max_cores
+
 # Clock gating strategy — latch-based ICG with fanout cap
 set_clock_gating_style \
     -sequential_cell latch \

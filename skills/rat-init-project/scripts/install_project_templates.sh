@@ -49,7 +49,8 @@ install_script_if_missing() {
       src_ver=$(_extract_rat_version "$src")
       dst_ver=$(_extract_rat_version "$dst")
       # Compare versions: only overwrite if source is strictly newer.
-      # Simple lexicographic comparison works for dotted semver strings.
+      # Version-aware comparison via `sort -V` (NOT lexicographic — lexical
+      # sort would mis-rank e.g. 0.11.0 < 0.8.19, but 0.11.0 is actually newer).
       if [[ -n "$src_ver" && -n "$dst_ver" && "$src_ver" != "$dst_ver" ]] && \
          [[ "$(printf '%s\n%s' "$dst_ver" "$src_ver" | sort -V | tail -n1)" = "$src_ver" ]]; then
         cp "$src" "$dst"
