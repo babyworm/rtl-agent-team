@@ -127,6 +127,42 @@ Maintain all naming conventions. After fix, re-run lint on THIS file only.")
 # PASS modules proceed to Wave 4 immediately.
 ```
 
+## Wave 3.5: Synthesizability Gate (parallel, lint-clean modules — HARD GATE)
+
+The deeper synthesizability check that Verilator lint does NOT cover: a synthesizer can
+infer latches/memories that `--lint-only -Wall` passes clean — e.g. a clocked block that
+writes an unpacked array element with a VARIABLE index, partially, while the array is read
+combinationally at many addresses (Synopsys DC → ELAB-978 "inferred memory devices"/latch).
+Checking *synthesizability*, not just simulation, is mandatory before review/test.
+
+```
+Task(subagent_type="rtl-agent-team:synthesizability-gate",
+     prompt="Synthesizability gate for module {module}: rtl/{module}/*.sv (top {module}).
+Run the best AVAILABLE checker (probe with command -v): spyglass -> svlens
+(`svlens conn <files> --top {module} --check-synth`, non-zero exit = FAIL) -> yosys
+(`read_verilog -sv; hierarchy -check -top {module}; proc; opt; synth -top {module}; stat`;
+only a CLEAN read with $_DLATCH_/$_SR_ = latch FAIL — yosys has limited SV support, so a
+read_verilog SV-parse failure means yosys is NOT applicable: fall through to LLM, NOT a FAIL)
+-> LLM structural review (last resort).
+Verify (A) NO inferred latches / incomplete combinational assignments / non-synth constructs,
+AND (B) DC-script-emittable: a DC-style synth script elaborates (dc_shell dry-run to link if
+installed, else yosys `hierarchy -check` proxy). Do NOT false-flag single-port RAM wrappers
+(registered read). Save reviews/phase-4-rtl/{module}-synthesizability.md. Verdict PASS or FAIL
+with file:line findings.",
+     run_in_background=true)
+# ... one per lint-clean module, all launched in parallel
+```
+
+On FAIL: `Task(subagent_type="rtl-agent-team:rtl-coder", prompt="Fix synthesizability
+violations in rtl/{module}/{module}.sv per gate report: [paste findings]. Eliminate inferred
+latches (drive the FULL next-state explicitly — default-hold + overwrite — or use a proper RAM
+macro), complete all combinational assignments (else/default), remove non-synth constructs.
+Re-run lint.")` → re-run the gate on THAT module only. **Max 2 fix rounds**; after 2 still
+FAIL → escalate to `rtl-architect` (structural redesign) and report.
+
+**Gate**: every module must have `reviews/phase-4-rtl/{module}-synthesizability.md` with
+verdict **PASS** before entering Wave 4. HARD blocker — do not proceed on FAIL.
+
 ## Wave 4: Code Review (parallel, all lint-clean modules)
 
 ```
@@ -343,6 +379,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 
 **ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
 Verify ALL criteria per policy skill checklist, including:
+- **Synthesizability (HARD — Wave 3.5)**: `reviews/phase-4-rtl/{module}-synthesizability.md` exists for every module with verdict **PASS** (zero inferred latches / incomplete assignments / non-synth constructs), AND the design is **DC-script-emittable** — a DC-style synth script elaborates (dc_shell dry-run, or yosys `hierarchy -check` proxy). The Wave 10 Stream-B Yosys synth smoke (`stream-b-synth-estimate.md`) must report **zero CRITICAL** ($_DLATCH_ inferred latches / unmappable constructs) — this is now gate-blocking, not advisory.
 - `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
 - Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, `req_ids` populated for every feature entry, `func_coverage.covergroups_defined >= 1`, and `codec_conformance: "PASS"` or `"N/A"` (if applicable)
 - Stream B content quality: SVA skeletons contain `property`/`assert` per module, CDC preliminary references clock domain names from `clock-domain-map.md`, TB skeletons reference `REQ-` tags per module

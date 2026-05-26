@@ -11,6 +11,9 @@ user-invocable: false
 - Synthesis is mandatory at block/top gate levels.
 - Normalize output into:
   - `tool`, `status`, `area`, `timing_summary`, `log_path`, `replay_path`
+- Multicore: DC/Genus scripts request `--max-cores` (default 8) via
+  `set_host_options` / `set_db max_cpus_per_server`. Tools auto-limit to the
+  licensed/physical maximum, so over-requesting is safe (graceful degradation).
 
 ## Output Directory Structure (DC-standard)
 ```
@@ -35,12 +38,12 @@ syn/
 - `dc_shell`:
   - `syn/scripts/run_syn.sh --tool dc_shell --top <top> -f rtl/filelist_top.f`
   - Optional:
-    - `--liberty <tech.lib> --sdc <design.sdc> --script <dc.tcl>`
+    - `--liberty <tech.lib> --sdc <design.sdc> --script <dc.tcl> --max-cores <n>`
   - Outputs: `.ddc` → `syn/db/`, netlist → `syn/vnet/`, `.svf` → `syn/svf/`, `.synopsys_dc.setup` → `syn/scr/`
 - `genus`:
   - `syn/scripts/run_syn.sh --tool genus --top <top> -f rtl/filelist_top.f`
   - Optional:
-    - `--liberty <tech.lib> --sdc <design.sdc> --script <genus.tcl>`
+    - `--liberty <tech.lib> --sdc <design.sdc> --script <genus.tcl> --max-cores <n>`
   - Outputs: `.genus_db` → `syn/db/`, netlist → `syn/vnet/`
 
 ## Tool Availability Tiers

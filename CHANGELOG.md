@@ -7,6 +7,29 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-05-26
+
+### Added
+- **Multicore synthesis host options** — `run_syn.sh` now emits
+  `set_host_options -max_cores 8` (Design Compiler) and
+  `set_db max_cpus_per_server 8` (Genus) into generated synthesis scripts,
+  enabling multicore compilation by default. A new `--max-cores <n>` flag
+  (default 8, positive-integer validated) overrides the count. Tools degrade
+  gracefully, so over-requesting is safe — the cores are auto-limited to the
+  licensed/physical maximum. The DC PPA-optimization compile fragment
+  (`dc-compile-ppa.tcl`) sets the same option before `compile_ultra`, since the
+  PPA loop's `--script` wrapper bypasses `run_syn.sh` auto-generation. The
+  deployed template `rat-version` is bumped (0.8.19 → 0.11.1), so existing
+  projects pick it up via `rat-init-project --update`.
+
+### Fixed
+- **PPA fragment wiring doc** — `ppa-optimizer-dc-policy/SKILL.md` documented a
+  non-existent `--extra-script`/`PPA_OPT_MODE` mechanism; corrected to the
+  actual wrapper-Tcl + `--script` flow used by the PPA orchestrator.
+- **Misleading version-compare comment** — `install_project_templates.sh`
+  claimed lexicographic comparison while the code uses `sort -V`; the comment
+  now reflects the version-aware behavior (relevant to 0.11.0 → 0.11.1 bumps).
+
 ## [0.11.0] - 2026-05-13
 
 ### Added

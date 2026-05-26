@@ -2,6 +2,21 @@
 # Applied by run_syn.sh --tool dc_shell when PPA-Opt loop is active.
 # Intent: timing-first optimization with aggressive clock gating + leakage minimization.
 
+# Report dir as a VARIABLE (not a hardcoded relative path) so the report paths
+# never drift from the actual run dir / CWD. run_syn.sh `cd`s into $SYN_ROOT, so a
+# hardcoded "syn/rpt/..." here would resolve to "<syn>/syn/rpt". The harness sets
+# `rpt_dir` (absolute or run-dir-relative); default preserves the repo-root layout.
+if {![info exists rpt_dir]} { set rpt_dir "syn/rpt" }
+
+# Multicore host options — request up to 8 cores before compile_ultra.
+# DC auto-limits to the licensed/physical maximum (graceful degradation, no
+# error). The PPA wrapper bypasses run_syn.sh auto-generation (--script path),
+# so set_host_options must be set here to enable multicore on the PPA loop.
+# Harness may override by setting `max_cores` before sourcing this fragment.
+# Default 8 mirrors run_syn.sh MAX_CORES — keep in sync.
+if {![info exists max_cores]} { set max_cores 8 }
+set_host_options -max_cores $max_cores
+
 # Clock gating strategy — latch-based ICG with fanout cap
 set_clock_gating_style \
     -sequential_cell latch \
@@ -23,12 +38,12 @@ compile_ultra \
 set_power_opt -leakage
 
 # Additional reports to enable PPA analysis
-report_clock_gating -verbose > syn/rpt/clock_gating.rpt
+report_clock_gating -verbose > $rpt_dir/clock_gating.rpt
 # Emit BOTH flat summary AND hierarchical breakdown in the same report
 # (the parser extracts both sections).
-report_power -analysis_effort high > syn/rpt/power.rpt
-report_power -hier -hier_level 2 >> syn/rpt/power.rpt
-report_threshold_voltage_group > syn/rpt/vt.rpt
-report_timing -max_paths 10 -delay_type max > syn/rpt/timing.rpt
-report_area -hier > syn/rpt/area.rpt
-report_qor > syn/rpt/qor.rpt
+report_power -analysis_effort high > $rpt_dir/power.rpt
+report_power -hier -hier_level 2 >> $rpt_dir/power.rpt
+report_threshold_voltage_group > $rpt_dir/vt.rpt
+report_timing -max_paths 10 -delay_type max > $rpt_dir/timing.rpt
+report_area -hier > $rpt_dir/area.rpt
+report_qor > $rpt_dir/qor.rpt

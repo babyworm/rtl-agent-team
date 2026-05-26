@@ -44,6 +44,9 @@ FILES=()
 VERBOSE=0
 FLATTEN=0
 SKIP_IF_UNAVAILABLE=0
+# Default multicore request. Keep in sync with dc-compile-ppa.tcl `max_cores`
+# default (the PPA-loop path sets it independently of this CLI default).
+MAX_CORES=8
 
 # ─── Usage ──────────────────────────────────────────────────────────────────
 usage() {
@@ -57,6 +60,8 @@ Options:
   --syn-root <dir>  Synthesis root directory (default: syn)
   --liberty <file>  Liberty (.lib) file for technology mapping
   --sdc <file>      SDC constraints file (default: syn/constraints/design.sdc)
+  --max-cores <n>   Max CPU cores for multicore synthesis (default: 8).
+                    DC/Genus auto-limit to the licensed/physical maximum.
   --script <file>   User-provided tool script/Tcl (skips auto-generation)
   --flatten         Flatten design before synthesis
   --skip-if-unavailable  Exit cleanly (exit 0) if tool not available/licensed
@@ -85,6 +90,7 @@ while [[ $# -gt 0 ]]; do
     --syn-root|--outdir) SYN_ROOT="$2"; shift 2 ;;
     --liberty)   LIBERTY="$2"; shift 2 ;;
     --sdc)       SDC_FILE="$2"; shift 2 ;;
+    --max-cores) MAX_CORES="$2"; shift 2 ;;
     --script)    SCRIPT_PATH="$2"; shift 2 ;;
     --flatten)   FLATTEN=1; shift ;;
     --skip-if-unavailable) SKIP_IF_UNAVAILABLE=1; shift ;;
@@ -101,6 +107,12 @@ fi
 
 if [[ -z "$TOP" ]]; then
   echo "ERROR: --top <module> is required" >&2
+  exit 1
+fi
+
+# --max-cores must be a positive integer (it is emitted verbatim into the Tcl)
+if ! [[ "$MAX_CORES" =~ ^[1-9][0-9]*$ ]]; then
+  echo "ERROR: --max-cores must be a positive integer (got: '$MAX_CORES')" >&2
   exit 1
 fi
 
@@ -188,6 +200,22 @@ for f in "${SRC_FILES[@]}"; do
   case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
 done
 SRC_FILES=("${_abs_src[@]}")
+
+# ─── Relative $readmemh/$readmemb ROM guard ─────────────────────────────────
+# Source/SDC/filelist paths are absolutized above, but $readmemh("rel/path.mem")
+# strings INSIDE the RTL are not — the tool resolves them against CWD, and we cd
+# into $SYN_ROOT below. A relative ROM path then silently loads NOTHING (empty
+# ROM, wrong synthesis, no error). Warn loudly so it is caught here, not in silicon.
+# A bare "..." starting with '/' is absolute (fine); a `define-built or {..}-concat
+# path is parameterizable (fine) and won't match this literal-relative pattern.
+_relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true)
+if [[ -n "$_relmem" ]]; then
+  echo "WARNING: RTL uses RELATIVE \$readmemh/\$readmemb ROM paths. Synthesis runs from" >&2
+  echo "         '$SYN_ROOT' (cd below), so these may load EMPTY (silent wrong synthesis)." >&2
+  echo "         Fix: use absolute paths, parameterize the dir (+define+MEM_DIR=...), or" >&2
+  echo "         ensure the .mem files resolve relative to \$SYN_ROOT. Offending loads:" >&2
+  echo "$_relmem" | sed 's/^/           /' >&2
+fi
 
 # ─── cd to synthesis root — all tool artifacts stay contained ─────────
 cd "$SYN_ROOT"
@@ -353,6 +381,11 @@ case "$TOOL" in
         echo "# --- Setup (sourced from .synopsys_dc.setup or inline) ---"
         echo "source \"${DC_SETUP}\""
         echo ""
+        echo "# --- Host options (multicore) ---"
+        echo "# Requests ${MAX_CORES} cores; DC auto-limits to the licensed/physical"
+        echo "# maximum (graceful degradation — no error if fewer are available)."
+        echo "set_host_options -max_cores ${MAX_CORES}"
+        echo ""
         echo "# --- Read RTL ---"
         if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
           for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
@@ -445,6 +478,11 @@ case "$TOOL" in
         echo "set_db hdl_work_directory \"${GENUS_WORK}\""
         echo "set_db log_directory \"${DIR_LOG}\""
         echo "set_db temp_directory \"${GENUS_TEMP}\""
+        echo ""
+        echo "# --- Host options (multicore) ---"
+        echo "# Requests ${MAX_CORES} cores; Genus auto-limits to the licensed/physical"
+        echo "# maximum (graceful degradation — no error if fewer are available)."
+        echo "set_db max_cpus_per_server ${MAX_CORES}"
         echo ""
         echo "# --- Read RTL ---"
         if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
@@ -543,4 +581,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 0.8.19
+# rat-version: 0.11.1
