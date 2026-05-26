@@ -189,6 +189,22 @@ for f in "${SRC_FILES[@]}"; do
 done
 SRC_FILES=("${_abs_src[@]}")
 
+# ─── Relative $readmemh/$readmemb ROM guard ─────────────────────────────────
+# Source/SDC/filelist paths are absolutized above, but $readmemh("rel/path.mem")
+# strings INSIDE the RTL are not — the tool resolves them against CWD, and we cd
+# into $SYN_ROOT below. A relative ROM path then silently loads NOTHING (empty
+# ROM, wrong synthesis, no error). Warn loudly so it is caught here, not in silicon.
+# A bare "..." starting with '/' is absolute (fine); a `define-built or {..}-concat
+# path is parameterizable (fine) and won't match this literal-relative pattern.
+_relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true)
+if [[ -n "$_relmem" ]]; then
+  echo "WARNING: RTL uses RELATIVE \$readmemh/\$readmemb ROM paths. Synthesis runs from" >&2
+  echo "         '$SYN_ROOT' (cd below), so these may load EMPTY (silent wrong synthesis)." >&2
+  echo "         Fix: use absolute paths, parameterize the dir (+define+MEM_DIR=...), or" >&2
+  echo "         ensure the .mem files resolve relative to \$SYN_ROOT. Offending loads:" >&2
+  echo "$_relmem" | sed 's/^/           /' >&2
+fi
+
 # ─── cd to synthesis root — all tool artifacts stay contained ─────────
 cd "$SYN_ROOT"
 echo "[run_syn] Working directory: $(pwd)"

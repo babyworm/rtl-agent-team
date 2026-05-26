@@ -78,6 +78,9 @@ If missing in rapid mode, proceed — testbench-dev will derive vectors from uar
 2. Run per-module pipeline in parallel where possible:
    - `rtl-coder` for implementation/fixes
    - `lint-checker` for lint gate
+   - `synthesizability-gate` for the synthesizability gate (HARD: no inferred latches /
+     incomplete assignments / non-synth constructs that lint misses, AND DC-script-emittable;
+     spyglass → svlens `--check-synth` → yosys `$_DLATCH_` → LLM review). Max 2 fix rounds.
    - `cdc-checker` for module-level crossing sanity
    - `testbench-dev` + `eda-runner` for smoke functional check
      (TB generation: Read docs/phase-1-research/requirements.json or iron-requirements.json if available.
@@ -102,6 +105,7 @@ Do not report "pending" for files that actually exist on disk.
 
 PASS when all target modules and touched block scope satisfy:
 - lint PASS
+- synthesizability PASS (no inferred latch / incomplete assignment / non-synth construct; DC-script-emittable)
 - cdc PASS
 - smoke functional PASS
 - block sanity integration PASS
