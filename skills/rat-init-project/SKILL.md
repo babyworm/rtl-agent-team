@@ -1,6 +1,6 @@
 ---
 name: rat-init-project
-description: "This skill should be used when initializing a new RTL project with directory structure, rules, guides, and template files. Triggers on 'init project', 'initialize project', 'new project', 'project init'."
+description: "Initialize RTL project workspace: directory structure, coding rules, phase guides. Run once per project. Triggers: 'init project', 'new project'."
 user-invocable: true
 ---
 

@@ -1,6 +1,5 @@
 # Team Worker Protocol
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
 
 This document defines the standard protocol for agents operating as workers
 within a Claude Code native team (TeamCreate/SendMessage/TaskCreate).

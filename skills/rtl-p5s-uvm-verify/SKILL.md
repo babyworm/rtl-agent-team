@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-uvm-verify
-description: "This skill should be used when running UVM-based verification requiring commercial simulators (VCS/Questa/Xcelium)."
+description: "P5 UVM verification on commercial simulators (VCS/Questa/Xcelium). Use when UVM methodology or constrained-random sequences/scoreboards are mandated."
 user-invocable: true
 argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

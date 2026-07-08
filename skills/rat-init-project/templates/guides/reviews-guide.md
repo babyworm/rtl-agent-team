@@ -12,13 +12,13 @@ reviews/
 ├── phase-1-research/
 │   └── research-review.md
 ├── phase-2-architecture/
-│   ├── architecture-review-r{1,2,3}.md    # 3-round iterative
+│   ├── architecture-review-r{N}.md        # Dynamic convergence (min 2, max 5 rounds)
 │   ├── architecture-review.md             # Consolidated verdict
 │   ├── feature-coverage.md                # 100% REQ mapping to arch blocks
 │   ├── ref-model-feature-coverage.md      # 100% REQ-F-* to C model code paths
 │   └── architecture-diagram.md            # D2 block diagram
 ├── phase-3-uarch/
-│   ├── uarch-review-r{1,2,3}.md           # 3-round iterative
+│   ├── uarch-review-r{N}.md               # Dynamic convergence (min 2, max 5 rounds)
 │   ├── uarch-review.md                    # Consolidated verdict
 │   ├── feature-preservation.md            # 100% preserved
 │   ├── bfm-feature-coverage.md            # 100% REQ-F-* to BFM modules
@@ -67,10 +67,10 @@ PASS | FAIL: [Reason]
 
 ## Iterative Review Structure
 
-Phases 1, 2, and 3 use 3-round iterative reviews:
-- Round 1 (`*-review-r1.md`): Initial review
-- Round 2 (`*-review-r2.md`): Address R1 findings
-- Round 3 (`*-review-r3.md`): Final pass (mandatory)
+Phase 1 uses 3 mandatory chief-coordinated rounds; Phases 2-3 use dynamic convergence
+(min 2, max 5 rounds — convergence when finding_delta < 0.1 and all critical resolved):
+- Round N (`*-review-rN.md`): findings + rebuttal (accept/reject with rationale)
+- Last round: cross-block interface audit + final quality pass
 - Consolidated (`*-review.md`): Final verdict
 
 <!-- rat-version: 0.7.7 -->

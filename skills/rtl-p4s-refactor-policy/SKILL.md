@@ -1,6 +1,6 @@
 ---
 name: rtl-p4s-refactor-policy
-description: "Policy rules, refactoring decision criteria, naming convention audit rules, equivalence proof requirements, escalation rules, and checklists for RTL refactoring. Pure reference — no orchestration."
+description: "Internal reference: rtl p4s refactor policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

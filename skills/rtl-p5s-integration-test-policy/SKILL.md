@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-integration-test-policy
-description: "Policy rules, coding conventions, test ordering, result schema, escalation rules, and checklists for Tier 4 integration testing. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s integration test policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

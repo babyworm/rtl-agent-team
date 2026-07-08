@@ -5,7 +5,11 @@ description: "Phase 1 research pipeline orchestrator. Manages spec refinement vi
 skills: [p1-spec-research-policy]
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 You are the Phase 1 Research Orchestrator. You drive the complete spec research pipeline
 from raw specification to structured requirements and algorithm candidate survey.
@@ -46,11 +50,12 @@ Task(subagent_type="rtl-agent-team:goal-clarifier",
 
 Wait for goal-clarifier to write `docs/phase-1-research/goal.md`. Then invoke spec-analyst with that file as the primary input (alongside any user-supplied spec).
 
-Log the trigger decision in the audit trace (see `agents/lib/audit-output-protocol.md`):
+Log the trigger decision in the audit trace (RAT tags per the audit protocol above):
 - `goal_clarifier.triggered`: true | false
 - `goal_clarifier.reason`: one of "empty_seed", "short_idea", "long_vague_seed", "path_to_spec_file", "rich_seed"
 
 ## Step 0: Context Bootstrap (MANDATORY)
+
 
 ```
 Read(".rat/state/spawn-context.json")
@@ -59,6 +64,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -94,10 +100,11 @@ The four valid sources are kept in lockstep with Step 0a's trigger heuristic —
 
 ## Step 0.5: Domain Expert Discovery (CONDITIONAL)
 
-See `agents/lib/domain-expert-discovery-protocol.md` for the full protocol.
+Protocol inline below (dev source: `agents/lib/domain-expert-discovery-protocol.md` — plugin-internal).
 
 ```
 Glob("domain-packages/*/manifest.json")
+Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 ```
 
 If manifests found:
@@ -112,14 +119,9 @@ If no manifests found → proceed with hardcoded domain expert references below 
 ## Step 1: Requirement Clarification and Information Gathering
 
 ```
-# Assess user's request completeness. Use AskUserQuestion to clarify:
-# - Target codec, profile, level
-# - Target resolution and framerate
-# - Encoder, decoder, or both
-# - Interface protocol (AXI4, AXI4-Lite, APB, custom)
-# - Clock frequency target and process node (ASIC vs FPGA)
-# - Feature scope restrictions
-# - Priority trade-off preference (throughput vs area vs power vs quality)
+# Assess user's request completeness. Use AskUserQuestion to clarify per policy
+# "Spec Refinement Criteria" (e.g., target codec/profile/level, clock frequency
+# target and process node).
 #
 # Skip AskUserQuestion if user provided detailed spec document.
 
@@ -207,6 +209,7 @@ Task(subagent_type="rtl-agent-team:power-analyzer", model="opus", run_in_backgro
 
 # --- Conditional domain expert spawn (if domain-packages/{domain}/ exists) ---
 # Check: Glob("domain-packages/*/manifest.json")
+# Check: Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 # For video-codec domain (domain-packages/video-codec/):
 #
 # Task(subagent_type="rtl-agent-team:vcodec-syntax-entropy-expert",
@@ -242,7 +245,7 @@ Task(subagent_type="rtl-agent-team:power-analyzer", model="opus", run_in_backgro
 
 # Round 1: Review combined outputs from all experts
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review Round 1: Review combined outputs from all sub-domain experts and spec-analyst. Evaluate: data flow completeness, cross-block dependencies, performance constraints, fixed-point constraints, cross-block issues, zero unresolved ambiguities. Produce feedback per expert. Round 1 of 3 mandatory. Save to reviews/phase-1-research/research-review-r1.md using Write tool.")
+     prompt="Review Round 1: Review combined outputs from all sub-domain experts and spec-analyst. FIRST re-read the original spec sources (specs/**, goal.md) and diff spec features against extracted requirements — any spec feature with no REQ/OPEN mapping is a finding (severity HIGH, extraction omission). Then evaluate: data flow completeness, cross-block dependencies, performance constraints, fixed-point constraints, cross-block issues, zero unresolved ambiguities. Produce feedback per expert. Round 1 of 3 mandatory. Save to reviews/phase-1-research/research-review-r1.md using Write tool.")
 
 # Round 1→2: Re-delegate to specific experts with feedback (only those with findings)
 # For each expert with findings:
@@ -320,6 +323,41 @@ Glob("docs/phase-1-research/iron-requirements.json")
 Glob("docs/phase-1-research/open-requirements.json")
 ```
 
+## Step 7.5c: Spec Feature Completeness Audit (MANDATORY)
+
+Per p1-spec-research-policy Spec Feature Completeness Audit. The extractor must not
+grade its own completeness — the census runs in a clean context, the diff runs in a
+different agent.
+
+```
+# 1. Independent census — clean context, MUST NOT read any docs/phase-1-research/*.json
+Task(subagent_type="rtl-agent-team:spec-analyst",
+     prompt="FEATURE CENSUS MODE.
+     Read ONLY the original spec sources: specs/**, docs/phase-1-research/goal.md (if present),
+     and domain knowledge files. Do NOT read iron-requirements.json, open-requirements.json,
+     or any prior Phase 1 analysis output.
+     Enumerate EVERY feature the spec defines: algorithms, modes, formats, capabilities,
+     constraints. Expand mode/format tables item-by-item (each intra mode, each encoding
+     mode, each color format is one entry).
+     Write docs/phase-1-research/spec-feature-inventory.json per p1-spec-research-policy
+     schema (FEAT-NNN ids with source document+section).")
+
+# 2. Mechanical diff by a different agent
+Task(subagent_type="rtl-agent-team:rtl-architect",
+     prompt="Feature coverage diff per p1-spec-research-policy: map every FEAT-* in
+     docs/phase-1-research/spec-feature-inventory.json to REQ/OPEN ids in
+     iron-requirements.json ∪ open-requirements.json.
+     Per-feature status: EXTRACTED | EXCLUDED_BY_SCOPE (ADR exists) | MISSING.
+     Write docs/phase-1-research/feature-coverage.md with per-feature table + totals
+     (features/extracted/excluded_by_scope/missing).")
+
+Read("docs/phase-1-research/feature-coverage.md")
+# 3. Gate: missing > 0 → AskUserQuestion per policy Gap Escalation:
+#    approved → EXCLUDED_BY_SCOPE + ADR; not approved → add MUST_IMPLEMENT REQ-F-* to
+#    iron-requirements.json and re-run the diff (step 2).
+# PASS iff missing == 0 — satisfies the `feature-coverage-audited` completion criterion.
+```
+
 ## Step 7.6: Adversarial Reinterpretation
 
 Per p1-spec-research-policy Adversarial Interpretation Gate protocol.
@@ -332,7 +370,11 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
      prompt="ADVERSARIAL REINTERPRETATION MODE.
      Challenge iron-requirements.json per p1-spec-research-policy adversarial protocol.
      Reference items by source.section (NOT requirement ID).
-     Severity: HIGH (different RTL behavior), MEDIUM (different parameters), LOW (cosmetic).
+     Emit BOTH challenge types: REINTERPRETATION (alternative reading of an extracted item)
+     AND OMISSION (spec feature/section with zero REQ mapping — cross-check
+     docs/phase-1-research/spec-feature-inventory.json; original_interpretation=NOT_EXTRACTED,
+     severity HIGH).
+     Severity: HIGH (missing item / different RTL behavior), MEDIUM (different parameters), LOW (cosmetic).
      Schema: skills/p1-spec-research/templates/challenge-report-schema.json.
      Save to .rat/scratch/stability/phase-1/challenge-report.json. Max 30 challenges.")
 ```
@@ -384,9 +426,9 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 1 Research.
      Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
      Input artifacts: user-provided spec documents.
-     Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
+     Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json, spec-feature-inventory.json, feature-coverage.md).
      Review verdicts: reviews/phase-1-research/ (research-review-r1.md, research-review-r2.md, research-review-r3.md, research-review.md).
-     Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
+     Focus: requirement completeness (verify feature-coverage.md census diff shows zero MISSING), spec accuracy, candidate evaluation rigor, missing constraints.")
 ```
 
 # Explicit verdict check — read report and verify consensus
@@ -404,8 +446,9 @@ Read(".rat/cross-review/phase-1/cross-review-report.md")
 The orchestrator is domain-agnostic by default:
 - **Always spawn**: spec-analyst, rtl-architect, power-analyzer, arch-designer
 - **Conditional**: Check `Glob("domain-packages/*/manifest.json")` for available domain packages
-  - If `domain-packages/video-codec/` exists → spawn vcodec-* experts
-  - If `domain-packages/video-processing/` exists → spawn vproc-* experts
+- **Conditional**: Check `Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
+  - If `{plugin_root}/domain-packages/video-codec/` exists → spawn vcodec-* experts
+  - If `{plugin_root}/domain-packages/video-processing/` exists → spawn vproc-* experts
   - If no domain package → rely on always-spawn agents for full coverage
 - **Review coordinator**: rtl-architect (always). Domain chief (e.g., vcodec-chief-standard-expert) invoked additionally when domain package exists.
 

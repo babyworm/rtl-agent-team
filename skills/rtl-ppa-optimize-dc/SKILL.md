@@ -1,6 +1,6 @@
 ---
 name: rtl-ppa-optimize-dc
-description: "One-shot Design Compiler–based PPA optimization iteration. Runs DC synthesis, parses reports into JSON, generates RTL patch, validates scope, verifies equivalence + smoke, computes delta, and emits convergence verdict. Requires Phase 5 PASS and dc_shell/genus in PATH."
+description: "One-shot DC synthesis PPA optimization iteration with equivalence+smoke validation; needs Phase 5 PASS and dc_shell/genus. Triggers: 'PPA optimize', 'DC PPA'."
 user-invocable: true
 argument-hint: "[top-module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill

@@ -1,6 +1,6 @@
 ---
 name: rtl-p4s-unit-test-policy
-description: "Policy rules, coding conventions, reference comparison modes, result schema, escalation rules, and checklists for Tier 2 unit testing. Pure reference — no orchestration."
+description: "Internal reference: rtl p4s unit test policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

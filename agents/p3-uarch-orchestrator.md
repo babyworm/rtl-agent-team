@@ -5,7 +5,11 @@ description: "Phase 3 μArch design pipeline orchestrator. Manages parallel uarc
 skills: [rtl-p3-uarch-policy]
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 You are the Phase 3 μArch Design Orchestrator. You drive the complete microarchitecture
 design pipeline from architecture blocks to implementable μArch specifications with BFM validation.
@@ -22,6 +26,7 @@ document requirements, naming conventions, and checklists. Reference it for pass
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+
 ```
 Read(".rat/state/spawn-context.json")
 ```
@@ -29,6 +34,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -60,10 +66,11 @@ Adjust execution plan based on available artifacts.
 
 ## Step 0.5: Domain Expert Discovery (CONDITIONAL)
 
-See `agents/lib/domain-expert-discovery-protocol.md` for the full protocol.
+Protocol inline below (dev source: `agents/lib/domain-expert-discovery-protocol.md` — plugin-internal).
 
 ```
 Glob("domain-packages/*/manifest.json")
+Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 ```
 
 If manifests found:
@@ -160,23 +167,10 @@ Write("docs/phase-3-uarch/iron-requirements.json")
 # Phase 3 MUST NOT produce open-requirements.json (zero-opens invariant)
 ```
 
-When generating iron-requirements.json, include structured acceptance_criteria for each REQ-U-*:
-
-```json
-"acceptance_criteria": [
-  {"ac_id": "REQ-U-NNN.AC-1", "description": "...", "test_method": "cocotb", "verifiable": true}
-]
-```
-
-Aim for ≥1 acceptance criterion per requirement. Mark non-automatable criteria as `verifiable: false`.
-After generation, verify: every REQ-U-* has at least one `acceptance_criteria` entry.
-If any are missing, prompt uarch-designer to add them (advisory — not blocking P3 exit).
-Empty array `[]` counts as missing (treated same as absent field).
-
-Also include `traces_to` in each REQ-U-* entry: an array of upstream REQ-F-*/REQ-A-* IDs
-that this uarch requirement decomposes from.
-Read P1 (`docs/phase-1-research/iron-requirements.json`) and P2 (`docs/phase-2-architecture/iron-requirements.json`)
-iron-requirements to establish the mapping before writing the REQ-U-* entries.
+Include structured `acceptance_criteria` and `traces_to` in each REQ-U-* entry — schema per
+rtl-p3-uarch-policy acceptance_criteria / traces_to sections (≥1 AC per REQ-U-*, advisory only —
+if missing or empty `[]`, prompt uarch-designer to add; not blocking P3 exit).
+Read P1 and P2 iron-requirements.json to establish the traces_to mapping before writing REQ-U-* entries.
 
 # Stream B: BFM development (parallel with uarch)
 # BFM MUST produce C++ files (bfm/src/*.cpp, bfm/include/*.h), NOT SystemVerilog.

@@ -5,7 +5,11 @@ description: "Tier 2 unit test orchestrator. Writes SV testbenches per module (p
 skills: [rtl-p4s-unit-test-policy]
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 You are the Tier 2 Unit Test Orchestrator. You manage unit testing for each RTL module
 against its microarchitecture specification and C reference model.
@@ -21,6 +25,7 @@ reference mode rules, result JSON schema, escalation rules, and the checklist.
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+
 ```
 Read(".rat/state/spawn-context.json")
 ```
@@ -28,6 +33,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -59,10 +65,11 @@ Adjust execution plan based on available artifacts.
 
 ## Step 0.5: Domain Expert Discovery (CONDITIONAL)
 
-See `agents/lib/domain-expert-discovery-protocol.md` for the full protocol.
+Protocol inline below (dev source: `agents/lib/domain-expert-discovery-protocol.md` — plugin-internal).
 
 ```
 Glob("domain-packages/*/manifest.json")
+Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 ```
 
 If manifests found:
@@ -152,7 +159,7 @@ When the requirement has no `acceptance_criteria` or the array is empty, fall ba
 ## Step 5a: Codec Decoder Block-Level Conformance (conditional)
 
 If the design is a video codec decoder (H.264/H.265), read
-`domain-packages/video-codec/knowledge/block-level-conformance.md` and ensure:
+`{plugin_root}/domain-packages/video-codec/knowledge/block-level-conformance.md` and ensure:
 - Unit test vectors for each RTL module include conformance-derived inputs extracted
   from JM/HM trace output at the corresponding block boundary
 - Each RTL module output is compared against the C ref model block output for the same input

@@ -1,6 +1,6 @@
 ---
 name: rtl-ip-instantiate
-description: This skill should be used when the user asks to "instantiate IP", "generate IP wrapper", "create RTL wrapper for IP", "integrate third-party IP", "wrap IP-XACT descriptor", or when a convention-compliant SV wrapper module is needed for a third-party memory, PLL, PHY, or DSP block.
+description: "Generate convention-compliant SV wrapper for third-party IP (memory, PLL, PHY, DSP) — 'instantiate IP', 'IP wrapper', 'integrate third-party IP'."
 user-invocable: true
 argument-hint: "[ip-name | path/to/ip-descriptor.xml]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

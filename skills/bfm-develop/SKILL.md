@@ -1,6 +1,6 @@
 ---
 name: bfm-develop
-description: This skill should be used when the user asks to "develop BFM", "create SystemC TLM model", "build bus functional model", "implement TLM-2.0 BFM", "model AMBA protocol in SystemC", or when Phase 3 transaction-level models are needed for performance estimation or protocol verification.
+description: "Builds Phase 3 SystemC TLM-2.0 bus functional models with AMBA (AXI/AHB/APB) support. Use for 'develop BFM', 'SystemC TLM model', 'bus functional model'."
 user-invocable: true
 argument-hint: "[block-name | --all-blocks]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

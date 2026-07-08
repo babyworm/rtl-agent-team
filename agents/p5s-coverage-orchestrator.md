@@ -5,7 +5,11 @@ description: "Coverage analysis orchestrator. Manages 3-round iterative coverage
 skills: [rtl-p5s-coverage-policy]
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 You are the Coverage Analysis Orchestrator. You drive iterative coverage gap analysis,
 directed test generation, regression re-runs, and convergence tracking until coverage
@@ -27,6 +31,7 @@ Extract `{module}` from the invocation prompt. All coverage data paths use
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+
 ```
 Read(".rat/state/spawn-context.json")
 ```
@@ -34,6 +39,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -198,21 +204,15 @@ If coverage targets are not met after Round 3 and open bins remain without waive
 ## Step 6: Coverage Exclusion Protocol (on convergence)
 
 If 2 consecutive iterations show < 0.5% improvement → convergence detected.
-Apply exclusion protocol before final report:
+Apply the exclusion protocol + categories table from rtl-p5s-coverage-policy (loaded via
+skills:) — copy the "Coverage Exclusion Protocol" steps and "Exclusion Categories" table
+VERBATIM into subagent prompts (subagents do not load the policy skill):
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Coverage has converged. Classify each remaining uncovered bin as:
-  - STIMULUS_GAP: Reachable but not exercised → recommend directed test
-  - STRUCTURAL_DEAD: Unreachable code (parameter guard, unimplemented feature) → exclude with waiver
-  - INFRA_CODE: TB/UVM infrastructure not under test → exclude from report scope
-Auto-approved exclusion categories (coverage-analyst decides):
-  - UVM/TB infrastructure (uvm_pkg, tb_*, axi4s_if): always exclude
-  - Parameter guards (e.g., if BPC > 16): exclude (dead by design)
-  - Toggle on wide buses (upper bits): exclude if functionally verified
-User-approved exclusions (require AskUserQuestion before finalizing):
-  - Unimplemented features (e.g., 4:2:2 chroma paths): exclude only if explicitly out-of-scope or parameter-disabled; escalate if required by spec
-  - Ambiguous spec applicability: any bin where it is unclear whether the spec requires coverage
+     prompt="Coverage has converged. Apply the Coverage Exclusion Protocol below to every
+remaining uncovered bin (classify, then exclude per category approval rules).
+<VERBATIM COPY of 'Coverage Exclusion Protocol' steps + 'Exclusion Categories' table from rtl-p5s-coverage-policy>
 Generate tool-neutral exclusion manifest at sim/{module}/coverage/coverage-exclusions.json listing each excluded bin.
 Generate per-tool exclusion exports as defined in rtl-p5s-coverage-policy (Verilator/lcov, VCS, Xcelium, Questa — whichever is in use).
 Document each exclusion in reviews/phase-5-verify/{module}-coverage-exclusions.md with:

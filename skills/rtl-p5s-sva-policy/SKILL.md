@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-sva-policy
-description: "Policy rules, SVA coding conventions, SymbiYosys engine guide, 3-round iterative refinement protocol, and formal verification checklists. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s sva policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

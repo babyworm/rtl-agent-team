@@ -1,6 +1,6 @@
 ---
 name: arch-review
-description: "This skill should be used when conducting architecture review with area/performance/power tradeoff analysis. Saves review reports to reviews/ directory."
+description: "Read-only architecture review of RTL vs uArch spec with area/timing/power tradeoffs. Use for post-RTL architecture sign-off or suspected spec mismatch."
 user-invocable: true
 ---
 

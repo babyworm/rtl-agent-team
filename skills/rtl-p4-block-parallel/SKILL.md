@@ -1,6 +1,6 @@
 ---
 name: rtl-p4-block-parallel
-description: "Phase 4 block-parallel RTL implementation using 6 worktrees with Team coordination and upstream-first merge. Requires Phase 2 interfaces and Phase 3 uArch."
+description: "Phase 4 RTL in isolated git worktrees per codec block, team-coordinated with upstream-first merge. Triggers: 'block parallel', '6-block implement'."
 user-invocable: true
 argument-hint: "[--all or specific block names]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion

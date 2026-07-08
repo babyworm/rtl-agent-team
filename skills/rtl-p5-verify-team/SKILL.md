@@ -1,6 +1,6 @@
 ---
 name: rtl-p5-verify-team
-description: "Phase 5 verification using Claude Code native teams for parallel worker execution. Manages 9 verification categories with dependency-aware task graphs and module graduation gates."
+description: "Phase 5 verification with native team parallel workers across modules. Triggers 'verify team', 'parallel verify', 'Phase 5 team'; best for 3+ modules."
 user-invocable: true
 argument-hint: "[--module=name | --resume]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
@@ -31,7 +31,9 @@ verification task graph and directs workers via SendMessage.
 
 Phase 4 completion required:
 - `rtl/**/*.sv` files must exist
-- `reviews/phase-4-rtl/lint-report.md` must exist (lint PASS)
+- One of the following completion proofs must exist:
+  - `reviews/phase-4-rtl/lint-report.md` (full `rtl-p4-implement` path)
+  - `.rat/state/p4-state.json` with `gates.p4_exit.verdict` = `pass` (rapid `rtl-p4-rapid-impl` path)
 
 If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl-p4-implement`.
 Proceed with available artifacts — orchestrator will adapt scope.
@@ -76,7 +78,7 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:func-verifier",
              "Specialty: lint (V1), functional regression (V5), coverage (V6). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: lint-checker for V1, testbench-dev for TB, eda-runner for sim, coverage-analyst for V6. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p5-verify", subagent_type="rtl-agent-team:sva-extractor",
       name="verify-1", description="P5 formal and CDC verification",
       prompt="You are a Phase 5 verification worker in team 'p5-verify'. "
@@ -85,7 +87,7 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:sva-extractor",
              "Specialty: SVA/formal (V2), CDC (V3), protocol (V4). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: cdc-checker for V3, protocol-checker for V4, constraint-writer for SDC. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p5-verify", subagent_type="rtl-agent-team:eda-runner",
       name="analysis-worker", description="P5 performance and synthesis",
       prompt="You are a Phase 5 analysis worker in team 'p5-verify'. "
@@ -94,7 +96,7 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:eda-runner",
              "Specialty: performance (V7), synthesis estimation (V8). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: perf-verifier for V7, synthesis-reporter for V8. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p5-verify", subagent_type="rtl-agent-team:rtl-critic",
       name="review-worker", description="P5 code review and compliance",
       prompt="You are a Phase 5 review worker in team 'p5-verify'. "
@@ -103,7 +105,7 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:rtl-critic",
              "Specialty: code review (V9), requirement traceability, final compliance. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: requirement-tracer for REQ mapping, rtl-critic for review. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete
 while True:

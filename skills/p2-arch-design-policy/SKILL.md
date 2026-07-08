@@ -1,6 +1,6 @@
 ---
 name: p2-arch-design-policy
-description: "Architecture review criteria, HW candidate evaluation methodology, naming conventions, and checklists for the Phase 2 architecture design pipeline. Pure reference — no orchestration."
+description: "Internal reference: p2 arch design policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

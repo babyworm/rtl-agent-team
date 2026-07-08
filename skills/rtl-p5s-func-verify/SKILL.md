@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-func-verify
-description: "Tier 3 module-level regression: cocotb multi-seed regression comparing RTL against reference models. Produces Requirement Traceability Matrix."
+description: "P5 Tier 3 module regression: cocotb multi-seed RTL vs reference model with traceability matrix. Triggers 'functional verification', 'regression', 'cocotb test'."
 user-invocable: true
 argument-hint: "[module-name --seeds=N]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

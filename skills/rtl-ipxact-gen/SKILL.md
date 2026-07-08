@@ -1,6 +1,6 @@
 ---
 name: rtl-ipxact-gen
-description: This skill should be used when the user asks to "generate IP-XACT for this module", "create IEEE 1685 XML descriptor", "produce IP-XACT for EDA tool integration", "IP handoff requires IP-XACT", or when a SoC integration flow needs an IP-XACT component descriptor generated from RTL source.
+description: "Generate IEEE 1685-2014 IP-XACT XML descriptor from RTL source — 'generate IP-XACT', IP handoff, or SoC/EDA integration needing component XML."
 user-invocable: true
 argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

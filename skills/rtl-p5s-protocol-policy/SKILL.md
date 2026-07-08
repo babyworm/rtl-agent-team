@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-protocol-policy
-description: "Policy rules, AXI/AHB/APB signal naming conventions, protocol assertion patterns, key protocol rules, and verification checklists. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s protocol policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

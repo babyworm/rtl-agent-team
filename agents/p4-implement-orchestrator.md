@@ -5,7 +5,11 @@ description: "Phase 4 RTL implementation orchestrator. Manages 10-Wave pipeline 
 skills: [rtl-p4-implement-policy]
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 You are the Phase 4 RTL Implementation Orchestrator. You drive the complete RTL coding
 pipeline from μArch specs to lint-clean, code-reviewed, unit-tested, CDC/protocol-checked
@@ -22,6 +26,7 @@ coding conventions, overlap rules, escalation conditions, and checklists.
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+
 ```
 Read(".rat/state/spawn-context.json")
 ```
@@ -29,6 +34,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -223,13 +229,14 @@ Invoke ONCE globally after all modules pass Wave 6a, not per-module.
 ```
 Task(subagent_type="rtl-agent-team:p4s-unit-test-orchestrator",
      prompt="Run Tier 2 unit tests for all modules against C reference model.
-Verify each uarch feature with REQ-U-* tracing. Minimum coverage: FSM >= 50%, line >= 60%.
-Require covergroups_defined >= 1 per module. Run codec conformance if applicable.
-Output: sim/{module}/{module}_unit_results.json per module with ref_mismatches=0, coverage meeting thresholds, and func_coverage populated.")
+Verify each uarch feature with REQ-U-* tracing. Run codec conformance if applicable.
+Enforce the Tier 2 gate (thresholds + required result fields) per your policy skill.
+Output: sim/{module}/{module}_unit_results.json per module satisfying the Tier 2 gate.")
 ```
 
 On failure: debug ref mismatches → rtl-coder fix → re-run Tier 2 (max 3 rounds).
-Gate: `sim/{module}/{module}_unit_results.json` exists for every module with `ref_mismatches=0`, coverage thresholds met, `req_ids` populated, `func_coverage.covergroups_defined >= 1`, and `codec_conformance` PASS/N/A.
+Gate: `sim/{module}/{module}_unit_results.json` exists for every module and satisfies the
+Tier 2 gate per policy ("Phase 4 Gate Criteria" in rtl-p4-implement-policy).
 
 ## Wave 7: Module-level CDC (parallel, multi-domain modules only)
 
@@ -380,8 +387,7 @@ Task(subagent_type="rtl-agent-team:rtl-coder",
 **ALL criteria must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
 Verify ALL criteria per policy skill checklist, including:
 - **Synthesizability (HARD — Wave 3.5)**: `reviews/phase-4-rtl/{module}-synthesizability.md` exists for every module with verdict **PASS** (zero inferred latches / incomplete assignments / non-synth constructs), AND the design is **DC-script-emittable** — a DC-style synth script elaborates (dc_shell dry-run, or yosys `hierarchy -check` proxy). The Wave 10 Stream-B Yosys synth smoke (`stream-b-synth-estimate.md`) must report **zero CRITICAL** ($_DLATCH_ inferred latches / unmappable constructs) — this is now gate-blocking, not advisory.
-- `sim/{module}/{module}_unit_results.json` exists for every module (Tier 2 gate)
-- Each `{module}_unit_results.json` has `ref_mismatches=0`, coverage >= thresholds, `req_ids` populated for every feature entry, `func_coverage.covergroups_defined >= 1`, and `codec_conformance: "PASS"` or `"N/A"` (if applicable)
+- `sim/{module}/{module}_unit_results.json` exists for every module and satisfies the Tier 2 gate per policy (thresholds + required fields — "Phase 4 Gate Criteria" in rtl-p4-implement-policy)
 - Stream B content quality: SVA skeletons contain `property`/`assert` per module, CDC preliminary references clock domain names from `clock-domain-map.md`, TB skeletons reference `REQ-` tags per module
 Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 

@@ -1,6 +1,6 @@
 ---
 name: rat-tutorial
-description: "Interactive tutorial for RTL Agent Team. Explains key commands, 6-Phase pipeline, domain expert extension, and team mode. Auto-detects user language; append a language name to override (e.g., /rtl-agent-team:rat-tutorial Korean)."
+description: "Interactive plugin tutorial: key commands, 6-phase pipeline, team mode. Auto-detects language; append a language name to override. Trigger: 'tutorial'."
 user-invocable: true
 ---
 

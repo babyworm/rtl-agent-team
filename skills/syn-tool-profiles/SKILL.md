@@ -1,6 +1,6 @@
 ---
 name: syn-tool-profiles
-description: "Passive synthesis tool profiles (yosys, dc_shell, genus) for replayable runs and comparable summary outputs."
+description: "Internal reference: syn tool profiles (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

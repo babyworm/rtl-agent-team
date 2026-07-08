@@ -1,6 +1,6 @@
 ---
 name: rtl-block-contract-test-policy
-description: "Policy skill defining contract test structure, merge-time verification procedures, and stub generation rules for block-parallel development."
+description: "Internal reference: rtl block contract test policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-coverage-analyze
-description: This skill should be used when the user asks to "analyze coverage gaps", "identify uncovered branches", "coverage closure for this module", "generate directed tests for coverage", "coverage is below target", or when a verification closure milestone requires a prioritized gap analysis from simulation coverage data.
+description: "P5 coverage closure: prioritizes coverage gaps and generates directed tests. Triggers 'coverage gaps', 'coverage below target', 'uncovered branches'."
 user-invocable: true
 argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

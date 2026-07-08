@@ -1,6 +1,6 @@
 ---
 name: p1-spec-research-policy
-description: "Quality criteria, review protocols, naming conventions, artifact format specifications, and checklists for the Phase 1 research pipeline. Pure reference — no orchestration."
+description: "Internal reference: p1 spec research policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 
@@ -8,76 +8,29 @@ user-invocable: false
 
 ## Core Principles
 
-### AskUserQuestion-First
-Every ambiguity, design choice, or scope decision MUST be resolved via AskUserQuestion
-BEFORE proceeding. Do not assume — ask. The cost of asking is low; the cost of a wrong
-assumption cascades to all later phases.
-
-### Structured Interview Protocol (before spec parsing)
-
-Before analyzing spec documents, conduct a structured user interview to understand
-intent, priorities, and constraints. Ask **one question per message** — do not batch.
-
-Interview sequence (adapt to context, skip if already clear from spec):
-1. **Goal**: "What is the primary purpose of this design? What problem does it solve?"
-2. **Scope**: "Which features from the spec are in-scope for this implementation?
-   Any intentional omissions?"
-3. **Constraints**: "Target frequency? Area budget? Power envelope? Technology node?"
-4. **Priority**: "If trade-offs arise (area vs performance vs power), which takes precedence?"
-5. **Verification**: "What is the verification strategy? cocotb/UVM? Formal? Target coverage?"
-6. **Dependencies**: "Any existing IP/modules to integrate? Reference models to match?"
-
-Record answers in `docs/phase-1-research/design-intent.md`. These answers become
-the interpretive context for all spec parsing — ambiguous spec language is resolved
-using the user's stated intent, not agent assumptions.
-
-### Approach Comparison for Open Items
-
-When the spec allows multiple implementation paths (algorithm choices, architecture options,
-protocol selections), present structured comparisons to the user:
-
-```markdown
-## OPEN-1-NNN: {topic}
-
-| Approach | Pros | Cons | Area Est. | Latency Est. | Recommendation |
-|----------|------|------|-----------|-------------|----------------|
-| A: {name} | ... | ... | ... | ... | |
-| B: {name} | ... | ... | ... | ... | ★ Recommended |
-| C: {name} | ... | ... | ... | ... | |
-
-Trade-off summary: {1-2 sentences}
-```
-
-Ask user to select via AskUserQuestion. Record choice + rationale in open-requirements.json
-`resolution_rationale` field.
-
-### Incremental Requirement Approval
-
-Do NOT present all requirements at once. Group by functional area and seek approval
-in stages:
-
-1. Present **interface/IO requirements** first (ports, protocols, clocks) → user approves
-2. Present **functional requirements** by block → user approves per block
-3. Present **performance requirements** (timing, throughput, area) → user approves
-4. Present **open items** with approach comparisons → user selects
-
-At each stage, the user can correct misinterpretations before they propagate.
-Only after all stages are approved, finalize iron-requirements.json.
-
-### Domain-Consult-First
-Actively invoke domain-consult to acquire domain expert knowledge on algorithms, standards,
-coding tools, filter characteristics, and HW implementation trade-offs. Do not research
-in isolation. Domain experts provide knowledge; spec-analyst captures results as structured artifacts.
-
-### Propose, Do Not Decide
-Present algorithm/tool candidates with trade-offs. Let the user make final selections.
-Architecture-level decisions (pipeline, block partitioning, memory hierarchy) are Phase 2's
-responsibility. Phase 1 surveys and recommends; Phase 2 designs.
-
-### Exhaustive Tree Exploration
-Spawn maximum agents in parallel to explore all solution paths. Every feasible approach
-must be investigated and compared before committing. Skip ONLY if user specifies exact
-algorithm + architecture (even then, explore at least 2 variants for validation).
+- **AskUserQuestion-First**: Resolve every ambiguity, design choice, or scope decision via
+  AskUserQuestion BEFORE proceeding. Never assume — a wrong assumption cascades to all later phases.
+- **Structured Interview (before spec parsing)**: Interview the user first — one question per
+  message covering goal, scope, constraints, priority trade-offs, verification strategy, and
+  dependencies (full interview protocol owned by the goal-clarifier agent). Record answers in
+  `docs/phase-1-research/design-intent.md`; resolve ambiguous spec language with the user's
+  stated intent, never agent assumptions.
+- **Approach Comparison for Open Items**: When the spec allows multiple implementation paths,
+  present a per-OPEN comparison table (Approach | Pros | Cons | Area Est. | Latency Est. |
+  Recommendation) and let the user select via AskUserQuestion. Record choice + rationale in
+  open-requirements.json `resolution_rationale`.
+- **Incremental Requirement Approval**: Seek approval in stages — interface/IO → functional
+  (per block) → performance → open items — so users correct misinterpretations before they
+  propagate. Finalize iron-requirements.json only after all stages are approved.
+- **Domain-Consult-First**: Invoke domain-consult for algorithms, standards, coding tools, and
+  HW trade-offs — never research in isolation. Experts provide knowledge; spec-analyst captures
+  it as structured artifacts.
+- **Propose, Do Not Decide**: Present algorithm/tool candidates with trade-offs; the user makes
+  final selections. Architecture-level decisions (pipeline, partitioning, memory hierarchy)
+  belong to Phase 2 — Phase 1 surveys and recommends.
+- **Exhaustive Tree Exploration**: Spawn maximum parallel agents to explore every feasible
+  solution path before committing. Skip ONLY if the user specifies exact algorithm +
+  architecture (even then, explore at least 2 variants for validation).
 
 ## Spec Refinement Criteria
 
@@ -116,34 +69,13 @@ User may override round count: "set iterations to N" → N rounds (minimum 1).
 ## Iron/Open Requirement Taxonomy
 
 Phase 1 produces TWO requirement files instead of a single requirements.json:
+- `docs/phase-1-research/iron-requirements.json` — settled functional (REQ-F-NNN) and
+  performance (REQ-P-NNN) requirements, authority = 1, binding for ALL downstream phases.
+- `docs/phase-1-research/open-requirements.json` — research topics (OPEN-1-NNN) that
+  Phase 2 must investigate and resolve into architecture decisions.
 
-### iron-requirements.json — Settled Requirements (Authority = 1)
-
-Located at `docs/phase-1-research/iron-requirements.json`. Contains functional and
-performance requirements that are binding constraints for ALL downstream phases.
-
-Each iron requirement MUST have:
-- `"id"`: `"REQ-F-NNN"` (functional) or `"REQ-P-NNN"` (performance) — unique, sequential
-- `"type"`: `"functional"` or `"performance"`
-- `"description"`: what the requirement is
-- `"priority"`: `"must"` | `"should"` | `"may"`
-- `"source"`: `{"document": "...", "section": "...", "line": N}` for traceability
-- `"acceptance_criteria"`: array of **measurable** criteria (reject vague terms like "should support", "adequate", "sufficient")
-- `"violation_policy"`: `"user_escalation"` (all P1 iron requirements use this)
-
-### open-requirements.json — Research Homework for Phase 2
-
-Located at `docs/phase-1-research/open-requirements.json`. Contains research topics
-that Phase 2 must investigate and resolve into architecture decisions.
-
-Each open item MUST have:
-- `"id"`: `"OPEN-1-NNN"` — sequential
-- `"topic"`: what needs to be investigated
-- `"context"`: why this is an open question
-- `"candidates"`: array of ≥ 2 candidates (single candidate = not a research topic)
-- `"evaluation_criteria"`: metrics Phase 2 should use for comparison
-- `"related_iron"`: array of REQ-F/REQ-P IDs that constrain this research
-- `"resolution_expected"`: how this should be resolved in Phase 2
+Per-item field schemas for both files are owned by the spec-analyst agent prompt.
+This policy owns only the classification and verification rules below.
 
 ### Classification Rules
 
@@ -196,32 +128,54 @@ Save to `reviews/phase-1-research/research-review.md`:
 PASS | FAIL: [reason]
 ```
 
-## Spec Feature Completeness Audit
+## Spec Feature Completeness Audit (MANDATORY — Step 7.5c / team T12b-T12c)
 
-Phase 1 spec analysis MUST enumerate ALL features defined in the specification and track
-their implementation status throughout the pipeline:
+The extractor MUST NOT grade its own completeness: an extraction blind spot also biases
+the self-counted denominator (5-of-10 modes self-reports 5/5). The completeness verdict
+comes from an independent census + mechanical diff:
 
-1. **Feature enumeration**: Extract every algorithm, mode, format, or capability from the spec
-   - Example: intra prediction modes, encoding modes, color formats, block sizes
-   - Assign each feature a REQ-F-* ID in iron-requirements.json
+1. **Independent feature census** (clean context): spawn spec-analyst in FEATURE CENSUS
+   MODE. It reads ONLY original spec sources (`specs/**`, `docs/phase-1-research/goal.md`,
+   domain knowledge files) and MUST NOT read iron-requirements.json, open-requirements.json,
+   or any prior Phase 1 analysis. Enumerate EVERY spec-defined item — expand mode/format
+   tables item-by-item (e.g., each intra prediction mode, encoding mode, color format,
+   block size is one entry). Write `docs/phase-1-research/spec-feature-inventory.json`:
+   ```json
+   { "features": [ { "feature_id": "FEAT-001", "name": "...", "kind": "mode|format|algorithm|capability|constraint",
+                     "source": { "document": "...", "section": "..." } } ] }
+   ```
 
-2. **Reference model coverage check** (if ref model exists at P1 or provided externally):
-   - Compare spec feature list against ref model implementation
-   - enum/define declarations vs actual function implementations
-   - "Enum declared but function not implemented" → COVERAGE_GAP warning
+2. **Mechanical diff** (different agent): spawn rtl-architect to map every FEAT-* to
+   REQ/OPEN IDs in iron ∪ open requirements. Per-feature status:
+   - `EXTRACTED` — mapped to at least one REQ/OPEN id
+   - `EXCLUDED_BY_SCOPE` — user-approved exclusion, ADR reference recorded
+   - `MISSING` — no mapping and no approval
 
-3. **Gap escalation**: When feature coverage < 100%, MUST ask user via AskUserQuestion:
-   - "Spec defines N features but model implements M. Omitting K features may reduce
+3. **Gap escalation**: any MISSING feature → MUST ask user via AskUserQuestion:
+   - "Spec defines N features; requirements cover M. Omitting K features may reduce
      [quality metric]. Approve omission?"
-   - User-approved omissions → record in ADR with rationale and impact estimate
-   - Unapproved omissions → feature stays in iron-requirements as MUST_IMPLEMENT
+   - Approved → status `EXCLUDED_BY_SCOPE` + ADR with rationale and impact estimate
+   - Not approved → add REQ-F-* to iron-requirements.json as MUST_IMPLEMENT, re-run diff
 
-4. **Documentation**: Save `docs/phase-1-research/feature-coverage.md`:
+4. **Documentation**: save `docs/phase-1-research/feature-coverage.md`:
    ```
-   | Feature | Spec Count | Model Count | Coverage | Status |
-   |---------|-----------|-------------|----------|--------|
-   | Intra modes | 8 | 4 | 50% | USER_APPROVED / MUST_IMPLEMENT |
+   | Feature | Spec Source | REQ/OPEN IDs | Status |
+   |---------|-------------|--------------|--------|
+   | Intra mode DC | §8.3.1 | REQ-F-012 | EXTRACTED |
+   | Intra mode planar | §8.3.2 | — (ADR-007) | EXCLUDED_BY_SCOPE |
    ```
+   plus totals: features / extracted / excluded_by_scope / missing.
+
+5. **Gate**: PASS iff missing == 0 (every feature EXTRACTED or EXCLUDED_BY_SCOPE).
+   FAIL blocks Phase 1 completion (`feature-coverage-audited` completion criterion).
+
+6. **Downstream contract**: `spec-feature-inventory.json` is the authoritative spec-item
+   denominator for later phases; `EXCLUDED_BY_SCOPE` records let downstream gates
+   distinguish user-approved scope reduction from silent extraction loss.
+
+7. **Reference model cross-check** (Phase 2+, when refC or an external golden exists):
+   compare the inventory against model implementation — "enum declared but function not
+   implemented" → COVERAGE_GAP warning.
 
 ## Escalation & Stop Conditions
 
@@ -256,19 +210,19 @@ Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = w
 After ambiguity gate (Step 7.5a) and iron/open verification (Step 7.5b) pass,
 run adversarial reinterpretation to surface ambiguities the initial analysis missed.
 
-### Protocol
+### Protocol (summary — Task-level orchestration owned by p1-research-orchestrator Steps 7.6-7.9)
 
-1. **Step 7.6**: Spawn adversarial spec-analyst (separate Task, clean context) to challenge
-   iron-requirements.json. References items by `source.section`, not REQ ID.
-   Output: `challenge-report.json` in `.rat/scratch/stability/phase-1/`.
-   Schema: `skills/p1-spec-research/templates/challenge-report-schema.json`.
-   Budget: max 30 challenges per pass.
-2. **Step 7.7**: Present HIGH challenges to user (AskUserQuestion). MEDIUM batched if >10.
-   LOW auto-documented. User may mark challenges as NOT_GENUINE (forced disagreements).
-3. **Step 7.8**: Re-run spec-analyst with original spec + clarifications → all 4 canonical artifacts
-   (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json)
-   + self-validation.
-4. **Step 7.9**: Gate check + stability report.
+1. **7.6 Challenge**: adversarial spec-analyst (clean context) challenges iron-requirements.json
+   by `source.section` (not REQ ID); types: `REINTERPRETATION` (alternative reading) and
+   `OMISSION` (zero-REQ spec feature vs spec-feature-inventory.json →
+   original_interpretation="NOT_EXTRACTED", severity HIGH). Output
+   `.rat/scratch/stability/phase-1/challenge-report.json`
+   (schema: `skills/p1-spec-research/templates/challenge-report-schema.json`; max 30 per pass).
+2. **7.7 User resolution**: HIGH individually via AskUserQuestion; MEDIUM batched if >10;
+   LOW auto-documented. User may mark challenges NOT_GENUINE.
+3. **7.8 Re-run**: spec-analyst re-analyzes with accumulated clarifications → all 4 canonical
+   artifacts (iron/open requirements, io_definition, timing_constraints) + self-validation.
+4. **7.9 Gate check**: compute Gate Metric below + save `reviews/phase-1-research/stability-report.md`.
 
 ### Gate Metric
 
@@ -299,6 +253,7 @@ Rule: Either gate can block; neither can unblock the other.
 
 | Severity | Criterion | Example |
 |----------|-----------|---------|
+| HIGH | Missing item (OMISSION) | Spec defines 10 encoding modes, only 5 extracted |
 | HIGH | Different RTL behavior | Signed vs unsigned arithmetic |
 | HIGH | Different interface | 32-bit vs 64-bit datapath |
 | MEDIUM | Different parameterization | Fixed depth vs configurable |
@@ -328,6 +283,8 @@ Same module but different parameters → MEDIUM. Same module, same parameters �
 - [ ] Review coordinator (rtl-architect, or domain chief if available) declared Architecture-Ready (or gaps escalated)
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED)
 - [ ] Spec feature count vs iron-requirements.json + open-requirements.json count documented
+- [ ] `docs/phase-1-research/spec-feature-inventory.json` produced by independent census (clean context, no requirements.json access)
+- [ ] `docs/phase-1-research/feature-coverage.md` saved with zero MISSING features (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR)
 - [ ] `reviews/phase-1-research/research-review.md` saved (consolidated)
 - [ ] Per-round review artifacts saved: research-review-r1.md, r2.md, r3.md
 - [ ] `docs/phase-1-research/solution-tree.json` exists (structured JSON)

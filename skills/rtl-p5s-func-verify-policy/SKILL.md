@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-func-verify-policy
-description: "Policy rules, multi-seed strategy, coverage targets, signal naming conventions, traceability format, and checklists for Tier 3 module-level cocotb regression. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s func verify policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

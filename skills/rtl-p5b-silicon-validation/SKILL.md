@@ -1,6 +1,6 @@
 ---
 name: rtl-p5b-silicon-validation
-description: "Phase 5B silicon validation for block/top signoff readiness. Runs synthesis, constraints, timing-oriented checks, and top integration precision checks after functional closure."
+description: "Phase 5B silicon validation: synthesis, constraints, timing/CDC signoff posture, top integration checks. Run after P5A functional closure passes."
 user-invocable: true
 argument-hint: "[--top <name>]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

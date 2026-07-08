@@ -1,6 +1,6 @@
 ---
 name: rtl-p3-uarch-team
-description: "Phase 3 uArch design using Claude Code native teams for parallel dual-stream uArch + BFM development. Manages per-block uarch design, BFM validation gate, and 5-reviewer 3-round iterative review."
+description: "Phase 3 uArch with parallel team workers: dual-stream per-block uArch + BFM development. Use for 'uarch team', 'Phase 3 team', 'parallel uarch'."
 user-invocable: true
 argument-hint: "[--resume]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
@@ -80,7 +80,7 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:uarch-designer",
              "Specialty: per-block uArch design, timing review, algorithm consistency. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: timing-advisor for timing review, vcodec-architecture-expert for domain. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Scratch dir: .rat/scratch/phase-3/ (for write-restricted outputs).")
 Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:bfm-dev",
       name="bfm-worker", description="P3 BFM development",
@@ -89,7 +89,7 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:bfm-dev",
              "Phase artifacts: bfm/, docs/phase-3-uarch/. "
              "Specialty: BFM development, BFM correctness review, I/O logging. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:ref-model-dev', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:rtl-architect",
       name="review-worker", description="P3 review lead",
       prompt="You are a Phase 3 review worker in team 'p3-uarch'. "
@@ -97,7 +97,7 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:rtl-architect",
              "Phase artifacts: reviews/phase-3-uarch/. "
              "Specialty: feature preservation review, aggregation, final consolidation. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Scratch dir: .rat/scratch/phase-3/ (for write-restricted outputs).")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete

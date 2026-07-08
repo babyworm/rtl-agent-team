@@ -1,6 +1,6 @@
 ---
 name: codec-rd-eval
-description: "Rate-Distortion evaluation automation for codec algorithm comparison. Builds ref C model encoder, runs parallel encoding simulations across multiple sequences and QP points, computes BD-PSNR/BD-rate (VCEG-M33 methodology), and generates comparison reports. Supports N-candidate comparison, configurable encoder CLI, SSIM/VMAF opt-in metrics."
+description: "Encoder RD evaluation of C ref model: BD-PSNR/BD-rate (VCEG-M33) across sequences/QPs — 'RD eval', 'BD-rate', codec algorithm quality comparison."
 user-invocable: true
 ---
 

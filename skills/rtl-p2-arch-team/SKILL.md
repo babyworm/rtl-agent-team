@@ -1,6 +1,6 @@
 ---
 name: rtl-p2-arch-team
-description: "Phase 2 architecture design using Claude Code native teams for parallel dual-stream architecture + RefC development. Manages HW candidate evaluation, parallel design streams, and 3-round iterative review with tree exploration."
+description: "Phase 2 architecture with parallel team workers: dual-stream arch + RefC development. Use for 'arch team', 'Phase 2 team', 'parallel architecture'."
 user-invocable: true
 argument-hint: "[--resume]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
@@ -76,7 +76,7 @@ Agent(team_name="p2-arch", subagent_type="rtl-agent-team:arch-designer",
              "Specialty: architecture design, HW evaluation, bandwidth integration. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: vcodec-architecture-expert for HW eval, rtl-architect for review. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Scratch dir: .rat/scratch/phase-2/ (for write-restricted outputs).")
 Agent(team_name="p2-arch", subagent_type="rtl-agent-team:ref-model-dev",
       name="refmodel-worker", description="P2 reference model development",
@@ -85,7 +85,7 @@ Agent(team_name="p2-arch", subagent_type="rtl-agent-team:ref-model-dev",
              "Phase artifacts: refc/, docs/phase-2-architecture/. "
              "Specialty: C reference model development, model consistency review. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:ref-model-reviewer', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p2-arch", subagent_type="rtl-agent-team:rtl-architect",
       name="review-worker", description="P2 architecture review lead",
       prompt="You are a Phase 2 review worker in team 'p2-arch'. "
@@ -93,7 +93,7 @@ Agent(team_name="p2-arch", subagent_type="rtl-agent-team:rtl-architect",
              "Phase artifacts: reviews/phase-2-architecture/. "
              "Specialty: spec compliance review, architecture review aggregation. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Scratch dir: .rat/scratch/phase-2/ (for write-restricted outputs).")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete
@@ -113,5 +113,4 @@ Bash("rm -rf .rat/scratch/phase-2/")
 ## Workflow Notes
 
 - Open Resolution: resolve all OPEN-1-* items from Phase 1 `open-requirements.json`
-- Exit gate includes `open-resolved` and `ambiguity-pass`
-- Note: `compliance-pass` will be added when team orchestrator is updated to invoke compliance-checker
+- Exit gate includes `open-resolved`, `compliance-pass` (compliance-checker vs P1 iron, orchestrator Step 3.9), and `ambiguity-pass`

@@ -1,6 +1,6 @@
 ---
 name: rat-p4p5-impl-verify
-description: "This skill should be used when implementing RTL and running verification from existing microarchitecture documents (Phase 4→5). Requires completed Phase 1-3 artifacts as prerequisites. Produces RTL code, unit tests, and full verification with Phase 5→4 feedback loops — stopping before Design Note phase."
+description: "Phase 4-to-5 pipeline: implement RTL then verify from existing P1-3 docs, with P5-to-P4 feedback; stops before Phase 6. Trigger: 'implement and verify'."
 user-invocable: true
 argument-hint: "[resume or module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

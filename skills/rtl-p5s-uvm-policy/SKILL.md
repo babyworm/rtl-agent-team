@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-uvm-policy
-description: "Policy rules, UVM naming conventions (m_ prefix, u_dut instance), commercial simulator requirements, coverage collection rules, and checklists. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s uvm policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

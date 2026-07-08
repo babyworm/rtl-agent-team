@@ -1,6 +1,6 @@
 ---
 name: rtl-p4-implement
-description: "Implement SystemVerilog RTL modules from uarch specs in Phase 4. Produces lint-clean, code-reviewed, unit-tested, CDC/protocol-checked rtl/*/*.sv through a 10-Wave pipeline."
+description: "Phase 4 full RTL implementation from uarch specs with lint, review, and unit tests. Use when user says 'implement RTL', 'write RTL', or 'Phase 4'."
 user-invocable: true
 argument-hint: "[module-list or --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

@@ -1,6 +1,5 @@
 # Domain Expert Discovery Protocol
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
 
 Orchestrators reference this protocol to dynamically discover and spawn domain experts
 from `domain-packages/*/manifest.json` and project-local directories.
@@ -18,6 +17,7 @@ Run discovery in **Step 0.5** (after setup check, before main workflow):
 
 ```
 Glob("domain-packages/*/manifest.json")
+Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 ```
 
 If no manifests found → skip discovery, proceed without domain experts.
@@ -116,6 +116,7 @@ hardcoded fallbacks for critical domain experts during the migration period.
 ```
 # Step 0.5: Domain Expert Discovery
 manifests = Glob("domain-packages/*/manifest.json")
+manifests = Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 # Found: domain-packages/video-codec/manifest.json
 
 manifest = Read("domain-packages/video-codec/manifest.json")

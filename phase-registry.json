@@ -6,7 +6,7 @@
       "primary": true,
       "iron_upstream": [],
       "open_requirements": "",
-      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|iron-open-classified|ambiguity-pass"
+      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|iron-open-classified|ambiguity-pass|feature-coverage-audited"
     },
     "p2-arch-design": {
       "phase": 2,
@@ -20,14 +20,14 @@
       "primary": false,
       "iron_upstream": [],
       "open_requirements": "",
-      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written"
+      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|feature-coverage-audited"
     },
     "rtl-p2-arch-team": {
       "phase": 2,
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json"],
       "open_requirements": "docs/phase-1-research/open-requirements.json",
-      "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|ambiguity-pass"
+      "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|compliance-pass|ambiguity-pass"
     },
     "rtl-p3-uarch-design": {
       "phase": 3,

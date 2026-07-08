@@ -1,6 +1,6 @@
 ---
 name: rtl-review-refactor
-description: "LLM-based code review and controlled refactoring workflow. Separates findings, safe refactors, and mandatory re-validation gates."
+description: "LLM code review + controlled refactor with mandatory re-validation gates; cross-cutting support for P4-P6, not a phase step. Trigger: 'review and refactor'."
 user-invocable: true
 argument-hint: "[scope: module|block|top]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

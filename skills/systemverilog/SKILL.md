@@ -1,85 +1,52 @@
 ---
 name: systemverilog
-description: "SystemVerilog coding convention and design guideline skill. Enforces lowRISC style + project overrides for all .sv/.v file generation. Covers naming, module structure, power optimization, FPGA considerations, and pipelining for timing closure."
+description: "systemverilog project conventions (loaded by writer agents; do not invoke)."
 user-invocable: false
 ---
 
 <Purpose>
-SystemVerilog coding standards and design guidelines.
-All agents generating or modifying .sv, .v files must follow the rules in this skill.
+Project-specific SystemVerilog conventions and tool caveats for all .sv/.v generation.
+Baseline style: lowRISC SystemVerilog Coding Style Guide — this skill covers ONLY the project
+overrides and tool-specific rules layered on top of it. Naming basics are additionally enforced
+by the deployed `.claude/rules/rtl-coding-conventions.md` (rat-init-project) on .sv access.
 
-Target standard: **IEEE 1800-2009** for synthesizable RTL.
-- 2009 features: always_ff, always_comb, logic, typedef enum/struct, packages — all available
-- `interface`/`modport` is 2009 standard but iverilog unsupported — do NOT generate in RTL (see §4.3)
-- 2012+ features (checker, interface class, let, soft constraint) are verification-only — do NOT use in RTL
-- Tool flags: iverilog uses `-g2012` for parser compatibility (2012 parser handles 2009 code)
-
-Baseline: lowRISC SystemVerilog Coding Style Guide (https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md)
-Project overrides take precedence over default lowRISC rules.
+Language standard pins:
+- Synthesizable RTL: **IEEE 1800-2009** (iverilog parses with `-g2012` — the 2012 parser handles 2009 code)
+- SV verification code: **IEEE 1800-2012**
+- 2012+ features (checker, interface class, let, soft constraint) are verification-only — never in RTL
 </Purpose>
 
 <Use_When>
-- When writing or modifying .sv, .svh, .v, .vh files
-- During Phase 4 (RTL implementation) work
-- During Phase 5 (Verification) when writing SVA or SV testbenches
-- When preparing code before running rtl-lint-check or rtl-synth-check skills
-- Agents: rtl-coder, sva-extractor, testbench-dev, lint-checker
+- Writing or modifying .sv, .svh, .v, .vh files (Phase 4 RTL; Phase 5 SV TB/SVA)
+- Agents: rtl-coder, sva-extractor, testbench-dev, lint-checker, ppa-optimizer-dc
 </Use_When>
 
 <Do_Not_Use_When>
-- When writing SystemC/C++ code → use `systemc` skill
-- When writing Python cocotb tests → refer to cocotb rules in `rtl-p5s-func-verify` skill
-- When only writing documentation
+- SystemC/C++ code → `systemc` skill; Python cocotb tests → `rtl-p5s-func-verify` skill; documentation-only work
 </Do_Not_Use_When>
 
-<Why_This_Exists>
-Consistent coding standards ensure lint pass rate, synthesis quality, and team readability all at once.
-Although based on lowRISC, this project has its own overrides for port naming, clock/reset rules, etc.,
-so they are managed as a separate skill to ensure all SV-generating agents reference the same rules.
-</Why_This_Exists>
-
 <Execution_Policy>
-- The rules in this skill apply to all agents that generate SV code
-- Violations will result in a FAIL verdict from the rtl-lint-check skill
-- Use `templates/module-template.sv` as the starting point for new modules
-- Review `examples/good-vs-bad.sv` for correct/incorrect pattern examples
-- See `references/coding-style-guide.md` for detailed project overrides vs. original lowRISC rules
+- Violations produce a FAIL verdict from the rtl-lint-check skill
+- New module scaffold: `templates/module-template.sv`; correct/incorrect patterns: `examples/good-vs-bad.sv`
+- Detailed override rationale vs. original lowRISC rules: `references/coding-style-guide.md`
 </Execution_Policy>
 
 <Steps>
 
 ## 1. Project Overrides (Take Precedence Over lowRISC)
 
-> **IMPORTANT — The following 3 rules differ from the lowRISC guide and must always be applied.**
+> **IMPORTANT — These rules differ from the lowRISC guide and must always be applied.**
 
-### 1.1 Port Direction Prefix (Mandatory, Clock/Reset Excepted)
-- Input: `i_`, Output: `o_`, Bidirectional: `io_` — **mandatory**
-- Example: `i_data`, `o_valid`, `io_sda` (NOT `data_i`, `valid_o`)
-- **Exception**: Clock and reset ports do not need the `i_` prefix (`clk`, `sys_clk`, `rst_n`, `sys_rst_n`)
-- Using suffixes (`_i`, `_o`, `_io`) is **forbidden**
-- lowRISC uses suffixes, but this project **requires prefixes (clock/reset excepted)**
-
-### 1.2 Clock Naming
-- Single clock: `clk` (default) or `{domain}_clk` (multi-clock)
-- Multi-clock domains: `sys_clk`, `pixel_clk`, `axi_clk`
-- NOT `clk_i`, NOT suffix
-
-### 1.3 Reset Naming
-- Single reset: `rst_n` (default) or `{domain}_rst_n` (multi-domain)
-- Active-low asynchronous reset is mandatory
-- Example: `rst_n`, `sys_rst_n`, `pixel_rst_n` (NOT `rst_ni`)
-
-### 1.4 CamelCase Prohibition (Additional Override)
-- lowRISC uses `UpperCamelCase` for Parameters and Enum values
-- **This project prohibits CamelCase entirely**
-- Parameter: `ALL_CAPS` (`DATA_WIDTH`, NOT `DataWidth`)
-- Localparam (internal): `L_` prefix + `ALL_CAPS` (`L_ADDR_BITS`, NOT `AddrBits`)
-- Enum values: `ALL_CAPS` (`ST_IDLE`, NOT `StIdle`)
+1. **Port direction prefix** (mandatory): input `i_`, output `o_`, bidir `io_` — `i_data`, `o_valid`, `io_sda`.
+   Suffixes (`_i`/`_o`/`_io`) are **forbidden** (lowRISC uses suffixes; this project does not).
+   **Exception**: clock/reset ports take no prefix (`clk`, `sys_clk`, `rst_n`, `sys_rst_n`).
+2. **Clock naming**: `clk` (single) or `{domain}_clk` (multi: `sys_clk`, `pixel_clk`) — never `clk_i`.
+3. **Reset naming**: `rst_n` (single) or `{domain}_rst_n` (multi) — active-low async mandatory, never `rst_ni`.
+4. **CamelCase fully prohibited** (lowRISC allows it for params/enums — this project does not):
+   parameter `ALL_CAPS` (`DATA_WIDTH`), localparam `L_` prefix + `ALL_CAPS` (`L_ADDR_BITS`),
+   enum values `ALL_CAPS` (`ST_IDLE`). All identifiers: `snake_case` or `ALL_CAPS` only.
 
 ## 2. Naming Conventions
-
-> **IMPORTANT — CamelCase is completely prohibited. All identifiers must use only `snake_case` or `ALL_CAPS`.**
-> Detailed rules: see `references/coding-style-guide.md`.
 
 | Target | Rule | Example |
 |--------|------|---------|
@@ -97,48 +64,45 @@ so they are managed as a separate skill to ensure all SV-generating agents refer
 > **UVM Exception**: UVM class member handles use `m_` prefix per industry convention
 > (`m_driver`, `m_monitor`). `u_` prefix applies to RTL module instances only.
 
-### CamelCase Prohibition Examples
-
-| Forbidden (CamelCase) | Correct Form |
-|-----------------------|-------------|
-| `parameter int Width = 8` | `parameter int unsigned WIDTH = 8` |
-| `localparam AddrBits = $clog2(Depth)` | `localparam L_ADDR_BITS = $clog2(DEPTH)` |
-| `StIdle`, `StProcess` | `ST_IDLE`, `ST_PROCESS` |
-| Any `UpperCamelCase` | `ALL_CAPS` or `snake_case` |
-
 ## 3. Filename Conventions
 
 | Type | Pattern | Example |
 |------|---------|---------|
 | Module | `module_name.sv` | `axi_lite_slave.sv` |
 | Package | `module_name_pkg.sv` | `cabac_pkg.sv` |
-| Interface | `module_name_if.sv` | `axi_if.sv` *(iverilog unsupported — do NOT generate, §4.3)* |
+| Interface | `module_name_if.sv` | `axi_if.sv` *(iverilog unsupported — do NOT generate, §5.3)* |
 | Testbench | `tb_module_name.sv` | `tb_axi_lite_slave.sv` |
 | SVA bind | `sva_module_name.sv` | `sva_axi_lite_slave.sv` |
 
 **One module per file, filename matches module name.**
 
-## 4. SystemVerilog Coding Rules
+## 4. Language Rules (lint-enforced deltas)
 
-### 4.1 Mandatory Usage
-- Use `logic` (using `reg`/`wire` is forbidden)
-- `always_ff` for sequential (non-blocking `<=`)
-- `always_comb` for combinational (blocking `=`)
-- Actively use `typedef enum` / `typedef struct packed`
-- Define shared types via packages (`_pkg.sv`)
-- Ports: `input logic` / `output logic` (ANSI style)
-- No magic numbers — use `parameter` or `localparam`
+- `logic` only (`reg`/`wire` forbidden); `always_ff` (sequential, `<=`) / `always_comb` (combinational, `=`); no `always_latch`
+- ANSI ports (`input logic` / `output logic`); shared types via packages (`_pkg.sv`); use `typedef enum` / `typedef struct packed`
+- `default` mandatory in all `case` statements (latch prevention); no combinational loops
+- No `initial` blocks or `#delay` in synthesizable code; no magic numbers (use `parameter`/`localparam`)
 
-### 4.2 Prohibited Practices
-- Using `reg`, `wire` keywords is forbidden
-- Using `always_latch` is forbidden (except for explicit latches; generally prohibited)
-- `initial` blocks in synthesizable code are forbidden
-- Latch prevention: `default` is mandatory in all `case` statements
-- Combinational loops are forbidden
-- `#delay` in synthesizable code is forbidden
-- Forward references are forbidden: all signals, types, and parameters must be declared before first use (IEEE 1800 §12.5). Xcelium (xmvlog) strictly enforces sequential declaration visibility within a module
+## 5. Tool-Specific Caveats
 
-### 4.3 VCS Strict `always_ff` Rules (Verification TB Caveat)
+### 5.1 Declaration Order — Xcelium Strict (IEEE 1800 §12.5)
+
+> All identifiers must be declared before first use. Xcelium (xmvlog) strictly enforces
+> sequential declaration visibility within a module; Verilator/iverilog are lenient.
+
+Mandatory module structure order (see `templates/module-template.sv` for full scaffold):
+```
+1. parameter declarations          2. port declarations (ANSI)
+3. import statements               4. typedef / localparam / enum
+5. internal signal declarations    -- declaration boundary (no declarations below) --
+6. assign statements               7. submodule instances (u_ prefix)
+8. always_comb blocks              9. always_ff blocks
+10. assertions (SVA)
+```
+Reordering concurrent statements has zero synthesis/simulation impact, but declarations
+MUST always precede their first reference. Package file: `module_name_pkg.sv`.
+
+### 5.2 VCS Strict `always_ff` Rules (Verification TB Caveat)
 
 VCS enforces IEEE 1800 `always_ff` semantics strictly — a variable driven by `always_ff` must NOT also be driven by `initial`, `always_comb`, or `task` blocks (ICPD error). Verilator and iverilog are lenient on this.
 
@@ -161,123 +125,32 @@ at lint time (RTL mode). For TB files, use `slang --allow-dup-initial-drivers` t
 `initial` + `always_ff` pattern. The `run_lint.sh --tool slang` wrapper auto-detects RTL vs TB
 based on file paths.
 
-### 4.4 iverilog Incompatible Constructs (Do Not Generate)
+### 5.3 iverilog Incompatible Constructs (Do Not Generate in RTL)
 
-> This restriction applies to synthesizable RTL code only. Verification TBs may use `interface` if the target simulator supports it.
+> Applies to synthesizable RTL only. Verification TBs may use `interface` if the target simulator supports it.
 
-- `interface` / `modport` — unsupported by iverilog. Use port lists instead
-- unpacked `struct` / `union` — unsupported by iverilog. Use individual signals or `packed` versions
-- Agents must NOT generate these constructs in RTL code
+- `interface` / `modport` and unpacked `struct` / `union` — unsupported by iverilog; use port lists / individual signals or `packed` versions
 - `typedef struct packed` / `typedef union packed` are supported (OK to use)
-- Do not modify existing code or user-added code that contains these constructs
+- Do not modify existing or user-added code that contains these constructs
 
-### 4.5 Module Structure (Mandatory Declaration Order)
+## 6. Design Style (Preferred)
 
-> **IMPORTANT — IEEE 1800 §12.5 requires identifiers to be declared before first use.**
-> Xcelium (xmvlog) strictly enforces sequential declaration visibility.
-> Reordering concurrent statements (assign, always_ff, always_comb) has zero synthesis/simulation impact,
-> but declarations MUST always precede their first reference.
+### 6.1 Registered Outputs (Preferred)
+Drive module outputs directly from a flip-flop. When a register/pipeline stage is needed, place it
+at the **output** (compute → register → output port), NOT at the input followed by combinational
+logic to the port. Registered outputs give the consumer a full clock period, keep the critical
+path inside the module, and keep hierarchical STA/reuse clean. Combinational (unregistered)
+outputs are acceptable for thin glue/passthrough logic, but must be a deliberate choice — not the
+default place to put a needed flop.
 
-```
-module_name_pkg.sv    <- Shared type/constant definitions
-module_name.sv        <- Module implementation (order is MANDATORY):
-  1. parameter declarations
-  2. port declarations (ANSI style)
-  3. import statements
-  4. typedef / localparam / enum       <- all types and constants
-  5. internal signal declarations      <- all signals before any logic
-  -- declaration boundary ------------ (no declarations below this line)
-  6. assign statements                 <- continuous assignments
-  7. submodule instances (u_ prefix)
-  8. always_comb blocks                <- combinational logic
-  9. always_ff blocks                  <- sequential logic
-  10. assertions (SVA)
-```
-See `templates/module-template.sv` for complete scaffold.
-
-### 4.6 Registered Outputs (Preferred)
-Prefer driving a module's outputs directly from a flip-flop. When a register/pipeline stage is
-needed, place the register at the **output** (compute → register → output port), not at the input
-(register input → combinational logic → output port).
-
-```systemverilog
-// PREFERRED — registered output: the consumer gets a full clock period; the critical path stays
-// inside this module; hierarchical STA and reuse are clean.
-always_ff @(posedge clk or negedge rst_n) begin
-  if (!rst_n) o_data <= '0;
-  else        o_data <= func(a_q, b_q);   // combinational result captured into the output register
-end
-
-// DISCOURAGED — input registered, output driven through combinational logic: o_data is
-// combinational AT THE PORT, so the consumer loses part of its cycle and STA must trace through
-// this module's logic across the boundary.
-always_ff @(posedge clk or negedge rst_n) if (!rst_n) a_q <= '0; else a_q <= i_a;
-assign o_data = func(a_q);
-```
-
-Combinational (unregistered) outputs are acceptable for thin glue/passthrough logic, but should be
-a deliberate choice — not the default place to put a needed flop.
-
-### 4.7 Function / Task Purity (No Hidden External Dependencies)
+### 6.2 Function / Task Purity (No Hidden External Dependencies)
 `function`/`task` should operate **only on their arguments** (pure). Avoid reading module-level
-signals/variables not passed in — hidden inputs cause simulation-sensitivity surprises, obscure
-synthesis intent, and hurt reuse/readability. Prefer passing the needed signals as arguments.
+signals not passed in — hidden inputs cause simulation-sensitivity surprises, obscure synthesis
+intent, and hurt reuse. If an external (non-argument) dependency is genuinely unavoidable,
+document it in a MANDATORY header comment at the top of the function/task:
+`// External deps (read): cfg_mode, base_addr`
 
-If an external (non-argument) dependency is genuinely unavoidable, **document it in a header
-comment** at the top of the function/task:
-
-```systemverilog
-// External deps (read): cfg_mode, base_addr   <- MANDATORY when not argument-only
-function automatic logic [W-1:0] map_addr(input logic [W-1:0] offset);
-  map_addr = base_addr + (cfg_mode ? (offset << 1) : offset);  // reads module signals — discouraged
-endfunction
-```
-
-## 5. Context-Specific Optimizations (Summary)
-
-> The items below apply only when specific optimizations are needed. See the `<Advanced>` section for detailed patterns and code examples.
-
-- **Power Optimization**: Clock gating (ICG), operand isolation, power domains → `<Advanced>` section A.1
-- **Memory Wrapper Patterns**: Storage selection, SRAM wrappers (SP/TP/DP), foundry replacement → `<Advanced>` section A.2
-- **FPGA Considerations**: BRAM/DSP inference, XDC constraints, ILA debugging, IP Core → `<Advanced>` section A.3
-- **Pipelining for Timing Closure**: Pipeline insertion criteria, retiming, valid/ready pipelining → `<Advanced>` section A.4
-
-</Steps>
-
-<Advanced>
-
-## A.1 Power Optimization
-
-### Clock Gating
-- Gate the clock for inactive blocks to reduce dynamic power
-- Use of ICG (Integrated Clock Gating) cells is recommended
-```systemverilog
-// Clock gating pattern
-logic clk_enable;
-logic gated_clk;
-
-// Use dedicated ICG cell (synthesis tool maps to library cell)
-assign gated_clk = sys_clk & clk_enable;  // For simulation only
-// Synthesis: replace with ICG instantiation or let tool infer
-```
-
-### Power-Aware Coding Patterns
-- Minimize unnecessary toggling: check enable before mux output
-- Memory read enable: only read SRAM when needed
-- Operand isolation: mask operator inputs to zero
-```systemverilog
-// Operand isolation — prevent unnecessary switching in multiplier
-logic [15:0] mul_a_gated, mul_b_gated;
-assign mul_a_gated = i_mul_valid ? i_mul_a : '0;
-assign mul_b_gated = i_mul_valid ? i_mul_b : '0;
-assign mul_result  = mul_a_gated * mul_b_gated;
-```
-
-### Power Domain Considerations
-- Explicitly specify level shifter placement for multi-voltage domains
-- Mark retention registers with comments when needed
-
-## A.2 Memory Wrapper Patterns
+## 7. Storage Selection and SRAM Wrappers
 
 ### Storage Selection by Size
 | Total Bits | Access Pattern | Implementation | Rationale |
@@ -288,223 +161,26 @@ assign mul_result  = mul_a_gated * mul_b_gated;
 | >4096 | any | SRAM wrapper (mandatory) | Register file wastes area and power |
 | any | >2 ports | Flip-flop array (register file) | Multi-port SRAM macros are rare in modern processes |
 
-### Standard SRAM Wrapper — Single-Port (SP)
-Place in `rtl/common/sram_sp.sv`. One R/W port, single clock. Instance with `u_mem_` prefix.
-```systemverilog
-module sram_sp #(
-  parameter int DEPTH = 256,
-  parameter int WIDTH = 32
-) (
-  input  logic                    clk,
-  input  logic                    i_ce,
-  input  logic                    i_we,
-  input  logic [$clog2(DEPTH)-1:0] i_addr,
-  input  logic [WIDTH-1:0]        i_wdata,
-  output logic [WIDTH-1:0]        o_rdata
-);
-
-`ifdef RAT_MEM_TSMC_N22
-  // ── Compiled SRAM macro (TSMC N22) — replace with the real instance + pin map ──
-  // TS1N22ULLSBLVTC256X32M4SWBASO u_macro (
-  //   .CLK(clk), .CEB(~i_ce), .WEB(~i_we), .A(i_addr), .D(i_wdata), .Q(o_rdata));
-`elsif RAT_MEM_SKY130
-  // ── Compiled SRAM macro (SkyWater 130) ──
-  // sky130_sram_1rw1r_... u_macro ( ... );
-`else
-  // ── Behavioral model — SIMULATION ONLY (skipped at synthesis) ──
-  // synopsys translate_off
-  logic [WIDTH-1:0] mem [0:DEPTH-1];
-  always_ff @(posedge clk) begin
-    if (i_ce) begin
-      if (i_we) mem[i_addr] <= i_wdata;
-      o_rdata <= mem[i_addr];  // 1-cycle read latency
-    end
-  end
-  // synopsys translate_on
-`endif
-
-endmodule
-```
+Wrapper code: `templates/sram_sp.sv`, `templates/sram_tp.sv`, `templates/sram_dp.sv` — copy into
+`rtl/common/` if not already present. Parameters `DEPTH`/`WIDTH`; instances named `u_mem_{purpose}`;
+synchronous read (1-cycle latency, matches real SRAM macro behavior). Register file (flip-flop
+array) reads are combinational (0-cycle) — use only when downstream logic requires same-cycle data.
 
 ### Synthesis Behavior (translate_off blackbox + compiled macro)
-The behavioral array is wrapped in `// synopsys translate_off … translate_on`, so DC/Genus
-**skip it during synthesis** (simulators still run it) — the 2-D array is never elaborated into
-flip-flops. Selecting a process define (e.g. `+define+RAT_MEM_TSMC_N22`, passed by
-`run_syn.sh --mem-process`) activates a compiled-macro branch instead.
-
-`run_syn.sh` handles the rest automatically (DC/Genus). A real macro needs BOTH `--mem-process`
-(to activate the `` `ifdef `` branch) AND `--mem-lib` (to resolve its timing):
-- **Missing either** → the wrapper is **blackboxed** (`set_dont_touch` + `set_disable_timing` on
-  the instantiated memory cells, gated on `get_cells`) and the tool prints a WARNING. Fast
-  synthesis, no flop array, no STA through the memory boundary.
-- **`--mem-process <NAME>` + `--mem-lib <macro.db|.lib>`** → the macro is instantiated and the
-  library linked for real timing/area.
-
-Apply the **same `` `ifdef ``-macro + `translate_off`** structure to `sram_tp` and `sram_dp`.
+The wrapper's behavioral array is guarded with `// synopsys translate_off … translate_on`, so
+DC/Genus skip it at synthesis (simulators still run it) — the 2-D array is never elaborated into
+flip-flops. A process define (e.g. `+define+RAT_MEM_TSMC_N22`, passed by `run_syn.sh
+--mem-process`) activates a compiled-macro `` `ifdef `` branch instead. A real macro needs BOTH
+`--mem-process` (activate branch) AND `--mem-lib <macro.db|.lib>` (resolve timing); missing either
+→ the wrapper is blackboxed (`set_dont_touch` + `set_disable_timing`) with a WARNING.
 Detail: `plugin_docs/specs/2026-05-26-synth-memory-blackbox-design.md`.
 
-### Standard SRAM Wrapper — Two-Port (TP)
-Place in `rtl/common/sram_tp.sv`. Separate read and write ports, **single clock**.
-Use when simultaneous read+write is needed within the same clock domain.
-```systemverilog
-module sram_tp #(
-  parameter int DEPTH = 256,
-  parameter int WIDTH = 32
-) (
-  input  logic                    clk,
-  // Write port
-  input  logic                    i_wen,
-  input  logic [$clog2(DEPTH)-1:0] i_waddr,
-  input  logic [WIDTH-1:0]        i_wdata,
-  // Read port
-  input  logic                    i_ren,
-  input  logic [$clog2(DEPTH)-1:0] i_raddr,
-  output logic [WIDTH-1:0]        o_rdata
-);
-
-  // Behavioral model — SIMULATION ONLY. For synthesis, add the sram_sp `ifdef
-  // compiled-macro branches above this block; the behavioral body stays translate_off-guarded.
-  // synopsys translate_off
-  logic [WIDTH-1:0] mem [0:DEPTH-1];
-
-  always_ff @(posedge clk) begin
-    if (i_wen) begin
-      mem[i_waddr] <= i_wdata;
-    end
-    if (i_ren) begin
-      o_rdata <= mem[i_raddr];  // 1-cycle read latency
-    end
-  end
-  // synopsys translate_on
-
-endmodule
-```
-
-### Standard SRAM Wrapper — Dual-Port (DP)
-Place in `rtl/common/sram_dp.sv`. Separate read and write ports, **dual clock** (`wclk`/`rclk`).
-Use at clock domain crossings (e.g., async FIFO memory backend, cross-domain shared buffer).
-```systemverilog
-module sram_dp #(
-  parameter int DEPTH = 256,
-  parameter int WIDTH = 32
-) (
-  // Write port (write clock domain)
-  input  logic                    wclk,
-  input  logic                    i_wen,
-  input  logic [$clog2(DEPTH)-1:0] i_waddr,
-  input  logic [WIDTH-1:0]        i_wdata,
-  // Read port (read clock domain)
-  input  logic                    rclk,
-  input  logic                    i_ren,
-  input  logic [$clog2(DEPTH)-1:0] i_raddr,
-  output logic [WIDTH-1:0]        o_rdata
-);
-
-  // Behavioral model — SIMULATION ONLY. For synthesis, add the sram_sp `ifdef
-  // compiled-macro branches above this block; the behavioral body stays translate_off-guarded.
-  // synopsys translate_off
-  logic [WIDTH-1:0] mem [0:DEPTH-1];
-
-  always_ff @(posedge wclk) begin
-    if (i_wen) begin
-      mem[i_waddr] <= i_wdata;
-    end
-  end
-
-  always_ff @(posedge rclk) begin
-    if (i_ren) begin
-      o_rdata <= mem[i_raddr];  // 1-cycle read latency (rclk domain)
-    end
-  end
-  // synopsys translate_on
-
-endmodule
-```
-
-**Note**: `sram_dp` has two `always_ff` blocks writing different signals (`mem` from `wclk`, `o_rdata` from `rclk`),
-which is correct — no multi-driver conflict since each signal has a single driver.
-
-### Read Latency: Register File vs SRAM
-- **Register file** (flip-flop array): combinational read (0-cycle) — use when downstream logic requires same-cycle data
-- **SRAM wrapper**: synchronous read (1-cycle) — matches real SRAM macro behavior; pipeline must account for read latency
-
 ### Anti-Pattern: Combinational Read on Large Storage (DO NOT)
-```systemverilog
-// BAD: >4096-bit register array with combinational MUX
-// Real case: 4096×13-bit line buffer → 500K+ gate equivalents,
-// 5h+ DC compile, 55% area wasted, 4096:1 MUX per bit on critical path
-logic signed [12:0] lb_mem [4096];
-always_comb begin
-  rd_data = lb_mem[rd_addr];  // 4096:1 MUX — area/timing/compile disaster
-end
+A >4096-bit register array read via `always_comb` mux (e.g., 4096×13-bit line buffer) produces
+500K+ gate equivalents, 5h+ DC compile, and a 4096:1 mux per bit on the critical path.
+Use an SRAM wrapper with synchronous read instead.
 
-// GOOD: Use SRAM wrapper with synchronous read (1-cycle latency)
-sram_tp #(.DEPTH(4096), .WIDTH(13)) u_mem_line_buf (
-  .clk    (clk),
-  .i_wen  (wr_en),  .i_waddr(wr_addr), .i_wdata(wr_data),
-  .i_ren  (rd_en),  .i_raddr(rd_addr), .o_rdata(rd_data)  // 1-cycle latency
-);
-```
-
-### Foundry Macro Replacement
-- Behavioral wrappers are used for simulation and FPGA synthesis (infers BRAM)
-- For ASIC: replace wrapper body with foundry macro behind `` `ifdef SYNTHESIS `` guard
-- Wrapper interface stays identical — no changes to instantiating modules
-- DEPTH/WIDTH parameters must match foundry macro configuration
-
-## A.3 FPGA Considerations
-
-### Resource Inference Guide
-| Resource | Inference Pattern | Notes |
-|----------|-------------------|-------|
-| BRAM | `logic [W-1:0] mem [0:D-1]` + sync read | Async read infers distributed RAM |
-| DSP | `a * b + c` pattern | Better inference with pipeline registers |
-| SRL | shift register (`always_ff` chain) | Auto-inferred, no explicit control needed |
-
-### XDC Constraints (Xilinx)
-- Similar to SDC but includes Xilinx-specific commands
-- `create_clock`, `set_input_delay`, `set_output_delay` are identical
-- FPGA-specific: `set_property IOSTANDARD`, `set_property LOC`
-
-### ILA Debugging
-- Apply `(* mark_debug = "true" *)` attribute to signals targeted for debug
-- Insert ILA core after synthesis for real-time waveform inspection
-
-### IP Core Usage
-- Xilinx: AXI Interconnect, MIG (DDR controller), AXI DMA
-- Intel: Platform Designer (Qsys) IP
-- IP instances also follow the `u_` prefix convention
-
-## A.4 Pipelining for Timing Closure
-
-### Pipeline Insertion Criteria
-- When timing reports show critical path violations
-- When combinational depth exceeds the allowable range for target frequency
-- When logic depth warnings are generated by the `rtl-synth-check` skill
-
-### Pipeline Patterns
-```systemverilog
-// Before: long combinational path
-assign o_result = func_a(func_b(func_c(i_data)));
-
-// After: 2-stage pipeline
-logic [W-1:0] stage1_q;
-always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-  if (!sys_rst_n) stage1_q <= '0;
-  else            stage1_q <= func_c(i_data);
-end
-assign o_result = func_a(func_b(stage1_q));
-```
-
-### Register Retiming
-- Leverage the synthesis tool's retiming option (DC: `compile_ultra -retime`, Genus: `syn_opt -retiming`)
-- Do not apply `dont_touch` to registers targeted for retiming
-
-### Valid/Ready Pipeline
-- When inserting pipeline stages, pipeline the handshake signals as well
-- Backpressure propagation: `o_ready` propagates backward from the next stage's `i_ready`
-
-</Advanced>
+</Steps>
 
 <Tool_Usage>
 This skill is not executed directly. It is referenced by agents that generate SV code
@@ -512,48 +188,11 @@ This skill is not executed directly. It is referenced by agents that generate SV
 </Tool_Usage>
 
 <Examples>
-<Good>
-Follows project rules: ALL_CAPS parameter, L_ prefix localparam, snake_case, no CamelCase.
-```systemverilog
-module cabac_encoder #(
-  parameter int unsigned CTX_ADDR_W = 9
-) (
-  input  logic                   clk,
-  input  logic                   rst_n,
-  input  logic [CTX_ADDR_W-1:0]  ctx_addr,
-  output logic                   bin_valid
-);
-  localparam int unsigned L_CTX_DEPTH = 2 ** CTX_ADDR_W;
-
-  typedef enum logic [1:0] {
-    ST_IDLE,
-    ST_ENCODE,
-    ST_DONE
-  } state_e;
-```
-</Good>
-<Bad>
-CamelCase, suffix, reg/wire, magic numbers:
-```systemverilog
-module cabac_encoder #(
-  parameter int CtxAddrWidth = 9   // WRONG: CamelCase
-) (
-  input  wire        clk_i,        // WRONG: suffix, wire
-  input  reg         rst_ni,       // WRONG: reg, suffix
-  input  [8:0]       ctx_addr_i,   // WRONG: suffix, magic width
-  output             bin_valid_o   // WRONG: no type, suffix
-);
-  localparam AddrBits = 4;         // WRONG: CamelCase, no L_ prefix
-  typedef enum logic [1:0] {
-    StIdle, StEncode, StDone       // WRONG: CamelCase enum values
-  } state_e;
-```
-</Bad>
+Good/bad pattern pairs (naming, ports, declaration order): `examples/good-vs-bad.sv`.
 </Examples>
 
 <Escalation_And_Stop_Conditions>
 - Convention violation found during rtl-lint-check → request fix from rtl-coder
-- Power optimization pattern affects functionality → request review from rtl-architect
 - Different patterns needed for FPGA vs ASIC target → confirm target with user
 </Escalation_And_Stop_Conditions>
 

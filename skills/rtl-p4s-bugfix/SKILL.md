@@ -1,6 +1,6 @@
 ---
 name: rtl-p4s-bugfix
-description: "RTL bug fix workflow enforcing the full cycle: analyze → fix → lint → TB create/update → functional verification. Prevents RTL changes from being considered complete with lint-only validation."
+description: "P4 RTL bug fix enforcing full cycle through TB update and functional simulation; lint-only is never complete. Use for 'fix RTL bug' or Phase 5-to-4 feedback."
 user-invocable: true
 ---
 

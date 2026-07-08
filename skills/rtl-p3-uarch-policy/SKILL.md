@@ -1,6 +1,6 @@
 ---
 name: rtl-p3-uarch-policy
-description: "μArch design criteria, clock domain rules, protocol assignment rules, BFM validation requirements, signal naming conventions, and checklists for the Phase 3 μArch design pipeline. Pure reference — no orchestration."
+description: "Internal reference: rtl p3 uarch policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 
@@ -52,42 +52,29 @@ Format:
 
 ## Storage Selection Criteria (Register vs SRAM Wrapper)
 
-Every storage element in the μArch spec MUST include a storage type decision with rationale:
+Generic selection table (bit/port thresholds), register-file exceptions, wrapper naming/parameters,
+and SP port list are owned by the deployed `.claude/rules/rtl-coding-conventions.md` (Storage Selection
+section). P3-specific additions below.
 
-| Total Bits | Ports | Storage Type | Rationale |
-|-----------|-------|-------------|-----------|
-| ≤256 | any | **Flip-flop array** | SRAM macro overhead exceeds register cost at this size |
-| 257–4096 | ≤2 R/W | **SRAM wrapper** (recommended) | Area-efficient; register file acceptable with documented rationale |
-| 257–4096 | >2 R/W | **Register file** | Multi-port SRAM macros are rare; register file provides arbitrary port count |
-| >4096 | ≤2 R/W | **SRAM wrapper** (mandatory) | Register file at this size wastes area and power |
-| >4096 | >2 R/W | **Banked SRAM** or **register file** | Bank SRAM to reduce port count; register file only with PPA justification |
+Every storage element in the μArch spec MUST include a storage type decision with rationale.
 
 **Read latency as selection criterion:**
-- Register file: combinational read (0-cycle latency) allowed — use when downstream logic cannot tolerate 1-cycle delay
-- SRAM wrapper: synchronous read (1-cycle latency) mandatory — matches real SRAM macro behavior
+- Register file: combinational (0-cycle) read allowed — use when downstream logic cannot tolerate 1-cycle delay; a required 0-cycle read is an additional register-file exception beyond the deployed-rules list
+- SRAM wrapper: synchronous (1-cycle) read mandatory — matches real SRAM macro behavior
 - If μArch requires 0-cycle read AND size > 4096 bits → architectural issue, escalate to Phase 2
 
-**Streaming buffer rule:**
-- Pattern: sequential data with write-once, read-multiple access (e.g., line buffers, frame buffers, coefficient tables written at init)
-- Decision: **always SRAM wrapper** regardless of size — combinational read on streaming buffers creates massive MUX trees
-- If N readers share 1R port: document time-multiplex schedule (e.g., 4 readers × 1 cycle = 4-cycle access, must fit within pipeline initiation interval)
+**Streaming buffer rule** (write-once/read-multiple: line/frame buffers, init-written coefficient tables):
+always SRAM wrapper regardless of size — combinational read on streaming buffers creates massive MUX trees.
+If N readers share 1R port: document time-multiplex schedule (e.g., 4 readers × 1 cycle = 4-cycle access, must fit within pipeline initiation interval).
 
-**Exceptions requiring register file regardless of size:**
-- Reset to non-zero value (SRAM macros typically reset to unknown/zero only)
-- Partial-word write with read-modify-write semantics not supported by target SRAM
-- Content must survive clock gating (technology-dependent)
-- Combinational (0-cycle) read required by downstream logic
+**Multi-port large storage** (>4096 bits, >2 R/W): prefer banked SRAM to reduce port count; register file only with PPA justification.
 
-**SpyGlass compatibility:** SpyGlass `set_option mthresh <bits>` flags register arrays exceeding the threshold as SRAM candidates. The default varies by methodology; teams typically set `mthresh` to 4096–65536 bits based on target technology. Align the plugin's >4096-bit mandatory SRAM rule with your project's `mthresh` setting in `rat_config.json` if different.
+**SpyGlass compatibility:** `set_option mthresh <bits>` flags register arrays exceeding the threshold as SRAM candidates; teams typically set 4096–65536 bits by target technology. Align the >4096-bit mandatory SRAM rule with your project's `mthresh` setting in `rat_config.json` if different.
 
-**SRAM wrapper interface specification** (required for every SRAM instance in μArch doc):
-- Type: Single-port (SP), Two-port (TP), or Dual-port (DP)
-- Parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)`)
-- Read latency: 1 cycle (registered output) — default; document if different
-- SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata`
-- TP ports (two-port, single clock): `clk`, `i_wen`, `i_waddr`, `i_wdata`, `i_ren`, `i_raddr`, `o_rdata`
-- DP ports (dual-port, dual clock): `wclk`, `i_wen`, `i_waddr`, `i_wdata`, `rclk`, `i_ren`, `i_raddr`, `o_rdata`
+**Per-SRAM-instance μArch spec** (required for every SRAM instance):
+- Type SP/TP/DP, `DEPTH`/`WIDTH` (derived `ADDR_W = $clog2(DEPTH)`), read latency (1-cycle registered output default; document if different)
 - Banking strategy: if capacity > single macro limit, specify bank count and address decode
+- SP ports: per deployed rules. TP ports (single clock): `clk`, `i_wen`, `i_waddr`, `i_wdata`, `i_ren`, `i_raddr`, `o_rdata`. DP ports (dual clock): `wclk`, `i_wen`, `i_waddr`, `i_wdata`, `rclk`, `i_ren`, `i_raddr`, `o_rdata`
 
 ## Bus Width Parameterization Rule
 
@@ -98,12 +85,7 @@ hardcoded width constants are prohibited in parameterized designs.
 - **Result packing**: derived from algorithm parameters, not literal constants
 - **μArch document MUST include**: width derivation formula per FIFO/bus with parameter dependencies
 
-### Why This Matters
-When bus widths are hardcoded for a specific parameter set (e.g., BPC=12), switching parameters
-(e.g., BPC=8) leaves unused upper bits that:
-- Create structurally unreachable toggle coverage (wastes verification effort)
-- Consume unnecessary area and power
-- Hide the actual parameter dependency from downstream engineers
+(Why: widths hardcoded for one parameter set — e.g., BPC=12 — leave unused upper bits when parameters change: structurally unreachable toggle coverage, wasted area/power, hidden parameter dependencies.)
 
 ### Enforcement
 - **uarch-designer** (Phase 3): FIFO/bus width definitions MUST include derivation formula
@@ -114,21 +96,11 @@ When bus widths are hardcoded for a specific parameter set (e.g., BPC=12), switc
 
 ## BFM Validation Requirements (MANDATORY)
 
-Three sub-gates, applied in order (G4a → G4b → G4c):
-
-- **(G4a) Compilation gate**: BFM must compile without errors before any further validation
-- **Default**: blocking transport (LT — Loosely Timed) for fast simulation
-- **On request**: non-blocking transport (AT — Approximately Timed) for timing accuracy
-- **(G4b) Functional correctness gate**: BFM per-block output MUST be compared against Phase 2 C reference model (refc/) output using **shared test vectors** (same input to both models). Comparison must verify **data correctness** (functional output match), not just structural checks (file existence + compilation). FAIL on any per-block output mismatch.
-  - If external golden C model is provided (e.g., JM/HM, vendor model): both refc and BFM must match it
-  - If no external golden: BFM must match refc (Phase 2 is the golden reference)
-  - BFM that compiles but produces wrong output → FAIL (worse than no BFM — false confidence)
-  - On mismatch: run refc self-test first to determine root cause (refc bug vs BFM bug)
-- **(G4c) I/O log existence gate**: per-block I/O logging MANDATORY — every block input/output transaction logged
-  - Format: timestamped records (cycle, address, data, control signals)
-  - Logs serve as golden reference for Phase 4-5 RTL unit verification
-  - Log count must match block count from uArch docs
-- If any gate fails: iterate uarch-designer ↔ bfm-dev ↔ ref-model-dev (max 2 iterations before escalation)
+Three sub-gates in order — executable procedure owned by p3-uarch-orchestrator Step 4:
+- **G4a Compilation**: BFM compiles without errors (default LT blocking transport; AT — Approximately Timed — on explicit request only)
+- **G4b Functional correctness**: BFM per-block output matches Phase 2 refc via shared test vectors — data correctness (bitexact or within documented tolerance), not structural checks. If an external golden C model is provided (JM/HM, vendor): both refc and BFM must match it; else refc is golden. Compiles-but-wrong-output → FAIL (false confidence). On mismatch: run refc self-test first to localize root cause (refc bug vs BFM bug)
+- **G4c I/O log existence**: per-block timestamped logs (cycle, address, data, control signals) for every block; log count must match uArch block count; logs are the golden reference for Phase 4-5 RTL unit verification
+- **Pass rule**: all three gates must PASS. Any FAIL → iterate uarch-designer ↔ bfm-dev ↔ ref-model-dev (max 2 iterations before escalation)
 
 ## Conditional Expert Delegation (Phase 3)
 
@@ -161,9 +133,9 @@ Three sub-gates, applied in order (G4a → G4b → G4c):
 - Parameters: `UPPER_SNAKE_CASE` (e.g., `DATA_WIDTH`)
 - Use `logic` only (no `reg`/`wire`)
 
-## 3-Round Review Protocol (5 parallel reviewers)
+## Review Protocol (dynamic convergence, 5 parallel reviewers)
 
-Mandatory 3 rounds, coordinated by rtl-architect:
+Dynamic convergence rounds (min 2, max 5 — see Review Convergence Criteria), coordinated by rtl-architect:
 - **4 mandatory + 1 conditional parallel reviewers each round**:
   1. rtl-architect: feature preservation, block boundary, interface, protocol consistency
   2. timing-advisor: critical paths at target frequency, pipeline balance, clock domain feasibility
@@ -225,10 +197,7 @@ Review rounds use dynamic convergence instead of fixed 3 rounds:
 **Early exit** (round 2): When findings converge quickly (simple designs)
 **Extended review** (rounds 4-5): For complex designs with emergent issues
 
-This is inspired by Ouroboros's ConvergenceCriteria:
-- Stability signal: finding_delta < threshold
-- Stagnation detection: same findings repeated across rounds
-- Oscillation detection: finding toggling resolved↔reopened
+Convergence signals: stability (finding_delta < threshold), stagnation (same findings repeated across rounds), oscillation (findings toggling resolved↔reopened).
 
 ## Escalation & Stop Conditions
 
@@ -243,53 +212,34 @@ This is inspired by Ouroboros's ConvergenceCriteria:
 
 ## Final Checklist
 
-**Module decomposition & structure:**
-- [ ] docs/phase-3-uarch/*.md exists for each block in architecture.md
-- [ ] Module decomposition documented for every block
-- [ ] Inter/intra-module pipelines defined
+**Structure & throughput:**
+- [ ] docs/phase-3-uarch/*.md exists for each block in architecture.md, satisfying Document Requirements
 - [ ] **Throughput invariant verified**: every pipeline depth decision documents `rate_per_cycle × clock_freq ≥ target_throughput`. Pipeline changes that reduce net throughput below target are rejected.
-- [ ] All block boundaries preserved (no unauthorized merges/splits)
-- [ ] All functional responsibilities present
+- [ ] All block boundaries preserved (no unauthorized merges/splits); all functional responsibilities present
 
-**Clock domain assignment:**
-- [ ] Every sub-block has assigned clock domain
-- [ ] Cross-domain interfaces specify synchronizer type
-- [ ] docs/phase-3-uarch/clock-domain-map.md saved
+**Section rules hold (name-only — the named sections are normative):**
+- [ ] Clock Domain Assignment Rules satisfied
+- [ ] Protocol Assignment Rules satisfied (incl. domain-consult when non-obvious)
+- [ ] Storage Selection Criteria satisfied (type decision + rationale; per-instance SRAM spec)
+- [ ] Bus Width Parameterization Rule satisfied
+- [ ] Signal Naming Conventions enforced
+- [ ] BFM Validation Requirements satisfied (G4a/G4b/G4c all PASS)
+- [ ] Zero-Opens Invariant holds
+- [ ] Open Resolution Protocol completed (all OPEN-2-* resolved)
+- [ ] Ambiguity Gate passed (score ≤ 0.5 for all new REQ-U-*)
+- [ ] Compliance Check verdict = PASS
 
-**Protocol assignment:**
-- [ ] Every inter-block interface has assigned protocol with justification
-- [ ] docs/phase-3-uarch/protocol-assignments.md saved
-- [ ] domain-consult invoked for protocol guidance
-
-**Register/SRAM/FSM allocation:**
+**Checklist-only gate details:**
 - [ ] Pipeline registers: placement justified
 - [ ] Config registers: fields, widths, reset values defined
-- [ ] Every storage element has explicit type decision (register vs SRAM wrapper) with rationale per Storage Selection Criteria
-- [ ] SRAM instances: capacity, banking, port count, SP/TP/DP type, read latency documented
-- [ ] SRAM wrapper interface specified: DEPTH, WIDTH, port list, banking strategy (if banked)
 - [ ] FSM: state count, encoding, transitions per control path
+- [ ] No deadlocks or protocol violations in BFM simulation
 
-**BFM validation:**
-- [ ] TLM-based BFM built and compiled (blocking LT)
-- [ ] (G4b) BFM per-block functional output compared against Phase 2 C ref model (refc/) — bitexact or within documented tolerance
-- [ ] If external golden C model provided: both refc and BFM match it
-- [ ] Per-block I/O logging for ALL blocks
-- [ ] I/O logs archived for Phase 4-5 use
-- [ ] No deadlocks or protocol violations
-
-**Review & compliance:**
+**Review:**
 - [ ] Dynamic convergence review completed (min 2 rounds, or gaps escalated and approved)
-- [ ] Cross-module interfaces reviewed
-- [ ] μArch ↔ ref model consistency verified
-- [ ] Naming conventions enforced (i_/o_, {domain}_clk, u_, logic only)
-- [ ] rtl-architect verdict PASS
-- [ ] timing-advisor no blockers
-- [ ] Domain architecture expert approved (when applicable)
-
-**Rebuttal & per-round artifacts:**
-- [ ] reviews/phase-3-uarch/uarch-review-r1.md with rebuttal section (accept/reject + rationale)
-- [ ] reviews/phase-3-uarch/uarch-review-r2.md with rebuttal section (accept/reject + rationale)
-- [ ] Additional round artifacts (r3-r5) if convergence required more rounds
+- [ ] Cross-module interfaces reviewed; μArch ↔ ref model consistency verified
+- [ ] rtl-architect verdict PASS; timing-advisor no blockers; domain expert approved (when applicable)
+- [ ] Per-round artifacts reviews/phase-3-uarch/uarch-review-r{N}.md, each with rebuttal section (accept/reject + rationale); minimum r1+r2, r3-r5 if convergence required more rounds
 
 ## Open Resolution Protocol
 
@@ -388,17 +338,12 @@ Apply ambiguity scoring to all new REQ-U-* decisions:
 - [ ] docs/phase-3-uarch/phase-3-summary.md
 - [ ] docs/phase-3-uarch/req-uarch-traceability.md (100% REQ coverage)
 - [ ] docs/decisions/ADR-*.md generated (3-5 key μArch decisions)
-- [ ] `docs/phase-3-uarch/wonder-log.md` exists with per-round assumption tracking
-- [ ] All High-risk assumptions in wonder-log resolved or explicitly accepted
+- [ ] `docs/phase-3-uarch/wonder-log.md` (Wonder Log requirements met; High-risk assumptions resolved or explicitly accepted)
 - [ ] `docs/phase-3-uarch/upstream-feedback-report.md` generated (P1/P2 gap analysis)
 - [ ] `docs/phase-3-uarch/requirement-delta.md` generated (REQ implementability scan)
-- [ ] Per-round review artifacts saved (r1.md through rN.md, minimum 2 rounds)
-
-- [ ] All OPEN-2-* items from P2 resolved with rationale and rejected_alternatives
-- [ ] Zero remaining open items (P4 entry invariant — no open-requirements.json produced)
 - [ ] `docs/phase-3-uarch/iron-requirements.json` exists with REQ-U-* entries and resolved_from tracking
-- [ ] Compliance check against P1+P2 iron: verdict = PASS
-- [ ] Ambiguity score ≤ 0.5 for all new REQ-U-* requirements
+
+(Per-round review artifacts, Zero-Opens, Open Resolution, Compliance, and Ambiguity gate items: see Final Checklist.)
 
 ## Mermaid Pipeline Diagram Format
 

@@ -1,6 +1,6 @@
 ---
 name: rtl-p5-verify
-description: "Phase 5 verification orchestrator: three-stage (module→top→final) parallel verification pipeline covering lint, SVA/formal, CDC, protocol, functional regression, coverage, performance, synthesizability estimation, and code review."
+description: "Phase 5 legacy bundled verification: functional + silicon checks in one flow. Triggers 'verify', 'Phase 5', 'run all checks'. New flows: prefer split P5A/P5B."
 user-invocable: true
 argument-hint: "[--module=name | --stage=N | --resume]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

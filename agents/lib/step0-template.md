@@ -1,6 +1,5 @@
 ## Step 0: Context Bootstrap (MANDATORY)
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
 
 ```
 Read(".rat/state/spawn-context.json")
@@ -9,6 +8,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:

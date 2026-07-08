@@ -1,6 +1,6 @@
 ---
 name: rtl-conformance-test
-description: This skill should be used when the user asks to "run conformance test", "check codec standards compliance", "bitexact comparison against JM/HM", "ITU-T conformance suite", "H.264 or H.265 conformance", or when final standards compliance must be verified before tape-out sign-off.
+description: "Final codec standards compliance gate: bitexact RTL bitstream check against JM/HM reference. Triggers: 'conformance test', 'H.264/H.265 conformance'."
 user-invocable: true
 argument-hint: "[--standard H.264|H.265] [--vectors path/to/vectors/]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

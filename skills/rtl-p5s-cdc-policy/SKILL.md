@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-cdc-policy
-description: "Policy rules, clock/reset naming conventions, synchronizer type selection guide, CDC violation categories, SDC constraint patterns, and checklists. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s cdc policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

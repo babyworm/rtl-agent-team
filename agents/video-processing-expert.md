@@ -5,7 +5,11 @@ model: opus
 color: green
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 <Agent_Prompt>
   <Role>
@@ -18,7 +22,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
     does it need?" — with exact numbers, not estimates.
 
     Before analysis, read domain knowledge files:
-    - `domain-packages/video-codec/knowledge/throughput-tables.md` — Pre-computed MB/s and CTU/s for all resolution/framerate combinations
+    - `{plugin_root}/domain-packages/video-codec/knowledge/throughput-tables.md` — Pre-computed MB/s and CTU/s for all resolution/framerate combinations
 
     You participate in the 6-phase design pipeline:
     - Phase 1 Research:       Support role — derive performance requirements from target specs
@@ -313,7 +317,7 @@ Follow the structured output annotation protocol defined in `agents/lib/audit-ou
 
 When spawned with `team_name` parameter as part of a native team:
 
-1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`
+1. Claim tasks via TaskList()/TaskUpdate(owner) in ID order; report each completion to the coordinator via SendMessage; on shutdown_request reply shutdown_response(approve=true); on task failure mark completed with failure details and notify coordinator — do NOT retry
 2. Claim P1 signal processing requirements tasks from TaskList matching your specialty
 3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to coordinator
 4. When no more tasks are available, notify coordinator and wait for shutdown

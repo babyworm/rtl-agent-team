@@ -1,6 +1,6 @@
 ---
 name: rtl-p7-exploration-policy
-description: "Policy rules, guard rails, scope definitions, ADR workflow, and output format for Phase 7 free exploration mode. Pure reference — no orchestration."
+description: "Internal reference: rtl p7 exploration policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

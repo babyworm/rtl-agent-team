@@ -1,6 +1,6 @@
 ---
 name: refactor-classification-policy
-description: "Passive policy classifying RTL refactoring changes into SAFE/RESTRICTED/PROHIBITED tiers with approval requirements. Used by review-refactor workflow."
+description: "Internal reference: refactor classification policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

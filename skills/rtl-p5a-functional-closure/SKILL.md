@@ -1,6 +1,6 @@
 ---
 name: rtl-p5a-functional-closure
-description: "Phase 5A functional verification closure across module, block, and top pre-integration checkpoints. Functional correctness is the absolute priority gate."
+description: "Phase 5A functional closure: deep multi-seed regression, coverage, traceability at module/block/top. First stage of split P5, before P5B silicon validation."
 user-invocable: true
 argument-hint: "[module-list or --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

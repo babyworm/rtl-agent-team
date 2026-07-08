@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-cdc-verify
-description: "This skill should be used when analyzing clock domain crossings for synchronizer coverage and metastability risks."
+description: "P5 CDC analysis: finds missing synchronizers and metastability risks, emits SDC constraints. Use for multi-clock designs or pre-synthesis CDC signoff."
 user-invocable: true
 argument-hint: "[top-module]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

@@ -1,6 +1,6 @@
 ---
 name: rat-p4p5-impl-verify-policy
-description: "Policy rules, prerequisite definitions, phase gate criteria, feedback loop classification, and checklists for the Phase 4→5 pipeline. Pure reference — no orchestration."
+description: "Internal reference: rat p4p5 impl verify policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

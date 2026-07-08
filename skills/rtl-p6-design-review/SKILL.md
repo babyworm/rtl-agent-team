@@ -1,6 +1,6 @@
 ---
 name: rtl-p6-design-review
-description: "Phase 6: Design Review & Documentation with 2-round consistency checks, detailed design notes with decision rationale, and PDF generation support."
+description: "Phase 6: design review and design-note documentation with consistency checks after P5 PASS. Triggers: 'design review', 'design note', 'Phase 6'."
 user-invocable: true
 argument-hint: "[options]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

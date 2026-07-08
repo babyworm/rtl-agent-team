@@ -1,6 +1,6 @@
 ---
 name: rtl-p4s-refactor
-description: "This skill should be used when restructuring RTL code without behavioral change. Applies naming conventions and verifies equivalence."
+description: "P4 RTL refactor with no behavioral change: naming/style cleanup, module split/merge, equivalence verified. Trigger: 'refactor RTL'."
 user-invocable: true
 ---
 

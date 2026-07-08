@@ -1,6 +1,6 @@
 ---
 name: rtl-p5-verify-policy
-description: "Verification criteria, module graduation gates, coverage targets, synthesis estimation policy, and checklists for the Phase 5 three-stage verification pipeline. Pure reference — no orchestration."
+description: "Internal reference: rtl p5 verify policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 
@@ -12,25 +12,25 @@ Stage 1 (Module): Each module independently verified in parallel across 9 catego
 Stage 2 (Top): System-level verification after ALL modules graduate.
 Stage 3 (Final): Compliance review + summary generation.
 
-**Core principle**: Module-level verification first, top-level only after module graduation.
-A module "graduates" when ALL its verification checks PASS (or PARTIAL_PASS for AC-level
-checks where PARTIAL Critical/High ac_ids produce WARNING). Only graduated modules
-participate in top-level integration. This prevents wasting top-level sim time on
-modules with known bugs.
+**Core principle**: Module-level verification first, top-level only after module graduation
+(criteria: Module Graduation Gate below). Only graduated modules participate in top-level
+integration. This prevents wasting top-level sim time on modules with known bugs.
 
 ## Verification Categories
 
-Applied at both module-level (Stage 1) and top-level (Stage 2):
+Applied at both module-level (Stage 1) and top-level (Stage 2). Agent/sub-orchestrator
+routing per category is OWNED by the p5-verify-orchestrator agent prompt ("Verification
+Categories" table).
 ```
-V1: Lint (final comprehensive)         → lint-checker
-V2: SVA Completion + Formal            → sva-extractor + eda-runner
-V3: CDC/RDC Analysis                   → cdc-checker + constraint-writer
-V4: Protocol Compliance                → protocol-checker (if bus interfaces)
-V5: Functional Regression (Tier 3/4)   → testbench-dev + eda-runner + func-verifier
-V6: Coverage Analysis                  → coverage-analyst + testbench-dev
-V7: Performance Verification           → perf-verifier + eda-runner
-V8: Synthesizability + PPA Estimation  → eda-runner + synthesis-reporter
-V9: Code Review + Refactoring          → rtl-critic + rtl-p4s-refactor
+V1: Lint (final comprehensive)
+V2: SVA Completion + Formal
+V3: CDC/RDC Analysis
+V4: Protocol Compliance (if bus interfaces)
+V5: Functional Regression (Tier 3/4)
+V6: Coverage Analysis
+V7: Performance Verification
+V8: Synthesizability + PPA Estimation
+V9: Code Review + Refactoring
 ```
 
 ## Parallelism Model (Stage 1 per module)
@@ -44,23 +44,17 @@ Final: V9(Code Review) after V1-V8 results inform review scope
 ```
 
 ### Overlap Rules
-- Stage 1 modules are fully independent → all modules run simultaneously
+- Stage 1 modules are fully independent → all modules run simultaneously; a module that
+  passes all Group A checks starts Group B immediately without waiting for other modules
 - Within a module, Groups A/B/C progress as dependencies are met
 - Stage 2 starts as soon as ALL modules graduate (not before)
 - Stage 3 starts after Stage 2 completes
 
 ## Module Graduation Gate
 
-A module graduates when ALL of (PARTIAL_PASS accepted for V5 AC-level checks — WARNING, not FAIL):
-- [x] V1: lint PASS (verilator + slang)
-- [x] V2: formal — all properties proved or justified timeout
-- [x] V3: CDC — zero VIOLATION (CAUTION acceptable with justification)
-- [x] V4: protocol — PASS or n/a
-- [x] V5: functional — all scenarios × all seeds PASS
-- [x] V6: coverage — post-exclusion targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%), raw coverage reported, exclusion record approved (standard categories: auto-approved by coverage-analyst; non-standard: user-approved)
-- [x] V7: performance — all metrics within 10% of BFM baseline
-- [x] V8: synthesizable — no latches, PPA estimate in NAND2-FO2 gate count
-- [x] V9: code review — no critical findings
+A module graduates when ALL 9 checks pass. The per-check criteria are stated ONCE,
+normatively, in "Final Checklist — Stage 1 (Per Module)" below (PARTIAL_PASS accepted
+for V5 AC-level checks — WARNING, not FAIL).
 
 **On FAIL**: invoke rtl-p4s-bugfix (feedback loop, max 2 per module).
 After fix, re-verify ONLY the failed categories (not all 9).
@@ -73,9 +67,8 @@ When structured acceptance_criteria (with ac_id) exist in iron-requirements:
   - UNTESTED Critical/High ac_ids: FAIL — module does not graduate
   - NOT_VERIFIABLE ac_ids (verifiable: false): excluded from gate
 
-  **Stage 3 audit (final, pre-P6):**
-  - All Critical/High ac_ids must be VERIFIED or FORMAL (PARTIAL no longer accepted)
-  - UNTESTED or PARTIAL Critical/High ac_ids at Stage 3 → FAIL (blocks P6 entry)
+  **Stage 3 audit (final, pre-P6):** per "Requirement Traceability Gate (P6 Entry Blocker)"
+  below and Final Checklist Stage 3 (no Critical/High ac_id UNTESTED or PARTIAL).
 When no structured AC: existing REQ-level graduation applies.
 
 ## Top-Level Gate
@@ -88,25 +81,10 @@ On FAIL → classify and fix:
 
 ## Per-Module Verification Tracker Schema
 
-```json
-{
-  "module": "{module}",
-  "status": "pending",
-  "checks": {
-    "v1_lint": "pending",
-    "v2_sva_formal": "pending",
-    "v3_cdc": "pending",
-    "v4_protocol": "pending|n/a",
-    "v5_functional": "pending",
-    "v6_coverage": "pending",
-    "v7_performance": "pending",
-    "v8_synth_est": "pending",
-    "v9_code_review": "pending"
-  },
-  "feedback_loops": 0,
-  "graduated": false
-}
-```
+Per-module JSON with fields: `module`, `status` (initial `"pending"`), `checks` object with
+one key per category — `v1_lint`, `v2_sva_formal`, `v3_cdc`, `v4_protocol` (allows `"n/a"`),
+`v5_functional`, `v6_coverage`, `v7_performance`, `v8_synth_est`, `v9_code_review` — each
+initialized `"pending"`, plus `feedback_loops` (count, initial 0) and `graduated` (bool, initial false).
 
 ## Functional Verification Scenario Splitting (V5)
 
@@ -134,11 +112,8 @@ Minimum 3 rounds: Draft → Strengthen → Harden.
 
 ## Coverage Targets
 
-| Metric | Target | Evaluated On |
-|--------|--------|-------------|
-| Line coverage | ≥ 90% | Post-exclusion |
-| Toggle coverage | ≥ 80% | Post-exclusion |
-| FSM coverage | ≥ 70% | Post-exclusion |
+Post-exclusion targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70% (normative statement:
+Final Checklist Stage 1, V6 items).
 
 Iterative coverpoint refinement (minimum 3 rounds).
 Generate additional tests for HIGH priority gaps. Re-run regression for new tests.
@@ -169,22 +144,7 @@ Top-level (Stage 2 T8):
 
 ## Parallelism Budget
 
-Theoretical maximum concurrent agents for M modules, S scenarios:
-```
-Stage 1 Group A: M × 5 checks
-Stage 1 Group B: M × S scenarios × 5 seeds
-Stage 1 Group C: M × 2 checks
-Stage 1 Group D: M × 1
-
-Example: 6 modules, 4 scenarios
-  Group A: 30, Group B: 120, Group C: 12, Group D: 6
-  Peak: ~168 (practical limit: ~20-30 via run_in_background)
-```
-
-## Module Graduation Fast Path
-
-Modules that pass all Group A checks can start Group B immediately without
-waiting for other modules' Group A. Each module progresses independently.
+Cap concurrent verification agents at ~20-30 via run_in_background regardless of theoretical parallelism.
 
 ## Feedback Loop Classification
 
@@ -272,15 +232,15 @@ alongside V5. UVM is NOT a replacement for cocotb regression — both provide co
 
 ### Stage 1 (Per Module)
 - [ ] V1: lint PASS (verilator --lint-only -Wall + slang --lint-only)
-- [ ] V2: SVA formal — all properties proved or justified (3+ refinement rounds)
+- [ ] V2: SVA formal — all properties proved or justified timeout (3+ refinement rounds)
 - [ ] V3: CDC — zero VIOLATION, CAUTIONs justified
 - [ ] V4: protocol PASS or n/a
 - [ ] V5: functional — all scenarios × all seeds PASS
 - [ ] V6: post-exclusion coverage targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%)
 - [ ] V6: raw coverage reported alongside post-exclusion numbers
-- [ ] V6: exclusion record approved (if exclusions applied)
-- [ ] V7: performance — within 10% of BFM baseline
-- [ ] V8: synthesizable — no latches, NAND2-FO2 gate count (NanGate45/28nm)
+- [ ] V6: exclusion record approved (if exclusions applied; standard categories auto-approved by coverage-analyst, non-standard user-approved)
+- [ ] V7: performance — all metrics within 10% of BFM baseline
+- [ ] V8: synthesizable — no latches, PPA estimate in NAND2-FO2 gate count (NanGate45/28nm)
 - [ ] V9: code review — no critical findings, refactoring applied if needed
 - [ ] All modules graduated
 

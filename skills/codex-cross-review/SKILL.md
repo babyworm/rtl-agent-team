@@ -1,6 +1,6 @@
 ---
 name: codex-cross-review
-description: "Cross-review with Codex CLI as 2nd reviewer. Structured finding exchange, consensus loop (max 5 rounds), user escalation. Manual or auto-invoked at phase boundaries."
+description: "Cross-review with Codex CLI as independent 2nd reviewer; finding exchange until consensus or escalation. At phase boundaries or on 'codex review'."
 user-invocable: true
 argument-hint: "[phase number | 'auto']"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion

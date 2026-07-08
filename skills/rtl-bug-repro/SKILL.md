@@ -1,6 +1,6 @@
 ---
 name: rtl-bug-repro
-description: This skill should be used when the user asks to "reproduce this RTL bug", "create a minimal repro testbench", "isolate root cause for this failure", "waveform analysis for bug BUG-XXX", "write a repro TB for this simulation failure", or when a regression failure needs isolation to a specific RTL module.
+description: "Reproduce an RTL bug with a minimal TB and isolate root cause via waveform diff — 'reproduce this bug', 'minimal repro TB', regression failure isolation."
 user-invocable: true
 argument-hint: "[bug-id | --failing-test <path>]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

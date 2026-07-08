@@ -1,6 +1,6 @@
 ---
 name: domain-consult
-description: "This skill should be used when consulting domain experts for codec standards, video processing, or fixed-point math questions."
+description: "Route domain questions to the best expert agent: codec standards, video/signal processing, fixed-point math, HW protocols. Trigger: 'consult domain expert'."
 user-invocable: true
 ---
 

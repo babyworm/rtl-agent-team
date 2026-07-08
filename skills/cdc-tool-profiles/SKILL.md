@@ -1,6 +1,6 @@
 ---
 name: cdc-tool-profiles
-description: "Passive CDC tool profiles (structural, svlens, spyglass, vc_cdc, questa_cdc) and classification conventions. Includes svlens conn/metrics modes."
+description: "Internal reference: cdc tool profiles (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-integration-test
-description: This skill should be used when the user asks to "run integration tests", "verify cross-module data flow", "Tier 4 integration testing", "test reset propagation across modules", "end-to-end system verification", "verify handshake protocols across module boundaries", or after multi-module RTL changes that may affect interfaces.
+description: "P5 Tier 4 integration tests: cross-module data flow, reset propagation, boundary handshakes. Triggers 'integration test', 'end-to-end system verification'."
 user-invocable: true
 argument-hint: "[top-module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

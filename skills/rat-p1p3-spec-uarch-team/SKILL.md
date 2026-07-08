@@ -1,6 +1,6 @@
 ---
 name: rat-p1p3-spec-uarch-team
-description: "Phase 1-3 pipeline using native teams for parallel execution within each phase. Sequences P1 research team, P2 architecture team, P3 uArch team with inter-phase quality gates."
+description: "Phase 1-3 pipeline running each phase's team skill with parallel workers. Use for 'spec to uarch team', 'Phase 1-3 team', 'parallel design pipeline'."
 user-invocable: true
 argument-hint: "[spec-path or --resume]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate

@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-perf-policy
-description: "Policy rules, performance monitor naming conventions, BFM comparison thresholds (10% deviation), metric definitions, and verification checklists. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s perf policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

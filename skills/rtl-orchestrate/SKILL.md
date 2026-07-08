@@ -2,6 +2,7 @@
 name: rtl-orchestrate
 description: "Internal RTL routing reference. Defines the single source of truth for Action Skill routing, Action Skill→Orchestrator→Policy mapping, and SessionStart hook export content."
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # RTL Design Flow — Orchestration Reference
@@ -23,7 +24,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 
 **Invocation types:**
 - **Action Skill**: user-facing entry point via `Skill(skill="rtl-agent-team:XXX")`
-- **Convention**: auto-applied by file extension/phase, not user-invocable
+- **Convention**: loaded by writer agents via their `skills:` frontmatter, not user-invocable
 - **Internal Reference**: non-user-facing skill used for routing/context export only
 
 | Pattern Detected | Route To | Type |
@@ -57,11 +58,11 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
 | "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` | Action Skill |
 | "decoder conformance", "conformance stream", "conformance test", "decoder verify" | `/rtl-agent-team:codec-conformance-eval` | Action Skill |
-| **--- Coding Conventions (auto-applied by extension/Phase) ---** | | |
-| `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `systemverilog` (auto-applied) | Convention |
-| `.sv`, `.sva` (SVA, assertion, bind), formal assertion | `systemverilog-assertion` (auto-applied) | Convention |
-| UVM testbench, agent, sequence generation | `uvm` (auto-applied) | Convention |
-| `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `systemc` (auto-applied) | Convention |
+| **--- Coding Conventions (loaded via writer-agent `skills:` frontmatter) ---** | | |
+| `.sv`, `.svh`, `.v`, `.vh` RTL code generation | `systemverilog` (agent-loaded: rtl-coder, testbench-dev, ppa-optimizer-dc) | Convention |
+| `.sv`, `.sva` (SVA, assertion, bind), formal assertion | `systemverilog-assertion` (agent-loaded: sva-extractor, protocol-checker, testbench-dev) | Convention |
+| UVM testbench, agent, sequence generation | `uvm` (agent-loaded: testbench-dev) | Convention |
+| `.cpp`, `.h` (SystemC/TLM), Phase 2/3 | `systemc` (agent-loaded: bfm-dev) | Convention |
 | **--- Phase 4: RTL ---** | | |
 | "rapid rtl", "P4 rapid", "sanity integration", "fast implementation loop" | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |
 | "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
@@ -477,7 +478,7 @@ Coverage targets (Tier 3): line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%
 2. **Clock**: `clk` (single) or `{domain}_clk` (multiple). **Reset**: `rst_n` or `{domain}_rst_n`. Active-low async
 3. **No CamelCase**: Parameters → `ALL_CAPS`. Localparam → `L_` prefix. Enum values → `ALL_CAPS`. All identifiers `snake_case` or `ALL_CAPS`
 4. **Language Standards**: SV RTL IEEE 1800-2009, SV Verification IEEE 1800-2012, C ref model C11, C++ BFM C++17
-5. **Convention skills auto-applied by file extension** (see Skill Routing Table above)
+5. **Convention skills are loaded by writer agents via their `skills:` frontmatter** (rtl-coder→systemverilog, bfm-dev→systemc, testbench-dev/sva-extractor/protocol-checker→systemverilog-assertion/uvm); naming basics also enforced by the deployed `.claude/rules` file on .sv access
 
 Full coding rules: `.claude/rules/rtl-coding-conventions.md`
 Verification gate rules: `.claude/rules/rtl-verification-gate.md`
@@ -510,8 +511,10 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
+| `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval enforcement (non-standard bins require user confirmation) |
 
-Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → `rtl-skill-completion-gate` → `stop-gate`.
+Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → `rtl-skill-completion-gate` → `rtl-coverage-exclusion-gate` → `stop-gate`.
+(Authoritative registration + order: `hooks/hooks.json`. Full 14-hook inventory: CLAUDE.md Hook-Based Enforcement table.)
 
 ## State Files
 
@@ -625,13 +628,33 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | ultraloop, autonomous loop, unattended | `/rtl-agent-team:rat-ultraloop` | Action Skill |
 | LLM code review, safe refactor, review and refactor workflow | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | cross-review, codex review, 2nd reviewer, second opinion | `/rtl-agent-team:codex-cross-review` | Action Skill |
-| `.sv/.svh/.v/.vh` files | `systemverilog` (auto-applied) | Convention |
-| `.sv/.sva` assertion work | `systemverilog-assertion` (auto-applied) | Convention |
-| UVM testbench generation | `uvm` (auto-applied) | Convention |
-| `.cpp/.h` SystemC/TLM work | `systemc` (auto-applied) | Convention |
+| `.sv/.svh/.v/.vh` files | `systemverilog` (agent-loaded) | Convention |
+| `.sv/.sva` assertion work | `systemverilog-assertion` (agent-loaded) | Convention |
+| UVM testbench generation | `uvm` (agent-loaded) | Convention |
+| `.cpp/.h` SystemC/TLM work | `systemc` (agent-loaded) | Convention |
+Convention skills are loaded by writer agents via their `skills:` frontmatter (rtl-coder→systemverilog, bfm-dev→systemc, testbench-dev/sva-extractor/protocol-checker→systemverilog-assertion/uvm); naming basics also enforced by the deployed `.claude/rules` file on .sv access.
 Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and loaded by agents when needed.
 
-## Expert Review → Agent Delegation (spawn directly or through skills)
+## Core Design Principles
+- **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
+- **Cascading Quality**: Higher abstraction = more review iterations. P1: 3 mandatory rounds; P2-P3: dynamic convergence (min 2, max 5). Fix defects at the top, not the bottom.
+- **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
+- **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
+- **Cross-Phase Artifact Functional Consistency**: Verification artifacts (P2 refC, P3 BFM, P4 unit tests, P5 TBs) must be functionally validated against upstream references via output comparison — not just file existence + compilation. BFM that compiles but produces wrong output → FAIL.
+
+## Coding Conventions (Core Overrides — .sv/.svh/.v/.vh)
+Port prefix `i_`/`o_`/`io_` (NOT suffix; clk/rst exempt). Clock `clk`/`{domain}_clk`, reset `rst_n`/`{domain}_rst_n` (active-low async). snake_case only (no CamelCase); params ALL_CAPS, localparam `L_` prefix. Full rules auto-load from `.claude/rules/rtl-coding-conventions.md` on .sv access (deployed by rat-init-project).
+
+## Mandatory Verification After RTL Changes
+RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
+Gate: `touch .rat/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
+
+## 6+1 Phase Design Pipeline
+P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)
+Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts)
+<!-- SESSIONSTART_HOOK_EXPORT_END -->
+
+## Expert Review → Agent Delegation (agent-side reference; not exported to hook)
 | Request Pattern | Delegate to Agent |
 |---|---|
 | CDC, synchronization, clock architecture, PLL | `cdc-reviewer`, `clock-architect` |
@@ -642,31 +665,8 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 | Equivalence checking, integration verification | `equivalence-checker`, `integration-verifier` |
 | Hardware security, DFT/scan/BIST/JTAG | `security-reviewer`, `dft-designer` |
 
-## Core Design Principles
-- **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
-- **Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix defects at the top, not the bottom.
-- **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
-- **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
-- **Cross-Phase Artifact Functional Consistency**: Verification artifacts (P2 refC, P3 BFM, P4 unit tests, P5 TBs) must be functionally validated against upstream references via output comparison — not just file existence + compilation. BFM that compiles but produces wrong output → FAIL.
-
-## Phase-Aware Invocation Cues (Dynamic Spawn Basis)
+## Phase-Aware Invocation Cues (agent-side reference; not exported to hook)
 - rtl-planner: P3 or P3→P4 handoff when dependency graph and critical path are unclear or rework loops do not converge.
 - clock-architect: P3/P4/P5 when multi-clock/generated-clock/PLL/gating/mux choices are risky or CDC root cause points to clock architecture.
 - ref-model-reviewer: P2 (and later oracle audits) when ref C model is newly built/updated and must be validated before use as golden oracle.
 - equivalence-checker: P4/refactor/P5B when behavior-preserving intent or synthesis/ECO changes require formal semantic equivalence proof.
-
-## Coding Conventions (Core Overrides — .sv/.svh/.v/.vh)
-- Port prefix: `i_`, `o_`, `io_` (NOT suffix). Clock/reset exempt
-- Clock: `clk` (single) or `{domain}_clk` (multiple), Reset: `rst_n` (single) or `{domain}_rst_n` (multiple) (active-low async)
-- No CamelCase: `snake_case` or `ALL_CAPS` only. Params `ALL_CAPS`, localparam `L_` prefix
-- SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
-- Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `<markdown_diagram_rule>` in CLAUDE.md (or `.claude/rules/diagram-rules.md` fallback)
-
-## Mandatory Verification After RTL Changes
-RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
-Gate: `touch .rat/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
-
-## 6+1 Phase Design Pipeline
-P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)
-Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts)
-<!-- SESSIONSTART_HOOK_EXPORT_END -->

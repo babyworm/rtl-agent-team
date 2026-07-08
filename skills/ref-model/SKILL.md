@@ -1,6 +1,6 @@
 ---
 name: ref-model
-description: This skill should be used when the user asks to "build a reference model", "create C ref model", "write golden model", "implement functional reference", "bitexact reference for RTL verification", or when a Phase 2 C functional reference model is needed for algorithm validation or bandwidth analysis.
+description: "Builds Phase 2 golden C reference model with bitexact conformance and bandwidth estimation. Use for 'build reference model', 'C ref model', 'golden model'."
 user-invocable: true
 argument-hint: "[algorithm-name | --update]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

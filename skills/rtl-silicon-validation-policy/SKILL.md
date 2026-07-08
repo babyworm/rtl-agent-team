@@ -1,6 +1,6 @@
 ---
 name: rtl-silicon-validation-policy
-description: "Policy for P5B silicon validation. Defines block/top synthesis, constraints quality, timing-oriented checks, and signoff readiness criteria."
+description: "Internal reference: rtl silicon validation policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-protocol-verify
-description: "This skill should be used when verifying bus protocol compliance (AXI/AHB/APB) using SVA handshake and ordering rules."
+description: "P5 bus protocol compliance for AXI/AHB/APB via SVA handshake and ordering checks. Use before SoC integration or to chase a reported protocol violation."
 user-invocable: true
 argument-hint: "[module-name --protocol=AXI|AHB|APB]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

@@ -51,7 +51,7 @@ Plugin CLAUDE.md is **NOT loaded** in user projects (Claude Code plugin architec
 Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver rules and context:
 
 ```
-[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~79 lines auto-injected)
+[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~106 lines / ~9.5KB auto-injected in RAT projects)
 [Path-scoped] .claude/rules/    → Coding conventions, verification gates (on .sv file access)
 [On-demand]  Subdirectory CLAUDE.md → Phase-specific guides (on directory entry)
 [Invoked]    Skill SKILL.md     → Full workflow instructions (on skill invocation)
@@ -67,8 +67,12 @@ Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver 
 | 5 | Skill SKILL.md body | Skill invocation | Full workflow (50-300 lines) |
 | 6 | Agent prompt | Agent spawn | Role, constraints, output format |
 
-**Progressive disclosure**: Session starts with ~130 lines (Layer 1 + Layer 4).
+**Progressive disclosure**: always-on cost is Layer 1 (~106 lines, RAT-marked projects only)
+plus Layer 4 skill frontmatter (~13.5KB name+description across 97 skills — action skills
+follow a ≤160-char routing-trigger contract; internal/policy skills carry minimal one-liners).
 Additional layers load only when needed, keeping the context window efficient.
+Keep the description budget under control: the harness truncates skill descriptions
+when the total gets too large, which silently destroys routing.
 
 **Hook output schema (SessionStart)**: Claude Code validates SessionStart hook stdout
 against a JSON schema — `hookSpecificOutput.hookEventName` is mandatory. Layer 1 above
@@ -297,7 +301,7 @@ A verification artifact that compiles but produces wrong output is worse than no
 2. **Clock**: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`). **Reset**: `rst_n` (single) or `{domain}_rst_n` (multiple). Active-low async
 3. **No CamelCase**: `snake_case` or `ALL_CAPS` only. Parameters `ALL_CAPS`, localparam `L_` prefix
 4. SV RTL: IEEE 1800-2009. SV Verification: IEEE 1800-2012. C ref model: C11. C++ BFM: C++17
-5. Convention skills auto-applied by file extension (systemverilog, systemverilog-assertion, uvm, systemc)
+5. Convention skills are loaded by writer agents via their `skills:` frontmatter (rtl-coder→systemverilog, bfm-dev→systemc, testbench-dev/sva-extractor/protocol-checker→systemverilog-assertion/uvm); naming basics also enforced by the deployed `.claude/rules` file on .sv access
 6. **No forward references**: all declarations before logic blocks (IEEE 1800 §12.5). Xcelium strictly enforces declaration ordering
 
 Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.claude/rules/rtl-verification-gate.md`. Diagram rules: `<markdown_diagram_rule>` in CLAUDE.md (or `.claude/rules/diagram-rules.md` fallback).

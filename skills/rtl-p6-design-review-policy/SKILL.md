@@ -1,6 +1,6 @@
 ---
 name: rtl-p6-design-review-policy
-description: "Policy rules, design note requirements, consistency check protocol, PDF generation pipeline, escalation rules, and checklists for Phase 6 design review. Pure reference — no orchestration."
+description: "Internal reference: rtl p6 design review policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rtl-p4s-bugfix-policy
-description: "Policy rules, mandatory sequence, parallel UNIT_FIX decision tree, escalation rules, and checklists for the RTL bug fix workflow. Pure reference — no orchestration."
+description: "Internal reference: rtl p4s bugfix policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

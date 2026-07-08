@@ -19,6 +19,11 @@
               "section": { "type": "string" }
             }
           },
+          "challenge_type": {
+            "description": "REINTERPRETATION: alternative reading of an already-extracted item. OMISSION: a spec feature/section with NO corresponding REQ mapping — set original_interpretation to \"NOT_EXTRACTED\", describe the missing item in alternative_interpretation, severity HIGH.",
+            "enum": ["REINTERPRETATION", "OMISSION"],
+            "default": "REINTERPRETATION"
+          },
           "original_interpretation": { "type": "string" },
           "alternative_interpretation": { "type": "string" },
           "spec_evidence": { "type": "string" },

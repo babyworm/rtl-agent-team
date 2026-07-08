@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-perf-verify
-description: This skill should be used when the user asks to "measure RTL throughput", "verify performance against BFM baseline", "check latency vs BFM predictions", "performance verification for this module", "flag performance regression after RTL change", or when throughput and stall cycles must be validated as part of Phase 5 verification.
+description: "P5 performance verification: RTL throughput/latency/stalls vs BFM baseline. Triggers 'measure throughput', 'performance regression', 'latency vs BFM'."
 user-invocable: true
 argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

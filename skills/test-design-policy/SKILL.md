@@ -1,6 +1,6 @@
 ---
 name: test-design-policy
-description: "Systematic test case design methodology — equivalence partitioning, boundary value analysis, state transition, decision table testing. Pure reference — no orchestration."
+description: "Internal reference: test design policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: rat-ultraloop
-description: "Autonomous implement-review-improve loop with 30-min auto-continue and design freeze enforcement. Wraps target skills for unattended execution."
+description: "Autonomous implement-review-improve loop wrapping a target skill (e.g. rtl-p4-block-parallel) for unattended runs. Triggers: 'ultraloop', 'autonomous loop'."
 user-invocable: true
 argument-hint: "<target-skill-name>"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill, AskUserQuestion

@@ -1,6 +1,6 @@
 ---
 name: rtl-synth-check
-description: "This skill should be used when running Yosys synthesis for area/timing estimation, synthesizability checking, or generating SDC timing constraints. Detects inferred latches, unmapped cells, and produces Design Compiler/Genus-ready SDC."
+description: "Yosys synthesis estimation on lint-clean RTL — 'synth check', 'area/timing estimate', 'generate SDC'; detects latches, emits DC/Genus-ready SDC."
 user-invocable: true
 ---
 

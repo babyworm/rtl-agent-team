@@ -1,6 +1,6 @@
 ---
 name: lint-tool-profiles
-description: "Passive lint tool profiles (verilator, verible, slang, spyglass) with unified report expectations."
+description: "Internal reference: lint tool profiles (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

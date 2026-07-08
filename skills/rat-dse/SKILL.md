@@ -1,6 +1,6 @@
 ---
 name: rat-dse
-description: "Iterative Design Space Exploration covering Phase 1→3: spec analysis, algorithm study, architecture exploration, μArch design, and C/SystemC BFM creation. Self-critique loop with user-controlled trial iteration and worktree-based comparison."
+description: "Iterative Design Space Exploration across Phase 1-3 with self-critique and worktree trial comparison. Use for 'DSE', 'compare architectures'."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion

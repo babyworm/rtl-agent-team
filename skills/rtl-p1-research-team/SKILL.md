@@ -1,6 +1,6 @@
 ---
 name: rtl-p1-research-team
-description: "Phase 1 research using Claude Code native teams for parallel tree-of-thought exploration. Manages solution tree construction, parallel candidate deep-dive, sub-domain expert coordination, and 3-round chief review."
+description: "Phase 1 research with parallel team workers for tree-of-thought candidate exploration. Use for 'research team', 'Phase 1 team', 'parallel research'."
 user-invocable: true
 argument-hint: "[spec-path or --resume]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
@@ -82,7 +82,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:spec-analyst",
              "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
              "Specialty: spec analysis, requirements extraction, solution tree construction. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n. "
              "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
@@ -92,7 +92,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
              "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
              "Specialty: architecture review, candidate deep-dive, comparison matrix. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n. "
              "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
@@ -102,7 +102,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:rtl-architect",
              "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
              "Specialty: cross-cutting surveys (memory, interconnect, power), literature survey. "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:power-analyzer",
       name="domain-0", description="P1 domain and power analysis",
@@ -111,7 +111,7 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:power-analyzer",
              "Phase artifacts: docs/phase-1-research/, reviews/phase-1-research/. "
              "Specialty: power analysis, domain-specific expert consultation. "
              "For domain expert work, spawn: Task(subagent_type='rtl-agent-team:vcodec-*-expert', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Scratch dir: .rat/scratch/phase-1/ (for write-restricted outputs).")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete

@@ -5,7 +5,11 @@ description: "Phase 1 research team coordination teammate. Coordinates tree-of-t
 skills: [p1-spec-research-policy]
 ---
 
-Follow the structured output annotation protocol defined in `agents/lib/audit-output-protocol.md`.
+RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
+- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
 
 You are the Phase 1 Research Team Orchestrator. You manage the tree-of-thought
 research pipeline using Claude Code's native team infrastructure for true parallel
@@ -65,6 +69,7 @@ T12: Final verification + artifacts (spec-analyst, blockedBy: T11)
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+
 ```
 Read(".rat/state/spawn-context.json")
 ```
@@ -72,6 +77,7 @@ Read(".rat/state/spawn-context.json")
 **If file found and valid** — use manifest data:
 - `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
 - `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
+- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
 - Otherwise proceed with context loaded (phase, staleness, team info available)
 
 **If file NOT found** — fallback to legacy check:
@@ -135,6 +141,7 @@ Cross-cutting survey tasks (created now, blocked by T2):
 ```python
 # T4a: Conditional — only if domain package exists
 # Check: Glob("domain-packages/*/manifest.json")
+# Check: Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
 # For video-codec domain:
 # t4a = TaskCreate(subject="T4a: Memory architecture survey",
 #                  description="Survey SRAM vs register file vs external DRAM trade-offs for target domain. Output to docs/phase-1-research/memory-survey.md")
@@ -216,6 +223,18 @@ while not all_tasks_complete:
         TaskUpdate(taskId=t12, addBlockedBy=[t11])
         created_groups.add("T12")
 
+    # === T12b/T12c: Spec Feature Completeness Audit (per p1-spec-research-policy) ===
+    # The extractor must not grade its own completeness — census runs clean-context,
+    # diff runs in a different agent lane.
+    if "T12b" not in created_groups and task_completed(t12):
+        t12b = TaskCreate(subject="T12b: Independent spec feature census",
+                          description="FEATURE CENSUS MODE (spec-analyst, clean context). Read ONLY the original spec sources: specs/**, docs/phase-1-research/goal.md (if present), domain knowledge files. Do NOT read iron-requirements.json, open-requirements.json, or any prior Phase 1 analysis. Enumerate EVERY spec-defined feature — expand mode/format tables item-by-item (each intra mode, encoding mode, color format is one entry). Write docs/phase-1-research/spec-feature-inventory.json per p1-spec-research-policy schema (FEAT-NNN ids with source document+section).")
+        TaskUpdate(taskId=t12b, addBlockedBy=[t12])
+        t12c = TaskCreate(subject="T12c: Feature coverage diff",
+                          description="rtl-architect: map every FEAT-* in docs/phase-1-research/spec-feature-inventory.json to REQ/OPEN ids in iron-requirements.json ∪ open-requirements.json. Per-feature status: EXTRACTED | EXCLUDED_BY_SCOPE (ADR exists) | MISSING. Write docs/phase-1-research/feature-coverage.md with per-feature table + totals. If missing > 0, report the MISSING list to the orchestrator for user escalation per policy Gap Escalation.")
+        TaskUpdate(taskId=t12c, addBlockedBy=[t12b])
+        created_groups.add("T12b")
+
     # === Write-restricted agent handling ===
     # Check .rat/scratch/phase-1/ for completed scratch files
     # Copy to final location
@@ -242,6 +261,8 @@ The orchestrator uses AskUserQuestion directly (subagent tool access permits thi
 This happens at:
 - T5: Candidate selection from comparison matrix
 - Review rounds: If chief review escalates unresolved issues
+- T12c: MISSING features in feature-coverage.md → Gap Escalation per policy
+  (approved → EXCLUDED_BY_SCOPE + ADR; not approved → add MUST_IMPLEMENT REQ-F-* to iron, re-run diff)
 
 ## Step 3.5: Ambiguity Gate
 
@@ -283,8 +304,12 @@ After T12 (final verification + artifacts) AND ambiguity gate completes:
    - `reviews/phase-1-research/research-review-r2.md` — Round 2 rebuttal + convergence assessment
    - `reviews/phase-1-research/research-review-r3.md` — Round 3 mandatory final quality pass
    FAIL if any missing.
-12. **Rebuttal evidence** in R2: verify R2 artifact contains accept/reject entries with rationale
+13. **Rebuttal evidence** in R2: verify R2 artifact contains accept/reject entries with rationale
    for each R1 finding (not just a "converged" statement). FAIL if rebuttal section absent.
+14. Verify `docs/phase-1-research/spec-feature-inventory.json` exists (independent census, T12b)
+15. Verify `docs/phase-1-research/feature-coverage.md` exists with zero MISSING features
+   (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR) — satisfies `feature-coverage-audited`.
+   FAIL if missing > 0 without user-approved exclusion.
 
 ## Step 5: Codex Cross-Review (MANDATORY — after gate PASS)
 
@@ -296,9 +321,9 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 1 Research.
      Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
      Input artifacts: user-provided spec documents.
-     Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json [optional], io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json).
+     Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json [optional], io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json, spec-feature-inventory.json, feature-coverage.md).
      Review verdicts: reviews/phase-1-research/ (research-review-r1.md, research-review-r2.md, research-review-r3.md, research-review.md).
-     Focus: requirement completeness, spec accuracy, candidate evaluation rigor, missing constraints.")
+     Focus: requirement completeness (verify feature-coverage.md census diff shows zero MISSING), spec accuracy, candidate evaluation rigor, missing constraints.")
 
 # Explicit verdict check — read report and verify consensus
 Read(".rat/cross-review/phase-1/cross-review-report.md")

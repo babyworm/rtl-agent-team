@@ -1,6 +1,6 @@
 ---
 name: rtl-p4-implement-team
-description: "Phase 4 RTL implementation using Claude Code native teams for parallel worker execution. Manages 10-wave pipeline with per-module parallelism and inter-wave dependency graphs."
+description: "Phase 4 RTL implementation with native team parallel workers for multi-module coding. Triggers: 'implement team', 'Phase 4 team', 'parallel implement'."
 user-invocable: true
 argument-hint: "[module-list or --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
@@ -14,14 +14,14 @@ task graph and directs workers via SendMessage.
 </Purpose>
 
 <Use_When>
-- Phase 3 uArch specs are complete and RTL coding is needed
+- Phase 3 μArch specs are complete and RTL coding is needed
 - User says "implement team", "Phase 4 team", "parallel implement"
 - Have 3+ modules that benefit from concurrent RTL coding workers
 - Need maximum parallelism for multi-module RTL implementation
 </Use_When>
 
 <Do_Not_Use_When>
-- Phase 3 uArch specs are not complete (run rtl-p3-uarch-design first)
+- Phase 3 μArch specs are not complete (run rtl-p3-uarch-design first)
 - Single module only (use rtl-p4-implement for simpler flow)
 - Only need a single module bug fix (use rtl-p4s-bugfix)
 - Need RTL + verification together from uarch (use rat-p4p5-impl-verify)
@@ -30,7 +30,7 @@ task graph and directs workers via SendMessage.
 ## Prerequisites
 
 Phase 3 completion required:
-- At least one uArch spec in `docs/phase-3-uarch/` must exist
+- At least one μArch spec in `docs/phase-3-uarch/` must exist
 
 If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p3-uarch-design`.
 Proceed with available artifacts — orchestrator will adapt scope.
@@ -75,7 +75,7 @@ Agent(team_name="p4-implement", subagent_type="rtl-agent-team:rtl-coder",
              "Specialty: RTL module implementation (W1), lint (W2), lint fix (W3). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: lint-checker for lint, eda-runner for simulation. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n.")
 Agent(team_name="p4-implement", subagent_type="rtl-agent-team:rtl-coder",
       name="coder-1", description="P4 RTL coding and lint",
@@ -84,7 +84,7 @@ Agent(team_name="p4-implement", subagent_type="rtl-agent-team:rtl-coder",
              "Phase artifacts: rtl/{module}/{module}.sv, reviews/phase-4-rtl/. "
              "Specialty: RTL module implementation (W1), lint (W2), lint fix (W3). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md. "
+             "Follow the Team Worker Protocol section of your agent definition. "
              "Naming: i_/o_ prefixes, snake_case, clk/{domain}_clk, rst_n/{domain}_rst_n.")
 Agent(team_name="p4-implement", subagent_type="rtl-agent-team:testbench-dev",
       name="verify-worker", description="P4 unit test and verification",
@@ -94,7 +94,7 @@ Agent(team_name="p4-implement", subagent_type="rtl-agent-team:testbench-dev",
              "Specialty: unit test (W6), CDC analysis (W7), protocol check (W8). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
              "Examples: eda-runner for sim, cdc-checker for CDC, protocol-checker for W8. "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p4-implement", subagent_type="rtl-agent-team:rtl-critic",
       name="review-worker", description="P4 code review and refactor",
       prompt="You are a Phase 4 review worker in team 'p4-implement'. "
@@ -102,7 +102,7 @@ Agent(team_name="p4-implement", subagent_type="rtl-agent-team:rtl-critic",
              "Phase artifacts: reviews/phase-4-rtl/. "
              "Specialty: code review (W4), bugfix (W5), refactor (W9), integration (W10). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Follow Team Worker Protocol in agents/lib/team-worker-preamble.md.")
+             "Follow the Team Worker Protocol section of your agent definition.")
 
 # Step 7: Leader monitoring loop — poll until all tasks complete
 while True:

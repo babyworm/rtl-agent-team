@@ -1,6 +1,6 @@
 ---
 name: rat-p1p3-spec-uarch-policy
-description: "Policy rules, phase gate definitions, cascading quality protocol, handoff checklist, and ADR requirements for the Phase 1→3 pipeline. Pure reference — no orchestration."
+description: "Internal reference: rat p1p3 spec uarch policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: code-review-policy
-description: "Passive policy for LLM code review findings, severity taxonomy, and evidence format."
+description: "Internal reference: code review policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

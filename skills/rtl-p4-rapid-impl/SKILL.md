@@ -1,6 +1,6 @@
 ---
 name: rtl-p4-rapid-impl
-description: "Phase 4 rapid RTL implementation and sanity integration. Focuses on module design correctness, fast feedback loops, and block-level integration sanity before deep verification."
+description: "Phase 4 rapid RTL implementation: fast module+block sanity (lint/CDC/functional minimum) before deep verification. Lighter alternative to rtl-p4-implement."
 user-invocable: true
 argument-hint: "[module-list or --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

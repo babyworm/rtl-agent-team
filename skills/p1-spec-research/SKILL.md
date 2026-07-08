@@ -1,6 +1,6 @@
 ---
 name: p1-spec-research
-description: "Phase 1 spec research. Refines spec precisely, collects missing information via AskUserQuestion and domain-consult, surveys candidate algorithms/tools with trade-offs, and proposes options matching user requirements."
+description: "Phase 1 spec research: refines spec, fills gaps via user Q&A, surveys algorithm candidates with trade-offs. Use for 'research', 'spec analysis', 'Phase 1'."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion

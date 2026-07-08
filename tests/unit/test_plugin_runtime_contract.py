@@ -211,18 +211,24 @@ class TestSessionStartRoutingBlockContract:
     @pytest.fixture
     def routing_section(self, generated_block):
         start_token = "## Routing (key patterns → Action Skill)"
-        end_token = "## Expert Review → Agent Delegation"
+        end_token = "## Core Design Principles"
         assert start_token in generated_block
         assert end_token in generated_block
         return generated_block.split(start_token, 1)[1].split(end_token, 1)[0]
 
     @pytest.fixture
-    def delegation_section(self, generated_block):
+    def delegation_section(self):
+        # The Expert Review → Agent Delegation table was removed from the
+        # SessionStart inject (duplicated agent frontmatter descriptions already
+        # in main-session context). It remains agent-side reference material in
+        # the rtl-orchestrate skill body — the agent-existence contract still
+        # applies there.
+        content = RTL_ORCHESTRATE_SKILL.read_text()
         start_token = "## Expert Review → Agent Delegation"
-        end_token = "## Core Design Principles"
-        assert start_token in generated_block
-        assert end_token in generated_block
-        return generated_block.split(start_token, 1)[1].split(end_token, 1)[0]
+        end_token = "## Phase-Aware Invocation Cues"
+        assert start_token in content
+        assert end_token in content
+        return content.split(start_token, 1)[1].split(end_token, 1)[0]
 
     @pytest.fixture
     def orchestrate_skill_routing_section(self):
@@ -267,7 +273,9 @@ class TestSessionStartRoutingBlockContract:
         )
 
     def test_convention_routes_are_non_user_invocable(self, routing_section):
-        conventions = set(re.findall(r"`(systemverilog(?:-assertion)?|uvm|systemc)` \(auto-applied\)", routing_section))
+        # "auto-applied" is the legacy annotation (pre-sync hook); "agent-loaded" is the
+        # current SSOT wording (convention skills load via writer-agent skills: frontmatter).
+        conventions = set(re.findall(r"`(systemverilog(?:-assertion)?|uvm|systemc)` \((?:auto-applied|agent-loaded)\)", routing_section))
         assert conventions == {"systemverilog", "systemverilog-assertion", "uvm", "systemc"}
         for skill_name in conventions:
             assert not _skill_user_invocable(skill_name), (
@@ -366,24 +374,40 @@ class TestToolProfileRuntimeContract:
         assert "Gate Criteria" in content
 
 
+def _rat_setup_delivered_content() -> str:
+    """SKILL.md plus its on-demand references/ files.
+
+    Static install/check/template content was extracted to
+    skills/rat-setup/references/*.md (loaded via Read at the decision points
+    where SKILL.md instructs it). The remediation contract is delivered by the
+    combined content, so contract assertions check the combination.
+    """
+    content = RAT_SETUP_SKILL.read_text()
+    refs_dir = RAT_SETUP_SKILL.parent / "references"
+    if refs_dir.is_dir():
+        for ref in sorted(refs_dir.glob("*.md")):
+            content += "\n" + ref.read_text()
+    return content
+
+
 class TestRatSetupRuntimeContract:
     """Lock required-tool remediation guidance for rat-setup."""
 
     def test_rat_setup_requires_install_when_required_tools_missing(self):
-        content = RAT_SETUP_SKILL.read_text()
+        content = _rat_setup_delivered_content()
         assert "Required tool remediation" in content
         assert "installation is required before real design work" in content
         assert "Ready to start: Yes/No (**No** if any required tool is missing)" in content
 
     def test_rat_setup_includes_user_local_install_fallback(self):
-        content = RAT_SETUP_SKILL.read_text()
+        content = _rat_setup_delivered_content()
         assert "~/.local/bin" in content
         assert "python3 -m pip install --user cocotb" in content
         assert 'CMAKE_INSTALL_PREFIX="$HOME/.local"' in content
         assert 'ln -sf "$HOME/tools/oss-cad-suite/bin/yosys" "$HOME/.local/bin/yosys"' in content
 
     def test_rat_setup_prompts_for_global_local_or_skip(self):
-        content = RAT_SETUP_SKILL.read_text()
+        content = _rat_setup_delivered_content()
         assert "global" in content
         assert "local" in content
         assert "skip" in content
@@ -392,7 +416,7 @@ class TestRatSetupRuntimeContract:
         assert "sudo commands for user to run manually" in content
 
     def test_rat_setup_prefers_upstream_install_for_recent_verilator_and_systemc(self):
-        content = RAT_SETUP_SKILL.read_text()
+        content = _rat_setup_delivered_content()
         assert "distro packages are often outdated" in content
         assert "Actively look up the latest stable version" in content
         assert "VERILATOR_LATEST_TAG" in content

@@ -74,24 +74,26 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
 - SRAM wrapper naming: `sram_sp.sv`, `sram_tp.sv`, `sram_dp.sv` in `rtl/common/`
 - SRAM instance prefix: `u_mem_` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
 - Wrapper parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)` inside wrapper)
-- SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (1-cycle read latency)
+- SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (1-cycle read latency, registered output)
+- TP ports (1W+1R, single `clk`): `clk`, `i_wen`, `i_waddr`, `i_wdata`, `i_ren`, `i_raddr`, `o_rdata` (1-cycle read latency)
+- DP ports (1W+1R, dual clock): `wclk`, `i_wen`, `i_waddr`, `i_wdata`, `rclk`, `i_ren`, `i_raddr`, `o_rdata` (1-cycle read latency, `rclk` domain)
 - Synthesis: guard the behavioral array with `// synopsys translate_off`/`translate_on` (DC/Genus
   skip it → blackbox); put compiled-macro instances in `` `ifdef RAT_MEM_<PROCESS> `` branches.
   `run_syn.sh --mem-process/--mem-lib` selects/links the macro; without one the wrapper is
   blackboxed (`set_dont_touch` + `set_disable_timing`) with a WARNING.
 
-## Convention Skills (Auto-Applied by Extension/Phase)
+## Convention Skills (Loaded by Writer Agents)
 
-| File Extension / Context | Phase | Applied Skill |
-|--------------------------|-------|---------------|
-| `.sv`, `.svh`, `.v`, `.vh` (RTL) | Phase 4 (RTL) | `/rtl-agent-team:systemverilog` |
-| `.sv`, `.sva` (SVA, assertion, bind) | Phase 5 (Formal) | `/rtl-agent-team:systemverilog-assertion` |
-| `.sv` (UVM testbench) | Phase 5 (UVM) | `/rtl-agent-team:uvm` |
-| `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `/rtl-agent-team:systemc` |
+Convention skills are loaded by writer agents via their `skills:` frontmatter
+(rtl-coder→systemverilog, bfm-dev→systemc,
+testbench-dev/sva-extractor/protocol-checker→systemverilog-assertion/uvm);
+naming basics are also enforced by this rules file on .sv access.
 
-- `systemverilog`: lowRISC + overrides, Power optimization, FPGA, Pipelining
-- `systemverilog-assertion`: SVA patterns, bind files, SymbiYosys integration, assume/assert/cover
-- `uvm`: UVM class hierarchy, factory, TLM ports, coverage, phase callback
-- `systemc`: TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ, cocotb integration
+| File Extension / Context | Phase | Convention Skill |
+|--------------------------|-------|------------------|
+| `.sv`, `.svh`, `.v`, `.vh` (RTL) | Phase 4 (RTL) | `systemverilog` — lowRISC + project overrides, tool caveats, storage selection |
+| `.sv`, `.sva` (SVA, assertion, bind) | Phase 5 (Formal) | `systemverilog-assertion` — label naming, bind-file-first, sv2v/SymbiYosys flow |
+| `.sv` (UVM testbench) | Phase 5 (UVM) | `uvm` — naming, m_/u_ boundary, RTL port matching, anti-patterns |
+| `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `systemc` — naming, bit-exactness, AT-default BFM, build rules |
 
 <!-- rat-version: 0.11.4 -->

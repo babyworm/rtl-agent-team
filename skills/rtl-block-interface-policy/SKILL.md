@@ -1,6 +1,6 @@
 ---
 name: rtl-block-interface-policy
-description: "Policy skill defining interface design rules, timing contract format, and Phase 2 interface freeze criteria for block-parallel RTL development."
+description: "Internal reference: rtl block interface policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

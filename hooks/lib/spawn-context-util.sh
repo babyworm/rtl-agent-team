@@ -279,6 +279,13 @@ sctx_write_manifest() {
   # Timestamp
   SCTX_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S+00:00)
 
+  # Plugin installation root — lets spawned agents resolve bundled resources
+  # (domain-packages/, templates/) that do NOT exist in the user project CWD.
+  # CLAUDE_PLUGIN_ROOT is set by Claude Code for hook execution; fallback:
+  # parent of the hooks/ directory (SCRIPT_DIR is set by the parent hook).
+  SCTX_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR:-.}/.." 2>/dev/null && pwd)}"
+  SCTX_PLUGIN_ROOT_ESC=$(printf '%s' "$SCTX_PLUGIN_ROOT" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
   # Artifact arrays
   SCTX_REQ=$(_sctx_build_artifact_array "$SCTX_CWD" "required" "$SCTX_PHASE")
   SCTX_OPT=$(_sctx_build_artifact_array "$SCTX_CWD" "optional" "$SCTX_PHASE")
@@ -309,7 +316,7 @@ sctx_write_manifest() {
   # Atomic write
   mkdir -p "$(dirname "$SCTX_MANIFEST")"
   cat > "$SCTX_MANIFEST.tmp" <<MANIFEST_EOF
-{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open"}
+{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","plugin_root":"$SCTX_PLUGIN_ROOT_ESC","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open"}
 MANIFEST_EOF
   mv "$SCTX_MANIFEST.tmp" "$SCTX_MANIFEST"
 }

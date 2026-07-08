@@ -1,6 +1,6 @@
 ---
 name: sim-tool-profiles
-description: "Passive simulation tool profiles for replayable execution (verilator, iverilog, vcs, xrun, questa)."
+description: "Internal reference: sim tool profiles (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

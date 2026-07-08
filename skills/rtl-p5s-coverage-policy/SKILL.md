@@ -1,6 +1,6 @@
 ---
 name: rtl-p5s-coverage-policy
-description: "Policy rules, coverage targets (90% line, 80% toggle, 70% FSM), gap prioritization heuristics, 3-round iterative refinement protocol, and checklists. Pure reference — no orchestration."
+description: "Internal reference: rtl p5s coverage policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 
@@ -48,22 +48,15 @@ with structured, actionable feedback — not just gap descriptions.
 
 ### Feedback Format (coverage-analyst → testbench-dev)
 
-For each HIGH/CRITICAL gap, coverage-analyst outputs:
-
-| Gap ID | Uncovered Bin | ac_id | Constraint | Sequence | Expected Behavior |
-|--------|--------------|-------|------------|----------|-------------------|
-| G01 | `cg_input.cp_data[overflow]` | REQ-U-012.AC-2 | `i_data >= 2^(WIDTH-1)` | `i_valid=1 → wait 1 cycle → check o_overflow` | `o_overflow` asserted within 2 cycles |
-| G02 | `cg_fsm.cp_transition[IDLE→ERR]` | — | `i_error=1 && state==IDLE` | `reset → i_valid=0 → i_error=1` | FSM transitions to ERR state |
-
-Fields:
-- **ac_id**: Acceptance criterion ID from `iron-requirements.json` that this gap maps to.
-  When `ac_id` is available, the gap report links code coverage gaps to specific acceptance criteria,
-  enabling precise traceability from uncovered bins to requirements.
-  When no `ac_id` is available (requirement lacks structured AC, or gap is structural), use `—` and
-  include the REQ ID reference in the Uncovered Bin or Constraint field instead.
+The canonical table format (columns: Gap ID | Uncovered Bin | Constraint | Sequence |
+Expected Behavior) is OWNED by the coverage-analyst agent prompt ("Directed Test Guidance"
+output format) — the producer. Field semantics:
 - **Constraint**: Signal value ranges or conditions that must hold to reach the uncovered bin
 - **Sequence**: Temporal ordering of stimulus (clock-cycle-level when possible)
 - **Expected Behavior**: Observable DUT response that confirms the bin was hit
+- **ac_id linkage**: not a table column — gaps map to acceptance criteria in the gap report
+  text (e.g., "Gap G01 ... relates to REQ-U-012.AC-3", per coverage-analyst's ac_id protocol);
+  when no structured AC exists, reference the REQ ID instead
 
 ### Testbench-Dev Consumption
 
@@ -138,6 +131,7 @@ When coverage-driven regression converges without meeting targets:
 | Parameter guards | `if (BPC > 16)` | Exclude (dead by design) | Auto (coverage-analyst) |
 | Toggle on wide buses | 128-bit output upper bits | Exclude if functionally verified | Auto (coverage-analyst) |
 | Unimplemented features | 4:2:2 chroma paths (out-of-scope) | Exclude only if explicitly out-of-scope or parameter-disabled; escalate if required by spec | **User** (AskUserQuestion) |
+| Ambiguous spec applicability | Any bin where it is unclear whether the spec requires coverage | Escalate — exclude only with explicit confirmation | **User** (AskUserQuestion) |
 
 ## Coverage Data Processing and Gap Prioritization
 
@@ -215,15 +209,9 @@ data range mismatch and recommend parameterized width derivation per `rtl-p3-uar
 When designs have configurable parameters that activate different code paths (e.g., PPS settings
 in codecs, mode registers in processors, feature enables in peripherals):
 
-1. **test-plan-writer** must identify which parameters control which code paths:
-   ```
-   | Parameter | Value Range | Code Path Activated | Coverage Impact |
-   |-----------|-------------|--------------------|-----------------| 
-   | bits_per_pixel | < 4 bpp | Rate buffer overflow → feasibility masking | Branch coverage in rate_control |
-   | bits_per_pixel | > 8 bpp | All modes feasible → no masking | Toggle coverage in mode_selector |
-   | initial_qp | 0-4 | Minimal quantization → large residuals | Line coverage in entropy_coder |
-   | initial_qp | 30-36 | Aggressive quantization → zero residuals | Branch coverage in recon_engine |
-   ```
+1. **test-plan-writer** must identify which parameters control which code paths, as a mapping
+   table with columns `| Parameter | Value Range | Code Path Activated | Coverage Impact |`
+   (e.g., `mode_reg = BYPASS → bypass datapath activated → branch coverage in {module}_ctrl`)
 
 2. **coverage-analyst** uses this mapping to diagnose coverage gaps:
    - Gap in rate_control branch? → Check if low-bpp config was tested

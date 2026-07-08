@@ -1,6 +1,6 @@
 ---
 name: verification-recheck-policy
-description: "Passive policy defining minimum re-validation matrix by change type after review/refactor work."
+description: "Internal reference: verification recheck policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

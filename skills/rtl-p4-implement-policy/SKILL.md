@@ -1,6 +1,6 @@
 ---
 name: rtl-p4-implement-policy
-description: "Policy rules, 10-Wave pipeline definitions, coding conventions, wave overlap strategy, escalation conditions, and checklists for the Phase 4 RTL implementation pipeline. Pure reference — no orchestration."
+description: "Internal reference: rtl p4 implement policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 
@@ -17,6 +17,9 @@ Wave 0:  Prepare      — **Wave 0: Preparation + Test Plan**
 Wave 1:  Write All    — One rtl-coder per module, all parallel
 Wave 2:  Lint All     — One lint-checker per module, all parallel, collect results
 Wave 3:  Fix Lint     — ONLY FAIL modules, max 3 rounds, re-lint only fixes
+Wave 3.5: Synth Gate  — synthesizability-gate per lint-clean module, parallel (HARD GATE:
+         zero inferred latches / incomplete assignments / non-synth constructs, AND
+         DC-script-emittable; max 2 fix rounds, then rtl-architect escalation)
 Wave 4:  Code Review  — rtl-critic per lint-clean module, parallel
 Wave 5:  Bugfix       — ONLY REVIEW_FAIL modules, max 3 review→fix iterations
 Wave 6a: Tier 1 Smoke — testbench-dev + eda-runner per module, parallel
@@ -36,12 +39,7 @@ Key principles:
 
 ## Wave Overlap Rules
 
-- Waves 1-3 (Write/Lint/Fix): batch, then progress together
-- Waves 4-5 (Review/Bugfix): REVIEW_PASS modules proceed to Wave 6a immediately
-- Wave 6a (Smoke): per-module, can overlap; Wave 6b (Tier 2): global, starts after ALL modules pass Wave 6a
-- Waves 7-8 (CDC/Protocol): can overlap for different modules, parallel with Wave 6b
-- Wave 9 (Refactor): requires Wave 6b complete (avoids invalidating unit_results)
-- Wave 10 (Integration + Gate): requires ALL modules complete Waves 1-9
+Owned by the wave sequencer: see "Wave Overlap Rules" in the p4-implement-orchestrator agent prompt (modules progress through waves independently per that schedule).
 
 ## Per-Module State Tracker Schema
 
@@ -78,11 +76,8 @@ All RTL produced in Phase 4 MUST follow:
 
 ## Memory Wrapper Rules
 
-Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use standardized wrappers:
-
-**Wrapper placement**: `rtl/common/` (shared across modules)
-
-**Standard wrappers** (parameterized behavioral models for simulation, replaced by foundry macros for synthesis):
+Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use the standardized
+wrappers in `rtl/common/` (parameterized behavioral models for simulation, foundry macros for synthesis):
 
 | Wrapper | File | Use |
 |---------|------|-----|
@@ -90,46 +85,12 @@ Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use sta
 | `sram_tp` | `rtl/common/sram_tp.sv` | Two-port: 1W + 1R, single clock (`clk`) |
 | `sram_dp` | `rtl/common/sram_dp.sv` | Dual-port: 1W + 1R, dual clock (`wclk`/`rclk`) |
 
-**Parameter contract**:
-- `DEPTH`: number of entries (power-of-2 recommended for efficient address decode)
-- `WIDTH`: bits per entry
-- Derived: `ADDR_W = $clog2(DEPTH)` (localparam inside wrapper)
-
-**Port naming** (SP example):
-- `clk` — clock
-- `i_ce` — chip enable (active-high)
-- `i_we` — write enable (active-high)
-- `i_addr [ADDR_W-1:0]` — address
-- `i_wdata [WIDTH-1:0]` — write data
-- `o_rdata [WIDTH-1:0]` — read data (1-cycle latency, registered output)
-
-**TP port naming** (two-port: 1W + 1R, single clock):
-- `clk` — clock
-- `i_wen` — write enable
-- `i_waddr [ADDR_W-1:0]` — write address
-- `i_wdata [WIDTH-1:0]` — write data
-- `i_ren` — read enable
-- `i_raddr [ADDR_W-1:0]` — read address
-- `o_rdata [WIDTH-1:0]` — read data (1-cycle latency)
-
-**DP port naming** (dual-port: 1W + 1R, dual clock):
-- `wclk` — write clock
-- `i_wen` — write enable
-- `i_waddr [ADDR_W-1:0]` — write address
-- `i_wdata [WIDTH-1:0]` — write data
-- `rclk` — read clock
-- `i_ren` — read enable
-- `i_raddr [ADDR_W-1:0]` — read address
-- `o_rdata [WIDTH-1:0]` — read data (1-cycle latency, rclk domain)
-
-**Instance naming**: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
-
-**Foundry macro replacement strategy**:
-- Behavioral wrapper is used for simulation and open-source synthesis (Yosys infers BRAM)
-- For ASIC: replace `sram_sp` body with foundry-specific macro instantiation behind `` `ifdef SYNTHESIS `` guard
-- Wrapper interface stays identical — no RTL changes outside the wrapper
-
-**Wave 1 responsibility**: rtl-coder creates `rtl/common/sram_*.sv` wrappers if not already present, then instantiates them in modules per μArch spec.
+- Parameters: `DEPTH`, `WIDTH`; derived `ADDR_W = $clog2(DEPTH)` (localparam inside wrapper)
+- Instance naming: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
+- Full interface spec (per-wrapper port lists, storage selection thresholds, synthesis
+  blackbox/macro-replacement strategy) is OWNED by `.claude/rules/rtl-coding-conventions.md`
+  ("Storage Selection" section, deployed by rat-init-project) — follow it verbatim
+- **Wave 1 responsibility**: rtl-coder creates `rtl/common/sram_*.sv` wrappers if not already present, then instantiates them in modules per μArch spec
 
 ## Combinational Chain Depth Heuristic
 
@@ -221,9 +182,8 @@ REVIEW_PASS requires zero CRITICAL structural findings.
   per-feature result JSON. Deeper per-module verification.
   Extends: `sim/{module}/tb_{module}.sv` (adds reference comparison logic to
   existing Wave 6a TBs, does NOT replace them).
-  Gate: `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`,
-  coverage meeting thresholds (FSM >= 50%, line >= 60%), `req_ids` populated,
-  `func_coverage.covergroups_defined >= 1`, and `codec_conformance` PASS/N/A.
+  Gate: Tier 2 gate per "Phase 4 Gate Criteria" below (single normative statement
+  of thresholds and required `{module}_unit_results.json` fields).
 - **rtl-p4s-unit-test** (standalone skill): Can still be invoked independently
   for ad-hoc Tier 2 testing outside the pipeline
 
@@ -276,6 +236,11 @@ ALL of the following must be true before Phase 5:
 **Lint:**
 - [ ] All files pass `verilator --lint-only -Wall` with zero errors
 - [ ] No module blocked after 3 lint fix rounds
+
+**Synthesizability (HARD — Wave 3.5):**
+- [ ] reviews/phase-4-rtl/{module}-synthesizability.md exists for every module with verdict PASS
+- [ ] Wave 10 Stream-B synth smoke (stream-b-synth-estimate.md) reports zero CRITICAL
+      (inferred latches / unmappable constructs) — gate-blocking, not advisory
 
 **Code Review:**
 - [ ] All modules reviewed by rtl-critic (Wave 4)

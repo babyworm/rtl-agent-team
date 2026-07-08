@@ -1,6 +1,6 @@
 ---
 name: ppa-optimizer-dc-policy
-description: "Policy rules, weights defaults, timing-first heuristic, convergence criteria, DC Tcl fragments, and rollback protocol for the DC-based PPA optimization pipeline. Pure reference — no orchestration."
+description: "Internal reference: ppa optimizer dc policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

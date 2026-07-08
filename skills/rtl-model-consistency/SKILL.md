@@ -1,6 +1,6 @@
 ---
 name: rtl-model-consistency
-description: This skill should be used when the user asks to "check model consistency", "3-way comparison", "verify ref model vs BFM vs RTL", "detect model drift", "cross-model comparison", or when bitexact consistency between the C reference model, SystemC BFM, and RTL simulation must be confirmed on shared test vectors.
+description: "3-way bitexact comparison of C ref model vs SystemC BFM vs RTL on shared vectors; isolates which model drifted. Triggers: 'model consistency', 'model drift'."
 user-invocable: true
 argument-hint: "[--vectors path/to/test_vectors.bin | --generate N]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob

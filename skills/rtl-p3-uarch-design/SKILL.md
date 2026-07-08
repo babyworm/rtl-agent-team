@@ -1,6 +1,6 @@
 ---
 name: rtl-p3-uarch-design
-description: "Phase 3 uArch design. Concretizes P2 modules into sub-blocks with clock domains, protocol assignment, register/SRAM/FSM allocation. Validates via TLM-based BFM with per-block I/O logging."
+description: "Phase 3 uArch design: maps P2 blocks to sub-blocks with clock domains, FSM/SRAM allocation, BFM validation. Use for 'uarch', 'microarchitecture', 'Phase 3'."
 user-invocable: true
 argument-hint: "[--resume | uarch-focus]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
@@ -28,8 +28,9 @@ assignments, register/SRAM/FSM allocation, and BFM validation.
 
 Phase 2 completion required:
 - `docs/phase-2-architecture/architecture.md` must exist
+- `refc/` directory with C reference model must exist
 
-If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:p2-arch-design`.
+If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:p2-arch-design`.
 Proceed with available artifacts — orchestrator will adapt scope.
 
 ## Execution
@@ -39,7 +40,7 @@ Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
 
 Do not perform any work directly.
 The orchestrator agent manages domain consultation, parallel uarch design + BFM
-development, BFM validation gate, and 5-reviewer 3-round review.
+development, BFM validation gate, and 5-reviewer dynamic-convergence review (min 2, max 5 rounds).
 
 ## Workflow Notes
 

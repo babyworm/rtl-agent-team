@@ -1,6 +1,6 @@
 ---
 name: rtl-p4-rapid-impl-policy
-description: "Policy for P4 rapid RTL implementation and block sanity integration. Defines quick-loop gates, failure handling, and minimum quality bars."
+description: "Internal reference: rtl p4 rapid impl policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

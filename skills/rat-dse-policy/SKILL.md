@@ -1,6 +1,6 @@
 ---
 name: rat-dse-policy
-description: "Policy rules, DSE methodology, comparison matrix formats, C model transformation rules, self-critique protocol, trial comparison, and gate criteria for the iterative Design Space Exploration pipeline (Phase 1→3). Pure reference — no orchestration."
+description: "Internal reference: rat dse policy (agent-loaded; do not invoke)."
 user-invocable: false
 ---
 

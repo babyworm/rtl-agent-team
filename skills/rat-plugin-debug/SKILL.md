@@ -1,6 +1,6 @@
 ---
 name: rat-plugin-debug
-description: "Plugin diagnostics: version, EDA tool status, state files, hook health. Use when troubleshooting setup or verifying environment."
+description: "Plugin diagnostics: version, EDA tool status, state files, hook health. Triggers: 'rat debug', 'plugin status', troubleshooting plugin behavior."
 user-invocable: true
 allowed-tools: Bash, Read, Glob, Grep
 ---
