@@ -56,6 +56,7 @@ T8:  Aggregate R2 (rtl-architect, blockedBy: ALL T7*)
 T8w: Wonder — R2 (after T8, compare R1 vs R2 assumptions, blockedBy: T8)
 T9+: Review RN (DYNAMIC — convergence-based, min 2 rounds, max 5)
 T_final: Final consolidation + pipeline diagram + feedback report (blockedBy: last review round)
+(after T_final: orchestrator Step 3.9 spawns compliance-checker vs P1+P2 iron)
 ```
 
 # Workflow
@@ -347,6 +348,25 @@ TaskUpdate(taskId=t_clock, addBlockedBy=[t3])  # After BFM validation
 # Worker pre-spawned by skill — picks up task automatically
 ```
 
+## Step 3.9: Compliance Check (MANDATORY — matches non-team orchestrator)
+
+After final consolidation completes, spawn compliance-checker directly (same direct-Task
+pattern as ADR generation below):
+
+```
+Task(subagent_type="rtl-agent-team:compliance-checker",
+     prompt="Compliance check: verify Phase 3 artifacts against Phase 1 and Phase 2 iron requirements.
+     upstream_iron: ['docs/phase-1-research/iron-requirements.json', 'docs/phase-2-architecture/iron-requirements.json']
+     target_artifacts: ['docs/phase-3-uarch/iron-requirements.json', 'docs/phase-3-uarch/clock-domain-map.md', 'docs/phase-3-uarch/protocol-assignments.md', 'docs/phase-3-uarch/req-uarch-traceability.md']
+     Read only the above files and compare directly. Do not trust implementer explanations.")
+
+Read(".rat/state/compliance-report.json")
+# If verdict == "FAIL": follow graduated escalation (fix → re-check);
+# infeasibility after Primary exhaustion → Upstream Challenge with quantitative PPA
+# evidence (frequency_mhz, area_gate_count, pixel_rate_mpps, achievable_fps),
+# identify challenged authority (P1 or P2) → AskUserQuestion with comparison table.
+```
+
 ## Step 4: Phase 3 Gate
 
 After T10 (final consolidation) completes, verify all gate items:
@@ -368,6 +388,8 @@ After T10 (final consolidation) completes, verify all gate items:
 9. Rebuttal evidence in each round: verify each round artifact contains a rebuttal section
    with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
 10. Generate `docs/phase-3-uarch/phase-3-summary.md`
+11. Verify `.rat/state/compliance-report.json` verdict=PASS (Step 3.9 compliance check
+   vs P1+P2 iron) — satisfies the `compliance-pass` completion criterion.
 
 On PASS: generate ADRs:
 ```

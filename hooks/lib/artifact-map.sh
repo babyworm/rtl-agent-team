@@ -18,6 +18,7 @@ docs/phase-1-research/iron-requirements.json|p1-iron-requirements
 docs/phase-1-research/io_definition.json|p1-io-definition
 docs/phase-1-research/domain-analysis.md|p1-domain-analysis
 docs/phase-1-research/timing_constraints.json|p1-timing-constraints
+docs/phase-1-research/feature-coverage.md|p1-feature-coverage
 EOF
       ;;
     3)
@@ -61,6 +62,7 @@ artmap_optional() {
     2)
       cat <<'EOF'
 docs/phase-1-research/open-requirements.json|p1-open-requirements
+docs/phase-1-research/spec-feature-inventory.json|p1-spec-feature-inventory
 EOF
       ;;
     3)

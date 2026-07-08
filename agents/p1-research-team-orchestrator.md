@@ -63,6 +63,10 @@ T9:  Review R2 (blockedBy: T8 or T7 if no issues)
 T10: Revision R2 (DYNAMIC — created only if T9 finds issues, blockedBy: T9)
 T11: Review R3 (MANDATORY, blockedBy: T10 or T9 if no issues)
 T12: Final verification + artifacts (spec-analyst, blockedBy: T11)
+T12b: Independent spec feature census (spec-analyst clean context, blockedBy: T12)
+T12c: Feature coverage diff (rtl-architect, blockedBy: T12b)
+T13a: Adversarial reinterpretation challenge (spec-analyst clean context, blockedBy: T12c)
+T13b: Re-analyze with clarifications + coverage re-bind (spec-analyst, blockedBy: T13a + Step 3.6 user resolution)
 ```
 
 # Workflow
@@ -235,6 +239,14 @@ while not all_tasks_complete:
         TaskUpdate(taskId=t12c, addBlockedBy=[t12b])
         created_groups.add("T12b")
 
+    # === T13a: Adversarial Reinterpretation (policy Steps 7.6-7.9 parity) ===
+    if "T13" not in created_groups and task_completed(t12c):
+        Bash("mkdir -p .rat/scratch/stability/phase-1 && cp docs/phase-1-research/iron-requirements.json .rat/scratch/stability/phase-1/output-v1.json")
+        t13a = TaskCreate(subject="T13a: Adversarial reinterpretation challenge",
+                          description="ADVERSARIAL REINTERPRETATION MODE — spawn spec-analyst via Task() with a clean context. Challenge iron-requirements.json per p1-spec-research-policy adversarial protocol. Emit BOTH challenge types: REINTERPRETATION (alternative reading of an extracted item) AND OMISSION (spec feature/section with zero REQ mapping — cross-check docs/phase-1-research/spec-feature-inventory.json; original_interpretation=NOT_EXTRACTED, severity HIGH). Reference items by source.section (NOT requirement ID). Save to .rat/scratch/stability/phase-1/challenge-report.json per the challenge-report schema. Max 30 challenges.")
+        TaskUpdate(taskId=t13a, addBlockedBy=[t12c])
+        created_groups.add("T13")
+
     # === Write-restricted agent handling ===
     # Check .rat/scratch/phase-1/ for completed scratch files
     # Copy to final location
@@ -285,9 +297,34 @@ TaskUpdate(taskId=t_ambiguity, addBlockedBy=[t12])
 #    - ambiguity_score > 0.5 → FAIL (AskUserQuestion to resolve top-3 ambiguous items, then re-score)
 ```
 
+## Step 3.6: Challenge Resolution (leader — AskUserQuestion)
+
+After T13a completes, per p1-spec-research-policy: present HIGH challenges individually
+via AskUserQuestion, MEDIUM batched (summary if >10), LOW auto-documented. User may mark
+NOT_GENUINE. Update challenge-report.json with resolution status; accumulate clarifications.
+
+## Step 3.7: Re-run with Clarifications + Coverage Re-bind
+
+```python
+t13b = TaskCreate(subject="T13b: Re-analyze with clarifications",
+                  description="Re-run spec-analyst with the original spec + accumulated clarifications from Step 3.6. Produce ALL 4 canonical artifacts (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json) + self-validation. THEN re-run the feature-coverage diff (rtl-architect) against the REGENERATED iron ∪ open requirements and refresh docs/phase-1-research/feature-coverage.md — the audited coverage must bind to the FINAL artifacts. If missing > 0, report for Gap Escalation.")
+TaskUpdate(taskId=t13b, addBlockedBy=[t13a])
+```
+
+## Step 3.8: Adversarial Gate Check
+
+Per policy Gate Metric: gate_pass = (all HIGH resolved) AND (resolution_ratio >= 0.8).
+On FAIL: loop back to Step 3.6 (max 1 re-loop), then escalate to user.
+
+```
+Read(".rat/scratch/stability/phase-1/challenge-report.json")
+Bash("python3 {plugin_root}/scripts/stability_check.py .rat/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
+```
+
 ## Step 4: Phase 1 Gate
 
-After T12 (final verification + artifacts) AND ambiguity gate completes:
+After T12 (final verification + artifacts) AND the ambiguity gate (Step 3.5) AND the
+adversarial gate (Steps 3.6-3.8) complete:
 1. Verify `docs/phase-1-research/iron-requirements.json` exists and is valid JSON (REQUIRED — settled requirements). `docs/phase-1-research/open-requirements.json` is OPTIONAL (absent is OK if Phase 1 had no deferred research items)
 2. Verify `docs/phase-1-research/io_definition.json` exists with i_/o_/io_ port prefixes
 3. Verify `docs/phase-1-research/timing_constraints.json` exists with per-block timing targets
@@ -309,7 +346,11 @@ After T12 (final verification + artifacts) AND ambiguity gate completes:
 14. Verify `docs/phase-1-research/spec-feature-inventory.json` exists (independent census, T12b)
 15. Verify `docs/phase-1-research/feature-coverage.md` exists with zero MISSING features
    (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR) — satisfies `feature-coverage-audited`.
-   FAIL if missing > 0 without user-approved exclusion.
+   FAIL if missing > 0 without user-approved exclusion. Must reflect a re-diff after
+   T13b regenerated the requirements (coverage binds to the FINAL artifact state).
+16. Verify `.rat/scratch/stability/phase-1/challenge-report.json` has all HIGH challenges
+   resolved and resolution_ratio ≥ 0.8 (Step 3.8 adversarial gate)
+17. Verify `reviews/phase-1-research/stability-report.md` exists
 
 ## Step 5: Codex Cross-Review (MANDATORY — after gate PASS)
 

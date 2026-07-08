@@ -41,7 +41,7 @@
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json"],
       "open_requirements": "docs/phase-2-architecture/open-requirements.json",
-      "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|ambiguity-pass"
+      "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|compliance-pass|ambiguity-pass"
     },
     "rtl-p4-implement": {
       "phase": 4,

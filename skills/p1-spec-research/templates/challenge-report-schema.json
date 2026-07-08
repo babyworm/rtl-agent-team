@@ -9,7 +9,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["target_source", "original_interpretation", "alternative_interpretation", "spec_evidence", "impact", "severity"],
+        "required": ["target_source", "challenge_type", "original_interpretation", "alternative_interpretation", "spec_evidence", "impact", "severity"],
         "properties": {
           "target_source": {
             "type": "object",

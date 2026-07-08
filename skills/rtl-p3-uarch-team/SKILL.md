@@ -119,4 +119,4 @@ Bash("rm -rf .rat/scratch/phase-3/")
 - Open Resolution: resolve all OPEN-2-* items from Phase 2 `open-requirements.json`
 - Zero-Opens Invariant: no unresolved OPEN-* items may pass to Phase 4
 - Exit gate includes `open-resolved`, `zero-remaining-opens`, and `ambiguity-pass`
-- Note: `compliance-pass` will be added when team orchestrator is updated to invoke compliance-checker
+- Exit gate includes `compliance-pass` (compliance-checker vs P1+P2 iron, orchestrator Step 3.9)

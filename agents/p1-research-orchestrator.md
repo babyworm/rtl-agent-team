@@ -413,7 +413,13 @@ On FAIL: loop back to Step 7.7 (max 1 re-loop), then escalate.
 ```
 Read(".rat/scratch/stability/phase-1/challenge-report.json")
 # Compute gate per policy formula
-Bash("python3 scripts/stability_check.py .rat/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
+Bash("python3 {plugin_root}/scripts/stability_check.py .rat/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
+
+# Coverage re-bind (MANDATORY): Step 7.8 regenerated iron/open artifacts, so the
+# Step 7.5c coverage verdict is stale. Re-run the mechanical diff (Step 7.5c step 2,
+# rtl-architect) against the FINAL iron ∪ open requirements and refresh
+# docs/phase-1-research/feature-coverage.md. MISSING > 0 → Gap Escalation per policy.
+# The audited coverage MUST correspond to the final artifact state.
 ```
 
 ## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)
