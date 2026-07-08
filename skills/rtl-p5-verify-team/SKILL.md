@@ -67,7 +67,9 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:p5-verify-team-orches
              "Manage the 9-category task graph using TaskCreate/TaskList/TaskUpdate. "
              "Direct workers via SendMessage. "
              "Create per-module V1-V9 task graph after discovering modules. "
-             "Signal leader when final compliance review complete. User input: $ARGUMENTS")
+             "Signal leader ONLY after final compliance, the Phase 5 summary task (S3.5), "
+             "and the mandatory Codex cross-review (Step 6) are ALL complete. "
+             "User input: $ARGUMENTS")
 
 # Step 6: Spawn workers as teammates (4 general-purpose)
 Agent(team_name="p5-verify", subagent_type="rtl-agent-team:func-verifier",

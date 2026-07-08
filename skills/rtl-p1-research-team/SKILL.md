@@ -74,8 +74,9 @@ Agent(team_name="p1-research", subagent_type="rtl-agent-team:p1-research-team-or
              "Create dynamic tasks (T3a-N deep-dive, T5-T12, then T12b/T12c census+coverage, "
              "T13a adversarial challenge, T13b re-run+re-bind) as the workflow progresses. "
              "Signal leader ONLY after the Phase 1 Gate (Step 4) passes — i.e., after T13b, "
-             "the adversarial gate (Step 3.8), and the feature-coverage/ambiguity re-binds "
-             "are complete. User input: $ARGUMENTS")
+             "the adversarial gate (Step 3.8), the feature-coverage/ambiguity re-binds, "
+             "and the mandatory Codex cross-review (Step 5) are ALL complete. "
+             "User input: $ARGUMENTS")
 
 # Step 6: Spawn workers as teammates (3-5 general-purpose)
 Agent(team_name="p1-research", subagent_type="rtl-agent-team:spec-analyst",

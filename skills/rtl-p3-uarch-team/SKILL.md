@@ -69,7 +69,9 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:p3-uarch-team-orchestr
              "Direct workers via SendMessage. "
              "Initial tasks T1 (uarch) and T2 (BFM) already created by leader. "
              "Create dynamic tasks (T3 BFM gate, T4-T10 review rounds). "
-             "Signal leader when T10 complete. User input: $ARGUMENTS")
+             "Signal leader ONLY after the Phase 3 Gate (Step 4) passes — including the "
+             "Step 3.9 compliance check, ADR generation, and the mandatory Codex cross-review. "
+             "User input: $ARGUMENTS")
 
 # Step 6: Spawn workers as teammates (3 general-purpose)
 Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:uarch-designer",

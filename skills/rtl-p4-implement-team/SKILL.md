@@ -64,7 +64,9 @@ Agent(team_name="p4-implement", subagent_type="rtl-agent-team:p4-implement-team-
              "Manage the 10-wave task graph using TaskCreate/TaskList/TaskUpdate. "
              "Direct workers via SendMessage. "
              "Create per-module 10-wave task graph after reading uarch specs. "
-             "Signal leader when integration gate passes. User input: $ARGUMENTS")
+             "Signal leader ONLY after the Phase 4 Gate (Step 4 — all required checks "
+             "and artifacts, not merely the W10 integration gate) passes, including the "
+             "mandatory Codex cross-review. User input: $ARGUMENTS")
 
 # Step 6: Spawn workers as teammates (4 general-purpose)
 Agent(team_name="p4-implement", subagent_type="rtl-agent-team:rtl-coder",
