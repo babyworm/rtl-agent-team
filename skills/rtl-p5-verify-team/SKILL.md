@@ -109,12 +109,20 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:rtl-critic",
              "Examples: requirement-tracer for REQ mapping, rtl-critic for review. "
              "Follow the Team Worker Protocol section of your agent definition.")
 
-# Step 7: Leader monitoring loop — poll until all tasks complete
+# Step 7: Leader wait — teardown is gated on the COORDINATOR SIGNAL, not on TaskList.
+# "All tasks completed" is necessary but NOT sufficient: the coordinator's post-gate
+# work (compliance check, ADR generation, phase summary, Codex cross-review) runs via
+# direct Task() calls that never appear in the shared task graph.
 while True:
-    tasks = TaskList()
-    all_done = all(t.status == "completed" for t in tasks)
-    if all_done:
+    if coordinator_signaled_phase_complete:
+        # SendMessage from 'coordinator' — sent only after the phase gate
+        # AND all post-gate mandatory steps pass (see coordinator prompt above)
         break
+    tasks = TaskList()
+    if all(t.status == "completed" for t in tasks):
+        # Task graph drained but no coordinator signal yet → the coordinator is
+        # still running gate/post-gate steps. KEEP WAITING — do NOT TeamDelete.
+        pass
     # Continue polling
 
 # Step 8: Cleanup
