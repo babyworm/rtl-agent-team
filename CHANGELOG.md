@@ -7,6 +7,56 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-08
+
+### Added
+- **Spec Feature Completeness Gate (P1)** — closes the partial-implementation blind spot
+  where a subset extraction (e.g., 5 of 10 encoding modes) passed every downstream gate.
+  New protocol: independent clean-context feature census (`spec-feature-inventory.json`,
+  FEAT-NNN with spec sources) + mechanical FEAT↔REQ diff (`feature-coverage.md` with
+  EXTRACTED / EXCLUDED_BY_SCOPE / MISSING statuses) + mandatory user gap escalation.
+  Wired as solo Step 7.5c and team T12b/T12c with `feature-coverage-audited` completion
+  criterion in both registries. Coverage and ambiguity verdicts re-bind to the FINAL
+  artifacts after the adversarial re-run (Steps 7.8/7.9, T13b/3.8).
+- **OMISSION challenge type** in the adversarial reinterpretation gate — spec
+  features with zero REQ mapping are now expressible challenges (schema-required
+  `challenge_type`, severity HIGH, `original_interpretation=NOT_EXTRACTED`).
+- **Team P1 adversarial gate parity** — T13a challenge task + leader Steps 3.6-3.8
+  (resolution / re-run / gate + stability report); team P1 criteria now identical to solo.
+- **Team P2/P3 compliance parity** — compliance-checker step (P2 Step 3.9/T14 vs P1 iron;
+  P3 Step 3.9 vs P1+P2 iron) + `compliance-pass` criterion in both registries.
+- **`plugin_root` in spawn-context manifest** — bundled plugin resources
+  (`domain-packages/`, `scripts/`) are now reachable from user-project CWDs via the
+  `{plugin_root}` path convention (dual-scan domain-package discovery included).
+
+### Changed
+- **Always-on context budget** — 97 skill frontmatter descriptions rewritten:
+  56 action skills follow a ≤160-char routing-trigger contract; 41 internal skills carry
+  minimal one-liners (total name+description 20,956 → ~13,500 chars). SessionStart inject
+  slimmed 10,775 → ~9,500 chars (delegation table and invocation cues moved to the
+  agent-side rtl-orchestrate body).
+- **Single-owner policy dedup** — six largest policies deduplicated against their
+  orchestrators (p1 351→308, p3 418→363, rat-auto-design 335→256, p4 340→305,
+  p5 320→280, coverage 236→224 lines) with verified owner copies for every gate
+  criterion/threshold.
+- **Convention-skill delivery chain repaired** — systemverilog/systemc/uvm/sva trimmed
+  to project-specific cores (575→214 / 451→164 / 297→94 / 260→147 lines) and wired into
+  writer agents via `skills:` frontmatter (rtl-coder, testbench-dev, bfm-dev,
+  sva-extractor, protocol-checker); previously no mechanism loaded them.
+- **rat-setup** — 817→436 lines; static install/check/template content extracted to
+  on-demand `references/` files (skill-base-relative paths).
+- **RAT audit protocol inlined** — the dead `agents/lib/audit-output-protocol.md`
+  pointer in all 99 agents replaced with a condensed 5-line inline block
+  (`scripts/add-rat-protocol.sh` regenerates).
+- **Team lifecycle hardening** — all 5 team-skill coordinator prompts signal the leader
+  only after the full phase gate + post-gate steps (compliance/ADR/summary/Codex review);
+  leader teardown now waits for the coordinator's explicit completion signal instead of
+  a drained task graph (fixes an early-TeamDelete race).
+- **Drift fixes** — P2/P3 review protocol wording aligned to dynamic convergence
+  (min 2, max 5 rounds) across 6 files; Wave 3.5 synthesizability HARD gate added to the
+  P4 policy; team/non-team prerequisite parity (P5 rapid-path proof, P3 refc/); stale
+  hook-enforcement table corrected.
+
 ## [0.11.4] - 2026-05-26
 
 ### Added

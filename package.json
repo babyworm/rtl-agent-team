@@ -1,6 +1,6 @@
 {
   "name": "rtl-agent-team",
-  "version": "0.11.4",
+  "version": "0.12.0",
   "description": "RTL design and verification automation plugin for Claude Code",
   "files": [
     "agents",
