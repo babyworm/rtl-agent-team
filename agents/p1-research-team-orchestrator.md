@@ -307,7 +307,7 @@ NOT_GENUINE. Update challenge-report.json with resolution status; accumulate cla
 
 ```python
 t13b = TaskCreate(subject="T13b: Re-analyze with clarifications",
-                  description="Re-run spec-analyst with the original spec + accumulated clarifications from Step 3.6. Produce ALL 4 canonical artifacts (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json) + self-validation. THEN re-run the feature-coverage diff (rtl-architect) against the REGENERATED iron ∪ open requirements and refresh docs/phase-1-research/feature-coverage.md — the audited coverage must bind to the FINAL artifacts. If missing > 0, report for Gap Escalation.")
+                  description="Re-run spec-analyst with the original spec + accumulated clarifications from Step 3.6. Produce ALL 4 canonical artifacts (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json) + self-validation. THEN re-run the feature-coverage diff (rtl-architect) against the REGENERATED iron ∪ open requirements and refresh docs/phase-1-research/feature-coverage.md — the audited coverage must bind to the FINAL artifacts. If missing > 0, report for Gap Escalation. ALSO refresh docs/phase-1-research/ambiguity-assessment.md: re-score the 3 axes (Goal 40% / Constraint 30% / AC 30%) against the regenerated requirements — the Step 3.8 dual gate and Step 4 item 11 use this refreshed score, not the Step 3.5 one.")
 TaskUpdate(taskId=t13b, addBlockedBy=[t13a])
 ```
 
@@ -315,6 +315,8 @@ TaskUpdate(taskId=t13b, addBlockedBy=[t13a])
 
 Per policy Gate Metric: gate_pass = (all HIGH resolved) AND (resolution_ratio >= 0.8).
 On FAIL: loop back to Step 3.6 (max 1 re-loop), then escalate to user.
+Dual Gate Arbitration (per policy) uses the ambiguity score REFRESHED by T13b
+(re-scored on the final artifacts), never the pre-adversarial Step 3.5 score.
 
 ```
 Read(".rat/scratch/stability/phase-1/challenge-report.json")
@@ -335,7 +337,8 @@ adversarial gate (Steps 3.6-3.8) complete:
 8. Verify `docs/phase-1-research/solution-tree.json` exists
 9. Verify `reviews/phase-1-research/research-review.md` exists (consolidated)
 10. Count spec features vs REQ items — flag suspected omissions
-11. Verify `docs/phase-1-research/ambiguity-assessment.md` exists with ambiguity_score ≤ 0.5
+11. Verify `docs/phase-1-research/ambiguity-assessment.md` exists with ambiguity_score ≤ 0.5,
+   RE-SCORED by T13b against the final artifacts (satisfies `ambiguity-pass`)
 12. **Per-round artifacts** (enforces 3-round review protocol per p1-spec-research-policy):
    - `reviews/phase-1-research/research-review-r1.md` — Round 1 findings with [severity] tags
    - `reviews/phase-1-research/research-review-r2.md` — Round 2 rebuttal + convergence assessment

@@ -402,6 +402,9 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
      - docs/phase-1-research/timing_constraints.json
 
      Include self-validation (re-read spec, verify all features covered).
+     ALSO refresh docs/phase-1-research/ambiguity-assessment.md: re-score the 3 axes
+     (Goal 40% / Constraint 30% / AC 30%) against the REGENERATED requirements —
+     the Step 7.9 Dual Gate Arbitration uses this refreshed score, not the Step 7.5a one.
      Save all files using Write tool.")
 ```
 
@@ -420,6 +423,11 @@ Bash("python3 {plugin_root}/scripts/stability_check.py .rat/scratch/stability/ph
 # rtl-architect) against the FINAL iron ∪ open requirements and refresh
 # docs/phase-1-research/feature-coverage.md. MISSING > 0 → Gap Escalation per policy.
 # The audited coverage MUST correspond to the final artifact state.
+
+# Ambiguity re-bind (MANDATORY): the Dual Gate Arbitration below uses the
+# ambiguity-assessment.md REFRESHED by Step 7.8 (re-scored on the final artifacts),
+# never the pre-adversarial Step 7.5a score. If Step 7.8 did not refresh it, re-run
+# the ambiguity assessment now before computing the dual gate.
 ```
 
 ## Step 8: Codex Cross-Review (MANDATORY — after gate review PASS)

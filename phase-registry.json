@@ -20,7 +20,7 @@
       "primary": false,
       "iron_upstream": [],
       "open_requirements": "",
-      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|feature-coverage-audited"
+      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|ambiguity-pass|feature-coverage-audited"
     },
     "rtl-p2-arch-team": {
       "phase": 2,

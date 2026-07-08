@@ -15,7 +15,7 @@
   "rtl-p5a-functional-closure": "functional-closure-pass|artifacts-written",
   "rtl-p5b-silicon-validation": "synthesis-pass|signoff-check|artifacts-written",
   "rtl-p6-design-review": "design-note-written|consistency-check-pass",
-  "rtl-p1-research-team": "spec-analysis-complete|review-rounds-done|artifacts-written|feature-coverage-audited",
+  "rtl-p1-research-team": "spec-analysis-complete|review-rounds-done|artifacts-written|ambiguity-pass|feature-coverage-audited",
   "rtl-p2-arch-team": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|compliance-pass|ambiguity-pass",
   "rtl-p3-uarch-team": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|compliance-pass|ambiguity-pass",
   "rtl-p4s-bugfix": "fix-applied|lint-pass|test-pass",
