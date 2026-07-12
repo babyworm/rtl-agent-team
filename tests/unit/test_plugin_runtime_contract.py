@@ -753,3 +753,42 @@ class TestTeamConfigTemplate:
         data = json.loads(self.TEMPLATE.read_text())
         assert data["team_mode"] is False
         assert data["team_name"] == ""
+
+
+class TestSkillDescriptionLengthContract:
+    """User-invocable skill descriptions must stay within the 160-char budget.
+
+    Descriptions are always-on context (Layer 4 frontmatter loads at session
+    start for every skill). The 160-char cap keeps the progressive-disclosure
+    budget bounded; a runaway description silently inflates every session.
+    """
+
+    MAX_DESCRIPTION_CHARS = 160
+
+    def _skill_description(self, skill_name: str) -> str:
+        skill_file = SKILLS_DIR / skill_name / "SKILL.md"
+        content = skill_file.read_text()
+        parts = content.split("---", 2)
+        assert len(parts) >= 3, f"Missing YAML frontmatter: {skill_file}"
+        frontmatter = parts[1]
+        match = re.search(r"^description:\s*(.*)$", frontmatter, re.MULTILINE)
+        assert match, f"Missing description field in: {skill_file}"
+        desc = match.group(1).strip()
+        if len(desc) >= 2 and desc[0] in "\"'" and desc[-1] == desc[0]:
+            desc = desc[1:-1]
+        return desc
+
+    def test_user_invocable_skill_descriptions_within_limit(self):
+        violations = []
+        for skill_dir in sorted(SKILLS_DIR.iterdir()):
+            if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
+                continue
+            if not _skill_user_invocable(skill_dir.name):
+                continue
+            desc = self._skill_description(skill_dir.name)
+            if len(desc) > self.MAX_DESCRIPTION_CHARS:
+                violations.append(f"{skill_dir.name}: {len(desc)} chars")
+        assert violations == [], (
+            f"User-invocable skills exceeding {self.MAX_DESCRIPTION_CHARS}-char "
+            f"description limit:\n" + "\n".join(violations)
+        )

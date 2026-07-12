@@ -217,3 +217,38 @@ class TestSkillCompletionCriteriaNewEntries:
     @pytest.mark.parametrize("skill", ["rtl-p3-uarch-team"])
     def test_p3_team_has_zero_remaining_opens(self, criteria, skill):
         assert "zero-remaining-opens" in criteria[skill]
+
+    @pytest.mark.parametrize("skill", ["p1-spec-research", "rtl-p1-research-team"])
+    def test_p1_base_and_team_have_feature_coverage_audited(self, criteria, skill):
+        """v0.12.0: P1 solo + team completion criteria require the feature census
+        audit (feature-coverage-audited), alongside the existing P1 tokens."""
+        assert "feature-coverage-audited" in criteria[skill]
+        assert "iron-open-classified" in criteria[skill]
+        assert "ambiguity-pass" in criteria[skill]
+
+
+class TestChallengeReportSchema:
+    """Validate the adversarial challenge report schema (v0.12.0 OMISSION contract)."""
+
+    @pytest.fixture
+    def schema(self):
+        path = (
+            REPO_ROOT
+            / "skills"
+            / "p1-spec-research"
+            / "templates"
+            / "challenge-report-schema.json"
+        )
+        assert path.exists(), f"challenge-report-schema.json not found at {path}"
+        return json.loads(path.read_text())
+
+    def test_per_challenge_requires_challenge_type(self, schema):
+        item_schema = schema["properties"]["challenges"]["items"]
+        assert "challenge_type" in item_schema["required"], (
+            "each challenge must require challenge_type (REINTERPRETATION vs OMISSION)"
+        )
+
+    def test_challenge_type_enum_is_reinterpretation_and_omission(self, schema):
+        item_schema = schema["properties"]["challenges"]["items"]
+        challenge_type = item_schema["properties"]["challenge_type"]
+        assert challenge_type["enum"] == ["REINTERPRETATION", "OMISSION"]

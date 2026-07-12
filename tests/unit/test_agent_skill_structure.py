@@ -128,6 +128,25 @@ class TestAgentDefinitions:
                 missing.append(f.name)
         assert missing == [], f"Agents missing RAT protocol reference: {missing}"
 
+    def test_all_agents_have_inline_rat_block(self, agent_files):
+        """v0.12.0: every agent must carry the actual inline RAT audit block —
+        the [RAT: CATEGORY | SOURCE] tag spec AND the plugin_root path-convention
+        line — not merely a pointer to audit-output-protocol.md."""
+        missing_tag = []
+        missing_plugin_root = []
+        for f in agent_files:
+            content = f.read_text()
+            if "[RAT: CATEGORY | SOURCE]" not in content:
+                missing_tag.append(f.name)
+            if "field `plugin_root`" not in content:
+                missing_plugin_root.append(f.name)
+        assert missing_tag == [], (
+            f"Agents missing inline [RAT: CATEGORY | SOURCE] tag: {missing_tag}"
+        )
+        assert missing_plugin_root == [], (
+            f"Agents missing plugin_root path-convention line: {missing_plugin_root}"
+        )
+
     def test_audit_output_protocol_exists(self):
         """The shared audit output protocol file must exist."""
         protocol = AGENTS_DIR / "lib" / "audit-output-protocol.md"
@@ -148,6 +167,21 @@ class TestAgentDefinitions:
         assert "UNCERTAIN" in content, "Must define UNCERTAIN verdict"
         assert "UNCERTAIN ratio" in content or "anti-rationalization" in content.lower(), "Must include anti-rationalization rules"
         assert "Do not trust" in content, "Must enforce context isolation"
+
+    def test_p1_orchestrators_reference_feature_census_artifacts(self):
+        """v0.12.0: P1 orchestrators (solo + team) must drive the completeness
+        audit — referencing the census (spec-feature-inventory.json) and the
+        coverage diff (feature-coverage.md)."""
+        for name in ["p1-research-orchestrator", "p1-research-team-orchestrator"]:
+            agent = AGENTS_DIR / f"{name}.md"
+            assert agent.exists(), f"Missing orchestrator: {name}"
+            content = agent.read_text()
+            assert "spec-feature-inventory.json" in content, (
+                f"{name} must reference spec-feature-inventory.json (feature census)"
+            )
+            assert "feature-coverage.md" in content, (
+                f"{name} must reference feature-coverage.md (coverage diff)"
+            )
 
 
 # ── Skill definition tests ──────────────────────────────────────────────────
@@ -353,6 +387,38 @@ class TestCrossReferences:
             frontmatter = _read_frontmatter(skill_file)
             assert re.search(r"^user-invocable:\s*false\s*$", frontmatter, re.MULTILINE), (
                 f"Convention skill must be non-user-invocable: {skill_name}"
+            )
+
+    def test_writer_agents_wire_convention_skills(self):
+        """v0.12.0: writer/verification agents must load their convention skills
+        via the skills: frontmatter list (agent-loaded, not auto-applied).
+
+        Wiring reflects the actual current frontmatter — testbench-dev carries
+        systemverilog + systemverilog-assertion + uvm (plus test-design-policy);
+        bfm-dev carries systemc; sva-extractor/protocol-checker carry
+        systemverilog-assertion; rtl-coder carries systemverilog.
+        """
+        expected = {
+            "rtl-coder": {"systemverilog"},
+            "testbench-dev": {"systemverilog", "systemverilog-assertion", "uvm"},
+            "bfm-dev": {"systemc"},
+            "sva-extractor": {"systemverilog-assertion"},
+            "protocol-checker": {"systemverilog-assertion"},
+        }
+        for agent_name, required_conventions in expected.items():
+            agent_file = AGENTS_DIR / f"{agent_name}.md"
+            assert agent_file.exists(), f"Missing agent: {agent_name}"
+            fm = _read_frontmatter(agent_file)
+            match = re.search(r"skills:\s*\[([^\]]*)\]", fm)
+            assert match, f"{agent_name} missing skills: [...] list in frontmatter"
+            skills = {
+                s.strip().strip('"').strip("'")
+                for s in match.group(1).split(",")
+                if s.strip()
+            }
+            missing = required_conventions - skills
+            assert not missing, (
+                f"{agent_name} skills: {sorted(skills)} missing conventions {sorted(missing)}"
             )
 
     def test_review_refactor_orchestrator_loads_all_required_policies(self):

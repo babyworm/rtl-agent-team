@@ -2026,7 +2026,7 @@ class TestSpawnContextManifest:
 
         m = self._read_manifest(tmp_project)
         required_keys = {
-            "schema_version", "generated_at", "generated_by",
+            "schema_version", "generated_at", "generated_by", "plugin_root",
             "setup", "pipeline", "upstream_artifacts",
             "staleness", "team", "quality_gates",
         }
@@ -2034,6 +2034,21 @@ class TestSpawnContextManifest:
         assert "required" in m["upstream_artifacts"]
         assert "optional" in m["upstream_artifacts"]
         assert "all_required_present" in m["upstream_artifacts"]
+
+    def test_manifest_plugin_root_is_absolute_path(self, tmp_project):
+        """v0.12.0: manifest exposes plugin_root as a non-empty absolute path
+        string (derived from CLAUDE_PLUGIN_ROOT or the hooks/ parent)."""
+        self._setup_project(tmp_project)
+        self._invoke(
+            tmp_project, "rtl-p4-implement",
+            env={"CLAUDE_PLUGIN_ROOT": str(REPO_ROOT)},
+        )
+        m = self._read_manifest(tmp_project)
+        assert isinstance(m["plugin_root"], str)
+        assert m["plugin_root"], "plugin_root must be non-empty"
+        assert os.path.isabs(m["plugin_root"]), (
+            f"plugin_root must be an absolute path: {m['plugin_root']!r}"
+        )
 
     def test_manifest_detects_missing_artifacts(self, tmp_project):
         """Missing required upstream → all_required_present=false."""
@@ -2332,6 +2347,7 @@ class TestSpawnContextStructuralContracts:
         "schema_version": str,
         "generated_at": str,
         "generated_by": str,
+        "plugin_root": str,
         "setup": dict,
         "pipeline": dict,
         "upstream_artifacts": dict,
@@ -2443,6 +2459,29 @@ class TestSpawnContextStructuralContracts:
                     assert len(parts) == 2, f"Bad format in {fn}({phase}): {line!r}"
                     assert parts[0].strip(), f"Empty path in {fn}({phase})"
                     assert parts[1].strip(), f"Empty role in {fn}({phase})"
+
+    def test_artifact_map_phase2_includes_feature_census_artifacts(self):
+        """v0.12.0: Phase 2 requires the feature-coverage.md census diff and lists
+        the spec-feature-inventory.json census as optional upstream context."""
+        import subprocess
+        artmap = str(HOOKS_DIR / "lib" / "artifact-map.sh")
+        req = subprocess.run(
+            ["sh", "-c", f'. "{artmap}" && artmap_required 2'],
+            capture_output=True, text=True, timeout=5,
+        ).stdout
+        opt = subprocess.run(
+            ["sh", "-c", f'. "{artmap}" && artmap_optional 2'],
+            capture_output=True, text=True, timeout=5,
+        ).stdout
+        req_lines = [l.strip() for l in req.splitlines() if l.strip()]
+        opt_lines = [l.strip() for l in opt.splitlines() if l.strip()]
+        assert "docs/phase-1-research/feature-coverage.md|p1-feature-coverage" in req_lines, (
+            f"artmap_required 2 missing feature-coverage.md entry: {req_lines}"
+        )
+        assert (
+            "docs/phase-1-research/spec-feature-inventory.json|p1-spec-feature-inventory"
+            in opt_lines
+        ), f"artmap_optional 2 missing spec-feature-inventory.json entry: {opt_lines}"
 
     # ── Orchestrator Step 0 consistency ──────────────────────────────
 

@@ -1023,6 +1023,42 @@ class TestTeamSkillContract:
         assert 4 <= len(agent_calls) <= 6, \
             f"{skill_name} has {len(agent_calls)} Agent(team_name=...) calls, expected 4-6"
 
+    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
+    def test_team_skill_teardown_gated_on_coordinator_signal(self, skill_name):
+        """v0.12.0: Step 7 leader teardown must be gated on the coordinator signal,
+        not solely on a drained task graph (the old break-on-empty-TaskList path)."""
+        skill = SKILLS_DIR / skill_name / "SKILL.md"
+        content = skill.read_text()
+        assert "coordinator_signaled_phase_complete" in content, (
+            f"{skill_name} Step 7 must gate teardown on coordinator_signaled_phase_complete"
+        )
+        assert "COORDINATOR SIGNAL" in content, (
+            f"{skill_name} Step 7 must reference the COORDINATOR SIGNAL for teardown"
+        )
+
+    def test_team_orchestrators_signal_only_after_phase_gate(self):
+        """v0.12.0: each team orchestrator's Signal completion bullet must fire
+        ONLY after the phase gate / post-gate steps — never when the task graph
+        merely drains ('when all tasks are done')."""
+        orchestrators = [
+            "p1-research-team-orchestrator",
+            "p2-arch-team-orchestrator",
+            "p3-uarch-team-orchestrator",
+            "p4-implement-team-orchestrator",
+            "p5-verify-team-orchestrator",
+        ]
+        for name in orchestrators:
+            content = (AGENTS_DIR / f"{name}.md").read_text()
+            assert "Signal completion" in content, (
+                f"{name} missing Signal completion bullet"
+            )
+            assert "ONLY after the phase gate" in content, (
+                f"{name} Signal completion must fire ONLY after the phase gate"
+            )
+            assert "when all tasks are done" not in content, (
+                f"{name} must not use the old 'when all tasks are done' wording"
+            )
+
 
 class TestTeamOrchestratorTeammateContract:
     """Validate orchestrators have Coordination Teammate Role and CAN use SendMessage."""
