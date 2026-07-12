@@ -33,7 +33,7 @@ Format:
 ```
 
 - **100% coverage required**: every REQ-NNN must appear. UNMAPPED REQs block the Phase 3 gate.
-- **Staleness detection**: when P1 `requirements.json` changes after P3 completion, this table identifies which uArch sections need re-design. The P3 orchestrator uses mtime comparison to detect staleness.
+- **Staleness detection**: when P1 `iron-requirements.json` changes after P3 completion, this table identifies which uArch sections need re-design. The P3 orchestrator uses mtime comparison to detect staleness.
 
 ## Clock Domain Assignment Rules
 
