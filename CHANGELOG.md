@@ -7,6 +7,56 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-07-12
+
+Post-release holistic review of v0.12.0 (35-agent audit across 7 dimensions,
+then 5 rounds of Codex cross-review). Fixes only; no new features.
+
+### Fixed
+- **Hook `tool_input` nesting (CRITICAL)** — `hooks/lib/json-util.sh` read tool
+  parameters (`file_path`, `command`, `skill`) at the JSON root, but Claude Code
+  nests them under `.tool_input`. On any machine with jq/python installed, the
+  edit-tracker and skill hooks read empty, so Rule 5 (the only hard verification
+  gate) never armed; only the sed fallback happened to work. Now reads
+  `.tool_input[key]` first with a root fallback (keeps `cwd`/session fields and
+  legacy flat payloads working). +regression tests across all three parser modes.
+- **Legacy `requirements.json` migration** — the iron/open requirements split
+  left the non-team P1→P3 pipeline (`spec-to-uarch-orchestrator`, rat-p1p3
+  policy, autopilot) and the entire P5/P6 back-end gating on
+  `docs/phase-1-research/requirements.json`, which no flow produces anymore.
+  Migrated to `iron-requirements.json` (+ optional `open-requirements.json`).
+- **Plugin-runtime path resolution** — bare plugin-internal script/template
+  paths in agent and skill execution commands (goal-clarifier, PPA loop, P5s
+  runners, rtl-document, codec-conformance-eval, UVM runner, and more) are now
+  `{plugin_root}`-prefixed so they resolve from a user project CWD. The Tier-3
+  multi-seed regression command — the Rule-5 evidence path — was among them.
+- **Team parity** — P4 team gained the missing Wave 3.5 synthesizability HARD
+  gate (now wired into completion criteria as `synthesizability-pass`); P2/P3
+  team gained iron/open production + open-resolution + ambiguity/zero-opens gate
+  steps (previously required by criteria with no satisfying step); 5 coordinator
+  "signal completion" bullets and the leader-teardown loop corrected to wait for
+  the post-gate signal.
+- **Solo-lane producers** — solo P1 now generates `domain-analysis.md`; P2/P3
+  ref-model/BFM spawn prompts now produce their `*-feature-coverage.md`.
+- **Compliance freshness** — `compliance-pass` could be auto-satisfied by a
+  stale prior-phase or prior-run compliance report. `rtl-phase-state-bootstrap`
+  now invalidates `compliance-report.json` on every activation; the gate keeps
+  an mtime backstop.
+- **Hook robustness** — autopilot-state staleness bound in `stop-gate`;
+  `verify-stop-gate` aggregates worker RTL tracking after team-config removal;
+  edit-tracker envelope event name; flock timeout below the hook budget.
+- **Docs/counts** — README/README_kr/plugin.json agent counts corrected to 99;
+  P2/P3 review protocol aligned to dynamic convergence across the SSOT, deployed
+  guides, and CLAUDE.md.
+- Untracked `.serena/` (MCP server state) and added it to `.gitignore`.
+
+### Added
+- 27 regression tests locking the v0.12.0 mechanisms and these fixes
+  (tool_input nesting, plugin_root manifest field, OMISSION schema contract,
+  feature-coverage-audited + synthesizability-pass criteria, convention-skill
+  wiring, coordinator-signal teardown, compliance-report invalidation, ≤160-char
+  description contract, and more).
+
 ## [0.12.0] - 2026-07-08
 
 ### Added
