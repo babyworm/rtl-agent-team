@@ -83,7 +83,7 @@ comparing outputs, and tracking which profile features are covered.
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - timeout_per_job is in seconds (default: 300s = 5 min per decoding job)
 - Dependencies: gcc (C11), Python 3.9+, hjson, numpy (optional, for PSNR computation). Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
-- Self-test: `python3 skills/codec-conformance-eval/scripts/compare_output.py --test` runs built-in unit tests
+- Self-test: `python3 {plugin_root}/skills/codec-conformance-eval/scripts/compare_output.py --test` runs built-in unit tests (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`)
 </Execution_Policy>
 
 <Steps>
@@ -97,7 +97,7 @@ comparing outputs, and tracking which profile features are covered.
      - Optional: `python3 -c "import numpy; print('numpy OK')"` (needed for PSNR comparison mode)
 
 2. **Decoder build** (build_decoder.sh)
-   - `bash skills/codec-conformance-eval/scripts/build_decoder.sh <decoder_src> <decoder_binary> [extra_cflags...]`
+   - `bash {plugin_root}/skills/codec-conformance-eval/scripts/build_decoder.sh <decoder_src> <decoder_binary> [extra_cflags...]`
    - Build flags: `gcc -std=c11 -O2 -Wall -Wextra -lm` (C11 standard per CLAUDE.md)
    - Optional extra_cflags: e.g., `-DDECODER_ONLY`, `-DMAX_DPB_SIZE=16`
    - On build failure: capture stderr, report to user, STOP
@@ -107,13 +107,13 @@ comparing outputs, and tracking which profile features are covered.
    - Auto-discover conformance bitstreams from configured source paths
    - Filter by target profile/level (if specified)
    - Execute in configured mode:
-     - **local**: `python3 skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode local`
-     - **aws-batch**: `python3 skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode aws-batch`
+     - **local**: `python3 {plugin_root}/skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode local`
+     - **aws-batch**: `python3 {plugin_root}/skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode aws-batch`
    - Each job produces: decoded YUV (or MD5) + decode_time + status
    - Results saved to: `.rat/scratch/conformance-eval/results.json`
 
 4. **Output comparison** (compare_output.py)
-   - `python3 skills/codec-conformance-eval/scripts/compare_output.py <results.json> <config.hjson>`
+   - `python3 {plugin_root}/skills/codec-conformance-eval/scripts/compare_output.py <results.json> <config.hjson>`
    - Comparison modes:
      a) MD5 checksum (default, fastest)
      b) Bitexact byte comparison (reports first mismatch offset)
@@ -148,18 +148,18 @@ Bash("ls conformance/golden-outputs/") # Verify golden output references exist
 # ============================================================
 # Step 2: Decoder build
 # ============================================================
-Bash("bash skills/codec-conformance-eval/scripts/build_decoder.sh refc .rat/scratch/conformance-eval/decoder")
+Bash("bash {plugin_root}/skills/codec-conformance-eval/scripts/build_decoder.sh refc .rat/scratch/conformance-eval/decoder")
 
 # ============================================================
 # Step 3: Conformance test execution (parallel)
 # ============================================================
-Bash("python3 skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode local",
+Bash("python3 {plugin_root}/skills/codec-conformance-eval/scripts/run_conformance.py <config.hjson> --mode local",
      timeout=600000)
 
 # ============================================================
 # Step 4: Output comparison
 # ============================================================
-Bash("python3 skills/codec-conformance-eval/scripts/compare_output.py .rat/scratch/conformance-eval/results.json <config.hjson> --output .rat/scratch/conformance-eval/conformance-metrics.json")
+Bash("python3 {plugin_root}/skills/codec-conformance-eval/scripts/compare_output.py .rat/scratch/conformance-eval/results.json <config.hjson> --output .rat/scratch/conformance-eval/conformance-metrics.json")
 
 # ============================================================
 # Step 5: Report generation

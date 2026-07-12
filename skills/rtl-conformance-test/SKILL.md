@@ -53,7 +53,7 @@ If missing: WARNING — halt and instruct user to resolve the missing prerequisi
 1. Spawn `vcodec-syntax-entropy-expert` to select the applicable conformance test vectors (JVT suite or project-specific) for the target standard and profile/level.
 2. Spawn `video-processing-expert` to validate vector coverage against requirements.
 3. Spawn `eda-runner` to simulate each vector via Bash CLI; capture RTL output bitstream per vector. Testbench must use `i_`/`o_` port prefixes and `{domain}_clk`/`{domain}_rst_n` naming.
-4. For each vector, run `python3 skills/rtl-conformance-test/scripts/conformance_compare.py rtl_output.bin ref_output.bin` (or `cmp -l`); record PASS/FAIL with divergence byte, expected/actual hex on FAIL.
+4. For each vector, run `python3 {plugin_root}/skills/rtl-conformance-test/scripts/conformance_compare.py rtl_output.bin ref_output.bin` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) (or `cmp -l`); record PASS/FAIL with divergence byte, expected/actual hex on FAIL.
 5. Spawn `func-verifier` to validate `sim/conformance/results.json` completeness — all vectors present, all have status, FAILs have byte offsets.
 6. Write `sim/conformance/results.json` with JM/HM version, standard, profile/level, and per-vector entries.
 7. For decoder designs, also run block-level conformance at each pipeline stage (CABAC, inverse TQ, prediction, reconstruction, deblocking, SAO) using C reference model output as oracle.

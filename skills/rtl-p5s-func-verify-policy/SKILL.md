@@ -76,16 +76,16 @@ genhtml sim/coverage/merged.info -o sim/coverage/html/ --title "Regression Cover
 ## Regression Scripts
 
 ```bash
-# Automated multi-seed regression
-bash skills/rtl-p5s-func-verify/scripts/run_regression.sh \
+# Automated multi-seed regression ({plugin_root} = plugin root resolved from .rat/state/spawn-context.json)
+bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/run_regression.sh \
   --mode local --seeds "1 42 123 1337 65536" --sim verilator
 
 # Optional override when user explicitly asks
-bash skills/rtl-p5s-func-verify/scripts/run_regression.sh \
+bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/run_regression.sh \
   --mode local --parallel "$(($(nproc)-2))" --seeds "1 42 123 1337 65536" --sim verilator
 
 # Coverage merge
-bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh \
+bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/merge_coverage.sh \
   --format verilator --output sim/coverage/merged.info
 ```
 

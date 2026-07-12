@@ -31,7 +31,8 @@ syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f \
 make syn TOP={module} LIBERTY=NangateOpenCellLibrary_typical.lib
 
 # Parse results → gate count (NAND2-FO2 equivalent)
-python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/log/yosys_{module}_*.log
+# {plugin_root} = plugin root resolved from .rat/state/spawn-context.json (field plugin_root)
+python {plugin_root}/skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/log/yosys_{module}_*.log
 ```
 
 ## Directory Structure (DC-standard)

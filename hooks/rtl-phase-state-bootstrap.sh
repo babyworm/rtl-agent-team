@@ -74,6 +74,13 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/
 }
 _CS_EOF
     fi
+  elif [ -f "$_CS_FILE" ]; then
+    # Same-phase re-invocation: the content (upstream iron paths) is still
+    # correct, but refresh the mtime so the completion gate treats any
+    # prior-run compliance-report.json as stale — a fresh compliance check must
+    # run THIS invocation rather than auto-satisfying compliance-pass from the
+    # previous run's PASS (the phase marker alone cannot distinguish reruns).
+    touch "$_CS_FILE" 2>/dev/null || true
   fi
 fi
 

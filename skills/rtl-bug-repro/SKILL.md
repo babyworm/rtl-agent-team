@@ -50,7 +50,7 @@ If prerequisites are missing: WARNING — recommend running the failing regressi
 
 <Execution>
 1. Read the bug report or failing test log to understand the symptoms.
-2. Run `python3 skills/rtl-bug-repro/scripts/vcd_diff.py --actual sim/regression/{test}.vcd --expected sim/regression/{test}_golden.vcd` to identify the first divergence cycle and originating signal. If no golden VCD exists, spawn `waveform-analyzer` (see Tool_Usage) to analyze the failing VCD directly.
+2. Run `python3 {plugin_root}/skills/rtl-bug-repro/scripts/vcd_diff.py --actual sim/regression/{test}.vcd --expected sim/regression/{test}_golden.vcd` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) to identify the first divergence cycle and originating signal. If no golden VCD exists, spawn `waveform-analyzer` (see Tool_Usage) to analyze the failing VCD directly.
 3. Read `skills/rtl-bug-repro/references/bug-repro-conventions.md` for naming, TB structure, and `root_cause.md` schema.
 4. Spawn `func-verifier` (see Tool_Usage) to write `sim/bugs/{bug_id}/repro_tb.sv` using `templates/repro-tb-template.sv` as scaffold. The TB must: use `i_`/`o_` port prefixes, `{domain}_clk`/`{domain}_rst_n` names, `logic` types only, and `u_dut` for the DUT instance.
 5. Run the repro TB: `scripts/run_sim.sh --sim iverilog --top repro_tb --outdir sim/bugs/{bug_id} --trace rtl/{module}/{module}.sv sim/bugs/{bug_id}/repro_tb.sv`. Confirm the failure reproduces.

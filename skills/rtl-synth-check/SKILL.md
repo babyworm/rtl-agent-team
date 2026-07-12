@@ -108,9 +108,9 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
 8. Check for other concerning cells: `$mem` (unintended RAM), `$mul` (area-heavy multipliers)
 
 9. Write syn/summary.json (see `templates/synth-summary.json` for format).
-   Use `skills/rtl-synth-check/scripts/parse_yosys_stat.py` to automate parsing:
+   Use `skills/rtl-synth-check/scripts/parse_yosys_stat.py` to automate parsing (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`):
    ```bash
-   python skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/log/{module}_synth.log
+   python {plugin_root}/skills/rtl-synth-check/scripts/parse_yosys_stat.py syn/log/{module}_synth.log
    ```
    Output includes: area_um2, gate_count_nand2, technology target
 

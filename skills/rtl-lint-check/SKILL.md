@@ -84,7 +84,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
    ```
 
 5. Run supplementary convention checks via Bash CLI:
-   - Use `skills/rtl-lint-check/scripts/check_conventions.sh {files}` for automated convention checking
+   - Use `{plugin_root}/skills/rtl-lint-check/scripts/check_conventions.sh {files}` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) for automated convention checking
    - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes, declarations after logic blocks (forward reference risk)
 6. Merge all results; report violations grouped by file then by severity
 7. Return PASS (zero violations) or FAIL (violation count + list)
