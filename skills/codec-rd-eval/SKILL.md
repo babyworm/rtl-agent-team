@@ -80,7 +80,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 - timeout_per_job is in seconds (default: 3600s = 1 hour per encoding job)
 - SSIM/VMAF are computed ONLY when explicitly requested via quality_metrics config
 - Dependencies: gcc (C11), Python 3.9+, numpy, hjson. Optional: ffmpeg (required for SSIM/VMAF computation when quality_metrics includes "ssim" or "vmaf"), boto3 (required only for aws-batch execution mode)
-- Self-test: `python3 skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests
+- Self-test: `python3 {plugin_root}/skills/codec-rd-eval/scripts/bd_rate.py --test` runs built-in unit tests (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`)
 </Execution_Policy>
 
 <Steps>
@@ -95,7 +95,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 
 2. **Encoder build** (build_encoder.sh)
    - For each unique encoder_src in configurations (anchor/test or candidates[]):
-     `bash skills/codec-rd-eval/scripts/build_encoder.sh <src> <binary> [extra_cflags]`
+     `bash {plugin_root}/skills/codec-rd-eval/scripts/build_encoder.sh <src> <binary> [extra_cflags]`
    - Build flags: `gcc -std=c11 -O2 -Wall -Wextra -lm` (C11 standard per CLAUDE.md)
    - On build failure: capture stderr, report to user, STOP
 
@@ -103,14 +103,14 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
    - Parse HJSON test configuration
    - Generate job matrix: (sequence x QP x config) combinations
    - Execute in configured mode:
-     - **local**: `python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode local`
-     - **aws-batch**: `python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode aws-batch`
+     - **local**: `python3 {plugin_root}/skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode local`
+     - **aws-batch**: `python3 {plugin_root}/skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode aws-batch`
    - Each job produces: bitrate_kbps, psnr_y/u/v/yuv (dB), encode_time_s
    - Optional: SSIM, VMAF (when quality_metrics includes them)
    - Results saved to: `.rat/scratch/rd-eval/results.json`
 
 4. **BD-PSNR/BD-rate calculation** (bd_rate.py)
-   - `python3 skills/codec-rd-eval/scripts/bd_rate.py .rat/scratch/rd-eval/results.json --output .rat/scratch/rd-eval/bd-metrics.json`
+   - `python3 {plugin_root}/skills/codec-rd-eval/scripts/bd_rate.py .rat/scratch/rd-eval/results.json --output .rat/scratch/rd-eval/bd-metrics.json`
    - VCEG-M33 algorithm with N-point support:
      1. Transform rates to log10 domain
      2. Fit polynomial (degree = min(3, N-1)) — exact interpolation for 4 points, least-squares fitting for 5+
@@ -147,19 +147,19 @@ Bash("python3 -c 'import numpy; import hjson; print(\"OK\")'")  # Check dependen
 # ============================================================
 # Step 2: Encoder build (for each unique encoder_src)
 # ============================================================
-Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rat/scratch/rd-eval/anchor_encoder")
-Bash("bash skills/codec-rd-eval/scripts/build_encoder.sh refc .rat/scratch/rd-eval/test_encoder")
+Bash("bash {plugin_root}/skills/codec-rd-eval/scripts/build_encoder.sh refc .rat/scratch/rd-eval/anchor_encoder")
+Bash("bash {plugin_root}/skills/codec-rd-eval/scripts/build_encoder.sh refc .rat/scratch/rd-eval/test_encoder")
 
 # ============================================================
 # Step 3: Simulation execution (parallel)
 # ============================================================
-Bash("python3 skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode local",
+Bash("python3 {plugin_root}/skills/codec-rd-eval/scripts/run_eval.py <config.hjson> --mode local",
      timeout=600000)  # Up to 10 min for large evaluations
 
 # ============================================================
 # Step 4: BD metric calculation
 # ============================================================
-Bash("python3 skills/codec-rd-eval/scripts/bd_rate.py .rat/scratch/rd-eval/results.json --output .rat/scratch/rd-eval/bd-metrics.json")
+Bash("python3 {plugin_root}/skills/codec-rd-eval/scripts/bd_rate.py .rat/scratch/rd-eval/results.json --output .rat/scratch/rd-eval/bd-metrics.json")
 
 # ============================================================
 # Step 5: Report generation

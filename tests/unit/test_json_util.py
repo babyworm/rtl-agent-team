@@ -216,6 +216,18 @@ class TestJsonuGetInputString:
         stdin = json.dumps({"cwd": "/proj", "file_path": "rtl/top.sv"})
         assert _input_string(stdin, "file_path", env) == "rtl/top.sv"
 
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_non_object_tool_input_falls_back_to_root(self, env):
+        # A malformed non-object tool_input must not error/blank out root fields
+        # (jq guards the type; python guards with isinstance; sed scans anyway).
+        stdin = json.dumps({"cwd": "/proj", "tool_input": "bad"})
+        assert _input_string(stdin, "cwd", env) == "/proj"
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_null_tool_input_falls_back_to_root(self, env):
+        stdin = json.dumps({"cwd": "/proj", "tool_input": None})
+        assert _input_string(stdin, "cwd", env) == "/proj"
+
     def test_non_string_value_returns_empty_python_mode(self):
         # python mode: isinstance(str) check means non-string values return empty.
         stdin = json.dumps({"nested": {"inner": "val"}})

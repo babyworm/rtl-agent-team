@@ -307,7 +307,7 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 | Phase | 이름 | 주요 에이전트 | docs/ 산출물 | reviews/ verdict |
 |-------|------|-------------|-------------|-----------------|
-| 1 | Research | spec-analyst | requirements.json, io_definition.json, domain-analysis.md | research-review.md |
+| 1 | Research | spec-analyst | iron-requirements.json, open-requirements.json, io_definition.json, domain-analysis.md | research-review.md |
 | 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
 | 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (모듈별) | uarch-review.md |
 | 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B 산출물 | design-review.md |

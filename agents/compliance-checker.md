@@ -86,7 +86,7 @@ If the prompt includes "Save report to <path>", use that path instead of the def
 
 ```json
 {
-  "phase": "<current phase>",
+  "phase": "<current skill short-name, e.g. p2-arch-design, rtl-p3-uarch-design — MUST match the invoking skill so the completion gate can distinguish this phase's report from a stale upstream one>",
   "checked_against": ["<upstream phase 1>", "<upstream phase 2>"],
   "timestamp": "<ISO 8601>",
   "summary": {

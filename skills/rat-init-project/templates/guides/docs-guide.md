@@ -5,7 +5,8 @@
 ```
 docs/
 ├── phase-1-research/          # → Input for Phase 2
-│   ├── requirements.json      # Requirements list
+│   ├── iron-requirements.json # Settled functional (REQ-F)/performance (REQ-P) requirements, binding
+│   ├── open-requirements.json # Research topics (OPEN-N) Phase 2 must resolve into decisions
 │   ├── io_definition.json     # I/O port spec
 │   ├── timing_constraints.json # Rough timing estimates per block
 │   ├── domain-analysis.md     # Domain analysis (algorithms, standards, per-block timing targets)

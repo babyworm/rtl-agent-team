@@ -308,7 +308,7 @@ Model policy:
 
 | Phase | Name | Key Agents | docs/ Artifacts | reviews/ Verdict |
 |-------|------|------------|-----------------|------------------|
-| 1 | Research | spec-analyst | requirements.json, io_definition.json, domain-analysis.md | research-review.md |
+| 1 | Research | spec-analyst | iron-requirements.json, open-requirements.json, io_definition.json, domain-analysis.md | research-review.md |
 | 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
 | 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (per module) | uarch-review.md |
 | 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B artifacts | design-review.md |

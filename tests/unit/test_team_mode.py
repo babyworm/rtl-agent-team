@@ -150,7 +150,8 @@ class TestP4TaskDependencyGraph:
             "W1_write": [],
             "W2_lint": ["W1_write"],
             "W3_fix": ["W2_lint"],
-            "W4_review": ["W2_lint"],  # or W3_fix if lint fails
+            "W3_5_synthgate": ["W2_lint"],  # HARD gate on lint-clean modules (or W3_fix)
+            "W4_review": ["W3_5_synthgate"],  # review only after synthesizability PASS
             "W5_bugfix": ["W4_review"],
             "W6_unittest": ["W4_review"],  # or W5_bugfix if issues found
             "W7_cdc": ["W1_write"],
@@ -158,6 +159,28 @@ class TestP4TaskDependencyGraph:
             "W9_refactor": ["W6_unittest", "W7_cdc", "W8_protocol"],
             "W10_integration": ["W9_refactor"],  # blockedBy ALL wave 9 tasks (cross-module)
         }
+
+    def test_synthgate_is_hard_gate_before_review(self):
+        """Wave 3.5 synthesizability HARD gate sits between lint and review;
+        review is blocked on it (both P4 orchestrators enforce it)."""
+        graph = self._build_dependency_graph()
+        assert graph.get("W3_5_synthgate") == ["W2_lint"], "Wave 3.5 must gate on lint"
+        assert graph["W4_review"] == ["W3_5_synthgate"], (
+            "review must be gated on synthesizability, not lint directly"
+        )
+
+    def test_p4_completion_criteria_include_synthesizability(self):
+        """Wave 3.5 is a HARD gate, so both full-P4 skills must carry the
+        synthesizability-pass completion token (registry parity enforced)."""
+        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
+        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        for skill in ("rtl-p4-implement", "rtl-p4-implement-team"):
+            assert "synthesizability-pass" in scc[skill], (
+                f"{skill} missing synthesizability-pass in skill-completion-criteria.json"
+            )
+            assert scc[skill] == pr["skills"][skill]["completion_criteria"], (
+                f"{skill} criteria drift between registries"
+            )
 
     def test_write_has_no_deps(self):
         graph = self._build_dependency_graph()
@@ -216,9 +239,11 @@ class TestP4TaskDependencyGraph:
         assert set(graph_no_proto["W9_refactor"]) == {"W6_unittest", "W7_cdc"}
         assert len(graph_no_proto) == 9  # 9 waves, not 10
 
-    def test_ten_waves_per_module(self):
+    def test_wave_count_per_module(self):
+        # 10 numbered waves + the Wave 3.5 synthesizability HARD gate = 11 nodes.
         graph = self._build_dependency_graph()
-        assert len(graph) == 10
+        assert len(graph) == 11
+        assert len(self.WAVES) == 10  # WAVES lists the 10 numbered waves only
 
 
 class TestTeamOrchestratorStructure:

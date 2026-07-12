@@ -79,11 +79,26 @@ compliance_preprocess() {
   # there are no cross-phase overrides to clear here).
   _CGU_PHASE_STATE="$_CGU_STATE_DIR/compliance-state.json"
   if [ -f "$_CGU_PHASE_STATE" ]; then
-    _CGU_RPT_MTIME=$(_cgu_mtime "$_CGU_CR_REPORT")
-    _CGU_PHS_MTIME=$(_cgu_mtime "$_CGU_PHASE_STATE")
-    if [ -n "$_CGU_RPT_MTIME" ] && [ -n "$_CGU_PHS_MTIME" ] && \
-       [ "$_CGU_RPT_MTIME" -lt "$_CGU_PHS_MTIME" ] 2>/dev/null; then
-      return 0
+    # Primary guard: phase-keyed. compliance-checker stamps the report's "phase"
+    # with the invoking skill's short-name; compliance-state.json carries the
+    # current phase's short-name (written by rtl-phase-state-bootstrap). When
+    # BOTH are present, an exact match means the report belongs to THIS phase
+    # (fresh); a mismatch means it is a stale upstream report — do not resolve.
+    # When either side lacks a phase (legacy report / pre-bootstrap), fall back
+    # to the mtime comparison (report older than the phase marker => stale).
+    _CGU_RPT_PHASE=$(jsonu_get_file_path_string "$_CGU_CR_REPORT" "phase")
+    _CGU_PHS_PHASE=$(jsonu_get_file_path_string "$_CGU_PHASE_STATE" "phase")
+    if [ -n "$_CGU_RPT_PHASE" ] && [ -n "$_CGU_PHS_PHASE" ]; then
+      if [ "$_CGU_RPT_PHASE" != "$_CGU_PHS_PHASE" ]; then
+        return 0
+      fi
+    else
+      _CGU_RPT_MTIME=$(_cgu_mtime "$_CGU_CR_REPORT")
+      _CGU_PHS_MTIME=$(_cgu_mtime "$_CGU_PHASE_STATE")
+      if [ -n "$_CGU_RPT_MTIME" ] && [ -n "$_CGU_PHS_MTIME" ] && \
+         [ "$_CGU_RPT_MTIME" -lt "$_CGU_PHS_MTIME" ] 2>/dev/null; then
+        return 0
+      fi
     fi
   fi
 

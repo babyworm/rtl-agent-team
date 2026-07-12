@@ -57,7 +57,7 @@ If any model binary is missing: WARNING — run that model's build skill first; 
    - `ref-model-dev`: `./refc/build/ref_model < sim/consistency/test_vectors.bin > sim/consistency/ref_output.bin`
    - `bfm-dev`: `./bfm/build/bfm_smoke < sim/consistency/test_vectors.bin > sim/consistency/bfm_output.bin`
    - `func-verifier`: simulate RTL with vectors (iverilog/cocotb), capture to `sim/consistency/rtl_output.bin`
-3. Run `python3 skills/rtl-model-consistency/scripts/compare_3way.py sim/consistency/` — produces pairwise PASS/FAIL matrix and first-divergence bytes.
+3. Run `python3 {plugin_root}/skills/rtl-model-consistency/scripts/compare_3way.py sim/consistency/` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) — produces pairwise PASS/FAIL matrix and first-divergence bytes.
 4. Write `sim/consistency/consistency_report.md` using `templates/consistency-report.md`: summary table, diagnosis (see conventions for logic), mismatch details with byte offset + expected/actual values.
 5. Report overall consistency status to the user.
 

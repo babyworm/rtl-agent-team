@@ -58,7 +58,7 @@ The script must emit one result per vector with fields:
 | ref != BFM != RTL | Three-way mismatch — cannot auto-diagnose; report all divergences |
 
 - **Bitexact** is the default criterion unless a tolerance is explicitly documented in
-  `docs/phase-3-uarch/bfm-feature-coverage.md` or `reviews/phase-2-architecture/ref-model-feature-coverage.md`.
+  `reviews/phase-3-uarch/bfm-feature-coverage.md` or `reviews/phase-2-architecture/ref-model-feature-coverage.md`.
 - Minimum vector set: 10 vectors when `sim/consistency/test_vectors.bin` is absent.
   Prefer 50 vectors for full regression; 500 for pre-tape-out gate.
 - All three models must run on **identical** input vectors — no subset comparisons.

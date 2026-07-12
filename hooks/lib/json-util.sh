@@ -74,8 +74,11 @@ jsonu_get_input_string() {
 
   case "$JSONU_PARSER_MODE" in
     jq)
-      # `.tool_input[$key]` is null (not an error) when tool_input is absent.
-      printf '%s' "$JSONU_INPUT" | jq -r --arg key "$JSONU_KEY" '.tool_input[$key] // .[$key] // empty' 2>/dev/null
+      # Index tool_input only when it is an object; otherwise (absent or a
+      # non-object) fall back to the root key. Guarding the type avoids a jq
+      # error when tool_input is a scalar, matching the python branch.
+      printf '%s' "$JSONU_INPUT" | jq -r --arg key "$JSONU_KEY" \
+        '(if (.tool_input | type) == "object" then .tool_input[$key] else null end) // .[$key] // empty' 2>/dev/null
       ;;
     python)
       printf '%s' "$JSONU_INPUT" | "$JSONU_PY_BIN" -c '

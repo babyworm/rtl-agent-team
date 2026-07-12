@@ -56,7 +56,7 @@ Do NOT proceed to Phase 6.
 |----------|---------------|
 | `docs/phase-3-uarch/*.md` | At least one μArch module spec exists |
 | `reviews/phase-3-uarch/uarch-review.md` | File exists AND contains `Verdict: PASS` |
-| `docs/phase-1-research/requirements.json` | File exists (needed for traceability) |
+| `docs/phase-1-research/iron-requirements.json` | File exists (needed for traceability) |
 | `docs/phase-1-research/io_definition.json` | File exists (needed for port verification) |
 | `refc/*/*.c` | At least one C reference model source exists |
 | `docs/phase-3-uarch/phase-3-summary.md` | File exists (Phase 3 summary for context) |
