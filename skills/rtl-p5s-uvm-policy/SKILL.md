@@ -80,9 +80,9 @@ before running additional iterations.
 
 ## Regression Runner
 
-Use `skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh` for multi-seed regression:
+Use the UVM regression runner (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) for multi-seed regression:
 ```bash
-bash run_regression_uvm.sh --sim vcs --seeds "42 123 456 789 1337" --test base_test --module {module}
+bash {plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh --sim vcs --seeds "42 123 456 789 1337" --test base_test --module {module}
 ```
 - Compiles once, runs seeds in parallel with failure halt logic
 - Per-seed result JSON + merged coverage + regression report

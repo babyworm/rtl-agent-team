@@ -73,14 +73,18 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/
   "open_requirements_path": "$_cs_open"
 }
 _CS_EOF
+      # New phase: invalidate any prior-phase compliance-report.json so the
+      # completion gate cannot auto-satisfy compliance-pass from an upstream run.
+      rm -f "$RAT_DIR/state/compliance-report.json" 2>/dev/null || true
     fi
   elif [ -f "$_CS_FILE" ]; then
-    # Same-phase re-invocation: the content (upstream iron paths) is still
-    # correct, but refresh the mtime so the completion gate treats any
-    # prior-run compliance-report.json as stale — a fresh compliance check must
-    # run THIS invocation rather than auto-satisfying compliance-pass from the
-    # previous run's PASS (the phase marker alone cannot distinguish reruns).
+    # Same-phase re-invocation: content is still correct. Refresh the marker
+    # mtime AND drop any prior-run compliance-report.json outright, so THIS run
+    # must produce a fresh report rather than reusing the last run's PASS.
+    # (Deleting the report — not just comparing mtimes — avoids the same-second
+    # boundary where a prior report and the touched marker share a timestamp.)
     touch "$_CS_FILE" 2>/dev/null || true
+    rm -f "$RAT_DIR/state/compliance-report.json" 2>/dev/null || true
   fi
 fi
 

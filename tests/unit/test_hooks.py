@@ -1450,25 +1450,40 @@ class TestPhaseStateBootstrap:
         assert data["phase"] == phase
         assert "{{TIMESTAMP}}" not in state_path.read_text()
 
-    def test_compliance_state_mtime_refreshed_on_same_skill_reinvocation(self, tmp_project):
-        """Same-skill re-invocation must refresh compliance-state.json mtime so
-        the completion gate treats a prior run's compliance-report.json as stale
-        (regression: phase-only equality let a same-phase stale PASS slip through)."""
+    def test_same_skill_reinvocation_refreshes_marker_and_drops_prior_report(self, tmp_project):
+        """Same-skill re-invocation must (a) refresh compliance-state.json mtime and
+        (b) delete any prior-run compliance-report.json outright, so the completion
+        gate cannot auto-satisfy compliance-pass from the previous run's PASS
+        (regression: phase-only equality + same-second mtime let stale PASS slip)."""
         _setup_marker(tmp_project)
         skill = "rtl-agent-team:rtl-p3-uarch-design"
         run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill})
         cs = tmp_project / ".rat" / "state" / "compliance-state.json"
         assert cs.exists(), "compliance-state.json must be bootstrapped for a P3 skill"
         first = json.loads(cs.read_text())
-        # Age the marker into the past, then re-invoke the SAME skill.
+        # Simulate a prior run's compliance report, then age the marker.
+        report = tmp_project / ".rat" / "state" / "compliance-report.json"
+        report.write_text('{"phase":"rtl-p3-uarch-design","summary":{"verdict":"PASS"}}')
         old = cs.stat().st_mtime - 1000
         os.utime(cs, (old, old))
+        # Re-invoke the SAME skill.
         run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill})
-        assert cs.stat().st_mtime > old, (
-            "compliance-state mtime must refresh on same-skill re-invocation"
-        )
-        # Content (phase) is unchanged — only the mtime is refreshed.
+        assert cs.stat().st_mtime > old, "compliance-state mtime must refresh on re-invocation"
+        assert not report.exists(), "prior-run compliance-report.json must be invalidated"
         assert json.loads(cs.read_text())["phase"] == first["phase"]
+
+    def test_phase_change_invalidates_prior_report(self, tmp_project):
+        """Switching phase rewrites compliance-state AND drops the prior phase's
+        compliance-report.json (no cross-phase auto-satisfy of compliance-pass)."""
+        _setup_marker(tmp_project)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p2-arch-team"})
+        report = tmp_project / ".rat" / "state" / "compliance-report.json"
+        report.write_text('{"phase":"p2-arch-design","summary":{"verdict":"PASS"}}')
+        # Move to a P3 skill.
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p3-uarch-design"})
+        assert not report.exists(), "prior-phase compliance-report.json must be invalidated"
+        cs = tmp_project / ".rat" / "state" / "compliance-state.json"
+        assert json.loads(cs.read_text())["phase"] == "rtl-p3-uarch-design"
 
     def test_existing_state_not_overwritten(self, tmp_project):
         _setup_marker(tmp_project)

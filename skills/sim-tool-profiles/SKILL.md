@@ -39,7 +39,7 @@ Code coverage must be enabled at **both compile and runtime** for all commercial
 
 **Questa gotcha**: `+cover=bcestf` at `vlog` compile is **mandatory** — runtime `-coverage` alone collects nothing.
 
-UVM regression runner: `skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh`
+UVM regression runner: `{plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh` (`{plugin_root}` = plugin root from `.rat/state/spawn-context.json`)
 - Handles compile-once + parallel multi-seed execution + coverage merge per simulator
 - Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%, branch ≥ 80%, functional ≥ 95%
 
