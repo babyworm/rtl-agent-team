@@ -65,7 +65,7 @@ Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements
 Glob("sim/**/*_unit_results.json")                 # Tier 2 baseline for coverage handoff
 ```
 
@@ -298,7 +298,7 @@ Task(subagent_type="rtl-agent-team:protocol-checker",
 ```
 # Step 1: Generate/update SDC for top-level
 Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Generate/update SDC for top-level design. Read requirements.json, docs/phase-3-uarch/*.md, RTL top port list. Write syn/constraints/design.sdc. Validate with tclsh.")
+     prompt="Generate/update SDC for top-level design. Read docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/*.md, RTL top port list. Write syn/constraints/design.sdc. Validate with tclsh.")
 
 # Step 2: ASIC synthesis estimation via wrapper (handles sv2v + tool selection internally)
 Task(subagent_type="rtl-agent-team:eda-runner",
@@ -347,7 +347,7 @@ Per rtl-p5-verify-policy Top-Level Gate: all checks PASS → Stage 3. On FAIL: c
 ```
 # 3.1 Requirement Traceability
 Task(subagent_type="rtl-agent-team:requirement-tracer",
-     prompt="Read requirements.json and iron-requirements.json (if available) and ALL test results. Map each REQ-NNN to test(s) that verify it. When structured acceptance_criteria exist, map at AC level (ac_id). Save reviews/phase-5-verify/requirement-traceability.md.")
+     prompt="Read docs/phase-1-research/iron-requirements.json and docs/phase-3-uarch/iron-requirements.json (if available) and ALL test results. Map each REQ-NNN to test(s) that verify it. When structured acceptance_criteria exist, map at AC level (ac_id). Save reviews/phase-5-verify/requirement-traceability.md.")
 
 # 3.2 E2E Traceability
 Task(subagent_type="rtl-agent-team:requirement-tracer",
@@ -362,7 +362,7 @@ Task(subagent_type="rtl-agent-team:requirement-tracer",
 
 # 3.3 Final Compliance Review
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="READ-ONLY final spec compliance review. Read docs/phase-1-research/requirements.json, docs/phase-3-uarch/iron-requirements.json (if available), docs/phase-1-research/io_definition.json, docs/phase-2-architecture/architecture.md, rtl/*/*.sv, ALL Phase 5 review results, AND reviews/phase-5-verify/traceability-audit.md. Verify RTL implements ALL spec requirements AND traceability audit verdict is PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
+     prompt="READ-ONLY final spec compliance review. Read docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/iron-requirements.json (if available), docs/phase-1-research/io_definition.json, docs/phase-2-architecture/architecture.md, rtl/*/*.sv, ALL Phase 5 review results, AND reviews/phase-5-verify/traceability-audit.md. Verify RTL implements ALL spec requirements AND traceability audit verdict is PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
 
 # 3.4 Phase 5 Summary
 Task(subagent_type="rtl-agent-team:rtl-architect",
@@ -378,7 +378,7 @@ Invoke Codex CLI as independent 2nd reviewer after final compliance verdict.
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      prompt="Cross-review Phase 5 Verification.
      Phase intent: Comprehensive verification — unit tests, functional regression, formal SVA, CDC, protocol, coverage, integration, performance, synthesis.
-     Input artifacts: rtl/*/*.sv (RTL), docs/phase-1-research/requirements.json (spec).
+     Input artifacts: rtl/*/*.sv (RTL), docs/phase-1-research/iron-requirements.json (spec).
      Output artifacts: docs/phase-5-verify/ (phase-5-summary.md), sim/ (test results).
      Review verdicts: reviews/phase-5-verify/ (final-compliance.md, traceability-audit.md, requirement-traceability.md, e2e-traceability.md).
      Focus: verification completeness, requirement traceability gaps, coverage adequacy, test quality.")

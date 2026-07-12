@@ -50,7 +50,7 @@ Scan for upstream artifacts needed by the UVM flow. Missing artifacts produce WA
 ```
 Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-3-uarch/*.md")                    # uArch for environment design
-Glob("docs/phase-1-research/requirements.json")    # Requirements for test planning
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements for test planning
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -99,7 +99,7 @@ the Coverage Exclusion Protocol to populate later.")
 ```
 Task(subagent_type="rtl-agent-team:test-plan-writer",
      prompt="Generate test plan for {module} using ECP/BVA/STT/DT methodology.
-Read docs/phase-3-uarch/{module}.md and docs/phase-1-research/requirements.json.
+Read docs/phase-3-uarch/{module}.md and docs/phase-1-research/iron-requirements.json.
 Write sim/uvm/{module}_test_plan.md with:
   - Test scenarios TS-NNN mapped to REQ-U-* requirements
   - Parameter space partitioning (ECP): identify equivalence classes for each
@@ -194,7 +194,7 @@ failure halt, per-seed results, and coverage merge in one invocation:
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run UVM regression using the regression runner script via Bash CLI.
 
-bash skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh \
+bash sim/uvm/scripts/run_regression_uvm.sh \
   --sim {vcs|xrun|questa} \
   --seeds '42 123 456 789 1337' \
   --test base_test \

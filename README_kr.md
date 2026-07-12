@@ -8,7 +8,7 @@
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-99개 전문 AI 에이전트 + 97개 스킬 + 11개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+99개 전문 AI 에이전트 + 97개 스킬 + 27개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -242,7 +242,7 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 97개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
+├── agents/                     # 99개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
 ├── skills/                     # 97개 스킬 (SKILL.md + templates/ + examples/)
@@ -258,13 +258,13 @@ rtl-agent-team/
 │   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
 │   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
 │   ├── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-│   └── {skill}/references/     # 11개 레퍼런스 문서 (스킬별 분산)
+│   └── {skill}/references/     # 27개 레퍼런스 문서 (스킬별 분산)
 │       ├── coding-style-guide.md   # SV 명명 규칙 상세 (systemverilog/)
 │       ├── axi-protocol-rules.md   # AXI4 채널별 SVA 템플릿 (rtl-p5s-protocol-verify/)
 │       ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리 (rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (rtl-p5s-func-verify/)
-│       └── ...                     # + 9개 (CDC, UVM, Yosys, SDC 등)
-├── hooks/                      # 이벤트 기반 품질 게이트 (15개 hook 스크립트 / 16개 등록)
+│       └── ...                     # + 23개 (CDC, UVM, Yosys, SDC 등)
+├── hooks/                      # 이벤트 기반 품질 게이트 (14개 hook 스크립트 / 15개 등록)
 │   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup 체크 + 템플릿 bootstrap
 │   └── ...                     # + 13개 (라우팅 주입, 검증 게이트, cascade 등)
 ├── docker/                     # EDA 도구 Docker 이미지
@@ -285,18 +285,19 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 ## 에이전트 팀
 
-### 에이전트 구성 (97개, 전체 Opus)
+### 에이전트 구성 (99개, 전체 Opus)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
-| 설계 | 8 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer |
-| 검증 | 7 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer |
-| 전문 리뷰 | 14 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer |
+| 설계 | 9 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer, goal-clarifier |
+| 검증 | 8 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer, test-plan-writer |
+| 전문 리뷰 | 16 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer, compliance-checker, ultraloop-reviewer |
 | Phase 6 설계 노트 | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
-| EDA/합성 | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
+| EDA/합성 | 11 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer, dc-report-parser, synthesizability-gate, ppa-optimizer-dc |
 | 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
 | 도메인 전문가 | 13 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-intra-pred-expert, vcodec-me-expert, vcodec-mc-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
-| 오케스트레이터 | 32 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator 외 25개 (팀/서브페이즈 변형) |
+| Phase 4 블록 병렬 | 2 | p4-block-parallel-coordinator, p4-block-worker |
+| 오케스트레이터 | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator 외 26개 (팀/서브페이즈 변형) |
 
 모델 사용 원칙:
 - 추론이 많이 필요한 설계/검증/디버깅은 `opus` 사용
@@ -432,8 +433,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (97개)
-├── skills/                              # rtl-agent-team 스킬 (97개, 11개 레퍼런스 문서 포함)
+├── agents/                              # rtl-agent-team 에이전트 (99개)
+├── skills/                              # rtl-agent-team 스킬 (97개, 27개 레퍼런스 문서 포함)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지

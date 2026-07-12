@@ -21,7 +21,7 @@ Mission:
 State contract:
 - Read/write `.rat/state/p5b-state.json`
 - Initialize from template:
-  `skills/rtl-silicon-validation-policy/templates/p5b-state.json`
+  `{plugin_root}/skills/rtl-silicon-validation-policy/templates/p5b-state.json`
 - Require `.rat/state/p5a-state.json` to exist
 - Require `gates.p5a_exit.verdict == "pass"` in `p5a-state.json`
 - Mirror precondition result to `p5b-state.json.precondition.p5a_functional_closure_pass`

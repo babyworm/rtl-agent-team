@@ -32,7 +32,7 @@ and direct workers via SendMessage.
 - **Direct workers**: Send task clarification, priority changes, or context to specific workers
 - **Broadcast updates**: Notify all workers of task graph changes or blocking issues
 - **Report to leader**: Send progress summaries and completion status to the leader
-- **Signal completion**: Notify leader when all tasks are done
+- **Signal completion**: Notify the leader ONLY after the phase gate AND all post-gate mandatory steps (compliance check, ADR generation, phase summary, Codex cross-review) have passed — NOT when the task graph merely drains.
 
 Workers pick up tasks from the shared task list automatically.
 Write-restricted agents now write directly to `.rat/scratch/phase-2/`;
@@ -42,7 +42,7 @@ read their output from there and Write to the final location.
 
 ```
 T1a-N: Per-candidate HW eval (vcodec-architecture-expert x N, no deps)
-T2:    Selection + AskUserQuestion (leader, blockedBy: ALL T1*)
+T2:    Selection + AskUserQuestion (coordinator, blockedBy: ALL T1*)
 T3:    Architecture design (arch-designer, blockedBy: T2) ──┐ parallel
 T4:    RefC model development (ref-model-dev, blockedBy: T2) ┘ streams
 T5:    Bandwidth integration (arch-designer, blockedBy: T3 + T4)
@@ -65,7 +65,9 @@ T12b:  Review R3 — memory (vcodec-architecture-expert, blockedBy: T11b, MANDAT
 T12c:  Review R3 — model (ref-model-dev, blockedBy: T11b, MANDATORY)
 T12d:  Review R3 — ref model quality (ref-model-reviewer, blockedBy: T11b, CONDITIONAL: only if T6d was created)
 T13:   Final consolidation (rtl-architect, blockedBy: ALL T12*)
-T14:   Compliance check vs P1 iron (compliance-checker, spawned by orchestrator Step 3.9 after T13)
+T13i:  Iron/Open artifact production (coordinator Write — REQ-A-* from resolved OPEN-1-*, Step 3.7, blockedBy: T13)
+T13o:  Open resolution + ambiguity gate (coordinator — OPEN-1-* resolved, ambiguity ≤ 0.5, Step 3.8, blockedBy: T13i)
+T14:   Compliance check vs P1 iron (compliance-checker, spawned by orchestrator Step 3.9 after T13i/T13o)
 ```
 
 # Workflow
@@ -134,7 +136,7 @@ for i, candidate in enumerate(candidates):
 Create T2 (selection) blocked by all T1 tasks:
 ```python
 t2 = TaskCreate(subject="T2: Candidate selection + AskUserQuestion",
-                description="Build per-block comparison matrix from all HW evaluations. Select best candidates. Present to user via AskUserQuestion. Save evaluation matrix to docs/phase-2-architecture/hw-candidate-review.md with per-area candidates, comparison metrics (gate count, critical path, SRAM, BW, throughput, memory latency impact), selected candidate rationale, and user decision record. NOTE: Leader handles AskUserQuestion directly.")
+                description="Build per-block comparison matrix from all HW evaluations. Select best candidates. Present to user via AskUserQuestion. Save evaluation matrix to docs/phase-2-architecture/hw-candidate-review.md with per-area candidates, comparison metrics (gate count, critical path, SRAM, BW, throughput, memory latency impact), selected candidate rationale, and user decision record. NOTE: coordinator handles AskUserQuestion directly.")
 TaskUpdate(taskId=t2, addBlockedBy=[all_t1_ids])
 ```
 
@@ -181,7 +183,10 @@ while not converged and round_num < max_rounds:
     task_list = TaskList()
 
     # === After T2 (selection): create T3 + T4 parallel streams ===
-    # T3: arch-design writes architecture.md (via scratch directory)
+    # T3: arch-design writes architecture.md (via scratch directory). MUST propose an
+    #     architectural resolution for each OPEN-1-* item from Phase 1 open-requirements.json
+    #     (resolution rationale, rejected alternatives, upstream-compliance assessment) — the
+    #     coordinator later converts these into REQ-A-* iron entries in Step 3.7.
     # T4: refmodel writes refc/ code directly
 
     # === After T5 (bandwidth integration): create review round N ===
@@ -230,9 +235,48 @@ This happens at:
 - T2: Present HW evaluation comparison matrix, ask user to select candidates
 - Review escalation: If R3 doesn't converge, present findings to user
 
+## Step 3.7: Iron/Open Artifact Production (T13i — coordinator responsibility, matches non-team orchestrator)
+
+After T13 (final consolidation), the coordinator writes the iron/open artifacts based on the
+architectural decisions. arch-designer is READ-ONLY, so the coordinator produces them directly
+(it has Write access). Read the Phase 1 iron/open requirements first to establish the mapping:
+
+```
+Read("docs/phase-1-research/iron-requirements.json")
+Read("docs/phase-1-research/open-requirements.json")   # skip if P1 had no open items
+
+Write("docs/phase-2-architecture/iron-requirements.json")
+# - Convert each resolved OPEN-1-* into REQ-A-* entries with:
+#   resolved_from, resolution_rationale, rejected_alternatives, upstream_compliance,
+#   violation_policy: "agent_retry", acceptance_criteria
+# If P2 has unresolved research topics for P3:
+Write("docs/phase-2-architecture/open-requirements.json")   # OPEN-2-* items (optional)
+```
+
+## Step 3.8: Open Resolution + Ambiguity Gate (T13o — coordinator, matches non-team Step 5.5)
+
+```
+Glob("docs/phase-1-research/open-requirements.json")   # skip open resolution if no open items existed
+Read("docs/phase-2-architecture/iron-requirements.json")
+
+# For each OPEN-1-* item:
+#   → Verify a REQ-A-* exists with resolved_from == OPEN-1-* id
+#   → Verify resolution_rationale is present and substantive
+#   → Verify rejected_alternatives lists all non-selected candidates
+#   → Verify upstream_compliance shows P1 iron check results
+# If any OPEN-1-* unresolved → AskUserQuestion to resolve OR upstream feedback to P1
+#   (satisfies the `open-resolved` completion criterion)
+
+# Ambiguity Gate (Phase 2): every new REQ-A-* must pass the reproducibility check
+# "Would re-evaluating this architecture reach the same conclusion?"
+# Apply ambiguity scoring per p2-arch-design-policy. Score ≤ 0.5 required for iron.
+#   (satisfies the `ambiguity-pass` completion criterion)
+```
+
 ## Step 3.9: Compliance Check (T14 — MANDATORY, matches non-team orchestrator)
 
-After T13 completes, spawn compliance-checker directly (orchestrator has Task access):
+After T13 + Step 3.7/3.8 (iron production + open resolution) complete, spawn compliance-checker
+directly (orchestrator has Task access):
 
 ```
 Task(subagent_type="rtl-agent-team:compliance-checker",
@@ -257,6 +301,13 @@ After T13 (final consolidation) completes:
 5b. Verify `reviews/phase-2-architecture/ref-model-feature-coverage.md` has 100% REQ-F-* coverage
     (structural check: every iron requirement mapped to ref model code path).
     Omissions require user-approved ADR with impact estimate.
+5c. Verify `docs/phase-2-architecture/iron-requirements.json` exists and is valid JSON
+    (REQ-A-* decisions from resolved OPEN-1-* — Step 3.7 / T13i).
+5d. Verify every OPEN-1-* from `docs/phase-1-research/open-requirements.json` (if present) maps to a
+    REQ-A-* with `resolved_from` + `resolution_rationale` + `rejected_alternatives` (Step 3.8) —
+    satisfies the `open-resolved` completion criterion.
+5e. Verify all new REQ-A-* pass the Phase 2 ambiguity gate (score ≤ 0.5) — satisfies the
+    `ambiguity-pass` completion criterion.
 6. Generate `docs/phase-2-architecture/phase-2-summary.md`
 7. **Per-round artifacts** (enforces dynamic convergence review protocol per p2-arch-design-policy):
    - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal

@@ -51,7 +51,7 @@ WARNING, not BLOCK.
 ```
 Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-3-uarch/*.md")                    # Interface architecture docs
-Glob("docs/phase-1-research/requirements.json")    # Requirements for coverage mapping
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements for coverage mapping
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.

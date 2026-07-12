@@ -80,7 +80,7 @@ Bash("mkdir -p reviews/phase-6-review")
 Task(subagent_type="rtl-agent-team:code-quality-reviewer",
      model="opus",
      prompt="Perform intensive per-module code quality review for Phase 6.
-Read requirements.json, docs/phase-3-uarch/*.md for context.
+Read docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/*.md for context.
 Read ALL rtl/*/*.sv files for full code review.
 Read reviews/phase-4-rtl/design-review.md for prior findings to track.
 Read reviews/phase-5-verify/*.md for verification-discovered issues.
@@ -96,7 +96,7 @@ Save comprehensive review to reviews/phase-6-review/code-review.md.",
 Task(subagent_type="rtl-agent-team:design-quality-reviewer",
      model="opus",
      prompt="Perform cross-phase design quality review for Phase 6.
-Read ALL design artifacts in order: docs/phase-1-research/requirements.json -> docs/phase-2-architecture/architecture.md ->
+Read ALL design artifacts in order: docs/phase-1-research/iron-requirements.json -> docs/phase-2-architecture/architecture.md ->
 docs/phase-3-uarch/*.md -> rtl/*/*.sv.
 Read Phase 4/5 review results for context.
 Build hierarchical consistency matrix: trace every REQ through Spec->Arch->uArch->RTL.
@@ -124,7 +124,7 @@ Correct inconsistencies in-place. Append CC1 log to each document.
 Task(subagent_type="rtl-agent-team:design-note-writer",
      model="opus",
      prompt="Write comprehensive design note for Phase 6.
-Read ALL artifacts: requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv.
+Read ALL artifacts: docs/phase-1-research/iron-requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv.
 Read CC1-corrected Phase 6 reviews: reviews/phase-6-review/code-review.md,
 reviews/phase-6-review/design-review.md.
 Read Phase 4/5 reviews for context.

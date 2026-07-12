@@ -63,11 +63,11 @@ Do NOT proceed to Phase 4.
 ## Phase Gate Definitions
 
 ### Phase 1→2 (Research → Architecture)
-**Artifact Gate**: requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
+**Artifact Gate**: iron-requirements.json (required; open-requirements.json optional) + io_definition.json + timing_constraints.json + domain-analysis.md exist
 **Quality Gate**:
 - 3-round chief review converged (or gaps escalated and user-approved)
 - Ambiguity Gate passed: ambiguity_score ≤ 0.5 (BLOCK if > 0.5)
-- spec-analyst self-reviews requirements.json (completeness, consistency)
+- spec-analyst self-reviews iron-requirements.json and open-requirements.json if present (completeness, consistency)
   - Save: `reviews/phase-1-research/research-review.md`
 - arch-designer evaluates implementation feasibility
 - Per-round review artifacts: `reviews/phase-1-research/research-review-r1.md`, `r2.md`, `r3.md` (mandatory)
@@ -184,7 +184,7 @@ Review rounds within P2 and P3 use dynamic convergence instead of fixed 3 rounds
 
 ## Final Checklist
 
-- [ ] Phase 1: requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md exist
+- [ ] Phase 1: iron-requirements.json (open-requirements.json optional), io_definition.json, timing_constraints.json, domain-analysis.md exist
 - [ ] Phase 1: research-review.md verdict=PASS, per-round reviews (r1-r3) saved, phase-1-summary.md generated
 - [ ] Phase 1: ambiguity-assessment.md saved with ambiguity_score ≤ 0.5
 - [ ] Phase 2: architecture.md with proper naming, refc/*/*.c exist

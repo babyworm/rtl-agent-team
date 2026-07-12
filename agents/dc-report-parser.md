@@ -1,6 +1,6 @@
 ---
 name: dc-report-parser
-description: Thin wrapper around skills/rtl-ppa-optimize-dc/scripts/parse_dc_reports.py. Invokes the parser on syn/rpt/ and returns syn/ppa-report.json location plus a terse JSON summary. No RTL modification.
+description: Thin wrapper around the DC report parser script (skills/rtl-ppa-optimize-dc/scripts/parse_dc_reports.py). Invokes the parser on syn/rpt/ and returns syn/ppa-report.json location plus a terse JSON summary. No RTL modification.
 model: sonnet
 color: cyan
 disallowedTools: Edit, Write
@@ -46,7 +46,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
        - `PPA_SDC` (syn/constraints/design.sdc or custom)
     3. Invoke:
        ```
-       python3 skills/rtl-ppa-optimize-dc/scripts/parse_dc_reports.py \
+       python3 {plugin_root}/skills/rtl-ppa-optimize-dc/scripts/parse_dc_reports.py \
          syn/rpt/ syn/ppa-report.json
        ```
     4. Validate the output: load JSON, assert required keys present.

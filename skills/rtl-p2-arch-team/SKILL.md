@@ -64,7 +64,9 @@ Agent(team_name="p2-arch", subagent_type="rtl-agent-team:p2-arch-team-orchestrat
       prompt="You are the Phase 2 architecture coordinator in team 'p2-arch'. "
              "Manage the task graph using TaskCreate/TaskList/TaskUpdate. "
              "Direct workers via SendMessage. "
-             "Create all tasks (T1a-N HW eval through T13 final consolidation, then T14 compliance). "
+             "Create all tasks (T1a-N HW eval through T13 final consolidation), then perform "
+             "Step 3.7/3.8 iron/open artifact production (REQ-A-* from resolved OPEN-1-*) + open "
+             "resolution + ambiguity gate, then T14 compliance. "
              "Signal leader ONLY after the Phase 2 Gate (Step 4) passes — including the "
              "Step 3.9 compliance check, ADR generation, and the mandatory Codex cross-review. "
              "User input: $ARGUMENTS")

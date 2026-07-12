@@ -51,7 +51,7 @@ Scan for upstream artifacts needed by Phase 4→5. Missing artifacts produce WAR
 # Phase 4 upstream artifacts
 Glob("docs/phase-3-uarch/*.md")                    # μArch module specs
 Glob("reviews/phase-3-uarch/uarch-review.md")      # μArch review verdict
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements
 Glob("docs/phase-1-research/io_definition.json")   # I/O definitions
 Glob("refc/**/*.c")                                # C reference model
 Glob("docs/phase-3-uarch/phase-3-summary.md")      # Phase 3 summary
@@ -68,7 +68,7 @@ Scan the following artifacts for availability:
 ```
 Read("docs/phase-3-uarch/")           # At least one μArch module spec
 Read("reviews/phase-3-uarch/uarch-review.md")  # Prefer "Verdict: PASS"
-Read("docs/phase-1-research/requirements.json")
+Read("docs/phase-1-research/iron-requirements.json")
 Read("docs/phase-1-research/io_definition.json")
 Glob("refc/*/*.c")                    # At least one C reference model source
 Read("docs/phase-3-uarch/phase-3-summary.md")
@@ -83,7 +83,7 @@ Reduced-scope execution: skip sub-phases that require missing artifacts.
 # Context Preload (Phase 4):
 # required (full read):
 Read("docs/phase-3-uarch/*.md")
-Read("docs/phase-1-research/requirements.json")
+Read("docs/phase-1-research/iron-requirements.json")
 Read("docs/phase-1-research/io_definition.json")
 # summary only:
 Read("docs/phase-1-research/phase-1-summary.md")
@@ -165,7 +165,7 @@ Mark as SKELETON — full execution deferred to Phase 5c.
 Save to docs/phase-4-rtl/stream-b-tb-skeletons.md and sim/.
 
 REQUIREMENT COVERAGE — reference requirements for traceability:
-Read docs/phase-1-research/requirements.json (or iron-requirements.json if available).
+Read docs/phase-1-research/iron-requirements.json (or docs/phase-3-uarch/iron-requirements.json if available).
 For each REQ-NNN relevant to this module, ensure at least one test scenario exercises the requirement.
 Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptance_criteria exist) above each test function.",
      run_in_background=true)
@@ -176,7 +176,7 @@ Wait for BOTH Stream A and Stream B to complete at merge point.
 ### Phase 4→5 Quality Gate
 ```
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="Review RTL against μArch specs and requirements.json.
+     prompt="Review RTL against μArch specs and docs/phase-1-research/iron-requirements.json.
 Produce functional coverage matrix: requirement → uarch section → RTL module/line.
 Save to reviews/phase-4-rtl/functional-completeness.md and reviews/phase-4-rtl/design-review.md.
 verdict: PASS or FAIL + findings[]")
@@ -218,7 +218,7 @@ On FAIL: pass findings to worker agent for correction, re-run gate (max 2 retrie
 
 **Context Preload** (Phase 5): Verify required upstream files exist:
 - `rtl/*/*.sv` (required, full read)
-- `docs/phase-1-research/requirements.json` (required, full read)
+- `docs/phase-1-research/iron-requirements.json` (required, full read)
 - `docs/phase-4-rtl/phase-4-summary.md` (summary only)
 - `docs/phase-3-uarch/phase-3-summary.md` (summary only)
 - `docs/phase-2-architecture/phase-2-summary.md` (summary only)
@@ -271,7 +271,7 @@ verdict: PASS or FAIL + gap list[]")
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Final Compliance Matrix: every requirement implemented, verified, passing.
-Read docs/phase-3-uarch/iron-requirements.json (preferred) or requirements.json (fallback).
+Read docs/phase-3-uarch/iron-requirements.json (preferred) or docs/phase-1-research/iron-requirements.json (fallback).
 Unify segmented traceability into e2e matrix.
 When structured acceptance_criteria (with ac_id) exist:
   | REQ ID | AC ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |

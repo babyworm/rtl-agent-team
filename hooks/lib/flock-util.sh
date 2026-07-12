@@ -3,7 +3,7 @@
 #
 # Usage:
 #   . "${CLAUDE_PLUGIN_ROOT}/hooks/lib/flock-util.sh"
-#   acquire_lock "/path/to/resource"    # blocks up to 5s
+#   acquire_lock "/path/to/resource"    # blocks up to FLOCK_TIMEOUT s (default 2)
 #   ... critical section ...
 #   release_lock "/path/to/resource"
 #
@@ -15,15 +15,35 @@
 # FLOCK_STALE_AGE timeout (default 30s). This is inherent to userspace locking
 # without kernel-level flock(2).
 
-FLOCK_TIMEOUT=${FLOCK_TIMEOUT:-5}
+# Default acquire timeout is kept BELOW the per-hook 3s budget in hooks/hooks.json
+# so a contended lock cannot sleep past the budget and get the hook SIGKILLed
+# mid-wait (which would leave the lock dir behind). All callers treat a failed
+# acquire_lock as non-fatal (they fall back to a lock-free path), so a short
+# timeout only trades a rare skipped critical section for guaranteed liveness.
+FLOCK_TIMEOUT=${FLOCK_TIMEOUT:-2}
 FLOCK_STALE_AGE=${FLOCK_STALE_AGE:-30}
+
+# Poll granularity: fine-grained polling lets several hooks that contend for the
+# same lock (each holding it only briefly) all acquire within FLOCK_TIMEOUT,
+# instead of serializing at most one per second. POSIX sleep only guarantees
+# integer seconds, but GNU/BSD/busybox all accept fractions — probe once and
+# fall back to whole-second polling where fractions are unsupported.
+if sleep 0.001 2>/dev/null; then
+  _FLOCK_POLL_SLEEP=0.05
+  _FLOCK_POLLS_PER_SEC=20
+else
+  _FLOCK_POLL_SLEEP=1
+  _FLOCK_POLLS_PER_SEC=1
+fi
 
 acquire_lock() {
   [ -z "$1" ] && return 1
   _lock_path="$1.lock"
-  _waited=0
+  _attempt=0
+  _max_attempts=$((FLOCK_TIMEOUT * _FLOCK_POLLS_PER_SEC))
+  [ "$_max_attempts" -lt 1 ] && _max_attempts=1
 
-  while [ "$_waited" -lt "$FLOCK_TIMEOUT" ]; do
+  while [ "$_attempt" -lt "$_max_attempts" ]; do
     if mkdir "$_lock_path" 2>/dev/null; then
       # Store PID for stale detection
       echo "$$" > "$_lock_path/pid" 2>/dev/null
@@ -45,8 +65,8 @@ acquire_lock() {
       fi
     fi
 
-    sleep 1
-    _waited=$((_waited + 1))
+    sleep "$_FLOCK_POLL_SLEEP"
+    _attempt=$((_attempt + 1))
   done
 
   # Timeout — last resort: check age via stat if available

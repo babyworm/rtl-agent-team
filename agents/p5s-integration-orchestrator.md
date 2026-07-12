@@ -51,7 +51,7 @@ Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
-Glob("docs/phase-1-research/requirements.json")    # Requirements
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.

@@ -22,7 +22,7 @@ Mission:
 State contract:
 - Read/write `.rat/state/p4-state.json`
 - Initialize from template:
-  `skills/rtl-p4-rapid-impl-policy/templates/p4-state.json`
+  `{plugin_root}/skills/rtl-p4-rapid-impl-policy/templates/p4-state.json`
 - Update `current_stage`, per-module statuses, and `gates.p4_exit`
 
 ## Workflow
@@ -89,7 +89,7 @@ If missing in rapid mode, proceed — testbench-dev will derive vectors from uar
      spyglass → svlens `--check-synth` → yosys `$_DLATCH_` → LLM review). Max 2 fix rounds.
    - `cdc-checker` for module-level crossing sanity
    - `testbench-dev` + `eda-runner` for smoke functional check
-     (TB generation: Read docs/phase-1-research/requirements.json or iron-requirements.json if available.
+     (TB generation: Read docs/phase-1-research/iron-requirements.json or docs/phase-3-uarch/iron-requirements.json if available.
       For each REQ-NNN relevant to this module, ensure at least one test scenario exercises the requirement.
       Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptance_criteria exist) above each test function.)
 3. Keep scope minimal: only failing module and dependent edges.

@@ -281,7 +281,11 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
 
 ```
 Task(subagent_type="rtl-agent-team:spec-analyst",
-     prompt="Self-verification of all Phase 1 artifacts per p1-spec-research-policy Final Checklist:
+     prompt="FIRST, generate docs/phase-1-research/domain-analysis.md sourcing from the Step 4
+     sub-domain expert outputs and docs/phase-1-research/selected-approach.md — include:
+     candidate survey summary, comparison tables, cross-block dependency matrix, and per-block
+     timing targets. Use Write tool to save.
+     THEN self-verification of all Phase 1 artifacts per p1-spec-research-policy Final Checklist:
      spec feature count vs REQ count, i_/o_ port convention, timing_constraints.json,
      domain-analysis.md, JSON validation. Save all to docs/phase-1-research/.")
 
@@ -375,7 +379,7 @@ Task(subagent_type="rtl-agent-team:spec-analyst",
      docs/phase-1-research/spec-feature-inventory.json; original_interpretation=NOT_EXTRACTED,
      severity HIGH).
      Severity: HIGH (missing item / different RTL behavior), MEDIUM (different parameters), LOW (cosmetic).
-     Schema: skills/p1-spec-research/templates/challenge-report-schema.json.
+     Schema: {plugin_root}/skills/p1-spec-research/templates/challenge-report-schema.json (plugin_root from .rat/state/spawn-context.json).
      Save to .rat/scratch/stability/phase-1/challenge-report.json. Max 30 challenges.")
 ```
 

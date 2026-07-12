@@ -53,14 +53,14 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
     Each round:
 
-    1. Score each dimension 0-100 using the rubric in `skills/p1-spec-research/references/goal-dimensions.md`. The score is your best estimate of measurable-answer presence based on what the user has said so far (plus pre-scan evidence).
+    1. Score each dimension 0-100 using the rubric in `{plugin_root}/skills/p1-spec-research/references/goal-dimensions.md` (`{plugin_root}` from `.rat/state/spawn-context.json`). The score is your best estimate of measurable-answer presence based on what the user has said so far (plus pre-scan evidence).
 
     2. Compute ambiguity using:
-       `python3 skills/p1-spec-research/scripts/score_ambiguity.py --functionality F --ppa P --scope S --verification V --round N`
+       `python3 {plugin_root}/skills/p1-spec-research/scripts/score_ambiguity.py --functionality F --ppa P --scope S --verification V --round N`
 
     3. Display the scoreboard to the user (as shown by the script's human mode).
 
-    4. Ask ONE question targeting the lowest-scoring dimension. Use a question seed from `references/goal-dimensions.md` for that dimension, adapted with pre-scan evidence. Example: "Your README mentions a 200 MHz target on N28 — does this IP need to meet that same clock, or is it a relaxed sub-block?"
+    4. Ask ONE question targeting the lowest-scoring dimension. Use a question seed from `{plugin_root}/skills/p1-spec-research/references/goal-dimensions.md` for that dimension, adapted with pre-scan evidence. Example: "Your README mentions a 200 MHz target on N28 — does this IP need to meet that same clock, or is it a relaxed sub-block?"
 
     5. Wait for the user's answer via AskUserQuestion. Update scores. Loop.
 
@@ -71,7 +71,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
     ## Phase 4 — Write goal.md
 
-    Read `skills/p1-spec-research/templates/goal.md`. Substitute every `{{PLACEHOLDER}}` with the answers elicited during interview. For dimensions where the user explicitly said "no answer" or "not yet decided", write `not yet decided` rather than fabricating.
+    Read `{plugin_root}/skills/p1-spec-research/templates/goal.md` (`{plugin_root}` from `.rat/state/spawn-context.json`). Substitute every `{{PLACEHOLDER}}` with the answers elicited during interview. For dimensions where the user explicitly said "no answer" or "not yet decided", write `not yet decided` rather than fabricating.
 
     Append the STATUS / ROUNDS footer with actual values.
 
@@ -87,7 +87,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Workflow>
 
   <Constraints>
-    - Do not invent answers. Anti-patterns from `references/goal-dimensions.md` are mandatory.
+    - Do not invent answers. Anti-patterns from `{plugin_root}/skills/p1-spec-research/references/goal-dimensions.md` are mandatory.
     - One question per round. Never ask compound questions.
     - Pre-scan must be silent — no user-visible output during Phase 1.
     - Hard cap is 12 rounds. Beyond that, write goal.md regardless of remaining ambiguity.

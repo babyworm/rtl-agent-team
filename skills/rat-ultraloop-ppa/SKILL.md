@@ -122,13 +122,18 @@ For each cycle in 1..max_cycles:
 
 2. **Read verdict** — read `docs/ppa-opt/iter-{cycle}/verdict.txt`. Expected
    values: `CONTINUE`, `CONVERGED_STREAK`, `CONVERGED_TARGETS`, `EARLY_PLATEAU`,
-   `MAX_CYCLES`, `TIMING_REGRESSION`.
+   `MAX_CYCLES`, `TIMING_REGRESSION`. If `verdict.txt` is ABSENT, the
+   orchestrator hard-halted on an equivalence or smoke-regression FAIL before
+   writing a verdict — handle via the "Missing `verdict.txt`" branch in step 3.
 
 3. **Dispatch by verdict:**
 
    - **`CONVERGED_STREAK` or `CONVERGED_TARGETS`**:
-     - Invoke `/rtl-agent-team:rtl-p5-verify --mode=final --source=ppa-opt`
-       for full regression confirmation.
+     - Invoke `/rtl-agent-team:rtl-p5-verify` for a full final regression
+       confirmation. Pass the run intent as the free-text argument, e.g.
+       `final regression (source: ppa-opt)` — `rtl-p5-verify` forwards its
+       argument to the P5 orchestrator verbatim (it does NOT parse
+       `--mode`/`--source` flags).
      - Write `.rat/state/rtl-verify-done` with `ppa-opt-converge cycle {cycle}\n`.
      - Write `.rat/state/ppa-opt-done` with `converge cycle {cycle}\n` (triggers
        P6 cascade re-review if the design-note was written prior).
@@ -148,10 +153,23 @@ For each cycle in 1..max_cycles:
      - Exit the loop.
 
    - **`TIMING_REGRESSION`**:
-     - Orchestrator already rolled back the patch via `git checkout -- rtl/<top>`.
+     - Orchestrator already rolled back the patch via `git checkout -- rtl/<top>`,
+       wrote `TIMING_REGRESSION` to `verdict.txt`, and removed
+       `.rat/state/ppa-loop-state.json` (its Rollback Cleanup Protocol).
      - Generate `reviews/ppa-opt/timing-regression-escalation.md`.
-     - Remove `.rat/state/ppa-loop-state.json`.
+     - Remove `.rat/state/ppa-loop-state.json` (idempotent — orchestrator
+       already removed it).
      - Exit the loop.
+
+   - **Missing `verdict.txt`** (orchestrator hard-halted on an equivalence or
+     smoke-regression FAIL — see `reviews/ppa-opt/{equiv,smoke}-fail-iter-{cycle}.md`):
+     - The orchestrator already rolled back the patch and removed
+       `.rat/state/ppa-loop-state.json` (Rollback Cleanup Protocol); the
+       one-shot skill's terminal cleanup does the same.
+     - Generate `reviews/ppa-opt/rollback-halt-escalation.md` summarizing the
+       failing check and the rolled-back iteration.
+     - Ensure the state file is gone: `rm -f .rat/state/ppa-loop-state.json`.
+     - Exit the loop (this is a terminal failure — do NOT continue).
 
    - **`CONTINUE`**:
      - Proceed to the next cycle (increment cycle counter, re-enter step 1).

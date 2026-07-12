@@ -283,7 +283,7 @@ Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
      prompt="Execute Phase 4 RTL implementation. Context: Phase 3 artifacts complete. Read docs/phase-3-uarch/ for uarch specs. Implement all modules using the 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) with parallel Stream A (RTL coding) + Stream B (SVA/CDC/TB skeletons).
 
 REQUIREMENT COVERAGE — TB generation must reference requirements for traceability:
-Read docs/phase-1-research/requirements.json (or iron-requirements.json if available).
+Read docs/phase-1-research/iron-requirements.json (settled REQ-F/REQ-P with acceptance_criteria; open-requirements.json optional).
 For each REQ-NNN relevant to this module, ensure at least one test scenario exercises the requirement.
 Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptance_criteria exist) above each test function.")
 ```

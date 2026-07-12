@@ -170,6 +170,52 @@ class TestJsonuGetInputString:
     def test_empty_json_object_returns_empty(self, env):
         assert _input_string("{}", "anykey", env) == ""
 
+    # ── tool_input nesting (real Claude Code hook payload shape) ──────────────
+    # Claude Code delivers tool parameters nested under `.tool_input`; only
+    # session-level fields (cwd, session_id, tool_name) sit at the root. These
+    # tests lock the nested-first + root-fallback contract across ALL parser
+    # modes so a jq/python environment can no longer silently read empty (the
+    # bug that left Rule 5 unarmed when jq/python were installed).
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_tool_input_nested_file_path(self, env):
+        stdin = json.dumps({
+            "cwd": "/proj", "tool_name": "Edit",
+            "tool_input": {"file_path": "rtl/top.sv"},
+        })
+        assert _input_string(stdin, "file_path", env) == "rtl/top.sv"
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_tool_input_nested_command(self, env):
+        stdin = json.dumps({
+            "cwd": "/proj", "tool_name": "Bash",
+            "tool_input": {"command": "verilator --lint-only top.sv"},
+        })
+        assert _input_string(stdin, "command", env) == "verilator --lint-only top.sv"
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_tool_input_nested_skill(self, env):
+        stdin = json.dumps({
+            "cwd": "/proj", "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p5-verify"},
+        })
+        assert _input_string(stdin, "skill", env) == "rtl-agent-team:rtl-p5-verify"
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_root_cwd_alongside_tool_input(self, env):
+        # cwd is a root field; must still resolve when tool_input is present.
+        stdin = json.dumps({
+            "cwd": "/proj", "tool_name": "Edit",
+            "tool_input": {"file_path": "x.sv"},
+        })
+        assert _input_string(stdin, "cwd", env) == "/proj"
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_flat_payload_still_works(self, env):
+        # Legacy/flat shape (no tool_input) must keep resolving via root fallback.
+        stdin = json.dumps({"cwd": "/proj", "file_path": "rtl/top.sv"})
+        assert _input_string(stdin, "file_path", env) == "rtl/top.sv"
+
     def test_non_string_value_returns_empty_python_mode(self):
         # python mode: isinstance(str) check means non-string values return empty.
         stdin = json.dumps({"nested": {"inner": "val"}})

@@ -31,7 +31,7 @@ and direct workers via SendMessage.
 - **Direct workers**: Send task clarification, priority changes, or context to specific workers
 - **Broadcast updates**: Notify all workers of task graph changes or blocking issues
 - **Report to leader**: Send progress summaries and completion status to the leader
-- **Signal completion**: Notify leader when all tasks are done
+- **Signal completion**: Notify the leader ONLY after the phase gate AND all post-gate mandatory steps (compliance check, ADR generation, phase summary, Codex cross-review) have passed — NOT when the task graph merely drains.
 
 Workers pick up tasks from the shared task list automatically.
 Write-restricted agents now write directly to `.rat/scratch/phase-1/`;
@@ -182,7 +182,7 @@ while not all_tasks_complete:
     #    TaskUpdate(taskId=t3_N, addBlockedBy=[t2])
     # 3. Create T5 (comparison matrix) blocked by ALL T3* + T4*:
     #    t5 = TaskCreate(subject="T5: Comparison matrix + candidate selection",
-    #                    description="Build comparison matrix from all assessments. Columns: Complexity, Memory BW, Gate Est., Throughput, Power, Risk, Quality. Identify Pareto-optimal candidates. Write docs/phase-1-research/candidate-comparison.md. NOTE: Leader handles AskUserQuestion for final selection.")
+    #                    description="Build comparison matrix from all assessments. Columns: Complexity, Memory BW, Gate Est., Throughput, Power, Risk, Quality. Identify Pareto-optimal candidates. Write docs/phase-1-research/candidate-comparison.md. NOTE: coordinator handles AskUserQuestion for final selection.")
     #    TaskUpdate(taskId=t5, addBlockedBy=[all_t3_ids + t4b + t4c + (t4a if created)])
 
     # === Dynamic T5b, T5c creation (after T5 completes) ===
@@ -297,7 +297,7 @@ TaskUpdate(taskId=t_ambiguity, addBlockedBy=[t12])
 #    - ambiguity_score > 0.5 → FAIL (AskUserQuestion to resolve top-3 ambiguous items, then re-score)
 ```
 
-## Step 3.6: Challenge Resolution (leader — AskUserQuestion)
+## Step 3.6: Challenge Resolution (coordinator — AskUserQuestion)
 
 After T13a completes, per p1-spec-research-policy: present HIGH challenges individually
 via AskUserQuestion, MEDIUM batched (summary if >10), LOW auto-documented. User may mark

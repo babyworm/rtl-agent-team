@@ -129,7 +129,8 @@ Task(subagent_type="rtl-agent-team:arch-designer",
 
 # Parallel stream B: C reference model
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate docs/phase-2-architecture/bandwidth_report.json.")
+     prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate docs/phase-2-architecture/bandwidth_report.json.
+     Feature coverage (MANDATORY, gate item 6b): read docs/phase-1-research/iron-requirements.json and map every REQ-F-* to a real ref-model code path (function or file:line) — this is a STRUCTURAL check, not merely bitexact test coverage. Save reviews/phase-2-architecture/ref-model-feature-coverage.md with a table | REQ-F-* | Feature | Ref Model Function/Path | Status | where Status is IMPLEMENTED or MISSING. Escalate any unmapped REQ-F-* to the user before proceeding.")
 ```
 
 ### Iron/Open Artifact Production (orchestrator responsibility)
@@ -319,7 +320,9 @@ After Step 5 review completes, verify all gate items:
 
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Phase 2 Gate: Verify all 9 gate items. Consolidate r1-r3 into architecture-review.md.
+     prompt="Phase 2 Gate: Verify all Step 6.5 gate items. Consolidate the per-round review
+     artifacts (architecture-review-r1.md .. architecture-review-rN.md — dynamic convergence,
+     min 2 / max 5 rounds) into architecture-review.md.
      Save Feature Coverage Checklist to feature-coverage.md. Save D2 block diagram to
      architecture-diagram.md. Verify reviews/phase-2-architecture/ref-model-review.md exists with verdict.
      Verdict: PASS or FAIL.")

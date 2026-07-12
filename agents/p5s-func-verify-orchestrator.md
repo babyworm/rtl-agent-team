@@ -59,7 +59,7 @@ Glob("docs/phase-4-rtl/stream-b-sva-skeletons.md") # SVA skeletons
 Glob("docs/phase-4-rtl/stream-b-cdc-preliminary.md") # CDC preliminary
 Glob("docs/phase-4-rtl/stream-b-tb-skeletons.md")  # TB skeletons
 Glob("docs/phase-3-uarch/iron-requirements.json")  # Iron requirements (preferred, AC-level)
-Glob("docs/phase-1-research/requirements.json")    # Requirements (fallback, REQ-level)
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements (fallback, REQ-level)
 Glob("sim/**/*_unit_results.json")                 # Tier 2 baseline (optional — graceful degradation if absent)
 ```
 
@@ -72,7 +72,7 @@ Adjust execution plan based on available artifacts.
 Bash("mkdir -p reviews/phase-5-verify sim/regression sim/coverage")
 Glob("rtl/*/")       # Enumerate modules
 Read("docs/phase-3-uarch/iron-requirements.json")  # For traceability matrix (preferred — AC-level)
-Read("docs/phase-1-research/requirements.json")    # Fallback if iron-requirements absent
+Read("docs/phase-1-research/iron-requirements.json") # P1 fallback if phase-3-uarch iron absent
 ```
 
 ## Tier 2 Baseline Loading
@@ -143,7 +143,7 @@ After initial single-seed sim passes for a module, launch full multi-seed regres
 ```
 # Option A: Automated regression script (preferred)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run full multi-seed regression: bash skills/rtl-p5s-func-verify/scripts/run_regression.sh
+     prompt="Run full multi-seed regression: bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/run_regression.sh
 --mode local --seeds '1 42 123 1337 65536' --sim verilator.
 Do not force --parallel unless user requested an override (script default is max(1, nproc-2)).
 Report per-seed pass/fail, capture .vcd on failure.
@@ -188,7 +188,7 @@ Focus CDTG Round 1 on uncovered FSM states and untested code paths.'")
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Merge multi-seed coverage for module {module}: bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
+     prompt="Merge multi-seed coverage for module {module}: bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
 --format verilator --output sim/coverage/{module}_merged.info.
 Check targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%.
 Report module-scoped coverage gaps and suggest additional test vectors.")
@@ -232,7 +232,7 @@ After ALL regression completes:
 
 ```
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read docs/phase-3-uarch/iron-requirements.json (preferred) or requirements.json (fallback) and sim/regression/*{module}*_results.json.
+     prompt="Read docs/phase-3-uarch/iron-requirements.json (preferred) or docs/phase-1-research/iron-requirements.json (fallback) and sim/regression/*{module}*_results.json.
 Map each REQ-NNN to the test(s) that verify it for module {module}. Output a MODULE-LEVEL Requirement Traceability fragment.
 When structured acceptance_criteria (with ac_id) exist in iron-requirements.json:
   Use AC-level format: | REQ ID | AC ID | Description | Test Case | Status |
@@ -243,7 +243,7 @@ Save MODULE-LEVEL traceability to reviews/phase-5-verify/requirement-traceabilit
   - Date: (today)
   - Reviewer: func-verifier
   - Module: {module}
-  - Upper Spec: iron-requirements.json (or requirements.json)
+  - Upper Spec: iron-requirements.json (docs/phase-3-uarch or docs/phase-1-research)
   - Verdict: PASS | PARTIAL_PASS | FAIL
   ## Feature Coverage Checklist
   | REQ ID | AC ID | Description | Test Case | Status |

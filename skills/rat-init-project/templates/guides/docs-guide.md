@@ -66,13 +66,13 @@ Higher abstraction = MORE iterative refinement. A defect at architecture costs o
 
 | Phase | Mandatory Review Iterations |
 |-------|-----------------------------|
-| Phase 1: Research | 3 rounds (chief-coordinated) |
-| Phase 2: Architecture | 3 rounds (memory, performance, ref model) |
-| Phase 3: μArch | 3 rounds (performance, interface, memory) |
+| Phase 1: Research | 3 mandatory rounds (chief-coordinated) |
+| Phase 2: Architecture | Dynamic convergence (min 2, max 5 rounds; memory, performance, ref model) |
+| Phase 3: μArch | Dynamic convergence (min 2, max 5 rounds; performance, interface, memory) |
 | Phase 4: RTL | 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) |
 | Phase 5: Verify | Sub-phase parallel |
 
-Iteration count may increase beyond 3 if convergence is not achieved.
+Phase 1 uses 3 mandatory rounds; Phases 2-3 converge dynamically (min 2, max 5 rounds — convergence when finding_delta < 0.1 and all critical issues resolved).
 **Principle**: refine thoroughly at the top, execute efficiently at the bottom.
 
 ### Document-as-Memory Principle

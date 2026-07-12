@@ -126,10 +126,35 @@ The skill reports the verdict returned by the orchestrator. If verdict is
   also writes this idempotently; both writes are safe)
 - Recommend running `rtl-p5-verify` for full regression confirmation
 
+### Terminal-verdict state cleanup (MANDATORY)
+
+On EVERY terminal outcome — `CONVERGED_STREAK`, `CONVERGED_TARGETS`,
+`EARLY_PLATEAU`, `MAX_CYCLES`, `TIMING_REGRESSION`, and any orchestrator
+hard-halt (equivalence FAIL, smoke FAIL) — remove the loop-mode state file:
+
+```bash
+rm -f .rat/state/ppa-loop-state.json
+```
+
+Rationale: `.rat/state/ppa-loop-state.json` carries `mode="ppa-loop"`, which
+`hooks/rtl-edit-tracker.sh` reads (`_rat_in_ppa_scope`) to SKIP RTL
+verify-gate staleness tracking for edits inside `allowed_edit_scope`. If the
+file is left behind after a one-shot run, every future RTL edit within that
+scope would silently bypass the RTL verification gate. The removal is
+idempotent with the orchestrator's own rollback cleanup and with
+`rat-ultraloop-ppa`.
+
+Do NOT remove the state file on `CONTINUE` — that is the sole non-terminal
+verdict, and the loop is expected to resume (the user re-invokes this skill or
+switches to `rat-ultraloop-ppa`).
+
 NOTE: The one-shot skill does NOT emit `ppa-opt-done`. To declare true
 convergence (and trigger Phase 6 cascade re-review), use `rat-ultraloop-ppa`
-which runs the mandatory final `/rtl-agent-team:rtl-p5-verify --mode=final
---source=ppa-opt` regression before writing `ppa-opt-done`.
+which runs a mandatory final full Phase 5 regression before writing
+`ppa-opt-done`. That regression is launched via `/rtl-agent-team:rtl-p5-verify`
+with a free-text argument (e.g. `final regression (source: ppa-opt)`);
+`rtl-p5-verify` forwards its argument to the P5 orchestrator verbatim — it does
+NOT parse `--mode`/`--source` flags.
 
 Otherwise, the skill returns the verdict and exits. For `CONTINUE`, the user
 invokes again or switches to `rat-ultraloop-ppa`.

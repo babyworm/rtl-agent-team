@@ -49,7 +49,7 @@ Scan for upstream artifacts needed by the SVA/formal flow. Missing artifacts pro
 ```
 Glob("rtl/**/*.sv")                                # RTL source files
 Glob("docs/phase-3-uarch/*.md")                    # uArch specs for property extraction
-Glob("docs/phase-1-research/requirements.json")    # Requirements for property coverage
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements for property coverage
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -86,7 +86,7 @@ Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r2.md.")
 
 # Round 3 (Harden): Liveness and spec cross-check
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read formal/{module}_props.sv (Round 2 output) and requirements.json.
+     prompt="Read formal/{module}_props.sv (Round 2 output) and docs/phase-1-research/iron-requirements.json.
 Round 3 (Harden): Cross-check against spec requirements. Add liveness properties
 (##[1:N] bounded eventually). Verify assume/assert balance (not over-constrained).
 Add cross-module interface properties if applicable. Finalize formal/{module}_props.sv.

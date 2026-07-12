@@ -334,12 +334,13 @@ Higher abstraction levels require MORE iterative refinement.
 
 | Phase | Mandatory Review Iterations |
 |-------|---------------------------|
-| Phase 1: Research | 3 rounds (chief-coordinated) |
-| Phase 2: Architecture | 3 rounds (memory, performance, ref model) |
-| Phase 3: μArch | 3 rounds (performance, interface, memory) |
+| Phase 1: Research | 3 mandatory rounds (chief-coordinated) |
+| Phase 2: Architecture | Dynamic convergence (min 2, max 5 rounds; memory, performance, ref model) |
+| Phase 3: μArch | Dynamic convergence (min 2, max 5 rounds; performance, interface, memory) |
 | Phase 4: RTL | 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) |
 | Phase 5: Verify | Sub-phase parallel |
 
+Phase 2-3 converge when finding_delta < 0.1 and all critical issues are resolved.
 Time is NOT a constraint at upper levels. Spend extra review rounds perfecting architecture and μArch.
 
 ### Asymmetric Phase Gate Design

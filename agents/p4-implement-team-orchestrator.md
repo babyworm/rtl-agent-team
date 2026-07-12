@@ -31,7 +31,7 @@ and direct workers via SendMessage.
 - **Direct workers**: Send task clarification, priority changes, or context to specific workers
 - **Broadcast updates**: Notify all workers of task graph changes or blocking issues
 - **Report to leader**: Send progress summaries and completion status to the leader
-- **Signal completion**: Notify leader when all tasks are done
+- **Signal completion**: Notify the leader ONLY after the phase gate AND all post-gate mandatory steps (compliance check, ADR generation, phase summary, Codex cross-review) have passed — NOT when the task graph merely drains.
 
 Workers pick up tasks from the shared task list automatically.
 Write-restricted agents now write directly to `.rat/scratch/phase-4/`;
@@ -43,7 +43,8 @@ read their output from there and Write to the final location.
 Wave 1:  Write     (parallel per module, no deps)
 Wave 2:  Lint      (per module, blockedBy: write_{module})
 Wave 3:  Fix       (per module, blockedBy: lint_{module}, only if FAIL)
-Wave 4:  Review    (per module, blockedBy: lint_{module} PASS or fix_{module})
+Wave 3.5: SynthGate (per module, blockedBy: lint_{module} PASS or fix_{module}, HARD gate — zero inferred latches/incomplete assignments/non-synth constructs AND DC-script-emittable)
+Wave 4:  Review    (per module, blockedBy: synth_gate_{module} PASS)
 Wave 5:  Bugfix    (per module, blockedBy: review_{module}, only if issues found)
 Wave 6a: Tier1Smoke (per module, blockedBy: review_{module} PASS or bugfix_{module})
 Wave 6b: Tier2Unit  (global, blockedBy: ALL wave 6a PASS; p4s-unit-test-orchestrator)
@@ -147,11 +148,29 @@ t_lint = TaskCreate(subject=f"W2: Lint {M}", description=f"Run verilator --lint-
                     blockedBy=[t_write])
 
 # Wave 3: Fix (depends on lint, conditional — created only if lint FAIL)
-# Created dynamically by leader after lint results
+# Created dynamically by coordinator after lint results
 
-# Wave 4: Review (depends on lint PASS)
+# Wave 3.5: Synthesizability HARD gate (depends on lint PASS or fix; blocks Wave 4)
+# Deeper than Verilator lint: a synthesizer can infer latches/memories that
+# `--lint-only -Wall` passes clean (e.g. clocked write of a variable-index unpacked-array
+# element read combinationally at many addresses → DC ELAB-978 inferred memory/latch).
+t_synth_gate = TaskCreate(subject=f"W3.5: SynthGate {M}",
+                          description=f"Synthesizability HARD gate for {M} via synthesizability-gate. "
+                                      f"Run best AVAILABLE checker (probe with command -v): spyglass -> "
+                                      f"svlens (`svlens conn <files> --top {M} --check-synth`, non-zero exit = FAIL) -> "
+                                      f"yosys (`hierarchy -check -top {M}; proc; opt; synth`; $_DLATCH_/$_SR_ = latch FAIL; "
+                                      f"a read_verilog SV-parse failure means yosys is NOT applicable — fall through to LLM, "
+                                      f"NOT a FAIL) -> LLM structural review (last resort). "
+                                      f"Verify (A) NO inferred latches / incomplete combinational assignments / "
+                                      f"non-synth constructs AND (B) DC-script-emittable — a DC-style synth script "
+                                      f"elaborates (dc_shell dry-run to link if installed, else yosys `hierarchy -check` proxy). "
+                                      f"Do NOT false-flag single-port RAM wrappers (registered read). "
+                                      f"Save reviews/phase-4-rtl/{M}-synthesizability.md, verdict PASS or FAIL with file:line findings.",
+                          blockedBy=[t_lint])
+
+# Wave 4: Review (depends on synth gate PASS — HARD blocker; do not review a non-synthesizable module)
 t_review = TaskCreate(subject=f"W4: Review {M}", description=f"Code review {M}",
-                      blockedBy=[t_lint])
+                      blockedBy=[t_synth_gate])
 
 # Wave 5: Bugfix (conditional — created after review if issues found)
 
@@ -177,7 +196,7 @@ t_refactor = TaskCreate(subject=f"W9: Refactor {M}", description=f"Apply refacto
                         blockedBy=refactor_deps)
 
 # Wave 9b: Equivalence check (conditional — only for logic-touching refactors)
-# Created dynamically by leader after W9 results:
+# Created dynamically by coordinator after W9 results:
 # - Cosmetic/style-only cleanup: lint + smoke sim sufficient (no eq-check needed)
 # - Logic/sequential/reset/clock-enable/constraint changes:
 #   t_eqcheck = TaskCreate(subject=f"W9b: Equivalence {M}",
@@ -221,7 +240,13 @@ t_integration = TaskCreate(subject="W10: Integration Gate",
 while not all_tasks_complete:
     task_list = TaskList()
     # Dynamic task creation:
-    #   - Lint FAIL → create W3 Fix task, update W4 blockedBy
+    #   - Lint FAIL → create W3 Fix task, update W3.5 SynthGate blockedBy
+    #   - W3.5 SynthGate FAIL → create synth-fix task (rtl-coder: eliminate inferred latches —
+    #     drive the FULL next-state explicitly (default-hold + overwrite) or use a proper RAM
+    #     macro; complete all combinational assignments (else/default); remove non-synth
+    #     constructs; re-run lint), then re-run the gate on THAT module only. Max 2 fix rounds;
+    #     after 2 still FAIL → escalate to rtl-architect (structural redesign) and report.
+    #     HARD blocker — W4 Review does NOT start until synth gate verdict PASS.
     #   - Review finds issues → create W5 Bugfix task, update W6a blockedBy
     #   - Module has bus interfaces → create W8 Protocol task, update W9 blockedBy
     #   - W9 refactor touches logic → create W9b Equivalence task (see Step 2)
@@ -264,6 +289,7 @@ After all Wave 9 tasks (and conditional W9b) complete and integration passes.
 **ALL items must PASS. STOP and report on first FAIL — do not proceed to Phase 5.**
 
 1. Verify all modules have lint PASS
+1b. **Synthesizability (HARD — Wave 3.5)**: `reviews/phase-4-rtl/{module}-synthesizability.md` exists for every module with verdict **PASS** (zero inferred latches / incomplete assignments / non-synth constructs), AND the design is **DC-script-emittable** (a DC-style synth script elaborates — dc_shell dry-run, or yosys `hierarchy -check` proxy). HARD blocker — FAIL stops the gate.
 2. Verify all modules have code review PASS (0 critical/major findings)
 3. Verify all modules have Tier 1 smoke PASS (Wave 6a)
 3b. Verify Tier 2 unit test PASS (Wave 6b): `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`, `coverage.fsm_pct >= 50`, `coverage.line_pct >= 60`, per-feature `req_ids` populated (at least one REQ-U-* each), `func_coverage.covergroups_defined >= 1`, and `codec_conformance` = `"PASS"` or `"N/A"` (explicit value required)
@@ -298,7 +324,8 @@ Read(".rat/cross-review/phase-4/cross-review-report.md")
 
 - **Worker crash**: Re-spawn worker, re-assign in-progress task.
 - **Lint fix loop**: Max 3 rounds per module. After 3, escalate to leader.
+- **Synthesizability gate (Wave 3.5) FAIL**: Max 2 fix rounds per module (rtl-coder eliminates inferred latches / completes combinational assignments / removes non-synth constructs). After 2 still FAIL → escalate to rtl-architect for structural redesign. HARD blocker — W4 does not start on FAIL.
 - **CDC FAIL after 2 rounds**: Escalate to cdc-reviewer for synchronization strategy. If root cause is clock source/gating/mux → additionally escalate to clock-architect.
 - **Protocol FAIL after 2 rounds**: Escalate to protocol-reviewer for interface redesign.
 - **Constraint violation**: If coordinator accidentally calls TeamCreate/Agent(team_name=...), the call will fail. Continue with TaskCreate/SendMessage-based coordination.
-- **Review disagreement**: Leader resolves by creating directed bugfix tasks.
+- **Review disagreement**: Coordinator resolves by creating directed bugfix tasks.

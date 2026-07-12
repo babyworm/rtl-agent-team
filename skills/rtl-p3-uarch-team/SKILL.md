@@ -68,7 +68,9 @@ Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:p3-uarch-team-orchestr
              "Manage the task graph using TaskCreate/TaskList/TaskUpdate. "
              "Direct workers via SendMessage. "
              "Initial tasks T1 (uarch) and T2 (BFM) already created by leader. "
-             "Create dynamic tasks (T3 BFM gate, T4-T10 review rounds). "
+             "Create dynamic tasks (T3 BFM gate, T4-T10 review rounds), then perform Step 3.7/3.8 "
+             "iron artifact production (REQ-U-* from resolved OPEN-2-*) + open resolution + "
+             "zero-opens + ambiguity gate, then Step 3.9 compliance. "
              "Signal leader ONLY after the Phase 3 Gate (Step 4) passes — including the "
              "Step 3.9 compliance check, ADR generation, and the mandatory Codex cross-review. "
              "User input: $ARGUMENTS")

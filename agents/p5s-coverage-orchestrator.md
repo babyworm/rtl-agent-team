@@ -57,7 +57,7 @@ Glob("sim/{module}/coverage/coverage.xml")                  # Coverage data from
 Glob("sim/{module}/coverage/*.dat")                         # Alternative coverage data format
 Glob("sim/{module}/coverage/merged.info")                   # Verilator merged coverage (from func-verify)
 Glob("sim/regression/*_results.json")              # Regression results for context
-Glob("docs/phase-1-research/requirements.json")    # Requirements for coverage mapping
+Glob("docs/phase-1-research/iron-requirements.json") # Requirements for coverage mapping
 ```
 
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
@@ -187,7 +187,7 @@ Do not add tests for waived bins.")
 
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Run final regression with all test files.
-Merge coverage: bash skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
+Merge coverage: bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
   --format verilator --output sim/{module}/coverage/merged.info
 Regenerate final coverage to sim/{module}/coverage/coverage_final.xml.
 Report final coverage percentages.",

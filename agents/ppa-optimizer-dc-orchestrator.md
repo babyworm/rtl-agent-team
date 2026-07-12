@@ -90,7 +90,11 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
     `run_syn.sh` supports `--script <tcl>` for a full custom Tcl (bypassing
     auto-generation). The orchestrator composes a thin wrapper Tcl that does
-    the standard DC setup, then sources the policy-owned compile fragment:
+    the standard DC setup, then sources the policy-owned compile fragment.
+    Substitute `{plugin_root}` with the absolute path resolved from
+    `.rat/state/spawn-context.json` (field `plugin_root`) BEFORE writing the
+    wrapper — `dc_shell` runs with the user project as CWD, so a relative
+    `skills/...` source path will not resolve:
 
     ```bash
     mkdir -p syn/scr
@@ -109,7 +113,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
     read_sdc "${PPA_SDC}"
 
-    source skills/ppa-optimizer-dc-policy/templates/dc-compile-ppa.tcl
+    source {plugin_root}/skills/ppa-optimizer-dc-policy/templates/dc-compile-ppa.tcl
 
     write -format ddc     -hierarchy -output syn/db/\${top}.ddc
     write -format verilog -hierarchy -output syn/vnet/\${top}.v
@@ -141,6 +145,26 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     clean-tree precondition enforced at skill entry guarantees HEAD is the pre-patch
     state).
 
+    **Rollback Cleanup Protocol (shared by Steps 7, 8, 10).** After the
+    `git checkout`/`git clean` restore, the RTL is byte-identical to the clean,
+    pre-patch (verified) HEAD, so the Step 6b tracking and the ppa-loop mode
+    marker must be cleared to leave an unambiguous state:
+    ```bash
+    # 1. RTL restored to pre-patch HEAD — no unverified modifications remain.
+    #    Clear the Step 6b tracking so rtl-verify-stop-gate.sh does not block
+    #    exit on phantom "modified but unverified" RTL that was just reverted.
+    rm -f .rat/state/rtl-modified-files.txt
+    # 2. Exit ppa-loop mode. A rollback is always terminal for the iteration;
+    #    removing the state prevents rtl-edit-tracker.sh from continuing to skip
+    #    verify-gate staleness tracking. Idempotent w.r.t. the skill/wrapper
+    #    (rtl-ppa-optimize-dc, rat-ultraloop-ppa) terminal cleanup.
+    rm -f .rat/state/ppa-loop-state.json
+    ```
+    Note: the Step 6b `rm -f .rat/state/rtl-verify-done .rat/state/rtl-verify-waiver`
+    is intentionally NOT re-created here — clearing the tracking file already
+    lets the verify gate pass, and re-asserting verify-done without a fresh run
+    would be a false completion claim.
+
     ### Step 4: Generate RTL patch
     ```
     Task(subagent_type="rtl-agent-team:ppa-optimizer-dc",
@@ -153,7 +177,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
     ### Step 5: Scope validation
     ```bash
-    python3 skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py \
+    python3 {plugin_root}/skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py \
         docs/ppa-opt/iter-{N}/patch.diff \
         "rtl/${PPA_TOP}/**/*.sv" \
         "rtl/common/**,rtl/pkg/**,rtl/intf/**"
@@ -208,6 +232,9 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     On NOT_EQUIVALENT:
     ```bash
     git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"
+    # Then run the Rollback Cleanup Protocol (Step 3): clears rtl-modified-files.txt
+    # and removes .rat/state/ppa-loop-state.json.
+    rm -f .rat/state/rtl-modified-files.txt .rat/state/ppa-loop-state.json
     ```
     Write `reviews/ppa-opt/equiv-fail-iter-{N}.md`, halt.
 
@@ -222,6 +249,9 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     Non-zero exit:
     ```bash
     git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"
+    # Then run the Rollback Cleanup Protocol (Step 3): clears rtl-modified-files.txt
+    # and removes .rat/state/ppa-loop-state.json.
+    rm -f .rat/state/rtl-modified-files.txt .rat/state/ppa-loop-state.json
     ```
     Write `reviews/ppa-opt/smoke-fail-iter-{N}.md`, halt.
 
@@ -232,12 +262,20 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     Compare WNS (post-patch) vs. WNS (pre-patch). If `Δ_wns < -0.02 ns`:
     ```bash
     git checkout -- "rtl/${PPA_TOP}" && git clean -fd -- "rtl/${PPA_TOP}"
+    # Emit the TIMING_REGRESSION verdict so rat-ultraloop-ppa — which dispatches
+    # on docs/ppa-opt/iter-{N}/verdict.txt — can observe this terminal outcome.
+    # (This guard halts before Step 11, which is the only other verdict writer.)
+    mkdir -p docs/ppa-opt/iter-{N}
+    printf 'TIMING_REGRESSION\n' > docs/ppa-opt/iter-{N}/verdict.txt
+    # Then run the Rollback Cleanup Protocol (Step 3): clears rtl-modified-files.txt
+    # and removes .rat/state/ppa-loop-state.json.
+    rm -f .rat/state/rtl-modified-files.txt .rat/state/ppa-loop-state.json
     ```
     Write `reviews/ppa-opt/timing-regression-iter-{N}.md`, halt.
 
     ### Step 11: Delta computation & convergence verdict
     ```bash
-    python3 skills/rtl-ppa-optimize-dc/scripts/compute_delta.py \
+    python3 {plugin_root}/skills/rtl-ppa-optimize-dc/scripts/compute_delta.py \
         docs/ppa-opt/iter-{N}/ppa-report.json \
         .rat/state/ppa-loop-state.json \
         requirements.json

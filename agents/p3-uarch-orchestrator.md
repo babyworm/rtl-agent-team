@@ -152,6 +152,7 @@ Task(subagent_type="rtl-agent-team:uarch-designer",
      8. REQ→uArch reverse traceability table: map every REQ to specific module(s)/section(s)
      For each OPEN-2-* item, propose μArch resolution with rationale, rejected alternatives, and upstream compliance.
      Also produce: clock-domain-map.md, protocol-assignments.md, and req-uarch-traceability.md")
+```
 
 ### Iron Artifact Production (orchestrator responsibility)
 
@@ -172,6 +173,7 @@ rtl-p3-uarch-policy acceptance_criteria / traces_to sections (≥1 AC per REQ-U-
 if missing or empty `[]`, prompt uarch-designer to add; not blocking P3 exit).
 Read P1 and P2 iron-requirements.json to establish the traces_to mapping before writing REQ-U-* entries.
 
+```
 # Stream B: BFM development (parallel with uarch)
 # BFM MUST produce C++ files (bfm/src/*.cpp, bfm/include/*.h), NOT SystemVerilog.
 # If SystemC is unavailable, use pure C timing model as fallback — never SV.
@@ -182,6 +184,7 @@ Task(subagent_type="rtl-agent-team:bfm-dev",
      Default: LT blocking transport. AT on explicit request only.
      Per-block I/O logging MANDATORY: timestamped transaction records.
      Compare against C reference model (refc/).
+     Feature coverage (MANDATORY, gate item — bfm-feature-coverage 100%): read docs/phase-1-research/iron-requirements.json and map every REQ-F-* to a BFM module/method (STRUCTURAL check). Save reviews/phase-3-uarch/bfm-feature-coverage.md with a table | REQ-F-* | Feature | BFM Module/Method | Ref Model Match | Status | where Status is IMPLEMENTED or MISSING. Escalate any unmapped REQ-F-* to the user.
      Archive I/O logs at bfm/logs/ for Phase 4-5 RTL unit verification.")
 ```
 

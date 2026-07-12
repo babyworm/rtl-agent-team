@@ -24,7 +24,7 @@ Silicon IP design is a **reliability-critical domain** — a single RTL bug can 
 Traditional sequential design is error-prone. This plugin addresses these challenges through:
 
 1. **Phase-gated pipeline** — 6 mandatory phases with quality gates prevent premature progression
-2. **Iterative review enforcement** — Higher abstraction levels require MORE review rounds (Cascading Quality principle). Phase 1-3 enforce minimum 3 rounds of review each
+2. **Iterative review enforcement** — Higher abstraction levels require MORE review rounds (Cascading Quality principle). Phase 1 enforces 3 mandatory rounds of review; Phase 2-3 use dynamic convergence (min 2, max 5 rounds)
 3. **Parallel agent execution** — Specialized agents (spec-analyst, rtl-coder, func-verifier, etc.) work concurrently within each phase, spawned as subagents via the Task tool
 4. **Automated verification loops** — RTL changes trigger mandatory lint → TB → simulation cycles, enforced by Stop hooks (not by LLM compliance alone)
 5. **Document-as-Memory** — Design artifacts persist across phases and agent boundaries, enabling resumability
@@ -150,7 +150,7 @@ When modifying this plugin:
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
 1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
-2. **Step 0 Context Bootstrap duplicated across 30 orchestrators** — Each orchestrator agent contains an identical ~12-line Step 0 block. This is intentional: agent prompts must be self-contained (no `#include`), the protocol is stable (unchanged since v0.6.8), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. Bulk updates are achievable via `sed` or scripted replacement if the protocol ever changes. Note: `p5a-functional-closure-orchestrator` and `p5b-silicon-validation-orchestrator` use custom Preconditions (dedicated state files) instead of standard Step 0.
+2. **Step 0 Context Bootstrap duplicated across 31 of the 33 orchestrators** — Each of these orchestrator agents contains an identical ~12-line Step 0 block. This is intentional: agent prompts must be self-contained (no `#include`), the protocol is stable (unchanged since v0.6.8), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. Bulk updates are achievable via `sed` or scripted replacement if the protocol ever changes. Note: `p5a-functional-closure-orchestrator` and `p5b-silicon-validation-orchestrator` (the remaining 2 of the 33) use custom Preconditions (dedicated state files) instead of standard Step 0.
 
 ### File Architecture
 
@@ -180,8 +180,8 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
 │   ├── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
 │   ├── rtl-coverage-exclusion-gate.sh  #   Stop: coverage exclusion approval enforcement
-│   ├── rtl-audit-init.sh                #   PostToolUse:TaskCreate: audit session initialization
-│   ├── rtl-audit-subagent.sh            #   PostToolUse:Task: per-subagent audit capture
+│   ├── rtl-audit-init.sh                #   SessionStart: audit session initialization
+│   ├── rtl-audit-subagent.sh            #   SubagentStart/SubagentStop: per-subagent audit capture
 │   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:TaskCreate: audit spawn completion
 │   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest
 │   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
@@ -278,7 +278,7 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 
 **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Details in `skills/rtl-orchestrate/SKILL.md`.
 
-**Cascading Quality**: Higher abstraction = more review iterations. Phase 1-3: min 3 rounds each. Fix at the top, not the bottom. Details in `skills/rtl-orchestrate/SKILL.md`.
+**Cascading Quality**: Higher abstraction = more review iterations. P1: 3 mandatory rounds; P2/P3: dynamic convergence (min 2, max 5). Fix at the top, not the bottom. Details in `skills/rtl-orchestrate/SKILL.md`.
 
 **Document-as-Memory**: Design artifacts are persistent memory. Each phase reads upstream docs, writes downstream. Enables resumability. Details in `skills/rtl-orchestrate/SKILL.md`.
 

@@ -21,7 +21,7 @@ Mission:
 State contract:
 - Read/write `.rat/state/p5a-state.json`
 - Initialize from template:
-  `skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json`
+  `{plugin_root}/skills/rtl-p5a-functional-closure-policy/templates/p5a-state.json`
 - Update `scopes.*` progress and `gates.p5a_exit`
 
 ## Workflow

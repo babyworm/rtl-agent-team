@@ -8,7 +8,7 @@
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 99 specialized AI agents + 97 skills + 11 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 99 specialized AI agents + 97 skills + 27 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -259,12 +259,12 @@ rtl-agent-team/
 │   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
 │   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
 │   ├── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-│   └── {skill}/references/     # 11 reference documents (distributed per skill)
+│   └── {skill}/references/     # 27 reference documents (distributed per skill)
 │       ├── coding-style-guide.md   # SV naming conventions (in systemverilog/)
 │       ├── axi-protocol-rules.md   # AXI4 per-channel SVA templates (in rtl-p5s-protocol-verify/)
 │       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
-│       └── ...                     # + 9 more (CDC, UVM, Yosys, SDC, etc.)
+│       └── ...                     # + 23 more (CDC, UVM, Yosys, SDC, etc.)
 ├── hooks/                      # Event-driven enforcement (14 hook scripts / 15 registrations)
 │   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup check + template bootstrap
 │   └── ...                     # + 13 more (routing inject, verify gate, cascade, etc.)
@@ -290,14 +290,15 @@ python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hoo
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
-| Design | 8 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer |
-| Verification | 7 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer |
-| Specialized Review | 14 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer |
+| Design | 9 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer, goal-clarifier |
+| Verification | 8 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer, test-plan-writer |
+| Specialized Review | 16 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer, compliance-checker, ultraloop-reviewer |
 | Phase 6 Design Note | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
-| EDA/Synthesis | 8 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer |
+| EDA/Synthesis | 11 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer, dc-report-parser, synthesizability-gate, ppa-optimizer-dc |
 | Infrastructure | 3 | ipxact-generator, bfm-dev, ref-model-dev |
 | Domain Experts | 13 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-intra-pred-expert, vcodec-me-expert, vcodec-mc-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
-| Orchestrators | 32 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator, and 25 more (team/sub-phase variants) |
+| Phase 4 Block-Parallel | 2 | p4-block-parallel-coordinator, p4-block-worker |
+| Orchestrators | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator, and 26 more (team/sub-phase variants) |
 
 Model policy:
 - Use `opus` for reasoning-heavy analysis, architecture decisions, and debugging.
@@ -433,8 +434,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (97)
-├── skills/                              # rtl-agent-team skills (97, with 11 reference docs)
+├── agents/                              # rtl-agent-team agents (99)
+├── skills/                              # rtl-agent-team skills (97, with 27 reference docs)
 ├── plugins/
 │   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages

@@ -19,6 +19,15 @@
 # Output variables (set after call):
 #   _CGU_PENDING  — the (possibly modified) pending string
 #   _CGU_DYN_MSG  — dynamic prompt message from compliance FAIL (empty if PASS or no report)
+
+# _cgu_mtime <path> — print file mtime as epoch seconds (empty if unavailable).
+# Self-contained (mirrors posix-util.sh get_mtime_epoch) so this lib does not
+# depend on the caller having sourced posix-util.sh.
+_cgu_mtime() {
+  [ ! -e "$1" ] && return 0
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || printf ''
+}
+
 compliance_preprocess() {
   _CGU_SKILL_STATE="$1"
   _CGU_STATE_DIR="$2"
@@ -57,6 +66,25 @@ compliance_preprocess() {
       fi
     fi
     return 0
+  fi
+
+  # Phase-freshness guard (prevents cross-phase stale PASS/FAIL bleed):
+  # compliance-report.json is a SHARED path that the compliance-checker overwrites
+  # each phase. rtl-phase-state-bootstrap.sh rewrites compliance-state.json (giving
+  # it a fresh mtime) whenever the active phase changes. If the report predates the
+  # current phase marker, it belongs to an upstream phase (e.g. a stale P2 PASS) and
+  # must NOT auto-satisfy the current phase's compliance-pass — leaving it pending
+  # forces this phase's own compliance check to produce a fresh report. Ignore the
+  # report entirely in that case (skill-active.json is created fresh per skill, so
+  # there are no cross-phase overrides to clear here).
+  _CGU_PHASE_STATE="$_CGU_STATE_DIR/compliance-state.json"
+  if [ -f "$_CGU_PHASE_STATE" ]; then
+    _CGU_RPT_MTIME=$(_cgu_mtime "$_CGU_CR_REPORT")
+    _CGU_PHS_MTIME=$(_cgu_mtime "$_CGU_PHASE_STATE")
+    if [ -n "$_CGU_RPT_MTIME" ] && [ -n "$_CGU_PHS_MTIME" ] && \
+       [ "$_CGU_RPT_MTIME" -lt "$_CGU_PHS_MTIME" ] 2>/dev/null; then
+      return 0
+    fi
   fi
 
   # Skip PASS/FAIL processing if compliance-pass is not an active criterion

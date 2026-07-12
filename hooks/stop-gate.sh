@@ -71,6 +71,21 @@ if [ ! -f "$STATE_FILE" ]; then
   emit_post_continue
 fi
 
+# Staleness escape: an autopilot run that crashed or was abandoned leaves a
+# non-"completed" state file behind. Without a bound it would block EVERY Stop
+# in EVERY future session forever. Mirror the 2h bound used by
+# rtl-skill-completion-gate.sh: if the state file has not been touched within
+# the bound, treat the run as abandoned and allow the session to stop.
+. "$SCRIPT_DIR/lib/posix-util.sh"
+STOP_STALE_BOUND=${RAT_STOP_STALE_SECONDS:-7200}
+STATE_MTIME=$(get_mtime_epoch "$STATE_FILE")
+if [ -n "$STATE_MTIME" ]; then
+  STATE_AGE=$(posix_elapsed_seconds "$STATE_MTIME")
+  if [ "$STATE_AGE" -ge "$STOP_STALE_BOUND" ] 2>/dev/null; then
+    emit_post_continue
+  fi
+fi
+
 STATUS=$(jsonu_get_file_path_string "$STATE_FILE" "status")
 if [ "$STATUS" = "completed" ]; then
   emit_post_continue

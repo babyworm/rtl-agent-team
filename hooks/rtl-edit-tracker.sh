@@ -237,7 +237,10 @@ if [ -z "$FILE_PATH" ]; then
     fi
   done
   if [ "$_PPA_SKIP" = "true" ]; then
-    emit_continue "ppa-loop scope edit — skipping rtl-edit staleness"
+    # PostToolUse hook — emit a PostToolUse envelope (emit_continue hardcodes a
+    # PreToolUse hookEventName, which fails PostToolUse schema validation and is
+    # silently dropped).
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"ppa-loop scope edit — skipping rtl-edit staleness"}}'
     exit 0
   fi
   _track_and_invalidate "$BASH_RTL_FILES"
@@ -251,7 +254,10 @@ case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     _setup_tracking
     if _rat_in_ppa_scope "$FILE_PATH"; then
-      emit_continue "ppa-loop scope edit — skipping rtl-edit staleness"
+      # PostToolUse hook — emit a PostToolUse envelope (emit_continue hardcodes a
+      # PreToolUse hookEventName, which fails PostToolUse schema validation and is
+      # silently dropped).
+      printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"ppa-loop scope edit — skipping rtl-edit staleness"}}'
       exit 0
     fi
     _track_and_invalidate "$FILE_PATH"

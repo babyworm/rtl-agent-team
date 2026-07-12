@@ -48,6 +48,21 @@ All overridable via `requirements.json["ppa_targets"]["convergence"]`.
 | Normal convergence | Streak of `streak_required` iterations with `|Δ_weighted|` < `delta_pct` OR all targets met | Run full Phase 5 regression, emit `.rat/state/ppa-opt-done` |
 | Max cycles | `iter == max_cycles` | Record best-so-far, escalate to user |
 
+**State cleanup (all tiers).** Every terminal tier — plus the rollback halts
+(equivalence / smoke / timing FAIL) — removes `.rat/state/ppa-loop-state.json`
+so the project exits `ppa-loop` mode and `hooks/rtl-edit-tracker.sh` resumes
+normal verify-gate staleness tracking. This removal is performed by the
+skill/wrapper layer (`rtl-ppa-optimize-dc`, `rat-ultraloop-ppa`) and, on
+rollback, defensively by the orchestrator's Rollback Cleanup Protocol.
+
+**`ppa-opt-done` ownership.** `.rat/state/ppa-opt-done` is emitted ONLY by the
+auto-loop wrapper (`rat-ultraloop-ppa`) after the mandatory final full Phase 5
+regression on normal convergence. The one-shot `rtl-ppa-optimize-dc` does NOT
+emit `ppa-opt-done` (it writes only the Rule 5 `rtl-verify-done` marker). This
+keeps a terminated loop's state unambiguous: `ppa-loop-state.json` absent =
+loop finished; `ppa-opt-done` present = true convergence declared (triggers the
+Phase 6 cascade re-review).
+
 ## Timing-First Heuristic (rule priority)
 
 ```
@@ -107,15 +122,21 @@ the loop starting, the skill asserts a clean working tree.
 
 ## DC Tcl Fragment
 
-See `templates/dc-compile-ppa.tcl`. The PPA orchestrator composes a thin wrapper
-Tcl that performs DC setup/analyze/elaborate/link, `source`s this fragment, then
-runs it via `run_syn.sh --tool dc_shell --script <wrapper.tcl>` (the `--script`
-path bypasses run_syn.sh auto-generation). Wiring: `agents/ppa-optimizer-dc-orchestrator.md`.
+See `{plugin_root}/skills/ppa-optimizer-dc-policy/templates/dc-compile-ppa.tcl`
+(`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`).
+The PPA orchestrator composes a thin wrapper Tcl that performs DC
+setup/analyze/elaborate/link, `source`s this fragment (with `{plugin_root}`
+expanded to the absolute path, since `dc_shell` runs in the user project CWD),
+then runs it via `run_syn.sh --tool dc_shell --script <wrapper.tcl>` (the
+`--script` path bypasses run_syn.sh auto-generation). Wiring:
+`agents/ppa-optimizer-dc-orchestrator.md`.
 
 ## PPA Brief Scaffold
 
 When `requirements.json` is missing `ppa_targets`, the skill writes back the
-content of `templates/ppa-brief-scaffold.json` and halts with user prompt.
+content of `{plugin_root}/skills/ppa-optimizer-dc-policy/templates/ppa-brief-scaffold.json`
+(`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`)
+and halts with user prompt.
 
 ## Early-Plateau Escalation Report Template
 

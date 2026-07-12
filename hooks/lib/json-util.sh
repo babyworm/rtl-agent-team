@@ -62,13 +62,20 @@ jsonu_path_to_jq_query() {
   printf '%s' "$JSONU_QUERY"
 }
 
+# Read a string field from a Claude Code hook stdin payload.
+# Claude Code nests tool parameters under `.tool_input` (e.g. Edit's file_path,
+# Bash's command, Skill's skill arg); only session-level fields (cwd, session_id,
+# hook_event_name, tool_name) sit at the root. We look inside `tool_input` FIRST,
+# then fall back to the root — the fallback also covers root-level fields and
+# legacy/flat test payloads, so both shapes work.
 jsonu_get_input_string() {
   JSONU_INPUT="$1"
   JSONU_KEY="$2"
 
   case "$JSONU_PARSER_MODE" in
     jq)
-      printf '%s' "$JSONU_INPUT" | jq -r --arg key "$JSONU_KEY" '.[$key] // empty' 2>/dev/null
+      # `.tool_input[$key]` is null (not an error) when tool_input is absent.
+      printf '%s' "$JSONU_INPUT" | jq -r --arg key "$JSONU_KEY" '.tool_input[$key] // .[$key] // empty' 2>/dev/null
       ;;
     python)
       printf '%s' "$JSONU_INPUT" | "$JSONU_PY_BIN" -c '
@@ -80,13 +87,17 @@ try:
     payload = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
-value = payload.get(key, "")
-if isinstance(value, str):
-    sys.stdout.write(value)
+ti = payload.get("tool_input")
+if isinstance(ti, dict) and isinstance(ti.get(key), str):
+    sys.stdout.write(ti[key])
+elif isinstance(payload.get(key), str):
+    sys.stdout.write(payload[key])
 ' "$JSONU_KEY" 2>/dev/null
       ;;
     *)
-      # Last-resort fallback when jq/python are unavailable.
+      # Last-resort fallback when jq/python are unavailable. The whole-string
+      # scan matches the key wherever it sits, so nested tool_input values are
+      # already covered.
       printf '%s' "$JSONU_INPUT" | sed -n "s/.*\"$JSONU_KEY\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1
       ;;
   esac

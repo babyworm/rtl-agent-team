@@ -31,7 +31,7 @@ and direct workers via SendMessage.
 - **Direct workers**: Send task clarification, priority changes, or context to specific workers
 - **Broadcast updates**: Notify all workers of task graph changes or blocking issues
 - **Report to leader**: Send progress summaries and completion status to the leader
-- **Signal completion**: Notify leader when all tasks are done
+- **Signal completion**: Notify the leader ONLY after the phase gate AND all post-gate mandatory steps (compliance check, ADR generation, phase summary, Codex cross-review) have passed — NOT when the task graph merely drains.
 
 Workers pick up tasks from the shared task list automatically.
 Write-restricted agents now write directly to `.rat/scratch/phase-3/`;
@@ -42,7 +42,7 @@ read their output from there and Write to the final location.
 ```
 T1:  Per-block uarch docs (uarch-designer, no deps)        ──┐ parallel
 T2:  BFM development (bfm-dev, no deps)                     ──┘ streams
-T3:  BFM validation gate (leader, blockedBy: T1 + T2)
+T3:  BFM validation gate (coordinator, blockedBy: T1 + T2)
 T4a: Review R1 — feature preservation (rtl-architect, blockedBy: T3)
 T4b: Review R1 — timing/pipeline (timing-advisor, blockedBy: T3)
 T4c: Review R1 — algorithm consistency (vcodec-architecture-expert, blockedBy: T3)
@@ -56,7 +56,9 @@ T8:  Aggregate R2 (rtl-architect, blockedBy: ALL T7*)
 T8w: Wonder — R2 (after T8, compare R1 vs R2 assumptions, blockedBy: T8)
 T9+: Review RN (DYNAMIC — convergence-based, min 2 rounds, max 5)
 T_final: Final consolidation + pipeline diagram + feedback report (blockedBy: last review round)
-(after T_final: orchestrator Step 3.9 spawns compliance-checker vs P1+P2 iron)
+T_iron:  Iron artifact production (coordinator Write — REQ-U-* from resolved OPEN-2-*, zero-opens, Step 3.7, blockedBy: T_final)
+T_open:  Open resolution + zero-opens + ambiguity gate (coordinator — OPEN-2-* resolved, no open-requirements.json, ambiguity ≤ 0.5, Step 3.8, blockedBy: T_iron)
+(after T_open: orchestrator Step 3.9 spawns compliance-checker vs P1+P2 iron)
 ```
 
 # Workflow
@@ -120,7 +122,7 @@ Create initial parallel streams (T1, T2):
 
 ```python
 t1 = TaskCreate(subject="T1: Per-block uArch design",
-                description="Produce microarchitecture docs at .rat/scratch/phase-3/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec. Also produce clock-domain-map.md and protocol-assignments.md. (Write-restricted — orchestrator will copy to final location at docs/phase-3-uarch/.)")
+                description="Produce microarchitecture docs at .rat/scratch/phase-3/ from architecture.md. Each module doc MUST include: sub-block decomposition, clock domain assignment, protocol assignment, register/SRAM/FSM allocation, pipeline spec, and a REQ→uArch reverse traceability table (map every REQ to specific module(s)/section(s)). For each OPEN-2-* item from Phase 2 open-requirements.json, propose a μArch resolution with rationale, rejected alternatives, and upstream-compliance assessment (the coordinator converts these into REQ-U-* iron entries in Step 3.7). Also produce clock-domain-map.md, protocol-assignments.md, and req-uarch-traceability.md. (Write-restricted — orchestrator will copy to final location at docs/phase-3-uarch/.)")
 
 t2 = TaskCreate(subject="T2: BFM development (SystemC C++, NOT SystemVerilog)",
                 description="Build SystemC TLM-2.0 BFM in C++ at bfm/src/*.cpp from architecture.md. CRITICAL: Output MUST be C++ (.cpp/.h) files, NOT SystemVerilog (.sv). If SystemC is not installed, use pure C timing model as fallback. Default LT blocking transport. Per-block I/O logging MANDATORY. Compare against C reference model (refc/). Archive I/O logs at bfm/logs/ for Phase 4-5.")
@@ -131,7 +133,7 @@ Create BFM validation gate and review tasks:
 
 ```python
 t3 = TaskCreate(subject="T3: BFM validation gate (G4a/G4b/G4c)",
-                description="Leader validates via three sub-gates: G4a (compilation), G4b (functional correctness — BFM per-block output must match refc using shared test vectors), G4c (I/O log completeness). G4b failures take priority. If fail, iterate uarch-designer <-> bfm-dev <-> ref-model-dev (max 2 iterations before escalation).")
+                description="Coordinator validates via three sub-gates: G4a (compilation), G4b (functional correctness — BFM per-block output must match refc using shared test vectors), G4c (I/O log completeness). G4b failures take priority. If fail, iterate uarch-designer <-> bfm-dev <-> ref-model-dev (max 2 iterations before escalation).")
 TaskUpdate(taskId=t3, addBlockedBy=[t1, t2])
 
 # Review R1 — 5 parallel reviewers
@@ -229,7 +231,7 @@ while not converged and round_num < max_rounds:
     round_num += 1
     task_list = TaskList()
 
-    # === T3 (BFM validation gate): Leader validates G4a/G4b/G4c directly ===
+    # === T3 (BFM validation gate): Coordinator validates G4a/G4b/G4c directly ===
     # G4a: BFM compiles. G4b: per-block output matches refc (shared test vectors). G4c: I/O log completeness
     # If fail: create fix tasks for uarch-design, bfm-worker, and/or ref-model worker
 
@@ -292,7 +294,7 @@ Write("docs/phase-3-uarch/{module}.md", content)
 
 ### BFM Validation Gate (T3)
 
-Leader validates directly with three sub-gates:
+Coordinator validates directly with three sub-gates:
 
 **G4a: Compilation Gate**
 1. BFM compiles without errors (`cmake --build bfm/build`)
@@ -348,10 +350,51 @@ TaskUpdate(taskId=t_clock, addBlockedBy=[t3])  # After BFM validation
 # Worker pre-spawned by skill — picks up task automatically
 ```
 
+## Step 3.7: Iron Artifact Production (T_iron — coordinator responsibility, matches non-team orchestrator)
+
+After T1 (uArch design) and T_final complete, the coordinator writes the iron artifact.
+uarch-designer is READ-ONLY, so the coordinator produces it directly (it has Write access).
+Read the P1 and P2 iron-requirements.json first to establish the `traces_to` mapping:
+
+```
+Read("docs/phase-1-research/iron-requirements.json")
+Read("docs/phase-2-architecture/iron-requirements.json")
+
+Write("docs/phase-3-uarch/iron-requirements.json")
+# - Convert each resolved OPEN-2-* into REQ-U-* entries with:
+#   resolved_from, resolution_rationale, rejected_alternatives, upstream_compliance,
+#   violation_policy: "agent_retry", acceptance_criteria, traces_to
+# Phase 3 MUST NOT produce open-requirements.json (zero-opens invariant).
+```
+
+Include structured `acceptance_criteria` and `traces_to` in each REQ-U-* entry (≥1 AC per
+REQ-U-*, advisory — if missing or empty `[]`, prompt uarch-designer to add; not blocking P3 exit).
+
+## Step 3.8: Open Resolution + Zero-Opens + Ambiguity Gate (T_open — coordinator, matches non-team Step 5.5)
+
+Per rtl-p3-uarch-policy Open Resolution Protocol and Zero-Opens Invariant:
+
+```
+Glob("docs/phase-2-architecture/open-requirements.json")   # skip open resolution if no P2 open items
+Read("docs/phase-3-uarch/iron-requirements.json")
+
+# For each OPEN-2-* item:
+#   → Verify a REQ-U-* exists with resolved_from == OPEN-2-* id + resolution_rationale + rejected_alternatives
+# If any OPEN-2-* unresolved → AskUserQuestion to resolve OR upstream feedback to P2
+#   (satisfies the `open-resolved` completion criterion)
+
+# Zero-Opens Invariant: docs/phase-3-uarch/open-requirements.json MUST NOT exist
+Glob("docs/phase-3-uarch/open-requirements.json")   # expect: NO MATCH — FAIL if found
+#   (satisfies the `zero-remaining-opens` completion criterion)
+
+# Ambiguity Gate: every REQ-U-* score ≤ 0.5 per policy
+#   (satisfies the `ambiguity-pass` completion criterion)
+```
+
 ## Step 3.9: Compliance Check (MANDATORY — matches non-team orchestrator)
 
-After final consolidation completes, spawn compliance-checker directly (same direct-Task
-pattern as ADR generation below):
+After T_final + Step 3.7/3.8 (iron production + open/zero-opens resolution) complete, spawn
+compliance-checker directly (same direct-Task pattern as ADR generation below):
 
 ```
 Task(subagent_type="rtl-agent-team:compliance-checker",
@@ -375,6 +418,16 @@ After T10 (final consolidation) completes, verify all gate items:
 2b. Verify `reviews/phase-3-uarch/bfm-feature-coverage.md` has 100% REQ-F-* coverage
     (structural check: every iron requirement mapped to BFM module/method).
     Omissions require user-approved ADR with impact estimate.
+2c. Verify `docs/phase-3-uarch/iron-requirements.json` exists and is valid JSON
+    (REQ-U-* decisions from resolved OPEN-2-* — Step 3.7 / T_iron).
+2d. Verify `docs/phase-3-uarch/req-uarch-traceability.md` exists with 100% REQ coverage.
+2e. Verify every OPEN-2-* from `docs/phase-2-architecture/open-requirements.json` (if present) maps to a
+    REQ-U-* with `resolved_from` + `resolution_rationale` + `rejected_alternatives` (Step 3.8) —
+    satisfies the `open-resolved` completion criterion.
+2f. Zero-Opens Invariant: `docs/phase-3-uarch/open-requirements.json` MUST NOT exist — satisfies the
+    `zero-remaining-opens` completion criterion. FAIL if found.
+2g. Verify all REQ-U-* pass the ambiguity gate (score ≤ 0.5) — satisfies the `ambiguity-pass`
+    completion criterion.
 3. Verify `docs/phase-3-uarch/clock-domain-map.md` exists
 4. Verify `docs/phase-3-uarch/protocol-assignments.md` exists
 5. Verify pipeline diagram exists

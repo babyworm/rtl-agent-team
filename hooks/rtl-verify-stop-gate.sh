@@ -32,31 +32,49 @@ fi
 # Team mode aggregation: merge all session-scoped tracking files into a combined view.
 # In team mode, each worker writes to rtl-modified-files-{SESSION_ID}.txt.
 # The leader (this gate only runs on the leader) aggregates all of them.
+#
+# Trigger aggregation whenever team mode is active OR any session-scoped worker
+# tracking file is present. Gating on team-config.json alone is unsafe: team
+# skills delete team-config.json during teardown BEFORE the leader's first Stop,
+# so worker RTL edits recorded in rtl-modified-files-{SESSION_ID}.txt would
+# otherwise escape Rule 5 (verify gate) once the config is gone.
 TEAM_CONFIG="$STATE_DIR/team-config.json"
-AGGREGATED_TRACK=""
+TEAM_MODE=""
 if [ -f "$TEAM_CONFIG" ]; then
   TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
-  if [ "$TEAM_MODE" = "true" ]; then
-    # Merge solo + all session-scoped files into a temporary aggregated file
-    AGGREGATED_TRACK="$STATE_DIR/rtl-modified-files-aggregated.tmp"
+fi
+# Detect leftover session-scoped worker files (exclude the non-team fallback
+# file, which is handled separately below).
+HAS_SESSION_TRACK=false
+for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
+  [ -f "$sf" ] || continue
+  case "$sf" in
+    "$STATE_DIR"/rtl-modified-files-fallback.txt) continue ;;
+  esac
+  HAS_SESSION_TRACK=true
+  break
+done
+AGGREGATED_TRACK=""
+if [ "$TEAM_MODE" = "true" ] || [ "$HAS_SESSION_TRACK" = "true" ]; then
+  # Merge solo + all session-scoped files into a temporary aggregated file
+  AGGREGATED_TRACK="$STATE_DIR/rtl-modified-files-aggregated.tmp"
+  rm -f "$AGGREGATED_TRACK"
+  touch "$AGGREGATED_TRACK"
+  # Include solo file if it exists
+  if [ -f "$TRACK_FILE" ] && [ -s "$TRACK_FILE" ]; then
+    cat "$TRACK_FILE" >> "$AGGREGATED_TRACK"
+  fi
+  # Include all session-scoped files (glob also covers the fallback file)
+  for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
+    [ -f "$sf" ] && cat "$sf" >> "$AGGREGATED_TRACK"
+  done
+  # Deduplicate
+  if [ -s "$AGGREGATED_TRACK" ]; then
+    sort -u "$AGGREGATED_TRACK" > "$AGGREGATED_TRACK.dedup"
+    mv "$AGGREGATED_TRACK.dedup" "$AGGREGATED_TRACK"
+    TRACK_FILE="$AGGREGATED_TRACK"
+  else
     rm -f "$AGGREGATED_TRACK"
-    touch "$AGGREGATED_TRACK"
-    # Include solo file if it exists
-    if [ -f "$TRACK_FILE" ] && [ -s "$TRACK_FILE" ]; then
-      cat "$TRACK_FILE" >> "$AGGREGATED_TRACK"
-    fi
-    # Include all session-scoped files
-    for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
-      [ -f "$sf" ] && cat "$sf" >> "$AGGREGATED_TRACK"
-    done
-    # Deduplicate
-    if [ -s "$AGGREGATED_TRACK" ]; then
-      sort -u "$AGGREGATED_TRACK" > "$AGGREGATED_TRACK.dedup"
-      mv "$AGGREGATED_TRACK.dedup" "$AGGREGATED_TRACK"
-      TRACK_FILE="$AGGREGATED_TRACK"
-    else
-      rm -f "$AGGREGATED_TRACK"
-    fi
   fi
 fi
 

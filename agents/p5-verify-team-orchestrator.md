@@ -31,7 +31,7 @@ and direct workers via SendMessage.
 - **Direct workers**: Send task clarification, priority changes, or context to specific workers
 - **Broadcast updates**: Notify all workers of task graph changes or blocking issues
 - **Report to leader**: Send progress summaries and completion status to the leader
-- **Signal completion**: Notify leader when all tasks are done
+- **Signal completion**: Notify the leader ONLY after the phase gate AND all post-gate mandatory steps (compliance check, ADR generation, phase summary, Codex cross-review) have passed — NOT when the task graph merely drains.
 
 Workers pick up tasks from the shared task list automatically.
 Write-restricted agents now write directly to `.rat/scratch/phase-5/`;
