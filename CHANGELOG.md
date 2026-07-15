@@ -7,6 +7,36 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-16
+
+Workflow/ultracode drivability plus a cocotb Makefile default-goal fix, surfaced by an
+end-to-end dog-food flow-test (a canonical Huffman VLD built through all 6 phases and
+independently re-verified with the real toolchain).
+
+### Added
+- **`RAT_PROJECT_ROOT` hook override** — when set to an existing directory, hook
+  project-root resolution (`hooks/lib/rat-dir-util.sh`: `rat_project_dir` /
+  `rat_is_project`, used by every sourcing gate/state/audit hook, plus the standalone
+  SessionStart injector `hooks/rtl-orchestrator-inject.sh`) uses it instead of the
+  session CWD. This lets an external Workflow/ultracode orchestrator — whose subagents
+  default to a different CWD — point every hook at the real project root. Unset ⇒
+  byte-identical to prior behavior; the "no marker ⇒ return 1" existence contract is
+  preserved. +4 unit tests.
+
+### Fixed
+- **cocotb Makefile default goal** — `skills/rat-init-project/templates/cocotb-makefile`
+  now sets `.DEFAULT_GOAL := sim`, so a bare `make` runs the simulation instead of
+  no-opping when a helper target (e.g. a `ref:` DPI-C build) precedes the cocotb include.
+  Matching guidance added to `agents/func-verifier.md` and the `rat-init-project` skill
+  for generated per-module Makefiles.
+
+### Docs
+- `plugin_docs/specs/workflow-ultracode-compat.md` — assessment of driving the plugin
+  from an external Workflow: what the env override enables now, and the residual
+  agent-side I/O contract (explicit project root per leaf agent) left as a proposed
+  follow-up rather than a mass edit across the 99 agents / 33 orchestrators.
+- `plugin_docs/plans/2026-07-15-vld-flowtest-design.md` — the flow-test design/plan.
+
 ## [0.12.1] - 2026-07-12
 
 Post-release holistic review of v0.12.0 (35-agent audit across 7 dimensions,

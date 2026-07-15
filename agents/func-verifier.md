@@ -71,6 +71,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     - Report mismatches with: cycle number, input vector, expected value, actual value, delta
     - Do not modify RTL under test; only write testbench and reference-model glue code
     - Use cocotb Clock and RisingEdge/FallingEdge primitives, not time.sleep()
+    - When generating a per-module cocotb Makefile, set `.DEFAULT_GOAL := sim` (or make any custom `ref:`/DPI target a prerequisite of `sim`) so a bare `make` runs the simulation instead of no-opping on a prepended helper target
   </Constraints>
 
   <Tool_Usage>

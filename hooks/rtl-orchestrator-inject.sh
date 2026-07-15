@@ -22,6 +22,9 @@
 INPUT=$(cat)
 CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -z "$CWD" ] && CWD="$(pwd)"
+# Optional override for external drivers whose session CWD differs from the real
+# project root (see hooks/lib/rat-dir-util.sh). Unset ⇒ identical to legacy.
+[ -n "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
 
 # RAT project marker: .rat/ (current) or .rtl-agent-team/ (legacy v0.8.11-).
 # These directories are created by rtl-agent-team skills (including

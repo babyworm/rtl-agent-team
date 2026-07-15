@@ -209,6 +209,11 @@ This skill ensures the project workspace is ready before design work begins.
 5. **Generate cocotb Makefile template** (if sim/ has no Makefile):
    Copy `skills/rat-init-project/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
    Per-module cocotb Makefiles are created in `sim/{module}/Makefile` during Phase 4-5.
+   Adapters MUST retain `.DEFAULT_GOAL := sim` (from the template) so bare `make`
+   runs the cocotb `sim` target. If a helper target (e.g. `ref:` to build a DPI-C
+   reference model) is added ABOVE the cocotb include, either keep `.DEFAULT_GOAL := sim`
+   or make the helper a prerequisite of `sim` (e.g. `sim: ref`) — otherwise bare
+   `make` no-ops with "Nothing to be done".
 
 5.5. **Deploy Phase 6 PDF Makefile** (if reviews/phase-6-review/ has no Makefile):
    Copy `skills/rat-init-project/templates/phase6-pdf-makefile` to `reviews/phase-6-review/Makefile`.

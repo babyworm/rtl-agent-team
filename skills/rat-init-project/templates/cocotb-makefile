@@ -6,6 +6,14 @@
 
 TOPLEVEL_LANG = verilog
 
+# Force cocotb's `sim` target (defined by the include at the bottom) to be the
+# default goal. Without this, a custom helper target added ABOVE the include
+# (e.g. a `ref:` target to build a DPI-C reference model) becomes make's first
+# target, so bare `make` no-ops ("Nothing to be done"). `.DEFAULT_GOAL` is
+# resolved at end-of-parse, so `sim` is defined by then. Keep this line when
+# adding custom targets, or make them prerequisites of sim (e.g. `sim: ref`).
+.DEFAULT_GOAL := sim
+
 # Default simulator
 SIM ?= icarus
 

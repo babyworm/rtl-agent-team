@@ -3193,6 +3193,53 @@ class TestRatDirUtil:
         assert rc == 1
         assert out == ""
 
+    def test_env_override_honored_when_set(self, tmp_path):
+        # RAT_PROJECT_ROOT points at a real project; the $1 arg points elsewhere.
+        root = tmp_path / "real"
+        (root / ".rat").mkdir(parents=True)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        out, rc = self._run(
+            elsewhere,
+            f'RAT_PROJECT_ROOT="{root}" rat_project_dir "{elsewhere}"',
+        )
+        assert rc == 0
+        assert out == f"{root}/.rat"
+
+    def test_is_project_env_override_honored_when_set(self, tmp_path):
+        root = tmp_path / "real"
+        (root / ".rat").mkdir(parents=True)
+        elsewhere = tmp_path / "elsewhere"  # no marker
+        elsewhere.mkdir()
+        _, rc = self._run(
+            elsewhere,
+            f'RAT_PROJECT_ROOT="{root}" rat_is_project "{elsewhere}"',
+        )
+        assert rc == 0
+
+    def test_env_override_ignored_when_empty(self, tmp_path):
+        # Empty RAT_PROJECT_ROOT ⇒ byte-identical to legacy $1-based behavior.
+        (tmp_path / ".rat").mkdir()
+        out, rc = self._run(
+            tmp_path,
+            f'RAT_PROJECT_ROOT="" rat_project_dir "{tmp_path}"',
+        )
+        assert rc == 0
+        assert out == f"{tmp_path}/.rat"
+
+    def test_env_override_preserves_existence_contract(self, tmp_path):
+        # RAT_PROJECT_ROOT set but has no marker ⇒ still returns 1 (contract kept).
+        no_marker = tmp_path / "no_marker"
+        no_marker.mkdir()
+        has_marker = tmp_path / "has_marker"
+        (has_marker / ".rat").mkdir(parents=True)
+        out, rc = self._run(
+            has_marker,
+            f'RAT_PROJECT_ROOT="{no_marker}" rat_project_dir "{has_marker}"',
+        )
+        assert rc == 1
+        assert out == ""
+
 
 # ── Legacy .rtl-agent-team fallback integration tests ────────────────────────
 
