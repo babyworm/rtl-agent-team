@@ -405,3 +405,38 @@ class TestCliContract:
         assert result.returncode == 0, result.stderr
         assert doc["summary"]["instances"] == 1
         assert doc["violations"] == []
+
+
+class TestSafeConstEval:
+    """Codex round-3 regression: width/parameter expressions must be evaluated
+    by a restricted AST walker, never eval() — the char whitelist admits '**'
+    and eval('9**9**9') would grind on unbounded big-int exponentiation."""
+
+    @staticmethod
+    def _mod():
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("check_connectivity", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_pow_rejected_fast(self):
+        import time
+
+        mod = self._mod()
+        start = time.time()
+        assert mod.eval_const("2**30", {}) is None
+        assert mod.eval_const("9**9**9", {}) is None
+        assert time.time() - start < 2.0, "Pow must be rejected, not computed"
+
+    def test_normal_arithmetic_still_works(self):
+        mod = self._mod()
+        assert mod.eval_const("(8+8)*2/4%7", {}) == 1
+        assert mod.eval_const("W-1", {"W": 8}) == 7
+        assert mod.eval_const("$clog2(16)", {}) == 4
+
+    def test_operand_magnitude_bounded(self):
+        mod = self._mod()
+        assert mod.eval_const("4294967296*4294967296", {}) is None
+        assert mod.eval_const("1/0", {}) is None

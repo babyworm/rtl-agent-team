@@ -285,11 +285,59 @@ def eval_const(expr, env, _depth=0):
         return None  # unresolved identifier / unsupported construct
     if not re.fullmatch(r"[\d\s()+\-*/%]+", expr):
         return None
+    # SV integer arithmetic: force integer division, then evaluate via a
+    # restricted AST walker — never eval(). The char whitelist above still
+    # admits '**' (two '*'), and eval('9**9**9') would grind on unbounded
+    # big-int math; the walker rejects Pow and bounds operand magnitudes.
+    return _safe_int_eval(re.sub(r"(?<![/])/(?![/])", "//", expr))
+
+
+_EVAL_LIMIT = 1 << 32  # widths/params are small; anything larger is not a width
+
+
+def _safe_int_eval(expr):
+    """Evaluate int expr allowing only + - * // % and parentheses; None otherwise."""
+    import ast
+
     try:
-        # SV integer arithmetic: force integer division.
-        return int(eval(re.sub(r"(?<![/])/(?![/])", "//", expr),
-                        {"__builtins__": {}}, {}))
-    except (SyntaxError, ZeroDivisionError, TypeError, ValueError):
+        tree = ast.parse(expr, mode="eval")
+    except (SyntaxError, ValueError, RecursionError):
+        return None
+
+    def walk(node):
+        if isinstance(node, ast.Expression):
+            return walk(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, int):
+            return node.value if abs(node.value) <= _EVAL_LIMIT else None
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            v = walk(node.operand)
+            if v is None:
+                return None
+            return v if isinstance(node.op, ast.UAdd) else -v
+        if isinstance(node, ast.BinOp) and isinstance(
+            node.op, (ast.Add, ast.Sub, ast.Mult, ast.FloorDiv, ast.Mod)
+        ):
+            lhs, rhs = walk(node.left), walk(node.right)
+            if lhs is None or rhs is None:
+                return None
+            if isinstance(node.op, (ast.FloorDiv, ast.Mod)) and rhs == 0:
+                return None
+            if isinstance(node.op, ast.Add):
+                v = lhs + rhs
+            elif isinstance(node.op, ast.Sub):
+                v = lhs - rhs
+            elif isinstance(node.op, ast.Mult):
+                v = lhs * rhs
+            elif isinstance(node.op, ast.FloorDiv):
+                v = lhs // rhs
+            else:
+                v = lhs % rhs
+            return v if abs(v) <= _EVAL_LIMIT else None
+        return None  # Pow ('**') and everything else → unresolvable (skipped)
+
+    try:
+        return walk(tree)
+    except RecursionError:
         return None
 
 

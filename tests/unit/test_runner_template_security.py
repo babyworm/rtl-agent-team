@@ -209,6 +209,26 @@ class TestInjectionRejected:
         assert "shell-unsafe" in result.stderr
         assert not (tmp_path / "pwned").exists()
 
+    def test_run_syn_yosys_syn_root_injection_rejected(self, tmp_path):
+        """The default yosys branch embeds SYN_ROOT-derived paths into its
+        generated script and the replay shell (`yosys -s "$SCRIPT"`) — the
+        Tcl-unsafe path check must apply to ALL tools, not just dc_shell/genus."""
+        sv = tmp_path / "m.sv"
+        sv.write_text("module m; endmodule\n")
+        flist = tmp_path / "f.f"
+        flist.write_text(str(sv) + "\n")
+        fake_bin = tmp_path / "bin"
+        _make_fake_tool(fake_bin, "yosys", 'echo YOSYS_FAKE "$@"')
+        result = run_script(
+            RUN_SYN, "--tool", "yosys", "--top", "m", "-f", str(flist),
+            "--syn-root", "syn`touch pwned`",
+            env=_env_with(fake_bin), cwd=str(tmp_path), timeout=20,
+        )
+        assert result.returncode != 0
+        assert "Tcl-unsafe" in result.stderr
+        assert not (tmp_path / "pwned").exists()
+        assert "YOSYS_FAKE" not in result.stdout, "tool must not run on invalid input"
+
     def test_run_syn_script_arg_tcl_unsafe_rejected(self, tmp_path):
         """--script is the eval'd dc_shell -f argument; must join the Tcl check."""
         sv = tmp_path / "m.sv"

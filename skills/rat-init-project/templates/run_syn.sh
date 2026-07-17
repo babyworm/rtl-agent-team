@@ -256,22 +256,24 @@ SRC_FILES=("${_abs_src[@]}")
 # --script (SCRIPT_PATH) is included: it becomes the dc_shell/genus -f argument, which is
 # echoed into the replay script inside double quotes — the same character set ($ ` \ ") is
 # shell-active there, so this single check covers both the Tcl and the replay surfaces.
-if [[ "$TOOL" == "dc_shell" || "$TOOL" == "genus" ]]; then
-  _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}|${SCRIPT_PATH}"
-  for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
-  if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
-    for _p in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-      [[ -e "$_p" ]] && _tcl_paths="${_tcl_paths}|${_p}"
-    done
-  fi
-  case "$_tcl_paths" in
-    *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* )
-      echo "ERROR: a synthesis path (project/synth root, source file, rtl/common, --liberty," >&2
-      echo "       --sdc, --script, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
-      echo "       DC/Genus emit paths into Tcl — rename/move so paths avoid these characters." >&2
-      exit 1 ;;
-  esac
+# Applies to ALL tools (not just dc_shell/genus): the yosys branch embeds
+# SYN_ROOT-derived paths into its generated script and into the replay shell
+# script (`yosys -s "$SCRIPT"`), where the same character set is shell-active.
+_tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}|${SCRIPT_PATH}"
+for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
+  for _p in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
+    [[ -e "$_p" ]] && _tcl_paths="${_tcl_paths}|${_p}"
+  done
 fi
+case "$_tcl_paths" in
+  *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* )
+    echo "ERROR: a synthesis path (project/synth root, source file, rtl/common, --liberty," >&2
+    echo "       --sdc, --script, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
+    echo "       DC/Genus emit paths into Tcl and Yosys embeds them into its script and" >&2
+    echo "       replay shell — rename/move so paths avoid these characters." >&2
+    exit 1 ;;
+esac
 
 # ─── Relative $readmemh/$readmemb ROM guard ─────────────────────────────────
 # Source/SDC/filelist paths are absolutized above, but $readmemh("rel/path.mem")
