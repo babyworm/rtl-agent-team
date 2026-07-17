@@ -440,3 +440,43 @@ class TestSafeConstEval:
         mod = self._mod()
         assert mod.eval_const("4294967296*4294967296", {}) is None
         assert mod.eval_const("1/0", {}) is None
+
+
+GROUPED_TOP_OK = """
+module top_grp (
+  input  logic        clk,
+  input  logic        rst_n,
+  input  logic [15:0] i_a, i_b,
+  output logic [15:0] o_y
+);
+  leaf #(.W(16)) u_leaf (
+    .clk   (clk),
+    .rst_n (rst_n),
+    .i_d   (i_b),
+    .o_q   (o_y)
+  );
+endmodule
+"""
+
+GROUPED_TOP_MISMATCH = GROUPED_TOP_OK.replace("#(.W(16))", "#(.W(8))").replace(
+    "output logic [15:0] o_y", "output logic [7:0] o_y")
+
+
+class TestGroupedAnsiPorts:
+    """Codex round-7 regression: second-and-later ports in grouped ANSI
+    declarations (input logic [15:0] a, b) must inherit the packed range —
+    they were previously width-checked as scalars."""
+
+    def test_second_grouped_port_inherits_packed_range(self, tmp_path):
+        result, doc = run_on(tmp_path, GROUPED_TOP_OK, [SUB_LEAF])
+        assert result.returncode == 0, result.stderr
+        assert doc["violations"] == [], (
+            "i_b must be 16-bit via group inheritance, not a scalar")
+
+    def test_second_grouped_port_width_mismatch_detected(self, tmp_path):
+        result, doc = run_on(tmp_path, GROUPED_TOP_MISMATCH, [SUB_LEAF])
+        assert result.returncode == 1
+        v = [x for x in doc["violations"] if x["check"] == "width_mismatch"]
+        assert v, doc["violations"]
+        assert "16" in v[0]["detail"], (
+            "mismatch must be reported against the inherited 16-bit width")

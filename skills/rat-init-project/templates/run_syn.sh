@@ -267,7 +267,7 @@ if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
   done
 fi
 case "$_tcl_paths" in
-  *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* )
+  *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* | *$'\n'* | *$'\r'* )
     echo "ERROR: a synthesis path (project/synth root, source file, rtl/common, --liberty," >&2
     echo "       --sdc, --script, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
     echo "       DC/Genus emit paths into Tcl and Yosys embeds them into its script and" >&2

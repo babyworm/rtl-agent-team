@@ -209,6 +209,46 @@ class TestInjectionRejected:
         assert "shell-unsafe" in result.stderr
         assert not (tmp_path / "pwned").exists()
 
+    def test_run_sim_verilator_dpi_supported_flag_and_absolutized(self, tmp_path):
+        """Codex round-7: verilator has no --dpi-lib flag; --dpi must map to
+        supported linkage (-LDFLAGS, VCS precedent) and the relative path must
+        be absolutized before the script cds into OUTDIR."""
+        fake_bin = tmp_path / "bin"
+        _make_fake_tool(fake_bin, "verilator", 'echo VLT_FAKE "$@"')
+        sv = tmp_path / "tb.sv"
+        sv.write_text("module tb; endmodule\n")
+        (tmp_path / "ref.so").write_text("")
+        result = run_script(
+            RUN_SIM, "--sim", "verilator", "--top", "tb", "--compile-only",
+            "--dpi", "ref.so", "--outdir", str(tmp_path / "out"), str(sv),
+            env=_env_with(fake_bin, RAT_PROJECT_ROOT=""),
+            cwd=str(tmp_path), timeout=20,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "--dpi-lib" not in result.stdout
+        assert "-LDFLAGS" in result.stdout
+        assert f"{tmp_path}/ref.so" in result.stdout, "DPI path must be absolutized"
+
+    def test_run_syn_newline_in_syn_root_rejected(self, tmp_path):
+        """Codex round-7: the Tcl-unsafe path check must also reject CR/LF —
+        a newline in a path becomes a raw injected line in the generated
+        Yosys script / replay shell."""
+        sv = tmp_path / "m.sv"
+        sv.write_text("module m; endmodule\n")
+        flist = tmp_path / "f.f"
+        flist.write_text(str(sv) + "\n")
+        fake_bin = tmp_path / "bin"
+        _make_fake_tool(fake_bin, "yosys", 'echo YOSYS_FAKE "$@"')
+        result = run_script(
+            RUN_SYN, "--tool", "yosys", "--top", "m", "-f", str(flist),
+            "--syn-root", "syn\nwrite_verilog pwned.v",
+            env=_env_with(fake_bin), cwd=str(tmp_path), timeout=20,
+        )
+        assert result.returncode != 0
+        assert "Tcl-unsafe" in result.stderr
+        assert not (tmp_path / "pwned.v").exists()
+        assert "YOSYS_FAKE" not in result.stdout
+
     def test_run_syn_yosys_syn_root_injection_rejected(self, tmp_path):
         """The default yosys branch embeds SYN_ROOT-derived paths into its
         generated script and the replay shell (`yosys -s "$SCRIPT"`) — the

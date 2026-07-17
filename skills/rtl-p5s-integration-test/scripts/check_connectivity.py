@@ -200,6 +200,7 @@ def parse_ports(port_text, module_name):
     """Parse ANSI port list into ordered [{name, direction, range, unpacked}]."""
     ports = []
     current_dir = None
+    current_packed = ""
     for chunk in split_top_level(port_text):
         m = PORT_RE.match(chunk)
         if not m:
@@ -207,14 +208,22 @@ def parse_ports(port_text, module_name):
                 f"module '{module_name}': unsupported port declaration "
                 f"{chunk!r} (interface ports / non-ANSI styles not supported)")
         direction_kw, packed, name, unpacked = m.groups()
+        packed = packed.strip()
         if direction_kw:
             current_dir = DIRECTION_MAP[direction_kw]
+            current_packed = packed  # new declaration resets group type/range
+        elif packed:
+            current_packed = packed  # explicit type/range starts a new group
         if current_dir is None:
             raise ParseError(
                 f"module '{module_name}': port '{name}' has no direction "
                 "keyword (non-ANSI port list not supported)")
+        # Bare declarators in grouped ANSI declarations ("input logic [7:0]
+        # a, b") inherit the group's packed type/range (IEEE 1800) — without
+        # this, second-and-later grouped ports were width-checked as scalars.
+        eff_packed = packed or current_packed
         ports.append({"name": name, "direction": current_dir,
-                      "range": packed.strip() or None,
+                      "range": eff_packed or None,
                       "unpacked": bool(unpacked.strip())})
     return ports
 

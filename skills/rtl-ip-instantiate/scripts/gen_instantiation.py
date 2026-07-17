@@ -502,6 +502,16 @@ def main(argv=None):
             params.append((vend, wrap, value))
         if len({w for _, w, _ in params}) != len(params):
             raise ParseError("parameter rename collision — hand-map parameters")
+        if rename:
+            # Wrapper-side parameter DEFAULT expressions may reference other
+            # renamed parameters (e.g. DEPTH = (1 << AddrWidth)) — rewrite
+            # them through the full rename map or the emitted wrapper is
+            # invalid SV. Vendor-instance param mapping keeps vendor names.
+            for i, (vend, wrap, value) in enumerate(params):
+                if value:
+                    for v2, w2 in rename.items():
+                        value = re.sub(rf"\b{re.escape(v2)}\b", w2, value)
+                    params[i] = (vend, wrap, value)
 
         mapped = map_ports(ports, ties, args.domain)
         if not mapped:

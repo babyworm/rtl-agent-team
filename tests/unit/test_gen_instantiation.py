@@ -293,3 +293,24 @@ class TestResetPolarityDetection:
         assert result.returncode == 0, result.stderr
         text = out.read_text()
         assert "TODO: verify polarity" in text
+
+    def test_param_default_expressions_rewritten_through_rename(self, tmp_path):
+        """Codex round-7 regression: defaults referencing renamed parameters
+        (DEPTH = (1 << AddrWidth)) must be rewritten to the wrapper names."""
+        src = tmp_path / "ip.v"
+        src.write_text(
+            "module ip #(\n"
+            "  parameter AddrWidth = 4,\n"
+            "  parameter Depth = (1 << AddrWidth)\n"
+            ") (\n"
+            "  input  wire Clk,\n"
+            "  input  wire [AddrWidth-1:0] Addr,\n"
+            "  output wire [7:0] Q\n"
+            ");\nendmodule\n"
+        )
+        out = tmp_path / "w.sv"
+        result = run_script(src, "-o", out)
+        assert result.returncode == 0, result.stderr
+        text = out.read_text()
+        assert "(1 << ADDR_WIDTH)" in text, "default must use the renamed parameter"
+        assert "(1 << AddrWidth)" not in text, "stale vendor name in default"

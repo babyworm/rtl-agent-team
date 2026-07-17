@@ -335,6 +335,9 @@ fi
 for _i in "${!SV_FILES[@]}"; do
   [[ "${SV_FILES[$_i]}" == /* ]] || SV_FILES[$_i]="$PROJECT_ROOT/${SV_FILES[$_i]}"
 done
+# DPI library is referenced from compile commands that run after cd "$OUTDIR" —
+# resolve it against the project root while we still know it.
+[[ -n "$DPI_LIB" && "$DPI_LIB" != /* ]] && DPI_LIB="$PROJECT_ROOT/$DPI_LIB"
 
 # Inputs below are interpolated into eval'd command strings (run_cmd) and
 # generated replay scripts — validate against shell metacharacters first.
@@ -405,7 +408,9 @@ compile_verilator() {
     cmd+=" --trace-fst"
   fi
   if [[ -n "$DPI_LIB" ]]; then
-    cmd+=" --dpi-lib ${DPI_LIB}"
+    # Verilator has no --dpi-lib option — link the prebuilt DPI library the
+    # same way the VCS branch does (path validated shell-safe above).
+    cmd+=" -LDFLAGS ${DPI_LIB}"
   fi
   cmd+=" --top-module ${TOP} --Mdir ${OUTDIR}/vlt -o ${TOP}"
   cmd+=" ${TOOL_ARGS} ${FILES}"
