@@ -90,6 +90,11 @@ case "$OUTDIR" in /*) ;; *) OUTDIR="$PROJECT_ROOT/$OUTDIR" ;; esac
 [[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
 [[ -n "$SCRIPT_PATH" && "$SCRIPT_PATH" != /* ]] && SCRIPT_PATH="$PROJECT_ROOT/$SCRIPT_PATH"
 
+# The script cds into OUTDIR and every branch's replay script embeds it as
+# `cd "$RUN_CWD"` — a value with $()/backticks would execute at replay time
+# even though live argv invocations are safe. Validate once, globally.
+validate_shell_safe "--outdir path" "$OUTDIR"
+
 mkdir -p "$OUTDIR"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

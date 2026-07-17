@@ -145,6 +145,30 @@ class TestInjectionRejected:
         assert result.returncode == 0, result.stderr
         assert "SVLENS_FAKE" in result.stdout
 
+    def test_run_cdc_vc_cdc_outdir_injection_rejected(self, tmp_path):
+        """Every CDC branch's replay script embeds OUTDIR as cd "$RUN_CWD" —
+        a $()/backtick outdir must be rejected before mkdir/replay write."""
+        (tmp_path / "t.tcl").write_text("puts ok\n")
+        result = run_script(
+            RUN_CDC, "--tool", "vc_cdc", "--script", str(tmp_path / "t.tcl"),
+            "--outdir", "out`touch pwned`",
+            cwd=str(tmp_path), timeout=15,
+        )
+        assert result.returncode != 0
+        assert "shell-unsafe" in result.stderr
+        assert not (tmp_path / "pwned").exists()
+
+    def test_run_cdc_questa_cdc_outdir_injection_rejected(self, tmp_path):
+        (tmp_path / "t.do").write_text("puts ok\n")
+        result = run_script(
+            RUN_CDC, "--tool", "questa_cdc", "--script", str(tmp_path / "t.do"),
+            "--outdir", "out$(touch pwned)",
+            cwd=str(tmp_path), timeout=15,
+        )
+        assert result.returncode != 0
+        assert "shell-unsafe" in result.stderr
+        assert not (tmp_path / "pwned").exists()
+
     def test_run_conformal_top_non_identifier_rejected(self, tmp_path):
         (tmp_path / "m.sv").write_text("module m; endmodule\n")
         flist = tmp_path / "f.f"
