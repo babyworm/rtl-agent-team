@@ -128,7 +128,7 @@ PARAM_RE = re.compile(
 PORT_RE = re.compile(
     r"^(input|output|inout)?\s*"
     r"((?:logic|wire|reg|bit|var|tri)\s+)?"
-    r"(?:(?:signed|unsigned)\s+)?"
+    r"((?:signed|unsigned)\s+)?"
     r"((?:\[[^\]]*\]\s*)*)"
     r"(\w+)\s*"
     r"((?:\[[^\]]*\]\s*)*)$",
@@ -162,14 +162,14 @@ def parse_ports(port_text):
                 f"unsupported port declaration: {chunk!r} "
                 "(interface ports and non-ANSI styles are not supported)"
             )
-        direction_kw, type_kw, packed, name, unpacked = m.groups()
+        direction_kw, type_kw, sign_kw, packed, name, unpacked = m.groups()
         packed = packed.strip()
         # Grouped ANSI ports ("input logic [7:0] i_a, i_b"): bare declarators
         # inherit the group's packed range; any explicit direction/type/range
         # resets it (IEEE 1800) — otherwise i_b loses its vector metadata.
         if direction_kw:
             current_dir = DIRECTION_MAP[direction_kw]
-        if direction_kw or type_kw or packed:
+        if direction_kw or type_kw or sign_kw or packed:
             current_packed = packed
         if current_dir is None:
             raise ParseError(

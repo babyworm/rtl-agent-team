@@ -509,3 +509,16 @@ endmodule
         v = [x for x in doc["violations"] if x["check"] == "width_mismatch"]
         assert v, doc["violations"]
         assert "1" in v[0]["detail"], "i_en must be width 1 (explicit scalar type)"
+
+    def test_sign_qualifier_resets_group_range(self):
+        """Codex round-9: 'input [7:0] a, signed b' — b is an explicit new
+        (scalar) declaration; the sign qualifier must reset the group range."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("cc_r9", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ports = mod.parse_ports("input [7:0] i_a, signed i_b", "m")
+        by = {p["name"]: p["range"] for p in ports}
+        assert by["i_a"] == "[7:0]"
+        assert by["i_b"] is None, "sign qualifier must reset the group range"

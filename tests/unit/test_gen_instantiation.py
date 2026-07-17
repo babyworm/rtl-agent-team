@@ -337,3 +337,15 @@ class TestResetPolarityDetection:
         en_line = [ln for ln in text.splitlines()
                    if "i_enable" in ln and "wire" not in ln][0]
         assert "[7:0]" not in en_line, "Enable is a new scalar declaration"
+
+    def test_sign_qualifier_resets_group_range(self):
+        """Codex round-9: 'input [7:0] A, signed B' — B is scalar."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("gi_r9", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ports = mod.parse_ports("input [7:0] DataA, signed FlagB")
+        by = {p["name"]: p["range"] for p in ports}
+        assert by["DataA"] == "7:0"
+        assert by["FlagB"] is None, "sign qualifier must reset the group range"

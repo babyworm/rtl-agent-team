@@ -343,3 +343,18 @@ class TestGroupedPortsIpxact:
             f"i_b must inherit [7:0] from the grouped declaration: {left_of}")
         assert left_of.get("i_en") is None, (
             "explicit scalar type must not inherit the group range")
+
+    def test_sign_qualifier_resets_group_range(self):
+        """Codex round-9: 'input [7:0] i_a, signed i_b' — i_b is scalar."""
+        import importlib.util
+        from pathlib import Path
+
+        script = (Path(__file__).resolve().parents[2]
+                  / "skills" / "rtl-ipxact-gen" / "scripts" / "gen_ipxact.py")
+        spec = importlib.util.spec_from_file_location("gx_r9", script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ports = mod.parse_ports("input [7:0] i_a, signed i_b")
+        by = {p["name"]: (p["left"], p["right"]) for p in ports}
+        assert by["i_a"] == ("7", "0")
+        assert by["i_b"] == (None, None), "sign qualifier must reset the range"

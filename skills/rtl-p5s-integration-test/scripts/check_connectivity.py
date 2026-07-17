@@ -72,7 +72,7 @@ endtask typedef enum struct unique priority default return const static
 PORT_RE = re.compile(
     r"^(input|output|inout)?\s*"
     r"((?:logic|wire|reg|bit|var|tri)\s+)?"
-    r"(?:(?:signed|unsigned)\s+)?"
+    r"((?:signed|unsigned)\s+)?"
     r"((?:\[[^\]]*\]\s*)*)"
     r"(\w+)\s*"
     r"((?:\[[^\]]*\]\s*)*)$",
@@ -207,7 +207,7 @@ def parse_ports(port_text, module_name):
             raise ParseError(
                 f"module '{module_name}': unsupported port declaration "
                 f"{chunk!r} (interface ports / non-ANSI styles not supported)")
-        direction_kw, type_kw, packed, name, unpacked = m.groups()
+        direction_kw, type_kw, sign_kw, packed, name, unpacked = m.groups()
         packed = packed.strip()
         if direction_kw:
             current_dir = DIRECTION_MAP[direction_kw]
@@ -215,7 +215,7 @@ def parse_ports(port_text, module_name):
         # resets the group's packed range — "input logic [15:0] a, logic b"
         # makes b an explicit scalar. Only truly bare declarators inherit
         # the group range (IEEE 1800: "input logic [7:0] a, b").
-        if direction_kw or type_kw or packed:
+        if direction_kw or type_kw or sign_kw or packed:
             current_packed = packed
         if current_dir is None:
             raise ParseError(
