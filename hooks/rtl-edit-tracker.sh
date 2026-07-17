@@ -12,6 +12,10 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
+# External Workflow drivers: honor RAT_PROJECT_ROOT so project-relative scans
+# (cascade downstream checks, validator report resolution, tracked RTL paths)
+# resolve against the real project root, matching the other hooks' guard.
+[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
 
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"

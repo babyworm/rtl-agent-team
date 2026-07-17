@@ -114,6 +114,37 @@ class TestInjectionRejected:
         assert "shell-unsafe" in result.stderr
         assert not (tmp_path / "pwned").exists()
 
+    def test_run_cdc_svlens_source_injection_rejected(self, tmp_path):
+        """svlens paths serialize argv into CMD echo + replay script — a source
+        filename with shell metacharacters must be rejected before invocation."""
+        fake_bin = tmp_path / "bin"
+        _make_fake_tool(fake_bin, "svlens", 'echo SVLENS_FAKE "$@"')
+        sv = tmp_path / "m`touch pwned`.sv"
+        sv.write_text("module m; endmodule\n")
+        result = run_script(
+            RUN_CDC, "--tool", "svlens", "--top", "m",
+            "--outdir", str(tmp_path / "out"), str(sv),
+            env=_env_with(fake_bin), cwd=str(tmp_path), timeout=15,
+        )
+        assert result.returncode != 0
+        assert "shell-unsafe" in result.stderr
+        assert not (tmp_path / "pwned").exists()
+        assert "SVLENS_FAKE" not in result.stdout, "tool must not run on invalid input"
+
+    def test_run_cdc_svlens_happy_path_with_fake_tool(self, tmp_path):
+        """Valid inputs still reach svlens after replay-serialization validation."""
+        fake_bin = tmp_path / "bin"
+        _make_fake_tool(fake_bin, "svlens", 'echo SVLENS_FAKE "$@"')
+        sv = tmp_path / "m.sv"
+        sv.write_text("module m; endmodule\n")
+        result = run_script(
+            RUN_CDC, "--tool", "svlens", "--top", "m",
+            "--outdir", str(tmp_path / "out"), str(sv),
+            env=_env_with(fake_bin), cwd=str(tmp_path), timeout=15,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "SVLENS_FAKE" in result.stdout
+
     def test_run_conformal_top_non_identifier_rejected(self, tmp_path):
         (tmp_path / "m.sv").write_text("module m; endmodule\n")
         flist = tmp_path / "f.f"

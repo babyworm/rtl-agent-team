@@ -167,6 +167,13 @@ case "$TOOL" in
       [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
       [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
       SVLENS_ARGS+=("${SRC_FILES[@]}")
+      # The CMD echo and replay script serialize these argv values into shell
+      # text — validate against shell metacharacters first (live invocation
+      # via run_tool "${SVLENS_ARGS[@]}" is argv-safe on its own).
+      validate_shell_safe "--top" "$TOP"
+      validate_shell_safe "--outdir path" "$SVLENS_OUTDIR"
+      validate_shell_safe "filelist path" "$FILELIST"
+      validate_shell_safe "source file path" "${SRC_FILES[@]}"
       echo "CMD: ${SVLENS_ARGS[*]}"
       write_replay "${SVLENS_ARGS[*]}"
       if run_tool "${SVLENS_ARGS[@]}" 2>&1 | tee -a "$REPORT"; then
@@ -199,6 +206,13 @@ case "$TOOL" in
     [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
     [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
     SVLENS_ARGS+=("${SRC_FILES[@]}")
+    # The CMD echo and replay script serialize these argv values into shell
+    # text — validate against shell metacharacters first (live invocation
+    # via run_tool "${SVLENS_ARGS[@]}" is argv-safe on its own).
+    validate_shell_safe "--top" "$TOP"
+    validate_shell_safe "--outdir path" "$OUTDIR"
+    validate_shell_safe "filelist path" "$FILELIST"
+    validate_shell_safe "source file path" "${SRC_FILES[@]}"
     echo "=== svlens cdc (AST-based CDC analysis) ==="
     echo "CMD: ${SVLENS_ARGS[*]}"
     write_replay "${SVLENS_ARGS[*]}"

@@ -228,8 +228,11 @@ def clock_wrapper_name(base, domain):
 
 def reset_wrapper_name(base, domain):
     """Vendor reset base → `rst_n` or `{domain}_rst_n` (+ polarity flag)."""
-    active_low = bool(re.search(r"(rst|reset)_?(n|b)($|_)", base)
-                      or base.endswith(("n", "b")))
+    # Active-low only on an explicit n/b token adjacent to rst/reset
+    # (rst_n, rstn, rstb, areset_n ...). A broad endswith(("n","b")) fallback
+    # would misclassify names like reset_main/chain as active-low and drop
+    # the polarity-review TODO from the generated wrapper.
+    active_low = bool(re.search(r"(rst|reset)_?(n|b)($|_)", base))
     dom = re.sub(r"_?a?(rst|reset)_?(n|b)?_?", "", base, count=1).strip("_")
     if dom and not re.match(r"[a-z_]", dom):
         dom = base

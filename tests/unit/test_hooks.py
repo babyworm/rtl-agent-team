@@ -1073,8 +1073,49 @@ class TestSpecCascadeMarkerLifecycle:
             self.HOOK, {"cwd": str(tmp_project), "file_path": str(report)}
         )
         assert result["continue"] is True
+
+    def test_marker_created_under_rat_project_root_override(
+        self, tmp_project, tmp_path
+    ):
+        """External Workflow driver: payload cwd elsewhere + RAT_PROJECT_ROOT set →
+        downstream detection and marker creation resolve against the override root."""
+        self._add_downstream(tmp_project)
+        driver_cwd = tmp_path / "driver"
+        driver_cwd.mkdir()
+        doc = tmp_project / "docs" / "phase-3-uarch" / "pipeline.md"
+        doc.parent.mkdir(parents=True, exist_ok=True)
+        doc.write_text("# spec\n")
+        result = run_hook(
+            self.HOOK,
+            {"cwd": str(driver_cwd), "file_path": str(doc)},
+            env={"RAT_PROJECT_ROOT": str(tmp_project)},
+        )
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "SPEC CASCADE RESOLVED" not in ctx
+        assert "[SPEC CASCADE" in ctx
+        marker = tmp_project / ".rat" / "state" / "spec-cascade-stale-p3"
+        assert marker.exists(), "marker must land under the override root"
+        assert not (driver_cwd / ".rat").exists(), "no .rat leak into driver cwd"
+
+    def test_marker_cleared_on_pass_report_under_override_root(
+        self, tmp_project, tmp_path
+    ):
+        """Validator PASS report written from a foreign cwd with RAT_PROJECT_ROOT
+        set still clears the markers under the override root."""
+        driver_cwd = tmp_path / "driver"
+        driver_cwd.mkdir()
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "spec-cascade-stale-p3").touch()
+        report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
+        report.parent.mkdir(parents=True)
+        report.write_text("- Verdict: PASS\n")
+        result = run_hook(
+            self.HOOK,
+            {"cwd": str(driver_cwd), "file_path": str(report)},
+            env={"RAT_PROJECT_ROOT": str(tmp_project)},
+        )
+        assert not (state_dir / "spec-cascade-stale-p3").exists()
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "SPEC CASCADE RESOLVED" in ctx
 
 
 class TestP6CascadeGate:

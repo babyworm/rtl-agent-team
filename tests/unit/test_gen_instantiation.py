@@ -248,3 +248,48 @@ def test_skill_md_no_longer_marks_script_as_stub():
     row = [ln for ln in skill_md.splitlines()
            if "`scripts/gen_instantiation.py`" in ln]
     assert row and "deep-fill" not in row[0] and "Stub" not in row[0]
+
+
+class TestResetPolarityDetection:
+    """Codex round-1 regression: active-low classification must require an
+    explicit n/b token adjacent to rst/reset — a broad endswith(('n','b'))
+    fallback misclassified names like reset_main and silently dropped the
+    polarity-review TODO from generated wrappers."""
+
+    @staticmethod
+    def _mod():
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("gen_instantiation", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_explicit_active_low_tokens_detected(self):
+        mod = self._mod()
+        for base in ("rst_n", "rstn", "rstb", "rst_b", "areset_n", "resetn"):
+            _, active_low = mod.reset_wrapper_name(base, "")
+            assert active_low, f"{base} must classify active-low"
+
+    def test_plain_reset_names_not_active_low(self):
+        mod = self._mod()
+        for base in ("reset_main", "main_reset", "rst", "reset", "chain_reset"):
+            _, active_low = mod.reset_wrapper_name(base, "")
+            assert not active_low, f"{base} must NOT classify active-low"
+
+    def test_camelcase_reset_gets_polarity_todo(self, tmp_path):
+        """ResetMain (→ reset_main) must carry the polarity-review TODO."""
+        src = tmp_path / "ip.v"
+        src.write_text(
+            "module ip (\n"
+            "  input  wire Clk,\n"
+            "  input  wire ResetMain,\n"
+            "  input  wire [7:0] DataIn,\n"
+            "  output wire [7:0] DataOut\n"
+            ");\nendmodule\n"
+        )
+        out = tmp_path / "wrapper.sv"
+        result = run_script(src, "-o", out)
+        assert result.returncode == 0, result.stderr
+        text = out.read_text()
+        assert "TODO: verify polarity" in text
