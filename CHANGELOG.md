@@ -7,10 +7,14 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
-Residual-work closure sweep (2026-07-17): every deferred item from the v0.7.9 and
+## [0.14.0] - 2026-07-17
+
+Residual-work closure sweep: every deferred item from the v0.7.9 and
 workflow-ultracode sessions resolved — registry-generated artifact map, EDA runner
 eval hardening, full Workflow-drivability (all 5 proposed items applied), asset-bundle
 deep fills for 7 remaining stub scripts/examples, and spec-cascade marker lifecycle.
+Hardened through 11 Codex cross-review rounds (15 P2 findings fixed, 2× consecutive
+LGTM close-out).
 
 ### Added
 - **Registry-generated artifact map (P3-10 completion)** — `hooks/lib/artifact-map.sh`
@@ -63,6 +67,26 @@ deep fills for 7 remaining stub scripts/examples, and spec-cascade marker lifecy
   building its (single, documented) eval'd command. +24 tests in
   `test_runner_template_security.py`, including marker-file proof of non-execution for
   injection attempts.
+
+### Fixed (Codex cross-review rounds 1-9)
+- `hooks/rtl-edit-tracker.sh` honors `RAT_PROJECT_ROOT` for CWD-relative scans
+  (cascade downstream detection, validator report resolution).
+- `run_cdc.sh`: svlens argv values validated before CMD/replay serialization;
+  final OUTDIR validated globally (replay `cd "$RUN_CWD"` embeds it on every branch).
+- `run_syn.sh`: Tcl-unsafe path check applies to ALL tools (yosys replay/script
+  included) and also rejects CR/LF.
+- `run_sim.sh`: verilator DPI uses supported `-LDFLAGS` linkage (was nonexistent
+  `--dpi-lib`); `DPI_LIB` absolutized before `cd "$OUTDIR"`.
+- `check_connectivity.py`: width/parameter expressions evaluated via a restricted
+  AST walker (never `eval()`; `**` DoS rejected, 2^32 bounds).
+- SV-header parsers (`check_connectivity`, `gen_instantiation`, `gen_ipxact`):
+  unified IEEE 1800 grouped ANSI port semantics — bare declarators inherit the
+  group packed range; explicit direction/type/sign/range starts a new declaration.
+- `gen_instantiation.py`: reset-polarity detection requires an explicit n/b token
+  (no more `reset_main` misclassification); parameter DEFAULT expressions rewritten
+  through the full rename map.
+- ref-model `sat_add` example `refc/` tree shipped (was swallowed by the bare
+  `refc/` gitignore; scoped negation added).
 
 ### Fixed
 - `hooks/rtl-orchestrator-inject.sh` `RAT_PROJECT_ROOT` guard tightened `[ -n ]` →
