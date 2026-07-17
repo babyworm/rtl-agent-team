@@ -28,6 +28,69 @@ class TestParseStatOutput:
         result = parse_stat_output(yosys_stat_output)
         assert result["total_cells"] == 16 + 8 + 4 + 12 + 2
 
+    def test_current_yosys_count_first_statistics_are_parsed(self):
+        # Given: the statistics format emitted by Yosys 0.63.
+        text = """\
+6. Printing statistics.
+
+=== adder ===
+
+        +----------Local Count, excluding submodules.
+        |
+       43 wires
+       65 wire bits
+        3 public wires
+       25 public wire bits
+        3 ports
+       25 port bits
+       49 cells
+       15   $_ANDNOT_
+        2   $_AND_
+        7   $_NAND_
+"""
+
+        # When: the current report is parsed.
+        result = parse_stat_output(text)
+
+        # Then: aggregate and per-type counts come from the report.
+        assert result["wires"] == 43
+        assert result["wire_bits"] == 65
+        assert result["total_cells"] == 49
+        assert result["cells"] == {
+            "$_ANDNOT_": 15,
+            "$_AND_": 2,
+            "$_NAND_": 7,
+        }
+
+    def test_current_yosys_design_hierarchy_latch_is_parsed(self):
+        # Given: local module counts followed by the aggregate hierarchy block.
+        text = """\
+=== top ===
+        3 wires
+        1 submodules
+        1   leaf
+
+=== leaf ===
+        3 wires
+        1 cells
+        1   $add
+
+=== design hierarchy ===
+        6 wires
+        2 cells
+        1   $add
+        1   $_DLATCH_P_
+"""
+
+        # When: the current hierarchical report is parsed.
+        result = parse_stat_output(text)
+
+        # Then: final aggregate counts drive latch detection.
+        assert result["wires"] == 6
+        assert result["total_cells"] == 2
+        assert result["latches_found"] == 1
+        assert any("CRITICAL" in concern for concern in result["concerns"])
+
     def test_wire_counts_not_parsed_before_statistics(self, yosys_stat_output):
         """Wire counts appear before 'Statistics' in Yosys output and are
         only parsed after the parser sees 'Statistics' or 'Number of cells:'.

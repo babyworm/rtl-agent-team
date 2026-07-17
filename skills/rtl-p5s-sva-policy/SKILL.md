@@ -29,7 +29,7 @@ Each round produces a review note at `.rat/scratch/phase-5/sva-iteration-r{N}.md
 
 ## Escalation & Stop Conditions
 
-- SymbiYosys not installed → halt, instruct user to install (`pip install sbyosys` or from source)
+- SymbiYosys not installed → halt and run `/rtl-agent-team:rat-setup`; use the official OSS CAD Suite or source installation guide (https://yosyshq.readthedocs.io/projects/sby/en/latest/install.html)
 - Property timeout (>200 depth) → mark as "timeout" in formal_verify.json, recommend simulation
 - Counterexample found → report to user with waveform trace before any RTL fix
 - SVA signal names do not match RTL ports → sva-extractor must fix before running formal

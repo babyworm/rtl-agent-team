@@ -86,7 +86,15 @@ printf '{"continue":true}'
 printf '{"continue":false,"decision":"block","reason":"msg"}'
 ```
 
-**SessionStart hooks** — output raw text (injected as context) or empty string.
+**SessionStart hooks** — emit a valid JSON envelope when stdout is non-empty. Put
+injected context in `hookSpecificOutput.additionalContext`; raw text is rejected by
+Claude Code's hook validator:
+
+```sh
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"msg"}}'
+# No context to inject:
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
+```
 
 ### When to Use emit_continue/emit_block
 

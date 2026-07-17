@@ -2,9 +2,13 @@
 
 - Date: 2026-04-03
 - Status: Implemented (Spec 1: `hooks/rtl-coverage-exclusion-gate.sh`; Spec 2: `hooks/rtl-edit-tracker.sh` cascade + marker lifecycle completed 2026-07-17)
-- Context: Plugin completeness review — 2 of 4 hook gaps addressed, 2 remaining (both since shipped)
+- Context: Completion record for the two hook gaps described below
 
 ---
+
+> **Historical boundary:** The problem statements, desired behavior, and
+> implementation approaches below describe the pre-implementation design. The status
+> header and checked acceptance criteria record the shipped state.
 
 ## Spec 1: Coverage Exclusion Approval Enforcement
 

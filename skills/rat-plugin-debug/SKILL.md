@@ -30,7 +30,7 @@ Run each diagnostic section and present a consolidated report. All checks are re
 
 ```bash
 # Read plugin version from manifest
-cat "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | grep '"version"' | head -1
+grep -m 1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null
 # Fallback: check if CLAUDE_PLUGIN_ROOT is set
 echo "CLAUDE_PLUGIN_ROOT=${CLAUDE_PLUGIN_ROOT:-NOT_SET}"
 ```
@@ -42,28 +42,52 @@ Report: `rtl-agent-team v{version}` and plugin root path.
 Check each tool and report version or NOT_FOUND. Group by classification:
 
 ```bash
+first_line_or_not_found() {
+  local tool="$1"
+  local output
+  local rc
+  shift
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "NOT_FOUND"
+    return 127
+  fi
+  if output="$("$@" 2>&1)"; then
+    printf '%s\n' "$output" | sed -n '1p'
+  else
+    rc=$?
+    printf '%s\n' "$output" | sed -n '1p' >&2
+    return "$rc"
+  fi
+}
+
 # --- Required ---
-verilator --version 2>&1 | head -1 || echo "NOT_FOUND"
-python3 --version 2>&1 || echo "NOT_FOUND"
+first_line_or_not_found verilator verilator --version
+first_line_or_not_found python3 python3 --version
 python3 -c "import cocotb; print('cocotb', cocotb.__version__)" 2>&1 || echo "NOT_FOUND"
-g++ --version 2>&1 | head -1 || echo "NOT_FOUND"
-make --version 2>&1 | head -1 || echo "NOT_FOUND"
-pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && echo "systemc via SYSTEMC_HOME=$SYSTEMC_HOME") || echo "NOT_FOUND"
+first_line_or_not_found g++ g++ --version
+first_line_or_not_found make make --version
+pkg-config --modversion systemc 2>/dev/null || (test -n "$SYSTEMC_HOME" && test -d "$SYSTEMC_HOME" && echo "systemc via SYSTEMC_HOME=$SYSTEMC_HOME") || echo "NOT_FOUND"
 
 # --- Lint tools (at least one required) ---
-verible-verilog-lint --version 2>&1 | head -1 || echo "NOT_FOUND"
-slang --version 2>&1 | head -1 || echo "NOT_FOUND"
+first_line_or_not_found verible-verilog-lint verible-verilog-lint --version
+first_line_or_not_found slang slang --version
+
+# --- CDC tools (at least one required) ---
+first_line_or_not_found svlens svlens --version
+for tool in sg_shell vc_cdc questa_cdc; do
+  command -v "$tool" 2>/dev/null || echo "NOT_FOUND"
+done
 
 # --- Recommended ---
-slang-server --version 2>&1 | head -1 || echo "NOT_FOUND"
+first_line_or_not_found slang-server slang-server --version
 jq --version 2>&1 || echo "NOT_FOUND"
 
 # --- Optional ---
-iverilog -V 2>&1 | head -1 || echo "NOT_FOUND"
-yosys --version 2>&1 | head -1 || echo "NOT_FOUND"
-sby --help 2>&1 | head -1 || echo "NOT_FOUND"
-gtkwave --version 2>&1 | head -1 || echo "NOT_FOUND"
-docker --version 2>&1 | head -1 || echo "NOT_FOUND"
+first_line_or_not_found iverilog iverilog -V
+first_line_or_not_found yosys yosys --version
+first_line_or_not_found sby sby --help
+first_line_or_not_found gtkwave gtkwave --version
+first_line_or_not_found docker docker --version
 ```
 
 Report as a table with status icons: `[OK]` installed, `[!!]` required but missing, `[--]` optional and missing.
@@ -143,13 +167,14 @@ done
 Present a one-line verdict:
 - **READY**: All required tools installed, setup done, no stale state
 - **PARTIAL**: Some optional tools missing but functional
-- **NOT READY**: Required tools missing or setup not done — suggest `/rat-init-project` and `/rat-setup`
+- **NOT READY**: Required tools missing or setup not done — suggest `/rtl-agent-team:rat-init-project` and `/rtl-agent-team:rat-setup`
 
 ```
 ## RAT Plugin Debug Report
 - Plugin: rtl-agent-team v{version}
 - EDA Tools: {X}/{Y} required OK, {A}/{B} optional OK
 - Lint Gate: {verible|slang|both|NONE}
+- CDC Gate: {svlens|commercial tool|NONE}
 - Setup: {done|not done}
 - State: {N files, M stale}
 - Hooks: {all OK | N missing}

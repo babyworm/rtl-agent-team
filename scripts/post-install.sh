@@ -20,6 +20,7 @@ REQUIRED_TOTAL=0
 OPTIONAL_FOUND=0
 OPTIONAL_TOTAL=0
 MISSING_REQUIRED=()
+CHECK_TOOL_OK=0
 
 check_tool() {
   local name="$1"
@@ -33,9 +34,11 @@ check_tool() {
     OPTIONAL_TOTAL=$((OPTIONAL_TOTAL + 1))
   fi
 
-  if eval "$cmd" > /dev/null 2>&1; then
+  local output
+  if output=$(eval "$cmd" 2>&1); then
+    CHECK_TOOL_OK=1
     local version
-    version=$(eval "$cmd" 2>&1 | head -1)
+    version=$(printf '%s\n' "$output" | sed -n '1p')
     if [ "$required" = "yes" ]; then
       REQUIRED_FOUND=$((REQUIRED_FOUND + 1))
     else
@@ -43,6 +46,7 @@ check_tool() {
     fi
     printf "  ${GREEN}[OK]${NC}  %-20s %s\n" "$name" "$version"
   else
+    CHECK_TOOL_OK=0
     if [ "$required" = "yes" ]; then
       MISSING_REQUIRED+=("$name ($purpose)")
       printf "  ${RED}[MISSING]${NC} %-20s %s\n" "$name" "$purpose"
@@ -71,11 +75,34 @@ check_tool "systemc" "_check_systemc" "yes" "SystemC/TLM-2.0 (ref model + BFM)"
 echo ""
 echo "Lint Tools (at least one required):"
 check_tool "verible" "verible-verilog-lint --version" "no" "Style Lint"
+VERIBLE_OK=$CHECK_TOOL_OK
 check_tool "slang" "slang --version" "no" "Lint + parsing"
-# Combined lint gate: fail only when both are missing
-if ! command -v verible-verilog-lint >/dev/null 2>&1 && ! command -v slang >/dev/null 2>&1; then
-  printf "  ${RED}[!!]${NC}  %-20s %s\n" "LINT GATE" "FAILED: install at least one of verible or slang"
+SLANG_OK=$CHECK_TOOL_OK
+REQUIRED_TOTAL=$((REQUIRED_TOTAL + 1))
+if [ "$VERIBLE_OK" -eq 1 ] || [ "$SLANG_OK" -eq 1 ]; then
+  REQUIRED_FOUND=$((REQUIRED_FOUND + 1))
+else
+  printf '  %b[!!]%b  %-20s %s\n' "$RED" "$NC" "LINT GATE" "FAILED: install at least one of verible or slang"
   MISSING_REQUIRED+=("verible/slang (at least one lint tool)")
+fi
+
+echo ""
+echo "CDC Tools (at least one required):"
+check_tool "svlens" "svlens --version" "no" "Open-source CDC + structural analysis"
+SVLENS_OK=$CHECK_TOOL_OK
+check_tool "sg_shell" "command -v sg_shell" "no" "SpyGlass CDC"
+SG_SHELL_OK=$CHECK_TOOL_OK
+check_tool "vc_cdc" "command -v vc_cdc" "no" "VC CDC"
+VC_CDC_OK=$CHECK_TOOL_OK
+check_tool "questa_cdc" "command -v questa_cdc" "no" "Questa CDC"
+QUESTA_CDC_OK=$CHECK_TOOL_OK
+REQUIRED_TOTAL=$((REQUIRED_TOTAL + 1))
+if [ "$SVLENS_OK" -eq 1 ] || [ "$SG_SHELL_OK" -eq 1 ] || \
+   [ "$VC_CDC_OK" -eq 1 ] || [ "$QUESTA_CDC_OK" -eq 1 ]; then
+  REQUIRED_FOUND=$((REQUIRED_FOUND + 1))
+else
+  printf '  %b[!!]%b  %-20s %s\n' "$RED" "$NC" "CDC GATE" "FAILED: install svlens or a supported commercial CDC tool"
+  MISSING_REQUIRED+=("svlens/commercial CDC (at least one CDC tool)")
 fi
 
 echo ""
@@ -96,14 +123,15 @@ echo "  Optional: ${OPTIONAL_FOUND}/${OPTIONAL_TOTAL} installed"
 
 if [ ${#MISSING_REQUIRED[@]} -gt 0 ]; then
   echo ""
-  printf "  ${RED}Missing required tools:${NC}\n"
+  printf '  %bMissing required tools:%b\n' "$RED" "$NC"
   for tool in "${MISSING_REQUIRED[@]}"; do
     echo "    - $tool"
   done
   echo ""
   echo "  Install with:"
   echo "    sudo apt install verilator iverilog gtkwave build-essential python3-pip"
-  echo "    pip3 install cocotb"
+  echo "    python3 -m venv \"$HOME/.local/share/rtl-agent-team/venv\""
+  echo "    \"$HOME/.local/share/rtl-agent-team/venv/bin/python\" -m pip install cocotb"
   echo "    # Yosys: https://github.com/YosysHQ/oss-cad-suite-build"
   echo "    # Verible: https://github.com/chipsalliance/verible/releases"
 fi
@@ -112,8 +140,8 @@ fi
 PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
 PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d. -f1)
 PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 9 ]); then
-  printf "\n  ${RED}WARNING:${NC} Python 3.9+ required (found $PYTHON_VERSION)\n"
+if [ "$PYTHON_MAJOR" -lt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 9 ]; }; then
+  printf '\n  %bWARNING:%b Python 3.9+ required (found %s)\n' "$RED" "$NC" "$PYTHON_VERSION"
 fi
 
 # Docker suggestion
@@ -123,7 +151,7 @@ if command -v docker > /dev/null 2>&1; then
   if [ -d "$PLUGIN_ROOT/docker" ]; then
     echo ""
     echo "  Docker detected. You can build an all-in-one EDA image:"
-    echo "    docker build -t rtl-eda-tools $PLUGIN_ROOT/docker/"
+    printf '    docker build -t rtl-eda-tools "%s/docker/"\n' "$PLUGIN_ROOT"
   fi
 fi
 

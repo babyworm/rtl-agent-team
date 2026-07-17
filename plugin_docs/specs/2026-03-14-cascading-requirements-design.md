@@ -1,8 +1,12 @@
 # Cascading Requirements with Iron/Open Taxonomy
 
 **Date**: 2026-03-14
-**Status**: Approved
+**Status**: Implemented
 **Scope**: Phase 1-5 requirement lifecycle, compliance enforcement, upstream challenge protocol
+
+> **Historical boundary:** This document records the design that produced the shipped
+> iron/open requirement lifecycle. Problem statements and implementation waves below
+> describe the pre-implementation state, not pending work.
 
 ## Problem Statement
 

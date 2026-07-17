@@ -82,7 +82,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   <Investigation_Protocol>
     1. Read all .sva files in formal/ directory. Catalog every assertion, assume, and cover property.
     2. Read all .sby files. Extract solver configuration, depth, engine, and task definitions.
-    3. Read requirements.json and map assertions to requirements (REQ-XXXX → assertion name).
+    3. Read docs/phase-1-research/iron-requirements.json and map assertions to requirements (REQ-XXXX → assertion name).
     4. For each assertion:
        a. **Vacuity check**: Analyze the antecedent (left side of |->).
           - Is the antecedent reachable given the assume constraints?
@@ -121,7 +121,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read .sva files, .sby files, requirements.json
+    - Read: read .sva files, .sby files, docs/phase-1-research/iron-requirements.json
     - Grep: find assert/assume/cover property patterns across all formal files
     - Glob: find all formal/*.sva, formal/*.sby files
     - Bash: run `sby -f *.sby` to check formal results (if not already run)
@@ -159,7 +159,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # Formal Verification Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: formal-reviewer
-    - Upper Spec: requirements.json
+    - Upper Spec: docs/phase-1-research/iron-requirements.json
     - Verdict: PASS | FAIL
 
     ## Property Balance

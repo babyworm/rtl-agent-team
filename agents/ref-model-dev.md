@@ -78,7 +78,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read requirements.json and io_definition.json from the project root.
+    1. Read docs/phase-1-research/iron-requirements.json and io_definition.json.
     2. Read timing_constraints.json to understand per-block latency budgets and throughput targets.
        The model is NOT cycle-accurate — it provides block-level cycle count estimates.
        Memory access latency defaults: internal (SRAM/register) = 1 cycle, external (DDR/HBM) = 500 cycles.
@@ -101,7 +101,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Use Read to read requirements.json, io_definition.json, timing_constraints.json.
+    - Use Read to read docs/phase-1-research/iron-requirements.json, io_definition.json, timing_constraints.json.
     - Use Write to create source files in refc/src/, refc/include/, refc/test/.
     - Use Edit to modify existing model files.
     - Use Bash to compile and run the model: `make -C refc build && make -C refc test`.

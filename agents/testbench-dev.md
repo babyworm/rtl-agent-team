@@ -85,7 +85,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
     1. Read docs/phase-3-uarch/*.md for DUT interface, latency, and FSM states to cover.
     2. Read io_definition.json for all port names, directions, and widths.
-    3. Read iron-requirements.json (preferred) or requirements.json (fallback) for functional coverage requirements.
+    3. Read `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback) for functional coverage requirements.
     4. Read the test plan (loaded in Step 0) to identify: directed tests, random tests,
     corner cases, error scenarios. If Step 0 found no test plan, derive these from
     uarch spec directly.
@@ -133,7 +133,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </AC_Level_Coverage_Tagging>
 
   <Tool_Usage>
-    - Read: read uarch spec, io_definition.json, iron-requirements.json (preferred) or requirements.json (fallback), test plan
+    - Read: read uarch spec, io_definition.json, `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback), test plan
     - Write: create sim/{module}/tb_module.sv, sim/{module}/interface.sv, sim/{module}/driver.sv, sim/{module}/monitor.sv,
              sim/{module}/scoreboard.sv, sim/{module}/coverage.sv, sim/{module}/test_smoke.sv, test_directed.py (cocotb)
     - Bash: compile testbench (`vlog` or `iverilog`), run simulation, extract coverage report

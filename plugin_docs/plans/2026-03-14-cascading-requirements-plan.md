@@ -1,6 +1,12 @@
 # Cascading Requirements Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **archival shipped record:** This plan documents the implemented iron/open
+> requirement lifecycle. Checkboxes and worker instructions below are retained only
+> as historical execution records.
+>
+> **Historical execution instruction:** During implementation, workers used
+> superpowers:subagent-driven-development or superpowers:executing-plans and tracked
+> the steps with checkbox (`- [ ]`) syntax.
 
 **Goal:** Add iron/open requirement taxonomy, compliance checker, and upstream challenge protocol to the RTL agent team plugin's phase-gated pipeline.
 

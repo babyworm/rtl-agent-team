@@ -1,6 +1,6 @@
 {
   "name": "rtl-agent-team",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "RTL design and verification automation plugin for Claude Code",
   "files": [
     "agents",
@@ -11,7 +11,10 @@
     "scripts",
     "phase-registry.json",
     "skill-completion-criteria.json",
-    "plugins",
+    "!**/.omc/**",
+    "!**/__pycache__/**",
+    "!**/*.pyc",
+    "!**/*.pyo",
     ".claude-plugin",
     ".lsp.json",
     "CLAUDE.md",

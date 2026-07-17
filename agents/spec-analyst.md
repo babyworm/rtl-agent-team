@@ -398,7 +398,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
 ## Backward Compatibility Note
 
-The legacy single-file `requirements.json` is replaced by `iron-requirements.json` + `open-requirements.json`.
+The legacy single-file `requirements.json` is replaced by `docs/phase-1-research/iron-requirements.json` + `docs/phase-1-research/open-requirements.json`.
 All downstream consumers (orchestrators, Phase 2+ agents) should read from the new files.
 
 ## Team Worker Protocol

@@ -162,7 +162,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # Power Analysis Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: power-analyzer
-    - Upper Spec: requirements.json (power budget)
+    - Upper Spec: docs/phase-1-research/iron-requirements.json (power budget)
     - Technology assumption: [e.g., 28nm, 0.9V]
     - Verdict: PASS | FAIL
 

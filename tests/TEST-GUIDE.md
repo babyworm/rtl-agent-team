@@ -9,10 +9,9 @@
 
 | 구분 | 테스트 수 | 상태 |
 |------|----------|------|
-| 유닛 테스트 | 1085개 | 모두 PASS |
-| 통합 테스트 (EDA 도구) | 12개 | EDA 도구 없으면 SKIP |
-| 통합 테스트 (Docker 빌드) | 33개 | Docker daemon 없으면 SKIP |
-| **합계** | **1130개** | **1085 passed, 45 skipped** |
+| 유닛 테스트 | 1592개 | EDA 도구 불필요 |
+| 통합 테스트 | 47개 | EDA/Docker 환경에 따라 SKIP |
+| **합계** | **1639개** | collection 기준 |
 
 ---
 
@@ -22,7 +21,7 @@
 tests/
 ├── conftest.py                    # 공통 fixture 및 helper 함수
 ├── Makefile                       # make test, make unit, make integration 등
-├── requirements-test.txt          # 테스트 의존성 (pytest, pytest-xdist)
+├── requirements-test.txt          # 전체 테스트 의존성
 ├── TEST-GUIDE.md                  # 이 문서
 ├── unit/                          # EDA 도구 불필요 — 로컬에서 바로 실행 가능
 │   ├── test_agent_skill_structure.py  # 에이전트/스킬 구조 검증
@@ -54,14 +53,16 @@ tests/
 ### 전제 조건
 
 ```bash
-pip install pytest pytest-xdist
+python3 -m venv .venv
+".venv/bin/python" -m pip install -r tests/requirements-test.txt
+. .venv/bin/activate
 ```
 
 ### 전체 테스트 실행
 
 ```bash
 # 프로젝트 루트에서
-python -m pytest tests/ -v
+python3 -m pytest tests/ -v
 
 # 또는 Makefile 사용
 cd tests && make test
@@ -70,7 +71,7 @@ cd tests && make test
 ### 유닛 테스트만 실행
 
 ```bash
-python -m pytest tests/unit/ -v
+python3 -m pytest tests/unit/ -v
 
 # 또는
 cd tests && make unit
@@ -79,7 +80,7 @@ cd tests && make unit
 ### 통합 테스트만 실행 (Docker/EDA 환경)
 
 ```bash
-python -m pytest tests/integration/ -v
+python3 -m pytest tests/integration/ -v
 
 # 또는
 cd tests && make integration
@@ -88,14 +89,14 @@ cd tests && make integration
 ### 특정 파일만 실행
 
 ```bash
-python -m pytest tests/unit/test_hooks.py -v
-python -m pytest tests/unit/test_plugin_runtime_contract.py -v
+python3 -m pytest tests/unit/test_hooks.py -v
+python3 -m pytest tests/unit/test_plugin_runtime_contract.py -v
 ```
 
 ### 병렬 실행 (빠른 테스트)
 
 ```bash
-python -m pytest tests/unit/ -n auto
+python3 -m pytest tests/unit/ -n auto
 ```
 
 ---
@@ -144,9 +145,9 @@ python -m pytest tests/unit/ -n auto
 
 | 검증 항목 | 설명 |
 |----------|------|
-| 에이전트 YAML frontmatter | 94개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
+| 에이전트 YAML frontmatter | 99개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
 | 에이전트 이름-파일명 일치 | `agents/rtl-coder.md`의 `name: rtl-coder` 일치 확인 |
-| 스킬 SKILL.md 존재 | 94개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
+| 스킬 SKILL.md 존재 | 97개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
 | 스킬 이름-디렉토리 일치 | `skills/rtl-p4-implement/SKILL.md`의 `name: rtl-p4-implement` 일치 확인 |
 | CLAUDE.md 교차 참조 | 핵심 에이전트/스킬이 실제로 존재하는지 확인 |
 | hooks.json 구조 | PostToolUse, Stop 이벤트 훅 설정 검증 |
@@ -203,7 +204,7 @@ python -m pytest tests/unit/ -n auto
 
 ```bash
 # Docker daemon이 실행 중이어야 합니다
-python -m pytest tests/integration/test_docker_build.py -v --timeout=3600
+python3 -m pytest tests/integration/test_docker_build.py -v --timeout=3600
 
 # 또는 Makefile 사용
 cd tests && make test-docker
@@ -240,7 +241,7 @@ cd tests && make test-docker
 |----|------|------|------|
 | BUG-001 | `check_conventions.sh` | `((VIOLATIONS++))` + `set -e` 조합으로 인한 조기 종료 | **FIXED** |
 | BUG-002 | `check_conventions.sh` | `grep -n` 줄번호 접두어가 모듈 필터를 우회 | **FIXED** |
-| LIM-001 | `parse_yosys_stat.py` | Wire 수가 `Statistics:` 앞에 나오면 파싱 안 됨 | 문서화됨 |
+| LIM-001 | `parse_yosys_stat.py` | legacy `Number of ...` 형식에서 section 시작 전 wire count는 파싱하지 않음 | 문서화됨 |
 
 ---
 
@@ -259,8 +260,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install pytest pytest-xdist
-      - run: python -m pytest tests/unit/ -v --tb=short
+      - run: python3 -m pip install -r tests/requirements-test.txt
+      - run: python3 -m pytest tests/unit/ -v --tb=short
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -271,8 +272,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install pytest
-      - run: python -m pytest tests/integration/ -v --tb=short
+      - run: python3 -m pip install -r tests/requirements-test.txt
+      - run: python3 -m pytest tests/integration/ -v --tb=short
 ```
 
 ---
@@ -332,7 +333,7 @@ A: EDA 도구(iverilog, verilator, yosys)가 설치되지 않아서입니다. Do
 A: 네. 테스트에서 boto3를 mock 모듈로 대체하므로 실제 AWS 연결 없이 동작을 검증합니다.
 
 **Q: 테스트를 병렬로 실행할 수 있나요?**
-A: `pip install pytest-xdist` 후 `pytest -n auto`로 실행하면 CPU 코어 수만큼 병렬 실행됩니다.
+A: `".venv/bin/python" -m pip install pytest-xdist` 후 `".venv/bin/python" -m pytest -n auto`로 실행하면 CPU 코어 수만큼 병렬 실행됩니다.
 
 **Q: 새로운 에이전트를 추가하면 테스트가 깨지나요?**
 A: `test_agent_skill_structure.py`가 자동으로 새 에이전트의 YAML frontmatter 구조를 검증합니다. `name`, `model`, `description` 필드가 있으면 통과합니다.

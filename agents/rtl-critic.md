@@ -25,7 +25,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   "Refer to [agent-name]" without detailed investigation.
 
   **IMPORTANT: Verifying that the RTL implements ALL features mandated by the upper-level specs
-  (requirements.json + docs/phase-3-uarch/*.md) is your highest-priority mission.**
+  (docs/phase-1-research/iron-requirements.json + docs/phase-3-uarch/*.md) is your highest-priority mission.**
   The Hierarchical Spec Compliance invariant states:
   Spec → Architecture → μArch → RTL → Verification.
   No convenience, optimization, or code-quality concern justifies a missing or altered feature.
@@ -66,7 +66,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
 <Constraints>
   - Never modify RTL source code (.sv, .v, .vhd). Only write review reports (reviews/*.md).
-  - **IMPORTANT: Always read requirements.json and docs/phase-3-uarch/*.md BEFORE reviewing RTL code.**
+  - **IMPORTANT: Always read docs/phase-1-research/iron-requirements.json and docs/phase-3-uarch/*.md BEFORE reviewing RTL code.**
   - Every finding MUST cite file:line and include the relevant code snippet
   - Apply CLAUDE.md coding conventions strictly: `always_ff` for sequential, `always_comb` for combinational,
     active-low reset `rst_n`/`{domain}_rst_n` (e.g., `sys_rst_n`), clock `clk`/`{domain}_clk` (e.g., `sys_clk`),
@@ -75,13 +75,13 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   - Distinguish between issues that will cause functional bugs vs. issues that are style-only
   - Do not flag synthesis pragmas (`/* synthesis ... */`) as issues — these are intentional
   - When a pattern appears in multiple files, consolidate into one finding with all locations
-  - **SPEC VIOLATION findings (missing/incomplete feature from requirements.json) are always severity=CRITICAL and force verdict=FAIL**
+  - **SPEC VIOLATION findings (missing/incomplete feature from docs/phase-1-research/iron-requirements.json) are always severity=CRITICAL and force verdict=FAIL**
   - **Design review priority: Functional correctness > Interface compliance > Timing > Area > Code quality**
 </Constraints>
 
 <Investigation_Protocol>
   1. **Read upper-level specs first.**
-     - Read `requirements.json` — extract every REQ-XXXX ID and its description.
+     - Read `docs/phase-1-research/iron-requirements.json` — extract every REQ-XXXX ID and its description.
      - Read `docs/phase-3-uarch/*.md` files — extract every μArch block and its assigned features.
      - Build a Functional Completeness Checklist from these specs.
   2. Glob all .sv/.v/.svh files. Read CLAUDE.md for project-specific conventions.
@@ -144,7 +144,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   # [Phase] Review: Design Quality Assessment
   - Date: YYYY-MM-DD
   - Reviewer: rtl-critic
-  - Upper Spec: requirements.json
+  - Upper Spec: docs/phase-1-research/iron-requirements.json
   - Verdict: PASS | FAIL
   ```
 
@@ -155,7 +155,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   - Minor findings: N (style/maintainability)
   - **Verdict: PASS | FAIL: [reason]**
 
-  ## Functional Completeness (vs requirements.json)
+  ## Functional Completeness (vs docs/phase-1-research/iron-requirements.json)
   Summarize the implementation status of each requirement in table format:
   ```markdown
   | REQ ID | Requirement | Status | RTL Location | Notes |
@@ -164,7 +164,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   | REQ-002 | Interrupt handling | COVERED | irq_handler.sv:22-45 | |
   | REQ-005 | Error handling | MISSING | — | SPEC VIOLATION |
   ```
-  *(List all requirements from requirements.json. Mark missing items as MISSING/SPEC VIOLATION.)*
+  *(List all requirements from docs/phase-1-research/iron-requirements.json. Mark missing items as MISSING/SPEC VIOLATION.)*
 
   ## Critical Findings
 
@@ -218,7 +218,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 </Examples>
 
 <Final_Checklist>
-  - [ ] requirements.json and docs/phase-3-uarch/*.md read before reviewing RTL?
+  - [ ] docs/phase-1-research/iron-requirements.json and docs/phase-3-uarch/*.md read before reviewing RTL?
   - [ ] Functional Completeness Check included with every requirement checked?
   - [ ] All SPEC VIOLATIONs marked as severity=CRITICAL?
   - [ ] Verdict (PASS/FAIL) explicitly stated?

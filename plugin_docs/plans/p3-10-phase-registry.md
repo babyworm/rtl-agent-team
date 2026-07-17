@@ -10,6 +10,9 @@
 > (tests/unit/test_agent_skill_structure.py) enforces SCC ↔ registry
 > equality both directions, which provides equivalent drift protection
 > without generation machinery.
+>
+> **Historical boundary:** The Problem, Solution, and Implementation Steps below are
+> the design plan that led to the completed implementation; they are not pending work.
 
 ## Problem
 

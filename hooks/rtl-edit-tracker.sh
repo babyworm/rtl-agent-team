@@ -352,7 +352,12 @@ case "$FILE_PATH" in
           /*) : ;;
           *) _CPV_REPORT="$CWD/$_CPV_REPORT" ;;
         esac
-        if [ -f "$_CPV_REPORT" ] && \
+        _CPV_CANONICAL="${CWD%/}/reviews/cross-phase-contract-validation.md"
+        if [ "$_CPV_REPORT" = "$_CPV_CANONICAL" ] && \
+           [ ! -L "${CWD%/}/reviews" ] && \
+           [ ! -L "$_CPV_REPORT" ] && \
+           [ -f "$_CPV_REPORT" ] && \
+           [ -z "$(find "$_CPV_REPORT" -type f ! -links 1 -print -quit 2>/dev/null)" ] && \
            ! grep -qE 'Verdict[^A-Za-z]*FAIL' "$_CPV_REPORT" 2>/dev/null && \
            grep -qE 'Verdict[^A-Za-z]*PASS' "$_CPV_REPORT" 2>/dev/null; then
           _setup_tracking

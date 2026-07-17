@@ -73,7 +73,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read iron-requirements.json (or legacy requirements.json if iron version unavailable): understand all functional requirements and their priorities.
+    1. Read `docs/phase-1-research/iron-requirements.json` and `docs/phase-1-research/open-requirements.json` (if present); use legacy `docs/phase-1-research/requirements.json` only as a fallback when the canonical iron file is unavailable.
     2. Read io_definition.json: understand all external ports that define the top-level interface.
     3. Read timing_constraints.json: note all clock domains, latency budgets, throughput targets.
     4. Group requirements by functional affinity to identify natural block boundaries.
@@ -96,7 +96,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Use Read to read iron-requirements.json (or requirements.json), io_definition.json, timing_constraints.json.
+    - Use Read to read `docs/phase-1-research/iron-requirements.json` and optional `docs/phase-1-research/open-requirements.json`, or legacy `docs/phase-1-research/requirements.json` as a fallback, plus io_definition.json and timing_constraints.json.
     - Use Grep to search for specific requirements by category or keyword.
     - Use Glob to discover any existing architecture documents to avoid duplication.
     - Do NOT use Write or Edit (read-only advisor role).

@@ -81,7 +81,7 @@ FAIL:        Any traceability FAIL (coverage <100%, drift >0, missing >0)
 
 <Constraints>
   - Do NOT modify any source files. Write only the review report.
-  - **Read ALL design artifacts in order**: requirements.json → architecture.md → docs/phase-3-uarch/*.md → rtl/*/*.sv
+  - **Read ALL design artifacts in order**: docs/phase-1-research/iron-requirements.json → architecture.md → docs/phase-3-uarch/*.md → rtl/*/*.sv
   - Every finding must reference specific artifacts (file:section or file:line).
   - The PASS/FAIL gate is determined ONLY by objective traceability metrics above.
   - LLM qualitative assessment goes in the Appendix and does NOT affect the verdict.
@@ -90,7 +90,7 @@ FAIL:        Any traceability FAIL (coverage <100%, drift >0, missing >0)
 
 <Investigation_Protocol>
   1. **Full hierarchical traversal** (read in order):
-     a. `requirements.json` — extract all REQ-XXXX items
+     a. `docs/phase-1-research/iron-requirements.json` — extract all REQ-XXXX items
      b. `docs/phase-2-architecture/architecture.md` — extract block decomposition, feature allocation
      c. `docs/phase-3-uarch/*.md` — extract per-block detailed design
      d. `rtl/*/*.sv` — examine module interfaces and key logic

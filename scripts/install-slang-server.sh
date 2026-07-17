@@ -27,7 +27,18 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 # Compare semver: returns 0 if $1 >= $2
 version_gte() {
-    printf '%s\n%s' "$2" "$1" | sort -V -C
+    awk -v current="$1" -v minimum="$2" 'BEGIN {
+        current_count = split(current, current_parts, ".")
+        minimum_count = split(minimum, minimum_parts, ".")
+        part_count = current_count > minimum_count ? current_count : minimum_count
+        for (part_index = 1; part_index <= part_count; part_index++) {
+            current_part = part_index <= current_count ? current_parts[part_index] + 0 : 0
+            minimum_part = part_index <= minimum_count ? minimum_parts[part_index] + 0 : 0
+            if (current_part > minimum_part) exit 0
+            if (current_part < minimum_part) exit 1
+        }
+        exit 0
+    }'
 }
 
 check_prerequisites() {
@@ -45,7 +56,7 @@ check_prerequisites() {
     # cmake
     if command_exists cmake; then
         local cmake_ver
-        cmake_ver="$(cmake --version | head -1 | grep -oP '[0-9]+\.[0-9]+(\.[0-9]+)?')"
+        cmake_ver="$(cmake --version | sed -n '1s/[^0-9]*\([0-9][0-9.]*\).*/\1/p')"
         if version_gte "$cmake_ver" "$MIN_CMAKE_VERSION"; then
             log_success "cmake: $cmake_ver (>= $MIN_CMAKE_VERSION)"
         else
@@ -62,13 +73,13 @@ check_prerequisites() {
         local gcc_ver
         gcc_ver="$(g++ -dumpversion | cut -d. -f1)"
         if [[ "$gcc_ver" -ge "$MIN_GCC_VERSION" ]]; then
-            log_success "g++: $(g++ --version | head -1) (>= GCC $MIN_GCC_VERSION)"
+            log_success "g++: $(g++ --version | sed -n '1p') (>= GCC $MIN_GCC_VERSION)"
         else
             log_error "g++ $gcc_ver too old (need >= GCC $MIN_GCC_VERSION for C++20)"
             ok=false
         fi
     elif command_exists clang++; then
-        log_success "clang++: $(clang++ --version | head -1)"
+        log_success "clang++: $(clang++ --version | sed -n '1p')"
     else
         log_error "No C++20 compiler found (need g++ >= 11 or clang++ >= 17)"
         ok=false
@@ -145,10 +156,10 @@ install_binary() {
 
     # Find the built binary
     local binary
-    binary="$(find build -name 'slang-server' -type f -executable 2>/dev/null | head -1)"
+    binary="$(find build -name 'slang-server' -type f -executable 2>/dev/null | sed -n '1p')"
     if [[ -z "$binary" ]]; then
         # Try alternate name
-        binary="$(find build -name 'slang_server' -type f -executable 2>/dev/null | head -1)"
+        binary="$(find build -name 'slang_server' -type f -executable 2>/dev/null | sed -n '1p')"
     fi
 
     if [[ -z "$binary" ]]; then
@@ -192,51 +203,12 @@ check_status() {
     for cmd in slang-server svls verible-verilog-ls slang; do
         if command_exists "$cmd"; then
             log_success "$cmd: $(which "$cmd")"
-            "$cmd" --version 2>&1 | head -1 || true
+            "$cmd" --version 2>&1 | sed -n '1p' || true
         else
             log_warning "$cmd: not found"
         fi
         echo ""
     done
-}
-
-setup_claude_plugin() {
-    local plugin_dir="${HOME}/.claude/plugins/local/systemverilog-lsp"
-    local plugin_json_dir="${plugin_dir}/.claude-plugin"
-
-    log_info "Setting up Claude Code LSP plugin..."
-
-    mkdir -p "$plugin_json_dir"
-
-    cat > "${plugin_json_dir}/plugin.json" << 'PLUGIN_EOF'
-{
-  "name": "systemverilog-lsp",
-  "version": "1.1.2",
-  "description": "SystemVerilog/Verilog language server integration for Claude Code (slang-server)",
-  "author": "rtl-agent-team",
-  "repository": "https://github.com/hudson-trading/slang-server",
-  "keywords": ["systemverilog", "verilog", "lsp", "hdl", "rtl", "slang"],
-  "lspServers": "./.lsp.json"
-}
-PLUGIN_EOF
-
-    cat > "${plugin_dir}/.lsp.json" << 'LSP_EOF'
-{
-  "systemverilog": {
-    "command": "slang-server",
-    "args": [],
-    "extensionToLanguage": {
-      ".sv": "systemverilog",
-      ".svh": "systemverilog",
-      ".v": "verilog",
-      ".vh": "verilog"
-    }
-  }
-}
-LSP_EOF
-
-    log_success "Claude Code plugin registered at $plugin_dir"
-    log_info "Restart Claude Code to activate the LSP."
 }
 
 uninstall() {
@@ -247,14 +219,8 @@ uninstall() {
         log_warning "slang-server not found in $INSTALL_DIR"
     fi
 
-    local plugin_dir="${HOME}/.claude/plugins/local/systemverilog-lsp"
-    if [[ -d "$plugin_dir" ]]; then
-        rm -rf "$plugin_dir"
-        log_success "Removed Claude Code plugin at $plugin_dir"
-    fi
-
     if [[ -d "$BUILD_DIR" ]]; then
-        read -p "Remove source directory $BUILD_DIR? [y/N]: " confirm
+        read -r -p "Remove source directory $BUILD_DIR? [y/N]: " confirm
         if [[ "$confirm" =~ ^[Yy] ]]; then
             rm -rf "$BUILD_DIR"
             log_success "Removed $BUILD_DIR"
@@ -291,7 +257,6 @@ main() {
             clone_or_update
             build
             install_binary
-            setup_claude_plugin
             verify_install
             echo ""
             log_success "slang-server installation complete!"

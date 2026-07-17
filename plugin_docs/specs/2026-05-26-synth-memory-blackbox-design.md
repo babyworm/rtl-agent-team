@@ -1,8 +1,12 @@
 # Synthesis Memory Blackbox + Compiler-Macro Placeholder — Design
 
 - Date: 2026-05-26
-- Status: Approved (design); simplified to `translate_off`-based blackbox
+- Status: Implemented (historical design record)
 - Scope: `run_syn.sh` (DC/Genus) + SRAM wrapper convention + synthesis docs
+
+> **Historical boundary:** This document preserves the implemented design rationale.
+> Present-tense proposals and checklists below are a record of that implementation,
+> not pending work or the current operational source of truth.
 
 ## Problem
 

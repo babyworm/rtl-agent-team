@@ -7,34 +7,72 @@
 # from liberty if specified. Tools not in PATH get empty fields that users
 # can fill in with 'path' or 'env_source' to enable detection on re-run.
 #
-# If rat_config.json already exists, preserves user-edited fields (env_source,
-# path overrides, technology, waivers, coverage). Only refreshes 'detected'.
+# If rat_config.json already exists, preserves user-edited fields while
+# refreshing derived detection state, unusable tool paths, and NAND2 area.
 
 set -euo pipefail
+
+if (( BASH_VERSINFO[0] < 4 )); then
+  echo "ERROR: generate_config.sh requires Bash 4 or newer." >&2
+  exit 2
+fi
 
 PROJECT_ROOT="${1:-.}"
 PROJECT_NAME="${2:-$(basename "$(cd "$PROJECT_ROOT" && pwd)")}"
 CONFIG="$PROJECT_ROOT/rat_config.json"
+CONFIG_MK="$PROJECT_ROOT/config.mk"
+GENERATED_CONFIG=""
+GENERATED_CONFIG_MK=""
+EXISTING_CONFIG=""
+
+cleanup() {
+  [[ -z "$GENERATED_CONFIG" ]] || rm -f -- "$GENERATED_CONFIG"
+  [[ -z "$GENERATED_CONFIG_MK" ]] || rm -f -- "$GENERATED_CONFIG_MK"
+}
+trap cleanup EXIT
+
+validate_managed_destination() {
+  local destination="$1"
+  if [[ -L "$destination" || ( -e "$destination" && ! -f "$destination" ) ]]; then
+    echo "ERROR: managed config destination is not a regular file: $destination" >&2
+    return 1
+  fi
+}
+
+validate_managed_destination "$CONFIG"
+validate_managed_destination "$CONFIG_MK"
+
+GENERATED_CONFIG=$(mktemp "$PROJECT_ROOT/.rat_config.generated.XXXXXX")
+GENERATED_CONFIG_MK=$(mktemp "$PROJECT_ROOT/.config.mk.generated.XXXXXX")
+
+if [[ -f "$CONFIG" ]]; then
+  EXISTING_CONFIG="$CONFIG"
+fi
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
-# Read a JSON string value by key (simple grep-based, no jq dependency)
-json_get() {
-  local file="$1" key="$2"
-  sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$file" | head -1
+json_get_path() {
+  local file="$1"
+  shift
+  python3 - "$file" "$@" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as config_file:
+    value = json.load(config_file)
+
+for key in sys.argv[2:]:
+    if not isinstance(value, dict) or key not in value:
+        raise SystemExit(0)
+    value = value[key]
+
+if value is not None:
+    print(json.dumps(value) if isinstance(value, (dict, list)) else value)
+PY
 }
 
-# Read env_source for a tool from existing config (nested under category)
-json_get_tool_field() {
-  local file="$1" tool="$2" field="$3"
-  # Match: "tool": { ... "field": "value" ... } — simplified line-by-line
-  awk -v tool="\"$tool\"" -v field="\"$field\"" '
-    $0 ~ tool { found=1 }
-    found && $0 ~ field {
-      gsub(/.*: *"/, ""); gsub(/".*/, ""); print; exit
-    }
-    found && /\}/ { found=0 }
-  ' "$file"
+json_quote() {
+  python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
 }
 
 # Check if a tool is available, optionally sourcing env first or using explicit path
@@ -43,7 +81,7 @@ tool_detect() {
   local tool="$1" env_cmd="${2:-}" explicit_path="${3:-}"
 
   # Try explicit path first
-  if [[ -n "$explicit_path" && -x "$explicit_path" ]]; then
+  if [[ -n "$explicit_path" && -f "$explicit_path" && -x "$explicit_path" ]]; then
     echo "$explicit_path"
     return 0
   fi
@@ -51,7 +89,8 @@ tool_detect() {
   # Try with env_source
   if [[ -n "$env_cmd" ]]; then
     local found
-    found=$(bash -c "$env_cmd 2>/dev/null && command -v $tool 2>/dev/null" 2>/dev/null) || true
+    found=$(bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' \
+      _ "$env_cmd" "$tool" 2>/dev/null) || true
     if [[ -n "$found" ]]; then
       echo "$found"
       return 0
@@ -106,35 +145,30 @@ declare -A SAVED_PATH=()
 
 if [[ -f "$CONFIG" ]]; then
   for entry in "${ALL_TOOLS[@]}"; do
-    read -r _cat key _bin <<< "$entry"
-    env_val=$(json_get_tool_field "$CONFIG" "$key" "env_source")
-    path_val=$(json_get_tool_field "$CONFIG" "$key" "path")
-    [[ -n "$env_val" ]] && SAVED_ENV[$key]="$env_val"
-    # Only preserve user-set paths (not auto-detected ones)
-    if [[ -n "$path_val" && "$path_val" != "/"* && "$path_val" != "(built-in)" ]]; then
-      SAVED_PATH[$key]="$path_val"
-    elif [[ -n "$path_val" && -n "${SAVED_ENV[$key]:-}" ]]; then
-      # User set env_source, preserve their path too
-      SAVED_PATH[$key]="$path_val"
-    fi
+    read -r cat key _bin <<< "$entry"
+    index="$cat/$key"
+    env_val=$(json_get_path "$CONFIG" tools "$cat" "$key" env_source)
+    path_val=$(json_get_path "$CONFIG" tools "$cat" "$key" path)
+    [[ -z "$env_val" ]] || SAVED_ENV[$index]="$env_val"
+    [[ -z "$path_val" || "$path_val" == "(built-in)" ]] || SAVED_PATH[$index]="$path_val"
   done
   echo "Loaded existing config (preserving user fields)"
 fi
 
 # Preserve other user-edited sections
 if [[ -f "$CONFIG" ]]; then
-  TOP_MODULE=$(json_get "$CONFIG" "top_module")
-  FILELIST=$(json_get "$CONFIG" "filelist")
-  LIBERTY=$(json_get "$CONFIG" "liberty")
-  SRAM_LIB=$(json_get "$CONFIG" "sram_lib")
-  TARGET=$(json_get "$CONFIG" "target")
-  NAND2_PATTERN=$(json_get "$CONFIG" "nand2_cell_pattern")
-  SEEDS=$(json_get "$CONFIG" "seeds")
-  W_VERILATOR=$(json_get_tool_field "$CONFIG" "verilator" "verilator" 2>/dev/null || echo "")
-  W_VERIBLE=$(json_get_tool_field "$CONFIG" "verible" "verible" 2>/dev/null || echo "")
-  W_SG_LINT=$(json_get_tool_field "$CONFIG" "spyglass_lint" "spyglass_lint" 2>/dev/null || echo "")
-  W_SG_CDC=$(json_get_tool_field "$CONFIG" "spyglass_cdc" "spyglass_cdc" 2>/dev/null || echo "")
-  W_CDC=$(json_get_tool_field "$CONFIG" "cdc" "cdc" 2>/dev/null || echo "")
+  TOP_MODULE=$(json_get_path "$CONFIG" project top_module)
+  FILELIST=$(json_get_path "$CONFIG" project filelist)
+  LIBERTY=$(json_get_path "$CONFIG" technology liberty)
+  SRAM_LIB=$(json_get_path "$CONFIG" technology sram_lib)
+  TARGET=$(json_get_path "$CONFIG" technology target)
+  NAND2_PATTERN=$(json_get_path "$CONFIG" technology nand2_cell_pattern)
+  SEEDS=$(json_get_path "$CONFIG" coverage seeds)
+  W_VERILATOR=$(json_get_path "$CONFIG" waivers verilator)
+  W_VERIBLE=$(json_get_path "$CONFIG" waivers verible)
+  W_SG_LINT=$(json_get_path "$CONFIG" waivers spyglass_lint)
+  W_SG_CDC=$(json_get_path "$CONFIG" waivers spyglass_cdc)
+  W_CDC=$(json_get_path "$CONFIG" waivers cdc)
 else
   TOP_MODULE=""
   FILELIST="rtl/filelist_top.f"
@@ -158,8 +192,8 @@ declare -A DET_PATH=()
 
 for entry in "${ALL_TOOLS[@]}"; do
   read -r cat key bin <<< "$entry"
-  env_src="${SAVED_ENV[$key]:-}"
-  exp_path="${SAVED_PATH[$key]:-}"
+  env_src="${SAVED_ENV[$cat/$key]:-}"
+  exp_path="${SAVED_PATH[$cat/$key]:-}"
 
   found_path=""
   if found_path=$(tool_detect "$bin" "$env_src" "$exp_path"); then
@@ -219,7 +253,6 @@ PREF_EQUIV=$(pick_pref equivalence fm_shell lec)
 # generate_config.sh uses internal keys (dc_shell, jg, vsim, sg_shell)
 # but Makefile targets use normalized names (dc, jasper, questa, spyglass)
 normalize_for_make() {
-  local category="${2:-}"
   case "$1" in
     dc_shell) echo "dc" ;;
     jg)       echo "jasper" ;;
@@ -243,19 +276,13 @@ safe_formal_pref() {
   esac
 }
 
-MK_SIM=$(normalize_for_make "$PREF_SIM")
-MK_SYN=$(normalize_for_make "$PREF_SYN")
-MK_LINT=$(normalize_for_make "$PREF_LINT")
-MK_FORMAL=$(normalize_for_make "$(safe_formal_pref "$PREF_FORMAL")")
-MK_CDC=$(normalize_for_make "$PREF_CDC")
-MK_EQUIV=$(normalize_for_make "$PREF_EQUIV")
-
-echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC equiv=${PREF_EQUIV:-(yosys)}"
-echo "Make targets: sim=$MK_SIM syn=$MK_SYN lint=$MK_LINT formal=$MK_FORMAL cdc=$MK_CDC"
-
 # ─── NAND2 area extraction ────────────────────────────────────────────────
 NAND2_AREA="null"
-if [[ -n "$LIBERTY" && -f "$LIBERTY" ]]; then
+LIBERTY_FILE="$LIBERTY"
+if [[ -n "$LIBERTY_FILE" && "$LIBERTY_FILE" != /* ]]; then
+  LIBERTY_FILE="$PROJECT_ROOT/$LIBERTY_FILE"
+fi
+if [[ -n "$LIBERTY_FILE" && -f "$LIBERTY_FILE" ]]; then
   NAND2_PAT="${NAND2_PATTERN:-NAND2X1}"
   EXTRACTED=$(awk -v pat="$NAND2_PAT" '
     $0 ~ "cell[[:space:]]*\\("pat"\\)" { found=1 }
@@ -265,7 +292,7 @@ if [[ -n "$LIBERTY" && -f "$LIBERTY" ]]; then
       exit
     }
     found && /^\s*\}/ { found=0 }
-  ' "$LIBERTY")
+  ' "$LIBERTY_FILE")
 
   if [[ -n "$EXTRACTED" ]]; then
     NAND2_AREA="$EXTRACTED"
@@ -280,9 +307,9 @@ tool_json() {
   local cat="$1" key="$2"
   local det="${DET_STATUS[$cat/$key]:-false}"
   local path="${DET_PATH[$cat/$key]:-}"
-  local env="${SAVED_ENV[$key]:-}"
-  printf '      "%s": { "detected": %s, "path": "%s", "env_source": "%s" }' \
-    "$key" "$det" "$path" "$env"
+  local env="${SAVED_ENV[$cat/$key]:-}"
+  printf '      "%s": { "detected": %s, "path": %s, "env_source": %s }' \
+    "$key" "$det" "$(json_quote "$path")" "$(json_quote "$env")"
 }
 
 category_json() {
@@ -297,12 +324,12 @@ category_json() {
 }
 
 # ─── Write config ──────────────────────────────────────────────────────────
-cat > "$CONFIG" << OUTER_EOF
+cat > "$GENERATED_CONFIG" << OUTER_EOF
 {
   "project": {
-    "name": "$PROJECT_NAME",
-    "top_module": "$TOP_MODULE",
-    "filelist": "$FILELIST"
+    "name": $(json_quote "$PROJECT_NAME"),
+    "top_module": $(json_quote "$TOP_MODULE"),
+    "filelist": $(json_quote "$FILELIST")
   },
   "tools": {
     "_comment": "All known EDA tools. 'detected' is auto-filled. Edit 'path' or 'env_source' for tools needing setup, then re-run generate_config.sh.",
@@ -323,40 +350,126 @@ $(category_json coverage urg imc vcover)
   },
   "preferences": {
     "_comment": "Preferred tool per category. Auto-set to first detected (commercial priority). User-overridable.",
-    "simulator": "$PREF_SIM",
-    "synthesis": "$PREF_SYN",
-    "lint": "$PREF_LINT",
-    "formal": "$PREF_FORMAL",
-    "cdc": "$PREF_CDC",
-    "equivalence": "${PREF_EQUIV:-}"
+    "simulator": $(json_quote "$PREF_SIM"),
+    "synthesis": $(json_quote "$PREF_SYN"),
+    "lint": $(json_quote "$PREF_LINT"),
+    "formal": $(json_quote "$PREF_FORMAL"),
+    "cdc": $(json_quote "$PREF_CDC"),
+    "equivalence": $(json_quote "${PREF_EQUIV:-}")
   },
   "technology": {
-    "target": "$TARGET",
-    "liberty": "$LIBERTY",
-    "sram_lib": "$SRAM_LIB",
-    "nand2_cell_pattern": "${NAND2_PATTERN:-NAND2X1}",
+    "target": $(json_quote "$TARGET"),
+    "liberty": $(json_quote "$LIBERTY"),
+    "sram_lib": $(json_quote "$SRAM_LIB"),
+    "nand2_cell_pattern": $(json_quote "${NAND2_PATTERN:-NAND2X1}"),
     "nand2_area_um2": $NAND2_AREA
   },
   "coverage": {
     "targets": { "line": 90, "toggle": 80, "fsm": 70, "branch": 80, "functional": 95 },
-    "seeds": "$SEEDS",
+    "seeds": $(json_quote "$SEEDS"),
     "max_fail_rate": 5
   },
   "waivers": {
-    "verilator": "$W_VERILATOR",
-    "verible": "$W_VERIBLE",
-    "spyglass_lint": "$W_SG_LINT",
-    "spyglass_cdc": "$W_SG_CDC",
-    "cdc": "$W_CDC"
+    "verilator": $(json_quote "$W_VERILATOR"),
+    "verible": $(json_quote "$W_VERIBLE"),
+    "spyglass_lint": $(json_quote "$W_SG_LINT"),
+    "spyglass_cdc": $(json_quote "$W_SG_CDC"),
+    "cdc": $(json_quote "$W_CDC")
   }
 }
 OUTER_EOF
 
-echo ""
-echo "Config written: $CONFIG"
+python3 - "$GENERATED_CONFIG" "$EXISTING_CONFIG" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+
+def preserve_user_fields(generated, existing, path=()):
+    for key, existing_value in existing.items():
+        if path and path[0] == "tools" and key in {"detected", "path"}:
+            continue
+        if path == ("technology",) and key == "nand2_area_um2":
+            continue
+        generated_value = generated.get(key)
+        if isinstance(generated_value, dict) and isinstance(existing_value, dict):
+            preserve_user_fields(generated_value, existing_value, (*path, key))
+        else:
+            generated[key] = existing_value
+
+
+generated_path = Path(sys.argv[1])
+with generated_path.open(encoding="utf-8") as generated_file:
+    config = json.load(generated_file)
+
+if sys.argv[2]:
+    with Path(sys.argv[2]).open(encoding="utf-8") as existing_file:
+        preserve_user_fields(config, json.load(existing_file))
+
+generated_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+PY
+
+PREF_SIM=$(json_get_path "$GENERATED_CONFIG" preferences simulator)
+PREF_SYN=$(json_get_path "$GENERATED_CONFIG" preferences synthesis)
+PREF_LINT=$(json_get_path "$GENERATED_CONFIG" preferences lint)
+PREF_FORMAL=$(json_get_path "$GENERATED_CONFIG" preferences formal)
+PREF_CDC=$(json_get_path "$GENERATED_CONFIG" preferences cdc)
+PREF_EQUIV=$(json_get_path "$GENERATED_CONFIG" preferences equivalence)
+LIBERTY=$(json_get_path "$GENERATED_CONFIG" technology liberty)
+SEEDS=$(json_get_path "$GENERATED_CONFIG" coverage seeds)
+
+MK_SIM=$(normalize_for_make "$PREF_SIM")
+MK_SYN=$(normalize_for_make "$PREF_SYN")
+MK_LINT=$(normalize_for_make "$PREF_LINT")
+MK_FORMAL=$(normalize_for_make "$(safe_formal_pref "$PREF_FORMAL")")
+MK_CDC=$(normalize_for_make "$PREF_CDC")
+MK_EQUIV=$(normalize_for_make "$PREF_EQUIV")
+
+validate_make_token() {
+  local label="$1" value="$2"
+  if [[ -n "$value" && ! "$value" =~ ^[[:alnum:]_][[:alnum:]_.+-]*$ ]]; then
+    echo "ERROR: $label contains characters unsafe for Make." >&2
+    return 1
+  fi
+}
+
+normalize_seeds() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+
+seeds = sys.argv[1].split()
+if any(re.fullmatch(r"[0-9]+", seed) is None for seed in seeds):
+    print("ERROR: coverage.seeds must contain only decimal integers.", file=sys.stderr)
+    raise SystemExit(1)
+
+print(" ".join(seed.lstrip("0") or "0" for seed in seeds))
+PY
+}
+
+escape_make_path() {
+  local label="$1" value="$2"
+  if [[ ! "$value" =~ ^[[:alnum:]_./:+,@%\ -]*$ ]]; then
+    echo "ERROR: $label contains characters unsafe for Make or the shell." >&2
+    return 1
+  fi
+  printf '%s' "${value// /\\ }"
+}
+
+validate_make_token "preferences.simulator" "$MK_SIM"
+validate_make_token "preferences.synthesis" "$MK_SYN"
+validate_make_token "preferences.lint" "$MK_LINT"
+validate_make_token "preferences.formal" "$MK_FORMAL"
+validate_make_token "preferences.cdc" "$MK_CDC"
+validate_make_token "preferences.equivalence" "$MK_EQUIV"
+SEEDS_MK=$(normalize_seeds "$SEEDS")
+LIBERTY_MK=$(escape_make_path "technology.liberty" "$LIBERTY")
+SDC_FILE_MK=$(escape_make_path "SDC_FILE" "${SDC_FILE:-syn/constraints/design.sdc}")
+
+echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC equiv=${PREF_EQUIV:-(yosys)}"
+echo "Make targets: sim=$MK_SIM syn=$MK_SYN lint=$MK_LINT formal=$MK_FORMAL cdc=$MK_CDC"
 
 # ─── Generate config.mk (Makefile-includable preferences) ────────────────
-CONFIG_MK="$PROJECT_ROOT/config.mk"
 {
   echo "# Auto-generated by generate_config.sh — do not edit manually."
   echo "# Re-generate: bash generate_config.sh"
@@ -372,13 +485,32 @@ CONFIG_MK="$PROJECT_ROOT/config.mk"
   [[ -n "$MK_EQUIV" ]]  && echo "PREF_EQUIV   ?= ${MK_EQUIV}"
   echo ""
   echo "# Technology"
-  [[ -n "$LIBERTY" ]]    && echo "LIBERTY      ?= ${LIBERTY}"
-  echo "SDC_FILE     ?= ${SDC_FILE:-syn/constraints/design.sdc}"
+  [[ -n "$LIBERTY_MK" ]] && echo "LIBERTY      ?= ${LIBERTY_MK}"
+  echo "SDC_FILE     ?= ${SDC_FILE_MK}"
   echo ""
   echo "# Regression"
-  [[ -n "$SEEDS" ]] && echo "SEEDS        ?= ${SEEDS}"
-} > "$CONFIG_MK"
+  [[ -n "$SEEDS_MK" ]] && echo "SEEDS        ?= ${SEEDS_MK}"
+} > "$GENERATED_CONFIG_MK"
 
+preserve_mode() {
+  python3 - "$1" "$2" <<'PY'
+import os
+import stat
+import sys
+
+source, destination = sys.argv[1:]
+mode = stat.S_IMODE(os.stat(source).st_mode) if os.path.isfile(source) else 0o644
+os.chmod(destination, mode)
+PY
+}
+
+preserve_mode "$CONFIG" "$GENERATED_CONFIG"
+preserve_mode "$CONFIG_MK" "$GENERATED_CONFIG_MK"
+mv -f -- "$GENERATED_CONFIG" "$CONFIG"
+mv -f -- "$GENERATED_CONFIG_MK" "$CONFIG_MK"
+
+echo ""
+echo "Config written: $CONFIG"
 echo "Config.mk written: $CONFIG_MK"
 echo ""
 echo "Next steps:"

@@ -51,7 +51,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     - Timing estimate: Yosys internal delay estimate for critical path (in abstract delay units)
     - Unmapped cells identified: any cell type not in the target library, listed with RTL source
     - Hierarchical breakdown: area per module, not just top-level total
-    - Comparison to target: each metric compared to budget in requirements.json; PASS/FAIL
+    - Comparison to target: each metric compared to budget in docs/phase-1-research/iron-requirements.json; PASS/FAIL
     - Synthesis warnings parsed and categorized: latch inference, multi-driver, unconnected ports
   </Success_Criteria>
 
@@ -66,7 +66,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read requirements.json for area budget (GE), timing budget (target frequency), and power target.
+    1. Read docs/phase-1-research/iron-requirements.json for area budget (GE), timing budget (target frequency), and power target.
     2. Read CLAUDE.md for any project-specific synthesis script or technology library.
     3. Glob all RTL .sv/.v files for the target block.
     4. Write a Yosys synthesis script (.ys file) for the target.
@@ -76,12 +76,12 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     8. Extract timing: "Estimated number of LCs" or internal delay from `sta` command.
     9. Extract warnings: grep for "Warning:" lines and categorize.
     10. Generate hierarchical area report using `tee -a` with `stat -top module_name`.
-    11. Compare all metrics to requirements.json targets; mark PASS/FAIL.
+    11. Compare all metrics to docs/phase-1-research/iron-requirements.json targets; mark PASS/FAIL.
     12. Identify any cells with "UNMAP" or not-in-library status.
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read requirements.json, CLAUDE.md, existing synthesis scripts
+    - Read: read docs/phase-1-research/iron-requirements.json, CLAUDE.md, existing synthesis scripts
     - Write: create syn/synth_block.ys synthesis script
     - Bash: run `yosys -s syn/synth_block.ys 2>&1 | tee syn/synth_block.log`,
             run `grep -E "(Warning|Error|Cells|Flip-flop)" syn/synth_block.log`
@@ -185,7 +185,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     - Are all warnings parsed and categorized?
     - Are unmapped cells identified with source module?
     - Are timing estimates labeled as ADU (not ns)?
-    - Is each metric compared to budget from requirements.json with PASS/FAIL?
+    - Is each metric compared to budget from docs/phase-1-research/iron-requirements.json with PASS/FAIL?
   </Final_Checklist>
 </Agent_Prompt>
 

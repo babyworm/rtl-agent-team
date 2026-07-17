@@ -47,7 +47,6 @@ if [[ "$OSTYPE" == darwin* ]] || [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
     "tests/unit/test_hooks.py::TestHookConcurrency"          # concurrent hook subprocess: timing varies across platforms
     "tests/unit/test_hooks.py::TestTeamAwarenessGuard"       # hook subprocess: cross-platform not validated
     "tests/unit/test_hooks.py::TestSedFallbackContract"      # sed fallback: cross-platform not validated
-    "tests/unit/test_plugin_runtime_contract.py::TestSystemVerilogLspPluginContract"  # install script uses GNU sort -V
     "tests/unit/test_regression_coverage.py::TestRunRegression"  # run_regression.sh uses declare -A (bash 4+) + nproc
   )
   for marker in "${SKIP_MARKERS[@]}"; do
@@ -63,7 +62,7 @@ IGNORE_ARGS="--ignore=tests/unit/test_bd_rate.py"
 if python3 -c "import numpy" 2>/dev/null; then
   IGNORE_ARGS=""
 else
-  echo "  (numpy not installed — skipping test_bd_rate.py; install via: pip install -r tests/requirements-test.txt)"
+  echo "  (numpy not installed — skipping test_bd_rate.py; create .venv, then run: .venv/bin/python -m pip install -r tests/requirements-test.txt)"
   SKIPPED="${SKIPPED}numpy "
 fi
 

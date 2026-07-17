@@ -1,7 +1,7 @@
 ---
 title: rtl-document Asset Bundle Design
 date: 2026-05-12
-status: draft
+status: implemented in v0.11.0
 owners: babyworm
 relates_to:
   - plugin_docs/plans/2026-03-20-skill-improvement-candidates.md

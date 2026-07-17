@@ -87,7 +87,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   <Investigation_Protocol>
     1. Read the functional coverage report (HTML, UCIS XML, or text format from simulation).
     2. Read the code coverage report (line, branch, toggle percentages per file).
-    3. Read iron-requirements.json (preferred) or requirements.json (fallback) to map each uncovered item to its originating requirement. When structured acceptance_criteria (with ac_id) exist, report gaps at AC level.
+    3. Read `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback) to map each uncovered item to its originating requirement. When structured acceptance_criteria (with ac_id) exist, report gaps at AC level.
        **Note**: For comprehensive bidirectional Spec↔Test traceability matrix, defer to
        `requirement-tracer`. Coverage-analyst focuses on gap analysis and convergence strategy.
     4. Read the test plan to identify which test cases were supposed to cover each bin.
@@ -101,7 +101,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read coverage reports (*.xml, *.html, *.rpt), test plan, iron-requirements.json (preferred) or requirements.json (fallback), uarch specs
+    - Read: read coverage reports (*.xml, *.html, *.rpt), test plan, `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback), uarch specs
     - Grep: search coverage report for "UNCOV", "0 hits", uncovered bin markers
     - Bash: parse coverage XML/UCIS if needed; run `grep -c "0 hits" coverage.rpt` for quick count
     - Glob: find coverage report files, find test plan files

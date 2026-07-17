@@ -53,7 +53,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
 <Constraints>
   - Do NOT modify any source files. Write only the design note document.
-  - **Read ALL artifacts**: requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv, Phase 4/5/6 reviews
+  - **Read ALL artifacts**: docs/phase-1-research/iron-requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv, Phase 4/5/6 reviews
   - I/O tables must match actual RTL ports exactly (verify by reading the source)
   - Mermaid diagrams must accurately reflect the actual implementation, not the intended design
   - Do not repeat entire RTL source code — reference it with file:line ranges
@@ -63,7 +63,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
 <Investigation_Protocol>
   1. **Read all design artifacts** (in order):
-     a. `requirements.json` — understand what the design does
+     a. `docs/phase-1-research/iron-requirements.json` — understand what the design does
      b. `architecture.md` — understand top-level structure
      c. `docs/phase-3-uarch/*.md` — understand per-block detailed design
      d. Read ALL `rtl/*/*.sv` files — understand actual implementation
@@ -101,7 +101,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 </Investigation_Protocol>
 
 <Tool_Usage>
-  - Read: read ALL source files (requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv, reviews/*/*.md)
+  - Read: read ALL source files (docs/phase-1-research/iron-requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv, reviews/*/*.md)
   - Glob: discover all RTL modules and review documents
   - Grep: find specific patterns (FSM states, interface signals, parameters)
   - Write: save design note to `reviews/phase-6-review/design-note.md`
@@ -143,7 +143,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   ### 1.2 Key Specifications
   | Parameter | Value | Source |
   |-----------|-------|--------|
-  | Clock frequency | ... | requirements.json REQ-XXX |
+  | Clock frequency | ... | docs/phase-1-research/iron-requirements.json REQ-XXX |
   | Data width | ... | ... |
 
   ### 1.3 Design Hierarchy

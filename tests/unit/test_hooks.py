@@ -1117,6 +1117,82 @@ class TestSpecCascadeMarkerLifecycle:
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "SPEC CASCADE RESOLVED" in ctx
 
+    def test_only_existing_canonical_project_report_can_clear_markers(
+        self, tmp_project, tmp_path
+    ):
+        state_dir = tmp_project / ".rat" / "state"
+        marker = state_dir / "spec-cascade-stale-p3"
+        marker.touch()
+
+        external_report = (
+            tmp_path / "external" / "reviews" / "cross-phase-contract-validation.md"
+        )
+        external_report.parent.mkdir(parents=True)
+        external_report.write_text("- Verdict: PASS\n")
+        run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project), "file_path": str(external_report)},
+        )
+        assert marker.exists(), "a PASS report outside the active project is untrusted"
+
+        missing_report = (
+            tmp_project / "reviews" / "cross-phase-contract-validation.md"
+        )
+        run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project), "file_path": str(missing_report)},
+        )
+        assert marker.exists(), "a missing canonical report cannot clear active state"
+
+        external_report_target = tmp_path / "external-pass.md"
+        external_report_target.write_text("- Verdict: PASS\n")
+        missing_report.parent.mkdir(parents=True, exist_ok=True)
+        missing_report.symlink_to(external_report_target)
+        run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project), "file_path": str(missing_report)},
+        )
+        assert marker.exists(), "a symlinked report cannot clear active state"
+
+    def test_report_under_symlinked_reviews_parent_cannot_clear_markers(
+        self, tmp_project, tmp_path
+    ):
+        state_dir = tmp_project / ".rat" / "state"
+        marker = state_dir / "spec-cascade-stale-p3"
+        marker.touch()
+        external_reviews = tmp_path / "external-reviews"
+        external_reviews.mkdir()
+        external_report = external_reviews / "cross-phase-contract-validation.md"
+        external_report.write_text("- Verdict: PASS\n")
+        (tmp_project / "reviews").symlink_to(external_reviews, target_is_directory=True)
+        report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
+
+        run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project), "file_path": str(report)},
+        )
+
+        assert marker.exists(), "a symlinked reviews parent cannot clear active state"
+
+    def test_hard_linked_validation_report_cannot_clear_markers(
+        self, tmp_project, tmp_path
+    ):
+        state_dir = tmp_project / ".rat" / "state"
+        marker = state_dir / "spec-cascade-stale-p3"
+        marker.touch()
+        external_report = tmp_path / "external-pass.md"
+        external_report.write_text("- Verdict: PASS\n")
+        report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
+        report.parent.mkdir(parents=True)
+        report.hardlink_to(external_report)
+
+        run_hook(
+            self.HOOK,
+            {"cwd": str(tmp_project), "file_path": str(report)},
+        )
+
+        assert marker.exists(), "a hard-linked report cannot clear active state"
+
 
 class TestP6CascadeGate:
     """Tests for hooks/rtl-p6-cascade-gate.sh."""

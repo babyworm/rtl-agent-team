@@ -111,7 +111,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-chief-standard-expert",
       "file": "agents/vcodec-chief-standard-expert.md",
-      "model": "claude-opus-4-6",
       "role": "Cross-block review coordination — reviews 6 sub-domain experts, identifies cross-block dependencies, iterates to Architecture-Ready",
       "phase_intensity": {
         "research": "primary",
@@ -134,7 +133,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-syntax-entropy-expert",
       "file": "agents/vcodec-syntax-entropy-expert.md",
-      "model": "claude-opus-4-6",
       "role": "HLS and entropy coding interpretation — NAL parsing, CABAC/CAVLC context models, binarization, DPB management",
       "phase_intensity": {
         "research": "primary",
@@ -161,7 +159,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-intra-pred-expert",
       "file": "agents/vcodec-intra-pred-expert.md",
-      "model": "claude-opus-4-6",
       "role": "Intra prediction interpretation — intra prediction modes, angular projection, reference sample construction, mode-dependent filtering, boundary conditions",
       "phase_intensity": {
         "research": "primary",
@@ -187,7 +184,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-me-expert",
       "file": "agents/vcodec-me-expert.md",
-      "model": "claude-opus-4-6",
       "role": "Motion estimation and MV prediction interpretation — ME search algorithms (IME/FME), MV prediction (AMVP/merge), reference frame management, search range constraints",
       "phase_intensity": {
         "research": "primary",
@@ -217,7 +213,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-mc-expert",
       "file": "agents/vcodec-mc-expert.md",
-      "model": "claude-opus-4-6",
       "role": "Motion compensation interpretation — sub-pixel interpolation filters, bi-prediction weighting, weighted prediction, reference block fetching",
       "phase_intensity": {
         "research": "primary",
@@ -244,7 +239,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-transform-quant-expert",
       "file": "agents/vcodec-transform-quant-expert.md",
-      "model": "claude-opus-4-6",
       "role": "Transform and quantization interpretation — DCT/DST, scaling matrices, QP-dependent quantization, RDOQ, fixed-point arithmetic",
       "phase_intensity": {
         "research": "primary",
@@ -272,7 +266,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-filter-recon-expert",
       "file": "agents/vcodec-filter-recon-expert.md",
-      "model": "claude-opus-4-6",
       "role": "In-loop filter and reconstruction interpretation — deblocking filter, SAO, boundary strength, reconstruction path",
       "phase_intensity": {
         "research": "primary",
@@ -298,7 +291,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:video-processing-expert",
       "file": "agents/video-processing-expert.md",
-      "model": "claude-opus-4-6",
       "role": "Codec HW performance analysis — throughput (MB/s, CTU/s), memory bandwidth, cycles-per-block, DPB sizing, pipeline parallelism",
       "phase_intensity": {
         "research": "support",
@@ -330,7 +322,6 @@
       "source": "plugin",
       "plugin_id": "rtl-agent-team:vcodec-architecture-expert",
       "file": "agents/vcodec-architecture-expert.md",
-      "model": "claude-opus-4-6",
       "role": "HW architecture advisory — proven HW patterns, SRAM organization, fixed-point arithmetic, datapath specification",
       "phase_intensity": {
         "research": "support",

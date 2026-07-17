@@ -2,7 +2,8 @@
 
 - Date: 2026-07-17
 - Status: Documented decision (no code change — documentation only)
-- Origin: `plugin_docs/specs/workflow-ultracode-compat.md` proposed-only item 4
+- Origin: `plugin_docs/specs/workflow-ultracode-compat.md` item 4, originally
+  proposed-only and implemented in v0.14.0
 - Validation: 2026-07-15 huffman_vld flow-test —
   `plugin_docs/plans/2026-07-15-vld-flowtest-design.md`
 
@@ -15,8 +16,8 @@ blocks session stop until `.rat/state/rtl-verify-done` (or `rtl-verify-waiver`)
 exists.
 
 When an external **Workflow** driver (the ultracode "orchestrator-as-workflow"
-model) owns phase/gate control flow in JS and calls **leaf specialist agents**
-directly, the Stop hook is not the operative enforcement point: the JS driver
+model) owns phase/gate control flow in JS and calls plugin agents, the Stop hook
+is not the operative enforcement point: the JS driver
 decides when a phase is complete, and its per-phase gate functions run before
 any completion is declared.
 
@@ -51,18 +52,15 @@ These are prerequisites for the supersession to be sound; without them the
 driver operates on the wrong project root and neither gate model is trustworthy
 (see `workflow-ultracode-compat.md` for full derivation):
 
-1. **`RAT_PROJECT_ROOT`** — set to an **absolute path** to the RAT-initialized
-   project root (must contain the `.rat`/`.rtl-agent-team` marker). This
-   redirects all hooks (`rat-dir-util.sh` sourcing hooks + the standalone
-   SessionStart injector) so gate/state/audit files land in the real project.
-2. **Leaf-specialist-agent targeting** — drive leaf specialist agents directly,
-   not multi-level orchestrators, so nested `Task()` spawns cannot silently
-   drop the path contract.
-3. **Absolute-path `PROJECT_ROOT` prompt contract** — inject an explicit
-   `PROJECT_ROOT=<abs>` line into each leaf-agent prompt (and/or set the leaf
-   agent's CWD to the project root). The env override redirects hooks only;
-   agent Read/Write/Edit I/O still resolves bare relative paths against the
-   subagent process CWD.
+1. **RAT-initialized root** — the selected project root must contain the `.rat`
+   or legacy `.rtl-agent-team` marker.
+2. **Project-root ladder** — provide the correct root through at least one source
+   understood by every agent header: explicit `PROJECT_ROOT=<abs>` prompt line >
+   spawn-context `project_root` > `$RAT_PROJECT_ROOT` > process CWD. Explicit
+   prompt/environment roots must be absolute existing directories.
+3. **Spawn-context propagation** — initialize the leader from the correct project
+   root before dispatch. `hooks/lib/spawn-context-util.sh` then records
+   `project_root`, so nested `Task()` spawns retain the same path contract.
 
 ## 4. Non-goals
 

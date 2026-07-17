@@ -1,5 +1,10 @@
 # P3-11: Hook Output Standardization
 
+- Status: Historical
+
+> **Historical boundary:** Counts, migration steps, and unchecked items below are the
+> original planning snapshot. They do not describe current hook implementation status.
+
 ## Problem
 
 40 instances of inline `printf '{"continue":true}'` across 10 hook files. Only 3 hooks

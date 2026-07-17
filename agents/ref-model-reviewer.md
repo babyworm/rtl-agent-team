@@ -69,7 +69,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read the spec (requirements.json, specs/) to understand the algorithm.
+    1. Read the spec (docs/phase-1-research/iron-requirements.json, specs/) to understand the algorithm.
     2. Read all reference model source files in `refc/`.
     3. **Algorithm Fidelity**:
        a. Map each spec algorithm step to its implementation in the model.
@@ -119,7 +119,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # Reference Model Review: [model name]
     - Date: YYYY-MM-DD
     - Reviewer: ref-model-reviewer
-    - Upper Spec: requirements.json, specs/
+    - Upper Spec: docs/phase-1-research/iron-requirements.json, specs/
     - Language: C / C++ / Python
     - Verdict: PASS | FAIL
 

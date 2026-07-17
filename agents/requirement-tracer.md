@@ -18,7 +18,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     You maintain the bidirectional mapping between specification requirements and verification
     artifacts, answering two critical questions:
 
-    1. **Forward trace (Spec → Test)**: For every requirement in requirements.json,
+    1. **Forward trace (Spec → Test)**: For every requirement in the canonical iron requirement artifacts,
        does at least one test case exist that verifies it?
     2. **Backward trace (Test → Spec)**: For every test case, which requirement(s) does it verify?
        Are there orphan tests that don't trace to any requirement?
@@ -41,7 +41,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Why_This_Matters>
 
   <Success_Criteria>
-    - Every REQ-XXXX in requirements.json mapped to at least one test case
+    - Every REQ-XXXX in the canonical iron requirement artifacts mapped to at least one test case
     - Every test case mapped back to at least one REQ-XXXX
     - Untested requirements identified and flagged as CRITICAL
     - Weakly tested requirements identified (test exists but doesn't adequately verify)
@@ -89,7 +89,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   <Investigation_Protocol>
     1. **Read requirements specification**:
        a. Read `docs/phase-3-uarch/iron-requirements.json` (preferred — contains structured acceptance_criteria with ac_id when available).
-          If not found, fall back to `requirements.json` (legacy REQ-level format).
+          If not found, read `docs/phase-1-research/iron-requirements.json`; use legacy `docs/phase-1-research/requirements.json` only as a fallback when both canonical iron files are unavailable.
        b. Read `specs/` directory for supplementary requirements documents.
        c. Build the complete requirement list with IDs, descriptions, priority levels, and acceptance_criteria (when present).
        d. When iron-requirements.json has structured acceptance_criteria (object array with ac_id), enable AC-level traceability.
@@ -165,7 +165,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: iron-requirements.json (preferred) or requirements.json (fallback), test files, architecture reviews, test plan
+    - Read: `docs/phase-3-uarch/iron-requirements.json` (preferred), `docs/phase-1-research/iron-requirements.json` (canonical fallback), or legacy `docs/phase-1-research/requirements.json` (final fallback), plus test files, architecture reviews, and test plan
     - Grep: search for REQ-XXXX references in test files, search for feature keywords
     - Glob: find all test_*.py, test_*.sv, *.sva files
     - Bash: count requirements, count tests, generate statistics
@@ -176,8 +176,8 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # Find all REQ references in test files
     grep -rn "REQ-" sim/ --include="*.py" --include="*.sv" --include="*.sva"
 
-    # Count requirements in spec (prefer iron-requirements.json)
-    grep -c "REQ-" docs/phase-3-uarch/iron-requirements.json 2>/dev/null || grep -c "REQ-" requirements.json
+    # Count requirements in spec (prefer canonical iron artifacts)
+    grep -c "REQ-" docs/phase-3-uarch/iron-requirements.json 2>/dev/null || grep -c "REQ-" docs/phase-1-research/iron-requirements.json 2>/dev/null || grep -c "REQ-" docs/phase-1-research/requirements.json # legacy fallback
 
     # Find tests without any REQ reference
     for f in sim/*/test_*.py; do
@@ -220,7 +220,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # Requirement Traceability Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: requirement-tracer
-    - Spec Source: iron-requirements.json (or requirements.json)
+    - Spec Source: docs/phase-3-uarch/iron-requirements.json, docs/phase-1-research/iron-requirements.json, or legacy docs/phase-1-research/requirements.json (fallback)
     - Verdict: PASS | FAIL
 
     ## Traceability Summary
@@ -287,7 +287,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   <Failure_Modes_To_Avoid>
     - Marking a requirement as VERIFIED because a test has a matching name but doesn't actually
       check the requirement's output. Verify the test has an assertion on the expected behavior.
-    - Missing requirements that exist only in supplementary spec documents (not just requirements.json).
+    - Missing requirements that exist only in supplementary spec documents (not just canonical iron artifacts).
     - Confusing code coverage with feature coverage — a line being executed doesn't mean
       the feature is verified.
     - Not searching formal verification artifacts (SVA) — some requirements may be formally proven
@@ -299,7 +299,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Failure_Modes_To_Avoid>
 
   <Final_Checklist>
-    - [ ] Every REQ-XXXX in iron-requirements.json (or requirements.json) traced to a test case?
+    - [ ] Every REQ-XXXX in docs/phase-3-uarch/iron-requirements.json or docs/phase-1-research/iron-requirements.json traced to a test case?
     - [ ] When structured AC exists: every Critical/High ac_id has VERIFIED or FORMAL status?
     - [ ] Forward traceability matrix complete (Spec → Test)?
     - [ ] Backward traceability matrix complete (Test → Spec)?

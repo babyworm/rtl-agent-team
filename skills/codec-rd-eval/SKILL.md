@@ -91,7 +91,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
      - Ask user to fill in sequence paths and encoder configurations
    - Check anchor encoder binary existence (skip build if already built)
    - Verify Python dependencies: `python3 -c "import numpy; import hjson"`
-     - If missing, report: `pip install numpy hjson`
+     - If missing, report: `python3 -m venv .venv && ".venv/bin/python" -m pip install numpy hjson`
 
 2. **Encoder build** (build_encoder.sh)
    - For each unique encoder_src in configurations (anchor/test or candidates[]):
@@ -209,7 +209,7 @@ User: "Run BD-rate comparison"
 - Metric parsing returns 0 → suggest configuring output_parsing patterns in HJSON
 - BD-rate shows unexpected large degradation (>20%) → warn user, suggest verifying encoder correctness
 - AWS Batch credentials not configured → fall back to local mode with warning
-- numpy/hjson not installed → provide pip install command
+- numpy/hjson not installed → provide the project virtual-environment install command
 - SSIM/VMAF requested but ffmpeg not available → warn and skip optional metrics
 </Escalation_And_Stop_Conditions>
 

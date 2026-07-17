@@ -1,7 +1,7 @@
 # Interpretation Stability Framework for Phase 1-3
 
 > Design Spec — 2026-03-20 (Rev.3 — post-review rewrite)
-> Status: DRAFT
+> Status: Implemented in v0.8.9 (MVP Phase 1); retained as the shipped design record
 > Scope: Supplements existing ambiguity scoring with adversarial reinterpretation
 > Naming: "Interpretation stability" (NOT "convergence" — reserved for review finding convergence)
 > MVP: Phase 1 only

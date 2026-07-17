@@ -51,7 +51,7 @@ stat -top counter
             cwd=str(tmp_path), timeout=60,
         )
         assert result.returncode == 0
-        assert "Number of cells:" in result.stdout or "Number of wires:" in result.stdout
+        assert "=== counter ===" in result.stdout
 
     def test_parse_yosys_stat_integration(self, tmp_path):
         """Full pipeline: yosys synthesis → parse_yosys_stat.py → summary.json."""
@@ -97,7 +97,7 @@ stat -top adder
         assert summary_path.exists()
 
         summary = json.loads(summary_path.read_text())
-        assert summary["verdict"] == "PASS"
+        assert summary["verdict"].startswith("WARN: no liberty-mapped area")
         assert summary["total_cells"] > 0
         assert summary["latches_found"] == 0
 

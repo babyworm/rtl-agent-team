@@ -169,7 +169,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # UVM Testbench Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: uvm-reviewer
-    - Upper Spec: requirements.json
+    - Upper Spec: docs/phase-1-research/iron-requirements.json
     - UVM Version: 1.2 / IEEE 1800.2
     - Verdict: PASS | FAIL
 

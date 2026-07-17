@@ -201,7 +201,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     - Date: YYYY-MM-DD
     - Reviewer: synthesis-reviewer
     - Target: [FPGA part / ASIC technology]
-    - Upper Spec: requirements.json (area/timing targets)
+    - Upper Spec: docs/phase-1-research/iron-requirements.json (area/timing targets)
     - Verdict: PASS | FAIL
 
     ## Area Summary

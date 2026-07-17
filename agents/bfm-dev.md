@@ -99,7 +99,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   <Investigation_Protocol>
     1. Read io_definition.json to extract all ports, widths, clock domains.
     2. Read timing_constraints.json for clock frequencies, latency budgets, throughput targets.
-    3. Read requirements.json for functional behavior that affects timing (e.g., backpressure, flow control).
+    3. Read docs/phase-1-research/iron-requirements.json for functional behavior that affects timing (e.g., backpressure, flow control).
     4. Identify AMBA protocol requirements (AXI/AHB/APB/ACE) from architecture.md.
     5. Design the TLM socket hierarchy: which modules are initiators, which are targets.
     6. Implement the Memory Manager (tlm_mm_interface) for payload pooling.
@@ -121,7 +121,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Use Read to read io_definition.json, timing_constraints.json, requirements.json, architecture.md.
+    - Use Read to read io_definition.json, timing_constraints.json, docs/phase-1-research/iron-requirements.json, architecture.md.
     - Use Write/Edit to create SystemC source files in bfm/src/, bfm/include/, bfm/adapters/, bfm/dpi/.
     - Use Bash to build: `cmake -B bfm/build bfm && cmake --build bfm/build`.
     - Use Bash to run simulation: `./bfm/build/bfm_sim --sim-time-ns 10000`.

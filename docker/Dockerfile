@@ -9,18 +9,21 @@
 #   docker build -t rtl-eda-tools --build-arg OSS_CAD_SUITE_TAG=2025-02-01 docker/
 #
 # Run (mount project):
-#   docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+#   docker run -it --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+#     --mount "type=bind,src=$(pwd),dst=/workspace" --workdir /workspace rtl-eda-tools
 #
 # Run with GUI (gtkwave):
-#   docker run -it --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
-#     -v $(pwd):/workspace -w /workspace rtl-eda-tools
+#   docker run -it --rm --user "$(id -u):$(id -g)" --env HOME=/tmp \
+#     --env "DISPLAY=$DISPLAY" --mount type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix \
+#     --mount "type=bind,src=$(pwd),dst=/workspace" --workdir /workspace rtl-eda-tools
 # =============================================================================
 
 FROM ubuntu:24.04 AS base
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG VERILATOR_VERSION=5.024
-ARG SLANG_VERSION=v6.0
+ARG SLANG_VERSION=v11.0
+ARG SVLENS_VERSION=v0.3.6
 ARG SYSTEMC_VERSION=3.0.2
 ARG OSS_CAD_SUITE_TAG=2025-02-01
 
@@ -86,9 +89,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Provides: yosys, sby, boolector, z3, yices2, bitwuzla, abc, nextpnr
 # Replaces: apt yosys + source-built sby + apt boolector/z3
 # -----------------------------------------------------------------------------
-RUN OSS_DATE=$(echo ${OSS_CAD_SUITE_TAG} | tr -d '-') && \
+RUN OSS_DATE=$(echo "${OSS_CAD_SUITE_TAG}" | tr -d '-') && \
     ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then OSS_ARCH="linux-x64"; else OSS_ARCH="linux-arm64"; fi && \
+    case "$ARCH" in \
+      amd64) OSS_ARCH="linux-x64" ;; \
+      arm64) OSS_ARCH="linux-arm64" ;; \
+      *) echo "Unsupported OSS CAD Suite architecture: $ARCH" >&2; exit 1 ;; \
+    esac && \
     cd /tmp && \
     curl -fsSL "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_SUITE_TAG}/oss-cad-suite-${OSS_ARCH}-${OSS_DATE}.tgz" -o oss-cad-suite.tgz && \
     tar xzf oss-cad-suite.tgz -C /opt && \
@@ -134,7 +141,7 @@ RUN cd /tmp && \
 # Depends on slang (installed above)
 # -----------------------------------------------------------------------------
 RUN cd /tmp && \
-    git clone --depth 1 https://github.com/babyworm/svlens.git && \
+    git clone --depth 1 --branch ${SVLENS_VERSION} https://github.com/babyworm/svlens.git && \
     cd svlens && \
     cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release -G Ninja && \
     cmake --build build -j$(nproc) && \
@@ -195,22 +202,45 @@ RUN pip3 install --break-system-packages --no-cache-dir \
     numpy
 
 # -----------------------------------------------------------------------------
-# Verification: print all tool versions
+# Verification: required failures stop the build; optional failures are reported
 # -----------------------------------------------------------------------------
-RUN echo "=== RTL EDA Toolchain ===" && \
-    verilator --version && \
-    verible-verilog-lint --version 2>/dev/null || echo "verible: not available on this arch" && \
-    iverilog -V 2>&1 | head -1 && \
-    yosys --version && \
-    sby --help 2>&1 | head -1 || echo "sby: installed" && \
-    echo "OSS CAD Suite: $(ls /opt/oss-cad-suite/ 2>/dev/null && echo 'installed' || echo 'NOT FOUND')" && \
-    slang --version 2>&1 | head -1 && \
-    slang-server --version 2>&1 | head -1 && \
-    python3 -c "import cocotb; print(f'cocotb {cocotb.__version__}')" && \
-    python3 -c "import SystemC; print('SystemC: available')" 2>/dev/null || \
-      (test -f /usr/local/include/systemc.h && echo "SystemC ${SYSTEMC_VERSION} (SYSTEMC_HOME=$SYSTEMC_HOME)" || echo "SystemC: NOT FOUND") && \
-    g++ --version | head -1 && \
-    echo "=== All tools ready ==="
+RUN set -eu; \
+    check_required() { \
+      check_name="$1"; shift; \
+      if check_output="$("$@" 2>&1)"; then \
+        printf '[required] %s: ' "$check_name"; \
+        printf '%s\n' "$check_output" | sed -n '1p'; \
+      else \
+        check_rc=$?; \
+        printf '[required] %s failed (rc=%s): ' "$check_name" "$check_rc" >&2; \
+        printf '%s\n' "$check_output" | sed -n '1p' >&2; \
+        return "$check_rc"; \
+      fi; \
+    }; \
+    check_optional() { \
+      check_name="$1"; shift; \
+      if check_output="$("$@" 2>&1)"; then \
+        printf '[optional] %s: ' "$check_name"; \
+        printf '%s\n' "$check_output" | sed -n '1p'; \
+      else \
+        check_rc=$?; \
+        printf '[optional] %s unavailable (rc=%s)\n' "$check_name" "$check_rc"; \
+      fi; \
+    }; \
+    echo "=== RTL EDA Toolchain ==="; \
+    check_required verilator verilator --version; \
+    check_required iverilog iverilog -V; \
+    check_required yosys yosys --version; \
+    check_required sby sby --help; \
+    check_required slang slang --version; \
+    check_required svlens svlens --version; \
+    check_required slang-server slang-server --version; \
+    check_required cocotb python3 -c "import cocotb; print(f'cocotb {cocotb.__version__}')"; \
+    check_required SystemC test -f /usr/local/include/systemc.h; \
+    check_required g++ g++ --version; \
+    check_optional verible-verilog-lint verible-verilog-lint --version; \
+    check_optional gtkwave gtkwave --version; \
+    echo "=== All required tools ready ==="
 
 # -----------------------------------------------------------------------------
 # Workspace

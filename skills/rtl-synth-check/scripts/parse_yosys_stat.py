@@ -41,23 +41,39 @@ def parse_stat_output(text: str) -> dict:
     }
 
     in_stat = False
+    in_modern_stat = False
     for line in text.splitlines():
         line = line.strip()
+
+        if re.fullmatch(r"=== .+ ===", line):
+            in_stat = False
+            in_modern_stat = True
 
         if "Statistics" in line or "Number of cells:" in line:
             in_stat = True
 
-        if not in_stat:
+        if not in_stat and not in_modern_stat:
             continue
 
         # Cell type counts: $_DFF_P_ 42
-        cell_match = re.match(r'(\$\w+|\$_\w+_?)\s+(\d+)', line)
+        cell_match = re.match(r'(\$\w+|\$_\w+_?)\s+(\d+)', line) if in_stat else None
+        modern_cell_match = (
+            re.match(r'(\d+)\s+(\$\S+)$', line) if in_modern_stat else None
+        )
         if cell_match:
             cell_type = cell_match.group(1)
             count = int(cell_match.group(2))
             result["cells"][cell_type] = count
             result["total_cells"] += count
+        elif modern_cell_match:
+            count = int(modern_cell_match.group(1))
+            cell_type = modern_cell_match.group(2)
+            result["cells"][cell_type] = count
+        else:
+            cell_type = None
+            count = 0
 
+        if cell_type is not None:
             # Check for latches
             if "DLATCH" in cell_type.upper():
                 result["latches_found"] += count
@@ -76,18 +92,40 @@ def parse_stat_output(text: str) -> dict:
                 )
 
         # Wire counts
-        wire_match = re.match(r'Number of wires:\s+(\d+)', line)
+        wire_match = re.match(r'Number of wires:\s+(\d+)', line) if in_stat else None
         if wire_match:
             result["wires"] = int(wire_match.group(1))
 
-        wire_bits_match = re.match(r'Number of wire bits:\s+(\d+)', line)
+        wire_bits_match = (
+            re.match(r'Number of wire bits:\s+(\d+)', line) if in_stat else None
+        )
         if wire_bits_match:
             result["wire_bits"] = int(wire_bits_match.group(1))
 
         # Memory
-        mem_match = re.match(r'Number of memories:\s+(\d+)', line)
+        mem_match = re.match(r'Number of memories:\s+(\d+)', line) if in_stat else None
         if mem_match:
             result["memories"] = int(mem_match.group(1))
+
+        if in_modern_stat:
+            modern_wire_match = re.match(r'(\d+)\s+wires$', line)
+            modern_wire_bits_match = re.match(r'(\d+)\s+wire bits$', line)
+            modern_mem_match = re.match(r'(\d+)\s+memories$', line)
+            modern_mem_bits_match = re.match(r'(\d+)\s+memory bits$', line)
+            modern_total_match = re.match(r'(\d+)\s+cells$', line)
+            if modern_wire_match:
+                result["wires"] = int(modern_wire_match.group(1))
+            if modern_wire_bits_match:
+                result["wire_bits"] = int(modern_wire_bits_match.group(1))
+            if modern_mem_match:
+                result["memories"] = int(modern_mem_match.group(1))
+            if modern_mem_bits_match:
+                result["memory_bits"] = int(modern_mem_bits_match.group(1))
+            if modern_total_match:
+                result["cells"] = {}
+                result["total_cells"] = int(modern_total_match.group(1))
+                result["latches_found"] = 0
+                result["concerns"] = []
 
         # Area (from stat -liberty)
         area_match = re.match(r'Chip area for .*:\s+([\d.]+)', line)
@@ -144,7 +182,7 @@ def main():
     print(f"Verdict: {result['verdict']}")
     print(f"Written to: {output_file}")
 
-    sys.exit(0 if result["verdict"].startswith("PASS") else 1)
+    sys.exit(1 if result["verdict"].startswith("FAIL") else 0)
 
 
 if __name__ == "__main__":

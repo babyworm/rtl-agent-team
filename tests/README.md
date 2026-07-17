@@ -8,15 +8,20 @@
 
 | 계층 | 디렉토리 | EDA 도구 필요 | 테스트 수 | 실행 시간 |
 |------|----------|:---:|:---:|:---:|
-| Unit | `tests/unit/` | X | 1085 | ~30초 |
-| Integration | `tests/integration/` | O (Docker/Yosys) | 45 | ~1분 |
+| Unit | `tests/unit/` | X | 1592 | ~30초 |
+| Integration | `tests/integration/` | O (Docker/Yosys) | 47 | 일반 non-Docker 경로 ~1분; opt-in 최초 Docker build 10-30분 |
+
+Docker image가 이미 있으면 통합 테스트는 더 빠를 수 있습니다. 최초 opt-in build 시간은
+호스트와 네트워크 상태에 따라 달라집니다.
 
 ## 빠른 시작
 
 ```bash
 # 1. 의존성 설치
 cd tests
-pip install -r requirements-test.txt
+python3 -m venv .venv
+".venv/bin/python" -m pip install -r requirements-test.txt
+. .venv/bin/activate
 
 # 2. 단위 테스트 실행 (EDA 도구 없이)
 make test-unit
@@ -94,11 +99,11 @@ make test-json            # JSON 검증만
 make test-plugin-runtime  # plugin 런타임 계약 검증
 
 # 특정 테스트 파일만
-python -m pytest unit/test_bd_rate.py -v
-python -m pytest unit/test_plugin_runtime_contract.py -v
+python3 -m pytest unit/test_bd_rate.py -v
+python3 -m pytest unit/test_plugin_runtime_contract.py -v
 
 # 특정 테스트 함수만
-python -m pytest unit/test_bd_rate.py::TestBdRate::test_identical_curves_zero -v
+python3 -m pytest unit/test_bd_rate.py::TestBdRate::test_identical_curves_zero -v
 
 # 통합 테스트 (Docker 환경에서)
 make test-integration

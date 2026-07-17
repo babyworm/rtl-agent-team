@@ -150,7 +150,7 @@ When modifying this plugin:
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
 1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
-2. **Step 0 Context Bootstrap duplicated across 31 of the 33 orchestrators** — Each of these orchestrator agents contains an identical ~12-line Step 0 block. This is intentional: agent prompts must be self-contained (no `#include`), the protocol is stable (unchanged since v0.6.8), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. Bulk updates are achievable via `sed` or scripted replacement if the protocol ever changes. Note: `p5a-functional-closure-orchestrator` and `p5b-silicon-validation-orchestrator` (the remaining 2 of the 33) use custom Preconditions (dedicated state files) instead of standard Step 0.
+2. **Step 0 Context Bootstrap duplicated across 30 of the 33 orchestrators** — These 30 orchestrator agents carry the canonical block synchronized from `agents/lib/step0-template.md`. This is intentional: agent prompts must be self-contained (no `#include`), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. `p5a-functional-closure-orchestrator`, `p5b-silicon-validation-orchestrator`, and `ppa-optimizer-dc-orchestrator` use custom preconditions/state files instead of the canonical block; all three still use the shared project-root path convention in their headers.
 
 ### File Architecture
 
@@ -196,7 +196,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── video-codec/                     #   H.264/H.265 domain knowledge
 │   └── video-processing/                #   Video processing domain knowledge
 ├── docker/Dockerfile                    # EDA environment container
-├── plugins/systemverilog-lsp/           # SV LSP sub-plugin
+├── .claude-plugin/marketplace.json      # Marketplace; systemverilog-lsp is an external GitHub source
 ├── tests/                               # Unit + integration test suite
 ├── scripts/                             # Utility scripts
 │   ├── post-install.sh                  #   One-time EDA environment check

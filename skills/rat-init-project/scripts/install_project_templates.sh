@@ -24,6 +24,7 @@ if [[ ! -d "$WORKSPACE" ]]; then
   echo "ERROR: workspace directory does not exist: $WORKSPACE" >&2
   exit 1
 fi
+WORKSPACE="$(cd "$WORKSPACE" && pwd -P)"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -34,7 +35,76 @@ UPDATED=0
 
 # Extract rat-version marker from a file. Returns empty if not found.
 _extract_rat_version() {
-  grep -o 'rat-version: [0-9.]*' "$1" 2>/dev/null | head -n1 | sed 's/rat-version: //' || true
+  awk 'match($0, /rat-version: [0-9.]+/) {
+    value = substr($0, RSTART, RLENGTH)
+    sub(/^rat-version: /, "", value)
+    print value
+    exit
+  }' "$1" 2>/dev/null || true
+}
+
+_version_gt() {
+  awk -v candidate="$1" -v installed="$2" 'BEGIN {
+    candidate_count = split(candidate, candidate_parts, ".")
+    installed_count = split(installed, installed_parts, ".")
+    part_count = candidate_count > installed_count ? candidate_count : installed_count
+    for (part_index = 1; part_index <= part_count; part_index++) {
+      candidate_part = part_index <= candidate_count ? candidate_parts[part_index] + 0 : 0
+      installed_part = part_index <= installed_count ? installed_parts[part_index] + 0 : 0
+      if (candidate_part > installed_part) exit 0
+      if (candidate_part < installed_part) exit 1
+    }
+    exit 1
+  }'
+}
+
+_validate_destination() {
+  local dst="$1"
+  local parent existing resolved
+
+  if [[ -L "$dst" ]]; then
+    echo "ERROR: refusing symlink template destination: $dst" >&2
+    return 1
+  fi
+
+  parent=$(dirname "$dst")
+  existing="$parent"
+  while [[ ! -d "$existing" ]]; do
+    if [[ -e "$existing" || -L "$existing" ]]; then
+      echo "ERROR: template destination parent is not a directory: $existing" >&2
+      return 1
+    fi
+    existing=$(dirname "$existing")
+  done
+
+  resolved=$(cd "$existing" && pwd -P)
+  case "$resolved/" in
+    "$WORKSPACE/"*) ;;
+    *)
+      echo "ERROR: template destination escapes workspace: $dst" >&2
+      return 1
+      ;;
+  esac
+
+  mkdir -p "$parent"
+  resolved=$(cd "$parent" && pwd -P)
+  case "$resolved/" in
+    "$WORKSPACE/"*) ;;
+    *)
+      echo "ERROR: template destination escapes workspace: $dst" >&2
+      return 1
+      ;;
+  esac
+
+  if [[ -L "$dst" || ( -e "$dst" && ! -f "$dst" ) ]]; then
+    echo "ERROR: template destination is not a regular file: $dst" >&2
+    return 1
+  fi
+  if [[ -f "$dst" ]] && \
+     [[ -n "$(find "$dst" -type f ! -links 1 -print -quit 2>/dev/null)" ]]; then
+    echo "ERROR: refusing hard-linked template destination: $dst" >&2
+    return 1
+  fi
 }
 
 install_script_if_missing() {
@@ -42,17 +112,14 @@ install_script_if_missing() {
   local dst="$2"
   local mode="${3:-755}"
 
-  mkdir -p "$(dirname "$dst")"
+  _validate_destination "$dst"
   if [[ -f "$dst" ]]; then
     if [[ "$UPDATE_MODE" -eq 1 ]]; then
       local src_ver dst_ver
       src_ver=$(_extract_rat_version "$src")
       dst_ver=$(_extract_rat_version "$dst")
-      # Compare versions: only overwrite if source is strictly newer.
-      # Version-aware comparison via `sort -V` (NOT lexicographic — lexical
-      # sort would mis-rank e.g. 0.11.0 < 0.8.19, but 0.11.0 is actually newer).
       if [[ -n "$src_ver" && -n "$dst_ver" && "$src_ver" != "$dst_ver" ]] && \
-         [[ "$(printf '%s\n%s' "$dst_ver" "$src_ver" | sort -V | tail -n1)" = "$src_ver" ]]; then
+         _version_gt "$src_ver" "$dst_ver"; then
         cp "$src" "$dst"
         chmod "$mode" "$dst"
         UPDATED=$((UPDATED + 1))

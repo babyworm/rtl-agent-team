@@ -1,7 +1,7 @@
 ---
 title: P1 Goal-Clarifier Integration
 date: 2026-05-12
-status: draft
+status: implemented in v0.11.0
 owners: babyworm
 relates_to:
   - skills/p1-spec-research/SKILL.md

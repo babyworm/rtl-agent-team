@@ -1,8 +1,11 @@
 # Block-Parallel RTL Development with Enhanced Domain Experts
 
 **Date**: 2026-03-15
-**Status**: Approved
+**Status**: Implemented
 **Scope**: RTL Agent Team plugin enhancement for video codec IP design
+
+> **archival shipped record:** This design records the implemented v0.9.0 feature.
+> Forward-looking wording below is historical context, not active implementation work.
 
 ## 1. Problem Statement
 
@@ -277,7 +280,7 @@ user-invocable: true
 ### 7.4 Execution Flow
 
 ```
-User: /rat-ultraloop rtl-p4-block-parallel
+User: /rtl-agent-team:rat-ultraloop rtl-p4-block-parallel
   │
   ├── 1. Design Freeze snapshot
   │     - sha256 hash of rtl/pkg/, rtl/intf/, docs/phase-3-uarch/
@@ -426,10 +429,9 @@ The 30-minute threshold is configurable in `ultraloop-state.json`.
 If any check fails, resume is rejected with a diagnostic message. This is consistent with
 `rat-dse/SKILL.md`'s use of `worktree_path` and `worktree_branch` as explicit coordination
 state, and with `team-gate-util.sh`'s reliance on `leader_session_id` and `created_at`.
-```
 
 - Session interruption → state file saved
-- Re-execution (`/rtl-p4-block-parallel`) detects state file → resume
+- Re-execution (`/rtl-agent-team:rtl-p4-block-parallel`) detects state file → resume
 - Worktree branches persist in git → reconnectable
 
 ## 9. New Plugin Components Summary

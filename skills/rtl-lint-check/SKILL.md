@@ -50,7 +50,7 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 </Coding_Convention_Requirements>
 
 <Execution_Policy>
-- lint-checker runs both tools in parallel on the target file(s) via Bash CLI
+- lint-checker runs all three tools in parallel on the target file(s) via Bash CLI
 - Prefer replayable wrapper: `lint/scripts/run_lint.sh` (creates `lint/lint/replay/run_lint_*_latest.sh`)
 - Additionally checks naming conventions not caught by standard tools
 - Results merged and de-duplicated
@@ -95,13 +95,13 @@ lint-checker MUST perform a supplementary grep-based check for naming convention
 <Tool_Usage>
 ```
 Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run Verilator, Verible, and slang lint on rtl/ via Bash CLI. Verilator: --lint-only -Wall -Wpedantic -sv. Verible: --rules_config .verible_lint.cfg. slang: --lint-only. Also check naming conventions: i_/o_ port prefixes, {domain}_clk/{domain}_rst_n, logic not reg/wire, u_ instance prefix. Report all violations grouped by file and severity (Critical/Major/Minor). Return PASS or FAIL summary.")
+     prompt="Run Verilator, Verible, and slang lint on rtl/ via Bash CLI. Verilator: --lint-only -Wall -Wpedantic -sv. Verible: --rules_config .verible_lint.cfg. slang: -Weverything for RTL and --allow-dup-initial-drivers for TB. Also check naming conventions: i_/o_ port prefixes, {domain}_clk/{domain}_rst_n, logic not reg/wire, u_ instance prefix. Report all violations grouped by file and severity (Critical/Major/Minor). Return PASS or FAIL summary.")
 ```
 </Tool_Usage>
 
 <Examples>
 <Good>
-lint-checker runs both tools via Bash CLI, finds 3 Verible style violations, 1 slang unused-variable warning,
+lint-checker runs all three tools via Bash CLI, finds 3 Verible style violations, 1 slang unused-variable warning,
 and 2 convention violations (port `data_i` should be `i_data`, `clk` should be `sys_clk` in multi-domain context);
 returns FAIL with exact line numbers and rule names.
 </Good>
@@ -112,8 +112,8 @@ Not checking naming conventions — allows `clk_i`, `data_o` to pass lint despit
 </Examples>
 
 <Escalation_And_Stop_Conditions>
-- Verible not installed → report to user with install command (`apt install verible` or from GitHub releases)
-- slang not installed → report to user with install command (`pip install slang` or from source)
+- Verible not installed → halt and run `/rtl-agent-team:rat-setup` (official binary releases: https://github.com/chipsalliance/verible/releases)
+- slang not installed → halt and run `/rtl-agent-team:rat-setup` (official binary/source instructions: https://sv-lang.com/user-manual.html#getting-the-binary)
 - Lint rules config file missing → use default rules, note this in report
 - Convention violations found → report alongside tool violations, same severity
 </Escalation_And_Stop_Conditions>

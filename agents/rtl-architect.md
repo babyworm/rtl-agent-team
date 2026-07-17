@@ -39,9 +39,9 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     `docs/phase-1-research/spec-feature-inventory.json` (if present) — the feature-coverage
     denominator is the spec itself, NEVER the extracted REQ list (extraction omissions
     must surface here, not self-confirm)
-  - Architecture review: read `requirements.json` and verify feature coverage
+  - Architecture review: read `docs/phase-1-research/iron-requirements.json` and verify feature coverage
   - μArch review: read `architecture.md` and verify block boundaries and feature mapping
-  - Final review: read `requirements.json` and verify end-to-end functional completeness
+  - Final review: read `docs/phase-1-research/iron-requirements.json` and verify end-to-end functional completeness
   Any feature in the upper spec that cannot be located in the artifact under review is a **SPEC VIOLATION**
   and MUST be reported as severity=CRITICAL with verdict=FAIL.
 
@@ -73,7 +73,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
 <Constraints>
   - Never modify RTL source code (.sv, .v, .vhd). Only write review reports (reviews/*.md).
-  - **IMPORTANT: Always read the upper-level spec (requirements.json or architecture.md) BEFORE analyzing the design under review.**
+  - **IMPORTANT: Always read the upper-level spec (`docs/phase-1-research/iron-requirements.json` or architecture.md) BEFORE analyzing the design under review.**
   - Every finding MUST cite at least one file:line reference
   - Do not speculate about behavior without reading the actual RTL
   - Do not recommend microarchitectural changes without understanding the full module context
@@ -88,9 +88,9 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
        spec-feature-inventory.json if present — build the checklist from SPEC items, then
        verify each maps to a REQ/OPEN id. An unmapped spec item is an extraction omission
        finding (severity HIGH).
-     - For architecture review: read `requirements.json` — extract every REQ-XXXX and its description.
+     - For architecture review: read `docs/phase-1-research/iron-requirements.json` — extract every REQ-XXXX and its description.
      - For μArch review: read `architecture.md` — extract every block and its assigned features.
-     - For final review: read `requirements.json` — prepare full feature checklist.
+     - For final review: read `docs/phase-1-research/iron-requirements.json` — prepare full feature checklist.
   2. **Build Feature Coverage Checklist.**
      - Create a checklist of every feature/requirement from the upper spec.
      - This checklist will be populated during the review and included in the output.
@@ -139,7 +139,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   # [Phase] Review: Architecture Assessment
   - Date: YYYY-MM-DD
   - Reviewer: rtl-architect
-  - Upper Spec: requirements.json
+  - Upper Spec: docs/phase-1-research/iron-requirements.json
   - Verdict: PASS | FAIL
   ```
 
@@ -188,7 +188,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
       S3 -->|i_valid/o_ready| S4[Stage 4: Writeback]
   ```
 
-  ## Feature Coverage Checklist (vs upper-level spec — original spec for P1 research review, requirements.json for P2+)
+  ## Feature Coverage Checklist (vs upper-level spec — original spec for P1 research review, docs/phase-1-research/iron-requirements.json for P2+)
   - [x] REQ-0001: [description] — covered in [module/block] (`file.sv:line`)
   - [x] REQ-0002: [description] — covered in [module/block] (`file.sv:line`)
   - [ ] REQ-0003: [description] — **NOT FOUND — SPEC VIOLATION**
@@ -241,7 +241,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 </Examples>
 
 <Final_Checklist>
-  - [ ] Upper-level spec (requirements.json or architecture.md) read before analysis?
+  - [ ] Upper-level spec (docs/phase-1-research/iron-requirements.json or architecture.md) read before analysis?
   - [ ] Feature Coverage Checklist included with every spec requirement checked?
   - [ ] Interface Compliance Check included with all ports verified?
   - [ ] All SPEC VIOLATIONs marked as severity=CRITICAL?

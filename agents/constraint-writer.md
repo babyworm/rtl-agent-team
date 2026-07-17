@@ -58,14 +58,14 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     - Never apply set_false_path to a path that is a real timing path — false paths are only for
       paths where timing is guaranteed by design (e.g., static configuration, test modes).
     - set_multicycle_path must always set both setup and hold MCPs; never set one without the other.
-    - Do not guess clock frequencies; use values from timing_constraints.json or requirements.json.
+    - Do not guess clock frequencies; use values from timing_constraints.json or docs/phase-1-research/iron-requirements.json.
     - Clock uncertainty must be set: at minimum jitter (500ps for typical ASIC), skew (200ps).
     - All generated clocks (from clock dividers, PLLs) must use create_generated_clock with
       the correct master clock reference.
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read timing_constraints.json or requirements.json for clock frequencies and I/O timing specs.
+    1. Read timing_constraints.json or docs/phase-1-research/iron-requirements.json for clock frequencies and I/O timing specs.
     2. Read the CDC analysis report (from cdc-checker) for all inter-domain paths.
     3. Read docs/phase-3-uarch/*.md for all multicycle operations (N-cycle pipelines, multi-cycle computations).
     4. Run rtl-explorer (or self-explore) to build the complete clock domain map.
@@ -81,7 +81,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read timing_constraints.json, requirements.json, docs/phase-3-uarch/*.md, top-level RTL
+    - Read: read timing_constraints.json, docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/*.md, top-level RTL
     - Glob: find RTL files, find existing .sdc/.xdc files for conventions
     - Grep: find clock port names in RTL, find set_multicycle_path patterns in existing constraints
     - Write: create syn/constraints/design.sdc or syn/constraints/design.xdc

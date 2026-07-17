@@ -33,6 +33,12 @@ LINT_TOOL_PROFILES = SKILLS_DIR / "lint-tool-profiles" / "SKILL.md"
 CDC_TOOL_PROFILES = SKILLS_DIR / "cdc-tool-profiles" / "SKILL.md"
 SYN_TOOL_PROFILES = SKILLS_DIR / "syn-tool-profiles" / "SKILL.md"
 RAT_SETUP_SKILL = SKILLS_DIR / "rat-setup" / "SKILL.md"
+RAT_SETUP_INSTALL_COMMANDS = RAT_SETUP_SKILL.parent / "references" / "install-commands.md"
+RAT_SETUP_TOOL_CHECK_COMMANDS = RAT_SETUP_SKILL.parent / "references" / "tool-check-commands.md"
+RAT_SETUP_DOCKER_ENVIRONMENT = RAT_SETUP_SKILL.parent / "references" / "docker-environment.md"
+RAT_PLUGIN_DEBUG_SKILL = SKILLS_DIR / "rat-plugin-debug" / "SKILL.md"
+RTL_LINT_CHECK_SKILL = SKILLS_DIR / "rtl-lint-check" / "SKILL.md"
+RTL_P5S_SVA_POLICY = SKILLS_DIR / "rtl-p5s-sva-policy" / "SKILL.md"
 
 SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
 SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
@@ -435,7 +441,7 @@ class TestRatSetupRuntimeContract:
     def test_rat_setup_includes_user_local_install_fallback(self):
         content = _rat_setup_delivered_content()
         assert "~/.local/bin" in content
-        assert "python3 -m pip install --user cocotb" in content
+        assert '"$RAT_EDA_VENV/bin/python" -m pip install cocotb' in content
         assert 'CMAKE_INSTALL_PREFIX="$HOME/.local"' in content
         assert 'ln -sf "$HOME/tools/oss-cad-suite/bin/yosys" "$HOME/.local/bin/yosys"' in content
 
@@ -454,10 +460,84 @@ class TestRatSetupRuntimeContract:
         assert "Actively look up the latest stable version" in content
         assert "VERILATOR_LATEST_TAG" in content
         assert "SYSTEMC_LATEST_TAG" in content
-        assert 'git checkout "${VERILATOR_LATEST_TAG:-stable}"' in content
+        assert 'git checkout "$VERILATOR_LATEST_TAG"' in content
         assert "git clone https://github.com/verilator/verilator.git" in content
         assert "verilator.org/guide/latest/install.html" in content
         assert "git clone https://github.com/accellera-official/systemc.git" in content
+
+    def test_install_commands_download_verible_archive_before_extracting_it(self):
+        content = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        download = content.index("github.com/chipsalliance/verible/releases/download")
+        extract = content.index("tar xzf", download)
+        assert download < extract
+
+    def test_install_commands_resolve_slang_server_from_plugin_root(self):
+        content = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        assert '${CLAUDE_PLUGIN_ROOT}/scripts/install-slang-server.sh' in content
+        assert "bash scripts/install-slang-server.sh" not in content
+
+    def test_docker_build_context_resolves_from_plugin_root(self):
+        install_commands = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        docker_environment = RAT_SETUP_DOCKER_ENVIRONMENT.read_text()
+        assert 'docker build -t rtl-eda-tools "${CLAUDE_PLUGIN_ROOT}/docker/"' in install_commands
+        assert '  "${CLAUDE_PLUGIN_ROOT}/docker/"' in docker_environment
+        assert '--mount "type=bind,src=$(pwd),dst=/workspace"' in docker_environment
+
+    def test_install_commands_cover_required_open_source_lint_and_cdc_tools(self):
+        content = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        assert "https://github.com/MikePopoloski/slang.git" in content
+        assert 'cmake --install "$HOME/tools/slang-src/build"' in content
+        assert (
+            'git clone --depth 1 --branch "$SVLENS_VERSION" '
+            'https://github.com/babyworm/svlens.git'
+        ) in content
+        assert 'cmake --install "$HOME/tools/svlens/build"' in content
+        macos = content.split("## macOS (Homebrew)", 1)[1].split("## Docker fallback", 1)[0]
+        assert 'cmake --install "$HOME/tools/slang-src/build"' in macos
+        assert 'cmake --install "$HOME/tools/svlens/build"' in macos
+
+    def test_pipeline_probes_cannot_hide_not_found_status(self):
+        content = "\n".join(
+            [
+                RAT_SETUP_TOOL_CHECK_COMMANDS.read_text(),
+                RAT_PLUGIN_DEBUG_SKILL.read_text(),
+            ]
+        )
+        hidden_failure = re.compile(r"\|\s*head\s+-1\s*\|\|\s*echo\s+\"?(?:NOT_FOUND|NO_IMAGE)")
+        assert not hidden_failure.search(content)
+
+    def test_plugin_registration_is_read_through_claude_cli(self):
+        content = "\n".join(
+            [
+                RAT_SETUP_SKILL.read_text(),
+                RAT_SETUP_TOOL_CHECK_COMMANDS.read_text(),
+            ]
+        )
+        assert "claude plugin list --json" in content
+        assert "~/.claude/plugins.json" not in content
+
+    def test_owned_skill_docs_use_canonical_plugin_commands(self):
+        content = "\n".join(
+            [
+                RAT_SETUP_INSTALL_COMMANDS.read_text(),
+                RAT_PLUGIN_DEBUG_SKILL.read_text(),
+                RTL_LINT_CHECK_SKILL.read_text(),
+                RTL_P5S_SVA_POLICY.read_text(),
+            ]
+        )
+        assert "/rtl-agent-team:rat-setup" in content
+        assert "/rtl-agent-team:rat-init-project" in content
+        assert not re.search(r"`/(?:rat-setup|rat-init-project)`", content)
+        assert "pip install slang" not in content
+        assert "pip install sbyosys" not in content
+
+    def test_rat_setup_bash_fences_are_syntactically_valid(self):
+        content = RAT_SETUP_SKILL.read_text()
+        for block_number, match in enumerate(re.finditer(r"```bash\n(.*?)\n```", content, re.DOTALL), 1):
+            result = subprocess.run(
+                ["bash", "-n"], input=match.group(1), text=True, capture_output=True, check=False
+            )
+            assert result.returncode == 0, f"bash block {block_number}: {result.stderr}"
 
 
 class TestRatInitProjectRuntimeContract:

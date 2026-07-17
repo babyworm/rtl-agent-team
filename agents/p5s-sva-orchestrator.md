@@ -158,7 +158,7 @@ Attach counterexample summary to formal_verify_{module}.json entry for '{propert
 
 # Escalation Conditions
 
-- SymbiYosys not installed → halt, instruct user to install (`pip install sbyosys` or from source)
+- SymbiYosys not installed → halt and run `/rtl-agent-team:rat-setup`; use the official OSS CAD Suite or source installation guide (https://yosyshq.readthedocs.io/projects/sby/en/latest/install.html)
 - Property timeout (>200 depth) → mark as "timeout" in formal_verify_{module}.json, recommend simulation
 - Counterexample found → report to user with waveform trace before any RTL fix attempt
 - SVA signal names do not match RTL ports → sva-extractor must fix before running formal

@@ -283,7 +283,7 @@ Same module but different parameters â†’ MEDIUM. Same module, same parameters â†
 - [ ] Review coordinator (rtl-architect, or domain chief if available) declared Architecture-Ready (or gaps escalated)
 - [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED)
 - [ ] Spec feature count vs iron-requirements.json + open-requirements.json count documented
-- [ ] `docs/phase-1-research/spec-feature-inventory.json` produced by independent census (clean context, no requirements.json access)
+- [ ] `docs/phase-1-research/spec-feature-inventory.json` produced by independent census (clean context, no generated Phase 1 requirement artifact access)
 - [ ] `docs/phase-1-research/feature-coverage.md` saved with zero MISSING features (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR)
 - [ ] `reviews/phase-1-research/research-review.md` saved (consolidated)
 - [ ] Per-round review artifacts saved: research-review-r1.md, r2.md, r3.md

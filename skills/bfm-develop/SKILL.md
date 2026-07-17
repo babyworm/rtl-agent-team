@@ -78,7 +78,7 @@ Task(subagent_type="rtl-agent-team:bfm-dev",
             "(i_/o_ prefix, {domain}_clk, {domain}_rst_n). AT only if explicitly requested.")
 
 Task(subagent_type="rtl-agent-team:video-processing-expert",
-     prompt="Review bfm/src/ datapath models for signal processing accuracy vs requirements.json.")
+     prompt="Review bfm/src/ datapath models for signal processing accuracy vs docs/phase-1-research/iron-requirements.json.")
 ```
 </Tool_Usage>
 

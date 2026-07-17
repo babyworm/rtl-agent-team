@@ -79,7 +79,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   <Investigation_Protocol>
     1. Read the codec specification: which standard (H.264/AVC, H.265/HEVC, AV1, VVC)?
        Which profile and level? Encoder only, decoder only, or both?
-    2. Read requirements.json for throughput target (pixels/second), resolution, frame rate, power budget.
+    2. Read docs/phase-1-research/iron-requirements.json for throughput target (pixels/second), resolution, frame rate, power budget.
     3. Identify the top-level processing blocks: intra prediction, inter prediction (MC),
        transform (DCT/IDCT), quantization, entropy coding (CABAC/CAVLC).
     4. For each block: identify the dominant memory access pattern and compute bandwidth.
@@ -98,7 +98,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read codec spec, requirements.json, architecture.md
+    - Read: read codec spec, docs/phase-1-research/iron-requirements.json, architecture.md
     - Grep: search docs/phase-3-uarch/*.md for areas needing codec-specific guidance
     - Glob: find existing codec-related RTL or spec files
     - NO Write, NO Edit

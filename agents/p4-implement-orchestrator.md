@@ -316,7 +316,7 @@ sim/top/tb_{top}_smoke.sv. Report pass/fail.")
 ### Functional Coverage Review
 ```
 Task(subagent_type="rtl-agent-team:rtl-critic",
-     prompt="READ-ONLY review. Read requirements.json, all docs/phase-3-uarch/*.md,
+     prompt="READ-ONLY review. Read docs/phase-1-research/iron-requirements.json, all docs/phase-3-uarch/*.md,
 and all rtl/*/*.sv. For each REQ-NNN, verify implementation. Save Functional Completeness
 Report to reviews/phase-4-rtl/functional-completeness.md. Save design review to
 reviews/phase-4-rtl/design-review.md. Verdict: PASS or FAIL — [N] functional gaps found.")

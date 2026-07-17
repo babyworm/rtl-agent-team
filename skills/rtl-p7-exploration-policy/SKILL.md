@@ -68,7 +68,8 @@ adr_id: ADR-{NNN}
 status: accepted | proposed | superseded
 affected_phases: [P1, P2]        # Which phases need re-work if this ADR is adopted
 stale_artifacts:                  # Specific docs that become stale
-  - docs/phase-1-research/requirements.json
+  - docs/phase-1-research/iron-requirements.json
+  - docs/phase-1-research/open-requirements.json
   - docs/phase-2-architecture/architecture.md
 re_entry_point: P1               # Recommended phase to re-enter
 re_entry_skill: p1-spec-research # Skill to invoke for re-entry

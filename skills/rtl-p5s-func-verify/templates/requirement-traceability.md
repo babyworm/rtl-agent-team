@@ -2,7 +2,7 @@
 
 - **Date**: {{DATE}}
 - **Reviewer**: func-verifier
-- **Upper Spec**: iron-requirements.json (or requirements.json fallback)
+- **Upper Spec**: `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback)
 - **Verdict**: {{VERDICT}}
 
 ## Requirement Traceability Matrix

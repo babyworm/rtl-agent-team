@@ -14,14 +14,15 @@ RTL Agent Marketplace에 기여하는 방법을 설명합니다.
 git clone https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
-# 2. 로컬 심볼릭 링크 (Claude Code에서 바로 테스트)
-ln -s "$(pwd)" ~/.claude/plugins/local/rtl-agent-team
+# 2. 테스트 의존성 설치
+python3 -m venv .venv
+".venv/bin/python" -m pip install -r tests/requirements-test.txt
 
-# 3. 테스트 의존성 설치
-python3 -m pip install --user -r tests/requirements-test.txt
+# 3. 테스트 실행
+".venv/bin/python" -m pytest tests/unit/ -x -q
 
-# 4. 테스트 실행
-python3 -m pytest tests/unit/ -x -q
+# 4. 로컬 플러그인으로 Claude Code 실행
+claude --plugin-dir "$(pwd)"
 ```
 
 ### Issue 제출
@@ -32,7 +33,7 @@ python3 -m pytest tests/unit/ -x -q
 ### Pull Request 제출
 
 1. Fork 후 feature 브랜치에서 작업
-2. 테스트 통과 확인: `python3 -m pytest tests/unit/ -x -q`
+2. 테스트 통과 확인: `".venv/bin/python" -m pytest tests/unit/ -x -q`
 3. Hook 수정 시 shellcheck 통과: `shellcheck -s sh hooks/*.sh hooks/lib/*.sh`
 4. [PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)의 체크리스트 확인
 5. PR 생성
@@ -193,15 +194,20 @@ skills/{skill-name}/
 
 ```bash
 sh scripts/sync_orchestrator_inject.sh
-python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
+".venv/bin/python" -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
 ```
 
-### 플러그인 캐시 동기화 (필수)
+### 로컬 테스트와 Marketplace 배포
 
-에이전트나 스킬을 추가/삭제/리네임한 후에는 **반드시 플러그인 캐시를 갱신**해야 합니다.
-캐시를 갱신하지 않으면 Claude Code 세션에서 변경 사항이 반영되지 않습니다.
+`claude --plugin-dir "$(pwd)"`는 현재 작업 트리를 직접 읽습니다. 로컬 테스트에는 commit,
+push, marketplace 갱신, 플러그인 캐시 재설치가 필요하지 않습니다.
 
-**배경**: Claude Code는 `~/.claude/plugins/cache/`에 캐시된 복사본에서 스킬을 로드합니다. 작업 디렉토리의 파일을 직접 읽지 않습니다.
+Marketplace로 배포할 때만 검토된 파일을 명시적으로 stage하고 캐시를 갱신합니다. 아래
+`agents/{agent-name}.md`, `skills/{skill-name}/SKILL.md`, `tests/unit/{test-name}.py`를
+실제 검토한 경로로 바꿔 실행합니다.
+
+**배경**: Marketplace로 설치한 Claude Code 세션은 `~/.claude/plugins/cache/`의 복사본에서
+스킬을 로드합니다. `--plugin-dir`로 시작한 로컬 세션만 작업 디렉토리를 직접 읽습니다.
 
 ```
 작업 디렉토리 (~/works/rtl-agent-team/)
@@ -215,24 +221,29 @@ Cache (~/.claude/plugins/cache/.../0.1.0/)
 System skill list (런타임 로드)
 ```
 
-**변경 후 실행할 명령**:
+**배포 시 실행할 명령**:
 
 ```bash
-# 1. 변경 사항 commit & push
-git add -A && git commit -m "Add/rename skills" && git push
+# 1. 검토된 경로만 stage하고 staged diff를 재검토
+git status --short
+git add -- agents/{agent-name}.md skills/{skill-name}/SKILL.md tests/unit/{test-name}.py
+git diff --cached --check
+git diff --cached
+git commit -m "Add or rename reviewed skills"
+git push
 
 # 2. marketplace 갱신 (GitHub에서 git pull)
 claude plugin marketplace update rtl-agent-marketplace
 
 # 3. 플러그인 재설치 (강제 cache 갱신)
-claude plugin uninstall rtl-agent-team@rtl-agent-marketplace
+claude plugin uninstall --keep-data rtl-agent-team@rtl-agent-marketplace
 claude plugin install rtl-agent-team@rtl-agent-marketplace
 
 # 4. Claude Code 세션 재시작 (새 세션에서 변경 반영)
 ```
 
 > **주의**: `claude plugin update`는 version이 동일하면 스킵합니다.
-> 개발 중에는 반드시 `uninstall` → `install` 조합을 사용해야 합니다.
+> Marketplace 배포본을 확인할 때는 `uninstall` → `install` 조합을 사용합니다.
 > 3번 단계를 빠뜨리면 marketplace는 최신이지만 cache는 구버전인 상태가 되어,
 > CLAUDE.md의 skill 참조와 시스템 등록명이 불일치하는 문제가 발생합니다.
 
@@ -482,8 +493,6 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 `.cl
 }
 ```
 
-참조: `.claude-plugin/marketplace.json`의 `systemverilog-lsp` 항목
-
 ### 외부 repo 플러그인
 
 다른 repository에 있는 플러그인을 marketplace에 등록합니다.
@@ -499,6 +508,8 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 `.cl
   "version": "1.0.0"
 }
 ```
+
+참조: `.claude-plugin/marketplace.json`의 `systemverilog-lsp` 항목
 
 ### 체크리스트
 
@@ -553,4 +564,4 @@ iverilog는 `-g2012` 옵션으로 SystemVerilog 기본 문법을 지원하지만
 | FSM 상태 | `typedef enum logic` + `UPPER_SNAKE_CASE` (`ST_IDLE`) |
 | UVM 멤버 핸들 | `m_` prefix 허용 (업계 관행). `u_`는 RTL 인스턴스 전용 |
 
-상세: `references/coding-style-guide.md`, `skills/systemverilog/SKILL.md`
+상세: `skills/systemverilog/references/coding-style-guide.md`, `skills/systemverilog/SKILL.md`

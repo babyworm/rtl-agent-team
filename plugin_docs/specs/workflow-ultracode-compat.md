@@ -1,14 +1,16 @@
 # Workflow / ultracode Drivability Compatibility — Design & Findings
 
 - Date: 2026-07-16
-- Status: safe_edits applied; larger agent Step-0 parameterization proposed_only (NOT applied)
-- Scope: `hooks/lib/rat-dir-util.sh`, `hooks/rtl-orchestrator-inject.sh`,
-  `skills/rat-init-project/templates/{cocotb-makefile,Makefile}`,
-  `skills/rat-init-project/SKILL.md`,
-  `skills/rtl-p5s-func-verify/scripts/run_regression.sh`,
-  `agents/func-verifier.md`, `tests/unit/test_hooks.py`
+- Status: Implemented — initial safe edits shipped in v0.13.0; all five follow-up
+  items shipped in v0.14.0
+- Scope: hook and agent project-root resolution, spawn-context propagation, EDA
+  runners, Makefile default goals, and the Workflow-driver gate contract
 
-## Problem — CWD / project-root finding
+> **Historical boundary:** The original problem and initial-safe-edit sections below
+> describe the v0.13.0 state. The current v0.14.0 contract is recorded in
+> "Drivability verdict" and "Applied follow-up work."
+
+## Original problem — CWD / project-root finding
 
 An external **Workflow** driver (the "ultracode" orchestrator-as-workflow model) can
 drive the plugin's phase pipeline by calling **leaf specialist agents** directly (JS owns
@@ -64,36 +66,30 @@ real directories).
 2. Generated cocotb Makefiles run under a bare `make` (`.DEFAULT_GOAL := sim`), verified
    against GNU make even with a prepended `ref:`/DPI target.
 
-**Residual (Workflow-side, NOT a plugin defect):** the env override redirects **hooks**
-(and, if adopted, EDA runners) but does **not** redirect a leaf agent's own Read/Write/Edit
-file I/O — those still resolve bare relative paths against the subagent process CWD (the
-plugin repo by default). Therefore the external Workflow MUST additionally:
+**Current agent-side contract:** all agent headers resolve project-relative paths through
+the same ladder: explicit `PROJECT_ROOT=<abs>` prompt line > spawn-context `project_root`
+> `$RAT_PROJECT_ROOT` > process CWD. The spawn-context manifest now carries
+`project_root`, so nested orchestrator spawns preserve the project location. Direct leaf
+targeting remains a latency/observability recommendation, not a path-correctness
+requirement.
 
-- set each **leaf agent's CWD** to the project root, and/or
-- inject an absolute `PROJECT_ROOT=<abs>` line into each **leaf-agent** prompt.
+**Preconditions:** the target project must be RAT-initialized (`.rat` or legacy
+`.rtl-agent-team` marker present), and at least one project-root source in the ladder must
+point to that project. Explicit prompt/environment roots must be absolute existing
+directories.
 
-Recommendation (from the flow-test): drive **leaf specialist agents** directly rather than
-multi-level orchestrators, so nested `Task()` spawns cannot silently drop the
-`PROJECT_ROOT` contract.
+## Applied follow-up work (v0.14.0)
 
-**Preconditions:** the target project must be RAT-initialized (`.rat` marker present) or the
-env override falls back to `$CWD/.rat`; and `RAT_PROJECT_ROOT` must be an absolute path to an
-existing directory.
-
-## Proposed-only (future plan — NOT applied)
-
-The durable fix for agent-side I/O is a schema change + mass edit, intentionally excluded
-from the safe_edits set. Track as a future plan.
-(Per-item status as of 2026-07-17: all 5 items APPLIED — see each item's status tag.)
+The five items originally proposed after the v0.13.0 safe edits are now implemented:
 
 1. **[APPLIED 2026-07-17 (this change set)]**
    **Agent Step-0 / path-convention parameterization (the robust half).** Extend the shared
    "Path convention" header line across all 99 agents + `agents/lib/step0-template.md` + the
-   33 orchestrator Step-0 blocks to resolve project-relative paths against `project_root`
+   30 canonical orchestrator Step-0 blocks plus the three custom orchestrator path
+   headers to resolve project-relative paths against `project_root`
    (from `.rat/state/spawn-context.json`) OR the `RAT_PROJECT_ROOT` env OR an explicit
-   `PROJECT_ROOT=<abs>` prompt line, falling back to process CWD (legacy). Scriptable via
-   `sed` (uniform header), but a mass edit across orchestrators — **excluded** from
-   safe_edits by task rule. Recommended driver target: leaf specialists, not orchestrators.
+   `PROJECT_ROOT=<abs>` prompt line, falling back to process CWD (legacy). The canonical
+   Step-0 blocks are synchronized from `agents/lib/step0-template.md`.
 
 2. **[APPLIED 2026-07-17 (this change set)]**
    **Ship `project_root` in the spawn-context manifest.** Mirror the existing `plugin_root`
@@ -102,14 +98,14 @@ from the safe_edits set. Track as a future plan.
    `CWD="${RAT_PROJECT_ROOT:-$CWD}"` in `rtl-spawn-context.sh` / `rtl-phase-state-bootstrap.sh`.
    This is a manifest **schema change** requiring a 4-way test update
    (`test_hooks.py`, `test_plugin_runtime_contract.py`, `test_agent_skill_structure.py`,
-   `test_audit.py`) — hence proposed-only.
+   `test_audit.py`).
 
 3. **[APPLIED 2026-07-17 (this change set)]**
    **`PROJECT_ROOT` in deployed EDA templates.** Change each `PROJECT_ROOT="$(pwd)"` to
    `PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"` in `scripts/run_sim.sh` and the deployed
    `run_lint.sh` / `run_syn.sh` / `run_cdc.sh` / `run_conformal.sh` / `run_formality.sh` /
    `run_regression_uvm.sh`. Backward-compatible, but touches user-deployed templates and only
-   matters when subagent CWD != project root; roll out with the prompt contract above.
+   matters when subagent CWD != project root; it uses the same root contract above.
 
 4. **[APPLIED 2026-07-17 → see `workflow-driver-gate-model.md`]**
    **Workflow-driver gate model (document only).** When an external Workflow owns phase/gate
@@ -118,6 +114,6 @@ from the safe_edits set. Track as a future plan.
    as-shipped Claude Code sessions still depend on the Stop gate for Rule 5.
 
 5. **[APPLIED 2026-07-17 (this change set)]**
-   **Cosmetic `make sim` in docs (optional).** Switch documented `make -C sim/{module} ...`
-   invocations to `make sim ...` across ~15 agent/policy/guide surfaces. Redundant once the
-   `.DEFAULT_GOAL := sim` template fix is in place; purely for guidance consistency.
+   **Explicit simulation target in executable helpers.** Documentation commands retained `make -C sim/{module}`.
+   The top-level `sim_regression` target and regression
+   runner added an explicit `sim` target so automation cannot silently select a helper goal.

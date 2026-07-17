@@ -1,13 +1,13 @@
 # EDA Tool Setup Guide
 
 This guide covers how to configure EDA tools for use with the RTL Agent Team plugin.
-Open-source tools are auto-installed by `/rat-setup`. Commercial tools require manual
+Open-source tools are auto-installed by `/rtl-agent-team:rat-setup`. Commercial tools require manual
 environment configuration via `rat_config.json`.
 
 ## Tool Integration Architecture
 
 ```
-                        /rat-setup
+                /rtl-agent-team:rat-setup
                             |
               +-----------+---+-----------+
               |                           |
@@ -32,15 +32,15 @@ environment configuration via `rat_config.json`.
 
 | Path | Tools | Setup | Configuration |
 |------|-------|-------|---------------|
-| **Auto-install** | Verilator, Verible, slang, svlens, cocotb, Yosys, SystemC, ... | `/rat-setup` handles everything | Automatic |
+| **Auto-install** | Verilator, Verible, slang, svlens, cocotb, Yosys, SystemC, ... | `/rtl-agent-team:rat-setup` handles everything | Automatic |
 | **Commercial** | VCS, DC, Xcelium, Genus, SpyGlass, Questa, Formality, VC-CDC, Questa CDC, ... | User provides environment setup | `rat_config.json` → `env_source` field |
-| **Docker fallback** | All open-source tools bundled | `docker build -t rtl-eda-tools docker/` | Transparent via `lib/tool-runner.sh` |
+| **Docker fallback** | All open-source tools bundled | Build from the standalone plugin clone root | Transparent via `lib/tool-runner.sh` |
 
 ---
 
 ## Open-Source Tools
 
-Run `/rat-setup` and follow the interactive wizard. It detects missing tools,
+Run `/rtl-agent-team:rat-setup` and follow the interactive wizard. It detects missing tools,
 offers installation choices (`local` / `global` / `docker` / `skip`), and verifies
 the result. No manual configuration needed.
 
@@ -51,7 +51,7 @@ Two Tier 1 categories accept multiple alternatives — at least one must be inst
 | Category | Accepted tools | Rationale |
 |----------|----------------|-----------|
 | **lint tool** | `verible-verilog-lint` AND/OR `slang` | verible handles style, slang catches IEEE 1800 semantic violations. Either alone satisfies the gate. |
-| **cdc tool** | `svlens` OR `sg_shell` OR `vc_cdc` OR `questa_cdc` | svlens is the open-source default (auto-installed by `/rat-setup`). Any commercial CDC tool also satisfies the requirement. |
+| **cdc tool** | `svlens` OR `sg_shell` OR `vc_cdc` OR `questa_cdc` | svlens is the open-source default (auto-installed by `/rtl-agent-team:rat-setup`). Any commercial CDC tool also satisfies the requirement. |
 
 Note: svlens supplements lint when verible/slang are missing — `svlens conn` catches
 width mismatch, dangling output, and undriven input. However, svlens does not replace
@@ -86,9 +86,13 @@ Each tool entry in `rat_config.json` has three fields:
 | `path` | Absolute path to the tool binary | `generate_config.sh` (automatic) or user |
 | `env_source` | Shell command to set up the tool environment | **User** (manual) |
 
+`env_source` is trusted project input: the generator evaluates it with Bash on each
+run. Keep this field project-owned and never populate it from untrusted data.
+
 When `generate_config.sh` runs, it:
 1. Reads `env_source` for each tool
-2. Executes the command in a subshell: `bash -c "$env_source && command -v $tool"`
+2. Executes trusted project input positionally in a subshell, suppressing setup
+   banners before probing the tool: `bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' _ "$env_source" "$tool"`
 3. If the tool is found after sourcing, marks `detected: true` and records `path`
 
 **The key insight**: you only need to fill in `env_source` with the command that makes
@@ -261,9 +265,9 @@ editing `rat_config.json`, use **either** of these two paths:
 ```
 /rtl-agent-team:rat-init-project
 ```
-The skill is idempotent and will re-run the generator without touching your
-user-edited fields (`env_source`, `path` overrides, `technology`, `waivers`,
-`coverage` are all preserved).
+The skill is idempotent and will re-run the generator while preserving user-owned
+fields. Usable explicit `path` overrides remain unchanged; stale or unusable paths
+are refreshed when the tool is found in the current environment.
 
 **Option B — Invoke the plugin's generator directly**:
 ```bash
@@ -274,7 +278,7 @@ full `rat-init-project` flow. `CLAUDE_PLUGIN_ROOT` is set by the Claude Code
 runtime when the plugin is active.
 
 Both paths will:
-1. Read your `env_source` values (preserved across re-runs)
+1. Read and evaluate your trusted `env_source` values (preserved across re-runs)
 2. Attempt detection by sourcing each environment
 3. Update `detected` and `path` fields
 4. Regenerate `config.mk` with preferred tool selections
@@ -402,11 +406,17 @@ The Docker image bundles all open-source EDA tools. It does **not** include
 commercial tools (those require your own licenses and installations).
 
 ```bash
+# Build from a standalone rtl-agent-team clone root.
+cd /path/to/rtl-agent-team
+
 # Build once
 docker build -t rtl-eda-tools docker/
 
-# Run with project mounted
-docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+# Run with an RTL project mounted
+docker run -it --rm \
+  --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --mount "type=bind,src=/absolute/path/to/rtl-project,dst=/workspace" \
+  --workdir /workspace rtl-eda-tools
 ```
 
 The `lib/tool-runner.sh` library provides transparent Docker fallback:
@@ -462,10 +472,11 @@ Override manually in `rat_config.json` or `config.mk`:
 }
 ```
 
-### Regenerating overwrites my edits
+### What regeneration updates
 
-It doesn't — user-edited fields (`env_source`, `path` overrides, `technology`,
-`waivers`, `coverage`) are preserved across re-runs of the plugin generator,
-whether invoked via `/rtl-agent-team:rat-init-project` or directly via
-`${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh`.
-Only `detected` status is refreshed.
+User-owned fields (`env_source`, `technology`, `waivers`, `coverage`, preferences,
+and other project settings) are preserved. Tool `detected` and `path` fields are
+refreshed: a usable explicit path override is retained, while a stale or unusable
+path is replaced when detection finds the tool. Project `config.mk` is regenerated
+from the refreshed configuration. These managed updates apply whether invoked via
+`/rtl-agent-team:rat-init-project` or the plugin generator directly.

@@ -55,7 +55,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read the design specification (requirements.json or spec.md) completely.
+    1. Read the design specification (`docs/phase-1-research/iron-requirements.json` or `spec.md`) completely.
     2. Count the number of RTL blocks to be designed (determines parallelism potential).
     3. Identify dependencies between blocks: which block's output feeds another's input.
     4. Identify which blocks require a reference C model and whether one exists.
@@ -69,7 +69,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read requirements.json, spec.md, architecture.md, io_definition.json
+    - Read: read `docs/phase-1-research/iron-requirements.json`, spec.md, architecture.md, io_definition.json
     - Grep: search spec for block names, interface definitions, performance targets
     - Glob: find existing agent definition files to understand available agent types
     - NO Write, NO Edit (read-only planner)

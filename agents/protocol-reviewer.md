@@ -68,7 +68,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
   <Investigation_Protocol>
     1. Read architecture spec (`docs/phase-3-uarch/*.md`) for throughput/latency requirements.
-    2. Read `requirements.json` for bandwidth targets and interface requirements.
+    2. Read `docs/phase-1-research/iron-requirements.json` for bandwidth targets and interface requirements.
     3. Identify all AXI/AHB/APB interfaces in the design:
        - Grep for AXI signal patterns (AWVALID, ARVALID, RVALID, etc.)
        - Read module port lists to identify protocol interfaces
@@ -148,7 +148,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
     # Protocol Design Review: [design name]
     - Date: YYYY-MM-DD
     - Reviewer: protocol-reviewer
-    - Upper Spec: requirements.json, docs/phase-3-uarch/*.md
+    - Upper Spec: docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/*.md
     - Verdict: PASS | FAIL
 
     ## Interface Inventory

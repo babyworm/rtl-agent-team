@@ -8,7 +8,7 @@ user-invocable: true
 Initialize a new RTL design project with the standard directory structure, coding convention
 rules, phase guides, and template files required by the 6-Phase pipeline.
 This is a per-project operation — run once per new project workspace.
-For EDA tool installation and environment verification, use `rat-setup` instead.
+For EDA tool installation and environment verification, use `/rtl-agent-team:rat-setup` instead.
 </Purpose>
 
 <Use_When>
@@ -20,7 +20,7 @@ For EDA tool installation and environment verification, use `rat-setup` instead.
 
 <Do_Not_Use_When>
 - Project directories already exist and rules are deployed (check `.claude/rules/rtl-coding-conventions.md`)
-- Only need to verify/install EDA tools (use `rat-setup`)
+- Only need to verify/install EDA tools (use `/rtl-agent-team:rat-setup`)
 - Designing architecture or writing RTL (use p2-arch-design or rtl-p4-implement)
 </Do_Not_Use_When>
 
@@ -32,16 +32,19 @@ This skill ensures the project workspace is ready before design work begins.
 </Why_This_Exists>
 
 <Execution_Policy>
-- Non-destructive: never overwrite existing files or directories
-- Create only the directories and files that don't already exist
+- Do not overwrite existing project templates, guides, rules, or directories
+- Managed exceptions: update only the RAT block in project `CLAUDE.md`, refresh
+  `rat_config.json` tool detection, and regenerate `config.mk`
+- Preserve usable user tool path overrides; refresh stale or unusable paths from
+  the detected environment
 - Generate a project initialization report at the end
 - Quick EDA tool status check (informational only — does NOT install tools)
-- If required tools are missing, recommend running `/rat-setup` for installation
+- If required tools are missing, recommend running `/rtl-agent-team:rat-setup` for installation
 </Execution_Policy>
 
 <Steps>
 1. **Check plugin setup** (advisory, not a hard gate):
-   Check `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/.setup-complete` for `rat-setup` completion.
+   Check `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/.setup-complete` for `/rtl-agent-team:rat-setup` completion.
    If marker is missing, advise: "Run `/rtl-agent-team:rat-setup` first to verify EDA tools and configure the plugin environment."
    Proceed anyway — project structure can be created without tools, but warn about missing EDA environment.
 
@@ -98,23 +101,26 @@ This skill ensures the project workspace is ready before design work begins.
 
 2b. **Generate project config** (`rat_config.json`):
    Run the config generator to detect available EDA tools and create the project configuration file.
-   If `rat_config.json` already exists, only tool availability is refreshed (user-edited fields preserved).
+   If `rat_config.json` already exists, tool availability and paths are refreshed while
+   user-owned configuration is preserved. A usable explicit path override remains unchanged;
+   a stale or unusable path is replaced when the tool is found in the current environment.
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh" . "$(basename $(pwd))"
+   bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh" . "$(basename "$(pwd)")"
    ```
    The config file stores:
-   - `tools`: 24 EDA tools across 8 categories (simulators, synthesis, lint, formal, equivalence, cdc, debug, coverage). Each tool has `detected`, `path`, and `env_source` fields. Set `env_source` per-tool for tools needing setup (e.g., `"env_source": "source /tools/synopsys/vcs/setup.sh"`)
+   - `tools`: 24 EDA tools across 8 categories (simulators, synthesis, lint, formal, equivalence, cdc, debug, coverage). Each tool has `detected`, `path`, and `env_source` fields. Set `env_source` per-tool for tools needing setup (e.g., `"env_source": "source /tools/synopsys/vcs/setup.sh"`). Each `env_source` is trusted project input and is evaluated by Bash on every generator run; do not populate it from untrusted data.
    - `preferences`: preferred tool per category (auto-set to first detected commercial tool, user-overridable)
    - `technology`: target library path, SRAM lib, NAND2 cell pattern (auto-extracted from liberty if set)
    - `coverage`: targets (line≥90%, toggle≥80%, FSM≥70%, branch≥80%, functional≥95%), seeds, fail rate
    - `waivers`: custom paths for lint/CDC waiver files
    Users should edit per-tool `env_source`, `technology.liberty`, and `waivers` after generation.
+   `config.mk` is plugin-managed output and is regenerated from the refreshed configuration.
 
-2c. **Deploy rules** (skip if already deployed globally via `rat-setup`):
+2c. **Deploy rules** (skip if already deployed globally via `/rtl-agent-team:rat-setup`):
    For each rule file, check `~/.claude/rules/` first. If the same file exists globally,
    skip the local copy to avoid duplicate injection. Only deploy locally if neither exists.
-   Diagram rules are injected into `~/.claude/CLAUDE.md` by `rat-setup` via `<markdown_diagram_rule>` tag.
-   If the tag is missing (rat-setup not run), write an inline fallback file.
+   Diagram rules are injected into `~/.claude/CLAUDE.md` by `/rtl-agent-team:rat-setup` via `<markdown_diagram_rule>` tag.
+   If the tag is missing (`/rtl-agent-team:rat-setup` not run), write an inline fallback file.
    ```bash
    mkdir -p .claude/rules
    # RTL rules: skip if global exists (no duplication)
@@ -290,20 +296,11 @@ Bash: python3 -c "import cocotb; print(cocotb.__version__)" 2>&1 || echo "NOT_FO
 Bash: verible-verilog-lint --version 2>&1 || echo "NOT_FOUND"
 Bash: slang --version 2>&1 || echo "NOT_FOUND"
 
-# Template generation (copy from plugin templates)
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/filelist.f" rtl/filelist_top.f
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/cocotb-makefile" sim/top/Makefile
-Bash: mkdir -p lib && cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/lib/tool-runner.sh" lib/tool-runner.sh
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_lint.sh" lint/scripts/run_lint.sh
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_syn.sh" syn/scripts/run_syn.sh
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_cdc.sh" lint/scripts/run_cdc.sh
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_formality.sh" syn/scripts/run_formality.sh
-Bash: cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/run_conformal.sh" syn/scripts/run_conformal.sh
-Bash: mkdir -p reviews/phase-6-review && cp -n "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/phase6-pdf-makefile" reviews/phase-6-review/Makefile
-Bash: chmod +x lib/tool-runner.sh lint/scripts/run_lint.sh syn/scripts/run_syn.sh lint/scripts/run_cdc.sh syn/scripts/run_formality.sh syn/scripts/run_conformal.sh
-Bash: chmod +x scripts/run_sim.sh
-# Hook-safe bootstrap (non-destructive, idempotent)
+# Template deployment (non-destructive, idempotent)
 Bash: bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/install_project_templates.sh" "$PWD"
+Bash: [ -f rtl/filelist_top.f ] || cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/filelist.f" rtl/filelist_top.f
+Bash: [ -f sim/top/Makefile ] || cp "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/cocotb-makefile" sim/top/Makefile
+Bash: mkdir -p reviews/phase-6-review && cp -n "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/templates/phase6-pdf-makefile" reviews/phase-6-review/Makefile
 Write: rtl/include/template_module.sv — convention reference template (i_/o_ prefix, sys_clk/sys_rst_n)
 ```
 
@@ -325,6 +322,6 @@ Write: rtl/include/template_module.sv — convention reference template (i_/o_ p
 - [ ] Module template (rtl/include/template_module.sv) demonstrates naming conventions
 - [ ] EDA scripts installed (lint, synthesis, CDC, equivalence, tool-runner)
 - [ ] Quick tool status reported
-- [ ] Missing tools → recommended /rat-setup
+- [ ] Missing tools → recommended /rtl-agent-team:rat-setup
 - [ ] Project initialization report displayed to user
 </Final_Checklist>

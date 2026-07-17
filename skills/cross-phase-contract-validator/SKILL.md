@@ -27,7 +27,7 @@ specifications and downstream implementations that individual phase gates cannot
 
 ### 1. Port Width Consistency
 Compare across three sources — all must agree:
-- `docs/phase-2-architecture/io_definition.json` (if exists): port widths
+- `docs/phase-1-research/io_definition.json` (if exists): port widths
 - `docs/phase-3-uarch/*.md`: interface width specifications
 - `rtl/*/*.sv`: actual module port declarations
 
@@ -91,7 +91,7 @@ Read all upstream artifacts, perform checks, generate report:
 ```
 Glob("docs/phase-3-uarch/*.md")
 Glob("docs/phase-3-uarch/iron-requirements.json")
-Glob("docs/phase-2-architecture/io_definition.json")
+Glob("docs/phase-1-research/io_definition.json")
 Glob("rtl/*/*.sv")
 Glob("sim/*/tb_*.sv")
 Glob("sim/*/*_unit_results.json")

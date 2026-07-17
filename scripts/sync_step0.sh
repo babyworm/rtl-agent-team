@@ -1,5 +1,5 @@
 #!/bin/bash
-# sync_step0.sh — Synchronize Step 0 Context Bootstrap blocks across orchestrator agents.
+# sync_step0.sh — Synchronize canonical Step 0 Context Bootstrap consumer blocks.
 #
 # Replaces the common Step 0 core (from "## Step 0: Context Bootstrap" or
 # "### Step 0: Context Bootstrap" to the fallback close line) with the canonical
@@ -38,7 +38,7 @@ SKIPPED=0
 TOTAL=0
 
 for agent_file in "$AGENTS_DIR"/*.md; do
-  # Skip non-orchestrator files and lib directory entries
+  # Skip files that do not consume the canonical Step 0 heading.
   [ ! -f "$agent_file" ] && continue
   # Match both ## and ### heading levels for Step 0
   grep -qE "^#{2,3} Step 0: Context Bootstrap" "$agent_file" || continue
@@ -110,18 +110,23 @@ for agent_file in "$AGENTS_DIR"/*.md; do
   ' "$agent_file")
 
   # Safety check: if sentinel was not found, skip this file to avoid data loss
-  if printf '%s' "$RESULT" | grep -q "___SENTINEL_NOT_FOUND___"; then
-    echo "[SKIPPED] $BASENAME — sentinel line not found, Step 0 block may have drifted"
-    SKIPPED=$((SKIPPED + 1))
-    continue
-  fi
+  case "$RESULT" in
+    *___SENTINEL_NOT_FOUND___*)
+      echo "[SKIPPED] $BASENAME — sentinel line not found, Step 0 block may have drifted"
+      SKIPPED=$((SKIPPED + 1))
+      continue
+      ;;
+  esac
 
   # Safety check: if placeholder was never emitted, skip
-  if ! printf '%s' "$RESULT" | grep -q "___TEMPLATE_PLACEHOLDER___"; then
-    echo "[SKIPPED] $BASENAME — template placeholder not generated (unexpected awk state)"
-    SKIPPED=$((SKIPPED + 1))
-    continue
-  fi
+  case "$RESULT" in
+    *___TEMPLATE_PLACEHOLDER___*) : ;;
+    *)
+      echo "[SKIPPED] $BASENAME — template placeholder not generated (unexpected awk state)"
+      SKIPPED=$((SKIPPED + 1))
+      continue
+      ;;
+  esac
 
   # Replace placeholder with actual template content
   EXPECTED=$(printf '%s\n' "$RESULT" | awk -v tmpl="$FILE_TEMPLATE" '
@@ -148,10 +153,11 @@ for agent_file in "$AGENTS_DIR"/*.md; do
 done
 
 echo ""
-echo "Step 0 sync complete: $TOTAL agents scanned, $CHANGED changed, $UNCHANGED unchanged, $SKIPPED skipped."
+echo "Step 0 sync complete: consumer files scanned: $TOTAL, changed: $CHANGED, unchanged: $UNCHANGED, skipped: $SKIPPED."
 if [ "$DRY_RUN" = "true" ] && [ "$CHANGED" -gt 0 ]; then
   echo "(dry-run mode — no files were modified)"
 fi
 if [ "$SKIPPED" -gt 0 ]; then
   echo "WARNING: $SKIPPED file(s) skipped due to missing sentinel. Review manually."
+  exit 1
 fi

@@ -1,6 +1,7 @@
 # Block-Parallel Domain Expert Enhancement — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **archival shipped record:** This plan documents the implementation shipped in v0.9.0.
+> Checkboxes and worker instructions below are retained only as historical execution records.
 
 **Goal:** Enhance video codec domain experts (3-way prediction split + knowledge deepening) and add worktree-based block-parallel Phase 4 RTL development with autonomous rat-ultraloop execution mode.
 
@@ -753,7 +754,7 @@ user-invocable: true
 ```
 
 Content structure:
-1. **Invocation**: `/rat-ultraloop [target-skill]` (e.g., `/rat-ultraloop rtl-p4-block-parallel`)
+1. **Invocation**: `/rtl-agent-team:rat-ultraloop [target-skill]` (e.g., `/rtl-agent-team:rat-ultraloop rtl-p4-block-parallel`)
 2. **Design freeze snapshot**: hash frozen paths → `design-freeze.json`
 3. **Autonomous loop** (max 10 cycles):
    a. Execute/continue target skill

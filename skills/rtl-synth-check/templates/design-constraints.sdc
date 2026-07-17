@@ -12,7 +12,7 @@
 ##############################################################
 # 1. Clock Definitions
 ##############################################################
-# Primary clocks — from requirements.json or timing_constraints.json
+# Primary clocks — from docs/phase-1-research/iron-requirements.json or timing_constraints.json
 create_clock -period {{SYS_PERIOD_NS}} -name sys_clk [get_ports sys_clk]
 # create_clock -period {{AXI_PERIOD_NS}} -name axi_clk [get_ports axi_clk]
 

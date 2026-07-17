@@ -70,7 +70,6 @@ Add to `domain-packages/{domain}/manifest.json` → `agents` array:
   "id": "my-domain-expert",
   "source": "local",
   "file": "experts/my-domain-expert.md",
-  "model": "claude-opus-4-6",
   "role": "One-line description",
   "phase_intensity": {
     "research": "primary",

@@ -1,8 +1,8 @@
 # PPA Optimizer (DC-based) — Design Spec
 
 - **Date**: 2026-04-17
-- **Status**: Draft — pending user review
-- **Target release**: v0.10.0 (minor bump)
+- **Status**: Implemented in v0.10.0; retained as the shipped design record
+- **Release**: v0.10.0
 - **Author**: Hyun-Gyu (Ethan) Kim
 
 ## 1. Summary

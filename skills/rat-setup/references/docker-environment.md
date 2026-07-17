@@ -7,19 +7,25 @@ Docker EDA image build args, run commands, or included tool versions.
 ```bash
 docker build -t rtl-eda-tools \
   --build-arg VERILATOR_VERSION=5.024 \
-  --build-arg SLANG_VERSION=v6.0 \
+  --build-arg SLANG_VERSION=v11.0 \
+  --build-arg SVLENS_VERSION=v0.3.6 \
   --build-arg SYSTEMC_VERSION=3.0.2 \
-  docker/
+  "${CLAUDE_PLUGIN_ROOT}/docker/"
 ```
 
 ## Run
 ```bash
-docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+docker run -it --rm \
+  --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --mount "type=bind,src=$(pwd),dst=/workspace" \
+  --workdir /workspace rtl-eda-tools
 
 # GUI (gtkwave) support
 docker run -it --rm \
-  -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v $(pwd):/workspace -w /workspace rtl-eda-tools
+  --user "$(id -u):$(id -g)" --env HOME=/tmp --env "DISPLAY=$DISPLAY" \
+  --mount "type=bind,src=/tmp/.X11-unix,dst=/tmp/.X11-unix" \
+  --mount "type=bind,src=$(pwd),dst=/workspace" \
+  --workdir /workspace rtl-eda-tools
 ```
 
 ## Included Tools
@@ -29,7 +35,8 @@ docker run -it --rm \
 | verible | latest release | Style Lint + Formatting |
 | yosys | OSS CAD Suite | Synthesis |
 | iverilog | apt latest | Alternative simulator |
-| slang | v6.0 (configurable) | IEEE 1800 Semantic Lint |
+| slang | v11.0 (configurable) | IEEE 1800 Semantic Lint |
+| svlens | v0.3.6 (configurable) | Structural analysis + CDC |
 | sby (SymbiYosys) | OSS CAD Suite + boolector, z3, yices2 | Formal verification |
 | gtkwave | apt latest | Waveform viewer |
 | SystemC/TLM-2.0 | 3.0.2 (configurable) | Reference model + BFM |

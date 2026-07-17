@@ -119,6 +119,15 @@ class TestDomainManifest:
         experts = manifest.get("experts", manifest.get("agents", []))
         assert len(experts) > 0, "No experts defined"
 
+    @pytest.mark.parametrize("domain", ["video-codec", "video-processing"])
+    def test_agents_defer_model_selection_to_frontmatter(self, domain):
+        # Given: a discoverable domain package manifest.
+        manifest = json.loads((REPO_ROOT / "domain-packages" / domain / "manifest.json").read_text())
+        # When: its agent routing metadata is inspected.
+        agents = manifest["agents"]
+        # Then: model selection is left to each registered agent's frontmatter.
+        assert all("model" not in agent for agent in agents)
+
     def test_has_standards(self, manifest):
         assert "standards" in manifest or "supported_standards" in manifest
 

@@ -53,7 +53,7 @@ factory.generate_tests()
 ## cocotb-bus: Driver/Monitor Framework
 
 ```bash
-pip install cocotb-bus
+"$HOME/.local/share/rtl-agent-team/venv/bin/python" -m pip install cocotb-bus
 ```
 
 ### Driver Base Class
@@ -101,7 +101,7 @@ scoreboard.add_interface(monitor, expected_output_list)
 ## cocotbext-axi: AXI Bus Functional Models
 
 ```bash
-pip install cocotbext-axi
+"$HOME/.local/share/rtl-agent-team/venv/bin/python" -m pip install cocotbext-axi
 ```
 
 ### AXI4-Lite Master
@@ -164,7 +164,7 @@ data = await axi_master.read(0x1000, 64)
 ## cocotb-coverage: Functional Coverage
 
 ```bash
-pip install cocotb-coverage
+"$HOME/.local/share/rtl-agent-team/venv/bin/python" -m pip install cocotb-coverage
 ```
 
 ```python

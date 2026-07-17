@@ -191,7 +191,7 @@ enabling prioritized debugging and requirement-level risk assessment.
 
 ## Escalation & Stop Conditions
 
-- cocotb not installed → halt, provide install command (`pip install cocotb`)
+- cocotb not installed → halt and route setup through `/rtl-agent-team:rat-setup`
 - Failure persists after 2 RTL fix rounds → escalate to rtl-architect with waveform analysis
 - Coverage below 80% after full regression → invoke rtl-p5s-coverage-analyze skill
 - cocotb signal name mismatch error → testbench-dev must fix to use `i_`/`o_` convention
@@ -213,7 +213,7 @@ enabling prioritized debugging and requirement-level risk assessment.
 - [ ] sim/regression/seed_{seed}_results.json written per seed
 - [ ] Early termination applied if failure rate >5%
 - [ ] Requirement Traceability Matrix produced (AC-level when structured acceptance_criteria exist, REQ-level otherwise)
-- [ ] Every REQ-NNN in iron-requirements.json (preferred) or requirements.json (fallback) covered by at least one test
+- [ ] Every REQ-NNN in `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback) covered by at least one test
 - [ ] When structured AC exists: every Critical/High ac_id is VERIFIED, FORMAL, or PARTIAL (PARTIAL = PARTIAL_PASS verdict at Stage 1, escalated to FAIL at Stage 3 final audit). UNTESTED = FAIL.
 - [ ] All covered requirements pass their tests (or failures escalated)
 - [ ] Traceability verdict is PASS or PARTIAL_PASS (PARTIAL_PASS = WARNING at Stage 1, escalated to FAIL at Stage 3)

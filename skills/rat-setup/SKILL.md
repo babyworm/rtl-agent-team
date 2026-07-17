@@ -104,8 +104,8 @@ Categorize tools into three tiers:
 test -d ~/.claude/rules && ls ~/.claude/rules/ 2>/dev/null
 # Check Claude Code settings
 test -f ~/.claude/settings.json && cat ~/.claude/settings.json
-# Check if plugin is registered
-test -f ~/.claude/plugins.json && cat ~/.claude/plugins.json
+# Check plugin registration through the supported Claude Code CLI
+claude plugin list --json 2>/dev/null || echo "PLUGIN_LIST_UNAVAILABLE"
 ```
 
 ### 1d. Commercial Tool Scan
@@ -190,7 +190,8 @@ Exact prompt wording and example tables:
 
 After collecting responses, verify each provided `env_source` by running:
 ```bash
-bash -c "$env_source && command -v $tool" 2>/dev/null
+bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' \
+  _ "$env_source" "$tool" 2>/dev/null
 ```
 Report results: if the tool is now found, mark as OK. If still not found, warn the user
 and offer to re-enter or skip.
@@ -249,6 +250,7 @@ Mermaid: FSM (`stateDiagram-v2`), data flow (`flowchart`), sequences (`sequenceD
 Implementation:
 ```bash
 if ! grep -q '<markdown_diagram_rule>' ~/.claude/CLAUDE.md 2>/dev/null; then
+  :
   # Append diagram rule block to ~/.claude/CLAUDE.md
   # Use Read tool to get current content, then Edit/Write to append
 fi
@@ -257,9 +259,12 @@ fi
 ### Q4: Test Infrastructure (if pytest/cocotb deps missing)
 
 > **Test dependencies missing: [list]**
-> Install via pip? (yes/no)
+> Install in the managed RTL Agent Team virtual environment? (yes/no)
 > ```
-> python3 -m pip install --user pytest cocotb cocotb-bus numpy hjson
+> RAT_EDA_VENV="$HOME/.local/share/rtl-agent-team/venv"
+> mkdir -p "$(dirname "$RAT_EDA_VENV")"
+> python3 -m venv "$RAT_EDA_VENV"
+> "$RAT_EDA_VENV/bin/python" -m pip install pytest cocotb cocotb-bus numpy hjson
 > ```
 
 ---
@@ -297,7 +302,8 @@ per-project `rat_config.json` when `rat-init-project` runs `generate_config.sh`.
 
 For each provided `env_source`, verify the tool is accessible:
 ```bash
-bash -c "$env_source && command -v $tool" 2>/dev/null
+bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' \
+  _ "$env_source" "$tool" 2>/dev/null
 ```
 
 Report verification results (Tool / env_source / Status: OK or FAILED). If a tool is not
@@ -328,6 +334,7 @@ mkdir -p ~/.claude/rules
 ```bash
 # Only inject if tag not already present
 if ! grep -q '<markdown_diagram_rule>' ~/.claude/CLAUDE.md 2>/dev/null; then
+  :
   # Read current ~/.claude/CLAUDE.md, append <markdown_diagram_rule> block via Edit/Write
 fi
 ```
@@ -336,7 +343,10 @@ See Q3 section for the exact block content.
 ### 4d. Test Infra Installation (if Q4 = yes)
 
 ```bash
-python3 -m pip install --user pytest cocotb cocotb-bus numpy hjson
+RAT_EDA_VENV="$HOME/.local/share/rtl-agent-team/venv"
+mkdir -p "$(dirname "$RAT_EDA_VENV")"
+python3 -m venv "$RAT_EDA_VENV"
+"$RAT_EDA_VENV/bin/python" -m pip install pytest cocotb cocotb-bus numpy hjson
 ```
 
 ---

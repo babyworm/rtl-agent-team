@@ -18,7 +18,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 99-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.0 |
+| **rtl-agent-team** | 99-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.1 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.1.4 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
@@ -68,7 +68,7 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 
 ### Stage B — 프로젝트 초기화 (프로젝트당 1회)
 
-프로젝트 디렉토리 구조 생성, 프로젝트별 규칙/가이드 배포, EDA wrapper 스크립트 자동 설치를 수행합니다. 프로젝트 디렉토리 내부에서 실행하세요 — non-destructive 정책이므로 기존 프로젝트도 안전합니다 (누락된 파일만 생성).
+프로젝트 디렉토리 구조 생성, 프로젝트별 규칙/가이드 배포, EDA wrapper 스크립트 자동 설치를 수행합니다. 프로젝트 디렉토리 내부에서 실행하세요. 기존 템플릿과 규칙은 유지되며, 관리 대상 예외는 프로젝트 `CLAUDE.md`의 RAT 블록, `rat_config.json` 도구 탐지 정보 갱신, `config.mk` 재생성입니다. 사용 가능한 도구 경로 override는 유지하고 오래되었거나 실행 불가능한 경로는 갱신합니다.
 
 ```bash
 # B1. 프로젝트 디렉토리로 이동
@@ -79,7 +79,7 @@ cd ~/work/my-rtl-project
 #     - .claude/rules/ 배포 (코딩 컨벤션, 검증 게이트)
 #     - 서브디렉토리 CLAUDE.md 배포 (Phase별 가이드)
 #     - run_sim.sh, run_lint.sh, run_syn.sh, run_cdc.sh 자동 설치
-#     - Non-destructive: 기존 파일은 절대 덮어쓰지 않음
+#     - 기존 템플릿/규칙은 덮어쓰지 않으며 관리 대상 설정은 갱신
 /rtl-agent-team:rat-init-project
 ```
 
@@ -127,13 +127,15 @@ claude plugin marketplace add babyworm/rtl-agent-team
 claude plugin install rtl-agent-team
 ```
 
-### 개발용 로컬 심볼릭 링크
+### 로컬 플러그인 개발
 
-플러그인 소스를 직접 수정하며 개발할 때:
+플러그인 소스를 직접 수정하며 개발할 때는 독립 clone root에서 공식
+`--plugin-dir` 옵션으로 Claude Code를 실행합니다:
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git
-ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
+cd rtl-agent-team
+claude --plugin-dir .
 ```
 
 ## 사용법 (Stage C — 프로젝트 내 설계 작업)
@@ -280,12 +282,12 @@ rtl-agent-team/
 
 ```bash
 sh scripts/sync_orchestrator_inject.sh
-python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
+python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
 ```
 
 ## 에이전트 팀
 
-### 에이전트 구성 (99개, 전체 Opus)
+### 에이전트 구성 (99개: Opus 97개, Sonnet 2개)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
@@ -387,17 +389,23 @@ Design Compiler 합성 → JSON 리포트 → RTL patch → equivalence+smoke �
 
 ### EDA Wrapper 스크립트
 
-모든 EDA 작업은 재현 가능한 wrapper 스크립트를 사용하며, 매 실행마다 타임스탬프 + `_latest.sh` replay 스크립트를 자동 생성합니다.
+프로젝트 EDA wrapper는 실행 기록과 `_latest.sh` replay 스크립트를 생성합니다.
+회귀 테스트 runner는 플러그인에 번들된 별도 helper로 JSON/Markdown 보고서를
+생성하며 replay 스크립트는 생성하지 않습니다.
 
 | 스크립트 | 위치 | 지원 도구 |
 |---------|------|----------|
 | `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
 | `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
-| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
+| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler), genus |
 | `run_cdc.sh` | `lint/scripts/` | structural (heuristic), svlens, spyglass, vc_cdc, questa_cdc |
-| `run_regression.sh` | `sim/regression/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in) |
+| `run_regression.sh` | `{plugin_root}/skills/rtl-p5s-func-verify/scripts/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in); 기본 결과 경로는 `sim/regression/` |
 
-스크립트는 `rat-init-project` hook bootstrap으로 자동 설치됩니다. 각 실행은 `{outdir}/replay/` 아래에 replay 스크립트를 생성하며, `bash replay/run_*_latest.sh`로 동일 EDA 명령을 재실행할 수 있습니다.
+`rat-init-project`는 위 프로젝트 wrapper와 formal/equivalence 및 UVM 회귀 테스트
+helper를 설치합니다. 시뮬레이션, lint, CDC, equivalence 실행은
+`{outdir}/replay/`에 replay 스크립트를 쓰고, 합성은 `{syn_root}/scr/replay/`에
+씁니다. 회귀 테스트 helper는 replay 대신 보고서를 생성합니다. `run_regression.sh`는
+프로젝트에 복사되지 않고 `{plugin_root}`에서 기능 검증 스킬이 호출합니다.
 
 Regression runner는 기본 `--mode local`에 `max(1, nproc-2)` 병렬로 동작합니다. AWS Batch는 명시적 opt-in이 필요합니다 (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
@@ -406,16 +414,23 @@ Regression runner는 기본 `--mode local`에 `max(1, nproc-2)` 병렬로 동작
 EDA 도구 설치가 번거롭다면, 모든 도구가 포함된 Docker 이미지를 빌드할 수 있습니다:
 
 ```bash
+# 독립 rtl-agent-team clone root에서 아래 빌드 명령을 실행합니다.
+cd /path/to/rtl-agent-team
+
 # 이미지 빌드 (최초 1회)
 docker build -t rtl-eda-tools docker/
 
-# 프로젝트 마운트하여 실행
-docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+# RTL 프로젝트를 마운트하여 실행
+docker run -it --rm \
+  --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --mount "type=bind,src=/absolute/path/to/rtl-project,dst=/workspace" \
+  --workdir /workspace rtl-eda-tools
 
 # 버전 지정 빌드
 docker build -t rtl-eda-tools \
   --build-arg VERILATOR_VERSION=5.024 \
-  --build-arg SLANG_VERSION=v6.0 \
+  --build-arg SLANG_VERSION=v11.0 \
+  --build-arg SVLENS_VERSION=v0.3.6 \
   --build-arg SYSTEMC_VERSION=3.0.2 \
   docker/
 ```
@@ -427,6 +442,8 @@ Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `
 ## Marketplace 구조
 
 이 repository는 단일 플러그인이 아닌 **marketplace**로 동작합니다.
+`systemverilog-lsp` 항목은 외부 GitHub repository에서 가져오며 이 트리에
+vendoring되지 않습니다.
 
 ```
 rtl-agent-team/                          # Marketplace root
@@ -435,8 +452,6 @@ rtl-agent-team/                          # Marketplace root
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
 ├── agents/                              # rtl-agent-team 에이전트 (99개)
 ├── skills/                              # rtl-agent-team 스킬 (97개, 27개 레퍼런스 문서 포함)
-├── plugins/
-│   └── systemverilog-lsp/               # SV LSP 플러그인 (독립)
 └── domain-packages/                     # 도메인 지식 패키지
     ├── video-codec/                     # H.264/H.265 코덱 지식
     └── video-processing/                # 색공간, 노이즈 제거, HDR/ISP
@@ -448,11 +463,13 @@ Marketplace에 새 플러그인을 추가하려면 `.claude-plugin/marketplace.j
 
 ## 개발
 
-이 플러그인은 순수 선언형(`.md` + `.json` 파일만)으로 빌드 과정이 필요 없습니다.
+이 플러그인은 선언형 `.md`/`.json` 정의와 helper `.py`/`.sh` 스크립트로
+구성되며 별도 빌드 과정이 필요 없습니다.
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git
-ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
+cd rtl-agent-team
+claude --plugin-dir .
 ```
 
 ## 라이선스

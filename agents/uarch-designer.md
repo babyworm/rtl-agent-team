@@ -104,7 +104,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
   <Investigation_Protocol>
     1. Read architecture.md to get the block list, interface definitions, timing budget.
-    2. Read iron-requirements.json (or legacy requirements.json if unavailable) for functional behavior requirements per block.
+    2. Read `docs/phase-1-research/iron-requirements.json` for functional behavior requirements per block, or legacy `docs/phase-1-research/requirements.json` as a fallback if the canonical file is unavailable.
     3. Read timing_constraints.json for cycle budgets per pipeline stage.
     4. Read io_definition.json for port list of each block.
     5. For each block, decide: does it need sub-module decomposition?
@@ -168,7 +168,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
   </Acceptance_Criteria_Generation>
 
   <Tool_Usage>
-    - Use Read to read architecture.md, iron-requirements.json (or requirements.json), timing_constraints.json, io_definition.json.
+    - Use Read to read architecture.md, `docs/phase-1-research/iron-requirements.json` or legacy `docs/phase-1-research/requirements.json` as a fallback, timing_constraints.json, and io_definition.json.
     - Use Grep to search architecture.md for specific block names or interface definitions.
     - Use Glob to find existing docs/phase-3-uarch/*.md files to avoid duplication.
     - Do NOT use Write or Edit (read-only advisor).

@@ -18,7 +18,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 99-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.0 |
+| **rtl-agent-team** | 99-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.1 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.4 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -68,7 +68,7 @@ Installs the plugin, audits the EDA toolchain interactively, and optionally depl
 
 ### Stage B — Project Initialization (one-time, per project)
 
-Scaffolds project directory structure, deploys per-project rules and guides, auto-installs EDA wrapper scripts. Run from inside the project directory — non-destructive, so existing projects are safe (files are only created if missing).
+Scaffolds project directory structure, deploys per-project rules and guides, and auto-installs EDA wrapper scripts. Run from inside the project directory. Existing templates and rules are left intact; managed exceptions are the RAT block in project `CLAUDE.md`, refreshed tool detection in `rat_config.json`, and regenerated `config.mk`. Usable tool path overrides are preserved, while stale or unusable paths are refreshed.
 
 ```bash
 # B1. cd into your project directory
@@ -79,7 +79,7 @@ cd ~/work/my-rtl-project
 #     - Deploys .claude/rules/ (coding conventions, verification gate)
 #     - Deploys subdirectory CLAUDE.md (phase-specific guides)
 #     - Auto-installs run_sim.sh, run_lint.sh, run_syn.sh, run_cdc.sh
-#     - Non-destructive: never overwrites existing files
+#     - Existing templates/rules are not overwritten; managed config is refreshed
 /rtl-agent-team:rat-init-project
 ```
 
@@ -128,13 +128,15 @@ claude plugin marketplace add babyworm/rtl-agent-team
 claude plugin install rtl-agent-team
 ```
 
-### Local symlink for development
+### Local plugin development
 
-When developing with direct access to the plugin source:
+When developing with direct access to the plugin source, launch Claude Code from
+the standalone clone root with the supported `--plugin-dir` option:
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git
-ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
+cd rtl-agent-team
+claude --plugin-dir .
 ```
 
 ## Usage (Stage C — in-project design work)
@@ -281,12 +283,12 @@ When modifying routing/delegation docs:
 
 ```bash
 sh scripts/sync_orchestrator_inject.sh
-python -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
+python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
 ```
 
 ## Agent Team
 
-### Agent Composition (99 agents, all Opus)
+### Agent Composition (99 agents: 97 Opus, 2 Sonnet)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
@@ -388,17 +390,23 @@ For detailed commercial tool setup (env_source, technology library, vendor examp
 
 ### EDA Wrapper Scripts
 
-All EDA operations use replayable wrapper scripts that generate timestamped + `_latest.sh` replay scripts for reproducibility.
+Project EDA wrappers record timestamped runs and generate `_latest.sh` replay scripts
+for reproducibility. The regression runner is a plugin-bundled helper with its own
+JSON/Markdown reports; it does not generate replay scripts.
 
 | Script | Location | Supports |
 |--------|----------|----------|
 | `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
 | `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
-| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler) |
+| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler), genus |
 | `run_cdc.sh` | `lint/scripts/` | structural (heuristic), svlens, spyglass, vc_cdc, questa_cdc |
-| `run_regression.sh` | `sim/regression/` | Multi-seed cocotb regression (local-first, AWS opt-in) |
+| `run_regression.sh` | `{plugin_root}/skills/rtl-p5s-func-verify/scripts/` | Multi-seed cocotb regression (local-first, AWS opt-in); writes results to `sim/regression/` by default |
 
-Scripts are auto-installed by the `rat-init-project` hook bootstrap. Each run produces replay scripts under `{outdir}/replay/` — re-run the exact EDA command with `bash replay/run_*_latest.sh`.
+`rat-init-project` installs the project wrappers listed above plus formal/equivalence
+and UVM regression helpers. Simulation, lint, CDC, and equivalence runs write replay
+scripts under `{outdir}/replay/`; synthesis writes them under `{syn_root}/scr/replay/`.
+Regression helpers generate reports rather than replay scripts. `run_regression.sh`
+remains under `{plugin_root}` and is invoked by the functional-verification skill.
 
 Regression runner defaults to `--mode local` with `max(1, nproc-2)` parallel jobs. AWS Batch requires explicit opt-in (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
 
@@ -407,16 +415,23 @@ Regression runner defaults to `--mode local` with `max(1, nproc-2)` parallel job
 If installing EDA tools individually is cumbersome, you can build a Docker image containing all tools:
 
 ```bash
+# Run these build commands from a standalone rtl-agent-team clone root.
+cd /path/to/rtl-agent-team
+
 # Build image (one-time)
 docker build -t rtl-eda-tools docker/
 
-# Run with project mounted
-docker run -it --rm -v $(pwd):/workspace -w /workspace rtl-eda-tools
+# Run with an RTL project mounted
+docker run -it --rm \
+  --user "$(id -u):$(id -g)" --env HOME=/tmp \
+  --mount "type=bind,src=/absolute/path/to/rtl-project,dst=/workspace" \
+  --workdir /workspace rtl-eda-tools
 
 # Build with specific versions
 docker build -t rtl-eda-tools \
   --build-arg VERILATOR_VERSION=5.024 \
-  --build-arg SLANG_VERSION=v6.0 \
+  --build-arg SLANG_VERSION=v11.0 \
+  --build-arg SVLENS_VERSION=v0.3.6 \
   --build-arg SYSTEMC_VERSION=3.0.2 \
   docker/
 ```
@@ -427,7 +442,9 @@ You can also build from Claude Code: "Build the EDA Docker image" or run `/rtl-a
 
 ## Marketplace Structure
 
-This repository operates as a **marketplace**, not a single plugin.
+This repository operates as a **marketplace**, not a single plugin. The
+`systemverilog-lsp` entry is sourced from its external GitHub repository and is not
+vendored in this tree.
 
 ```
 rtl-agent-team/                          # Marketplace root
@@ -436,8 +453,6 @@ rtl-agent-team/                          # Marketplace root
 │   └── marketplace.json                 # Marketplace definition (plugin list)
 ├── agents/                              # rtl-agent-team agents (99)
 ├── skills/                              # rtl-agent-team skills (97, with 27 reference docs)
-├── plugins/
-│   └── systemverilog-lsp/               # SV LSP plugin (standalone)
 └── domain-packages/                     # Domain knowledge packages
     ├── video-codec/                     # H.264/H.265 codec knowledge
     └── video-processing/                # Color, denoise, HDR/ISP
@@ -453,7 +468,8 @@ This plugin is declarative-first (`.md` + `.json` skill definitions with helper 
 
 ```bash
 git clone https://github.com/babyworm/rtl-agent-team.git
-ln -s "$(pwd)/rtl-agent-team" ~/.claude/plugins/local/rtl-agent-team
+cd rtl-agent-team
+claude --plugin-dir .
 ```
 
 ## License

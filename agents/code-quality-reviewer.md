@@ -105,7 +105,7 @@ FAIL:        Any FAIL-level violation exists
 
 <Investigation_Protocol>
   1. **Read context:**
-     - `requirements.json` (understand what the design does)
+     - `docs/phase-1-research/iron-requirements.json` (understand what the design does)
      - Phase 4 review: `reviews/phase-4-rtl/design-review.md` (prior findings)
      - Phase 5 reviews if available
 

@@ -7,14 +7,29 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-07-18
+
+### Fixed
+- Closed the review follow-ups across project initialization, setup guidance, and
+  Docker fallback safety: managed configuration is preserved atomically, template
+  installs reject unsafe destinations, and the persistent tool container remains
+  bound to its canonical project root and ownership label.
+- Hardened spec-cascade resolution so linked validation reports cannot clear stale
+  markers, and retained cleanup state when Docker stop or removal fails.
+- Restored modern Yosys statistics parsing while retaining legacy output support.
+
+### Docs
+- Reconciled public installation, model inventory, wrapper, lifecycle, and test-count
+  guidance with the shipped behavior; the suite now documents 1,592 unit and 47
+  integration tests.
+
 ## [0.14.0] - 2026-07-17
 
 Residual-work closure sweep: every deferred item from the v0.7.9 and
 workflow-ultracode sessions resolved — registry-generated artifact map, EDA runner
 eval hardening, full Workflow-drivability (all 5 proposed items applied), asset-bundle
 deep fills for 7 remaining stub scripts/examples, and spec-cascade marker lifecycle.
-Hardened through 11 Codex cross-review rounds (15 P2 findings fixed, 2× consecutive
-LGTM close-out).
+Follow-up cross-review findings are reflected in the fixes listed below.
 
 ### Added
 - **Registry-generated artifact map (P3-10 completion)** — `hooks/lib/artifact-map.sh`
@@ -32,10 +47,11 @@ LGTM close-out).
   (+10 tests across test_hooks / plugin_runtime_contract / agent_skill_structure /
   test_audit).
 - **Agent-side project-root ladder** (workflow-ultracode item 1) — all 99 agents'
-  Path-convention header and the 33 orchestrator Step-0 blocks (via
+  Path-convention headers and the 30 canonical orchestrator Step-0 blocks (via
   `agents/lib/step0-template.md` + `scripts/sync_step0.sh`) resolve project-relative
   paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` >
-  `$RAT_PROJECT_ROOT` > CWD.
+  `$RAT_PROJECT_ROOT` > CWD. P5A, P5B, and PPA retain custom preconditions while
+  sharing the same header-level path contract.
 - **`RAT_PROJECT_ROOT` in EDA runners** (workflow-ultracode item 3) —
   `scripts/run_sim.sh` and the deployed `run_lint`/`run_syn`/`run_cdc`/`run_conformal`/
   `run_formality`/`run_regression_uvm` templates resolve their project root as
@@ -68,7 +84,7 @@ LGTM close-out).
   `test_runner_template_security.py`, including marker-file proof of non-execution for
   injection attempts.
 
-### Fixed (Codex cross-review rounds 1-9)
+### Fixed (cross-review follow-ups)
 - `hooks/rtl-edit-tracker.sh` honors `RAT_PROJECT_ROOT` for CWD-relative scans
   (cascade downstream detection, validator report resolution).
 - `run_cdc.sh`: svlens argv values validated before CMD/replay serialization;
