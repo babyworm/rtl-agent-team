@@ -52,3 +52,7 @@ __pycache__/
 
 # Codex CLI scratch (see ask-codex prompt/review templates)
 .codex-*.txt
+
+# Skill example assets must not be swallowed by project-artifact ignores (bare refc/ above)
+!skills/*/examples/**/refc/
+!skills/*/examples/**/refc/**
