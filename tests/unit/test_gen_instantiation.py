@@ -314,3 +314,26 @@ class TestResetPolarityDetection:
         text = out.read_text()
         assert "(1 << ADDR_WIDTH)" in text, "default must use the renamed parameter"
         assert "(1 << AddrWidth)" not in text, "stale vendor name in default"
+
+    def test_grouped_ports_inherit_and_explicit_type_resets(self, tmp_path):
+        """Codex round-8: grouped vendor ports inherit the packed range;
+        an explicit type without range is a scalar."""
+        src = tmp_path / "ip.v"
+        src.write_text(
+            "module ip (\n"
+            "  input  wire Clk,\n"
+            "  input  wire [7:0] DataIn, DataIn2,\n"
+            "  input  wire Enable,\n"
+            "  output wire [7:0] Q\n"
+            ");\nendmodule\n"
+        )
+        out = tmp_path / "w.sv"
+        result = run_script(src, "-o", out)
+        assert result.returncode == 0, result.stderr
+        text = out.read_text()
+        assert "[7:0] i_data_in2" in text.replace("  ", " ") or \
+            "[7:0]" in [ln for ln in text.splitlines() if "i_data_in2" in ln][0], \
+            "DataIn2 must inherit [7:0] from the grouped declaration"
+        en_line = [ln for ln in text.splitlines()
+                   if "i_enable" in ln and "wire" not in ln][0]
+        assert "[7:0]" not in en_line, "Enable is a new scalar declaration"

@@ -480,3 +480,32 @@ class TestGroupedAnsiPorts:
         assert v, doc["violations"]
         assert "16" in v[0]["detail"], (
             "mismatch must be reported against the inherited 16-bit width")
+
+    def test_explicit_scalar_type_resets_group_range(self, tmp_path):
+        """Codex round-8: 'input logic [15:0] a, logic b' — b is an explicit
+        scalar and must NOT inherit [15:0]."""
+        top = """
+module top_scalar (
+  input  logic        clk,
+  input  logic        rst_n,
+  input  logic [15:0] i_a, logic i_en,
+  output logic [15:0] o_y
+);
+  leaf #(.W(16)) u_leaf (
+    .clk   (clk),
+    .rst_n (rst_n),
+    .i_d   (i_a),
+    .o_q   (o_y)
+  );
+endmodule
+"""
+        result, doc = run_on(tmp_path, top, [SUB_LEAF])
+        assert result.returncode == 0, result.stderr
+        assert doc["violations"] == []
+        # i_en must be scalar: connect it to a 16-bit port and expect mismatch
+        top_bad = top.replace(".i_d   (i_a),", ".i_d   (i_en),")
+        result, doc = run_on(tmp_path, top_bad, [SUB_LEAF])
+        assert result.returncode == 1
+        v = [x for x in doc["violations"] if x["check"] == "width_mismatch"]
+        assert v, doc["violations"]
+        assert "1" in v[0]["detail"], "i_en must be width 1 (explicit scalar type)"

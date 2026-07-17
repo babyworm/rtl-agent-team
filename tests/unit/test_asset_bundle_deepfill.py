@@ -303,3 +303,43 @@ def test_no_deep_fill_placeholders_remain_in_filled_skills():
         row = [ln for ln in skill_md.splitlines() if f"`{asset}`" in ln]
         assert row and "deep-fill" not in row[0], (
             f"{skill_name}/SKILL.md still marks {asset} as deep-fill pending")
+
+
+class TestGroupedPortsIpxact:
+    """Codex round-8 regression: grouped ANSI ports ('input logic [7:0] i_a,
+    i_b') must keep vector metadata for every declarator; an explicit type
+    without a range ('logic i_en') stays scalar."""
+
+    def test_grouped_and_explicit_scalar(self, tmp_path):
+        import subprocess
+        import sys
+        import xml.etree.ElementTree as ET
+        from pathlib import Path
+
+        script = (Path(__file__).resolve().parents[2]
+                  / "skills" / "rtl-ipxact-gen" / "scripts" / "gen_ipxact.py")
+        sv = tmp_path / "grp.sv"
+        sv.write_text(
+            "module grp (\n"
+            "  input  logic clk,\n"
+            "  input  logic [7:0] i_a, i_b,\n"
+            "  input  logic i_en,\n"
+            "  output logic [7:0] o_q\n"
+            ");\nendmodule\n")
+        out = tmp_path / "grp.xml"
+        r = subprocess.run(
+            [sys.executable, str(script), str(sv), "-o", str(out)],
+            capture_output=True, text=True, timeout=30)
+        assert r.returncode == 0, r.stderr
+        ns = {"x": "http://www.accellera.org/XMLSchema/IPXACT/1685-2014"}
+        root = ET.parse(out).getroot()
+        left_of = {}
+        for p in root.findall(".//x:port", ns):
+            nm = p.find("x:name", ns).text
+            left = p.find(".//x:left", ns)
+            left_of[nm] = left.text if left is not None else None
+        assert left_of.get("i_a") == "7", left_of
+        assert left_of.get("i_b") == "7", (
+            f"i_b must inherit [7:0] from the grouped declaration: {left_of}")
+        assert left_of.get("i_en") is None, (
+            "explicit scalar type must not inherit the group range")
