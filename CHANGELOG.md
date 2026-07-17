@@ -7,6 +7,85 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+Residual-work closure sweep (2026-07-17): every deferred item from the v0.7.9 and
+workflow-ultracode sessions resolved — registry-generated artifact map, EDA runner
+eval hardening, full Workflow-drivability (all 5 proposed items applied), asset-bundle
+deep fills for 7 remaining stub scripts/examples, and spec-cascade marker lifecycle.
+
+### Added
+- **Registry-generated artifact map (P3-10 completion)** — `hooks/lib/artifact-map.sh`
+  case bodies are now generated from the `phases` section of `phase-registry.json` by
+  `scripts/generate-phase-maps.sh` (`GENERATED ARTMAP_REQUIRED`/`ARTMAP_OPTIONAL`
+  markers; `--check` enforces parity via `TestPhaseRegistrySync`). Reconciled the live
+  drift both ways: Phase 2 feature-census entries (`feature-coverage.md` required,
+  `spec-feature-inventory.json` optional) added to the registry; ppa-opt (integer
+  phase 8) optional entries now emitted by the artifact map. +3 unit tests.
+- **`project_root` in the spawn-context manifest** (workflow-ultracode item 2) —
+  `hooks/lib/spawn-context-util.sh` emits `"project_root"` (mirrors `plugin_root`;
+  `RAT_PROJECT_ROOT` behind a `[ -d ]` guard), and `hooks/rtl-spawn-context.sh` /
+  `hooks/rtl-phase-state-bootstrap.sh` honor the override for direct `$CWD` scans
+  (setup markers, artifact existence, quality gates, P5B staleness). 4-way test update
+  (+10 tests across test_hooks / plugin_runtime_contract / agent_skill_structure /
+  test_audit).
+- **Agent-side project-root ladder** (workflow-ultracode item 1) — all 99 agents'
+  Path-convention header and the 33 orchestrator Step-0 blocks (via
+  `agents/lib/step0-template.md` + `scripts/sync_step0.sh`) resolve project-relative
+  paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` >
+  `$RAT_PROJECT_ROOT` > CWD.
+- **`RAT_PROJECT_ROOT` in EDA runners** (workflow-ultracode item 3) —
+  `scripts/run_sim.sh` and the deployed `run_lint`/`run_syn`/`run_cdc`/`run_conformal`/
+  `run_formality`/`run_regression_uvm` templates resolve their project root as
+  `${RAT_PROJECT_ROOT:-$(pwd)}` (unset ⇒ identical behavior).
+- **Asset-bundle deep fills** — 7 stub scripts are now real implementations with
+  committed worked examples + regeneration-sync tests: `gen_ipxact.py` (IEEE 1685-2014
+  component XML from SV headers), `parse_perf_report.py`, `parse_coverage.py`
+  (lcov .info + Verilator coverage.dat), `check_connectivity.py` (Tier-4 static
+  port/width/dangling checks, cross-validated against Verilator), `gen_instantiation.py`
+  (vendor-IP wrapper skeletons), `run_ref_model.py`, `run_bfm.py` (build/run wrappers
+  with JSON run reports). 10 `examples/` dirs deep-filled (ipxact, perf-verify,
+  bug-repro, model-consistency, ip-instantiate, coverage-analyze, integration-test,
+  ref-model, bfm-develop, conformance-test exclusion README). +120 unit tests in 6 new
+  test files.
+- **Spec-cascade marker lifecycle** (hook-enforcement Spec 2 residuals) —
+  `[SPEC CASCADE]` warning now fires only on marker creation (silent mtime refresh on
+  repeat edits); `hooks/rtl-edit-tracker.sh` auto-clears `spec-cascade-stale-p*` when
+  the cross-phase-contract-validator report is written with a PASS verdict (FAIL-wins
+  veto); validator SKILL.md documents the clearing contract. +8 unit tests.
+
+### Security
+- **EDA runner eval hardening** — completes the deferred runner-template security
+  review (only `run_syn.sh` had been hardened in v0.11.3). All internally-built
+  commands in `run_lint.sh`/`run_cdc.sh`/`run_conformal.sh`/`run_formality.sh`/
+  `merge_coverage.sh` converted from `eval` to argv arrays; every variable reaching a
+  remaining command string, replay script, or generated Tcl/dofile is validated by a
+  self-contained `validate_shell_safe()` whitelist (run_syn precedent); `run_sim.sh`
+  validates TOP/SEED/OUTDIR/DPI_LIB/FILELIST/DEFINES/PARAMS and filelist entries before
+  building its (single, documented) eval'd command. +24 tests in
+  `test_runner_template_security.py`, including marker-file proof of non-execution for
+  injection attempts.
+
+### Fixed
+- `hooks/rtl-orchestrator-inject.sh` `RAT_PROJECT_ROOT` guard tightened `[ -n ]` →
+  `[ -d ]` (consistency with `rat-dir-util.sh`; bogus env now falls back cleanly).
+- `skills/rtl-p5s-func-verify/scripts/run_regression.sh` seed runs invoke the explicit
+  `sim` target (was default-goal dependent), matching the v0.13.0 spec claim; test
+  fixtures aligned with real cocotb Makefiles.
+- Doc drift: `rtl-model-consistency` SKILL/conventions aligned with the actual
+  `compare_3way.py` CLI and output; `ipxact-conventions.md` section order corrected to
+  the IEEE 1685-2014 XSD sequence.
+- 13 instructional `make -C sim/{module}` invocations switched to the explicit `sim`
+  target across 8 agent/policy/guide surfaces (workflow-ultracode item 5).
+
+### Docs
+- New `plugin_docs/specs/workflow-driver-gate-model.md` (workflow-ultracode item 4) —
+  Rule-5 gate supersession semantics for external Workflow drivers.
+- Decisions recorded: PPA-optimizer scaffold stays self-scaffolding (rat-init-project
+  deployment rejected as moot); P2-3 convergence stability checking is an intentional
+  conditional deferral; `skill-completion-criteria.json` stays hand-maintained under
+  the bidirectional parity test (generation rejected as redundant);
+  `hook-enforcement-remaining.md` status header updated to Implemented;
+  `p3-10-phase-registry.md` marked COMPLETE.
+
 ## [0.13.0] - 2026-07-16
 
 Workflow/ultracode drivability plus a cocotb Makefile default-goal fix, surfaced by an

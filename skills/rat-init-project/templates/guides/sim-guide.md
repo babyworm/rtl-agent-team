@@ -44,7 +44,7 @@ scripts/run_sim.sh --sim verilator --top tb_module --outdir sim/{module} --trace
 scripts/run_sim.sh --help  # Full options
 
 # cocotb
-make -C sim/{module} SIM=verilator TOPLEVEL={module}_top MODULE=test_{module}
+make -C sim/{module} sim SIM=verilator TOPLEVEL={module}_top MODULE=test_{module}
 # Fallback: SIM=icarus
 
 # Waveform viewer

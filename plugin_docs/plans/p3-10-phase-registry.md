@@ -1,5 +1,16 @@
 # P3-10: Single Source Phase Metadata Registry
 
+> **Status (2026-07-17): COMPLETE.** All three case-statement maps AND
+> `hooks/lib/artifact-map.sh` are generated from `phase-registry.json` by
+> `scripts/generate-phase-maps.sh` (markers: `GENERATED PHASE_MAP`,
+> `GENERATED ARTMAP_REQUIRED`, `GENERATED ARTMAP_OPTIONAL`); drift is
+> enforced by `TestPhaseRegistrySync` (runs `--check`).
+> `skill-completion-criteria.json` is intentionally NOT generated: the
+> bidirectional parity test `test_completion_criteria_synced`
+> (tests/unit/test_agent_skill_structure.py) enforces SCC ↔ registry
+> equality both directions, which provides equivalent drift protection
+> without generation machinery.
+
 ## Problem
 
 Three independent shell case statements encode the same skill→phase relationship:

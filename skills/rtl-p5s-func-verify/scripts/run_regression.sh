@@ -245,7 +245,7 @@ run_seed() {
 
   echo "[seed=$seed] Starting..."
 
-  if make -C "$TB_DIR" SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" \
+  if make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" \
        > "$log_file" 2>&1; then
     echo "[seed=$seed] PASS"
     cat > "$result_file" <<EOF

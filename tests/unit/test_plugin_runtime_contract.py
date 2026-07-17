@@ -133,6 +133,39 @@ class TestHookRuntimeContract:
                     assert 1 <= timeout <= 10
 
 
+class TestSpawnContextProjectRootContract:
+    """v0.13.x Workflow-drivability contract: the spawn-context manifest ships
+    project_root (RAT_PROJECT_ROOT override, CWD fallback) and the two
+    manifest-writing hooks honor the override for paths not routed through
+    rat_project_dir()."""
+
+    SPAWN_CTX_UTIL = REPO_ROOT / "hooks" / "lib" / "spawn-context-util.sh"
+    OVERRIDE_LINE = '[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"'
+
+    def test_manifest_emits_project_root_field(self):
+        content = self.SPAWN_CTX_UTIL.read_text()
+        assert '"project_root":"$SCTX_PROJECT_ROOT_ESC"' in content, (
+            "spawn-context manifest must emit a project_root field"
+        )
+        # Resolution: -d guarded env override, session-CWD fallback (mirrors
+        # rat-dir-util.sh semantics).
+        assert 'SCTX_PROJECT_ROOT="$SCTX_CWD"' in content
+        assert (
+            '[ -d "${RAT_PROJECT_ROOT:-}" ] && SCTX_PROJECT_ROOT="$RAT_PROJECT_ROOT"'
+            in content
+        )
+
+    @pytest.mark.parametrize(
+        "hook_name", ["rtl-spawn-context.sh", "rtl-phase-state-bootstrap.sh"]
+    )
+    def test_manifest_hooks_honor_project_root_override(self, hook_name):
+        content = (REPO_ROOT / "hooks" / hook_name).read_text()
+        assert self.OVERRIDE_LINE in content, (
+            f"{hook_name} must apply the -d guarded RAT_PROJECT_ROOT CWD "
+            "override right after CWD resolution"
+        )
+
+
 class TestPluginManifestRuntimeContract:
     """Validate plugin manifest and marketplace consistency."""
 

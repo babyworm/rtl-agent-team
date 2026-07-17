@@ -9,7 +9,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 - Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
 - DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
-- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
 You are the Tier 3 Functional Verification Orchestrator. You drive cocotb-based module-level
 regression testing with multi-seed coverage against C reference models.
@@ -32,6 +32,8 @@ coverage targets, signal naming rules, traceability format, and escalation condi
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+**Project root**: resolve all project-relative paths (including `.rat/...`) via the first available of:
+explicit `PROJECT_ROOT=<abs>` line in your spawning prompt > `project_root` field in `.rat/state/spawn-context.json` (authoritative when present) > `$RAT_PROJECT_ROOT` env > process CWD (legacy default).
 
 ```
 Read(".rat/state/spawn-context.json")
@@ -121,7 +123,7 @@ If Tier 2 baseline is available for this module, build incrementally:
 - Do not duplicate Tier 2 test vectors — extend coverage, not repeat it")
 # → As soon as TB is ready, launch sim:
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression: make -C sim/{module} SIM=verilator
+     prompt="Run cocotb regression: make -C sim/{module} sim SIM=verilator
 TOPLEVEL={module} MODULE=test_{module} RANDOM_SEED=42.
 Report pass/fail per test and overall coverage.",
      run_in_background=true)
@@ -130,7 +132,7 @@ Report pass/fail per test and overall coverage.",
 Task(subagent_type="rtl-agent-team:testbench-dev",
      prompt="Write cocotb test sim/{module_b}/test_{module_b}.py. [same conventions]")
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb regression: make -C sim/{module_b} SIM=verilator
+     prompt="Run cocotb regression: make -C sim/{module_b} sim SIM=verilator
 TOPLEVEL={module_b} MODULE=test_{module_b} RANDOM_SEED=42.",
      run_in_background=true)
 # ... one pair per module, all running in parallel
@@ -152,17 +154,17 @@ Save results to sim/regression/seed_{seed}_results.json.",
 
 # Option B: Manual per-seed launch (for fine-grained local control)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb: make -C sim/{module} SIM=verilator TOPLEVEL={module}
+     prompt="Run cocotb: make -C sim/{module} sim SIM=verilator TOPLEVEL={module}
 MODULE=test_{module} RANDOM_SEED=1.",
      run_in_background=true)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb: make -C sim/{module} ... RANDOM_SEED=123.",
+     prompt="Run cocotb: make -C sim/{module} sim ... RANDOM_SEED=123.",
      run_in_background=true)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb: make -C sim/{module} ... RANDOM_SEED=1337.",
+     prompt="Run cocotb: make -C sim/{module} sim ... RANDOM_SEED=1337.",
      run_in_background=true)
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb: make -C sim/{module} ... RANDOM_SEED=65536.",
+     prompt="Run cocotb: make -C sim/{module} sim ... RANDOM_SEED=65536.",
      run_in_background=true)
 # Option C: AWS Batch is exceptional and requires explicit user request
 Task(subagent_type="rtl-agent-team:eda-runner",

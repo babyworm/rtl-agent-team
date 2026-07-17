@@ -48,7 +48,11 @@ the optimization space.
 - Yosys estimation fallback (no commercial tool → hard fail)
 - Multi-corner/multi-mode optimization (single PVT corner per run)
 - Place-and-route awareness (synthesis PPA only)
-- Scaffold deployment via `rat-init-project` (deferred; evaluate in v0.11)
+- Scaffold deployment via `rat-init-project` — **DECIDED 2026-07-17**: self-scaffold
+  retained, `rat-init-project` deployment **rejected** (redundant; the skill scaffolds on
+  first invocation — `skills/rtl-ppa-optimize-dc/SKILL.md` writes back the
+  `requirements.json["ppa_targets"]` scaffold and halts when targets are missing).
+  ~~was: deferred; evaluate in v0.11~~
 
 ## 3. Pipeline Integration
 

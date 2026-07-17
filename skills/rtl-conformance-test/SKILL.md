@@ -40,7 +40,7 @@ If missing: WARNING — halt and instruct user to resolve the missing prerequisi
 | `scripts/conformance_compare.py` | Bitexact binary comparison; emits per-vector PASS/FAIL with divergence byte offset, expected/actual hex. |
 | `templates/golden-metadata.json` | Stream metadata schema: standard, profile, level, JM/HM version, width, height, frame count. |
 | `references/conformance-test-conventions.md` | Naming rules, results.json schema, bitexact criteria, block-level decoder guidance, anti-patterns. |
-| `examples/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `examples/README.md` | Explains why binary conformance bitstreams are intentionally excluded from the repo and documents the vector acquisition flow. |
 </Assets>
 
 <Responsibility_Boundary>

@@ -323,10 +323,12 @@
         {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
         {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"},
         {"path": "docs/phase-1-research/domain-analysis.md", "role": "p1-domain-analysis"},
-        {"path": "docs/phase-1-research/timing_constraints.json", "role": "p1-timing-constraints"}
+        {"path": "docs/phase-1-research/timing_constraints.json", "role": "p1-timing-constraints"},
+        {"path": "docs/phase-1-research/feature-coverage.md", "role": "p1-feature-coverage"}
       ],
       "optional": [
-        {"path": "docs/phase-1-research/open-requirements.json", "role": "p1-open-requirements"}
+        {"path": "docs/phase-1-research/open-requirements.json", "role": "p1-open-requirements"},
+        {"path": "docs/phase-1-research/spec-feature-inventory.json", "role": "p1-spec-feature-inventory"}
       ]
     },
     "3": {

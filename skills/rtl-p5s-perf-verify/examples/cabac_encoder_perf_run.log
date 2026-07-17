@@ -1,0 +1,12 @@
+Verilator simulation: tb_cabac_encoder_perf
+[0] reset released
+[100000] stimulus complete: 3000 transactions issued from refc/vectors/perf/
+=== Performance Summary: cabac_encoder ===
+  Transactions:    3000
+  Latency (min):   10 cycles
+  Latency (max):   18 cycles
+  Latency (avg):   12.0 cycles
+  Throughput:      30.0% (3000/10000 cycles)
+  Backpressure:    2.1% (210 cycles)
+  Stall/bubble:    840 cycles
+- tb_cabac_encoder_perf.sv:142: Verilog $finish

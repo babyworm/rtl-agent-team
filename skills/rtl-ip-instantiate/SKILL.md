@@ -37,25 +37,26 @@ If missing: WARNING — halt and ask user for IP descriptor location before gene
 | Path | Role |
 |------|------|
 | `templates/ip-wrapper-template.sv` | SV wrapper scaffold with `u_` instance, `logic`-only ports, `// TIED:` and `// PARAM:` comment patterns. |
-| `scripts/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/gen_instantiation.py` | Deterministic wrapper skeleton generator: parses the vendor module header (ANSI ports/parameters, CamelCase/ALL-CAPS names allowed), emits a convention-compliant wrapper (`i_`/`o_`/`io_` prefixes, `clk`/`rst_n` naming, parameter pass-through with UPPER_SNAKE_CASE rename, `--tie PORT=VALUE[:reason]` tie-offs + documentation table). Stdlib-only. |
 | `references/ip-instantiate-conventions.md` | Port-prefix rules, vendor-to-project mapping table, tie-off/param comment format, anti-patterns. |
-| `examples/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked example: `vendor_sram_2p/` (vendor 2-port SRAM stub + raw generated skeleton, regeneration-synced) and `sram_2p_wrapper/` (hand-tuned deliverable with clock merge, functional names, polarity adaptation, documented tie-offs). |
 </Assets>
 
 <Responsibility_Boundary>
-- **Scripts** handle lint validation (Verible + slang) via Bash CLI.
-- **LLM** handles port mapping design, tie-off decisions, and parameter documentation.
+- **Scripts** (`gen_instantiation.py`) handle deterministic skeleton generation — vendor-name translation, parameter pass-through, tie-off scaffolding; lint validation (Verible + slang) runs via Bash CLI.
+- **LLM** handles port mapping design, tie-off decisions, clock-domain merging, polarity adaptation, and parameter documentation.
 - Contract surface: every IP port either connects to a wrapper port or carries a `// TIED: reason` comment; no silent unconnected ports.
 </Responsibility_Boundary>
 
 <Execution>
 1. Spawn `rtl-explorer` to read existing `rtl/ip_wrappers/` and summarise current naming conventions (port prefixes, clock/reset style, instance prefix).
 2. Spawn `rtl-architect` to read the IP descriptor — list all ports, tie-off requirements, and parameter settings; design wrapper interface mapping vendor names to project conventions (`i_`/`o_`/`io_` prefixes, `{domain}_clk`, `{domain}_rst_n`).
-3. Spawn `rtl-coder` to write `rtl/ip_wrappers/{ip_name}_wrapper.sv` using `templates/ip-wrapper-template.sv` as scaffold — `logic` types only, `u_{ip_name}` instance, all ports connected or `// TIED:`, parameters documented with `// PARAM:`.
-4. Run lint: `verible-verilog-lint rtl/ip_wrappers/{ip_name}_wrapper.sv && slang rtl/ip_wrappers/{ip_name}_wrapper.sv` — fix all errors before delivering.
-5. Report wrapper path to the user.
+3. If the vendor Verilog/SV header file is available, generate the deterministic skeleton first: `python3 {plugin_root}/skills/rtl-ip-instantiate/scripts/gen_instantiation.py <vendor_header.v> -o rtl/ip_wrappers/{ip_name}_wrapper.sv --tie "PORT=VALUE:reason" ...` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`; one `--tie` per port the architect marked unused). If only a datasheet/IP-XACT exists, start from `templates/ip-wrapper-template.sv` instead.
+4. Spawn `rtl-coder` to hand-tune `rtl/ip_wrappers/{ip_name}_wrapper.sv` per architect spec — merge/rename clock domains, give mapped ports functional names, adapt polarities, resolve all TODO markers. `logic` types only, `u_{ip_name}` instance, all ports connected or `// TIED:`, parameters documented with `// PARAM:`.
+5. Run lint: `verible-verilog-lint rtl/ip_wrappers/{ip_name}_wrapper.sv && slang rtl/ip_wrappers/{ip_name}_wrapper.sv` — fix all errors before delivering.
+6. Report wrapper path to the user.
 
-Apply steps 1-5 to every requested IP — do not stop after the first.
+Apply steps 1-6 to every requested IP — do not stop after the first.
 </Execution>
 
 <Tool_Usage>

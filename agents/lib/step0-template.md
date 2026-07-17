@@ -1,5 +1,7 @@
 ## Step 0: Context Bootstrap (MANDATORY)
 
+**Project root**: resolve all project-relative paths (including `.rat/...`) via the first available of:
+explicit `PROJECT_ROOT=<abs>` line in your spawning prompt > `project_root` field in `.rat/state/spawn-context.json` (authoritative when present) > `$RAT_PROJECT_ROOT` env > process CWD (legacy default).
 
 ```
 Read(".rat/state/spawn-context.json")

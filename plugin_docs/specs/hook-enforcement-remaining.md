@@ -1,8 +1,8 @@
 # Hook Enforcement Remaining Specs
 
 - Date: 2026-04-03
-- Status: Design spec (not yet implemented)
-- Context: Plugin completeness review — 2 of 4 hook gaps addressed, 2 remaining
+- Status: Implemented (Spec 1: `hooks/rtl-coverage-exclusion-gate.sh`; Spec 2: `hooks/rtl-edit-tracker.sh` cascade + marker lifecycle completed 2026-07-17)
+- Context: Plugin completeness review — 2 of 4 hook gaps addressed, 2 remaining (both since shipped)
 
 ---
 
@@ -80,11 +80,11 @@ IF reviews/phase-5-verify/*-coverage-exclusions.md exists:
 **Estimated complexity**: Low-medium. ~60 lines of POSIX sh. Main risk is markdown parsing robustness.
 
 ### Acceptance Criteria
-- [ ] Non-standard exclusion without approval → BLOCK with bin list
-- [ ] Non-standard exclusion with `.rat/state/coverage-exclusion-approved` → PASS
-- [ ] Auto-approved categories (UVM/TB, parameter guards, toggle) → always PASS
-- [ ] No exclusion files exist → PASS (no-op)
-- [ ] Team mode: per-session marker OR leader-only check
+- [x] Non-standard exclusion without approval → BLOCK with bin list
+- [x] Non-standard exclusion with `.rat/state/coverage-exclusion-approved` → PASS
+- [x] Auto-approved categories (UVM/TB, parameter guards, toggle) → always PASS (only Unimplemented/Ambiguous rows are counted)
+- [x] No exclusion files exist → PASS (no-op)
+- [x] Team mode: per-session marker OR leader-only check (leader-only via `teamu_should_skip_gate`)
 
 ---
 
@@ -193,15 +193,34 @@ than upstream change. If `docs/phase-3-uarch/rate_control.md` (mtime T1) is modi
 `rtl/rate_control/rate_control.sv` (mtime T0 < T1) exists, that's a real cascade.
 If RTL is created AFTER spec change (T0 > T1), no cascade needed.
 
+**Resolution of the mtime mitigation (2026-07-17)**: The mtime comparison above is
+intentionally NOT implemented. At marker-creation time every existing downstream artifact
+is by definition older than the current spec edit (the edit is "now"), so the T0 > T1
+branch can never be taken at the moment the cascade fires — the check would be dead code.
+The condition only becomes meaningful later, after downstream artifacts are rebuilt; but a
+rebuild alone does not prove spec consistency (the RTL may be rebuilt without addressing
+the spec change), so mtime-based auto-suppression would be unsound. The sound resolution
+is the marker lifecycle: the marker is cleared only when `cross-phase-contract-validator`
+produces a PASS verdict (SKILL.md completion step + hook-side auto-clear in
+`rtl-edit-tracker.sh` when `reviews/cross-phase-contract-validation.md` is written with
+`Verdict: PASS`; a FAIL verdict anywhere in the report keeps the markers). Re-warn noise
+is separately eliminated: while the marker exists, subsequent doc edits refresh its mtime
+silently instead of re-emitting the warning (transition-edge warning only), so there is
+no re-warn moment at which an mtime suppression check would apply.
+
 ### Acceptance Criteria
-- [ ] P3 uArch doc modified → WARNING if P4 RTL exists with older mtime
-- [ ] P2 arch doc modified → WARNING if P3 uArch + P4 RTL exist
-- [ ] P1 requirements modified → WARNING if P2 + P3 + P4 exist
-- [ ] iron-requirements.json modified → CRITICAL cascade warning
-- [ ] Suggest `cross-phase-contract-validator` in warning message
-- [ ] Stale marker cleared after contract validator PASS
-- [ ] No false positive during normal forward flow (P3 edit → P4 create)
-- [ ] Team mode: leader-only cascade tracking
+- [x] P3 uArch doc modified → WARNING if P4 RTL exists with older mtime (existence check; at edit time existing RTL is always older — see mtime resolution note above)
+- [x] P2 arch doc modified → WARNING if P3 uArch + P4 RTL exist (downstream check: P3 docs or rtl/ non-empty)
+- [x] P1 requirements modified → WARNING if P2 + P3 + P4 exist (downstream check: P3 docs or rtl/ non-empty)
+- [x] iron-requirements.json modified → CRITICAL cascade warning (any `.json` under a phase doc dir)
+- [x] Suggest `cross-phase-contract-validator` in warning message
+- [x] Stale marker cleared after contract validator PASS (SKILL.md completion step + hook-side auto-clear on report write, 2026-07-17)
+- [x] No false positive during normal forward flow (P3 edit → P4 create): no downstream artifacts at edit time → no marker, no warning; warn-once (silent marker mtime refresh) prevents repeat noise
+- [ ] Team mode: leader-only cascade tracking — not implemented; the cascade branch writes the shared marker regardless of session role (worker doc edits also flag staleness, which is conservative but not leader-scoped)
+
+**Not implemented (out of scope, unchanged)**:
+- Per-module granularity (Challenge 1) — cascade remains coarse-grained per phase
+- Opt-in Stop gate blocking exit while `spec-cascade-stale-p*` exists — warning + marker lifecycle only
 
 ---
 

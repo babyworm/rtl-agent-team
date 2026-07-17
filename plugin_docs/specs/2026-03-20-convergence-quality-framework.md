@@ -516,6 +516,8 @@ now they are made explicitly (user decides).
 ### NOT in MVP
 
 - Phase 2-3 stability checking (deferred until P1 validated on 3+ designs)
+  - Status: intentional conditional deferral (P1-first validation strategy) — not
+    forgotten work; revisit after 3+ design validations.
 - Multi-model consensus (Codex cross-review already exists, integration is optional)
 - stability_check.py comparison for architecture/uarch prose documents
 

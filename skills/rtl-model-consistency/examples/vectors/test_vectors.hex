@@ -1,0 +1,17 @@
+# test_vectors.hex — 16 shared input words (one 32-bit hex value per line)
+00000007
+0000123b
+0000246f
+000036a3
+000048d7
+00005b0b
+00006d3f
+00007f73
+000091a7
+0000a3db
+0000b60f
+0000c843
+0000da77
+0000ecab
+0000fedf
+00011113

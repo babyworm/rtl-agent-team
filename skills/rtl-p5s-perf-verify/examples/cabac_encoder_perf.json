@@ -1,0 +1,26 @@
+{
+  "module": "cabac_encoder",
+  "run_timestamp": "2026-07-17T05:14:20+00:00",
+  "metrics": {
+    "throughput_mbps": {
+      "measured": 480.0,
+      "expected": 500.0,
+      "delta_pct": -4.0,
+      "verdict": "PASS"
+    },
+    "latency_cycles": {
+      "measured": 12.0,
+      "expected": 12,
+      "delta_pct": 0.0,
+      "verdict": "PASS"
+    },
+    "stall_cycles_pct": {
+      "measured": 8.4,
+      "expected": 8.0,
+      "delta_pct": 5.0,
+      "verdict": "PASS"
+    }
+  },
+  "overall_verdict": "PASS",
+  "notes": ""
+}

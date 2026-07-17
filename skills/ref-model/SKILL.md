@@ -41,9 +41,9 @@ If missing: WARNING — proceed with available artifacts; feature coverage step 
 | `templates/ref_model_main.c` | Scaffold with `ext_mem_read/write` stubs and `PARALLEL_LANES` define. |
 | `templates/ref_model_header.h` | Struct typedefs: `input_t`, `output_t`, `context_t`, `ext_mem_stats_t`. |
 | `templates/dpi_wrapper.h` | DPI-C export declarations for SV testbench linkage. |
-| `scripts/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/run_ref_model.py` | Build-and-run wrapper: locates `refc/`, builds via Makefile (direct `cc -std=c11` fallback), runs the model with `--input`/`--output`/`--args` pass-through, writes a JSON run report. |
 | `references/ref-model-conventions.md` | C11/DPI-C rules, output schemas, anti-patterns. |
-| `examples/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `examples/sat_add/` | Worked example: self-testing saturating-adder ref model + committed `expected_run_report.json` (regeneration-checked in CI). |
 </Assets>
 
 <Responsibility_Boundary>
@@ -57,6 +57,9 @@ If missing: WARNING — proceed with available artifacts; feature coverage step 
 2. Spawn `ref-model-dev` to implement `refc/*.c` — pure C11, no clock/reset, I/O as function args, internal state as arrays/struct members, external memory via `ext_mem_read/write`, `PARALLEL_LANES` parameterizable, no C++ features.
 3. Build: `cd refc && make build` (must compile with `-Wall -Wextra -Werror`).
 4. Test: `cd refc && make test` — bitexact comparison against JM/HM; fix mismatches and iterate.
+   For a single build+run cycle with a machine-readable result, use
+   `python3 {plugin_root}/skills/ref-model/scripts/run_ref_model.py --refc-dir refc --report refc_run_report.json`
+   (`{plugin_root}` resolved from `.rat/state/spawn-context.json`) — exit 0 = model ran clean, 1 = build/run failure (report written), 2 = environment error.
 5. Bandwidth: `cd refc && make bandwidth` — captures `ext_mem_stats_t`; write `bandwidth_report.json`.
 6. Feature coverage: read `iron-requirements.json`, map every `REQ-F-*` to a real code path (structural check — not just bitexact coverage); save `reviews/phase-2-architecture/ref-model-feature-coverage.md`. Escalate any unmapped feature to the user before proceeding.
 7. Spawn `ref-model-reviewer` for algorithm fidelity, numeric precision, and UB/memory-safety review.

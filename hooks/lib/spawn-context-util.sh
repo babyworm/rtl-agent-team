@@ -286,6 +286,15 @@ sctx_write_manifest() {
   SCTX_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR:-.}/.." 2>/dev/null && pwd)}"
   SCTX_PLUGIN_ROOT_ESC=$(printf '%s' "$SCTX_PLUGIN_ROOT" | sed 's/\\/\\\\/g; s/"/\\"/g')
 
+  # Project root — mirrors the plugin_root pattern. Honors the RAT_PROJECT_ROOT
+  # env override so an external Workflow driver (whose subagent CWD is not the
+  # user project) can ship the real root to spawned agents via the manifest.
+  # The -d guard matches hooks/lib/rat-dir-util.sh: a bogus (non-directory)
+  # override falls back to the session CWD, same as unset/empty.
+  SCTX_PROJECT_ROOT="$SCTX_CWD"
+  [ -d "${RAT_PROJECT_ROOT:-}" ] && SCTX_PROJECT_ROOT="$RAT_PROJECT_ROOT"
+  SCTX_PROJECT_ROOT_ESC=$(printf '%s' "$SCTX_PROJECT_ROOT" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
   # Artifact arrays
   SCTX_REQ=$(_sctx_build_artifact_array "$SCTX_CWD" "required" "$SCTX_PHASE")
   SCTX_OPT=$(_sctx_build_artifact_array "$SCTX_CWD" "optional" "$SCTX_PHASE")
@@ -316,7 +325,7 @@ sctx_write_manifest() {
   # Atomic write
   mkdir -p "$(dirname "$SCTX_MANIFEST")"
   cat > "$SCTX_MANIFEST.tmp" <<MANIFEST_EOF
-{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","plugin_root":"$SCTX_PLUGIN_ROOT_ESC","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open"}
+{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","plugin_root":"$SCTX_PLUGIN_ROOT_ESC","project_root":"$SCTX_PROJECT_ROOT_ESC","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open"}
 MANIFEST_EOF
   mv "$SCTX_MANIFEST.tmp" "$SCTX_MANIFEST"
 }

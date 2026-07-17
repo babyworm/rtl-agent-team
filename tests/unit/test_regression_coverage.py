@@ -168,7 +168,7 @@ class TestRunRegression:
         sim_dir = tmp_path / "sim"
         sim_dir.mkdir(parents=True)
         (sim_dir / "Makefile").write_text(
-            "all:\n"
+            "sim:\n"
             "\t@echo \"RANDOM_SEED=$(RANDOM_SEED)\"\n"
             "\t@echo \"SIM_BUILD=$(SIM_BUILD)\"\n"
             "\t@test -n \"$(SIM_BUILD)\"\n"
@@ -208,7 +208,7 @@ class TestRunRegression:
         sim_dir = tmp_path / "sim"
         sim_dir.mkdir(parents=True)
         (sim_dir / "Makefile").write_text(
-            "all:\n"
+            "sim:\n"
             "\t@if [ \"$(RANDOM_SEED)\" = \"1\" ]; then echo \"forced fail\"; exit 1; fi\n"
             "\t@sleep 5\n"
             "\t@echo \"pass $(RANDOM_SEED)\"\n"
@@ -231,7 +231,7 @@ class TestRunRegression:
         sim_dir = tmp_path / "sim"
         sim_dir.mkdir(parents=True)
         (sim_dir / "Makefile").write_text(
-            "all:\n"
+            "sim:\n"
             "\t@sleep 0.1\n"
             "\t@echo \"seed $(RANDOM_SEED) pass\"\n"
         )

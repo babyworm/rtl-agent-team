@@ -21,7 +21,10 @@ Port direction mapping from RTL prefix:
 
 ## 2. Output schema — required XML sections
 
-A well-formed IP-XACT component XML must contain these top-level elements in order:
+A schema-valid IP-XACT component XML must order its top-level elements per the
+IEEE 1685-2014 XSD sequence (busInterfaces and memoryMaps come BEFORE model;
+description and parameters come near the end, after fileSets). `gen_ipxact.py`
+emits exactly this order for the sections it generates:
 
 ```xml
 <spirit:component>
@@ -30,9 +33,15 @@ A well-formed IP-XACT component XML must contain these top-level elements in ord
   <spirit:name>{module_name}</spirit:name>
   <spirit:version>...</spirit:version>
 
-  <spirit:busInterfaces>        <!-- one per identified bus (AXI/APB/AHB) -->
+  <spirit:busInterfaces>        <!-- one per identified bus (AXI/APB/AHB);
+                                     omit entirely if none — an empty element
+                                     is not schema-valid -->
     <spirit:busInterface>...</spirit:busInterface>
   </spirit:busInterfaces>
+
+  <spirit:memoryMaps>           <!-- include only if register interface present -->
+    <spirit:memoryMap>...</spirit:memoryMap>
+  </spirit:memoryMaps>
 
   <spirit:model>
     <spirit:ports>              <!-- all RTL ports, verbatim names -->
@@ -40,13 +49,15 @@ A well-formed IP-XACT component XML must contain these top-level elements in ord
     </spirit:ports>
   </spirit:model>
 
+  <spirit:fileSets>             <!-- RTL source file references -->
+    <spirit:fileSet>...</spirit:fileSet>
+  </spirit:fileSets>
+
+  <spirit:description>...</spirit:description>
+
   <spirit:parameters>           <!-- all RTL parameters -->
     <spirit:parameter>...</spirit:parameter>
   </spirit:parameters>
-
-  <spirit:memoryMaps>           <!-- include only if register interface present -->
-    <spirit:memoryMap>...</spirit:memoryMap>
-  </spirit:memoryMaps>
 </spirit:component>
 ```
 

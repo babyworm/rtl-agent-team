@@ -1,0 +1,34 @@
+{
+  "tool": "run_bfm.py",
+  "bfm_dir": ".",
+  "build_system": "make",
+  "systemc_home_referenced": false,
+  "systemc_home_set": false,
+  "build_cmds": [
+    [
+      "make"
+    ]
+  ],
+  "build_cwd": ".",
+  "built": true,
+  "build_exit_code": 0,
+  "run_mode": "make-run",
+  "run_cmd": [
+    "make",
+    "run"
+  ],
+  "run_cwd": ".",
+  "exit_code": 0,
+  "stdout_tail": [
+    "BFM smoke: PASS",
+    "transport=LT"
+  ],
+  "stderr_tail": [],
+  "output_files": [
+    {
+      "path": "smoke_test_result.txt",
+      "bytes": 29
+    }
+  ],
+  "duration_seconds": 0.0
+}

@@ -30,7 +30,9 @@ else
   run_tool() { "$@"; }
 fi
 
-PROJECT_ROOT="$(pwd)"
+# RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
+# resolve against the project root even when invoked from a different CWD.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
 TOOL="yosys"
@@ -251,8 +253,11 @@ SRC_FILES=("${_abs_src[@]}")
 # characters ([ ] { } $ ; " ` \) would break or inject into the generated script. Validate ALL
 # finalized paths once, before Tcl generation, and fail with a clear message (not a cryptic Tcl
 # error). Relative args that become unsafe via $PROJECT_ROOT are caught here too.
+# --script (SCRIPT_PATH) is included: it becomes the dc_shell/genus -f argument, which is
+# echoed into the replay script inside double quotes — the same character set ($ ` \ ") is
+# shell-active there, so this single check covers both the Tcl and the replay surfaces.
 if [[ "$TOOL" == "dc_shell" || "$TOOL" == "genus" ]]; then
-  _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}"
+  _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}|${SCRIPT_PATH}"
   for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
   if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
     for _p in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
@@ -262,7 +267,7 @@ if [[ "$TOOL" == "dc_shell" || "$TOOL" == "genus" ]]; then
   case "$_tcl_paths" in
     *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* )
       echo "ERROR: a synthesis path (project/synth root, source file, rtl/common, --liberty," >&2
-      echo "       --sdc, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
+      echo "       --sdc, --script, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
       echo "       DC/Genus emit paths into Tcl — rename/move so paths avoid these characters." >&2
       exit 1 ;;
   esac
@@ -560,7 +565,9 @@ case "$TOOL" in
     echo "Setup:  $DC_SETUP"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$LOG"
+    # $SCRIPT components (--script or SYN_ROOT-derived) validated against
+    # Tcl/shell-unsafe characters above — execute via argv, no eval.
+    run_tool dc_shell -64bit -f "$SCRIPT" 2>&1 | tee "$LOG"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -676,7 +683,9 @@ case "$TOOL" in
     echo "Script: $SCRIPT"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$LOG"
+    # $SCRIPT components (--script or SYN_ROOT-derived) validated against
+    # Tcl/shell-unsafe characters above — execute via argv, no eval.
+    run_tool genus -64 -files "$SCRIPT" 2>&1 | tee "$LOG"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 

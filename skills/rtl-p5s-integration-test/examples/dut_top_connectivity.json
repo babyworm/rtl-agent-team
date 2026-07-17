@@ -1,0 +1,47 @@
+{
+  "tool": "check_connectivity.py",
+  "top_module": "dut_top",
+  "files": [
+    "dut_top.sv",
+    "pixel_gen.sv",
+    "pixel_pack.sv"
+  ],
+  "modules_parsed": [
+    "dut_top",
+    "pixel_gen",
+    "pixel_pack"
+  ],
+  "verdict": "FAIL",
+  "summary": {
+    "errors": 1,
+    "warnings": 1,
+    "instances": 2,
+    "connections_checked": 11,
+    "width_checks": {
+      "checked": 10,
+      "skipped": 0
+    }
+  },
+  "violations": [
+    {
+      "severity": "error",
+      "check": "width_mismatch",
+      "file": "dut_top.sv",
+      "line": 29,
+      "instance": "u_pack",
+      "module": "pixel_pack",
+      "port": "i_data",
+      "detail": "port 'i_data' width 16 != connection 'pix' width 8"
+    },
+    {
+      "severity": "warning",
+      "check": "dangling_port",
+      "file": "dut_top.sv",
+      "line": 32,
+      "instance": "u_pack",
+      "module": "pixel_pack",
+      "port": "o_word_valid",
+      "detail": "output port 'o_word_valid' is explicitly unconnected `()`"
+    }
+  ]
+}

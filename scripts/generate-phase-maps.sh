@@ -31,9 +31,14 @@ fi
 SPAWN_CTX_UTIL="$REPO_ROOT/hooks/lib/spawn-context-util.sh"
 BOOTSTRAP_HOOK="$REPO_ROOT/hooks/rtl-phase-state-bootstrap.sh"
 SPAWN_HOOK="$REPO_ROOT/hooks/rtl-spawn-context.sh"
+ARTIFACT_MAP="$REPO_ROOT/hooks/lib/artifact-map.sh"
 
 BEGIN_MARKER="# BEGIN GENERATED PHASE_MAP"
 END_MARKER="# END GENERATED PHASE_MAP"
+ARTMAP_REQ_BEGIN="# BEGIN GENERATED ARTMAP_REQUIRED"
+ARTMAP_REQ_END="# END GENERATED ARTMAP_REQUIRED"
+ARTMAP_OPT_BEGIN="# BEGIN GENERATED ARTMAP_OPTIONAL"
+ARTMAP_OPT_END="# END GENERATED ARTMAP_OPTIONAL"
 
 # ── Helper: join skill names from registry by jq filter ───────────────────────
 _skills_join() {
@@ -156,10 +161,33 @@ generate_agent_skill_map() {
   done
 }
 
+# ── Generator: artmap_required()/artmap_optional() case bodies ────────────────
+generate_artifact_map() {
+  # $1 = required | optional
+  # Emit artmap case branches from the registry "phases" section, ordered by
+  # integer phase number ("integer_map" overrides non-numeric keys, e.g.
+  # ppa-opt → 8). Phases with no entries produce no case branch — the case
+  # falls through and emits nothing, matching legacy artifact-map behavior.
+  jq -r --arg field "$1" --arg q "'" '
+    .phases | to_entries
+    | map({num: (.value.integer_map // (.key | tonumber)),
+           entries: (.value[$field] // [])})
+    | sort_by(.num)
+    | .[] | select((.entries | length) > 0)
+    | "    \(.num))",
+      "      cat <<\($q)EOF\($q)",
+      (.entries[] | "\(.path)|\(.role)"),
+      "EOF",
+      "      ;;"
+  ' "$REGISTRY"
+}
+
 # ── Replace between markers ──────────────────────────────────────────────────
 replace_between_markers() {
   local file="$1"
   local new_content="$2"
+  local begin="${3:-$BEGIN_MARKER}"
+  local end="${4:-$END_MARKER}"
   local tmpfile="${file}.gen.tmp"
 
   if [ ! -f "$file" ]; then
@@ -167,7 +195,7 @@ replace_between_markers() {
     return 1
   fi
 
-  awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v content="$new_content" '
+  awk -v begin="$begin" -v end="$end" -v content="$new_content" '
     $0 ~ begin { print; printf "%s\n", content; skip=1; next }
     skip && $0 ~ end { skip=0 }
     !skip { print }
@@ -179,7 +207,9 @@ replace_between_markers() {
 # ── Extract between markers ──────────────────────────────────────────────────
 extract_between_markers() {
   local file="$1"
-  awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" '
+  local begin="${2:-$BEGIN_MARKER}"
+  local end="${3:-$END_MARKER}"
+  awk -v begin="$begin" -v end="$end" '
     $0 ~ begin { found=1; next }
     found && $0 ~ end { found=0; next }
     found { print }
@@ -199,6 +229,12 @@ case "$MODE" in
     echo ""
     echo "=== agent_skill_map ==="
     generate_agent_skill_map
+    echo ""
+    echo "=== artifact_map_required ==="
+    generate_artifact_map required
+    echo ""
+    echo "=== artifact_map_optional ==="
+    generate_artifact_map optional
     ;;
 
   --check)
@@ -231,6 +267,23 @@ case "$MODE" in
       ERRORS=$((ERRORS + 1))
     fi
 
+    # Check artifact map (required + optional blocks)
+    GENERATED=$(generate_artifact_map required)
+    CURRENT=$(extract_between_markers "$ARTIFACT_MAP" "$ARTMAP_REQ_BEGIN" "$ARTMAP_REQ_END")
+    if [ "$GENERATED" != "$CURRENT" ]; then
+      echo "DRIFT: $ARTIFACT_MAP artmap_required block differs from registry" >&2
+      diff <(echo "$CURRENT") <(echo "$GENERATED") >&2 || true
+      ERRORS=$((ERRORS + 1))
+    fi
+
+    GENERATED=$(generate_artifact_map optional)
+    CURRENT=$(extract_between_markers "$ARTIFACT_MAP" "$ARTMAP_OPT_BEGIN" "$ARTMAP_OPT_END")
+    if [ "$GENERATED" != "$CURRENT" ]; then
+      echo "DRIFT: $ARTIFACT_MAP artmap_optional block differs from registry" >&2
+      diff <(echo "$CURRENT") <(echo "$GENERATED") >&2 || true
+      ERRORS=$((ERRORS + 1))
+    fi
+
     if [ "$ERRORS" -gt 0 ]; then
       echo "FAIL: $ERRORS block(s) out of sync with phase-registry.json" >&2
       exit 1
@@ -245,6 +298,12 @@ case "$MODE" in
     replace_between_markers "$BOOTSTRAP_HOOK" "$(generate_compliance_bootstrap)"
     echo "Generating agent-skill map..."
     replace_between_markers "$SPAWN_HOOK" "$(generate_agent_skill_map)"
+    echo "Generating artifact map (required)..."
+    replace_between_markers "$ARTIFACT_MAP" "$(generate_artifact_map required)" \
+      "$ARTMAP_REQ_BEGIN" "$ARTMAP_REQ_END"
+    echo "Generating artifact map (optional)..."
+    replace_between_markers "$ARTIFACT_MAP" "$(generate_artifact_map optional)" \
+      "$ARTMAP_OPT_BEGIN" "$ARTMAP_OPT_END"
     echo "Done. All target files updated."
     ;;
 

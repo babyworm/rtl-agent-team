@@ -303,8 +303,16 @@ case "$FILE_PATH" in
         _CASCADE_SEV="WARNING"
         case "$FILE_PATH" in *.json) _CASCADE_SEV="CRITICAL" ;; esac
         mkdir -p "$STATE_DIR"
-        touch "$STATE_DIR/spec-cascade-stale-p${_CASCADE_PHASE}"
-        _CASCADE_WARN="[SPEC CASCADE ${_CASCADE_SEV}] Phase ${_CASCADE_PHASE} document modified. Downstream artifacts (${_CASCADE_DOWNSTREAM}) may be inconsistent. Run /rtl-agent-team:cross-phase-contract-validator to verify."
+        _CASCADE_MARKER="$STATE_DIR/spec-cascade-stale-p${_CASCADE_PHASE}"
+        if [ -f "$_CASCADE_MARKER" ]; then
+          # Noise mitigation: marker already set for this phase → refresh its
+          # mtime silently. The [SPEC CASCADE] warning is emitted only on the
+          # stale transition edge (marker creation), not on every doc edit.
+          touch "$_CASCADE_MARKER"
+        else
+          touch "$_CASCADE_MARKER"
+          _CASCADE_WARN="[SPEC CASCADE ${_CASCADE_SEV}] Phase ${_CASCADE_PHASE} document modified. Downstream artifacts (${_CASCADE_DOWNSTREAM}) may be inconsistent. Run /rtl-agent-team:cross-phase-contract-validator to verify (validation PASS clears the spec-cascade-stale-p${_CASCADE_PHASE} marker)."
+        fi
       fi
     fi
     # Audit: log artifact_write
@@ -327,6 +335,31 @@ case "$FILE_PATH" in
     emit_post_continue
     ;;
   */docs/*|*/reviews/*)
+    # Spec cascade auto-resolution: when the cross-phase-contract-validator
+    # report is written with a PASS verdict, clear spec-cascade-stale-p*
+    # markers (hook-side enforcement — not dependent on LLM compliance).
+    # FAIL wins over PASS (fail-safe): a report containing a FAIL verdict
+    # anywhere never clears markers.
+    _CPV_RESOLVED=false
+    case "$FILE_PATH" in
+      */reviews/cross-phase-contract-validation.md)
+        _CPV_REPORT="$FILE_PATH"
+        case "$_CPV_REPORT" in
+          /*) : ;;
+          *) _CPV_REPORT="$CWD/$_CPV_REPORT" ;;
+        esac
+        if [ -f "$_CPV_REPORT" ] && \
+           ! grep -qE 'Verdict[^A-Za-z]*FAIL' "$_CPV_REPORT" 2>/dev/null && \
+           grep -qE 'Verdict[^A-Za-z]*PASS' "$_CPV_REPORT" 2>/dev/null; then
+          _setup_tracking
+          for _cpv_m in "$STATE_DIR"/spec-cascade-stale-p*; do
+            [ -e "$_cpv_m" ] || continue
+            rm -f "$_cpv_m"
+            _CPV_RESOLVED=true
+          done
+        fi
+        ;;
+    esac
     # Non-phase docs/reviews: audit only
     _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"
     if [ -f "$_AUDIT_LIB" ]; then
@@ -338,6 +371,10 @@ case "$FILE_PATH" in
           "{\"event\":\"artifact_write\",\"agent\":\"system\",\"detail\":\"${_ART_SAFE}\",\"status\":\"success\"}" \
           >/dev/null
       fi
+    fi
+    if [ "$_CPV_RESOLVED" = "true" ]; then
+      printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[SPEC CASCADE RESOLVED] cross-phase contract validation PASS — spec-cascade-stale markers cleared."}}\n'
+      exit 0
     fi
     emit_post_continue
     ;;

@@ -128,3 +128,20 @@ Write `reviews/cross-phase-contract-validation.md`:
 - **MAJOR findings**: FAIL — blocks phase entry
 - **WARNING**: PASS with advisory — proceed but flag for attention
 - **INFO**: PASS — informational only
+
+## Completion: Spec Cascade Marker Lifecycle
+
+The edit-tracker hook creates `spec-cascade-stale-p{1,2,3}` markers in the project
+state dir (`.rat/state/`, or legacy `.rtl-agent-team/state/` when `.rat/` is absent)
+whenever an upstream phase doc is modified while downstream artifacts exist. This
+skill is the resolution path for those markers:
+
+- **On overall Verdict: PASS** (including PASS with advisory): remove all cascade
+  markers — `rm -f .rat/state/spec-cascade-stale-p*` (adjust the state dir for the
+  legacy layout). Downstream artifacts are re-validated against the changed spec.
+- **On Verdict: FAIL**: keep the markers. They stay until findings are fixed and a
+  re-run of this skill passes.
+
+Note: writing `reviews/cross-phase-contract-validation.md` with a PASS verdict also
+triggers hook-side auto-clear in `rtl-edit-tracker.sh` (PostToolUse). The explicit
+`rm -f` above is the fallback when the report is written to a non-standard path.

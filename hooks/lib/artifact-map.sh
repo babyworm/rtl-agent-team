@@ -4,9 +4,19 @@
 #
 # artmap_required <phase_num> → newline-delimited "path|role" pairs
 # artmap_optional <phase_num> → newline-delimited "path|role" pairs
+#
+# The case bodies between the GENERATED markers are produced from the
+# "phases" section of phase-registry.json (single source of truth) by
+# scripts/generate-phase-maps.sh. Do not edit them by hand — edit the
+# registry, then run: scripts/generate-phase-maps.sh --write
+#
+# Phases with no entries (e.g. phase 7 required — exploration is exempt
+# from pipeline gates) have no case branch: the case falls through and
+# emits nothing. Phase 8 is ppa-opt (registry key "ppa-opt", integer_map 8).
 
 artmap_required() {
   case "$1" in
+# BEGIN GENERATED ARTMAP_REQUIRED
     1)
       cat <<'EOF'
 specs|spec-documents
@@ -51,14 +61,13 @@ EOF
 reviews/phase-5-verify/final-compliance.md|p5-compliance
 EOF
       ;;
-    7)
-      # Phase 7 exploration — no required upstream artifacts (exempt from pipeline gates)
-      ;;
+# END GENERATED ARTMAP_REQUIRED
   esac
 }
 
 artmap_optional() {
   case "$1" in
+# BEGIN GENERATED ARTMAP_OPTIONAL
     2)
       cat <<'EOF'
 docs/phase-1-research/open-requirements.json|p1-open-requirements
@@ -92,11 +101,17 @@ docs/phase-4-rtl/module-descriptions.md|p4-module-descriptions
 EOF
       ;;
     7)
-      # Phase 7 exploration — optional context from prior phases
       cat <<'EOF'
 reviews/phase-6-review/improvements.md|p6-improvements
 docs/phase-2-architecture/architecture.md|p2-architecture
 EOF
       ;;
+    8)
+      cat <<'EOF'
+reviews/phase-5-verify/final-compliance.md|p5-compliance
+docs/ppa-opt|ppa-iteration-artifacts
+EOF
+      ;;
+# END GENERATED ARTMAP_OPTIONAL
   esac
 }

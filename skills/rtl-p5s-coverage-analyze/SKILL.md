@@ -28,7 +28,7 @@ Raw coverage reports are verbose and hard to prioritize. `coverage-analyst` iden
 
 ## Prerequisites
 
-- `sim/coverage/coverage.xml` (or `.dat`) must exist from a prior `rtl-p5s-func-verify` run.
+- `sim/coverage/coverage.xml`, `.dat`, or `merged.info` must exist from a prior `rtl-p5s-func-verify` run.
 
 If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p5s-func-verify` first. Proceed with available artifacts; orchestrator adapts scope.
 
@@ -36,9 +36,9 @@ If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p
 | Path | Role |
 |------|------|
 | `templates/coverage-gap-report.md` | Gap report scaffold: summary section, high-value gap table, unreachable table, directed tests list, exclusions section. |
-| `scripts/parse_coverage.py` | Stub: parse coverage XML/DAT and emit structured gap data. (deep-fill in follow-up PR) |
+| `scripts/parse_coverage.py` | Deterministic coverage parser: reads lcov `.info` (from `merge_coverage.sh`) or raw Verilator `coverage.dat`, emits JSON with per-file/per-metric coverage %, ranked uncovered bins, and PASS/FAIL vs project targets. |
 | `references/coverage-conventions.md` | Coverage targets, report schema, directed test style, exclusion approval rules, anti-patterns. |
-| `examples/` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked examples: `merged.info` (lcov) + `coverage.dat` (Verilator native) inputs with committed expected JSON — see `examples/README.md`. |
 </Assets>
 
 <Responsibility_Boundary>
@@ -49,7 +49,7 @@ If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p
 
 <Execution>
 1. Read `skills/rtl-p5s-coverage-analyze/references/coverage-conventions.md` for coverage targets, report structure, and exclusion approval rules.
-2. Spawn `p5s-coverage-orchestrator` (see Tool_Usage) to run 3-round iterative analysis: parse the coverage report, identify and prioritize gaps, generate directed tests, re-run simulation, and track convergence.
+2. Spawn `p5s-coverage-orchestrator` (see Tool_Usage) to run 3-round iterative analysis: parse the coverage report (deterministic extraction via `scripts/parse_coverage.py` — supports lcov `.info` and Verilator `coverage.dat`; `v_user` points count as the fsm metric), identify and prioritize gaps, generate directed tests, re-run simulation, and track convergence.
 3. The orchestrator writes `reviews/phase-5-verify/{module}-coverage-report.md` using `templates/coverage-gap-report.md` as scaffold, populating high-value and unreachable gap tables.
 4. The orchestrator writes `sim/coverage/test_coverage_fill.py` with one test function per targeted gap.
 5. Any coverage exclusion bins (unreachable items) must go through the `rtl-coverage-exclusion-gate.sh` approval flow — do not apply exclusions silently.

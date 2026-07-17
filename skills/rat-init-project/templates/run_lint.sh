@@ -21,7 +21,9 @@ else
   run_tool() { "$@"; }
 fi
 
-PROJECT_ROOT="$(pwd)"
+# RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
+# resolve against the project root even when invoked from a different CWD.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
 TOOL="verilator"
@@ -49,6 +51,25 @@ Options:
   -h, --help        Show this help
 USAGE
   exit 0
+}
+
+# ─── Shell-metacharacter validation (self-contained; template is deployed standalone) ──
+# Values checked here are interpolated into a tool command line that is echoed
+# into a replay script and/or a generated SpyGlass Tcl file. Reject anything
+# outside a path/identifier-safe whitelist so a hostile filelist entry or CLI
+# arg cannot inject shell or Tcl commands (mirrors the run_syn.sh v0.11.3
+# Tcl-injection hardening precedent).
+validate_shell_safe() {
+  local label="$1"; shift
+  local v
+  for v in "$@"; do
+    [ -z "$v" ] && continue
+    if ! [[ "$v" =~ ^[A-Za-z0-9_./+=@:,-]+$ ]]; then
+      echo "ERROR: $label contains shell-unsafe characters: '$v'" >&2
+      echo "       Allowed: letters, digits, and _ . / + = @ : , -  — rename/move and retry." >&2
+      exit 1
+    fi
+  done
 }
 
 # ─── Parse args ─────────────────────────────────────────────────────────────
@@ -99,6 +120,15 @@ for f in "${SRC_FILES[@]}"; do
 done
 SRC_FILES=("${_abs_src[@]}")
 
+# All values below feed the tool command line, the generated replay script,
+# and/or the generated SpyGlass Tcl — validate against shell metacharacters
+# before any of them is interpolated.
+validate_shell_safe "--top" "$TOP"
+validate_shell_safe "--waiver path" "$WAIVER"
+validate_shell_safe "--outdir path" "$OUTDIR"
+validate_shell_safe "--script path" "$SCRIPT_PATH"
+validate_shell_safe "source file path" "${SRC_FILES[@]}"
+
 # cd to lint directory — all tool artifacts stay contained
 cd "$OUTDIR"
 echo "[run_lint] Working directory: $(pwd)"
@@ -124,33 +154,37 @@ EOF
 # ─── Tool-specific lint ────────────────────────────────────────────────────
 case "$TOOL" in
   verilator)
-    CMD="verilator --lint-only -Wall -Wpedantic -sv"
-    [[ -n "$TOP" ]] && CMD="$CMD --top-module $TOP"
-    [[ -n "$WAIVER" ]] && CMD="$CMD $WAIVER"
-    CMD="$CMD ${SRC_FILES[*]}"
+    # Command built as an argv array; every element validated against shell
+    # metacharacters above — direct invocation, no eval.
+    CMD=(verilator --lint-only -Wall -Wpedantic -sv)
+    [[ -n "$TOP" ]] && CMD+=(--top-module "$TOP")
+    [[ -n "$WAIVER" ]] && CMD+=("$WAIVER")
+    CMD+=("${SRC_FILES[@]}")
     REPORT="$OUTDIR/verilator_lint_${TIMESTAMP}.log"
     echo "=== Verilator Lint ==="
-    echo "CMD: $CMD"
-    write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    echo "CMD: ${CMD[*]}"
+    write_replay "${CMD[*]}"
+    run_tool "${CMD[@]}" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   verible)
-    CMD="verible-verilog-lint"
-    [[ -n "$WAIVER" ]] && CMD="$CMD --rules_config=$WAIVER"
-    CMD="$CMD ${SRC_FILES[*]}"
+    # Argv array; elements validated against shell metacharacters above — no eval.
+    CMD=(verible-verilog-lint)
+    [[ -n "$WAIVER" ]] && CMD+=("--rules_config=$WAIVER")
+    CMD+=("${SRC_FILES[@]}")
     REPORT="$OUTDIR/verible_lint_${TIMESTAMP}.log"
     echo "=== Verible Lint ==="
-    echo "CMD: $CMD"
-    write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    echo "CMD: ${CMD[*]}"
+    write_replay "${CMD[*]}"
+    run_tool "${CMD[@]}" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   slang)
-    CMD="slang --color-diagnostics"
-    [[ -n "$TOP" ]] && CMD="$CMD --top $TOP"
+    # Argv array; elements validated against shell metacharacters above — no eval.
+    CMD=(slang --color-diagnostics)
+    [[ -n "$TOP" ]] && CMD+=(--top "$TOP")
 
     # Strict mode for RTL: -Weverything catches multi-driver violations
     # (e.g., always_ff + initial on same signal — VCS ICPD error)
@@ -162,18 +196,18 @@ case "$TOOL" in
       esac
     done
     if [[ "$IS_RTL" -eq 1 ]]; then
-      CMD="$CMD -Weverything"
+      CMD+=(-Weverything)
     else
-      CMD="$CMD --allow-dup-initial-drivers"
+      CMD+=(--allow-dup-initial-drivers)
     fi
 
-    CMD="$CMD ${SRC_FILES[*]}"
+    CMD+=("${SRC_FILES[@]}")
     REPORT="$OUTDIR/slang_lint_${TIMESTAMP}.log"
     echo "=== slang Lint ==="
     [[ "$IS_RTL" -eq 1 ]] && echo "Mode: RTL strict (-Weverything)" || echo "Mode: TB (--allow-dup-initial-drivers)"
-    echo "CMD: $CMD"
-    write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    echo "CMD: ${CMD[*]}"
+    write_replay "${CMD[*]}"
+    run_tool "${CMD[@]}" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -205,13 +239,19 @@ case "$TOOL" in
       } > "$SPYGLASS_TCL"
     fi
 
-    # Use sg_shell for batch mode (not spyglass GUI binary)
-    CMD="sg_shell -tcl \"$SPYGLASS_TCL\""
+    # SPYGLASS_TCL may also come from the SPYGLASS_LINT_TCL env var — validate
+    # the final value before it is interpolated into the replayed command.
+    validate_shell_safe "SpyGlass Tcl path" "$SPYGLASS_TCL"
+
+    # Use sg_shell for batch mode (not spyglass GUI binary).
+    # Path validated shell-safe above — execute via argv (no eval); the quoted
+    # string form is kept for display and the replay script.
+    CMD_STR="sg_shell -tcl \"$SPYGLASS_TCL\""
     echo "=== SpyGlass Lint (sg_shell) ==="
     echo "TCL: $SPYGLASS_TCL"
-    echo "CMD: $CMD"
-    write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    echo "CMD: $CMD_STR"
+    write_replay "$CMD_STR"
+    run_tool sg_shell -tcl "$SPYGLASS_TCL" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 

@@ -8,10 +8,11 @@ consulted in one read.
 | Element | Convention | Example |
 |---------|-----------|---------|
 | Test vector set | `sim/consistency/test_vectors.bin` | shared across all three models |
-| Ref model output | `sim/consistency/ref_output.bin` | from `refc/build/ref_model` |
-| BFM output | `sim/consistency/bfm_output.bin` | from `bfm/build/bfm_smoke` |
-| RTL output | `sim/consistency/rtl_output.bin` | from iverilog/cocotb simulation |
-| Consistency report | `sim/consistency/consistency_report.md` | per-vector comparison matrix |
+| Ref model output | `sim/consistency/ref_output.hex` | from `refc/build/ref_model` |
+| BFM output | `sim/consistency/bfm_output.hex` | from `bfm/build/bfm_smoke` |
+| RTL output | `sim/consistency/rtl_output.hex` | from iverilog/cocotb simulation |
+| Output file format | line-oriented text, one value per line (`hex`/`bin`/`csv`) | dump binary outputs to text first |
+| Consistency report | `sim/consistency/consistency_report.md` | pairwise comparison matrix |
 | Comparison script | `skills/rtl-model-consistency/scripts/compare_3way.py` | pairwise diff + diagnosis |
 | Report template | `skills/rtl-model-consistency/templates/consistency-report.md` | scaffold |
 | RTL port convention | `i_`/`o_` prefix, `{domain}_clk`, `{domain}_rst_n` | `i_pixel_data`, `sys_clk` |
@@ -34,18 +35,25 @@ Generated: {date}  Vectors: {N}
 ref == RTL != BFM → BFM has diverged from ref model.
 
 ## Mismatch Details
-| Vector | Pair       | Byte Offset | Expected | Actual |
-|--------|------------|-------------|----------|--------|
-| 023    | ref vs BFM | 142         | 0x3A     | 0x3B   |
+| Pair       | First Divergence Index | Expected (val_a) | Actual (val_b) |
+|------------|------------------------|------------------|----------------|
+| ref vs BFM | 142                    | 0x0000003a       | 0x0000003b     |
 ```
 
-### compare_3way.py output contract
-The script must emit one result per vector with fields:
-- `vector_id` — zero-padded integer string
-- `ref_bfm` — `PASS` or `FAIL`
-- `ref_rtl` — `PASS` or `FAIL`
-- `bfm_rtl` — `PASS` or `FAIL`
-- `first_divergence_byte` — integer or `null`
+### compare_3way.py CLI and output contract
+```sh
+python3 compare_3way.py --refc ref_output.hex --bfm bfm_output.hex \
+    --rtl rtl_output.hex [--format hex|bin|csv] [--tolerance 0]
+```
+All three `--refc/--bfm/--rtl` file arguments are required; inputs are
+line-oriented text (one value per line; `#`/`//` comment lines skipped).
+The script prints to stdout:
+- a data-length line per model, then the pairwise summary table
+  (`Pair / Compared / Match / Mismatch / Verdict`) for refC↔BFM,
+  refC↔RTL, and BFM↔RTL
+- per mismatching pair: `first divergence at index N:` with
+  `val_a=0x... val_b=0x... diff=...`
+- `OVERALL: CONSISTENT` (exit 0) or `OVERALL: INCONSISTENT` (exit 1)
 
 ## 3. Comparison criteria and diagnosis logic
 
@@ -72,5 +80,5 @@ The script must emit one result per vector with fields:
   reporting PASS; partial results are a FAIL.
 - Running consistency check when models are known to be out of sync — fix the diverging
   model first, then re-run.
-- Reporting byte offset without the expected/actual values — makes divergence
+- Reporting a divergence index without the expected/actual values — makes divergence
   non-actionable for the developer who must fix the bug.

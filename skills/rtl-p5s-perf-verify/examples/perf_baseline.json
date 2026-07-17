@@ -1,0 +1,13 @@
+{
+  "tool": "SystemC TLM-2.0",
+  "transport": "LT",
+  "blocks": [
+    {
+      "name": "cabac_encoder",
+      "throughput_mbps": 500.0,
+      "latency_ns": 60.0,
+      "clock_cycles": 12,
+      "stall_cycles_pct": 8.0
+    }
+  ]
+}

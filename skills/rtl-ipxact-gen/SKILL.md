@@ -37,9 +37,9 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 | Path | Role |
 |------|------|
 | `templates/component-template.xml` | IP-XACT 2014 XML skeleton: vendor/library/name/version, busInterfaces, model/ports, parameters, memoryMaps stubs. |
-| `scripts/gen_ipxact.py` | Stub: sv_to_ipxact wrapper + xmllint validation. (deep-fill in follow-up PR) |
+| `scripts/gen_ipxact.py` | Deterministic IEEE 1685-2014 XML generator: parses SV module header (ANSI ports/parameters), emits VLNV + model/ports (widths kept as expressions) + parameters + fileSets. Stdlib-only fallback when `sv_to_ipxact` is unavailable. |
 | `references/ipxact-conventions.md` | Port direction mapping, required XML sections, bus interface identification rules, anti-patterns. |
-| `examples/` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked example: `pixel_fifo.sv` input + generated `pixel_fifo.xml` + README with the exact command and output checks. |
 </Assets>
 
 <Responsibility_Boundary>
@@ -50,9 +50,9 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 
 <Execution>
 1. Read `skills/rtl-ipxact-gen/references/ipxact-conventions.md` for port direction mapping, required XML section order, and bus interface identification rules.
-2. Attempt `sv_to_ipxact -i rtl/{module}/{module}.sv -o ipxact/{module}.xml --ipxact-2014 --validate`. If exit code 0, proceed to step 5. If `sv_to_ipxact` is not installed, proceed to step 3.
+2. Attempt `sv_to_ipxact -i rtl/{module}/{module}.sv -o ipxact/{module}.xml --ipxact-2014 --validate`. If exit code 0, proceed to step 5. If `sv_to_ipxact` is not installed, run `python3 {plugin_root}/skills/rtl-ipxact-gen/scripts/gen_ipxact.py rtl/{module}/{module}.sv -o ipxact/{module}.xml` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) for deterministic port/parameter extraction, then proceed to step 3.
 3. Spawn `rtl-explorer` (see Tool_Usage) to extract all ports (name/direction/width), parameters, and identify AXI/APB/AHB bus interface groups by port name prefix.
-4. Spawn `ipxact-generator` (see Tool_Usage) to write `ipxact/{module}.xml` using `templates/component-template.xml` as scaffold. Preserve `i_`/`o_`/`io_` prefixes verbatim in `spirit:name`. Map `{domain}_clk` ports to clock roles and `{domain}_rst_n` to reset roles.
+4. Spawn `ipxact-generator` (see Tool_Usage) to write `ipxact/{module}.xml` — enriching the gen_ipxact.py output (or `templates/component-template.xml` scaffold) with bus interface and memory map sections. Preserve `i_`/`o_`/`io_` prefixes verbatim in `spirit:name`. Map `{domain}_clk` ports to clock roles and `{domain}_rst_n` to reset roles.
 5. Validate: `xmllint --schema <ieee1685-2014.xsd> ipxact/{module}.xml --noout` (if xmllint available). Report PASS or FAIL with error summary.
 6. Report the generated file path and validation result to the user.
 

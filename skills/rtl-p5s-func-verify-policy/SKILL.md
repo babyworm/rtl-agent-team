@@ -64,7 +64,7 @@ Below target: testbench-dev generates additional tests → re-run regression.
 
 ```bash
 # Verilator compilation with coverage
-make -C sim/{module} SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut MODULE=test_dut
+make -C sim/{module} sim SIM=verilator EXTRA_ARGS="--coverage --trace-fst" TOPLEVEL=dut MODULE=test_dut
 
 # Merge multi-seed coverage data
 verilator_coverage --write-info merged.info seed_*/coverage.dat

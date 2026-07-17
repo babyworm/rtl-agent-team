@@ -131,21 +131,46 @@ class TestAgentDefinitions:
     def test_all_agents_have_inline_rat_block(self, agent_files):
         """v0.12.0: every agent must carry the actual inline RAT audit block —
         the [RAT: CATEGORY | SOURCE] tag spec AND the plugin_root path-convention
-        line — not merely a pointer to audit-output-protocol.md."""
+        line — not merely a pointer to audit-output-protocol.md.
+        v0.13.x: the path-convention line must also carry the project-root
+        resolution ladder (PROJECT_ROOT prompt line > spawn-context project_root
+        > $RAT_PROJECT_ROOT env > CWD)."""
         missing_tag = []
         missing_plugin_root = []
+        missing_root_ladder = []
+        ladder = (
+            "`PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > "
+            "`$RAT_PROJECT_ROOT` env > CWD"
+        )
         for f in agent_files:
             content = f.read_text()
             if "[RAT: CATEGORY | SOURCE]" not in content:
                 missing_tag.append(f.name)
             if "field `plugin_root`" not in content:
                 missing_plugin_root.append(f.name)
+            if ladder not in content:
+                missing_root_ladder.append(f.name)
         assert missing_tag == [], (
             f"Agents missing inline [RAT: CATEGORY | SOURCE] tag: {missing_tag}"
         )
         assert missing_plugin_root == [], (
             f"Agents missing plugin_root path-convention line: {missing_plugin_root}"
         )
+        assert missing_root_ladder == [], (
+            f"Agents missing project-root resolution ladder: {missing_root_ladder}"
+        )
+
+    def test_step0_template_has_project_root_ladder(self):
+        """v0.13.x: agents/lib/step0-template.md (excluded from the agent_files
+        glob) must resolve project-relative paths via the manifest project_root
+        field shipped by spawn-context-util.sh, with the RAT_PROJECT_ROOT env
+        and process-CWD fallbacks."""
+        template = AGENTS_DIR / "lib" / "step0-template.md"
+        assert template.exists(), "agents/lib/step0-template.md must exist"
+        content = template.read_text()
+        assert "`project_root` field in `.rat/state/spawn-context.json`" in content
+        assert "`$RAT_PROJECT_ROOT` env" in content
+        assert "process CWD" in content
 
     def test_audit_output_protocol_exists(self):
         """The shared audit output protocol file must exist."""

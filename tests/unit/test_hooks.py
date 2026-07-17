@@ -955,6 +955,128 @@ class TestRtlEditTrackerPhase6:
         assert "stale" in ctx.lower() or "Phase 6" in ctx
 
 
+class TestSpecCascadeMarkerLifecycle:
+    """Tests for the spec-cascade-stale marker lifecycle in
+    hooks/rtl-edit-tracker.sh: transition-edge warning, silent marker
+    refresh, and auto-clear on contract-validator PASS report."""
+
+    HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
+
+    def _add_downstream(self, tmp_project):
+        rtl_dir = tmp_project / "rtl" / "module"
+        rtl_dir.mkdir(parents=True, exist_ok=True)
+        (rtl_dir / "top.sv").write_text("module top; endmodule\n")
+
+    def _doc_edit(self, tmp_project, rel="docs/phase-3-uarch/pipeline.md"):
+        doc = tmp_project / rel
+        doc.parent.mkdir(parents=True, exist_ok=True)
+        doc.write_text("# spec\n")
+        # Cascade case patterns match */docs/phase-*/* — absolute path required.
+        return run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": str(doc)})
+
+    def test_marker_created_with_warning_on_first_doc_edit(self, tmp_project):
+        """First upstream doc edit with downstream RTL present → marker + warning."""
+        self._add_downstream(tmp_project)
+        result = self._doc_edit(tmp_project)
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "[SPEC CASCADE" in ctx
+        assert "cross-phase-contract-validator" in ctx
+        marker = tmp_project / ".rat" / "state" / "spec-cascade-stale-p3"
+        assert marker.exists()
+
+    def test_no_marker_without_downstream(self, tmp_project):
+        """Normal forward flow: no downstream artifacts → no marker, no warning."""
+        result = self._doc_edit(tmp_project)
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "[SPEC CASCADE" not in ctx
+        marker = tmp_project / ".rat" / "state" / "spec-cascade-stale-p3"
+        assert not marker.exists()
+
+    def test_second_edit_no_duplicate_warning_marker_refreshed(self, tmp_project):
+        """Marker already set → silent mtime refresh, no repeated [SPEC CASCADE]."""
+        self._add_downstream(tmp_project)
+        self._doc_edit(tmp_project)
+        marker = tmp_project / ".rat" / "state" / "spec-cascade-stale-p3"
+        assert marker.exists()
+        # Backdate the marker to detect the mtime refresh.
+        os.utime(marker, (1000000, 1000000))
+        result = self._doc_edit(tmp_project, rel="docs/phase-3-uarch/other.md")
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "[SPEC CASCADE" not in ctx, "warn only on marker creation (transition edge)"
+        assert marker.exists()
+        assert marker.stat().st_mtime > 1000000, "marker mtime must be refreshed silently"
+
+    def test_json_doc_edit_critical_severity(self, tmp_project):
+        """Structured requirements (.json) → CRITICAL cascade severity."""
+        self._add_downstream(tmp_project)
+        result = self._doc_edit(
+            tmp_project, rel="docs/phase-3-uarch/iron-requirements.json"
+        )
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "[SPEC CASCADE CRITICAL]" in ctx
+
+    def test_marker_cleared_on_validator_pass_report(self, tmp_project):
+        """Writing the contract-validation report with Verdict: PASS clears markers."""
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "spec-cascade-stale-p1").touch()
+        (state_dir / "spec-cascade-stale-p3").touch()
+        report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
+        report.parent.mkdir(parents=True)
+        report.write_text(
+            "# Cross-Phase Contract Validation\n"
+            "- Boundary: P3→P4\n"
+            "- Verdict: PASS\n"
+        )
+        result = run_hook(
+            self.HOOK, {"cwd": str(tmp_project), "file_path": str(report)}
+        )
+        assert not (state_dir / "spec-cascade-stale-p1").exists()
+        assert not (state_dir / "spec-cascade-stale-p3").exists()
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "SPEC CASCADE RESOLVED" in ctx
+
+    def test_marker_kept_on_validator_fail_report(self, tmp_project):
+        """FAIL verdict keeps markers even when table rows contain PASS cells."""
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "spec-cascade-stale-p3").touch()
+        report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
+        report.parent.mkdir(parents=True)
+        report.write_text(
+            "# Cross-Phase Contract Validation\n"
+            "- Verdict: FAIL\n"
+            "| 1 | Port width consistency | PASS | ok |\n"
+            "| 2 | Memory classification | FAIL | rtl/module/top.sv:10 |\n"
+        )
+        result = run_hook(
+            self.HOOK, {"cwd": str(tmp_project), "file_path": str(report)}
+        )
+        assert (state_dir / "spec-cascade-stale-p3").exists()
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "SPEC CASCADE RESOLVED" not in ctx
+
+    def test_other_review_write_does_not_clear(self, tmp_project):
+        """Unrelated reviews/ writes never clear cascade markers."""
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "spec-cascade-stale-p2").touch()
+        other = tmp_project / "reviews" / "phase-6-review" / "code-review.md"
+        other.parent.mkdir(parents=True)
+        other.write_text("Verdict: PASS\n")
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "file_path": str(other)})
+        assert (state_dir / "spec-cascade-stale-p2").exists()
+
+    def test_pass_report_without_markers_plain_continue(self, tmp_project):
+        """PASS report with no markers present → plain continue (no RESOLVED msg)."""
+        report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
+        report.parent.mkdir(parents=True)
+        report.write_text("- Verdict: PASS\n")
+        result = run_hook(
+            self.HOOK, {"cwd": str(tmp_project), "file_path": str(report)}
+        )
+        assert result["continue"] is True
+        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "SPEC CASCADE RESOLVED" not in ctx
+
+
 class TestP6CascadeGate:
     """Tests for hooks/rtl-p6-cascade-gate.sh."""
 
@@ -2062,7 +2184,7 @@ class TestSpawnContextManifest:
         m = self._read_manifest(tmp_project)
         required_keys = {
             "schema_version", "generated_at", "generated_by", "plugin_root",
-            "setup", "pipeline", "upstream_artifacts",
+            "project_root", "setup", "pipeline", "upstream_artifacts",
             "staleness", "team", "quality_gates",
         }
         assert required_keys.issubset(set(m.keys()))
@@ -2084,6 +2206,49 @@ class TestSpawnContextManifest:
         assert os.path.isabs(m["plugin_root"]), (
             f"plugin_root must be an absolute path: {m['plugin_root']!r}"
         )
+
+    def test_manifest_project_root_defaults_to_cwd(self, tmp_project):
+        """v0.13.x: without RAT_PROJECT_ROOT, project_root equals the session
+        CWD. Empty env value counts as unset (${RAT_PROJECT_ROOT:-} guard)."""
+        self._setup_project(tmp_project)
+        self._invoke(
+            tmp_project, "rtl-p4-implement", env={"RAT_PROJECT_ROOT": ""},
+        )
+        m = self._read_manifest(tmp_project)
+        assert m["project_root"] == str(tmp_project)
+
+    def test_manifest_project_root_honors_env_override(
+        self, tmp_project, tmp_path_factory
+    ):
+        """v0.13.x: RAT_PROJECT_ROOT set to an existing project dir → manifest
+        lands under the override root with project_root carrying the override,
+        even when the hook's session cwd points elsewhere (external Workflow
+        driver scenario)."""
+        self._setup_project(tmp_project)
+        elsewhere = tmp_path_factory.mktemp("driver-cwd")
+        result = run_hook(
+            self.HOOK,
+            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(elsewhere)},
+            env={"RAT_PROJECT_ROOT": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        m = self._read_manifest(tmp_project)
+        assert m["project_root"] == str(tmp_project)
+        # Setup marker resolved against the override root, not the driver cwd.
+        assert m["setup"]["completed"] is True
+        # Nothing leaked into the driver cwd.
+        assert not (elsewhere / ".rat").exists()
+
+    def test_manifest_project_root_bogus_env_falls_back(self, tmp_project):
+        """v0.13.x: RAT_PROJECT_ROOT pointing at a non-directory is ignored
+        (-d guard, matching rat-dir-util.sh) — identical to unset."""
+        self._setup_project(tmp_project)
+        self._invoke(
+            tmp_project, "rtl-p4-implement",
+            env={"RAT_PROJECT_ROOT": str(tmp_project / "does-not-exist")},
+        )
+        m = self._read_manifest(tmp_project)
+        assert m["project_root"] == str(tmp_project)
 
     def test_manifest_detects_missing_artifacts(self, tmp_project):
         """Missing required upstream → all_required_present=false."""
@@ -2285,6 +2450,26 @@ class TestSpawnContextTaskCreate:
         m2 = self._read_manifest(tmp_project)
         assert m2["pipeline"]["current_phase"] == 6
 
+    def test_taskcreate_project_root_override(self, tmp_project, tmp_path_factory):
+        """v0.13.x: RAT_PROJECT_ROOT redirects manifest writes for direct
+        Task() spawns whose session cwd is not the project root."""
+        (tmp_project / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
+        (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").touch()
+        elsewhere = tmp_path_factory.mktemp("driver-cwd")
+        result = run_hook(
+            self.HOOK,
+            {
+                "subagent_type": "rtl-agent-team:p6-review-orchestrator",
+                "cwd": str(elsewhere),
+            },
+            env={"RAT_PROJECT_ROOT": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        m = self._read_manifest(tmp_project)
+        assert m["pipeline"]["current_phase"] == 6
+        assert m["project_root"] == str(tmp_project)
+        assert not (elsewhere / ".rat").exists()
+
     def test_taskcreate_non_orchestrator_ignored(self, tmp_project):
         """Non-orchestrator agent type → no manifest written."""
         result = run_hook(
@@ -2383,6 +2568,7 @@ class TestSpawnContextStructuralContracts:
         "generated_at": str,
         "generated_by": str,
         "plugin_root": str,
+        "project_root": str,
         "setup": dict,
         "pipeline": dict,
         "upstream_artifacts": dict,
@@ -2517,6 +2703,42 @@ class TestSpawnContextStructuralContracts:
             "docs/phase-1-research/spec-feature-inventory.json|p1-spec-feature-inventory"
             in opt_lines
         ), f"artmap_optional 2 missing spec-feature-inventory.json entry: {opt_lines}"
+
+    def test_artifact_map_phase8_ppa_opt_entries(self):
+        """ppa-opt (integer phase 8) lists final-compliance.md and docs/ppa-opt as
+        optional upstream context; required is empty by design (post-P5 loop)."""
+        import subprocess
+        artmap = str(HOOKS_DIR / "lib" / "artifact-map.sh")
+        opt = subprocess.run(
+            ["sh", "-c", f'. "{artmap}" && artmap_optional 8'],
+            capture_output=True, text=True, timeout=5,
+        ).stdout
+        opt_lines = [l.strip() for l in opt.splitlines() if l.strip()]
+        assert "reviews/phase-5-verify/final-compliance.md|p5-compliance" in opt_lines, (
+            f"artmap_optional 8 missing final-compliance entry: {opt_lines}"
+        )
+        assert "docs/ppa-opt|ppa-iteration-artifacts" in opt_lines, (
+            f"artmap_optional 8 missing ppa-iteration-artifacts entry: {opt_lines}"
+        )
+        req = subprocess.run(
+            ["sh", "-c", f'. "{artmap}" && artmap_required 8'],
+            capture_output=True, text=True, timeout=5,
+        ).stdout
+        assert req.strip() == "", (
+            f"artmap_required 8 must be empty (ppa-opt required is [] in registry): {req!r}"
+        )
+
+    def test_artifact_map_is_generated_from_registry(self):
+        """artifact-map.sh case bodies carry GENERATED markers so
+        generate-phase-maps.sh --check enforces registry parity."""
+        content = (HOOKS_DIR / "lib" / "artifact-map.sh").read_text()
+        for marker in (
+            "# BEGIN GENERATED ARTMAP_REQUIRED",
+            "# END GENERATED ARTMAP_REQUIRED",
+            "# BEGIN GENERATED ARTMAP_OPTIONAL",
+            "# END GENERATED ARTMAP_OPTIONAL",
+        ):
+            assert marker in content, f"missing marker: {marker}"
 
     # ── Orchestrator Step 0 consistency ──────────────────────────────
 

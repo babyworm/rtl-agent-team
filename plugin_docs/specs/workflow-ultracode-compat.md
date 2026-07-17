@@ -83,9 +83,11 @@ existing directory.
 ## Proposed-only (future plan — NOT applied)
 
 The durable fix for agent-side I/O is a schema change + mass edit, intentionally excluded
-from the safe_edits set. Track as a future plan:
+from the safe_edits set. Track as a future plan.
+(Per-item status as of 2026-07-17: all 5 items APPLIED — see each item's status tag.)
 
-1. **Agent Step-0 / path-convention parameterization (the robust half).** Extend the shared
+1. **[APPLIED 2026-07-17 (this change set)]**
+   **Agent Step-0 / path-convention parameterization (the robust half).** Extend the shared
    "Path convention" header line across all 99 agents + `agents/lib/step0-template.md` + the
    33 orchestrator Step-0 blocks to resolve project-relative paths against `project_root`
    (from `.rat/state/spawn-context.json`) OR the `RAT_PROJECT_ROOT` env OR an explicit
@@ -93,7 +95,8 @@ from the safe_edits set. Track as a future plan:
    `sed` (uniform header), but a mass edit across orchestrators — **excluded** from
    safe_edits by task rule. Recommended driver target: leaf specialists, not orchestrators.
 
-2. **Ship `project_root` in the spawn-context manifest.** Mirror the existing `plugin_root`
+2. **[APPLIED 2026-07-17 (this change set)]**
+   **Ship `project_root` in the spawn-context manifest.** Mirror the existing `plugin_root`
    pattern: `SCTX_PROJECT_ROOT="${RAT_PROJECT_ROOT:-$SCTX_CWD}"` in
    `hooks/lib/spawn-context-util.sh`, emit `"project_root":"..."` in the manifest, and honor
    `CWD="${RAT_PROJECT_ROOT:-$CWD}"` in `rtl-spawn-context.sh` / `rtl-phase-state-bootstrap.sh`.
@@ -101,17 +104,20 @@ from the safe_edits set. Track as a future plan:
    (`test_hooks.py`, `test_plugin_runtime_contract.py`, `test_agent_skill_structure.py`,
    `test_audit.py`) — hence proposed-only.
 
-3. **`PROJECT_ROOT` in deployed EDA templates.** Change each `PROJECT_ROOT="$(pwd)"` to
+3. **[APPLIED 2026-07-17 (this change set)]**
+   **`PROJECT_ROOT` in deployed EDA templates.** Change each `PROJECT_ROOT="$(pwd)"` to
    `PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"` in `scripts/run_sim.sh` and the deployed
    `run_lint.sh` / `run_syn.sh` / `run_cdc.sh` / `run_conformal.sh` / `run_formality.sh` /
    `run_regression_uvm.sh`. Backward-compatible, but touches user-deployed templates and only
    matters when subagent CWD != project root; roll out with the prompt contract above.
 
-4. **Workflow-driver gate model (document only).** When an external Workflow owns phase/gate
+4. **[APPLIED 2026-07-17 → see `workflow-driver-gate-model.md`]**
+   **Workflow-driver gate model (document only).** When an external Workflow owns phase/gate
    control flow in JS, the Rule-5 hard Stop-gate is superseded by JS gate logic, with a
    separate Rule-5 sanity check retained. Do **not** modify `rtl-verify-stop-gate.sh` —
    as-shipped Claude Code sessions still depend on the Stop gate for Rule 5.
 
-5. **Cosmetic `make sim` in docs (optional).** Switch documented `make -C sim/{module} ...`
+5. **[APPLIED 2026-07-17 (this change set)]**
+   **Cosmetic `make sim` in docs (optional).** Switch documented `make -C sim/{module} ...`
    invocations to `make sim ...` across ~15 agent/policy/guide surfaces. Redundant once the
    `.DEFAULT_GOAL := sim` template fix is in place; purely for guidance consistency.

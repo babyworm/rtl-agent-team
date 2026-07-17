@@ -39,7 +39,7 @@ If prerequisites are missing: WARNING — recommend running the failing regressi
 | `templates/repro-tb-template.sv` | Minimal TB scaffold: clock/reset gen, DUT instantiation, stimulus, pass/fail assertion. |
 | `scripts/vcd_diff.py` | Cycle-by-cycle VCD comparison — identifies first divergence between two waveform files. |
 | `references/bug-repro-conventions.md` | Naming rules, output schema (repro_tb.sv / root_cause.md), length guidance, anti-patterns. |
-| `examples/` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked example `bug-042-cabac-bypass/`: minimal confirmed-repro TB + `root_cause.md` per the conventions schema. |
 </Assets>
 
 <Responsibility_Boundary>

@@ -59,7 +59,7 @@ scripts/run_sim.sh --sim verilator --top tb_{top}_integration \
 
 **cocotb**:
 ```bash
-make -C sim/top SIM=verilator TOPLEVEL={top} MODULE=test_{top}_integration
+make -C sim/top sim SIM=verilator TOPLEVEL={top} MODULE=test_{top}_integration
 ```
 
 **Fallback (iverilog)**:

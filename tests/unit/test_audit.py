@@ -386,6 +386,64 @@ class TestAuditSpawnComplete:
 # ── Trace extension tests ────────────────────────────────────────────────────
 
 
+class TestSpawnContextProjectRootTrace:
+    """v0.13.x: rtl-spawn-context.sh honors RAT_PROJECT_ROOT — the manifest
+    (with its project_root field) and the spawn_start audit trace land under
+    the override root, not the external driver's session cwd."""
+
+    HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
+
+    def test_override_routes_manifest_and_trace(
+        self, tmp_project, tmp_path_factory
+    ):
+        sid = "sctx-root-test"
+        audit_dir = tmp_project / ".rat" / "audit"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        (audit_dir / "session-id.txt").write_text(sid)
+        (audit_dir / sid).mkdir(exist_ok=True)
+
+        elsewhere = tmp_path_factory.mktemp("driver-cwd")
+        result = run_hook(
+            self.HOOK,
+            {
+                "cwd": str(elsewhere),
+                "subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+            },
+            env={"RAT_PROJECT_ROOT": str(tmp_project)},
+        )
+        assert result["continue"] is True
+
+        manifest = tmp_project / ".rat" / "state" / "spawn-context.json"
+        assert manifest.exists(), "manifest must land under the override root"
+        m = json.loads(manifest.read_text())
+        assert m["project_root"] == str(tmp_project)
+
+        trace = audit_dir / sid / "trace.jsonl"
+        assert trace.exists(), "spawn_start trace must land under override root"
+        line = json.loads(trace.read_text().splitlines()[0])
+        assert line["event"] == "spawn_start"
+        assert line["agent"] == "p4-implement-orchestrator"
+
+        assert not (elsewhere / ".rat").exists()
+
+    def test_no_override_uses_cwd(self, tmp_project):
+        """Without RAT_PROJECT_ROOT (empty == unset), manifest project_root
+        equals the session cwd — legacy behavior unchanged."""
+        result = run_hook(
+            self.HOOK,
+            {
+                "cwd": str(tmp_project),
+                "subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+            },
+            env={"RAT_PROJECT_ROOT": ""},
+        )
+        assert result["continue"] is True
+        manifest = tmp_project / ".rat" / "state" / "spawn-context.json"
+        assert manifest.exists()
+        m = json.loads(manifest.read_text())
+        assert m["project_root"] == str(tmp_project)
+
+
 class TestEditTrackerArtifactTrace:
     """Tests for artifact_write trace in rtl-edit-tracker.sh."""
 

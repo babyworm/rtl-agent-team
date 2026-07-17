@@ -1,0 +1,4 @@
+# Artifacts produced when running the example in place (see examples/README.md)
+build/
+smoke_test_result.txt
+run_report.json

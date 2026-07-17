@@ -13,7 +13,9 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(pwd)"
+# RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
+# resolve against the project root even when invoked from a different CWD.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
 SEEDS="${SEEDS:-42 123 456 789 1337}"
@@ -103,6 +105,14 @@ if ! command -v "$SIM_BIN" >/dev/null 2>&1; then
   exit 1
 fi
 
+# ─── Resolve input/output paths against PROJECT_ROOT ──────────────────
+# Done BEFORE source collection so the filelist/TB dir are found even when the
+# invocation CWD differs from the project root (RAT_PROJECT_ROOT override).
+[[ "$RESULTS_DIR" != /* ]] && RESULTS_DIR="$PROJECT_ROOT/$RESULTS_DIR"
+[[ "$COVERAGE_DIR" != /* ]] && COVERAGE_DIR="$PROJECT_ROOT/$COVERAGE_DIR"
+[[ "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
+[[ "$TB_DIR" != /* ]] && TB_DIR="$PROJECT_ROOT/$TB_DIR"
+
 # ─── Collect source files ──────────────────────────────────────────────────
 SRC_FILES=()
 if [[ -f "$FILELIST" ]]; then
@@ -115,10 +125,10 @@ if [[ -f "$FILELIST" ]]; then
 fi
 
 # Auto-include rtl/common/ (SRAM wrappers)
-if [[ -d rtl/common ]]; then
+if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
   while IFS= read -r f; do
     SRC_FILES+=("$f")
-  done < <(find rtl/common -name '*.sv' -o -name '*.v' 2>/dev/null | sort)
+  done < <(find "$PROJECT_ROOT/rtl/common" -name '*.sv' -o -name '*.v' 2>/dev/null | sort)
 fi
 
 # UVM TB files
@@ -128,11 +138,7 @@ if [[ -d "$TB_DIR" ]]; then
   done < <(find "$TB_DIR" -name '*.sv' -o -name '*.svh' 2>/dev/null | sort)
 fi
 
-# ─── Resolve paths to absolute ─────────────────────────────────────────
-[[ "$RESULTS_DIR" != /* ]] && RESULTS_DIR="$PROJECT_ROOT/$RESULTS_DIR"
-[[ "$COVERAGE_DIR" != /* ]] && COVERAGE_DIR="$PROJECT_ROOT/$COVERAGE_DIR"
-[[ "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
-[[ "$TB_DIR" != /* ]] && TB_DIR="$PROJECT_ROOT/$TB_DIR"
+# ─── Resolve remaining relative filelist entries to absolute ───────────
 _abs_src=()
 for f in "${SRC_FILES[@]}"; do
   case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac

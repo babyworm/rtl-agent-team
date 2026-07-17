@@ -20,6 +20,12 @@ else
   run_tool() { "$@"; }
 fi
 
+# RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
+# and default output dirs resolve against the project root even when invoked
+# from a different CWD. Unset ⇒ cd "$(pwd)" is a no-op (behavior unchanged).
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+cd "$PROJECT_ROOT"
+
 # ─── Defaults ───────────────────────────────────────────────────────────────
 TOP=""
 RTL_FILELIST=""
@@ -49,6 +55,25 @@ USAGE
   exit 0
 }
 
+# ─── Shell-metacharacter validation (self-contained; template is deployed standalone) ──
+# Values checked here are interpolated into the tool command line (echoed into
+# a replay script) and into the generated Formality Tcl. Reject anything
+# outside a path/identifier-safe whitelist so a hostile filelist entry or CLI
+# arg cannot inject shell or Tcl commands (mirrors the run_syn.sh v0.11.3
+# Tcl-injection hardening precedent).
+validate_shell_safe() {
+  local label="$1"; shift
+  local v
+  for v in "$@"; do
+    [ -z "$v" ] && continue
+    if ! [[ "$v" =~ ^[A-Za-z0-9_./+=@:,-]+$ ]]; then
+      echo "ERROR: $label contains shell-unsafe characters: '$v'" >&2
+      echo "       Allowed: letters, digits, and _ . / + = @ : , -  — rename/move and retry." >&2
+      exit 1
+    fi
+  done
+}
+
 # ─── Parse args ─────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -70,6 +95,21 @@ done
 [[ -z "$RTL_FILELIST" ]] && { echo "ERROR: --rtl is required" >&2; exit 1; }
 [[ -z "$NETLIST" ]] && { echo "ERROR: --netlist is required" >&2; exit 1; }
 
+# --top is emitted into the Tcl (`set_top r:/WORK/$TOP`) and into generated
+# file names — require a plain Verilog module identifier.
+if ! [[ "$TOP" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "ERROR: --top must be a Verilog module identifier (got: '$TOP')" >&2
+  exit 1
+fi
+# Paths below feed the eval-free but replayed command line and the generated
+# Formality Tcl — validate against shell metacharacters first.
+validate_shell_safe "--rtl path" "$RTL_FILELIST"
+validate_shell_safe "--netlist path" "$NETLIST"
+validate_shell_safe "--svf path" "$SVF"
+validate_shell_safe "--liberty path" "$LIBERTY"
+validate_shell_safe "--outdir path" "$OUTDIR"
+validate_shell_safe "--script path" "$SCRIPT_PATH"
+
 mkdir -p "$OUTDIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_CWD="$(pwd)"
@@ -86,6 +126,9 @@ while IFS= read -r line; do
   [[ "$line" == +* ]] && continue
   RTL_FILES+=("$line")
 done < "$RTL_FILELIST"
+
+# Filelist entries are emitted into the generated Tcl — validate them too.
+validate_shell_safe "RTL file path" "${RTL_FILES[@]}"
 
 # ─── Generate Formality Tcl ──────────────────────────────────────────────
 FM_TCL="$SCRIPT_PATH"
@@ -157,7 +200,9 @@ EOF
 chmod +x "$REPLAY_SCRIPT"
 cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_formality_${TOP}_latest.sh"
 
-eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+# $FM_TCL components (--script / --outdir / --top) validated against shell
+# metacharacters above — execute via argv, no eval.
+run_tool fm_shell -64bit -f "$FM_TCL" 2>&1 | tee "$REPORT"
 EXIT_CODE=${PIPESTATUS[0]}
 
 # ─── Summary ─────────────────────────────────────────────────────────────

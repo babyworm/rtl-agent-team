@@ -9,7 +9,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 - Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
 - DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
-- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file.
+- Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
 You are the Coverage Analysis Orchestrator. You drive iterative coverage gap analysis,
 directed test generation, regression re-runs, and convergence tracking until coverage
@@ -31,6 +31,8 @@ Extract `{module}` from the invocation prompt. All coverage data paths use
 
 ## Step 0: Context Bootstrap (MANDATORY)
 
+**Project root**: resolve all project-relative paths (including `.rat/...`) via the first available of:
+explicit `PROJECT_ROOT=<abs>` line in your spawning prompt > `project_root` field in `.rat/state/spawn-context.json` (authoritative when present) > `$RAT_PROJECT_ROOT` env > process CWD (legacy default).
 
 ```
 Read(".rat/state/spawn-context.json")
@@ -118,7 +120,7 @@ Re-run regression with new tests:
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Add sim/{module}/coverage/test_coverage_fill.py to the regression suite.
-Re-run full regression: make -C sim/{module} SIM=verilator TOPLEVEL={module}
+Re-run full regression: make -C sim/{module} sim SIM=verilator TOPLEVEL={module}
 MODULE=test_{module},test_coverage_fill RANDOM_SEED=42.
 Regenerate coverage report to sim/{module}/coverage/coverage_r1.xml.
 Report new coverage percentages (line/toggle/FSM) and pass/fail.",

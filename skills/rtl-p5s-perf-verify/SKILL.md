@@ -37,9 +37,9 @@ If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl
 | Path | Role |
 |------|------|
 | `templates/perf-monitor-template.sv` | SV measurement harness scaffold: cycle counter, throughput/latency monitors wired to DUT ports. |
-| `scripts/parse_perf_report.py` | Stub: parse perf JSON + compare against BFM baseline. (deep-fill in follow-up PR) |
+| `scripts/parse_perf_report.py` | Deterministic comparator: parses the perf-monitor summary block from the sim run log, compares against `bfm/perf_baseline.json`, writes `{module}_perf.json` with per-metric delta_pct/verdict (10% threshold; exit 1 on FAIL). |
 | `references/perf-verify-conventions.md` | Metric naming, JSON schema, 10% deviation threshold, report structure, anti-patterns. |
-| `examples/` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked example: sample run log + baseline + generated `cabac_encoder_perf.json` + README with the exact command and metric arithmetic. |
 </Assets>
 
 <Responsibility_Boundary>
@@ -51,7 +51,7 @@ If prerequisites are missing: WARNING — recommend running `/rtl-agent-team:rtl
 <Execution>
 1. Read `skills/rtl-p5s-perf-verify/references/perf-verify-conventions.md` for the JSON schema, 10% deviation threshold, and report structure.
 2. Spawn `p5s-perf-orchestrator` (see Tool_Usage) to execute performance simulation using `templates/perf-monitor-template.sv` as the measurement harness scaffold.
-3. The orchestrator reads `bfm/perf_baseline.json`, runs the simulation, and writes `sim/{module}/{module}_perf.json` with measured vs expected values and per-metric PASS/FAIL verdicts.
+3. The orchestrator reads `bfm/perf_baseline.json`, runs the simulation, and writes `sim/{module}/{module}_perf.json` with measured vs expected values and per-metric PASS/FAIL verdicts. For deterministic comparison it can run `python3 {plugin_root}/skills/rtl-p5s-perf-verify/scripts/parse_perf_report.py --log sim/{module}/{module}_perf_run.log --baseline bfm/perf_baseline.json -o sim/{module}/{module}_perf.json` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`; see `examples/README.md` for flags).
 4. The orchestrator writes `reviews/phase-5-verify/{module}-performance-report.md` with the metrics table, deviation analysis for any failing metric, and a recommendation.
 5. Report the overall PASS/FAIL verdict and the report path to the user.
 

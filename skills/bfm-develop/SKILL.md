@@ -40,9 +40,10 @@ If missing: WARNING — proceed with available artifacts; note absent dependenci
 | Path | Role |
 |------|------|
 | `templates/bfm_module_template.h` | SystemC TLM-2.0 scaffold with LT/AT transport, Memory Manager, PEQ, and AXI extension stubs. |
-| `scripts/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `scripts/run_bfm.py` | Build-and-run wrapper: locates `bfm/`, builds via CMake/Makefile (`SYSTEMC_HOME` honored — exit 2 with guidance when referenced but unset), runs `make run` or the built binary, writes a JSON run report. |
 | `references/bfm-conventions.md` | Transport-style rules, AMBA protocol guidance, perf_baseline.json schema, anti-patterns. |
-| `examples/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `examples/axi_stream_stub/` | Minimal SystemC TLM-2.0 LT BFM skeleton (requires local SystemC; not built in CI). |
+| `examples/selfcheck_fake_build/` | SystemC-free fixture exercising run_bfm.py orchestration; committed `expected_run_report.json` regeneration-checked in CI. |
 </Assets>
 
 <Responsibility_Boundary>
@@ -56,6 +57,9 @@ If missing: WARNING — proceed with available artifacts; note absent dependenci
 2. Spawn `bfm-dev` to implement `bfm/src/*.cpp` — one `SC_MODULE` per architectural block, LT by default, AXI with `amba_pv::axi_extension`, Memory Manager, PEQ; AT only if explicitly requested (see Tool_Usage).
 3. Build: `mkdir -p bfm/build && cd bfm/build && cmake .. && make` — fix all compile errors.
 4. Smoke test: `cd bfm/build && ./smoke_test` — at least one LT transaction end-to-end; write result to `bfm/smoke_test_result.txt`.
+   For a single build+run cycle with a machine-readable result, use
+   `python3 {plugin_root}/skills/bfm-develop/scripts/run_bfm.py --bfm-dir bfm --report bfm_run_report.json`
+   (`{plugin_root}` resolved from `.rat/state/spawn-context.json`) — exit 0 = smoke ran clean, 1 = build/run failure (report written), 2 = environment error (including `SYSTEMC_HOME` referenced but unset).
 5. Functional consistency: run BFM and `refc/` on the same test vectors; verify per-block output matches (bitexact or within documented tolerance); record in `bfm/perf_baseline.json`.
 6. Feature coverage: map every `REQ-F-*` from `iron-requirements.json` to a BFM module/method (structural check); save `reviews/phase-3-uarch/bfm-feature-coverage.md`. Escalate unmapped features to the user.
 7. If DPI-C co-simulation is required: implement `bfm/dpi/` interface.

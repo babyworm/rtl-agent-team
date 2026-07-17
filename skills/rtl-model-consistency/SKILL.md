@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
 <Purpose>
-Run a 3-way bitexact comparison between the C reference model (`refc/`), SystemC BFM (`bfm/`), and RTL simulation on a shared test vector set. Outputs: `sim/consistency/consistency_report.md` with a per-vector comparison matrix and diagnosis identifying which model diverges.
+Run a 3-way bitexact comparison between the C reference model (`refc/`), SystemC BFM (`bfm/`), and RTL simulation on a shared test vector set. Outputs: `sim/consistency/consistency_report.md` with a pairwise comparison matrix and diagnosis identifying which model diverges.
 </Purpose>
 
 <Use_When>
@@ -39,10 +39,10 @@ If any model binary is missing: WARNING — run that model's build skill first; 
 <Assets>
 | Path | Role |
 |------|------|
-| `scripts/compare_3way.py` | Pairwise binary diff of ref/BFM/RTL outputs; emits per-vector PASS/FAIL matrix and first-divergence byte. |
+| `scripts/compare_3way.py` | Pairwise comparison of ref/BFM/RTL output files (`--refc/--bfm/--rtl`, line-oriented text via `--format hex\|bin\|csv`, `--tolerance N`); emits pairwise match/mismatch matrix, first-divergence index + values per pair, exit 0 = consistent / 1 = inconsistent. |
 | `templates/consistency-report.md` | Report scaffold with summary table, diagnosis section, and mismatch details table. |
 | `references/model-consistency-conventions.md` | Comparison criteria, diagnosis logic table, vector-count guidance, anti-patterns. |
-| `examples/.gitkeep` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked 3-way vector set: shared inputs + consistent outputs (PASS) + RTL-drift outputs (vector 11 diverges → "RTL has a bug" diagnosis) + README with commands. |
 </Assets>
 
 <Responsibility_Boundary>
@@ -53,12 +53,12 @@ If any model binary is missing: WARNING — run that model's build skill first; 
 
 <Execution>
 1. Select shared test vector set: use `sim/consistency/test_vectors.bin` if present; otherwise generate a minimum 10-vector set.
-2. Run all three models in parallel on identical input (see Tool_Usage):
-   - `ref-model-dev`: `./refc/build/ref_model < sim/consistency/test_vectors.bin > sim/consistency/ref_output.bin`
-   - `bfm-dev`: `./bfm/build/bfm_smoke < sim/consistency/test_vectors.bin > sim/consistency/bfm_output.bin`
-   - `func-verifier`: simulate RTL with vectors (iverilog/cocotb), capture to `sim/consistency/rtl_output.bin`
-3. Run `python3 {plugin_root}/skills/rtl-model-consistency/scripts/compare_3way.py sim/consistency/` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) — produces pairwise PASS/FAIL matrix and first-divergence bytes.
-4. Write `sim/consistency/consistency_report.md` using `templates/consistency-report.md`: summary table, diagnosis (see conventions for logic), mismatch details with byte offset + expected/actual values.
+2. Run all three models in parallel on identical input (see Tool_Usage). Each output must be captured as line-oriented text (one value per line — dump binary outputs to hex/bin/csv text first):
+   - `ref-model-dev`: `./refc/build/ref_model < sim/consistency/test_vectors.bin > sim/consistency/ref_output.hex`
+   - `bfm-dev`: `./bfm/build/bfm_smoke < sim/consistency/test_vectors.bin > sim/consistency/bfm_output.hex`
+   - `func-verifier`: simulate RTL with vectors (iverilog/cocotb), capture to `sim/consistency/rtl_output.hex`
+3. Run `python3 {plugin_root}/skills/rtl-model-consistency/scripts/compare_3way.py --refc sim/consistency/ref_output.hex --bfm sim/consistency/bfm_output.hex --rtl sim/consistency/rtl_output.hex --format hex` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) — prints the pairwise match/mismatch matrix, first-divergence index + values per pair, and `OVERALL: CONSISTENT|INCONSISTENT` (exit 0/1).
+4. Write `sim/consistency/consistency_report.md` using `templates/consistency-report.md`: summary table, diagnosis (see conventions for logic), mismatch details with divergence index + expected/actual values.
 5. Report overall consistency status to the user.
 
 Apply steps 1-5 to every vector set requested — do not stop after the first run.
@@ -68,28 +68,31 @@ Apply steps 1-5 to every vector set requested — do not stop after the first ru
 ```
 Task(subagent_type="rtl-agent-team:ref-model-dev",
      prompt="Run refc/build/ref_model on sim/consistency/test_vectors.bin via Bash CLI. "
-            "Capture output to sim/consistency/ref_output.bin. Build first if needed: make -C refc/.")
+            "Capture output as line-oriented hex text (one value per line) to "
+            "sim/consistency/ref_output.hex. Build first if needed: make -C refc/.")
 
 Task(subagent_type="rtl-agent-team:bfm-dev",
      prompt="Run bfm/build/bfm_smoke on sim/consistency/test_vectors.bin via Bash CLI. "
-            "Capture output to sim/consistency/bfm_output.bin. Build first if needed: make -C bfm/.")
+            "Capture output as line-oriented hex text (one value per line) to "
+            "sim/consistency/bfm_output.hex. Build first if needed: make -C bfm/.")
 
 Task(subagent_type="rtl-agent-team:func-verifier",
      prompt="Simulate RTL with sim/consistency/test_vectors.bin as input via Bash CLI (iverilog/cocotb). "
             "RTL ports use i_/o_ prefixes, clocks are {domain}_clk, resets are {domain}_rst_n. "
-            "Capture output to sim/consistency/rtl_output.bin.")
+            "Capture output as line-oriented hex text (one value per line) to "
+            "sim/consistency/rtl_output.hex.")
 ```
 </Tool_Usage>
 
 <Examples>
 <example index="1">
 <scenario>All three models built; 50 shared vectors; post-BFM-update consistency gate.</scenario>
-<expected_output>ref == BFM on 50/50; RTL diverges on vector 23; consistency_report.md diagnoses RTL as outlier; first divergence at byte 142; diagnosis: CABAC encoder rounding difference.</expected_output>
+<expected_output>ref == BFM on 50/50; RTL diverges on vector 23; consistency_report.md diagnoses RTL as outlier; first divergence at index 142 with val_a/val_b values; diagnosis: CABAC encoder rounding difference.</expected_output>
 </example>
 
 <example index="2">
 <scenario>Ref model updated after spec change; BFM and RTL not yet updated.</scenario>
-<expected_output>ref != BFM == RTL; consistency_report.md diagnoses ref model diverged; mismatch details list first-divergence byte per vector; user informed to update BFM and RTL.</expected_output>
+<expected_output>ref != BFM == RTL; consistency_report.md diagnoses ref model diverged; mismatch details list first-divergence index and values per pair; user informed to update BFM and RTL.</expected_output>
 </example>
 
 <example index="3">
@@ -106,13 +109,13 @@ Task(subagent_type="rtl-agent-team:func-verifier",
 
 ## Output
 
-- `sim/consistency/consistency_report.md` — 3-way comparison matrix with per-vector PASS/FAIL, first-divergence details, and diagnosis.
+- `sim/consistency/consistency_report.md` — 3-way comparison matrix with pairwise MATCH/MISMATCH verdicts, first-divergence details, and diagnosis.
 
 <Final_Checklist>
 - [ ] All three models run on identical input vectors.
 - [ ] Pairwise comparison completed for all three pairs (ref/BFM, ref/RTL, BFM/RTL).
 - [ ] `sim/consistency/consistency_report.md` written with summary table and diagnosis.
 - [ ] Diverging model identified where possible.
-- [ ] First-divergence byte offset and expected/actual values reported for each mismatch.
+- [ ] First-divergence index and expected/actual values reported for each mismatching pair.
 - [ ] Absent model binaries noted in report with recommendation to build.
 </Final_Checklist>

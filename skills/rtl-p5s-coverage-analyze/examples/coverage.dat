@@ -1,0 +1,28 @@
+# SystemC::Coverage-3
+C 'frtl/pixel_fifo/pixel_fifo.svl28pagev_line/pixel_fifooalwayshtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl29pagev_line/pixel_fifooifhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl31pagev_line/pixel_fifooelsehtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl33pagev_line/pixel_fifooifhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl36pagev_line/pixel_fifooassignhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl38pagev_line/pixel_fifooifhtop.u_fifo' 2
+C 'frtl/pixel_fifo/pixel_fifo.svl41pagev_line/pixel_fifooelsehtop.u_fifo' 2
+C 'frtl/pixel_fifo/pixel_fifo.svl44pagev_line/pixel_fifooifhtop.u_fifo' 0
+C 'frtl/pixel_fifo/pixel_fifo.svl47pagev_line/pixel_fifooassignhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl50pagev_line/pixel_fifooassignhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl29pagev_branch/pixel_fifooif !rst_nhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl29pagev_branch/pixel_fifooelsehtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl38pagev_branch/pixel_fifooif wr_en && !fullhtop.u_fifo' 2
+C 'frtl/pixel_fifo/pixel_fifo.svl44pagev_branch/pixel_fifooif rd_en && emptyhtop.u_fifo' 0
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[0]htop.u_fifo' 8
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[1]htop.u_fifo' 8
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[2]htop.u_fifo' 6
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[3]htop.u_fifo' 6
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[4]htop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[5]htop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[6]htop.u_fifo' 0
+C 'frtl/pixel_fifo/pixel_fifo.svl12pagev_toggle/pixel_fifooi_wr_data[7]htop.u_fifo' 0
+C 'frtl/pixel_fifo/pixel_fifo.svl14pagev_toggle/pixel_fifooo_fullhtop.u_fifo' 2
+C 'frtl/pixel_fifo/pixel_fifo.svl15pagev_toggle/pixel_fifooo_emptyhtop.u_fifo' 2
+C 'frtl/pixel_fifo/pixel_fifo.svl55pagev_user/pixel_fifoofsm_state IDLE->FILLhtop.u_fifo' 4
+C 'frtl/pixel_fifo/pixel_fifo.svl56pagev_user/pixel_fifoofsm_state FILL->DRAINhtop.u_fifo' 2
+C 'frtl/pixel_fifo/pixel_fifo.svl57pagev_user/pixel_fifoofsm_state DRAIN->IDLEhtop.u_fifo' 0

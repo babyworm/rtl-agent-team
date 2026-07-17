@@ -6,6 +6,9 @@ node_modules/
 .serena/
 .remember/
 *.log
+# Committed skill example assets may include sample simulation logs
+!skills/*/examples/*.log
+!skills/*/examples/**/*.log
 .DS_Store
 .env
 .env.local

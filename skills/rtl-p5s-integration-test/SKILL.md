@@ -40,9 +40,9 @@ If prerequisites are missing: WARNING — recommend completing Tier 2 and Tier 3
 | Path | Role |
 |------|------|
 | `templates/integration-tb-template.sv` | Top-level integration TB scaffold: multi-module DUT instantiation, clock/reset generation, connectivity checker, data flow monitors. |
-| `scripts/check_connectivity.py` | Stub: static port width/direction checker across module boundaries. (deep-fill in follow-up PR) |
+| `scripts/check_connectivity.py` | Static connectivity checker: parses top + submodule SV (ANSI headers), verifies named port connections, literal/parameter-resolvable width compatibility, dangling pins, and undriven top outputs; emits deterministic JSON violation report. |
 | `references/integration-test-conventions.md` | Tier ordering, test categories, JSON schema, report structure, anti-patterns. |
-| `examples/` | (placeholder — deep-fill in follow-up PR) |
+| `examples/` | Worked example: `dut_top.sv` + 2 submodules with one intentional width mismatch and one dangling port, plus committed expected JSON — see `examples/README.md`. |
 </Assets>
 
 <Responsibility_Boundary>
@@ -54,7 +54,7 @@ If prerequisites are missing: WARNING — recommend completing Tier 2 and Tier 3
 <Execution>
 1. Read `skills/rtl-p5s-integration-test/references/integration-test-conventions.md` for Tier 4 context, test categories, JSON schema, and report structure.
 2. Spawn `p5s-integration-orchestrator` (see Tool_Usage) to run the full integration test suite.
-3. The orchestrator runs static connectivity checks first (port width/direction mismatches), then dynamic tests: data flow, reset propagation, handshake protocol, and end-to-end reference comparison using the Phase 2 refC model output as oracle.
+3. The orchestrator runs static connectivity checks first (`scripts/check_connectivity.py` — named connections, literal/parameter-resolvable widths, dangling pins, undriven top outputs; positional/`.*` connections and non-literal widths are flagged as unanalyzed, not guessed), then dynamic tests: data flow, reset propagation, handshake protocol, and end-to-end reference comparison using the Phase 2 refC model output as oracle.
 4. The orchestrator writes `sim/top/integration_results.json` with one entry per test case (category, verdict, failure detail).
 5. The orchestrator writes `reviews/phase-5-verify/integration-test-report.md` with the test results table, failure details (module boundary, signal path, first failure cycle), and a recommendation.
 6. Report the overall verdict and both output paths to the user.

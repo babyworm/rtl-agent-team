@@ -1,0 +1,127 @@
+{
+  "tool": "parse_coverage.py",
+  "input": "merged.info",
+  "format": "lcov",
+  "min_count": 1,
+  "summary": {
+    "overall_verdict": "FAIL",
+    "metrics": {
+      "line": {
+        "covered": 16,
+        "total": 20,
+        "pct": 80.0,
+        "target_pct": 90.0,
+        "verdict": "FAIL"
+      },
+      "toggle": {
+        "covered": 0,
+        "total": 0,
+        "pct": null,
+        "target_pct": 80.0,
+        "verdict": "N/A"
+      },
+      "fsm": {
+        "covered": 0,
+        "total": 0,
+        "pct": null,
+        "target_pct": 70.0,
+        "verdict": "N/A"
+      },
+      "branch": {
+        "covered": 0,
+        "total": 0,
+        "pct": null,
+        "target_pct": null,
+        "verdict": "N/A"
+      }
+    },
+    "uncovered_total": 4,
+    "files_total": 2
+  },
+  "files": [
+    {
+      "file": "rtl/pixel_ctrl/pixel_ctrl.sv",
+      "metrics": {
+        "line": {
+          "covered": 7,
+          "total": 10,
+          "pct": 70.0
+        },
+        "toggle": {
+          "covered": 0,
+          "total": 0,
+          "pct": null
+        },
+        "fsm": {
+          "covered": 0,
+          "total": 0,
+          "pct": null
+        },
+        "branch": {
+          "covered": 0,
+          "total": 0,
+          "pct": null
+        }
+      }
+    },
+    {
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "metrics": {
+        "line": {
+          "covered": 9,
+          "total": 10,
+          "pct": 90.0
+        },
+        "toggle": {
+          "covered": 0,
+          "total": 0,
+          "pct": null
+        },
+        "fsm": {
+          "covered": 0,
+          "total": 0,
+          "pct": null
+        },
+        "branch": {
+          "covered": 0,
+          "total": 0,
+          "pct": null
+        }
+      }
+    }
+  ],
+  "uncovered": [
+    {
+      "rank": 1,
+      "metric": "line",
+      "file": "rtl/pixel_ctrl/pixel_ctrl.sv",
+      "line": 33,
+      "detail": "",
+      "count": 0
+    },
+    {
+      "rank": 2,
+      "metric": "line",
+      "file": "rtl/pixel_ctrl/pixel_ctrl.sv",
+      "line": 35,
+      "detail": "",
+      "count": 0
+    },
+    {
+      "rank": 3,
+      "metric": "line",
+      "file": "rtl/pixel_ctrl/pixel_ctrl.sv",
+      "line": 38,
+      "detail": "",
+      "count": 0
+    },
+    {
+      "rank": 4,
+      "metric": "line",
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "line": 44,
+      "detail": "",
+      "count": 0
+    }
+  ]
+}

@@ -25,7 +25,9 @@ else
   run_tool() { "$@"; }
 fi
 
-PROJECT_ROOT="$(pwd)"
+# RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
+# resolve against the project root even when invoked from a different CWD.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
 
 TOOL="structural"
 TOP=""
@@ -49,6 +51,24 @@ Options:
   -h, --help        Show this help
 USAGE
   exit 0
+}
+
+# ─── Shell-metacharacter validation (self-contained; template is deployed standalone) ──
+# Values checked here are interpolated into a tool command line that is echoed
+# into a replay script and/or a generated Tcl file. Reject anything outside a
+# path/identifier-safe whitelist so a hostile filelist entry or CLI arg cannot
+# inject shell or Tcl commands (mirrors the run_syn.sh v0.11.3 precedent).
+validate_shell_safe() {
+  local label="$1"; shift
+  local v
+  for v in "$@"; do
+    [ -z "$v" ] && continue
+    if ! [[ "$v" =~ ^[A-Za-z0-9_./+=@:,-]+$ ]]; then
+      echo "ERROR: $label contains shell-unsafe characters: '$v'" >&2
+      echo "       Allowed: letters, digits, and _ . / + = @ : , -  — rename/move and retry." >&2
+      exit 1
+    fi
+  done
 }
 
 while [[ $# -gt 0 ]]; do
@@ -187,10 +207,18 @@ case "$TOOL" in
     ;;
 
   spyglass)
+    # These values are interpolated into the generated SpyGlass Tcl and into
+    # the replayed command line — validate against shell metacharacters first.
+    validate_shell_safe "--top" "$TOP"
+    validate_shell_safe "--outdir path" "$OUTDIR"
+    validate_shell_safe "source file path" "${SRC_FILES[@]}"
+
     CDC_TCL="$SCRIPT_PATH"
     if [[ -z "$CDC_TCL" ]]; then
       CDC_TCL="${SPYGLASS_CDC_TCL:-$OUTDIR/spyglass_cdc_${TIMESTAMP}.tcl}"
     fi
+    # CDC_TCL may come from --script or the SPYGLASS_CDC_TCL env var.
+    validate_shell_safe "CDC Tcl path" "$CDC_TCL"
 
     SPYGLASS_PROJDIR="$OUTDIR/spyglass_cdc"
 
@@ -215,13 +243,15 @@ case "$TOOL" in
       } > "$CDC_TCL"
     fi
 
-    # Use sg_shell for batch mode (not spyglass GUI binary)
+    # Use sg_shell for batch mode (not spyglass GUI binary).
+    # Path validated shell-safe above — execute via argv (no eval); the quoted
+    # string form is kept for display and the replay script.
     CMD="sg_shell -tcl \"$CDC_TCL\""
     echo "=== SpyGlass CDC (sg_shell) ==="
     echo "TCL: $CDC_TCL"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    run_tool sg_shell -tcl "$CDC_TCL" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -231,11 +261,14 @@ case "$TOOL" in
       echo "ERROR: vc_cdc requires --script <tcl> (or set VC_CDC_TCL)." >&2
       exit 1
     fi
+    # Path validated shell-safe below — execute via argv (no eval); the quoted
+    # string form is kept for display and the replay script.
+    validate_shell_safe "CDC Tcl path" "$CDC_TCL"
     CMD="vc_cdc -f \"$CDC_TCL\""
     echo "=== VC CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    run_tool vc_cdc -f "$CDC_TCL" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -245,11 +278,14 @@ case "$TOOL" in
       echo "ERROR: questa_cdc requires --script <do/tcl> (or set QUESTA_CDC_TCL)." >&2
       exit 1
     fi
+    # Path validated shell-safe below — execute via argv (no eval); the quoted
+    # string form is kept for display and the replay script.
+    validate_shell_safe "CDC Tcl path" "$CDC_TCL"
     CMD="qverify -c -do \"$CDC_TCL\""
     echo "=== Questa CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    eval "run_tool $CMD" 2>&1 | tee "$REPORT"
+    run_tool qverify -c -do "$CDC_TCL" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 

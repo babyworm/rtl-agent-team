@@ -7,7 +7,9 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(pwd)"
+# RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
+# resolve against the project root even when invoked from a different CWD.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
 SIM="iverilog"
@@ -123,6 +125,26 @@ log() {
   fi
 }
 
+# ─── Shell-metacharacter validation ─────────────────────────────────────────
+# Values checked here are interpolated into command STRINGS that run_cmd()
+# passes to eval and appends to generated replay scripts. Reject anything
+# outside a path/identifier-safe whitelist so a hostile filelist entry or CLI
+# arg cannot inject shell commands. --tool-args/--sim-args are intentionally
+# NOT validated: they are documented free-form flag strings supplied directly
+# by the invoker (equivalent trust to running the simulator manually).
+validate_shell_safe() {
+  local label="$1"; shift
+  local v
+  for v in "$@"; do
+    [[ -z "$v" ]] && continue
+    if ! [[ "$v" =~ ^[A-Za-z0-9_./+=@:,-]+$ ]]; then
+      echo "ERROR: $label contains shell-unsafe characters: '$v'" >&2
+      echo "       Allowed: letters, digits, and _ . / + = @ : , -  — rename/move and retry." >&2
+      exit 1
+    fi
+  done
+}
+
 init_replay() {
   REPLAY_DIR="${OUTDIR}/replay"
   mkdir -p "$REPLAY_DIR"
@@ -166,6 +188,10 @@ run_cmd() {
   log "${phase}: $cmd"
   echo "$ $cmd"
   record_replay_step "$phase" "$cmd"
+  # Safe: every user-controllable value interpolated into $cmd (top, seed,
+  # timeout, defines, params, source files, filelist entries, outdir, dpi lib)
+  # is validated against shell metacharacters at setup (validate_shell_safe);
+  # --tool-args/--sim-args are trusted invoker pass-through by contract.
   eval "$cmd"
 }
 
@@ -242,12 +268,18 @@ read_filelist() {
       if [[ "$line" == +incdir+* ]]; then
         local dir="${line#+incdir+}"
         [[ "$dir" != /* ]] && dir="${flist_dir}/${dir}"
+        # Filelist content is data, not trusted CLI input — validate before it
+        # is interpolated into the eval'd compile command string.
+        validate_shell_safe "filelist +incdir+ path" "$dir"
         result+=" -I${dir}"
       elif [[ "$line" == -* || "$line" == +* ]]; then
         # Skip other directives not supported by iverilog
         log "Skipping unsupported directive for iverilog: $line"
       else
         [[ "$line" != /* ]] && line="${flist_dir}/${line}"
+        # Filelist content is data, not trusted CLI input — validate before it
+        # is interpolated into the eval'd compile command string.
+        validate_shell_safe "filelist entry" "$line"
         result+=" ${line}"
       fi
     done < "$flist"
@@ -286,11 +318,14 @@ build_plusargs() {
 }
 
 # ─── Setup ──────────────────────────────────────────────────────────────────
+# Resolve relative paths against PROJECT_ROOT (honors RAT_PROJECT_ROOT; when
+# unset PROJECT_ROOT == $(pwd), identical to the old behavior), then convert
+# to absolute BEFORE cd to avoid relative path breakage.
+[[ "$OUTDIR" == /* ]] || OUTDIR="$PROJECT_ROOT/$OUTDIR"
 mkdir -p "$OUTDIR"
-
-# Convert paths to absolute BEFORE cd to avoid relative path breakage
 OUTDIR="$(cd "$OUTDIR" && pwd)"
 if [[ -n "$FILELIST" ]]; then
+  [[ "$FILELIST" == /* ]] || FILELIST="$PROJECT_ROOT/$FILELIST"
   if [[ ! -f "$FILELIST" ]]; then
     echo "ERROR: Filelist not found: $FILELIST" >&2
     exit 1
@@ -298,8 +333,20 @@ if [[ -n "$FILELIST" ]]; then
   FILELIST="$(cd "$(dirname "$FILELIST")" && pwd)/$(basename "$FILELIST")"
 fi
 for _i in "${!SV_FILES[@]}"; do
-  [[ "${SV_FILES[$_i]}" == /* ]] || SV_FILES[$_i]="$(pwd)/${SV_FILES[$_i]}"
+  [[ "${SV_FILES[$_i]}" == /* ]] || SV_FILES[$_i]="$PROJECT_ROOT/${SV_FILES[$_i]}"
 done
+
+# Inputs below are interpolated into eval'd command strings (run_cmd) and
+# generated replay scripts — validate against shell metacharacters first.
+validate_shell_safe "--top" "$TOP"
+validate_shell_safe "--seed" "$SEED"
+validate_shell_safe "--timeout" "$TIMEOUT"
+validate_shell_safe "--outdir path" "$OUTDIR"
+validate_shell_safe "--dpi path" "$DPI_LIB"
+validate_shell_safe "--filelist path" "$FILELIST"
+[[ ${#DEFINES[@]} -gt 0 ]] && validate_shell_safe "--define" "${DEFINES[@]}"
+[[ ${#PARAMS[@]} -gt 0 ]] && validate_shell_safe "--param" "${PARAMS[@]}"
+[[ ${#SV_FILES[@]} -gt 0 ]] && validate_shell_safe "source file path" "${SV_FILES[@]}"
 
 DEFINE_FLAGS=""
 if [[ ${#DEFINES[@]} -gt 0 ]]; then

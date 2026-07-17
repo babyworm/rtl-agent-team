@@ -1,0 +1,110 @@
+{
+  "tool": "parse_coverage.py",
+  "input": "coverage.dat",
+  "format": "dat",
+  "min_count": 1,
+  "summary": {
+    "overall_verdict": "FAIL",
+    "metrics": {
+      "line": {
+        "covered": 9,
+        "total": 10,
+        "pct": 90.0,
+        "target_pct": 90.0,
+        "verdict": "PASS"
+      },
+      "toggle": {
+        "covered": 8,
+        "total": 10,
+        "pct": 80.0,
+        "target_pct": 80.0,
+        "verdict": "PASS"
+      },
+      "fsm": {
+        "covered": 2,
+        "total": 3,
+        "pct": 66.67,
+        "target_pct": 70.0,
+        "verdict": "FAIL"
+      },
+      "branch": {
+        "covered": 3,
+        "total": 4,
+        "pct": 75.0,
+        "target_pct": null,
+        "verdict": "N/A"
+      }
+    },
+    "uncovered_total": 5,
+    "files_total": 1
+  },
+  "files": [
+    {
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "metrics": {
+        "line": {
+          "covered": 9,
+          "total": 10,
+          "pct": 90.0
+        },
+        "toggle": {
+          "covered": 8,
+          "total": 10,
+          "pct": 80.0
+        },
+        "fsm": {
+          "covered": 2,
+          "total": 3,
+          "pct": 66.67
+        },
+        "branch": {
+          "covered": 3,
+          "total": 4,
+          "pct": 75.0
+        }
+      }
+    }
+  ],
+  "uncovered": [
+    {
+      "rank": 1,
+      "metric": "fsm",
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "line": 57,
+      "detail": "fsm_state DRAIN->IDLE @ top.u_fifo",
+      "count": 0
+    },
+    {
+      "rank": 2,
+      "metric": "branch",
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "line": 44,
+      "detail": "if rd_en && empty @ top.u_fifo",
+      "count": 0
+    },
+    {
+      "rank": 3,
+      "metric": "line",
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "line": 44,
+      "detail": "if @ top.u_fifo",
+      "count": 0
+    },
+    {
+      "rank": 4,
+      "metric": "toggle",
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "line": 12,
+      "detail": "i_wr_data[6] @ top.u_fifo",
+      "count": 0
+    },
+    {
+      "rank": 5,
+      "metric": "toggle",
+      "file": "rtl/pixel_fifo/pixel_fifo.sv",
+      "line": 12,
+      "detail": "i_wr_data[7] @ top.u_fifo",
+      "count": 0
+    }
+  ]
+}

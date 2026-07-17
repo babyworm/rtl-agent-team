@@ -1,0 +1,27 @@
+{
+  "tool": "run_ref_model.py",
+  "refc_dir": "refc",
+  "build_mode": "make",
+  "build_cmds": [
+    [
+      "make"
+    ]
+  ],
+  "build_cwd": "refc",
+  "built": true,
+  "build_exit_code": 0,
+  "run_mode": "binary",
+  "run_cmd": [
+    "refc/build/sat_add_ref"
+  ],
+  "run_cwd": ".",
+  "exit_code": 0,
+  "stdout_tail": [
+    "sat_add_ref: self-test",
+    "vectors=6 pass=6 fail=0",
+    "SELF-TEST PASS"
+  ],
+  "stderr_tail": [],
+  "output_files": [],
+  "duration_seconds": 0.0
+}
