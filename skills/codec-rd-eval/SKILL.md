@@ -122,7 +122,8 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 
 5. **Report generation**
    - Generate report from template at templates/rd-eval-report.md
-   - Output path: as configured in HJSON (default: docs/phase-1-research/rd-eval-report.md)
+   - Output path: the config's `output.report_path` (default: docs/phase-1-research/rd-eval-report.md).
+     No script writes this file — the skill does, so read the key rather than assuming the default.
    - Report contains:
      - Evaluation summary (anchor label, test label, date)
      - Per-sequence RD data table (QP, bitrate, PSNR, encode time)

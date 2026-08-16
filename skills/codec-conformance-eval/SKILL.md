@@ -133,7 +133,8 @@ comparing outputs, and tracking which profile features are covered.
 
 5. **Report generation**
    - Generate report from template at templates/conformance-report.md
-   - Output path: as configured (default: docs/phase-1-research/conformance-eval-report.md)
+   - Output path: the config's `output.report_path` (default: docs/phase-1-research/conformance-eval-report.md).
+     No script writes this file — the skill does, so read the key rather than assuming the default.
    - Report contains:
      - Overall conformance verdict (PASS/FAIL)
      - Per-stream PASS/FAIL table with decode time

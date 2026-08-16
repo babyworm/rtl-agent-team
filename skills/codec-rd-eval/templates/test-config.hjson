@@ -130,6 +130,10 @@
       job_queue: "codec-eval-spot-queue"
       job_definition: "codec-eval-job"
       s3_bucket: "codec-eval-results"   // S3 bucket for results and bitstreams
+      // Consumed by the submitter: region, job_queue, job_definition, s3_bucket.
+      // The four below describe a compute environment you provision yourself
+      // (console/CDK/Terraform) — the submitter only queues jobs, so changing
+      // them here has no effect on a run.
       compute_env: "codec-eval-spot-ce"
       instance_types: ["c5.xlarge", "c5.2xlarge", "c6i.xlarge"]
       spot: true

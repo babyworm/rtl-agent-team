@@ -93,6 +93,10 @@
       spot: true
       max_vcpus: 32
       s3_bucket: "codec-eval-results"   // S3 bucket for conformance streams and results
+      // Consumed by the submitter: region, job_queue, job_definition, s3_bucket.
+      // The four below describe a compute environment you provision yourself
+      // (console/CDK/Terraform) — the submitter only queues jobs, so changing
+      // them here has no effect on a run.
       compute_env: "codec-conformance-spot-ce"
       instance_types: ["c5.xlarge", "c5.2xlarge"]
     }
