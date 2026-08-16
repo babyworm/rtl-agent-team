@@ -193,7 +193,7 @@ This skill ensures the project workspace is ready before design work begins.
    - **Equivalence checking**: `syn/scripts/run_formality.sh` (Synopsys) + `syn/scripts/run_conformal.sh` (Cadence)
    - **CDC**: `lint/scripts/run_cdc.sh` — structural quick check + spyglass/vc_cdc/questa_cdc
    - Runtime hook integration: `hooks/rtl-skill-activation.sh` runs
-     `skills/rat-init-project/scripts/install_project_templates.sh` automatically when `rat-init-project` starts.
+     `{plugin_root}/skills/rat-init-project/scripts/install_project_templates.sh` automatically when `rat-init-project` starts.
 
 4.9. **Deploy project Makefile** (if project root has no Makefile):
    Copy the unified build system Makefile that wraps all EDA scripts:

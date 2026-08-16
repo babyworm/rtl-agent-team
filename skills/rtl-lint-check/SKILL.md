@@ -130,7 +130,7 @@ Not checking naming conventions — allows `clk_i`, `data_o` to pass lint despit
 <Advanced>
 Project lint config: .verible_lint.cfg in repo root. Override rules only with user approval.
 slang --lint-only treats warnings as errors in CI mode.
-Convention check script: `skills/rtl-lint-check/scripts/check_conventions.sh` — ready for CI integration.
+Convention check script: `{plugin_root}/skills/rtl-lint-check/scripts/check_conventions.sh` — ready for CI integration.
 See `examples/lint-output-example.txt` for sample merged lint output across all tools.
 
 Verilator waiver file (`.verilator.vlt`) for intentional suppressions:

@@ -71,19 +71,19 @@ Do not perform analysis work directly — the orchestrator manages 3-round itera
 <Examples>
 <example index="1">
 <scenario>Module has 85% line coverage and 65% FSM coverage after initial functional verification pass.</scenario>
-<reference>skills/rtl-p5s-coverage-analyze/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Gap report identifies 3 high-value uncovered FSM transitions and 2 uncovered error-handling branches; `test_coverage_fill.py` adds 5 directed tests; after re-run coverage reaches 91% line and 73% FSM — overall PASS.</expected_output>
 </example>
 
 <example index="2">
 <scenario>Several uncovered branches are in dead-code paths gated by a compile-time parameter.</scenario>
-<reference>skills/rtl-p5s-coverage-analyze/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Unreachable table lists the dead-code branches with justification; exclusion request routed through `rtl-coverage-exclusion-gate.sh` before applying. Report notes exclusions pending user approval.</expected_output>
 </example>
 
 <example index="3">
 <scenario>Coverage data file is absent — `sim/coverage/coverage.xml` does not exist.</scenario>
-<reference>skills/rtl-p5s-coverage-analyze/examples/</reference>
+<reference>examples/</reference>
 <expected_output>WARNING emitted: `sim/coverage/coverage.xml` not found — recommend running `/rtl-agent-team:rtl-p5s-func-verify` first. Skill does not proceed to gap analysis.</expected_output>
 </example>
 </Examples>

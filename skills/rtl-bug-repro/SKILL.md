@@ -76,19 +76,19 @@ Task(subagent_type="rtl-agent-team:func-verifier",
 <Examples>
 <example index="1">
 <scenario>Regression test `test_cabac_bypass` fails at cycle 247; waveform shows output divergence in the bypass path.</scenario>
-<reference>skills/rtl-bug-repro/examples/</reference>
+<reference>examples/</reference>
 <expected_output>`vcd_diff.py` reports first divergence at cycle 247 on `u_cabac_encoder.o_bin_val`; `func-verifier` writes a 40-line `repro_tb.sv` that reproduces in 300 cycles; `root_cause.md` identifies missing state reset in `bypass_ctx` register at `rtl/cabac_encoder/cabac_encoder.sv:183`.</expected_output>
 </example>
 
 <example index="2">
 <scenario>No golden VCD available; only the failing test log and the module source exist.</scenario>
-<reference>skills/rtl-bug-repro/examples/</reference>
+<reference>examples/</reference>
 <expected_output>`waveform-analyzer` reads the failing VCD and identifies the signal path without a golden reference; `func-verifier` writes minimal stimulus based on the identified divergence point; `root_cause.md` labels the hypothesis as "suspected" pending confirmation by the repro run.</expected_output>
 </example>
 
 <example index="3">
 <scenario>Bug affects three modules; regression isolates failure to the AXI-Stream bridge boundary.</scenario>
-<reference>skills/rtl-bug-repro/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Repro TB instantiates only the two modules at the failing boundary; `root_cause.md` documents all affected signal paths and flags the issue as systemic per escalation rules.</expected_output>
 </example>
 </Examples>

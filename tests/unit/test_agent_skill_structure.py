@@ -118,7 +118,10 @@ class TestAgentDefinitions:
 
         v0.14.2: six skills declared an asset skill-relative in <Assets> and then
         re-stated it self-prefixed in the Execution step, so the conventions file
-        each skill depends on was never actually read.
+        each skill depends on was never actually read. A first pass covered only
+        references/ and templates/, leaving 22 sites under scripts/ and
+        examples/ — including rtl-document step 4, one line below the step 3 the
+        pass had just fixed. All four asset directories are checked now.
         """
         offenders = []
         for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
@@ -127,7 +130,7 @@ class TestAgentDefinitions:
             # absolute after substitution — that form is correct and stays.
             pattern = re.compile(
                 r"(?<!\{plugin_root\}/)(?<!\{CLAUDE_PLUGIN_ROOT\}/)"
-                rf"skills/{re.escape(own)}/(?:references|templates)/"
+                rf"skills/{re.escape(own)}/(?:references|templates|scripts|examples)/"
             )
             for lineno, line in enumerate(skill_md.read_text().splitlines(), 1):
                 if pattern.search(line):

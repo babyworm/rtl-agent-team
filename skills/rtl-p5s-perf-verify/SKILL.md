@@ -71,19 +71,19 @@ Do not perform simulation work directly — the orchestrator manages performance
 <Examples>
 <example index="1">
 <scenario>Video encoder module after a pipeline rebalancing change; throughput must match BFM baseline within 10%.</scenario>
-<reference>skills/rtl-p5s-perf-verify/examples/</reference>
+<reference>examples/</reference>
 <expected_output>JSON reports throughput 480 Mbps measured vs 500 Mbps expected (4% delta → PASS); latency 12 cycles vs 12 expected (0% → PASS); overall PASS. Report recommends proceeding to `rtl-p6-design-review`.</expected_output>
 </example>
 
 <example index="2">
 <scenario>RTL change introduced a pipeline bubble; stall cycles exceed baseline by 15%.</scenario>
-<reference>skills/rtl-p5s-perf-verify/examples/</reference>
+<reference>examples/</reference>
 <expected_output>JSON reports stall_cycles_pct 23% measured vs 8% expected (188% delta → FAIL); overall FAIL. Report identifies the added pipeline register at the output FIFO as the contributor; recommends inspecting `rtl/encoder/output_buffer.sv`.</expected_output>
 </example>
 
 <example index="3">
 <scenario>`bfm/perf_baseline.json` is absent before BFM development is complete.</scenario>
-<reference>skills/rtl-p5s-perf-verify/examples/</reference>
+<reference>examples/</reference>
 <expected_output>WARNING emitted: `bfm/perf_baseline.json` not found — recommend running `/rtl-agent-team:bfm-develop` first. Skill does not proceed to simulation.</expected_output>
 </example>
 </Examples>

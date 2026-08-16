@@ -76,19 +76,19 @@ Task(subagent_type="rtl-agent-team:ipxact-generator",
 <Examples>
 <example index="1">
 <scenario>DMA controller with AXI4-Lite slave interface and 5 parameters.</scenario>
-<reference>skills/rtl-ipxact-gen/examples/</reference>
+<reference>examples/</reference>
 <expected_output>`rtl-explorer` extracts 24 ports and 5 parameters; `ipxact-generator` produces valid IEEE 1685-2014 XML with one AXI4-Lite bus interface mapped; `xmllint` validation passes.</expected_output>
 </example>
 
 <example index="2">
 <scenario>Module with parameterized port widths (e.g., `input logic [DATA_WIDTH-1:0] i_data`).</scenario>
-<reference>skills/rtl-ipxact-gen/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Port width recorded as expression `DATA_WIDTH` in IP-XACT rather than a hardcoded number; parameter `DATA_WIDTH` appears in the parameters section with its default value.</expected_output>
 </example>
 
 <example index="3">
 <scenario>Bus interface type is ambiguous — ports match both AXI3 and AXI4 naming.</scenario>
-<reference>skills/rtl-ipxact-gen/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Generation pauses; user is asked to confirm AXI3 vs AXI4. XML is not delivered until the bus type is confirmed. No bus interface type is assumed or invented.</expected_output>
 </example>
 </Examples>

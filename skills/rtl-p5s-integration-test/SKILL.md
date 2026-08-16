@@ -75,19 +75,19 @@ Do not perform simulation work directly — the orchestrator manages connectivit
 <Examples>
 <example index="1">
 <scenario>Video codec top-level after all per-module Tier 2 and Tier 3 tests pass; verifying the full encode pipeline end-to-end.</scenario>
-<reference>skills/rtl-p5s-integration-test/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Static connectivity check passes; all 5 data flow tests PASS; reset propagation PASS; end-to-end output matches refC oracle — overall PASS. Report recommends proceeding to final compliance and `rtl-p6-design-review`.</expected_output>
 </example>
 
 <example index="2">
 <scenario>AXI-Stream handshake fails at the boundary between the entropy coder and the bitstream packer due to a width mismatch.</scenario>
-<reference>skills/rtl-p5s-integration-test/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Static connectivity check reports `o_bin_val[7:0]` (cabac_encoder) connected to `i_data[15:0]` (bitstream_packer) — width mismatch. Dynamic simulation skipped. Report flags the boundary with signal paths; recommends Tier 2 re-run for both modules after RTL fix.</expected_output>
 </example>
 
 <example index="3">
 <scenario>Reset de-assertion reaches the top module but one sub-module never exits its reset state.</scenario>
-<reference>skills/rtl-p5s-integration-test/examples/</reference>
+<reference>examples/</reference>
 <expected_output>Reset propagation test FAIL: `u_range_coder` remains in reset state 5 cycles after `sys_rst_n` de-asserts. `integration_results.json` records the failure with the first divergence cycle. Report identifies the missing reset connection in the instantiation.</expected_output>
 </example>
 </Examples>
