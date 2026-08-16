@@ -23,6 +23,7 @@ SKILLS_DIR = REPO_ROOT / "skills"
 AGENTS_DIR = REPO_ROOT / "agents"
 RTL_ORCHESTRATE_SKILL = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
 INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
+CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 P5S_FUNC_VERIFY_ORCHESTRATOR = AGENTS_DIR / "p5s-func-verify-orchestrator.md"
 P5S_FUNC_VERIFY_POLICY = SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md"
 CODE_REVIEW_POLICY = SKILLS_DIR / "code-review-policy" / "SKILL.md"
@@ -904,4 +905,56 @@ class TestSkillDescriptionLengthContract:
         assert violations == [], (
             f"User-invocable skills exceeding {self.MAX_DESCRIPTION_CHARS}-char "
             f"description limit:\n" + "\n".join(violations)
+        )
+
+
+class TestPipelineRuleCoverage:
+    """CLAUDE.md declares the pipeline rules as an SSOT contract; the runtime
+    must actually receive all of them.
+
+    v0.14.2: CLAUDE.md declared 11 rules while the SessionStart injection and the
+    rtl-orchestrate body both stopped at 9. Rules 10-11 govern the shipped
+    DC-based PPA optimization pipeline (rtl-ppa-optimize-dc, rat-ultraloop-ppa,
+    ppa-optimizer-dc-policy), so that pipeline's two gates never reached a user
+    session.
+    """
+
+    @staticmethod
+    def _numbered(text):
+        # matches both the CLAUDE.md table form `| 10 | ...` and the
+        # ordered-list form `10. ...` used by the skill body and the injection
+        return {int(m.group(1)) for m in re.finditer(r"^\|?\s*(\d+)\s*[.|]", text, re.M)}
+
+    def _claude_md_rules(self):
+        text = CLAUDE_MD.read_text()
+        block = text.split("| # | Rule | Enforcement |", 1)[1].split("\n\n", 1)[0]
+        return self._numbered(block)
+
+    def _orchestrate_body_rules(self):
+        text = RTL_ORCHESTRATE_SKILL.read_text()
+        block = text.split("## Pipeline Rules (policy + enforcement map)", 1)[1]
+        return self._numbered(block.split("\n---", 1)[0])
+
+    def _injected_rules(self, generated_block):
+        block = generated_block.split("## Pipeline Rules", 1)[1].split("\n## ", 1)[0]
+        return self._numbered(block)
+
+    @staticmethod
+    def _generated_block():
+        raw = extract_marked_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
+        lines = raw.splitlines()
+        envelope = json.loads("\n".join(lines[1:-1]))
+        return envelope["hookSpecificOutput"]["additionalContext"]
+
+    def test_all_claude_md_rules_reach_the_runtime(self):
+        declared = self._claude_md_rules()
+        assert declared, "No numbered rules parsed from CLAUDE.md"
+        injected = self._injected_rules(self._generated_block())
+        body = self._orchestrate_body_rules()
+        assert declared <= injected, (
+            f"Rules declared in CLAUDE.md but never injected: {sorted(declared - injected)}"
+        )
+        assert declared <= body, (
+            f"Rules declared in CLAUDE.md but missing from the rtl-orchestrate body: "
+            f"{sorted(declared - body)}"
         )

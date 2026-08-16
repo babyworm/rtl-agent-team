@@ -84,12 +84,12 @@ The five items originally proposed after the v0.13.0 safe edits are now implemen
 
 1. **[APPLIED 2026-07-17 (this change set)]**
    **Agent Step-0 / path-convention parameterization (the robust half).** Extend the shared
-   "Path convention" header line across all 99 agents + `agents/lib/step0-template.md` + the
+   "Path convention" header line across all 99 agents + `plugin_docs/agent-lib/step0-template.md` + the
    30 canonical orchestrator Step-0 blocks plus the three custom orchestrator path
    headers to resolve project-relative paths against `project_root`
    (from `.rat/state/spawn-context.json`) OR the `RAT_PROJECT_ROOT` env OR an explicit
    `PROJECT_ROOT=<abs>` prompt line, falling back to process CWD (legacy). The canonical
-   Step-0 blocks are synchronized from `agents/lib/step0-template.md`.
+   Step-0 blocks are synchronized from `plugin_docs/agent-lib/step0-template.md`.
 
 2. **[APPLIED 2026-07-17 (this change set)]**
    **Ship `project_root` in the spawn-context manifest.** Mirror the existing `plugin_root`

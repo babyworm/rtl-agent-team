@@ -191,6 +191,34 @@ def extract_marked_block(path: Path, start_marker: str, end_marker: str) -> str:
     raise AssertionError(f"Markers not found in {path}: {start_marker} ... {end_marker}")
 
 
+def find_bash4():
+    """Return the path to a bash >= 4 interpreter, or None if unavailable.
+
+    macOS still ships bash 3.2 as /bin/bash (the last GPLv2 release), so scripts
+    guarded by `BASH_VERSINFO[0] >= 4` — notably
+    skills/rat-init-project/scripts/generate_config.sh — cannot run there under
+    the default interpreter. Tests that exercise such a script should skip when
+    this returns None instead of reporting an environment gap as a failure:
+    CLAUDE.md rule 12 requires a green local suite before every push, and a
+    suite that can never be green locally trains maintainers to ignore it.
+    Linux CI (bash 5) and macOS with `brew install bash` both run these tests.
+    """
+    for candidate in ("bash", "/opt/homebrew/bin/bash", "/usr/local/bin/bash"):
+        path = shutil.which(candidate) if "/" not in candidate else candidate
+        if not path or not os.path.exists(path):
+            continue
+        probe = subprocess.run(
+            [path, "-c", "echo ${BASH_VERSINFO[0]}"],
+            capture_output=True, text=True, check=False,
+        )
+        try:
+            if int(probe.stdout.strip()) >= 4:
+                return path
+        except ValueError:
+            continue
+    return None
+
+
 # ── Helper to run shell scripts ───────────────────────────────────────────────
 
 def run_script(script_path, *args, stdin_data=None, env=None, cwd=None, timeout=30):

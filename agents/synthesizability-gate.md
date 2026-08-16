@@ -6,7 +6,7 @@ color: red
 disallowedTools: Edit
 ---
 
-RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
 - Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
 - DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
@@ -173,7 +173,7 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 ## Team Worker Protocol
 
 When spawned with `team_name` as part of a native team:
-1. Follow `agents/lib/team-worker-preamble.md`.
+1. INIT → identify self and coordinator from team context.
 2. Claim synthesizability-gate tasks from TaskList; per module run the ladder + DC-emittable check.
 3. Save `reviews/phase-4-rtl/{module}-synthesizability.md`; TaskUpdate(completed) + SendMessage PASS/FAIL.
 4. When none remain, notify coordinator and wait for shutdown.

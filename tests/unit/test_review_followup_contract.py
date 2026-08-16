@@ -24,11 +24,12 @@ def test_review_followup_contract(tmp_path: Path) -> None:
 
     fixture_root = tmp_path / "sync-fixture"
     (fixture_root / "scripts").mkdir(parents=True)
-    (fixture_root / "agents" / "lib").mkdir(parents=True)
+    (fixture_root / "agents").mkdir(parents=True)
+    (fixture_root / "plugin_docs" / "agent-lib").mkdir(parents=True)
     shutil.copy2(sync_script, fixture_root / "scripts" / "sync_step0.sh")
     shutil.copy2(
-        REPO_ROOT / "agents" / "lib" / "step0-template.md",
-        fixture_root / "agents" / "lib" / "step0-template.md",
+        REPO_ROOT / "plugin_docs" / "agent-lib" / "step0-template.md",
+        fixture_root / "plugin_docs" / "agent-lib" / "step0-template.md",
     )
     (fixture_root / "agents" / "broken.md").write_text(
         "## Step 0: Context Bootstrap\n\nmissing canonical sentinel\n"

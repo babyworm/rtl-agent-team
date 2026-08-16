@@ -368,7 +368,7 @@ State is updated by both the coordinator (block status) and the skill (merge pro
 
 ## Fallback
 
-**ALL-OR-NOTHING**: Per `agents/lib/team-fallback.md` contract:
+**ALL-OR-NOTHING** contract:
 - If TeamCreate fails: fall back entirely to `rtl-p4-implement` (sequential, non-team)
 - If ANY worktree creation fails: clean up all worktrees, fall back to `rtl-p4-implement` (sequential, non-team)
 - NO hybrid worktree+main mix is allowed

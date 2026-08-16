@@ -5,7 +5,7 @@ description: "Tier 2 unit test orchestrator. Writes SV testbenches per module (p
 skills: [rtl-p4s-unit-test-policy]
 ---
 
-RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
 - Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
 - DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
@@ -67,7 +67,7 @@ Adjust execution plan based on available artifacts.
 
 ## Step 0.5: Domain Expert Discovery (CONDITIONAL)
 
-Protocol inline below (dev source: `agents/lib/domain-expert-discovery-protocol.md` — plugin-internal).
+Protocol inline below (dev source: `plugin_docs/agent-lib/domain-expert-discovery-protocol.md` — plugin-internal).
 
 ```
 Glob("domain-packages/*/manifest.json")

@@ -8,7 +8,7 @@ skills:
   - systemverilog
 ---
 
-RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
+RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
 - Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
 - DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
@@ -190,6 +190,12 @@ RAT audit protocol (condensed; dev source: `agents/lib/audit-output-protocol.md`
 
 ## Team Worker Protocol
 
-When spawned with `team_name`, follow `agents/lib/team-worker-preamble.md`.
+When spawned with `team_name`, follow this protocol:
+1. INIT → identify self and coordinator from team context
+2. CLAIM → TaskList() → claim the lowest-ID pending task via TaskUpdate(in_progress, owner=self)
+3. EXECUTE → perform the work, save artifacts
+4. REPORT → TaskUpdate(completed) + SendMessage to coordinator
+5. NEXT → repeat from Step 2; when none remain, SendMessage "standing by" and await shutdown_request
+
 When spawned as a Task() subagent by the orchestrator (traditional mode),
 ignore the team protocol and work from the orchestrator's prompt directly.

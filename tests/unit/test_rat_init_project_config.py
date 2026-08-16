@@ -5,10 +5,17 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import REPO_ROOT
+from tests.conftest import REPO_ROOT, find_bash4
 
 
 GENERATE_CONFIG = REPO_ROOT / "skills" / "rat-init-project" / "scripts" / "generate_config.sh"
+
+# generate_config.sh self-guards on `BASH_VERSINFO[0] >= 4`; macOS ships bash 3.2.
+BASH4 = find_bash4()
+pytestmark = pytest.mark.skipif(
+    BASH4 is None,
+    reason="generate_config.sh requires bash >= 4 (macOS ships 3.2 — `brew install bash`)",
+)
 
 
 def _minimal_config():
@@ -34,7 +41,7 @@ def _minimal_config():
 
 def _run_generator(project: Path, *, env: dict[str, str] | None = None):
     return subprocess.run(
-        ["bash", str(GENERATE_CONFIG), str(project), "generated-name"],
+        [BASH4, str(GENERATE_CONFIG), str(project), "generated-name"],
         check=False,
         capture_output=True,
         text=True,
@@ -117,7 +124,7 @@ def regenerated_config(tmp_path_factory: pytest.TempPathFactory):
     # When: the project config generator runs again.
     env = os.environ | {"PATH": f"{path_dc_shell.parent}:{os.environ['PATH']}"}
     subprocess.run(
-        ["bash", str(GENERATE_CONFIG), str(project), "generated-name"],
+        [BASH4, str(GENERATE_CONFIG), str(project), "generated-name"],
         check=True,
         capture_output=True,
         text=True,

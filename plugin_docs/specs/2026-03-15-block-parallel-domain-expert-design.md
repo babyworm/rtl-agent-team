@@ -383,7 +383,7 @@ The 30-minute threshold is configurable in `ultraloop-state.json`.
 | Individual worktree creation failure | Fall back entirely to `rtl-p4-implement-team` (sequential orchestrator) — no hybrid mix of worktree + main |
 | Worker crash/timeout | Coordinator detects → 1 retry → failure escalates to leader |
 
-> **All-or-nothing fallback**: Consistent with `agents/lib/team-fallback.md` contract —
+> **All-or-nothing fallback**: Consistent with `plugin_docs/agent-lib/team-fallback.md` contract —
 > partial worktree/main hybrids violate isolation guarantees and leave remaining worktrees
 > based on stale mainline without rebasing. If any infrastructure component (team or worktree)
 > fails, the entire execution degrades to the sequential non-team orchestrator.

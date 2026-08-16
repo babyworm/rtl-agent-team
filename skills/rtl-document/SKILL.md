@@ -58,7 +58,7 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 <Execution>
 1. Run `python3 {plugin_root}/skills/rtl-document/scripts/extract_module_doc.py --rtl rtl/{module}/{module}.sv [--syn-report syn/synth_report.txt] --out /tmp/{module}.json` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`). If exit code 2 (verible missing), fall back to manual extraction via `rtl-explorer` (see Tool_Usage).
 2. Run `python3 {plugin_root}/skills/rtl-document/scripts/render_doc.py --json /tmp/{module}.json --template-dir {plugin_root}/skills/rtl-document/templates/ --out docs/rtl/{module}.md`. The script composes `module-doc-template.md` with the optional snippets — `port-table-snippet.md` when ports exist, `fsm-section-snippet.md` when `fsm_candidates` is non-empty, `block-diagram-snippet.d2` when there are two or more instances.
-3. Read `skills/rtl-document/references/doc-conventions.md` once for naming/format/diagram rules.
+3. Read `references/doc-conventions.md` once for naming/format/diagram rules.
 4. Open at least one matching `skills/rtl-document/examples/*.md` for tone reference — pick the example whose complexity (small / multi-domain / FSM-heavy) is closest to the target module.
 5. Replace every `<!-- LLM_FILL: ... -->` marker in `docs/rtl/{module}.md`. Apply to all such markers in the file — do not stop after the first.
 6. Report the generated file path to the user.

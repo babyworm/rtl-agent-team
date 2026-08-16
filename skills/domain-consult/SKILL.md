@@ -55,7 +55,7 @@ produces shallow answers. This skill reads the query and selects the best match 
 
 <Steps>
 0. Domain expert agents have `<Knowledge_Base>` or `<Domain_Knowledge>` sections with domain-specific knowledge.
-   Video-codec experts reference `domain-packages/video-codec/knowledge/`; video-processing experts reference `domain-packages/video-processing/knowledge/`.
+   Video-codec experts reference `{plugin_root}/domain-packages/video-codec/knowledge/`; video-processing experts reference `{plugin_root}/domain-packages/video-processing/knowledge/`.
    They will read relevant knowledge files autonomously before answering. No manual loading required.
 1. Read the user's query and identify domain keywords
 2. Select primary expert from routing table

@@ -8,6 +8,7 @@ Validates:
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from tests.conftest import REPO_ROOT
 
 AGENTS_DIR = REPO_ROOT / "agents"
 SKILLS_DIR = REPO_ROOT / "skills"
+AGENT_LIB_DIR = REPO_ROOT / "plugin_docs" / "agent-lib"
 TEMPLATE_DIR = SKILLS_DIR / "rtl-p4-rapid-impl-policy" / "templates"
 
 
@@ -293,11 +295,11 @@ class TestTeamOrchestratorStructure:
         assert 'rtl-agent-team:p5-verify-team-orchestrator' in content
 
     def test_worker_preamble_exists(self):
-        preamble = AGENTS_DIR / "lib" / "team-worker-preamble.md"
+        preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
         assert preamble.exists()
 
     def test_worker_preamble_has_lifecycle_sections(self):
-        preamble = AGENTS_DIR / "lib" / "team-worker-preamble.md"
+        preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
         content = preamble.read_text()
         assert "Initialization" in content
         assert "Task Claim" in content or "Task Execution" in content
@@ -305,13 +307,13 @@ class TestTeamOrchestratorStructure:
         assert "Error Handling" in content
 
     def test_worker_protocol_template_exists(self):
-        """agents/lib/team-worker-protocol.md must exist."""
-        protocol = AGENTS_DIR / "lib" / "team-worker-protocol.md"
+        """plugin_docs/agent-lib/team-worker-protocol.md must exist."""
+        protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
         assert protocol.exists()
 
     def test_worker_protocol_has_key_steps(self):
         """Protocol template must have INIT, CLAIM, EXECUTE, REPORT, SHUTDOWN."""
-        protocol = AGENTS_DIR / "lib" / "team-worker-protocol.md"
+        protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
         content = protocol.read_text()
         for step in ["INIT", "CLAIM", "EXECUTE", "REPORT", "SHUTDOWN"]:
             assert step in content, f"Protocol missing step: {step}"
@@ -403,11 +405,11 @@ class TestTeamIntegrationInfrastructure:
     """Validate Phase 4 full integration artifacts."""
 
     def test_team_fallback_doc_exists(self):
-        fallback = AGENTS_DIR / "lib" / "team-fallback.md"
+        fallback = AGENT_LIB_DIR / "team-fallback.md"
         assert fallback.exists()
 
     def test_team_fallback_covers_key_scenarios(self):
-        fallback = AGENTS_DIR / "lib" / "team-fallback.md"
+        fallback = AGENT_LIB_DIR / "team-fallback.md"
         content = fallback.read_text()
         assert "TeamCreate Failure" in content
         assert "SendMessage Failure" in content
@@ -1141,53 +1143,36 @@ class TestWorkerSubagentPattern:
 
     def test_preamble_documents_specialist_delegation(self):
         """Preamble must document Task() specialist delegation pattern."""
-        preamble = AGENTS_DIR / "lib" / "team-worker-preamble.md"
+        preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
         content = preamble.read_text()
         assert "Task(" in content or "specialist" in content.lower(), \
             "Preamble must document Task() specialist delegation"
 
     def test_preamble_sendmessage_to_coordinator(self):
         """Preamble must show SendMessage recipient as coordinator, not leader."""
-        preamble = AGENTS_DIR / "lib" / "team-worker-preamble.md"
+        preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
         content = preamble.read_text()
         assert "coordinator" in content.lower(), \
             "Preamble must reference coordinator as SendMessage recipient"
 
     def test_protocol_report_step_targets_coordinator(self):
         """Protocol REPORT step must target coordinator."""
-        protocol = AGENTS_DIR / "lib" / "team-worker-protocol.md"
+        protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
         content = protocol.read_text()
         assert "coordinator" in content.lower(), \
             "Protocol must reference coordinator in REPORT step"
 
     def test_protocol_has_delegate_step(self):
         """Protocol must document specialist Task() delegation."""
-        protocol = AGENTS_DIR / "lib" / "team-worker-protocol.md"
+        protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
         content = protocol.read_text()
         assert "DELEGATE" in content, \
             "Protocol must have DELEGATE step for Task() specialist spawning"
 
     def test_specialist_agents_have_team_worker_protocol_expanded(self):
         """All 34 specialist agents (28 existing + 6 added) must have Team Worker Protocol."""
-        agents = [
-            # Original 11 (P4-P5)
-            "rtl-coder", "lint-checker", "rtl-critic", "testbench-dev", "eda-runner",
-            "sva-extractor", "cdc-checker", "protocol-checker",
-            "func-verifier", "coverage-analyst", "perf-verifier",
-            # P1-P3 (16)
-            "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
-            "vcodec-architecture-expert", "arch-designer", "power-analyzer",
-            "vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert",
-            "vcodec-me-expert", "vcodec-mc-expert",
-            "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
-            "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
-            # Domain/misc (3)
-            "vproc-image-processing-expert", "vproc-denoise-expert", "vproc-color-format-expert",
-            # 4 newly added protocol agents
-            "constraint-writer", "synthesis-reporter", "ref-model-reviewer", "uarch-designer",
-        ]
         missing = []
-        for name in agents:
+        for name in self._expanded_list():
             agent_file = AGENTS_DIR / f"{name}.md"
             if not agent_file.exists():
                 continue
@@ -1195,3 +1180,43 @@ class TestWorkerSubagentPattern:
             if "## Team Worker Protocol" not in content:
                 missing.append(name)
         assert missing == [], f"Agents missing Team Worker Protocol: {missing}"
+
+    def test_inject_script_target_list_matches_tested_contract(self):
+        """scripts/inject-worker-protocol.sh must target exactly this set.
+
+        The script's DEFAULT_AGENTS list and the expanded list above are the only
+        two places the worker-protocol membership set is written down. When they
+        drift, running the documented sync script rewrites agents CI never asked
+        for — v0.14.1 shipped a script listing 4 agents the tests did not require
+        and omitting 5 they did.
+        """
+        script = (REPO_ROOT / "scripts" / "inject-worker-protocol.sh").read_text()
+        script_agents = set()
+        for var in ("P4_P5_AGENTS", "P1_P3_AGENTS", "VPROC_AGENTS", "MISC_AGENTS"):
+            m = re.search(rf'^{var}="([^"]*)"', script, re.M)
+            assert m, f"{var} not found in inject-worker-protocol.sh"
+            script_agents.update(m.group(1).split())
+
+        tested = set(self._expanded_list())
+        assert script_agents == tested, (
+            "inject-worker-protocol.sh default targets are out of sync with "
+            "test_specialist_agents_have_team_worker_protocol_expanded.\n"
+            f"  script-only: {sorted(script_agents - tested)}\n"
+            f"  tests-only : {sorted(tested - script_agents)}"
+        )
+
+    @staticmethod
+    def _expanded_list():
+        return [
+            "rtl-coder", "lint-checker", "rtl-critic", "testbench-dev", "eda-runner",
+            "sva-extractor", "cdc-checker", "protocol-checker",
+            "func-verifier", "coverage-analyst", "perf-verifier",
+            "spec-analyst", "vcodec-chief-standard-expert", "rtl-architect",
+            "vcodec-architecture-expert", "arch-designer", "power-analyzer",
+            "vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert",
+            "vcodec-me-expert", "vcodec-mc-expert",
+            "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
+            "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
+            "vproc-image-processing-expert", "vproc-denoise-expert", "vproc-color-format-expert",
+            "constraint-writer", "synthesis-reporter", "ref-model-reviewer", "uarch-designer",
+        ]

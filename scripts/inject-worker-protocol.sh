@@ -11,20 +11,36 @@ set -e
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 AGENTS_DIR="$REPO_ROOT/agents"
-PROTOCOL_FILE="$AGENTS_DIR/lib/team-worker-protocol.md"
+PROTOCOL_FILE="$REPO_ROOT/plugin_docs/agent-lib/team-worker-protocol.md"
 
 if [ ! -f "$PROTOCOL_FILE" ]; then
   echo "ERROR: Protocol template not found: $PROTOCOL_FILE" >&2
   exit 1
 fi
 
-# Tier-1 agents (P4/P5) that should have the Team Worker Protocol
-P4_P5_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier constraint-writer synthesis-reporter cdc-reviewer clock-architect protocol-reviewer equivalence-checker"
+# Default target set — MUST stay identical to the tested contract in
+# tests/unit/test_team_mode.py::test_specialist_agents_have_team_worker_protocol_expanded.
+# These two lists are the only places the set is written down; when they drift,
+# running this script mutates agents CI never asked for (v0.14.1: the script
+# listed 4 agents the tests did not, and omitted 5 the tests required).
+# Membership rule: an agent belongs here only if a team skill or team
+# orchestrator can spawn it as a worker. Agents that appear in team files merely
+# as TaskCreate subjects or prose escalation targets run as plain Task()
+# subagents and need no team protocol.
 
-# P1-P3 specialist agents that participate in team mode
+# P4/P5 specialists (11)
+P4_P5_AGENTS="rtl-coder lint-checker rtl-critic testbench-dev eda-runner sva-extractor cdc-checker protocol-checker func-verifier coverage-analyst perf-verifier"
+
+# P1-P3 specialists (16)
 P1_P3_AGENTS="spec-analyst vcodec-chief-standard-expert rtl-architect vcodec-architecture-expert arch-designer power-analyzer vcodec-syntax-entropy-expert vcodec-intra-pred-expert vcodec-me-expert vcodec-mc-expert vcodec-transform-quant-expert vcodec-filter-recon-expert video-processing-expert ref-model-dev bfm-dev timing-advisor"
 
-DEFAULT_AGENTS="$P4_P5_AGENTS $P1_P3_AGENTS"
+# Video-processing domain experts (3)
+VPROC_AGENTS="vproc-image-processing-expert vproc-denoise-expert vproc-color-format-expert"
+
+# Cross-phase writers/reviewers that also run as workers (4)
+MISC_AGENTS="constraint-writer synthesis-reporter ref-model-reviewer uarch-designer"
+
+DEFAULT_AGENTS="$P4_P5_AGENTS $P1_P3_AGENTS $VPROC_AGENTS $MISC_AGENTS"
 
 # Use arguments if provided, otherwise defaults
 TARGETS="${*:-$DEFAULT_AGENTS}"
@@ -102,23 +118,27 @@ for agent in $TARGETS; do
 
   # Insert before the last </Agent_Prompt>
   if grep -q "</Agent_Prompt>" "$AGENT_FILE"; then
-    # Use awk for reliable multi-line insertion (POSIX-compatible)
-    awk -v section="
+    # The section is multi-line, so it MUST reach awk through the environment,
+    # not through `awk -v`: POSIX/BSD awk rejects newlines in a -v assignment
+    # ("awk: newline in string"). GNU awk tolerates it, so -v works on Linux CI
+    # and fails on macOS — see CLAUDE.md rule 7.
+    RAT_WORKER_SECTION="
 ## Team Worker Protocol
 
 When spawned with \`team_name\` parameter as part of a native team:
 
-1. Follow the standard Team Worker Protocol defined in \`agents/lib/team-worker-preamble.md\`
+1. INIT — identify self and coordinator from team context
 2. Claim ${TASK_TYPE} tasks from TaskList matching your specialty
 3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader
 4. When no more tasks are available, notify leader and wait for shutdown${WRITE_NOTE}
 
-When spawned WITHOUT \`team_name\` (traditional Task() mode), ignore this section entirely." \
-      '/^<\/Agent_Prompt>/ && !done { print section; done=1 } { print }' \
+When spawned WITHOUT \`team_name\` (traditional Task() mode), ignore this section entirely."
+    export RAT_WORKER_SECTION
+    awk '/^<\/Agent_Prompt>/ && !done { print ENVIRON["RAT_WORKER_SECTION"]; done=1 } { print }' \
       "$AGENT_FILE" > "$AGENT_FILE.tmp" && mv "$AGENT_FILE.tmp" "$AGENT_FILE"
   else
     # No </Agent_Prompt> tag — append at end
-    printf '\n\n## Team Worker Protocol\n\nWhen spawned with `team_name` parameter as part of a native team:\n\n1. Follow the standard Team Worker Protocol defined in `agents/lib/team-worker-preamble.md`\n2. Claim %s tasks from TaskList matching your specialty\n3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader\n4. When no more tasks are available, notify leader and wait for shutdown%s\n\nWhen spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.\n' "$TASK_TYPE" "$WRITE_NOTE" >> "$AGENT_FILE"
+    printf '\n\n## Team Worker Protocol\n\nWhen spawned with `team_name` parameter as part of a native team:\n\n1. INIT — identify self and coordinator from team context\n2. Claim %s tasks from TaskList matching your specialty\n3. Execute each task, save artifacts, then TaskUpdate(completed) + SendMessage to leader\n4. When no more tasks are available, notify leader and wait for shutdown%s\n\nWhen spawned WITHOUT `team_name` (traditional Task() mode), ignore this section entirely.\n' "$TASK_TYPE" "$WRITE_NOTE" >> "$AGENT_FILE"
   fi
 
   INJECTED=$((INJECTED + 1))

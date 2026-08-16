@@ -17,7 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 AGENTS_DIR="$REPO_ROOT/agents"
-TEMPLATE="$REPO_ROOT/agents/lib/step0-template.md"
+TEMPLATE="$REPO_ROOT/plugin_docs/agent-lib/step0-template.md"
 
 DRY_RUN=false
 if [ "${1:-}" = "--dry-run" ]; then
@@ -128,9 +128,13 @@ for agent_file in "$AGENTS_DIR"/*.md; do
       ;;
   esac
 
-  # Replace placeholder with actual template content
-  EXPECTED=$(printf '%s\n' "$RESULT" | awk -v tmpl="$FILE_TEMPLATE" '
-    /___TEMPLATE_PLACEHOLDER___/ { print tmpl; next }
+  # Replace placeholder with actual template content.
+  # The template is multi-line, so it MUST be passed via the environment, not
+  # via `awk -v`: POSIX/BSD awk rejects newlines in a -v assignment ("awk:
+  # newline in string"). GNU awk tolerates it, so a -v here works on Linux CI
+  # and fails on macOS — see CLAUDE.md rule 7.
+  EXPECTED=$(printf '%s\n' "$RESULT" | RAT_STEP0_TMPL="$FILE_TEMPLATE" awk '
+    /___TEMPLATE_PLACEHOLDER___/ { print ENVIRON["RAT_STEP0_TMPL"]; next }
     { print }
   ')
 

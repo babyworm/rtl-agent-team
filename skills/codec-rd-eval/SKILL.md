@@ -87,7 +87,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
 1. **Prerequisite validation**
    - Verify refc/*.c (or configured encoder_src) exists
    - Verify test configuration file exists (HJSON format)
-     - If not provided, generate from template at skills/codec-rd-eval/templates/test-config.hjson
+     - If not provided, generate from template at templates/test-config.hjson
      - Ask user to fill in sequence paths and encoder configurations
    - Check anchor encoder binary existence (skip build if already built)
    - Verify Python dependencies: `python3 -c "import numpy; import hjson"`
@@ -121,7 +121,7 @@ selection) or manually set up evaluation infrastructure (time-consuming and erro
    - Output: `.rat/scratch/rd-eval/bd-metrics.json`
 
 5. **Report generation**
-   - Generate report from template at skills/codec-rd-eval/templates/rd-eval-report.md
+   - Generate report from template at templates/rd-eval-report.md
    - Output path: as configured in HJSON (default: docs/phase-1-research/rd-eval-report.md)
    - Report contains:
      - Evaluation summary (anchor label, test label, date)

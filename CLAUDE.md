@@ -51,7 +51,7 @@ Plugin CLAUDE.md is **NOT loaded** in user projects (Claude Code plugin architec
 Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver rules and context:
 
 ```
-[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~106 lines / ~9.5KB auto-injected in RAT projects)
+[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~106 lines / ~8.5KB auto-injected in RAT projects)
 [Path-scoped] .claude/rules/    → Coding conventions, verification gates (on .sv file access)
 [On-demand]  Subdirectory CLAUDE.md → Phase-specific guides (on directory entry)
 [Invoked]    Skill SKILL.md     → Full workflow instructions (on skill invocation)
@@ -67,12 +67,26 @@ Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver 
 | 5 | Skill SKILL.md body | Skill invocation | Full workflow (50-300 lines) |
 | 6 | Agent prompt | Agent spawn | Role, constraints, output format |
 
-**Progressive disclosure**: always-on cost is Layer 1 (~106 lines, RAT-marked projects only)
-plus Layer 4 skill frontmatter (~13.5KB name+description across 97 skills — action skills
-follow a ≤160-char routing-trigger contract; internal/policy skills carry minimal one-liners).
-Additional layers load only when needed, keeping the context window efficient.
+**Progressive disclosure**: additional layers load only when needed, keeping the context
+window efficient. Three sources are always-on and are the ones to budget:
+
+| Always-on source | Size | Contract |
+|---|---:|---|
+| Agent frontmatter (`name` + `description` × 99) | ~21.7 KB | none yet — largest, least governed |
+| Skill frontmatter (`name` + `description` × 97) | ~13.3 KB | action skills ≤160 chars; internal/policy skills carry minimal one-liners |
+| SessionStart hook injection (Layer 1) | ~8.5 KB | RAT-marked projects only |
+
 Keep the description budget under control: the harness truncates skill descriptions
-when the total gets too large, which silently destroys routing.
+when the total gets too large, which silently destroys routing. This is observable —
+v0.10.6 shipped 19.0 KB of skill descriptions and, in a session with several other
+plugins installed, ~50 rtl-agent-team skills were listed with **no description at all**.
+Two facts constrain any fix: `user-invocable: false` does NOT remove a skill from the
+listing (the flag blocks invocation, not the budget charge), and the budget is shared
+across every installed plugin, so this plugin's share must stay lean regardless.
+Routing targets in the hook injection must stay fully qualified
+(`/rtl-agent-team:<name>`) — the Skill tool requires the exact `plugin:skill` form,
+so shortening them to bare names to save bytes trades a routing failure mode for
+a rounding error.
 
 **Hook output schema (SessionStart)**: Claude Code validates SessionStart hook stdout
 against a JSON schema — `hookSpecificOutput.hookEventName` is mandatory. Layer 1 above
@@ -146,11 +160,12 @@ When modifying this plugin:
     - Verify no stale version references remain: `grep -r '0\.OLD\.VER' package.json .claude-plugin/ README.md README_kr.md`
     - **Sub-plugin sha pin (marketplace.json)**: when bumping a github-source sub-plugin (e.g., `systemverilog-lsp`), use the **commit sha**, not the annotated tag-object sha. `git rev-parse <tag>` returns the tag-object sha for annotated tags; `git rev-parse <tag>^{commit}` always returns the commit sha. They are equal only for lightweight tags. Verify with `git cat-file -t <sha>` — must print `commit`, never `tag`. v0.10.5 pinned a tag-object sha by mistake; v0.10.6 corrected it.
 15. **Hook stdout must be valid JSON when non-empty** — Claude Code validates hook output against per-event schemas (`hookSpecificOutput.hookEventName` is mandatory for SessionStart, PreToolUse, PostToolUse). Raw text stdout silently fails validation. To inject context, embed JSON-encoded content inside `additionalContext` (SessionStart) or `permissionDecisionReason` (PreToolUse). For large/multi-line content, perform the JSON encoding at **sync/build time** in a dev script — never at runtime — so the hook stays POSIX-only with zero jq/python dependency. Canonical pattern in this plugin: `hooks/rtl-orchestrator-inject.sh` + `scripts/sync_orchestrator_inject.sh`. Validation: `echo '{"cwd":"<dir>"}' | sh hooks/<hook>.sh | python3 -m json.tool`.
+16. **`agents/` must stay flat — no subdirectories** — Claude Code discovers agents by scanning `agents/` **recursively** (`plugin.json` has no `agents` field, so auto-discovery applies). A `.md` file in any subdirectory is registered as a real, spawnable agent named `rtl-agent-team:<subdir>:<stem>`, described as "Agent from rtl-agent-team plugin", granted **all tools**, and carrying no role prompt — an unconstrained agent in the always-on registry. Shared prompt fragments and sync templates belong in `plugin_docs/agent-lib/`. v0.14.1 and earlier leaked 6 phantom agents this way from `agents/lib/`; guarded since v0.14.2 by `test_agents_dir_has_no_nested_markdown`. Note the trap: the agent test fixture globs `agents/*.md` non-recursively, so nested files are invisible to every other agent test.
 
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
 1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
-2. **Step 0 Context Bootstrap duplicated across 30 of the 33 orchestrators** — These 30 orchestrator agents carry the canonical block synchronized from `agents/lib/step0-template.md`. This is intentional: agent prompts must be self-contained (no `#include`), and indirection via `agents/lib/` would add a Read() tool call per agent spawn. `p5a-functional-closure-orchestrator`, `p5b-silicon-validation-orchestrator`, and `ppa-optimizer-dc-orchestrator` use custom preconditions/state files instead of the canonical block; all three still use the shared project-root path convention in their headers.
+2. **Step 0 Context Bootstrap duplicated across 30 of the 33 orchestrators** — These 30 orchestrator agents carry the canonical block synchronized from `plugin_docs/agent-lib/step0-template.md`. This is intentional: agent prompts must be self-contained (no `#include`), and indirection via `plugin_docs/agent-lib/` would add a Read() tool call per agent spawn. `p5a-functional-closure-orchestrator`, `p5b-silicon-validation-orchestrator`, and `ppa-optimizer-dc-orchestrator` use custom preconditions/state files instead of the canonical block; all three still use the shared project-root path convention in their headers.
 
 ### File Architecture
 
@@ -158,11 +173,9 @@ When modifying this plugin:
 rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
-├── agents/                              # 99 specialized agent definitions (.md)
-│   └── lib/                             #   Shared agent protocols (team-worker-preamble.md,
-│                                        #     team-worker-protocol.md, team-fallback.md,
-│                                        #     domain-expert-discovery-protocol.md,
-│                                        #     audit-output-protocol.md, step0-template.md)
+├── agents/                              # 99 specialized agent definitions (.md), FLAT — no subdirs
+│                                        #   (agents/ is scanned RECURSIVELY: any nested .md
+│                                        #    becomes a phantom agent — see rule 16 below)
 ├── skills/                              # 97 skills: 56 action entry-points + 32 policies + 4 tool profiles + 4 conventions + 1 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
@@ -191,7 +204,12 @@ rtl-agent-team/                          # Plugin root
 │                                        #     compliance-gate-util.sh, rat-dir-util.sh)
 ├── plugin_docs/                         # Plugin development documents (tracked)
 │   ├── specs/                           #   Design specifications
-│   └── plans/                           #   Implementation plans
+│   ├── plans/                           #   Implementation plans
+│   └── agent-lib/                       #   Shared agent prompt fragments — dev sources synced
+│                                        #     INTO agents/*.md, never loaded at runtime
+│                                        #     (team-worker-preamble.md, team-worker-protocol.md,
+│                                        #      team-fallback.md, domain-expert-discovery-protocol.md,
+│                                        #      audit-output-protocol.md, step0-template.md)
 ├── domain-packages/
 │   ├── video-codec/                     #   H.264/H.265 domain knowledge
 │   └── video-processing/                #   Video processing domain knowledge
@@ -214,7 +232,7 @@ The authoritative routing table (natural language pattern → skill/agent mappin
 
 This routing is delivered via two mechanisms:
 - **SessionStart hook** (`hooks/rtl-orchestrator-inject.sh`): condensed routing auto-injected for users
-- **Internal reference skill** (`skills/rtl-orchestrate/SKILL.md`): full routing/delegation reference loaded by agents (not user-invocable)
+- **Internal reference skill** (`skills/rtl-orchestrate/SKILL.md`): the maintainer-facing SSOT and the sync source for the hook above. It carries both `user-invocable: false` and `disable-model-invocation: true`, so **nothing loads it at runtime** — not users, not the model, not agents. Anything the runtime must know has to travel through the `SESSIONSTART_HOOK_EXPORT` block (or through an agent/skill prompt); content that lives only in the body reaches no one. v0.14.1 lost pipeline rules 10-11 (the PPA-Opt gates) this way.
 
 Routing contract:
 - User intent routes to **Action Skills first**.
@@ -366,9 +384,9 @@ Skill (main session = leader)
 | `agents/p3-uarch-team-orchestrator.md` | Coordination teammate: uArch + BFM tasks |
 | `agents/p4-implement-team-orchestrator.md` | Coordination teammate: 10-wave tasks |
 | `agents/p5-verify-team-orchestrator.md` | Coordination teammate: verification tasks |
-| `agents/lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
-| `agents/lib/team-worker-protocol.md` | Worker communication and coordination protocol |
-| `agents/lib/team-fallback.md` | Graceful degradation patterns (Orchestrator as Teammate) |
+| `plugin_docs/agent-lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
+| `plugin_docs/agent-lib/team-worker-protocol.md` | Worker communication and coordination protocol |
+| `plugin_docs/agent-lib/team-fallback.md` | Graceful degradation patterns (Orchestrator as Teammate) |
 
 **Team-awareness**: Stop hooks check `.rat/state/team-config.json` — coordinator
 and workers bypass gates, only the leader session is subject to stop enforcement.

@@ -51,7 +51,7 @@ If prerequisites are missing: WARNING — recommend running the failing regressi
 <Execution>
 1. Read the bug report or failing test log to understand the symptoms.
 2. Run `python3 {plugin_root}/skills/rtl-bug-repro/scripts/vcd_diff.py --actual sim/regression/{test}.vcd --expected sim/regression/{test}_golden.vcd` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) to identify the first divergence cycle and originating signal. If no golden VCD exists, spawn `waveform-analyzer` (see Tool_Usage) to analyze the failing VCD directly.
-3. Read `skills/rtl-bug-repro/references/bug-repro-conventions.md` for naming, TB structure, and `root_cause.md` schema.
+3. Read `references/bug-repro-conventions.md` for naming, TB structure, and `root_cause.md` schema.
 4. Spawn `func-verifier` (see Tool_Usage) to write `sim/bugs/{bug_id}/repro_tb.sv` using `templates/repro-tb-template.sv` as scaffold. The TB must: use `i_`/`o_` port prefixes, `{domain}_clk`/`{domain}_rst_n` names, `logic` types only, and `u_dut` for the DUT instance.
 5. Run the repro TB: `scripts/run_sim.sh --sim iverilog --top repro_tb --outdir sim/bugs/{bug_id} --trace rtl/{module}/{module}.sv sim/bugs/{bug_id}/repro_tb.sv`. Confirm the failure reproduces.
 6. Write `sim/bugs/{bug_id}/root_cause.md` with: symptom, first failure cycle, signal trace table, suspected RTL file and line, clock/reset context.
@@ -69,7 +69,7 @@ Task(subagent_type="rtl-agent-team:waveform-analyzer",
 Minimal TB authoring and confirmation:
 ```
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Write sim/bugs/BUG-042/repro_tb.sv that reproduces the CABAC bypass mode failure at cycle ~250. Minimize stimulus to the essential sequence. Use: i_/o_ port prefixes, sys_clk, sys_rst_n, u_dut instance, logic types only. Scaffold: skills/rtl-bug-repro/templates/repro-tb-template.sv. Run: scripts/run_sim.sh --sim iverilog --top repro_tb --outdir sim/bugs/BUG-042 --trace rtl/cabac_encoder/cabac_encoder.sv sim/bugs/BUG-042/repro_tb.sv. Confirm reproduction.")
+     prompt="Write sim/bugs/BUG-042/repro_tb.sv that reproduces the CABAC bypass mode failure at cycle ~250. Minimize stimulus to the essential sequence. Use: i_/o_ port prefixes, sys_clk, sys_rst_n, u_dut instance, logic types only. Scaffold: {plugin_root}/skills/rtl-bug-repro/templates/repro-tb-template.sv. Run: scripts/run_sim.sh --sim iverilog --top repro_tb --outdir sim/bugs/BUG-042 --trace rtl/cabac_encoder/cabac_encoder.sv sim/bugs/BUG-042/repro_tb.sv. Confirm reproduction.")
 ```
 </Tool_Usage>
 

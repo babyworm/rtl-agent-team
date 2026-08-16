@@ -168,7 +168,7 @@ This skill ensures the project workspace is ready before design work begins.
    ```
 
 4. **Generate filelist templates** (if rtl/ has no .f files):
-   - Copy `skills/rat-init-project/templates/filelist.f` to `rtl/filelist_top.f` as starting point.
+   - Copy `templates/filelist.f` to `rtl/filelist_top.f` as starting point.
    - Per-module filelists (`rtl/filelist_{module}.f`) are created during Phase 4 when modules are coded.
    - **Filelist convention (3 types):**
      | Type | Location | Required |
@@ -213,7 +213,7 @@ This skill ensures the project workspace is ready before design work begins.
    Referenced by Makefile `uvm_regression` target.
 
 5. **Generate cocotb Makefile template** (if sim/ has no Makefile):
-   Copy `skills/rat-init-project/templates/cocotb-makefile` to `sim/top/Makefile` as reference.
+   Copy `templates/cocotb-makefile` to `sim/top/Makefile` as reference.
    Per-module cocotb Makefiles are created in `sim/{module}/Makefile` during Phase 4-5.
    Adapters MUST retain `.DEFAULT_GOAL := sim` (from the template) so bare `make`
    runs the cocotb `sim` target. If a helper target (e.g. `ref:` to build a DPI-C
@@ -222,7 +222,7 @@ This skill ensures the project workspace is ready before design work begins.
    `make` no-ops with "Nothing to be done".
 
 5.5. **Deploy Phase 6 PDF Makefile** (if reviews/phase-6-review/ has no Makefile):
-   Copy `skills/rat-init-project/templates/phase6-pdf-makefile` to `reviews/phase-6-review/Makefile`.
+   Copy `templates/phase6-pdf-makefile` to `reviews/phase-6-review/Makefile`.
 
 5.7. **Generate SV testbench template** (inform user):
    Reference `skills/rtl-p4s-unit-test/templates/sv-testbench-template.sv` for Tier 2 unit tests.

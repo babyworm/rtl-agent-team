@@ -49,7 +49,7 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 </Responsibility_Boundary>
 
 <Execution>
-1. Read `skills/rtl-ipxact-gen/references/ipxact-conventions.md` for port direction mapping, required XML section order, and bus interface identification rules.
+1. Read `references/ipxact-conventions.md` for port direction mapping, required XML section order, and bus interface identification rules.
 2. Attempt `sv_to_ipxact -i rtl/{module}/{module}.sv -o ipxact/{module}.xml --ipxact-2014 --validate`. If exit code 0, proceed to step 5. If `sv_to_ipxact` is not installed, run `python3 {plugin_root}/skills/rtl-ipxact-gen/scripts/gen_ipxact.py rtl/{module}/{module}.sv -o ipxact/{module}.xml` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) for deterministic port/parameter extraction, then proceed to step 3.
 3. Spawn `rtl-explorer` (see Tool_Usage) to extract all ports (name/direction/width), parameters, and identify AXI/APB/AHB bus interface groups by port name prefix.
 4. Spawn `ipxact-generator` (see Tool_Usage) to write `ipxact/{module}.xml` — enriching the gen_ipxact.py output (or `templates/component-template.xml` scaffold) with bus interface and memory map sections. Preserve `i_`/`o_`/`io_` prefixes verbatim in `spirit:name`. Map `{domain}_clk` ports to clock roles and `{domain}_rst_n` to reset roles.
@@ -69,7 +69,7 @@ Task(subagent_type="rtl-agent-team:rtl-explorer",
 XML authoring (after extraction):
 ```
 Task(subagent_type="rtl-agent-team:ipxact-generator",
-     prompt="Generate IEEE 1685-2014 IP-XACT XML for dma_controller. Ports: {port_list}. Parameters: {param_list}. Bus interfaces: AXI4-Lite slave. Scaffold: skills/rtl-ipxact-gen/templates/component-template.xml. Preserve i_/o_/io_ prefixes in spirit:name. Map {domain}_clk to clock roles, {domain}_rst_n to reset roles. Write ipxact/dma_controller.xml.")
+     prompt="Generate IEEE 1685-2014 IP-XACT XML for dma_controller. Ports: {port_list}. Parameters: {param_list}. Bus interfaces: AXI4-Lite slave. Scaffold: {plugin_root}/skills/rtl-ipxact-gen/templates/component-template.xml. Preserve i_/o_/io_ prefixes in spirit:name. Map {domain}_clk to clock roles, {domain}_rst_n to reset roles. Write ipxact/dma_controller.xml.")
 ```
 </Tool_Usage>
 

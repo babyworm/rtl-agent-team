@@ -48,7 +48,7 @@ If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p
 </Responsibility_Boundary>
 
 <Execution>
-1. Read `skills/rtl-p5s-coverage-analyze/references/coverage-conventions.md` for coverage targets, report structure, and exclusion approval rules.
+1. Read `references/coverage-conventions.md` for coverage targets, report structure, and exclusion approval rules.
 2. Spawn `p5s-coverage-orchestrator` (see Tool_Usage) to run 3-round iterative analysis: parse the coverage report (deterministic extraction via `scripts/parse_coverage.py` — supports lcov `.info` and Verilator `coverage.dat`; `v_user` points count as the fsm metric), identify and prioritize gaps, generate directed tests, re-run simulation, and track convergence.
 3. The orchestrator writes `reviews/phase-5-verify/{module}-coverage-report.md` using `templates/coverage-gap-report.md` as scaffold, populating high-value and unreachable gap tables.
 4. The orchestrator writes `sim/coverage/test_coverage_fill.py` with one test function per targeted gap.

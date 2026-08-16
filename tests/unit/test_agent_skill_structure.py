@@ -19,6 +19,7 @@ from tests.conftest import extract_marked_block
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AGENTS_DIR = REPO_ROOT / "agents"
 SKILLS_DIR = REPO_ROOT / "skills"
+AGENT_LIB_DIR = REPO_ROOT / "plugin_docs" / "agent-lib"
 HOOKS_JSON = REPO_ROOT / "hooks" / "hooks.json"
 PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
@@ -46,8 +47,126 @@ class TestAgentDefinitions:
     def test_agents_dir_exists(self):
         assert AGENTS_DIR.is_dir(), "agents/ directory must exist"
 
+    def test_agents_dir_has_no_nested_markdown(self):
+        """Claude Code discovers agents by scanning agents/ RECURSIVELY.
+
+        Any .md file in a subdirectory of agents/ is registered as a real agent
+        (named `<plugin>:<subdir>:<stem>`, described as "Agent from <plugin>
+        plugin", granted all tools). Shared prompt fragments therefore must NOT
+        live under agents/ — they belong in plugin_docs/agent-lib/.
+
+        v0.14.2: agents/lib/*.md previously leaked 6 phantom agents into the
+        always-on registry. The agent_files fixture globs non-recursively, so
+        the leak was invisible to every other test in this class.
+        """
+        nested = sorted(
+            str(p.relative_to(AGENTS_DIR))
+            for p in AGENTS_DIR.rglob("*.md")
+            if p.parent != AGENTS_DIR
+        )
+        assert nested == [], (
+            "agents/ subdirectories must not contain .md files — each one is "
+            f"registered as a phantom agent: {nested}. Move them to "
+            "plugin_docs/agent-lib/."
+        )
+
     def test_at_least_40_agents(self, agent_files):
         assert len(agent_files) >= 90, f"Expected ≥90 agents, got {len(agent_files)}"
+
+    def test_skill_description_budget(self):
+        """Skill name+description is always-on context, charged per installed plugin.
+
+        The harness truncates skill descriptions once the global total grows too
+        large, and truncation is silent — a skill listed without its description
+        simply stops being routable. v0.10.6 shipped 19.0 KB across 97 skills
+        with 61 over the documented 160-char contract; in a session with several
+        plugins installed, ~50 rtl-agent-team skills were listed with no
+        description at all.
+
+        Neither `user-invocable: false` nor `disable-model-invocation: true`
+        removes a skill from the listing — both block invocation, not the budget
+        charge — so the only levers are description length and skill count.
+        """
+        over, total = [], 0
+        for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
+            name = skill_md.parent.name
+            fm = _read_frontmatter(skill_md)
+            match = re.search(r"^description:\s*(.*)$", fm, re.M)
+            assert match, f"{name} has no description"
+            desc = match.group(1).strip().strip('"')
+            total += len(name) + len(desc)
+            if len(desc) > 160:
+                over.append(f"{name} ({len(desc)} chars)")
+        assert over == [], (
+            "Skill descriptions must stay within the 160-char routing-trigger "
+            f"contract: {over}"
+        )
+        assert total <= 15000, (
+            f"Always-on skill name+description budget is {total} B (ceiling 15000). "
+            "Trim descriptions or drop skills before raising this."
+        )
+
+    def test_skill_bundled_assets_use_skill_relative_paths(self):
+        """A skill's own templates/ and references/ are addressed skill-relative.
+
+        `Read("references/x.md")` resolves against the skill directory, which is
+        why the <Assets> tables and ~95 call sites across the plugin use the bare
+        form. Re-stating the same file as `skills/<own-name>/references/x.md` is
+        wrong under every resolution rule: against the user's CWD the path does
+        not exist, and against the skill directory it nests into
+        skills/<name>/skills/<name>/.
+
+        v0.14.2: six skills declared an asset skill-relative in <Assets> and then
+        re-stated it self-prefixed in the Execution step, so the conventions file
+        each skill depends on was never actually read.
+        """
+        offenders = []
+        for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
+            own = skill_md.parent.name
+            # A {plugin_root}/ or ${CLAUDE_PLUGIN_ROOT}/ prefix makes the path
+            # absolute after substitution — that form is correct and stays.
+            pattern = re.compile(
+                r"(?<!\{plugin_root\}/)(?<!\{CLAUDE_PLUGIN_ROOT\}/)"
+                rf"skills/{re.escape(own)}/(?:references|templates)/"
+            )
+            for lineno, line in enumerate(skill_md.read_text().splitlines(), 1):
+                if pattern.search(line):
+                    offenders.append(f"{own}/SKILL.md:{lineno}: {line.strip()[:100]}")
+        assert offenders == [], (
+            "Reference a skill's own bundled assets skill-relative "
+            "(`references/x.md`), not `skills/<own-name>/references/x.md`:\n  "
+            + "\n  ".join(offenders)
+        )
+
+    def test_no_runtime_reads_of_plugin_internal_paths(self, agent_files):
+        """Agent and skill prompts execute with the USER's project as CWD.
+
+        plugin_docs/ ships with the plugin but is never present in a user
+        project, so an instruction to *follow* or *read* a plugin_docs/ path is
+        dead at runtime. Only labelled dev-source pointers are allowed — they
+        tell a maintainer where the canonical text lives while explicitly
+        telling the agent not to read it.
+
+        v0.14.2: 8 agents + 1 skill instructed workers to follow
+        agents/lib/team-worker-preamble.md; for 3 of them that reference WAS
+        the entire team protocol, so team mode silently ran protocol-less.
+        """
+        directive = re.compile(
+            r"(?:[Ff]ollow|[Rr]ead|defined in|protocol in|described in|Per)"
+            r"[^\n]{0,60}`plugin_docs/[^`\n]+`"
+        )
+        allowed = ("dev source:", "plugin-internal")
+        offenders = []
+        for f in list(agent_files) + sorted(SKILLS_DIR.glob("*/SKILL.md")):
+            for lineno, line in enumerate(f.read_text().splitlines(), 1):
+                if directive.search(line) and not any(a in line for a in allowed):
+                    rel = f.relative_to(REPO_ROOT)
+                    offenders.append(f"{rel}:{lineno}: {line.strip()[:90]}")
+        assert offenders == [], (
+            "Prompts must be self-contained — inline the protocol instead of "
+            "pointing at a plugin_docs/ path that does not exist in the user's "
+            "project:\n  " + "\n  ".join(offenders)
+        )
 
     def test_all_agents_have_yaml_frontmatter(self, agent_files):
         """Every agent .md must start with --- YAML frontmatter ---."""
@@ -161,12 +280,12 @@ class TestAgentDefinitions:
         )
 
     def test_step0_template_has_project_root_ladder(self):
-        """v0.13.x: agents/lib/step0-template.md (excluded from the agent_files
+        """v0.13.x: plugin_docs/agent-lib/step0-template.md (excluded from the agent_files
         glob) must resolve project-relative paths via the manifest project_root
         field shipped by spawn-context-util.sh, with the RAT_PROJECT_ROOT env
         and process-CWD fallbacks."""
-        template = AGENTS_DIR / "lib" / "step0-template.md"
-        assert template.exists(), "agents/lib/step0-template.md must exist"
+        template = AGENT_LIB_DIR / "step0-template.md"
+        assert template.exists(), "plugin_docs/agent-lib/step0-template.md must exist"
         content = template.read_text()
         assert "`project_root` field in `.rat/state/spawn-context.json`" in content
         assert "`$RAT_PROJECT_ROOT` env" in content
@@ -174,8 +293,8 @@ class TestAgentDefinitions:
 
     def test_audit_output_protocol_exists(self):
         """The shared audit output protocol file must exist."""
-        protocol = AGENTS_DIR / "lib" / "audit-output-protocol.md"
-        assert protocol.exists(), "agents/lib/audit-output-protocol.md must exist"
+        protocol = AGENT_LIB_DIR / "audit-output-protocol.md"
+        assert protocol.exists(), "plugin_docs/agent-lib/audit-output-protocol.md must exist"
         content = protocol.read_text()
         assert "RAT" in content
         assert "DECISION" in content

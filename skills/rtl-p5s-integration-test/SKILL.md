@@ -52,7 +52,7 @@ If prerequisites are missing: WARNING — recommend completing Tier 2 and Tier 3
 </Responsibility_Boundary>
 
 <Execution>
-1. Read `skills/rtl-p5s-integration-test/references/integration-test-conventions.md` for Tier 4 context, test categories, JSON schema, and report structure.
+1. Read `references/integration-test-conventions.md` for Tier 4 context, test categories, JSON schema, and report structure.
 2. Spawn `p5s-integration-orchestrator` (see Tool_Usage) to run the full integration test suite.
 3. The orchestrator runs static connectivity checks first (`scripts/check_connectivity.py` — named connections, literal/parameter-resolvable widths, dangling pins, undriven top outputs; positional/`.*` connections and non-literal widths are flagged as unanalyzed, not guessed), then dynamic tests: data flow, reset propagation, handshake protocol, and end-to-end reference comparison using the Phase 2 refC model output as oracle.
 4. The orchestrator writes `sim/top/integration_results.json` with one entry per test case (category, verdict, failure detail).
