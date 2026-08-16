@@ -7,6 +7,31 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Added — English documentation
+
+- **`CONTRIBUTING.md`, `tests/README.md` and `tests/TEST-GUIDE.md` now ship in English**,
+  with the Korean originals preserved as `CONTRIBUTING_kr.md`, `tests/README_kr.md` and
+  `tests/TEST-GUIDE_kr.md`. This follows the existing `README.md` / `README_kr.md`
+  convention: the unsuffixed filename is the English canonical document. Until now a
+  contributor arriving from the English README could not read how to contribute — 1,121
+  lines of contribution and testing guidance were Korean-only. Every pair cross-links to
+  the other language in its first line.
+- `tests/unit/test_doc_translation_pairs.py` holds all four pairs together. Content cannot
+  be diffed across languages, but structure can, and structure is exactly what drifts when
+  someone edits one side only: the guard checks both files exist, that the unsuffixed one
+  is the English one, that they cross-link, and that heading skeletons, table shapes and
+  fenced-block counts agree. It immediately earned its keep — the English `TEST-GUIDE.md`
+  had five table rows the Korean copy lacked, which were back-ported rather than dropped.
+
+### Fixed — documentation
+
+- `tests/README*.md` and `tests/TEST-GUIDE*.md` advertised 1592 unit tests and a stale
+  1639 total; both now track the suite. The 1,592 in the 0.14.1 section stays — it records
+  what that release actually shipped.
+- The new English docs also carry the parts the Korean originals predate: the flat-`agents/`
+  rule, the skill description budget, the skill asset-path convention, pipeline rule
+  coverage, BUG-003, and why some tests skip on macOS.
+
 ### Fixed — EDA templates and scripts
 - **`target.level` conformance filter was parsed and discarded** — `run_conformance.py`
   read `target.level` from the config into a local variable, and the comment above the

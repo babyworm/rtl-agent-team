@@ -1,56 +1,59 @@
-# rtl-agent-team 테스트 가이드
+> **한국어 문서**: [TEST-GUIDE_kr.md](./TEST-GUIDE_kr.md)
 
-## 개요
+# rtl-agent-team test guide
 
-이 문서는 `rtl-agent-team` Claude Code 플러그인의 테스트 인프라를 설명합니다.
-테스트는 **pytest** 기반이며, EDA 도구 없이 실행 가능한 **유닛 테스트**와 EDA 도구가 필요한 **통합 테스트** 두 계층으로 구성됩니다.
+## Overview
 
-### 테스트 현황
+This document describes the test infrastructure of the `rtl-agent-team` Claude Code
+plugin. The tests are **pytest**-based and split into two tiers: **unit tests**,
+which run without EDA tools, and **integration tests**, which require them.
 
-| 구분 | 테스트 수 | 상태 |
-|------|----------|------|
-| 유닛 테스트 | 1641개 | EDA 도구 불필요 |
-| 통합 테스트 | 47개 | EDA/Docker 환경에 따라 SKIP |
-| **합계** | **1639개** | collection 기준 |
+### Test inventory
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Unit tests | 1641 | No EDA tools required |
+| Integration tests | 47 | SKIPped depending on the EDA/Docker environment |
+| **Total** | **1688** | at collection |
 
 ---
 
-## 디렉토리 구조
+## Directory structure
 
 ```
 tests/
-├── conftest.py                    # 공통 fixture 및 helper 함수
-├── Makefile                       # make test, make unit, make integration 등
-├── requirements-test.txt          # 전체 테스트 의존성
-├── TEST-GUIDE.md                  # 이 문서
-├── unit/                          # EDA 도구 불필요 — 로컬에서 바로 실행 가능
-│   ├── test_agent_skill_structure.py  # 에이전트/스킬 구조 검증
-│   ├── test_aws_batch.py              # AWS Batch 작업 관리 (boto3 mock)
-│   ├── test_bd_rate.py                # BD-rate/BD-PSNR 수학 계산
+├── conftest.py                    # Shared fixtures and helpers
+├── Makefile                       # make test, make unit, make integration, …
+├── requirements-test.txt          # All test dependencies
+├── TEST-GUIDE.md                  # This document
+├── unit/                          # No EDA tools — runs locally as-is
+│   ├── test_agent_skill_structure.py  # Agent/skill structure validation
+│   ├── test_aws_batch.py              # AWS Batch job management (boto3 mocked)
+│   ├── test_bd_rate.py                # BD-rate/BD-PSNR maths
 │   ├── test_build_scripts.py          # build_encoder.sh, build_decoder.sh
-│   ├── test_check_conventions.py      # RTL 코딩 컨벤션 검사 스크립트
-│   ├── test_compare_output.py         # MD5/bitexact 비교
-│   ├── test_hooks.py                  # 훅 스크립트 (edit-tracker, stop-gate)
-│   ├── test_json_schemas.py           # JSON 설정 파일 구조 검증
-│   ├── test_plugin_runtime_contract.py # 플러그인 런타임 계약 검증
-│   ├── test_parse_yosys_stat.py       # Yosys 합성 결과 파싱
-│   ├── test_regression_coverage.py    # regression/coverage 스크립트
-│   ├── test_run_conformance.py        # 적합성 테스트 스트림 탐색
-│   ├── test_run_eval.py               # 인코더 출력 파싱, BD-rate 설정
-│   └── test_run_sim_args.py           # run_sim.sh 인자 검증
-└── integration/                   # EDA 도구 필요 (Docker 환경)
-    ├── conftest.py                # requires_iverilog, requires_verilator 등
-    ├── test_docker_build.py       # Docker 이미지 빌드 + EDA 도구 검증 (33개)
-    ├── test_lint_live.py          # verilator/verible 실제 lint
-    ├── test_sim_live.py           # iverilog/verilator 실제 시뮬레이션
-    └── test_synth_live.py         # yosys 실제 합성
+│   ├── test_check_conventions.py      # RTL coding convention checker
+│   ├── test_compare_output.py         # MD5/bitexact comparison
+│   ├── test_hooks.py                  # Hook scripts (edit-tracker, stop-gate)
+│   ├── test_json_schemas.py           # JSON configuration structure
+│   ├── test_plugin_runtime_contract.py # Plugin runtime contract
+│   ├── test_parse_yosys_stat.py       # Yosys synthesis report parsing
+│   ├── test_regression_coverage.py    # regression/coverage scripts
+│   ├── test_run_conformance.py        # Conformance stream discovery
+│   ├── test_run_eval.py               # Encoder output parsing, BD-rate config
+│   └── test_run_sim_args.py           # run_sim.sh argument validation
+└── integration/                   # EDA tools required (Docker environment)
+    ├── conftest.py                # requires_iverilog, requires_verilator, …
+    ├── test_docker_build.py       # Docker image build + EDA tool validation (33 tests)
+    ├── test_lint_live.py          # Real verilator/verible lint
+    ├── test_sim_live.py           # Real iverilog/verilator simulation
+    └── test_synth_live.py         # Real yosys synthesis
 ```
 
 ---
 
-## 실행 방법
+## Running the tests
 
-### 전제 조건
+### Prerequisites
 
 ```bash
 python3 -m venv .venv
@@ -58,42 +61,42 @@ python3 -m venv .venv
 . .venv/bin/activate
 ```
 
-### 전체 테스트 실행
+### Run everything
 
 ```bash
-# 프로젝트 루트에서
+# From the project root
 python3 -m pytest tests/ -v
 
-# 또는 Makefile 사용
+# Or via the Makefile
 cd tests && make test
 ```
 
-### 유닛 테스트만 실행
+### Unit tests only
 
 ```bash
 python3 -m pytest tests/unit/ -v
 
-# 또는
+# Or
 cd tests && make unit
 ```
 
-### 통합 테스트만 실행 (Docker/EDA 환경)
+### Integration tests only (Docker/EDA environment)
 
 ```bash
 python3 -m pytest tests/integration/ -v
 
-# 또는
+# Or
 cd tests && make integration
 ```
 
-### 특정 파일만 실행
+### A single file
 
 ```bash
 python3 -m pytest tests/unit/test_hooks.py -v
 python3 -m pytest tests/unit/test_plugin_runtime_contract.py -v
 ```
 
-### 병렬 실행 (빠른 테스트)
+### Parallel (fast)
 
 ```bash
 python3 -m pytest tests/unit/ -n auto
@@ -101,153 +104,161 @@ python3 -m pytest tests/unit/ -n auto
 
 ---
 
-## 테스트 대상별 상세 설명
+## What each suite covers
 
-### 1. 훅 스크립트 테스트 (`test_hooks.py`)
+### 1. Hook script tests (`test_hooks.py`)
 
-플러그인의 핵심 동작인 **훅 시스템**을 검증합니다.
+Validates the **hook system**, the plugin's central enforcement mechanism.
 
-| 훅 | 역할 | 테스트 항목 |
-|----|------|------------|
-| `rtl-edit-tracker.sh` | RTL 파일(.sv/.svh/.v/.vh) 수정 추적 + Phase 6 stale 감지 | 파일 확장자 필터링, 중복 방지, 카운트, Phase 6 마커 |
-| `rtl-verify-stop-gate.sh` | RTL 수정 후 검증 완료 전 세션 종료 차단 | 차단/허용 조건, 정리(cleanup) |
-| `stop-gate.sh` | autopilot 실행 중 세션 종료 차단 | 상태 파일 유무에 따른 차단 |
-| `rtl-p6-cascade-gate.sh` | Phase 6 이후 RTL 수정 시 cascade 재검토 강제 | stale 마커, cascade-done, 차단/허용 |
-| `rtl-skill-activation.sh` | 스킬 호출 시 완료 상태 자동 생성 (PreToolUse:Skill) | 상태 파일 생성, 재진입 방지, 기준 로딩 |
-| `rtl-skill-completion-gate.sh` | 스킬 완료 전 세션 종료 차단 (Stop) | escalation ladder(`N→2N→last-chance→user escalation`), 반복 카운트, staleness, 정리 |
+| Hook | Role | What is tested |
+|------|------|----------------|
+| `rtl-edit-tracker.sh` | Track RTL file (.sv/.svh/.v/.vh) edits + Phase 6 stale detection | Extension filtering, duplicate suppression, counts, Phase 6 markers |
+| `rtl-verify-stop-gate.sh` | Block session stop after an RTL edit until verification completes | Block/allow conditions, cleanup |
+| `stop-gate.sh` | Block session stop while autopilot is running | Blocking based on state file presence |
+| `rtl-p6-cascade-gate.sh` | Force cascade re-review when RTL changes after Phase 6 | Stale marker, cascade-done, block/allow |
+| `rtl-skill-activation.sh` | Create completion state on skill invocation (PreToolUse:Skill) | State file creation, re-entry prevention, criteria loading |
+| `rtl-skill-completion-gate.sh` | Block session stop before a skill completes (Stop) | Escalation ladder (`N→2N→last-chance→user escalation`), repeat counting, staleness, cleanup |
 
-**동작 원리:** 훅은 stdin으로 JSON을 받고, stdout으로 `{"continue": true/false}` JSON을 출력합니다.
-테스트는 `run_hook()` helper로 실제 셸 스크립트를 실행하고 출력 JSON을 검증합니다.
+**How it works:** hooks read JSON on stdin and print `{"continue": true/false}` JSON
+on stdout. The tests run the real shell script through the `run_hook()` helper and
+validate the output JSON.
 
-### 2. Python 스크립트 테스트
+### 2. Python script tests
 
-| 테스트 파일 | 대상 스크립트 | 검증 내용 |
-|------------|-------------|----------|
-| `test_bd_rate.py` | `bd_rate.py` | BD-rate/BD-PSNR 수학 계산 정확성, 에지 케이스 |
-| `test_parse_yosys_stat.py` | `parse_yosys_stat.py` | Yosys 합성 보고서 파싱, 래치 감지, 빈 디자인 |
-| `test_compare_output.py` | `compare_output.py` | MD5 비교, bitexact 판정, 누락 파일 처리 |
-| `test_run_eval.py` | `run_eval.py` | 인코더 출력 파싱, 크로마 가중치, 커스텀 패턴 |
-| `test_run_conformance.py` | `run_conformance.py` | 스트림 탐색, MD5 계산, 디코딩 결과 구조 |
-| `test_aws_batch.py` | `aws_batch_conformance.py` | AWS Batch 작업 제출/대기/결과 (boto3 mock) |
+| Test file | Script under test | What it checks |
+|-----------|-------------------|----------------|
+| `test_bd_rate.py` | `bd_rate.py` | BD-rate/BD-PSNR numerical accuracy, edge cases |
+| `test_parse_yosys_stat.py` | `parse_yosys_stat.py` | Yosys report parsing, latch detection, empty designs |
+| `test_compare_output.py` | `compare_output.py` | MD5 comparison, bitexact verdict, missing-file handling |
+| `test_run_eval.py` | `run_eval.py` | Encoder output parsing, chroma weighting, custom patterns |
+| `test_run_conformance.py` | `run_conformance.py` | Stream discovery, MD5 computation, decoding result structure, profile/level filters |
+| `test_aws_batch.py` | `aws_batch_conformance.py` | AWS Batch submit/wait/results (boto3 mocked) |
 
-### 3. Bash 스크립트 테스트
+### 3. Bash script tests
 
-| 테스트 파일 | 대상 스크립트 | 검증 내용 |
-|------------|-------------|----------|
-| `test_run_sim_args.py` | `run_sim.sh` | 시뮬레이터 인자 검증, 도움말, 미지원 옵션 |
-| `test_check_conventions.py` | `check_conventions.sh` | RTL 코딩 컨벤션 검사 (버그 2건 문서화) |
-| `test_build_scripts.py` | `build_encoder.sh`, `build_decoder.sh` | 빌드 인자 검증, 실제 컴파일 |
-| `test_regression_coverage.py` | `run_regression.sh`, `merge_coverage.sh` | 회귀 테스트 인자, 커버리지 병합 |
+| Test file | Script under test | What it checks |
+|-----------|-------------------|----------------|
+| `test_run_sim_args.py` | `run_sim.sh` | Simulator argument validation, help output, unsupported options |
+| `test_check_conventions.py` | `check_conventions.sh` | RTL coding convention checks (3 bugs documented) |
+| `test_build_scripts.py` | `build_encoder.sh`, `build_decoder.sh` | Build argument validation, real compilation |
+| `test_regression_coverage.py` | `run_regression.sh`, `merge_coverage.sh` | Regression arguments, coverage merging |
 
-### 4. 구조 검증 테스트 (`test_agent_skill_structure.py`)
+### 4. Structure tests (`test_agent_skill_structure.py`)
 
-플러그인의 **선언적 구조**를 검증합니다.
+Validates the plugin's **declarative structure**.
 
-| 검증 항목 | 설명 |
-|----------|------|
-| 에이전트 YAML frontmatter | 99개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
-| 에이전트 이름-파일명 일치 | `agents/rtl-coder.md`의 `name: rtl-coder` 일치 확인 |
-| 스킬 SKILL.md 존재 | 97개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
-| 스킬 이름-디렉토리 일치 | `skills/rtl-p4-implement/SKILL.md`의 `name: rtl-p4-implement` 일치 확인 |
-| CLAUDE.md 교차 참조 | 핵심 에이전트/스킬이 실제로 존재하는지 확인 |
-| hooks.json 구조 | PostToolUse, Stop 이벤트 훅 설정 검증 |
-| plugin.json 구조 | 플러그인 이름, 버전, 설명 검증 |
+| Check | Description |
+|-------|-------------|
+| Agent YAML frontmatter | `name`, `model`, `description` present on all 99 agents |
+| Agent name ↔ filename | `agents/rtl-coder.md` declares `name: rtl-coder` |
+| `agents/` stays flat | No nested `.md`; a nested file would be registered as a phantom agent |
+| Skill SKILL.md exists | Every one of the 97 skill directories has a `SKILL.md` |
+| Skill name ↔ directory | `skills/rtl-p4-implement/SKILL.md` declares `name: rtl-p4-implement` |
+| Skill description budget | ≤160 chars per skill and ≤15 KB in total — the harness silently truncates once the global budget is exceeded |
+| Skill asset paths | Skill-relative asset paths resolve, and no prompt reads a plugin-internal path that is absent at runtime |
+| CLAUDE.md cross-references | Core agents/skills actually exist |
+| hooks.json structure | PostToolUse and Stop event hook configuration |
+| plugin.json structure | Plugin name, version, description |
 
-### 5. JSON 스키마 테스트 (`test_json_schemas.py`)
+### 5. JSON schema tests (`test_json_schemas.py`)
 
-| 검증 항목 | 파일 |
-|----------|------|
-| hooks.json | 훅 이벤트, matcher, command 구조 |
-| plugin.json | 플러그인 메타데이터 |
-| autopilot-state.json | Phase 1-6 상태 템플릿 |
-| context-preload | 각 Phase별 컨텍스트 프리로드 구조 |
-| conformance-config.json | 적합성 테스트 설정 |
-| domain manifest | 도메인 패키지 매니페스트 |
+| Check | File |
+|-------|------|
+| hooks.json | Hook events, matchers, command structure |
+| plugin.json | Plugin metadata |
+| autopilot-state.json | Phase 1-6 state template |
+| context-preload | Per-phase context preload structure |
+| conformance-config.json | Conformance test configuration |
+| domain manifest | Domain package manifest |
 
-### 6. 플러그인 런타임 계약 테스트 (`test_plugin_runtime_contract.py`)
+### 6. Plugin runtime contract tests (`test_plugin_runtime_contract.py`)
 
-플러그인이 실제 Claude Code 런타임에서 기대대로 동작하는지 검증합니다.
+Validates that the plugin behaves as expected inside the real Claude Code runtime.
 
-| 검증 항목 | 설명 |
-|----------|------|
-| Hook 이벤트 계약 | `SessionStart/PostToolUse/PreToolUse/Stop` 이벤트 키, matcher, 훅 순서, timeout 범위 확인 |
-| Hook 경로 계약 | 훅 명령이 `${CLAUDE_PLUGIN_ROOT}/hooks/*.sh` 패턴을 따르고 스크립트가 실제 존재하는지 확인 |
-| 매니페스트 일관성 | `plugin.json`과 `marketplace.json`의 버전/홈페이지/레포지토리/source/path 일치 확인 |
-| SessionStart 라우팅 계약 | Action Skill은 user-invocable, Convention Skill은 non-user-invocable, 내부 orchestrator route 비노출 확인 |
-| Agent 위임 계약 | SessionStart 위임 테이블에 선언된 agent가 `agents/*.md`로 모두 존재하고 skill 이름과 충돌하지 않는지 확인 |
+| Check | Description |
+|-------|-------------|
+| Hook event contract | `SessionStart/PostToolUse/PreToolUse/Stop` event keys, matchers, hook ordering, timeout ranges |
+| Hook path contract | Hook commands follow the `${CLAUDE_PLUGIN_ROOT}/hooks/*.sh` pattern and the scripts exist |
+| Manifest consistency | `plugin.json` and `marketplace.json` agree on version/homepage/repository/source/path |
+| SessionStart routing contract | Action Skills are user-invocable, Convention Skills are not, internal orchestrator routes stay unexposed |
+| Pipeline rule coverage | Every rule declared in CLAUDE.md reaches both the rtl-orchestrate body and the SessionStart injection |
+| Agent delegation contract | Every agent named in the SessionStart delegation table exists as `agents/*.md` and does not collide with a skill name |
 
-### 7. Docker 빌드 + EDA 도구 검증 (`test_docker_build.py`)
+### 7. Docker build + EDA tool validation (`test_docker_build.py`)
 
-`docker/Dockerfile`로 이미지를 빌드하고, 컨테이너 안에서 모든 EDA 도구가 사용 가능한지 검증합니다.
+Builds an image from `docker/Dockerfile` and checks that every EDA tool is usable
+inside the container.
 
-| 클래스 | 테스트 수 | 검증 내용 |
-|--------|----------|----------|
-| `TestDockerBuild` | 2개 | 이미지 빌드 성공, `/workspace` 디렉토리 확인 |
-| `TestEDAToolsAvailable` | 25개 | 도구별 버전 확인 (아래 표) |
-| `TestDockerToolchain` | 6개 | 실제 컴파일/시뮬레이션 E2E 검증 |
+| Class | Tests | What it checks |
+|-------|-------|----------------|
+| `TestDockerBuild` | 2 | Image builds, `/workspace` directory present |
+| `TestEDAToolsAvailable` | 25 | Per-tool version checks (table below) |
+| `TestDockerToolchain` | 6 | Real compile/simulate end-to-end |
 
-**검증하는 EDA 도구 목록:**
+**EDA tools validated:**
 
-| 카테고리 | 도구 | 검증 방법 |
-|---------|------|----------|
-| 시뮬레이터 | Verilator 5.x, Icarus Verilog | `--version`, 실제 SV 컴파일 |
-| 합성 | Yosys | `--version`, 실제 합성 실행 |
-| 린트 | Verilator lint, Verible, slang | `--version`, lint 모드 확인 |
-| 정형 검증 | SymbiYosys, Z3, Boolector | `--version` / `--help` |
-| SystemC | SystemC 3.x 헤더/라이브러리 | 헤더 존재 확인, 실제 컴파일+실행 |
-| Python | cocotb, cocotb-bus, cocotbext-axi, cocotb-coverage, numpy | `import` 확인 |
-| 빌드 도구 | gcc, g++, cmake, make | `--version` |
-| 파형 뷰어 | GTKWave | `which gtkwave` |
+| Category | Tool | Method |
+|----------|------|--------|
+| Simulators | Verilator 5.x, Icarus Verilog | `--version`, real SV compile |
+| Synthesis | Yosys | `--version`, real synthesis run |
+| Lint | Verilator lint, Verible, slang | `--version`, lint mode |
+| Formal | SymbiYosys, Z3, Boolector | `--version` / `--help` |
+| SystemC | SystemC 3.x headers/libraries | Header presence, real compile + run |
+| Python | cocotb, cocotb-bus, cocotbext-axi, cocotb-coverage, numpy | `import` check |
+| Build tools | gcc, g++, cmake, make | `--version` |
+| Waveform viewer | GTKWave | `which gtkwave` |
 | LSP | slang-server | `--version` |
 
-**실행 방법:**
+**How to run:**
 
 ```bash
-# Docker daemon이 실행 중이어야 합니다
+# The Docker daemon must be running
 python3 -m pytest tests/integration/test_docker_build.py -v --timeout=3600
 
-# 또는 Makefile 사용
+# Or via the Makefile
 cd tests && make test-docker
 ```
 
-> **참고:** 첫 빌드는 Verilator, slang 등을 소스 빌드하므로 10~30분 소요됩니다.
-> 이후 Docker 캐시 덕분에 재실행은 빠릅니다. Docker daemon이 없으면 33개 테스트 모두 SKIP됩니다.
+> **Note:** the first build compiles Verilator, slang and others from source and
+> takes 10-30 minutes. Later runs are fast thanks to the Docker cache. Without a
+> Docker daemon all 33 tests SKIP.
 
 ---
 
-## 테스트 아키텍처 설계 원칙
+## Test architecture principles
 
-### Mock/Stub 전략
+### Mock/stub strategy
 
 ```
-유닛 테스트                          통합 테스트
+Unit tests                         Integration tests
 ┌──────────────┐                  ┌──────────────┐
-│  Python 함수  │  직접 import     │  실제 EDA    │
-│  Bash 스크립트 │  subprocess     │  도구 실행    │
-│  boto3 mock  │  MagicMock      │  Docker 환경  │
+│ Python funcs │  direct import   │  real EDA    │
+│ Bash scripts │  subprocess      │  tool runs   │
+│ boto3 mock   │  MagicMock       │  Docker env  │
 └──────────────┘                  └──────────────┘
-   EDA 도구 불필요                    EDA 도구 필수
-   로컬에서 즉시 실행                  CI/CD 또는 Docker
+   no EDA tools needed               EDA tools required
+   runs locally right away           CI/CD or Docker
 ```
 
-- **Python 함수**: `sys.path`에 스크립트 디렉토리를 추가하여 직접 import
-- **Bash 스크립트**: `subprocess.run()`으로 실행하고 returncode/stdout/stderr 검증
-- **AWS SDK**: `unittest.mock.MagicMock`으로 boto3 클라이언트를 대체
-- **훅 스크립트**: `run_hook()` helper — stdin JSON → 셸 실행 → stdout JSON 파싱
+- **Python functions**: imported directly after adding the script directory to `sys.path`
+- **Bash scripts**: executed with `subprocess.run()`, validating returncode/stdout/stderr
+- **AWS SDK**: the boto3 client is replaced with `unittest.mock.MagicMock`
+- **Hook scripts**: the `run_hook()` helper — stdin JSON → shell run → stdout JSON parse
 
-### 발견된 버그 (테스트로 문서화)
+### Bugs found (documented by tests)
 
-| ID | 파일 | 설명 | 상태 |
-|----|------|------|------|
-| BUG-001 | `check_conventions.sh` | `((VIOLATIONS++))` + `set -e` 조합으로 인한 조기 종료 | **FIXED** |
-| BUG-002 | `check_conventions.sh` | `grep -n` 줄번호 접두어가 모듈 필터를 우회 | **FIXED** |
-| LIM-001 | `parse_yosys_stat.py` | legacy `Number of ...` 형식에서 section 시작 전 wire count는 파싱하지 않음 | 문서화됨 |
+| ID | File | Description | Status |
+|----|------|-------------|--------|
+| BUG-001 | `check_conventions.sh` | `((VIOLATIONS++))` combined with `set -e` caused an early exit | **FIXED** |
+| BUG-002 | `check_conventions.sh` | The `grep -n` line-number prefix bypassed the module filter | **FIXED** |
+| BUG-003 | `check_conventions.sh` | Rule 5 filtered only the first token, so `unique case (x)` was reported as an instance named `case`; the same pattern never matched a parameterized instantiation | **FIXED** |
+| LIM-001 | `parse_yosys_stat.py` | In the legacy `Number of ...` format, wire counts before the section start are not parsed | documented |
 
 ---
 
-## CI/CD 통합
+## CI/CD integration
 
-### GitHub Actions 예시
+### GitHub Actions example
 
 ```yaml
 name: Plugin Tests
@@ -266,7 +277,7 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     container:
-      image: your-eda-docker-image:latest  # iverilog, verilator, yosys 포함
+      image: your-eda-docker-image:latest  # includes iverilog, verilator, yosys
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -278,9 +289,9 @@ jobs:
 
 ---
 
-## 새 테스트 추가 방법
+## Adding a new test
 
-### Python 스크립트용 테스트
+### For a Python script
 
 ```python
 # tests/unit/test_my_script.py
@@ -295,7 +306,7 @@ def test_basic():
     assert my_function("input") == "expected"
 ```
 
-### Bash 스크립트용 테스트
+### For a Bash script
 
 ```python
 # tests/unit/test_my_bash.py
@@ -309,7 +320,7 @@ def test_help():
     assert "Usage" in result.stdout
 ```
 
-### 훅 스크립트용 테스트
+### For a hook script
 
 ```python
 # tests/unit/test_my_hook.py
@@ -324,16 +335,26 @@ def test_allows_continue(tmp_project):
 
 ---
 
-## 자주 묻는 질문
+## FAQ
 
-**Q: 통합 테스트가 전부 SKIP되는데?**
-A: EDA 도구(iverilog, verilator, yosys)가 설치되지 않아서입니다. Docker 환경에서 실행하거나 해당 도구를 설치하세요.
+**Q: All the integration tests SKIP — why?**
+A: The EDA tools (iverilog, verilator, yosys) are not installed. Run them in a
+Docker environment or install the tools.
 
-**Q: boto3 없이 AWS 테스트가 되나요?**
-A: 네. 테스트에서 boto3를 mock 모듈로 대체하므로 실제 AWS 연결 없이 동작을 검증합니다.
+**Q: Do the AWS tests work without boto3?**
+A: Yes. The tests replace boto3 with a mock module, so behaviour is validated
+without a real AWS connection.
 
-**Q: 테스트를 병렬로 실행할 수 있나요?**
-A: `".venv/bin/python" -m pip install pytest-xdist` 후 `".venv/bin/python" -m pytest -n auto`로 실행하면 CPU 코어 수만큼 병렬 실행됩니다.
+**Q: Can the tests run in parallel?**
+A: Install with `".venv/bin/python" -m pip install pytest-xdist`, then run
+`".venv/bin/python" -m pytest -n auto` to use as many workers as CPU cores.
 
-**Q: 새로운 에이전트를 추가하면 테스트가 깨지나요?**
-A: `test_agent_skill_structure.py`가 자동으로 새 에이전트의 YAML frontmatter 구조를 검증합니다. `name`, `model`, `description` 필드가 있으면 통과합니다.
+**Q: Do the tests break when I add an agent?**
+A: `test_agent_skill_structure.py` validates the new agent's YAML frontmatter
+automatically. It passes as long as `name`, `model` and `description` are present.
+
+**Q: Some tests SKIP on macOS — why?**
+A: `generate_config.sh` self-guards on `BASH_VERSINFO[0] >= 4`, and macOS ships bash
+3.2. `tests/conftest.py::find_bash4` detects a bash ≥ 4 and skips those tests when
+none is available. Install one with `brew install bash` to run them; Linux CI runs
+them unconditionally.

@@ -457,7 +457,13 @@ def test_contributing_stages_named_paths_and_separates_local_plugin_testing() ->
     content = CONTRIBUTING.read_text()
 
     # When: staging and local plugin instructions are inspected.
-    local_section = content.split("### 개발 환경 셋업", 1)[1].split("### Issue 제출", 1)[0]
+    # v0.14.2: CONTRIBUTING.md became the English canonical document and the
+    # Korean translation moved to CONTRIBUTING_kr.md, so these section splits key
+    # off the English headings. test_doc_translation_pairs_stay_structurally_aligned
+    # keeps the Korean copy in step.
+    local_section = content.split("### Development environment setup", 1)[1].split(
+        "### Filing an issue", 1
+    )[0]
 
     # Then: broad staging is absent and local testing needs no marketplace publication.
     assert "git add -A" not in content
@@ -466,10 +472,12 @@ def test_contributing_stages_named_paths_and_separates_local_plugin_testing() ->
     assert 'claude --plugin-dir "$(pwd)"' in local_section
     assert "git push" not in local_section
     assert "marketplace update" not in local_section
-    deployment = content.split("### 로컬 테스트와 Marketplace 배포", 1)[1].split(
-        "\n---", 1
-    )[0]
-    staging_prose, staging_commands = deployment.split("**배포 시 실행할 명령**", 1)
+    deployment = content.split("### Local testing vs. marketplace deployment", 1)[
+        1
+    ].split("\n---", 1)[0]
+    staging_prose, staging_commands = deployment.split(
+        "**Commands to run when deploying**", 1
+    )
     for placeholder in (
         "agents/{agent-name}.md",
         "skills/{skill-name}/SKILL.md",
