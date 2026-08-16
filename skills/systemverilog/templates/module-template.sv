@@ -11,8 +11,7 @@ module {{MODULE_NAME}} #(
   // ---------------------------------------------------------------------------
   // Parameters
   // ---------------------------------------------------------------------------
-  parameter int unsigned DATA_WIDTH = 8,
-  parameter int unsigned ADDR_WIDTH = 12
+  parameter int unsigned DATA_WIDTH = 8
 ) (
   // ---------------------------------------------------------------------------
   // Clock & Reset
@@ -38,12 +37,14 @@ module {{MODULE_NAME}} #(
   // ===========================================================================
   // Local Parameters
   // ===========================================================================
-  localparam int unsigned L_DEPTH = 2**ADDR_WIDTH;
+  // Every localparam must be referenced — Verilator -Wall (which rtl-coder runs
+  // after every write) reports an unused one as UNUSEDPARAM and fails the lint.
+  localparam int unsigned L_STATE_WIDTH = 2;
 
   // ===========================================================================
   // Type Definitions (or import from _pkg.sv)
   // ===========================================================================
-  typedef enum logic [1:0] {
+  typedef enum logic [L_STATE_WIDTH-1:0] {
     ST_IDLE    = 2'b00,
     ST_ACTIVE  = 2'b01,
     ST_DONE    = 2'b10

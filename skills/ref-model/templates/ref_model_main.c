@@ -72,15 +72,17 @@ void {{MODULE_NAME}}_cleanup({{MODULE_NAME}}_ctx_t *ctx)
 static int self_test(void)
 {
     {{MODULE_NAME}}_ctx_t ctx;
-    {{MODULE_NAME}}_input_t input;
-    {{MODULE_NAME}}_output_t output;
     int pass = 0, fail = 0;
 
     {{MODULE_NAME}}_init(&ctx);
 
-    /* TODO: Add test vectors derived from spec
+    /* TODO: Add test vectors derived from spec. Declare input/output here
+     * rather than above, so this scaffold builds warning-free under the
+     * Makefile's -Wall -Wextra -Wpedantic before any vectors exist.
      *
      * Example:
+     *   {{MODULE_NAME}}_input_t  input;
+     *   {{MODULE_NAME}}_output_t output;
      *   memset(&input, 0, sizeof(input));
      *   input.data = 0xDEADBEEF;
      *   {{MODULE_NAME}}_process(&ctx, &input, &output);

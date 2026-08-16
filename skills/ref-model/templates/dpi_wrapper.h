@@ -9,7 +9,10 @@
  *   );
  *   import "DPI-C" function void dpi_{{MODULE_NAME}}_cleanup();
  *
- * Build: gcc -std=c11 -fPIC -shared -DDPI_MODE -Iinclude -o lib{{MODULE_NAME}}_dpi.so src/*.c
+ * Build:  make dpi
+ *   (Makefile target DPI_TARGET — compiles with -DDPI_MODE -fPIC -shared.
+ *    Do not spell the source glob out here: a literal src/ followed by *.c
+ *    embeds a comment-opening sequence in this block and trips -Wcomment.)
  */
 
 #ifndef DPI_WRAPPER_H

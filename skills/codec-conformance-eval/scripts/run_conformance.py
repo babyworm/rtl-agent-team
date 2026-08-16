@@ -131,6 +131,37 @@ def discover_streams(source: dict, standard: str) -> list:
     return found
 
 
+def filter_by_profile(streams: list, target_profile: str) -> list:
+    """Keep streams whose filename carries the target profile.
+
+    Word boundaries stop "main" from matching inside "domain".
+    """
+    if not target_profile:
+        return streams
+    profile_re = re.compile(
+        r'(?:^|[\W_])' + re.escape(target_profile) + r'(?:[\W_]|$)', re.I)
+    return [s for s in streams if profile_re.search(s["name"])]
+
+
+def filter_by_level(streams: list, target_level: str) -> list:
+    """Keep streams whose filename carries the target level.
+
+    JVET/JCTVC filenames spell a level either literally ("4.1", "4_1") or packed
+    with the conventional L prefix ("L41"), so accept all three. Word boundaries
+    stop "4.1" from matching inside "14.11".
+    """
+    if not target_level:
+        return streams
+    packed = target_level.replace(".", "")
+    variants = {target_level, packed, target_level.replace(".", "_")}
+    # longest-first so "4.1" is preferred over "41" when both could match
+    alternation = "|".join(
+        re.escape(v) for v in sorted(variants, key=len, reverse=True) if v)
+    level_re = re.compile(
+        r'(?:^|[\W_])L?(?:' + alternation + r')(?:[\W_]|$)', re.I)
+    return [s for s in streams if level_re.search(s["name"])]
+
+
 def compute_md5(filepath: str) -> Optional[str]:
     """Compute MD5 checksum of a file."""
     if not os.path.isfile(filepath):
@@ -244,13 +275,16 @@ def run_local(config: dict, output_dir: str) -> list:
     for source in config.get("conformance_sources", []):
         streams = discover_streams(source, standard)
         # Filter by profile/level if specified (filename convention based)
-        # Uses word-boundary regex to avoid false matches (e.g., "main" in "domain")
         if target_profile:
             before = len(streams)
-            profile_re = re.compile(r'(?:^|[\W_])' + re.escape(target_profile) + r'(?:[\W_]|$)', re.I)
-            streams = [s for s in streams if profile_re.search(s["name"])]
+            streams = filter_by_profile(streams, target_profile)
             if len(streams) < before:
                 print(f"  Profile filter '{target_profile}': {before} → {len(streams)} streams")
+        if target_level:
+            before = len(streams)
+            streams = filter_by_level(streams, target_level)
+            if len(streams) < before:
+                print(f"  Level filter '{target_level}': {before} → {len(streams)} streams")
         all_streams.extend(streams)
         print(f"  Source '{source['id']}' ({source.get('priority', 'optional')}): "
               f"{len(streams)} streams found")
@@ -305,17 +339,16 @@ def run_aws_batch(config: dict, output_dir: str) -> list:
     target = config.get("target", {})
     standard = target.get("standard", "h264")
     target_profile = target.get("profile", "").lower()
+    target_level = target.get("level", "")
     s3_bucket = config.get("execution", {}).get("aws_batch", {}).get(
         "s3_bucket", "codec-eval-results")
 
     all_streams = []
     for source in config.get("conformance_sources", []):
         streams = discover_streams(source, standard)
-        # Use word-boundary regex (consistent with run_local filter)
-        if target_profile:
-            profile_re = re.compile(
-                r'(?:^|[\W_])' + re.escape(target_profile) + r'(?:[\W_]|$)', re.I)
-            streams = [s for s in streams if profile_re.search(s["name"])]
+        # Same filters as run_local — an AWS Batch run must select the same set
+        streams = filter_by_profile(streams, target_profile)
+        streams = filter_by_level(streams, target_level)
         for s in streams:
             # Add s3_path: use explicit s3_path if present, else derive from local path
             if "s3_path" not in s:

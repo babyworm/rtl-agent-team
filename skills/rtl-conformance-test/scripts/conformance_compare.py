@@ -101,7 +101,7 @@ def main():
         print("RESULT: PASS (bitexact match)")
         return 0
 
-    print(f"RESULT: FAIL")
+    print("RESULT: FAIL")
     print(f"  First mismatch at byte {mismatch_pos}")
 
     if args.width > 0 and args.height > 0:

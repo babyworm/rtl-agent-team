@@ -16,6 +16,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from run_conformance import (
     discover_streams,
     compute_md5,
+    filter_by_level,
+    filter_by_profile,
     DecodingResult,
     STREAM_EXTENSIONS,
     _sanitize_for_json,
@@ -184,3 +186,69 @@ class TestSanitizeForJson:
         result = _sanitize_for_json(obj)
         assert result == {"a": [None, 1.0], "b": {"c": None}}
         json.dumps(result)  # Must be serializable
+
+
+class TestProfileAndLevelFilters:
+    """`target.level` is advertised in the config template and SKILL.md.
+
+    v0.14.2: run_conformance.py read `target.level` into a local and never used
+    it, so a run configured for a single level silently decoded every stream and
+    reported success. The AWS Batch path did not read `level` at all, so the two
+    execution modes selected different stream sets from the same config.
+    """
+
+    STREAMS = [
+        {"name": "AVC_Baseline_L21_foreman"},
+        {"name": "AVC_Main_L41_city"},
+        {"name": "AVC_Main_4.1_harbour"},
+        {"name": "AVC_Main_4_1_mobile"},
+        {"name": "AVC_High_L50_park"},
+        {"name": "AVC_Main_L411_x"},
+        {"name": "AVC_Main_L14.11_y"},
+    ]
+
+    @staticmethod
+    def _names(streams):
+        return sorted(s["name"] for s in streams)
+
+    def test_empty_level_disables_filtering(self):
+        assert filter_by_level(self.STREAMS, "") == self.STREAMS
+
+    def test_level_matches_packed_dotted_and_underscored_forms(self):
+        assert self._names(filter_by_level(self.STREAMS, "4.1")) == [
+            "AVC_Main_4.1_harbour",
+            "AVC_Main_4_1_mobile",
+            "AVC_Main_L41_city",
+        ]
+
+    def test_level_does_not_match_longer_neighbours(self):
+        """`4.1` must not match inside `L411` or `L14.11`."""
+        matched = self._names(filter_by_level(self.STREAMS, "4.1"))
+        assert "AVC_Main_L411_x" not in matched
+        assert "AVC_Main_L14.11_y" not in matched
+
+    def test_empty_profile_disables_filtering(self):
+        assert filter_by_profile(self.STREAMS, "") == self.STREAMS
+
+    def test_profile_uses_word_boundaries(self):
+        streams = [{"name": "AVC_Main_L41"}, {"name": "AVC_domain_L41"}]
+        assert self._names(filter_by_profile(streams, "main")) == ["AVC_Main_L41"]
+
+    def test_profile_and_level_compose(self):
+        result = filter_by_level(filter_by_profile(self.STREAMS, "main"), "4.1")
+        assert self._names(result) == [
+            "AVC_Main_4.1_harbour",
+            "AVC_Main_4_1_mobile",
+            "AVC_Main_L41_city",
+        ]
+
+    def test_both_execution_paths_apply_both_filters(self):
+        """run_local and run_aws_batch must select the same set from one config."""
+        source = Path(__file__).resolve().parents[2] / "skills" / (
+            "codec-conformance-eval") / "scripts" / "run_conformance.py"
+        body = source.read_text()
+        local = body.split("def run_local", 1)[1].split("def run_aws_batch", 1)[0]
+        aws = body.split("def run_aws_batch", 1)[1].split("\ndef ", 1)[0]
+        for name, section in (("run_local", local), ("run_aws_batch", aws)):
+            assert "filter_by_profile" in section, f"{name} skips the profile filter"
+            assert "filter_by_level" in section, f"{name} skips the level filter"

@@ -213,8 +213,8 @@ def bd_psnr(anchor_rates: list, anchor_psnrs: list,
 
     if rate_min >= rate_max:
         warnings.warn(
-            f"No overlapping log-rate range between anchor and test. "
-            f"Returning NaN (incomparable).",
+            "No overlapping log-rate range between anchor and test. "
+            "Returning NaN (incomparable).",
             stacklevel=2,
         )
         return float('nan')
@@ -267,7 +267,7 @@ def compute_metrics_from_results(results_path: str) -> dict:
                 anchor_label = label
                 break
 
-    test_labels = [l for l in labels if l != anchor_label]
+    test_labels = [label for label in labels if label != anchor_label]
 
     # Build per-label data: {label: {sequence: [(rate, psnr_y, psnr_yuv, encode_time, ssim, vmaf)]}}
     all_data = {}

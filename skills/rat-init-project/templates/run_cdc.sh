@@ -85,6 +85,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Verbose: trace the wrapper itself -------------------------------------
+# Tool output already goes through `tee`; what --verbose adds is visibility
+# into what this wrapper does (path resolution, file discovery, env setup).
+[[ "$VERBOSE" -eq 1 ]] && set -x
+
 # ─── Resolve paths to absolute (before cd) ────────────────────────────
 case "$OUTDIR" in /*) ;; *) OUTDIR="$PROJECT_ROOT/$OUTDIR" ;; esac
 [[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"

@@ -151,7 +151,7 @@ def main():
     print(f"  Actual:   {divs[0]['actual']}")
 
     if len(divs) > 1:
-        print(f"\nAll divergences (first per signal):")
+        print("\nAll divergences (first per signal):")
         for d in divs:
             print(f"  t={d['time']:>8}  {d['signal']:<40}  exp={d['expected']:<10}  act={d['actual']}")
 

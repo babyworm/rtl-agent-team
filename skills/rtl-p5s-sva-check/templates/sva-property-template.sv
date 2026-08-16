@@ -2,7 +2,10 @@
 // Convention: i_ prefix inputs, o_ prefix outputs, {domain}_clk, {domain}_rst_n
 // Principle: assume inputs, assert outputs
 
-module {{MODULE}}_props (
+module {{MODULE}}_props #(
+  // Mirror the DUT's parameters so the bind passes them straight through.
+  parameter int unsigned DATA_WIDTH = 8
+) (
   input logic {{DOMAIN}}_clk,
   input logic {{DOMAIN}}_rst_n,
   // Add DUT ports here with i_/o_ prefix

@@ -91,6 +91,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Verbose: trace the wrapper itself -------------------------------------
+# Tool output already goes through `tee`; what --verbose adds is visibility
+# into what this wrapper does (path resolution, file discovery, env setup).
+[[ "$VERBOSE" -eq 1 ]] && set -x
+
 [[ -z "$TOP" ]] && { echo "ERROR: --top is required" >&2; exit 1; }
 [[ -z "$RTL_FILELIST" ]] && { echo "ERROR: --rtl is required" >&2; exit 1; }
 [[ -z "$NETLIST" ]] && { echo "ERROR: --netlist is required" >&2; exit 1; }

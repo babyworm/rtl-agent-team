@@ -14,7 +14,6 @@ Usage:
 import argparse
 import json
 import re
-import sys
 from datetime import datetime, timezone
 
 # ═══ Tokenizer ═══════════════════════════════════════════════════════════════
@@ -205,7 +204,7 @@ def generate_report(aligned, v1_only, v2_only, v1_path, v2_path,
 
     lines = [
         "# Interpretation Stability Report",
-        f"- Phase: phase-1-research",
+        "- Phase: phase-1-research",
         f"- Date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
         f"- v1 path: {v1_path}",
         f"- v2 path: {v2_path}",
@@ -270,9 +269,10 @@ def main():
         print(report)
 
     # Print summary
-    total = len(aligned) + len(v1_only) + len(v2_only)
     avg_sim = sum(s for _, _, s in aligned) / len(aligned) if aligned else 0.0
-    print(f"\nSummary: {len(aligned)} aligned, {len(v1_only)} v1-only, {len(v2_only)} v2-only, avg_sim={avg_sim:.2f}")
+    total = len(aligned) + len(v1_only) + len(v2_only)
+    print(f"\nSummary: {total} entries — {len(aligned)} aligned, "
+          f"{len(v1_only)} v1-only, {len(v2_only)} v2-only, avg_sim={avg_sim:.2f}")
 
 
 if __name__ == "__main__":

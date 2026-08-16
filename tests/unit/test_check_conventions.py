@@ -136,3 +136,65 @@ endmodule
         result = run_script(CHECK_CONVENTIONS, str(sv))
         # No DECL_ORDER violation expected
         assert "DECL_ORDER" not in result.stdout
+
+
+class TestInstancePrefixRule:
+    """Rule 5 (INSTANCE_PREFIX) -- see BUG-003."""
+
+    def _run(self, tmp_path, body):
+        sv = tmp_path / "dut.sv"
+        sv.write_text(body)
+        return run_script(CHECK_CONVENTIONS, str(sv))
+
+    def test_unique_case_is_not_an_instance(self, tmp_path):
+        """`unique case (x)` leads with a qualifier, not the `case` keyword."""
+        result = self._run(tmp_path, (
+            "module m;\n"
+            "  always_comb begin\n"
+            "    unique case (i_a)\n"
+            "      default: o_b = 1'b0;\n"
+            "    endcase\n"
+            "  end\n"
+            "endmodule\n"
+        ))
+        assert "INSTANCE_PREFIX" not in result.stdout, result.stdout
+        assert result.returncode == 0
+
+    def test_interface_and_modport_are_not_instances(self, tmp_path):
+        result = self._run(tmp_path, (
+            "interface my_if (input logic sys_clk);\n"
+            "  modport DRV (input sys_clk);\n"
+            "  modport MON (input sys_clk);\n"
+            "endinterface\n"
+        ))
+        assert "INSTANCE_PREFIX" not in result.stdout, result.stdout
+        assert result.returncode == 0
+
+    def test_plain_instance_without_prefix_is_flagged(self, tmp_path):
+        result = self._run(tmp_path, (
+            "module m;\n"
+            "  sub_block bad_inst (.sys_clk(sys_clk), .i_a(i_a));\n"
+            "endmodule\n"
+        ))
+        assert "bad_inst" in result.stdout, result.stdout
+        assert result.returncode == 1
+
+    def test_parameterized_instance_without_prefix_is_flagged(self, tmp_path):
+        """`#` is not a word character -- the pre-BUG-003 pattern skipped these."""
+        result = self._run(tmp_path, (
+            "module m;\n"
+            "  sub_block #(.W(8), .D(16)) bad_param (.sys_clk(sys_clk));\n"
+            "endmodule\n"
+        ))
+        assert "bad_param" in result.stdout, result.stdout
+        assert result.returncode == 1
+
+    def test_correctly_prefixed_instances_pass(self, tmp_path):
+        result = self._run(tmp_path, (
+            "module m;\n"
+            "  sub_block u_good (.sys_clk(sys_clk));\n"
+            "  sub_block #(.W(8)) u_good_param (.sys_clk(sys_clk));\n"
+            "endmodule\n"
+        ))
+        assert "INSTANCE_PREFIX" not in result.stdout, result.stdout
+        assert result.returncode == 0

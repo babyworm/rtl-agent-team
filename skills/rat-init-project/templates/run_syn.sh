@@ -123,6 +123,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Verbose: trace the wrapper itself -------------------------------------
+# Tool output already goes through `tee`; what --verbose adds is visibility
+# into what this wrapper does (path resolution, file discovery, env setup).
+[[ "$VERBOSE" -eq 1 ]] && set -x
+
 if [[ "$TOOL" == "design_compiler" ]]; then
   TOOL="dc_shell"
 fi

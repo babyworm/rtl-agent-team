@@ -11,6 +11,20 @@ TARGET="${1:-.}"
 VIOLATIONS=0
 REPORT=""
 
+# SystemVerilog reserved words that can lead a `<word> <word> (` line without
+# being a module instantiation. Used by Rule 5.
+SV_KEYWORDS='if|else|for|foreach|while|repeat|forever|do|case|casex|casez|randcase|endcase'
+SV_KEYWORDS+='|always|always_ff|always_comb|always_latch|assign|deassign|initial|final'
+SV_KEYWORDS+='|function|task|module|macromodule|generate|endgenerate|begin|end'
+SV_KEYWORDS+='|assert|assume|cover|restrict|expect|unique|unique0|priority'
+SV_KEYWORDS+='|interface|modport|class|package|program|checker|property|sequence'
+SV_KEYWORDS+='|covergroup|coverpoint|cross|clocking|constraint|import|export'
+SV_KEYWORDS+='|typedef|enum|struct|union|packed|return|break|continue|wait|disable'
+SV_KEYWORDS+='|fork|join|bind|defparam|localparam|parameter|input|output|inout'
+SV_KEYWORDS+='|ref|const|static|automatic|virtual|extern|pure|local|protected'
+SV_KEYWORDS+='|rand|randc|new|super|this|posedge|negedge|edge|force|release'
+SV_KEYWORDS+='|with|inside|dist|solve|before|matches|tagged|void|null|logic|wire|reg'
+
 add_violation() {
   local file="$1" line="$2" rule="$3" msg="$4"
   REPORT+="  CONVENTION  ${file}:${line}  ${rule}  ${msg}"$'\n'
@@ -43,13 +57,36 @@ check_file() {
   done < <(grep -nE '\b(rst_ni)\b\s*[,;)]' "$file" 2>/dev/null || true)
 
   # Rule 5: Instance prefix u_ — flag instances without it
+  #
+  # `<word> <word> (` also matches plenty of non-instantiations. Filtering only
+  # on the FIRST token is not enough: `unique case (state_q)` leads with a
+  # qualifier, so the old first-token-only filter reported an instance named
+  # 'case' on every FSM, and `interface`/`modport` were missing from the list
+  # entirely. Reject the line when either token is a reserved word.
   while IFS=: read -r lineno content; do
-    # Extract instance name (module_name instance_name (...))
-    inst_name=$(echo "$content" | grep -oE '\b\w+\s+\w+\s*\(' | tail -1 | awk '{print $2}' | tr -d '(')
-    if [[ -n "$inst_name" && ! "$inst_name" =~ ^u_ && ! "$inst_name" =~ ^gen_ ]]; then
+    # Flatten parentheses so a parameter override with nested parens
+    # (`sub_block #(.W(8)) u_x (...)`) collapses to `sub_block # u_x`. Deleting
+    # the innermost pair repeatedly terminates because each pass removes one
+    # nesting level.
+    flat="$content"
+    while [[ "$flat" == *"("*")"* ]]; do
+      next=$(printf '%s' "$flat" | sed -E 's/\([^()]*\)//g')
+      [[ "$next" == "$flat" ]] && break
+      flat="$next"
+    done
+    # shellcheck disable=SC2086
+    set -- $flat
+    tok1="${1:-}"
+    inst_name="${2:-}"
+    [[ "$inst_name" == "#" ]] && inst_name="${3:-}"
+    if [[ "$tok1" =~ ^(${SV_KEYWORDS})$ || "$inst_name" =~ ^(${SV_KEYWORDS})$ ]]; then
+      continue
+    fi
+    if [[ -n "$inst_name" && "$inst_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ \
+          && ! "$inst_name" =~ ^u_ && ! "$inst_name" =~ ^gen_ ]]; then
       add_violation "$file" "$lineno" "INSTANCE_PREFIX" "Instance '$inst_name' missing u_ prefix: $content"
     fi
-  done < <(grep -nE '^\s*\w+\s+\w+\s*\(' "$file" 2>/dev/null | grep -vE '^[0-9]+:\s*(if|for|while|case|always|assign|function|task|module|generate|initial|assert|assume|cover)\b' || true)
+  done < <(grep -nE '^\s*\w+\s+(#[[:space:]]*\(.*\)[[:space:]]*)?\w+\s*\(' "$file" 2>/dev/null || true)
 
   # Rule 6: Generate prefix gen_
   while IFS=: read -r lineno content; do

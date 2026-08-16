@@ -74,6 +74,15 @@ comparing outputs, and tracking which profile features are covered.
 - Requires refc/*.c with decoder functionality (or configured decoder_src)
 - HJSON conformance configuration defines all test parameters
 - Local execution is the default; AWS Batch is opt-in via configuration
+- **AWS Batch decoder contract**: the job definition runs `/app/decode.sh` from a
+  container image you supply, so `decoder.decoder_binary` does not apply — the image
+  provides the decoder. `decoder_cmd_template` and `extra_args` are forwarded as the
+  `DECODER_CMD_TEMPLATE` and `DECODER_EXTRA_ARGS` environment variables; an AWS run
+  only matches a local run if the image reads them. The submitter prints a note
+  whenever these settings are set, so the divergence is never silent.
+- Profile and level filters (`target.profile`, `target.level`) apply identically in
+  local and AWS Batch mode. Level matching accepts `4.1`, `4_1` and the packed `L41`
+  filename conventions
 - Conformance results are cached at .rat/scratch/conformance-eval/
 - Report is generated at configured path (default: docs/phase-1-research/conformance-eval-report.md)
 - On build failure: report error details and stop
@@ -90,7 +99,7 @@ comparing outputs, and tracking which profile features are covered.
 1. **Prerequisite validation**
    - Verify refc/*.c (or configured decoder_src) exists with decoder code
    - Verify conformance configuration file exists (HJSON format)
-     - If not provided, generate from template at skills/codec-conformance-eval/templates/conformance-config.hjson
+     - If not provided, generate from template at templates/conformance-config.hjson
    - Verify conformance bitstream directories exist
    - Verify golden output references exist (MD5 checksums or reference YUV files)
    - Check Python dependencies: `python3 -c "import hjson; print('OK')"`
@@ -123,7 +132,7 @@ comparing outputs, and tracking which profile features are covered.
    - Output: `.rat/scratch/conformance-eval/conformance-metrics.json`
 
 5. **Report generation**
-   - Generate report from template at skills/codec-conformance-eval/templates/conformance-report.md
+   - Generate report from template at templates/conformance-report.md
    - Output path: as configured (default: docs/phase-1-research/conformance-eval-report.md)
    - Report contains:
      - Overall conformance verdict (PASS/FAIL)
@@ -222,7 +231,7 @@ Before reporting completion, verify ALL of the following:
 - [ ] Raw data preserved at .rat/scratch/conformance-eval/
 - [ ] If SSIM/VMAF requested: optional metrics included
 - [ ] Failed streams have detailed failure info (byte offset or pixel divergence)
-- [ ] **Block-level verification** (decoder designs): If applicable, per-block I/O comparison confirms bitexact match at each processing block boundary (see `domain-packages/video-codec/knowledge/block-level-conformance.md`)
+- [ ] **Block-level verification** (decoder designs): If applicable, per-block I/O comparison confirms bitexact match at each processing block boundary (see `{plugin_root}/domain-packages/video-codec/knowledge/block-level-conformance.md`)
 
 If ANY item is unchecked → DO NOT report completion. Fix the issue first.
 </Final_Checklist>

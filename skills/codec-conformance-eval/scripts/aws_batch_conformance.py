@@ -51,8 +51,26 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
 
     s3_bucket = aws_cfg.get("s3_bucket", "codec-eval-results")
 
-    decoder_cfg = config.get("decoder", {})
     eval_name = config.get("eval_name", "conformance-eval")
+
+    # The job definition runs /app/decode.sh from a user-supplied container
+    # image, so the decoder settings that steer a local run cannot be applied
+    # here directly. Forward them as environment variables (the documented
+    # container contract — see SKILL.md "AWS Batch decoder contract") and say so
+    # out loud: silently dropping them would make an AWS run look like it
+    # honoured a decoder configuration it never saw.
+    decoder_cfg = config.get("decoder", {})
+    decoder_cmd_template = decoder_cfg.get("decoder_cmd_template", "")
+    decoder_extra_args = decoder_cfg.get("extra_args", "")
+    if decoder_cfg.get("decoder_binary") or decoder_cmd_template or decoder_extra_args:
+        print(
+            "NOTE: AWS Batch runs /app/decode.sh inside job definition "
+            f"'{job_definition}'. decoder_cmd_template/extra_args are forwarded as "
+            "DECODER_CMD_TEMPLATE/DECODER_EXTRA_ARGS; decoder_binary is ignored "
+            "(the image supplies the decoder). Results match a local run only if "
+            "the image honours these variables.",
+            file=sys.stderr,
+        )
 
     # Discover streams (simplified — expects pre-resolved stream list)
     streams = config.get("_resolved_streams", [])
@@ -86,6 +104,8 @@ def submit_jobs(config: dict, output_dir: str, batch_client=None) -> list:
                         {"name": "EVAL_NAME", "value": eval_name},
                         {"name": "STREAM_NAME", "value": stream_name},
                         {"name": "SOURCE_ID", "value": source_id},
+                        {"name": "DECODER_CMD_TEMPLATE", "value": decoder_cmd_template},
+                        {"name": "DECODER_EXTRA_ARGS", "value": decoder_extra_args},
                     ],
                 },
                 retryStrategy={"attempts": 2},
