@@ -62,5 +62,5 @@ in addition to any CDC violations.
 For comprehensive CDC analysis, commercial tools (SpyGlass CDC, Conformal CDC, Questa CDC)
 provide formal proof of synchronizer correctness beyond structural analysis.
 
-See `references/cdc-patterns.md` for SDC constraint templates, violation checklist,
+See `{plugin_root}/skills/rtl-p5s-cdc-verify/references/cdc-patterns.md` for SDC constraint templates, violation checklist,
 and detailed synchronizer implementation guidance.

@@ -141,6 +141,38 @@ class TestAgentDefinitions:
             + "\n  ".join(offenders)
         )
 
+    def test_skill_relative_assets_resolve(self):
+        """A skill-relative asset path must name a file the skill actually bundles.
+
+        references/, templates/ and examples/ resolve against the skill's own
+        directory. scripts/ is excluded: `scripts/run_sim.sh` and friends are
+        deployed into the *user's* project by rat-init-project, so a bare
+        scripts/ path is correct there and does not live in the plugin.
+
+        v0.14.2: six policy skills pointed at assets bundled with their paired
+        action skill — rtl-p5s-sva-policy alone had three — so
+        `references/sva-patterns.md` resolved to
+        skills/rtl-p5s-sva-policy/references/sva-patterns.md, which does not
+        exist. Cross-skill assets must be addressed {plugin_root}-absolute.
+        """
+        pattern = re.compile(
+            r"(?<![\w/}$.-])((?:references|templates|examples)/[A-Za-z0-9_.-]+)"
+        )
+        offenders = []
+        for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
+            own = skill_md.parent
+            for lineno, line in enumerate(skill_md.read_text().splitlines(), 1):
+                for match in pattern.finditer(line):
+                    if not (own / match.group(1)).exists():
+                        offenders.append(
+                            f"{own.name}/SKILL.md:{lineno}: {match.group(1)}"
+                        )
+        assert offenders == [], (
+            "Skill-relative asset paths that resolve to nothing — bundle the file "
+            "or address it as {plugin_root}/skills/<owner>/…:\n  "
+            + "\n  ".join(offenders)
+        )
+
     def test_no_runtime_reads_of_plugin_internal_paths(self, agent_files):
         """Agent and skill prompts execute with the USER's project as CWD.
 

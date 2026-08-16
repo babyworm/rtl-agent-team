@@ -61,5 +61,5 @@ Key AXI protocol rules to verify:
 4. **Write response after last data** — BVALID only after WLAST accepted
 5. **Read data ordering** — RDATA returned in address request order (per ID)
 
-See `references/axi-protocol-rules.md` for complete SVA assertion templates per channel,
+See `{plugin_root}/skills/rtl-p5s-protocol-verify/references/axi-protocol-rules.md` for complete SVA assertion templates per channel,
 ordering rules, AXI4 vs AXI4-Lite differences, and common violations found in practice.

@@ -253,4 +253,4 @@ All phases must enforce:
 - [ ] All 6 phases completed
 - [ ] State file removed on clean completion
 - [ ] Summary report generated
-- [ ] Review artifacts verified per references/review-checklist.md (26 mandatory files)
+- [ ] Review artifacts verified per `{plugin_root}/skills/rat-auto-design/references/review-checklist.md` (26 mandatory files)

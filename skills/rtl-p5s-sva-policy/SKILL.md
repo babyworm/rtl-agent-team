@@ -49,8 +49,8 @@ Use assume statements to constrain inputs to legal protocol ranges before provin
 Target properties: no deadlock, no overflow, interface protocol compliance, data integrity.
 Assertion clock: `@(posedge sys_clk) disable iff (!sys_rst_n)` for synchronous properties.
 
-See `examples/handshake-assertions.sv` for valid/ready handshake SVA patterns.
-See `examples/fifo-assertions.sv` for FIFO overflow/underflow assertion patterns.
+See `{plugin_root}/skills/rtl-p5s-sva-check/examples/handshake-assertions.sv` for valid/ready handshake SVA patterns.
+See `{plugin_root}/skills/rtl-p5s-sva-check/examples/fifo-assertions.sv` for FIFO overflow/underflow assertion patterns.
 
 SymbiYosys engine guide:
 | Engine | Mode | Best For |
@@ -60,7 +60,7 @@ SymbiYosys engine guide:
 | `smtbmc z3` | BMC, prove | Arithmetic-heavy designs |
 | `abc pdr` | prove only | Unbounded proof via PDR |
 
-See `references/sva-patterns.md` for complete temporal operator reference and pattern library.
+See `{plugin_root}/skills/rtl-p5s-sva-check/references/sva-patterns.md` for complete temporal operator reference and pattern library.
 
 **sv2v conversion note:**
 SymbiYosys relies on Yosys for reading design files. Yosys has limited SystemVerilog support,

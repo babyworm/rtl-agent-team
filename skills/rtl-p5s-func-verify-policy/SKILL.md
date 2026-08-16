@@ -159,7 +159,7 @@ Verdict rules (Tier 3 module-level, aligns with Stage 1 2-tier model):
 - **TestFactory**: Parameterized test generation
   - Example: `TestFactory(run_test).add_option("width", [8,16,32]).generate_tests()`
 
-See `references/cocotb-ecosystem.md` for complete API reference.
+See `{plugin_root}/skills/rtl-p5s-func-verify/references/cocotb-ecosystem.md` for complete API reference.
 
 ## Tier 2 Baseline Utilization
 

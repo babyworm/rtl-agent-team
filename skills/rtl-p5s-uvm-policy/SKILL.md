@@ -160,5 +160,5 @@ imc -exec merge_script.tcl   # merge -run seed_*/cov_work → report
 - Xcelium: using `-R` without matching `-xmlibdirpath` → snapshot not found
 - All tools: merging before all seeds complete → partial coverage report
 
-See `references/uvm-architecture.md` for complete UVM class hierarchy, phase order,
+See `{plugin_root}/skills/rtl-p5s-uvm-verify/references/uvm-architecture.md` for complete UVM class hierarchy, phase order,
 and common UVM mistakes to avoid.

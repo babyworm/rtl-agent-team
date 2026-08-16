@@ -8,7 +8,7 @@
 
 | 계층 | 디렉토리 | EDA 도구 필요 | 테스트 수 | 실행 시간 |
 |------|----------|:---:|:---:|:---:|
-| Unit | `tests/unit/` | X | 1592 | ~30초 |
+| Unit | `tests/unit/` | X | 1641 | ~30초 |
 | Integration | `tests/integration/` | O (Docker/Yosys) | 47 | 일반 non-Docker 경로 ~1분; opt-in 최초 Docker build 10-30분 |
 
 Docker image가 이미 있으면 통합 테스트는 더 빠를 수 있습니다. 최초 opt-in build 시간은
