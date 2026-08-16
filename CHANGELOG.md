@@ -7,6 +7,139 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Fixed — EDA templates and scripts
+- **`target.level` conformance filter was parsed and discarded** — `run_conformance.py`
+  read `target.level` from the config into a local variable, and the comment above the
+  filter block said "Filter by profile/level", but only the profile filter was ever
+  implemented. A run configured for one level silently decoded every stream and reported
+  success. The AWS Batch path did not read `level` at all, so the two execution modes
+  selected different stream sets from the same config file. Both paths now share
+  `filter_by_profile`/`filter_by_level`; level matching accepts the `4.1`, `4_1` and packed
+  `L41` filename conventions with word boundaries, so `4.1` does not match inside `L411`
+  or `L14.11`. The key is advertised in `conformance-config.hjson` and in SKILL.md twice.
+- **AWS Batch silently ignored the decoder configuration** — `aws_batch_conformance.py`
+  read `config["decoder"]` and dropped it; jobs ran `/app/decode.sh` from a user-supplied
+  image with only the bitstream and output paths. `decoder_cmd_template` and `extra_args`
+  are now forwarded as `DECODER_CMD_TEMPLATE`/`DECODER_EXTRA_ARGS`, the submitter prints a
+  note whenever those settings are non-empty, and SKILL.md documents the container
+  contract — including that `decoder_binary` cannot apply. The image is external to this
+  repo, so the divergence is surfaced rather than assumed away.
+- Cleared the remaining `ruff` findings in the EDA scripts (unused `sys` import, 6
+  placeholder-free f-strings, a dead `total`, and the ambiguous loop variable `l` in
+  `bd_rate.py`).
+- **`sva-property-template.sv` could not elaborate** — it used `DATA_WIDTH` in two port
+  ranges without declaring it anywhere (slang: 2 errors). Added the parameter port list so
+  the bind can pass the DUT's width through.
+- **`module-template.sv` failed its own mandated lint** — the canonical module scaffold
+  declared `localparam L_DEPTH = 2**ADDR_WIDTH` and never referenced it, so Verilator
+  `-Wall` reported UNUSEDPARAM and exited non-zero. `rtl-coder` runs exactly that lint after
+  every write, so every module scaffolded from this template failed on its first check.
+  Replaced with `L_STATE_WIDTH`, which the state `typedef` actually uses; the now-redundant
+  `ADDR_WIDTH` parameter is gone.
+- **`check_conventions.sh` Rule 5 reported an instance on every FSM** — the filter tested
+  only the *first* token, so `unique case (state_q)` was flagged as an instance named
+  `case`, and `interface`/`modport` were missing from the keyword list entirely. The same
+  pattern (`^\s*\w+\s+\w+\s*\(`) also never matched a parameterized instantiation, because
+  `#` is not a word character — `sub_block #(.W(8)) bad_inst (...)` went unchecked. Rule 5
+  now flattens parentheses and rejects on either token being a reserved word, fixing both a
+  false-positive and a false-negative class. On the plugin's own 14 SV templates the checker
+  went from 4 violations (all spurious) to 0.
+- **`--verbose` was a documented no-op in 5 deployed EDA runners** — `run_lint.sh`,
+  `run_syn.sh`, `run_cdc.sh`, `run_formality.sh` and `run_conformal.sh` advertise
+  `-v, --verbose  Verbose output` in `--help`, parse it and assign `VERBOSE=1`, then never
+  read it. The flag now enables `set -x` so the wrapper's own path resolution and file
+  discovery are visible — which is what a user reaches for when an EDA run misbehaves.
+- **C reference-model scaffold built with warnings** — `ref_model_main.c` declared `input`
+  and `output` for a commented-out example (2 × `-Wunused-variable` under the Makefile's
+  `-Wall -Wextra -Wpedantic`); the declarations moved into the example. `dpi_wrapper.h`
+  embedded `src/*.c` inside a block comment, whose `/` `*` sequence trips `-Wcomment`; the
+  build line now points at the `make dpi` target.
+
+### Testing — EDA templates
+- `tests/unit/test_sv_templates.py` — CI has no EDA tools, so these reproduce with plain
+  regex the two defect classes Verilator and slang caught: an unreferenced `localparam`
+  (UNUSEDPARAM) and a width identifier used in a port range without being declared. A third
+  test runs `check_conventions.sh` (pure bash) over every bundled SV template. All three
+  were verified to fail against the pre-fix files.
+- `TestInstancePrefixRule` in `test_check_conventions.py` — covers `unique case`,
+  `interface`/`modport`, plain and parameterized instantiations with and without `u_`.
+- `TestProfileAndLevelFilters` in `test_run_conformance.py` — covers the level filename
+  conventions, the word-boundary rejections, filter composition, and a structural check
+  that `run_local` and `run_aws_batch` both apply both filters.
+
+### Fixed
+- **Phantom agents removed from the always-on registry** — Claude Code scans `agents/`
+  recursively, so the six shared prompt fragments in `agents/lib/` were each registered
+  as a real, spawnable agent (`rtl-agent-team:lib:*`, "Agent from rtl-agent-team plugin",
+  all tools, no role prompt). Moved to `plugin_docs/agent-lib/`. The agent test fixture
+  globs `agents/*.md` non-recursively, which is why no existing test saw them;
+  `test_agents_dir_has_no_nested_markdown` now guards the whole tree.
+- **Agent prompts no longer point at paths that do not exist at runtime** — eight agents
+  and one skill told workers to follow `agents/lib/team-worker-*.md`, a plugin-internal
+  path absent from every user project. For `dc-report-parser`, `ppa-optimizer-dc`, and
+  `p4-block-worker` that reference *was* the entire team protocol, so team mode ran with
+  none. Protocols are now inlined (only the genuinely missing `TaskUpdate`/shutdown/next
+  steps for `p4-block-worker`, whose lifecycle was already documented), and
+  `scripts/inject-worker-protocol.sh` no longer emits the dead reference.
+  Guarded by `test_no_runtime_reads_of_plugin_internal_paths`.
+- **Maintainer sync scripts now run on macOS** — `sync_step0.sh` and
+  `inject-worker-protocol.sh` passed multi-line text through `awk -v`, which POSIX/BSD awk
+  rejects ("awk: newline in string"). GNU awk tolerates it, so both scripts worked on
+  Linux CI and aborted on macOS, leaving the documented Step 0 sync workflow unrunnable
+  for the maintainer. Both now pass the payload via `ENVIRON[]`. Failure was fail-safe
+  (non-zero exit, no files touched).
+- **`inject-worker-protocol.sh` target list realigned with the tested contract** — the
+  script's `DEFAULT_AGENTS` and the expanded team-protocol test were independent sources
+  of truth that had drifted by nine agents (four script-only, five test-only), so running
+  the documented script rewrote agents CI never asked for. The two are now pinned together
+  by `test_inject_script_target_list_matches_tested_contract`.
+
+- **Pipeline rules 10-11 now reach the runtime** — CLAUDE.md declares 11 pipeline rules as
+  the SSOT contract, but both the `rtl-orchestrate` body and the SessionStart injection
+  stopped at 9. Rules 10-11 gate the shipped DC-based PPA optimization pipeline
+  (`rtl-ppa-optimize-dc`, `rat-ultraloop-ppa`, `ppa-optimizer-dc-policy`), so that
+  pipeline's two gates never reached a user session. Guarded by
+  `TestPipelineRuleCoverage::test_all_claude_md_rules_reach_the_runtime`.
+- **Skill-bundled assets addressed skill-relative (15 sites, 9 skills)** — `references/x.md`
+  resolves against the skill directory, which is why the `<Assets>` tables and ~95 call
+  sites use the bare form. Six skills declared an asset skill-relative and then re-stated it
+  as `skills/<own-name>/references/x.md` in the Execution step — wrong under every
+  resolution rule — so the conventions file each skill depends on was never read. Seven
+  `templates/` sites had the same drift. The two occurrences inside `Task(prompt=...)` went
+  the other way (`{plugin_root}/skills/...`), since a subagent does not inherit the skill
+  directory. Guarded by `test_skill_bundled_assets_use_skill_relative_paths`.
+- `domain-consult` and `codec-conformance-eval` now qualify their `domain-packages/`
+  knowledge paths with `{plugin_root}/`, matching the other 91 call sites.
+
+### Changed
+- **SessionStart injected context reduced 9,464 B → 8,765 B (−7%)** by dropping the
+  routing table's `Type` column, which repeated "Action Skill" on 57 of 61 rows. Route
+  targets stay fully qualified (`/rtl-agent-team:<name>`): the Skill tool requires the
+  exact `plugin:skill` form, so shortening them to bare names would trade a routing
+  failure mode for a rounding error. Rules 10-11 were then added back in (+219 B), so the
+  net injection is 8,765 B.
+- `rtl-orchestrate`'s description trimmed from 174 to 76 chars. It was the longest of all
+  97 skills and the only one over the documented 160-char contract, yet the skill carries
+  `disable-model-invocation: true` — its description can never route anything.
+
+### Testing
+- `test_skill_description_budget` — enforces the 160-char per-skill contract and a 15 KB
+  ceiling on the total always-on skill name+description budget. The contract was documented
+  in CLAUDE.md but never tested, which is how v0.10.6 drifted to 61 over-limit skills.
+- `tests/conftest.py::find_bash4` — tests covering `generate_config.sh` (which self-guards
+  on `BASH_VERSINFO[0] >= 4`) now skip when no bash ≥ 4 is available instead of reporting
+  32 environment errors. macOS ships bash 3.2, so CLAUDE.md rule 12 ("green suite before
+  every push") was previously unattainable locally. Detection is version-based, so Linux
+  CI and macOS with `brew install bash` still execute the tests.
+
+### Docs
+- CLAUDE.md: recorded the three always-on context sources with measured sizes — agent
+  frontmatter (~21.7 KB) is the largest and the only one without a size contract. Noted
+  that `user-invocable: false` does **not** remove a skill from the always-on listing
+  (it blocks invocation, not the budget charge) and that the description budget is shared
+  across all installed plugins.
+- CLAUDE.md rule 16: `agents/` must stay flat — no subdirectories.
+
 ## [0.14.1] - 2026-07-18
 
 ### Fixed
