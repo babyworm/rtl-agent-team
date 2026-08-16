@@ -7,6 +7,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-08-16
+
 ### Added — English documentation
 
 - **`CONTRIBUTING.md`, `tests/README.md` and `tests/TEST-GUIDE.md` now ship in English**,
