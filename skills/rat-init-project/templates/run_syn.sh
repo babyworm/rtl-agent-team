@@ -685,14 +685,18 @@ case "$TOOL" in
       } > "$SCRIPT"
     fi
 
-    CMD="genus -64 -files \"$SCRIPT\""
+    # Cadence documents the batch form as `genus -batch -files <tcl>`. Without
+    # `-batch` Genus keeps its interactive shell alive after sourcing the script.
+    # `-64` is an RTL-Compiler-era switch: Genus has always been 64-bit only, so
+    # it is a no-op at best and rejected as unknown on newer releases.
+    CMD="genus -batch -files \"$SCRIPT\""
     echo "=== Cadence Genus Synthesis ==="
     echo "Script: $SCRIPT"
     echo "CMD: $CMD"
     write_replay "$CMD"
     # $SCRIPT components (--script or SYN_ROOT-derived) validated against
     # Tcl/shell-unsafe characters above — execute via argv, no eval.
-    run_tool genus -64 -files "$SCRIPT" 2>&1 | tee "$LOG"
+    run_tool genus -batch -files "$SCRIPT" 2>&1 | tee "$LOG"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -700,9 +704,29 @@ case "$TOOL" in
   # Vivado (requires user-provided script)
   # =========================================================================
   vivado)
-    echo "ERROR: Vivado requires project-specific configuration." >&2
-    echo "Provide --script <tcl> and execute your project flow command manually." >&2
-    exit 1
+    # Vivado has no generic non-project synthesis recipe — part number, XDC and
+    # IP handling are project-specific — so the Tcl must come from the user.
+    # With one supplied, run it: AMD documents the batch form as
+    # `vivado -mode batch -source <tcl>`, which exits after the script finishes.
+    # -nojournal/-nolog keep vivado.jou/vivado.log out of the working directory so
+    # parallel runs do not collide; this script's own log is captured via tee.
+    if [[ -z "$SCRIPT_PATH" ]]; then
+      echo "ERROR: Vivado requires project-specific configuration." >&2
+      echo "Provide --script <tcl> containing your synth_design flow." >&2
+      echo "  example: synth_design -top \$TOP -part <part>; report_utilization ..." >&2
+      exit 1
+    fi
+    SCRIPT="$SCRIPT_PATH"
+    LOG="${DIR_LOG}/vivado_syn_${TOP}_${TIMESTAMP}.log"
+    CMD="vivado -mode batch -source \"$SCRIPT\" -nojournal -nolog"
+    echo "=== Vivado Synthesis ==="
+    echo "Script: $SCRIPT"
+    echo "CMD: $CMD"
+    write_replay "$CMD"
+    # $SCRIPT is --script, validated against Tcl/shell-unsafe characters above —
+    # execute via argv, no eval.
+    run_tool vivado -mode batch -source "$SCRIPT" -nojournal -nolog 2>&1 | tee "$LOG"
+    EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   *)

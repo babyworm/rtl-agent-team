@@ -7,6 +7,54 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Fixed — EDA tool invocations
+
+Audited every command line the runners build against each vendor's documented
+batch form. A wrong switch here does not degrade gracefully: the tool either
+fails to launch or waits for a GUI that a headless CI will never provide.
+
+- **VC SpyGlass CDC could never launch** — the runner invoked `vc_cdc -f <tcl>`,
+  but `vc_cdc` is the Synopsys *app* name, not an executable. VC CDC runs inside
+  the VC Static shell, which Synopsys documents as
+  `vc_static_shell -f <tcl> -batch`. `-batch` also makes the shell quit on an
+  unexpected error instead of dropping to an interactive prompt.
+- **Conformal LEC would try to open its GUI** — invoked as `lec -64bit -dofile`.
+  `-64bit` is the Synopsys spelling; Cadence uses `-64`, and modern Conformal is
+  64-bit only, so the switch is dropped. `-nogui` is what Cadence documents for a
+  batch run (`lec -dofile <file> -nogui`) and was missing entirely.
+- **Genus left an interactive shell alive** — `genus -64 -files <tcl>` omitted
+  `-batch`, which Cadence documents as the batch form. `-64` is an
+  RTL-Compiler-era switch that newer Genus releases reject.
+- **Questa CDC wrote its database somewhere the runner never looked** — Siemens
+  documents `qverify -c -do <do> -od <outdir>`; without `-od` the session lands in
+  the default location while the runner reports under `--outdir`.
+- **Xcelium never built a snapshot to run** — the flow went `xrun -compile` then
+  `xrun -R`. `-compile` only parses and analyses; `-R` reinvokes an *existing*
+  snapshot without recompiling or re-elaborating. The `-elaborate` step that
+  writes the snapshot is now in between, and all three steps share one
+  `-xmlibdirname`.
+- **`--tool vivado` was advertised but always failed** — the branch exited 1 with
+  "provide --script <tcl>", and supplying one changed nothing. With a script it
+  now runs `vivado -mode batch -source <tcl> -nojournal -nolog`, the form AMD
+  documents; batch mode exits when the script finishes, and the suppressed
+  journal/log keep parallel runs from colliding.
+
+Verified correct and left unchanged: `dc_shell -64bit -f` and `fm_shell -64bit -f`
+(Synopsys shells do spell it `-64bit`), `verilator --lint-only -Wall -Wpedantic -sv`,
+`verible-verilog-lint --rules_config`, `slang --top -Weverything`, `yosys -s`, and
+the VCS/Questa simulator flows.
+
+### Added
+
+- `tests/unit/test_eda_tool_invocations.py` pins each invocation to its documented
+  shape. None of these tools can be installed in CI, so the check is structural;
+  every case was verified to fail against the pre-fix scripts.
+- `syn-`, `sim-` and `cdc-tool-profiles` gained an **Invocation Reference** table
+  recording the exact binary, the switches, and *why* each shape is required — the
+  profiles are what agents read to decide which tool a stage can use.
+- `syn-tool-profiles` now documents the `vivado` FPGA profile, which the runner
+  supported but the profile omitted, leaving the path unreachable in practice.
+
 ## [0.14.2] - 2026-08-16
 
 ### Added — English documentation

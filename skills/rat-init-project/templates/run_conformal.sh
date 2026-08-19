@@ -176,7 +176,11 @@ if [[ ! -f "$LEC_DO" ]] || [[ -z "$SCRIPT_PATH" ]]; then
 fi
 
 # ─── Execute ─────────────────────────────────────────────────────────────
-CMD="lec -64bit -dofile \"$LEC_DO\""
+# Cadence spells the 64-bit switch `-64`, not Synopsys' `-64bit`; modern Conformal
+# is 64-bit only, so the switch is dropped entirely. `-nogui` is mandatory for a
+# batch run — without it Conformal tries to open its GUI and a headless CI hangs.
+# Cadence documents the batch form as: lec -dofile <file> -nogui
+CMD="lec -nogui -dofile \"$LEC_DO\""
 
 echo "=== Conformal LEC Equivalence Check ==="
 echo "Top:     $TOP"
@@ -196,7 +200,7 @@ cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_conformal_${TOP}_latest.sh"
 
 # $LEC_DO components (--script / --outdir / --top) validated against shell
 # metacharacters above — execute via argv, no eval.
-run_tool lec -64bit -dofile "$LEC_DO" 2>&1 | tee "$REPORT"
+run_tool lec -nogui -dofile "$LEC_DO" 2>&1 | tee "$REPORT"
 EXIT_CODE=${PIPESTATUS[0]}
 
 # ─── Summary ─────────────────────────────────────────────────────────────

@@ -52,6 +52,25 @@ syn/
     - `--liberty <tech.lib> --sdc <design.sdc> --script <genus.tcl> --max-cores <n>`
     - Memory: `--mem-process <NAME> --mem-lib <macro.db> --mem-module <name> --mem-strict`
   - Outputs: `.genus_db` → `syn/db/`, netlist → `syn/vnet/`
+- `vivado` (FPGA):
+  - `syn/scripts/run_syn.sh --tool vivado --top <top> --script <vivado.tcl>`
+  - `--script` is **mandatory**: part number, XDC and IP handling are
+    project-specific, so there is no generic non-project recipe to auto-generate.
+    The Tcl must carry its own `synth_design -top <top> -part <part>` flow.
+  - `-f`, `--liberty` and the `--mem-*` options do not apply — the Tcl owns source
+    and constraint loading.
+
+## Invocation Reference
+
+The exact binaries and batch switches the runner uses. These are the shapes each
+vendor documents; changing them silently breaks the stage.
+
+| Tool | Invocation | Why this shape |
+|------|------------|----------------|
+| `yosys` | `yosys -s <ys>` | — |
+| `dc_shell` | `dc_shell -64bit -f <tcl>` | Synopsys shells spell the switch `-64bit` |
+| `genus` | `genus -batch -files <tcl>` | Without `-batch` Genus keeps an interactive shell alive after sourcing. `-64` is an RTL-Compiler-era switch — Genus is 64-bit only and newer releases reject it |
+| `vivado` | `vivado -mode batch -source <tcl> -nojournal -nolog` | Batch mode exits when the script finishes; Tcl mode would return to a prompt. Suppressing the journal/log keeps parallel runs from colliding |
 
 ## Tool Availability Tiers
 

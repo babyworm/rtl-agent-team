@@ -451,18 +451,28 @@ run_vcs() {
 }
 
 compile_xrun() {
-  local cmd="xrun -compile -sv"
-  cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
+  # Xcelium's multi-step flow is compile -> elaborate -> run(-R). `-compile` only
+  # parses and analyses; it does not produce a snapshot. `-R` reinvokes an
+  # *existing* snapshot without recompiling or re-elaborating, so compiling and
+  # then jumping straight to -R leaves nothing for -R to open. The elaborate step
+  # is what writes the snapshot into -xmlibdirname, and every step must name the
+  # same library directory.
+  local common=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
   if [[ $TRACE -eq 1 ]]; then
-    cmd+=" -access +rwc"
+    common+=" -access +rwc"
   fi
   if [[ -n "$DPI_LIB" ]]; then
-    cmd+=" -sv_lib ${DPI_LIB}"
+    common+=" -sv_lib ${DPI_LIB}"
   fi
-  cmd+=" -xmlibdirname ${OUTDIR}/xlib ${TOOL_ARGS} ${FILES}"
+  common+=" -xmlibdirname ${OUTDIR}/xlib ${TOOL_ARGS}"
 
+  local cmd="xrun -compile -sv${common} ${FILES}"
   log "Compile: $cmd"
   run_cmd "compile" "$cmd"
+
+  local elab_cmd="xrun -elaborate -sv${common} -top ${TOP} ${FILES}"
+  log "Elaborate: $elab_cmd"
+  run_cmd "compile" "$elab_cmd"
 }
 
 run_xrun() {

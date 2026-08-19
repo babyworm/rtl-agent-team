@@ -394,7 +394,9 @@ class TestValidInputsStillWork:
         assert dofiles and "read design -golden" in dofiles[0].read_text()
         replay = outdir / "replay" / "run_conformal_m_latest.sh"
         assert replay.exists()
-        assert "lec -64bit -dofile" in replay.read_text()
+        # v0.14.3: Cadence spells the switch -64 (not Synopsys' -64bit) and requires
+        # -nogui for a batch run — see test_eda_tool_invocations.py.
+        assert "lec -nogui -dofile" in replay.read_text()
 
     def test_run_formality_happy_path(self, tmp_path):
         sv = tmp_path / "m.sv"

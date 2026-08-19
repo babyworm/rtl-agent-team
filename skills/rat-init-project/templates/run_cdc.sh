@@ -288,11 +288,15 @@ case "$TOOL" in
     # Path validated shell-safe below — execute via argv (no eval); the quoted
     # string form is kept for display and the replay script.
     validate_shell_safe "CDC Tcl path" "$CDC_TCL"
-    CMD="vc_cdc -f \"$CDC_TCL\""
-    echo "=== VC CDC ==="
+    # `vc_cdc` is the app name, not an executable — VC SpyGlass CDC runs inside the
+    # VC Static shell. Synopsys documents the batch form as
+    # `vc_static_shell -f <tcl> -batch`; `-batch` also makes the shell quit on an
+    # unexpected error instead of dropping to an interactive prompt.
+    CMD="vc_static_shell -f \"$CDC_TCL\" -batch"
+    echo "=== VC SpyGlass CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    run_tool vc_cdc -f "$CDC_TCL" 2>&1 | tee "$REPORT"
+    run_tool vc_static_shell -f "$CDC_TCL" -batch 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -305,11 +309,14 @@ case "$TOOL" in
     # Path validated shell-safe below — execute via argv (no eval); the quoted
     # string form is kept for display and the replay script.
     validate_shell_safe "CDC Tcl path" "$CDC_TCL"
-    CMD="qverify -c -do \"$CDC_TCL\""
+    # Siemens documents the batch form as `qverify -c -do <do> -od <outdir>`.
+    # Without `-od` the session writes its database to the default location while
+    # this script reports results under $OUTDIR, so the two disagree.
+    CMD="qverify -c -do \"$CDC_TCL\" -od \"$OUTDIR\""
     echo "=== Questa CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    run_tool qverify -c -do "$CDC_TCL" 2>&1 | tee "$REPORT"
+    run_tool qverify -c -do "$CDC_TCL" -od "$OUTDIR" 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 

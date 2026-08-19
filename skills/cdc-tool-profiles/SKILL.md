@@ -80,10 +80,24 @@ cmake --install build --prefix ~/.local
 - `spyglass` (binary: `sg_shell`, config key: `sg_shell`, script flag: `--tool spyglass`):
   - `lint/scripts/run_cdc.sh --tool spyglass --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
   - Note: `rat_config.json` uses `sg_shell` as tool key; runner scripts accept `--tool spyglass`
-- `vc_cdc`:
+- `vc_cdc` (binary: `vc_static_shell`, script flag: `--tool vc_cdc`):
   - `lint/scripts/run_cdc.sh --tool vc_cdc --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
+  - Note: `vc_cdc` is the Synopsys **app** name; VC SpyGlass CDC runs inside the VC
+    Static shell, so the executable is `vc_static_shell`
 - `questa_cdc`:
   - `lint/scripts/run_cdc.sh --tool questa_cdc --top <top> -f rtl/filelist_top.f --outdir lint/cdc`
+
+## Invocation Reference
+
+The exact binaries and batch switches the runner uses. These are the shapes each
+vendor documents; changing them silently breaks the stage.
+
+| Tool | Invocation | Why this shape |
+|------|------------|----------------|
+| `structural` / `svlens` | `svlens cdc --format all -o <outdir>` | — |
+| `spyglass` | `sg_shell -tcl <tcl>` | — |
+| `vc_cdc` | `vc_static_shell -f <tcl> -batch` | `vc_cdc` is an app name, not an executable. `-batch` makes the shell quit on an unexpected error instead of dropping to a prompt |
+| `questa_cdc` | `qverify -c -do <do> -od <outdir>` | `-c` selects CLI/batch. Without `-od` the session database lands in the default location while the runner reports under `--outdir` |
 
 ## Normalized Result Fields
 - `tool`

@@ -27,6 +27,24 @@ user-invocable: false
 - `questa`:
   - `scripts/run_sim.sh --sim questa --top <tb_top> -f rtl/filelist_top.f --outdir sim/reports`
 
+## Invocation Reference
+
+The exact binaries and switches `run_sim.sh` uses per simulator. These are the
+shapes each vendor documents; changing them silently breaks the stage.
+
+| Simulator | Compile | Elaborate | Run |
+|-----------|---------|-----------|-----|
+| `verilator` | `verilator --binary` (or `--cc`) | — | generated executable |
+| `iverilog` | `iverilog -g2012` | — | `vvp` |
+| `vcs` | `vcs -full64 -sverilog +v2k -o <exe>` | (compile produces `simv`) | `<exe>` |
+| `xrun` | `xrun -compile -sv -xmlibdirname <lib>` | `xrun -elaborate -sv -xmlibdirname <lib> -top <tb>` | `xrun -R -xmlibdirname <lib>` |
+| `questa` | `vlib work` + `vlog -sv -work work` | `vopt +acc -work work <tb> -o <tb>_opt` | `vsim -c -work work <tb>_opt -do "..."` |
+
+**Xcelium gotcha**: `-compile` only parses and analyses — it does not write a
+snapshot. `-R` reinvokes an *existing* snapshot without recompiling or
+re-elaborating, so the `-elaborate` step is what makes `-R` work at all. All three
+steps must name the same `-xmlibdirname`.
+
 ## UVM Coverage Collection (Commercial Only)
 
 Code coverage must be enabled at **both compile and runtime** for all commercial simulators.
