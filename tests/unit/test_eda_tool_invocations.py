@@ -20,12 +20,13 @@ v0.14.3 corrected five of them:
     between.
 """
 
+import os
 import re
 from pathlib import Path
 
 import pytest
 
-from tests.conftest import REPO_ROOT
+from tests.conftest import REPO_ROOT, run_script
 
 TEMPLATES = REPO_ROOT / "skills" / "rat-init-project" / "templates"
 RUN_SIM = REPO_ROOT / "scripts" / "run_sim.sh"
@@ -112,3 +113,47 @@ def test_vivado_uses_the_user_script_instead_of_only_erroring() -> None:
     branch = text.split("\n  vivado)", 1)[1].split("\n    ;;", 1)[0]
     assert "SCRIPT_PATH" in branch, "vivado branch must consume --script"
     assert "run_tool vivado" in branch, "vivado branch must actually run the tool"
+
+
+def test_vivado_script_only_invocation_does_not_require_sources(tmp_path: Path) -> None:
+    """Vivado Tcl owns source loading, so --script must work without -f or SV args."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    args_file = tmp_path / "vivado.args"
+    vivado = fake_bin / "vivado"
+    vivado.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "printf '%s\\n' \"$@\" > \"$VIVADO_ARGS_FILE\"\n"
+    )
+    vivado.chmod(0o755)
+
+    script = tmp_path / "vivado.tcl"
+    script.write_text("synth_design -top m -part test_part\n")
+    syn_root = tmp_path / "syn"
+    result = run_script(
+        RUN_SYN,
+        "--tool",
+        "vivado",
+        "--top",
+        "m",
+        "--script",
+        str(script),
+        "--syn-root",
+        str(syn_root),
+        cwd=tmp_path,
+        env={
+            "PATH": f"{fake_bin}:{os.environ.get('PATH', '')}",
+            "VIVADO_ARGS_FILE": str(args_file),
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert args_file.read_text().splitlines() == [
+        "-mode",
+        "batch",
+        "-source",
+        str(script),
+        "-nojournal",
+        "-nolog",
+    ]

@@ -241,17 +241,19 @@ if [[ -n "$FILELIST" ]]; then
 fi
 [[ ${#FILES[@]} -gt 0 ]] && SRC_FILES+=("${FILES[@]}")
 
-if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
+if [[ ${#SRC_FILES[@]} -eq 0 && "$TOOL" != "vivado" ]]; then
   echo "ERROR: No source files specified. Use -f <filelist> or pass .sv files directly." >&2
   exit 1
 fi
 
-# Resolve source files to absolute paths (before cd)
-_abs_src=()
-for f in "${SRC_FILES[@]}"; do
-  case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
-done
-SRC_FILES=("${_abs_src[@]}")
+if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
+  # Resolve source files to absolute paths (before cd)
+  _abs_src=()
+  for f in "${SRC_FILES[@]}"; do
+    case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
+  done
+  SRC_FILES=("${_abs_src[@]}")
+fi
 
 # DC/Genus emit EVERY source/library/work path into Tcl double quotes (`analyze ... "$f"`,
 # `read_hdl ... "$f"`, target/link library, SDC, --mem-lib). A path containing Tcl-active
@@ -265,7 +267,9 @@ SRC_FILES=("${_abs_src[@]}")
 # SYN_ROOT-derived paths into its generated script and into the replay shell
 # script (`yosys -s "$SCRIPT"`), where the same character set is shell-active.
 _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}|${SCRIPT_PATH}"
-for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
+  for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+fi
 if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
   for _p in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
     [[ -e "$_p" ]] && _tcl_paths="${_tcl_paths}|${_p}"
@@ -287,7 +291,10 @@ esac
 # ROM, wrong synthesis, no error). Warn loudly so it is caught here, not in silicon.
 # A bare "..." starting with '/' is absolute (fine); a `define-built or {..}-concat
 # path is parameterizable (fine) and won't match this literal-relative pattern.
-_relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true)
+_relmem=""
+if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
+  _relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true)
+fi
 if [[ -n "$_relmem" ]]; then
   echo "WARNING: RTL uses RELATIVE \$readmemh/\$readmemb ROM paths. Synthesis runs from" >&2
   echo "         '$SYN_ROOT' (cd below), so these may load EMPTY (silent wrong synthesis)." >&2
