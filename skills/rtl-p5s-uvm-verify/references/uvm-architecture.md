@@ -84,7 +84,7 @@ vcs -full64 -sverilog -ntb_opts uvm-1.2 \
   -timescale=1ns/1ps -o simv
 
 # Run
-./simv +UVM_TESTNAME=base_test +ntb_random_seed=42 \
+./simv +UVM_TESTNAME={module}_base_test +ntb_random_seed=42 \
   +UVM_VERBOSITY=UVM_MEDIUM -l run.log
 ```
 
@@ -95,16 +95,25 @@ vlog -sv +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv
 vopt +acc top_tb -o opt_tb
 
 # Run
-vsim -c opt_tb +UVM_TESTNAME=base_test +UVM_VERBOSITY=UVM_MEDIUM \
+vsim -c opt_tb +UVM_TESTNAME={module}_base_test +UVM_VERBOSITY=UVM_MEDIUM \
   -do "run -all; quit" -l run.log
 ```
 
 ### Cadence Xcelium
 ```bash
-# Compile and run
-xrun -sv -uvm -access +rwc \
+# Compile
+xrun -sv -uvm -compile -access +rwc \
   +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv \
-  +UVM_TESTNAME=base_test -seed 42 -l run.log
+  -xmlibdirpath build/xcelium
+
+# Elaborate
+xrun -sv -uvm -elaborate -access +rwc \
+  +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv \
+  -top tb_top -xmlibdirpath build/xcelium
+
+# Run
+xrun -R -xmlibdirpath build/xcelium \
+  +UVM_TESTNAME={module}_base_test -seed 42 -l run.log
 ```
 
 ## UVM Coverage Best Practices

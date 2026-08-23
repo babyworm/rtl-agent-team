@@ -8,7 +8,8 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 
 <Purpose>
 Run a UVM-based verification environment on the target RTL using a commercial simulator
-(VCS, Questa, or Xcelium). Outputs: sim/uvm/results/run_summary.log + sim/uvm/coverage/uvm_coverage.xml.
+(VCS, Questa, or Xcelium). Outputs are timestamped under `sim/uvm/regression/`
+with merged vendor coverage artifacts under `sim/uvm/coverage/`.
 
 See `references/uvm-architecture.md` for UVM component hierarchy, phase order,
 simulator compile commands, and agent template with project naming conventions.
@@ -52,6 +53,11 @@ generation, compilation, test execution, and coverage collection.
 
 ## Output
 
-- `sim/uvm/results/run_summary.log` — test pass/fail summary across all UVM sequences
-- `sim/uvm/coverage/` — merged functional and code coverage data
+- `sim/uvm/regression/run_{timestamp}/seed_{seed}_results.json` — per-seed pass/fail result and log path for this run only
+- `sim/uvm/regression/regression_{module}_{timestamp}.json` — aggregate regression report and verdict
+- `sim/uvm/coverage/` — merged functional and code coverage vendor artifacts
 - `reviews/phase-5-verify/{module}-uvm-review.md` — UVM verification review with coverage analysis
+
+The runner reports `coverage_status=MERGED` only when per-seed coverage exists and the
+vendor merge command succeeds. Coverage percentage targets are evaluated downstream by
+the coverage-analysis gate.

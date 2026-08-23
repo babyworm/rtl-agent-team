@@ -579,8 +579,18 @@ class TestRatProjectRootOverride:
             fake_bin, "vcs",
             "out=''; while [ $# -gt 0 ]; do "
             "if [ \"$1\" = '-o' ]; then out=\"$2\"; shift 2; continue; fi; shift; done; "
-            'if [ -n "$out" ]; then printf \'#!/usr/bin/env bash\\necho SIMV_FAKE\\n\' > "$out"; '
+            'if [ -n "$out" ]; then printf \'#!/usr/bin/env bash\\n'
+            'cov=\"\"\\n'
+            'while [ $# -gt 0 ]; do if [ \"$1\" = \"-cm_dir\" ]; then cov=\"$2\"; shift 2; else shift; fi; done\\n'
+            '[ -n \"$cov\" ] && mkdir -p \"$cov\"\\n'
+            'echo SIMV_FAKE\\n\' > "$out"; '
             'chmod +x "$out"; fi',
+        )
+        _make_fake_tool(
+            fake_bin, "urg",
+            "out=''; while [ $# -gt 0 ]; do "
+            "if [ \"$1\" = '-report' ]; then out=\"$2\"; shift 2; continue; fi; shift; done; "
+            '[ -n "$out" ] && mkdir -p "$out"',
         )
         result = run_script(
             RUN_REGRESSION_UVM, "--sim", "vcs", "--seeds", "42",

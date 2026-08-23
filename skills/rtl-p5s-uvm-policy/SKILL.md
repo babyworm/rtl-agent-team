@@ -17,7 +17,7 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 - Use `logic` in all SV declarations (NOT `reg`/`wire`)
 - Interface signal names must match RTL ports exactly (e.g., `i_data`, `o_valid`)
 
-## Coverage Targets (Enforced at Regression Report)
+## Coverage Targets (Enforced by the Coverage Analysis Gate)
 
 | Coverage Type | Target | Tool Flag (VCS) | Notes |
 |--------------|--------|-----------------|-------|
@@ -32,6 +32,10 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 
 **Functional coverage** is collected via `uvm_subscriber`-based coverage collectors in the
 testbench. Covergroups must be mapped to requirements (REQ-U-*).
+
+The regression runner enforces that every dispatched seed produces coverage and that the
+vendor merge command succeeds. It records `coverage_status` and the reference targets in
+the aggregate JSON. `coverage-analyst` owns percentage extraction and target enforcement.
 
 ## Coverage-Driven Verification (CDV) Feedback Loop
 
@@ -82,11 +86,13 @@ before running additional iterations.
 
 Use the UVM regression runner (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) for multi-seed regression:
 ```bash
-bash {plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh --sim vcs --seeds "42 123 456 789 1337" --test base_test --module {module}
+bash {plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh --sim vcs --seeds "42 123 456 789 1337" --module {module}
 ```
 - Compiles once, runs seeds in parallel with failure halt logic
-- Per-seed result JSON + merged coverage + regression report
+- Per-seed result JSON under `sim/uvm/regression/run_{timestamp}/`, merged coverage, and `sim/uvm/regression/regression_{module}_{timestamp}.json`
+- Default UVM test is `{module}_base_test` unless `--test` is supplied
 - Coverage merge: VCS `urg`, Xcelium `imc`, Questa `vcover`
+- Missing per-seed coverage or a failed merge forces the aggregate verdict to `FAIL`
 
 ## Escalation & Stop Conditions
 
@@ -101,8 +107,9 @@ bash {plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh --sim
 - [ ] UVM environment uses correct naming (`i_`/`o_` prefix, `sys_clk`/`sys_rst_n`, `m_` UVM member prefix, `u_` RTL instance prefix)
 - [ ] UVM environment compiles without errors
 - [ ] All tests run to completion (no crashes)
-- [ ] sim/uvm/results/run_summary.log written
-- [ ] sim/uvm/coverage/uvm_coverage.xml generated
+- [ ] sim/uvm/regression/regression_{module}_*.json written
+- [ ] sim/uvm/regression/run_*/seed_*_results.json written for dispatched seeds
+- [ ] sim/uvm/coverage/ contains merged vendor coverage artifacts
 - [ ] Pass/fail reported per test
 
 ## UVM Component Naming and Simulator-Specific Flags
@@ -141,11 +148,15 @@ vsim -c -coverage tb_top +UVM_TESTNAME={test} -sv_seed {seed} \
 vcover merge sim/uvm/coverage/merged.ucdb sim/uvm/coverage/seed_*.ucdb
 vcover report -details sim/uvm/coverage/merged.ucdb
 
-# Xcelium — compile + run (separate phases)
+# Xcelium — compile + elaborate + run (separate phases)
 xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
     -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
     sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
     -xmlibdirpath build/xcelium
+xrun -sv -uvm -elaborate -coverage all -timescale 1ns/1ps \
+    -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
+    sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
+    -top tb_top -xmlibdirpath build/xcelium
 xrun -R +UVM_TESTNAME={test} -seed {seed} \
     -coverage all -covworkdir sim/uvm/coverage/seed_{seed}/cov_work -covscope tb_top \
     -xmlibdirpath build/xcelium

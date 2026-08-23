@@ -73,7 +73,9 @@ class {{MODULE}}_driver extends uvm_driver #({{MODULE}}_seq_item);
     @(vif.drv_cb);
     vif.drv_cb.i_valid <= 1'b1;
     vif.drv_cb.i_data  <= item.data;
-    @(vif.drv_cb iff vif.drv_cb.o_ready);
+    do begin
+      @(vif.drv_cb);
+    end while (!vif.drv_cb.o_ready);
     vif.drv_cb.i_valid <= 1'b0;
   endtask
 endclass
@@ -100,7 +102,9 @@ class {{MODULE}}_monitor extends uvm_monitor;
 
   task run_phase(uvm_phase phase);
     forever begin
-      @(vif.mon_cb iff (vif.mon_cb.o_valid));
+      do begin
+        @(vif.mon_cb);
+      end while (!vif.mon_cb.o_valid);
       begin
         {{MODULE}}_seq_item item = {{MODULE}}_seq_item::type_id::create("item");
         item.data = vif.mon_cb.o_data;

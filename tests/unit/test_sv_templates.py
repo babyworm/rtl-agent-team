@@ -104,3 +104,14 @@ def test_templates_pass_the_plugin_convention_checker(tmp_path):
     assert result.returncode == 0, (
         "Bundled SV templates violate the plugin's own conventions:\n" + result.stdout
     )
+
+
+def test_uvm_clocking_block_waits_do_not_attach_iff_to_clocking_items():
+    """IEEE-compatible waits sample the clocking block before testing signals."""
+    template = SKILLS_DIR / "rtl-p5s-uvm-verify" / "templates" / "uvm-agent-template.sv"
+    body = _render(template)
+    forbidden = re.findall(r"@\(vif\.(?:drv_cb|mon_cb)\s+iff\b", body)
+    assert forbidden == [], (
+        "Slang rejects `@(clocking_item iff condition)`; wait on the clocking "
+        "item first and test the sampled signal in a loop"
+    )

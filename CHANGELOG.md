@@ -7,6 +7,34 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-08-24
+
+### Fixed — UVM regression integrity
+
+- Validates seeds, parallelism, failure thresholds, module names, test names, and
+  testbench tops before any Bash arithmetic evaluation or simulator invocation.
+- Isolates per-seed results under a PID-qualified run directory, serializes valid
+  JSON, rejects missing worker results, and prevents stale artifacts from changing
+  a later regression verdict.
+- Requires every dispatched seed to produce coverage and requires the vendor merge
+  command to succeed. Standard zero-count UVM summary lines no longer look like
+  real errors, while actual `UVM_ERROR` and `UVM_FATAL` events still fail the seed.
+- Preserves vendor filelist semantics by passing `-f <filelist>` from the project
+  root and adds the missing Xcelium elaborate phase before `xrun -R`.
+
+### Fixed — UVM templates and contracts
+
+- Replaced illegal `@(clocking_item iff condition)` waits with sampled clocking-block
+  loops accepted by SystemVerilog tooling.
+- Aligned the default `{module}_base_test` name, generated Makefile, policy,
+  orchestrator, bilingual README, result paths, and coverage ownership contract.
+
+### Testing
+
+- Added behavioral fake-tool tests for input validation, stale-result isolation,
+  worker failure propagation, JSON validity, UVM summary parsing, coverage presence
+  and merge failure, filelist forwarding, and Xcelium lifecycle ordering.
+
 ## [0.14.3] - 2026-08-23
 
 ### Fixed — EDA tool invocations

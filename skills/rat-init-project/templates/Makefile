@@ -190,7 +190,7 @@ formal_vcf:
 # =============================================================================
 .PHONY: uvm_compile uvm_run uvm_regression uvm_coverage
 
-UVM_TEST    ?= base_test
+UVM_TEST    ?= $(TOP)_base_test
 UVM_SIM     ?= vcs
 UVM_TB_DIR  ?= sim/uvm
 UVM_REG_SCRIPT := sim/uvm/scripts/run_regression_uvm.sh
@@ -205,6 +205,8 @@ ifeq ($(UVM_SIM),vcs)
 else ifeq ($(UVM_SIM),xrun)
 	xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
 	  -f $(FILELIST) $(UVM_TB_DIR)/*.sv -xmlibdirpath build/xcelium
+	xrun -sv -uvm -elaborate -coverage all -timescale 1ns/1ps \
+	  -f $(FILELIST) $(UVM_TB_DIR)/*.sv -top tb_top -xmlibdirpath build/xcelium
 else ifeq ($(UVM_SIM),questa)
 	vlib build/work 2>/dev/null || true
 	vlog -sv -work build/work +cover=bcestf +incdir+$(UVM_TB_DIR) -f $(FILELIST) $(UVM_TB_DIR)/*.sv
@@ -217,7 +219,7 @@ ifeq ($(UVM_SIM),vcs)
 	cd build/vcs && ./simv +UVM_TESTNAME=$(UVM_TEST) +ntb_random_seed=42 \
 	  -cm line+cond+fsm+tgl+branch -cm_dir $(abspath sim/uvm/coverage/seed_42.vdb)
 else ifeq ($(UVM_SIM),xrun)
-	xrun -sv -uvm -R +UVM_TESTNAME=$(UVM_TEST) -seed 42 -coverage all \
+	xrun -R +UVM_TESTNAME=$(UVM_TEST) -seed 42 -coverage all \
 	  -xmlibdirpath build/xcelium
 else ifeq ($(UVM_SIM),questa)
 	vsim -c -work build/work -coverage +UVM_TESTNAME=$(UVM_TEST) -sv_seed 42 \
@@ -339,7 +341,7 @@ help:
 	@echo "    JASPER_TCL=<tcl>  JasperGold script"
 	@echo "    VCF_TCL=<tcl>     VC Formal script"
 	@echo "    UVM_SIM=<sim>     UVM simulator: vcs|xrun|questa (default: vcs)"
-	@echo "    UVM_TEST=<name>   UVM test name (default: base_test)"
+	@echo "    UVM_TEST=<name>   UVM test name (default: <TOP>_base_test)"
 	@echo ""
 	@echo "  Config: edit config.mk or re-run generate_config.sh to change defaults"
 	@echo ""
