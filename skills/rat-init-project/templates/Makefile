@@ -47,8 +47,37 @@ CDC_SCRIPT  := lint/scripts/run_cdc.sh
 SIM_SCRIPT  := scripts/run_sim.sh
 
 # ─── Internal helpers ───────────────────────────────────────────────────────
+_safe_alpha      := A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z
+_safe_digits     := 0 1 2 3 4 5 6 7 8 9
+_safe_ident      := $(_safe_alpha) $(_safe_digits) _
+_safe_path       := $(_safe_ident) . / + = @ : , -
+
+define _strip_chars
+$(if $(2),$(call _strip_chars,$(subst $(firstword $(2)),,$(1)),$(wordlist 2,$(words $(2)),$(2))),$(1))
+endef
+
+_has_whitespace = $(filter-out 1,$(words $(strip $(1))))
+_starts_with_digit = $(filter 0% 1% 2% 3% 4% 5% 6% 7% 8% 9%,$(1))
+
+define _validate_identifier_var
+$(if $(value $(1)),,$(error $(1) is required. Usage: make $(MAKECMDGOALS) $(1)=<module>))
+$(if $(call _has_whitespace,$(value $(1))),$(error $(1) must not contain whitespace: $(value $(1))))
+$(if $(call _strip_chars,$(value $(1)),$(_safe_ident)),$(error $(1) contains unsafe characters: $(value $(1))))
+$(if $(call _starts_with_digit,$(value $(1))),$(error $(1) must be a Verilog identifier starting with a letter or underscore: $(value $(1))))
+endef
+
+define _validate_path_var
+$(if $(value $(1)),,$(error $(1) is required))
+$(if $(call _has_whitespace,$(value $(1))),$(error $(1) must not contain whitespace: $(value $(1))))
+$(if $(call _strip_chars,$(value $(1)),$(_safe_path)),$(error $(1) contains shell-unsafe characters: $(value $(1))))
+endef
+
+define _validate_optional_path_var
+$(if $(value $(1)),$(call _validate_path_var,$(1)))
+endef
+
 define _require_top
-$(if $(TOP),,$(error TOP is required. Usage: make $(MAKECMDGOALS) TOP=<module>))
+$(call _validate_identifier_var,TOP)
 endef
 
 _top_flag     = $(if $(TOP),--top $(TOP))
@@ -151,15 +180,26 @@ syn: syn_$(PREF_SYN)
 
 syn_yosys:
 	$(call _require_top)
-	$(SYN_SCRIPT) --tool yosys --top $(TOP) -f $(FILELIST) $(_liberty_flag)
+	$(call _validate_path_var,SYN_SCRIPT)
+	$(call _validate_path_var,FILELIST)
+	$(call _validate_optional_path_var,LIBERTY)
+	"$(SYN_SCRIPT)" --tool yosys --top "$(TOP)" -f "$(FILELIST)" $(if $(LIBERTY),--liberty "$(LIBERTY)")
 
 syn_dc:
 	$(call _require_top)
-	$(SYN_SCRIPT) --tool dc_shell --top $(TOP) -f $(FILELIST) $(_liberty_flag) $(_sdc_flag)
+	$(call _validate_path_var,SYN_SCRIPT)
+	$(call _validate_path_var,FILELIST)
+	$(call _validate_optional_path_var,LIBERTY)
+	$(call _validate_optional_path_var,SDC_FILE)
+	"$(SYN_SCRIPT)" --tool dc_shell --top "$(TOP)" -f "$(FILELIST)" $(if $(LIBERTY),--liberty "$(LIBERTY)") $(if $(SDC_FILE),--sdc "$(SDC_FILE)")
 
 syn_genus:
 	$(call _require_top)
-	$(SYN_SCRIPT) --tool genus --top $(TOP) -f $(FILELIST) $(_liberty_flag) $(_sdc_flag)
+	$(call _validate_path_var,SYN_SCRIPT)
+	$(call _validate_path_var,FILELIST)
+	$(call _validate_optional_path_var,LIBERTY)
+	$(call _validate_optional_path_var,SDC_FILE)
+	"$(SYN_SCRIPT)" --tool genus --top "$(TOP)" -f "$(FILELIST)" $(if $(LIBERTY),--liberty "$(LIBERTY)") $(if $(SDC_FILE),--sdc "$(SDC_FILE)")
 
 # =============================================================================
 # Formal Verification — default: preferred tool
@@ -170,20 +210,23 @@ formal: formal_$(PREF_FORMAL)
 
 formal_sby:
 	$(call _require_top)
+	$(call _validate_path_var,SBY_FILE)
 	@mkdir -p formal
-	cd formal && sby -f $(abspath $(SBY_FILE))
+	sby -f "$(SBY_FILE)" bmc prove cover
 
 formal_jasper:
 	$(call _require_top)
 	$(if $(JASPER_TCL),,$(error JASPER_TCL required. Usage: make formal_jasper TOP=<m> JASPER_TCL=<tcl>))
+	$(call _validate_path_var,JASPER_TCL)
 	@mkdir -p formal
-	cd formal && jg -batch $(abspath $(JASPER_TCL))
+	cd formal && jg -batch "$(abspath $(JASPER_TCL))"
 
 formal_vcf:
 	$(call _require_top)
 	$(if $(VCF_TCL),,$(error VCF_TCL required. Usage: make formal_vcf TOP=<m> VCF_TCL=<tcl>))
+	$(call _validate_path_var,VCF_TCL)
 	@mkdir -p formal
-	cd formal && vcf -f $(abspath $(VCF_TCL)) -batch
+	cd formal && vcf -f "$(abspath $(VCF_TCL))" -batch
 
 # =============================================================================
 # UVM Verification — commercial simulators only

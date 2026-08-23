@@ -67,8 +67,8 @@ unexpected hardware (latches, priority encoders). Early synthesis feedback preve
    # With commercial tool (no sv2v needed):
    syn/scripts/run_syn.sh --tool dc_shell --top {module} -f rtl/filelist_{module}.f
 
-   # Optional: skip if tool unavailable (for non-blocking estimation)
-   syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --skip-if-unavailable
+   # Optional only for exploratory/non-gating estimates:
+   # syn/scripts/run_syn.sh --tool yosys --top {module} -f rtl/filelist_{module}.f --skip-if-unavailable
    ```
 
 4. **ASIC synthesis estimation** (NanGate45 liberty — TSMC 28nm proxy):
@@ -145,7 +145,7 @@ Task(subagent_type="rtl-agent-team:constraint-writer",
 # Step 3-4: ASIC Synthesis Estimation via wrapper (NanGate45 / TSMC 28nm proxy)
 # ============================================================
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run ASIC synthesis estimation using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib --skip-if-unavailable. Script handles sv2v conversion internally. Outputs: syn/rpt/ (reports), syn/vnet/ (netlist), syn/log/ (logs). Check output for inferred latches. If SKIPPED, record status.")
+     prompt="Run ASIC synthesis estimation using wrapper: syn/scripts/run_syn.sh --tool yosys --top {top} -f rtl/filelist_top.f --liberty NangateOpenCellLibrary_typical.lib. Script handles sv2v conversion internally. Outputs: syn/rpt/ (reports), syn/vnet/ (netlist), syn/log/ (logs). Check output for inferred latches. Treat tool/license unavailability as a blocked required gate unless the user explicitly requested a non-gating exploratory estimate.")
 
 # ============================================================
 # Step 6-9: Parse results → gate count (NAND2-FO2 equivalent)

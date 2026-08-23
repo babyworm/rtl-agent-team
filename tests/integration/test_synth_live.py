@@ -1,6 +1,7 @@
 """Integration tests for synthesis with real Yosys."""
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -136,3 +137,43 @@ endmodule
             timeout=120,
         )
         assert result.returncode == 0
+
+    def test_yosys_synthesis_with_sv2v_and_empty_common(self, tmp_path, synth_script_path):
+        if shutil.which("sv2v") is None:
+            pytest.skip("sv2v not installed")
+
+        rtl = tmp_path / "rtl"
+        rtl.mkdir()
+        include = rtl / "include"
+        include.mkdir()
+        (include / "defs.svh").write_text("`define WIDTH 8\n")
+        sv = rtl / "with_include.sv"
+        sv.write_text("""\
+`include "defs.svh"
+module with_include (
+  input  logic [`WIDTH-1:0] i_a,
+  output logic [`WIDTH-1:0] o_y
+);
+`ifdef USE_PASS
+  assign o_y = i_a;
+`else
+  assign o_y = '0;
+`endif
+endmodule
+""")
+        flist = rtl / "filelist.f"
+        flist.write_text("+incdir+rtl/include\n+define+USE_PASS\nrtl/with_include.sv\n")
+
+        result = run_script(
+            synth_script_path,
+            "--tool", "yosys",
+            "--top", "with_include",
+            "-f", str(flist),
+            "--outdir", str(tmp_path / "syn_out"),
+            env={"RAT_PROJECT_ROOT": str(tmp_path)},
+            cwd=tmp_path,
+            timeout=120,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert (tmp_path / "syn_out" / "temp" / "with_include_sv2v.v").exists()

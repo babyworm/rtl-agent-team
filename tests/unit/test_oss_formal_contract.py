@@ -31,6 +31,15 @@ def _render(text: str) -> str:
         .replace("{{DOMAIN}}", "sys")
         .replace("{{RTL_SRC_DIR}}", "rtl/demo_dut")
         .replace("{{TOP_NAME}}", "demo_dut_formal_harness")
+        .replace(
+            "// {{FORMAL_CHECKS}}",
+            """always @(posedge sys_clk) begin
+  if (!$initstate) begin
+    assert (o_ready == sys_rst_n);
+    cover (i_valid && o_ready);
+  end
+end""",
+        )
     )
 
 
@@ -68,7 +77,8 @@ endmodule
             (
                 "read_verilog -formal demo_dut_v2v.v; "
                 "read_verilog -formal -sv demo_dut_formal_harness.sv; "
-                "prep -top demo_dut_formal_harness"
+                "prep -top demo_dut_formal_harness; "
+                "select -assert-min 1 t:$check"
             ),
         ],
         cwd=tmp_path,
@@ -88,6 +98,7 @@ def test_concurrent_sva_is_commercial_only_and_not_sv2v_input():
     assert "assert property" in commercial_template
     assert "commercial" in commercial_template.lower()
     assert "assert property" not in harness_template
+    assert "// {{FORMAL_CHECKS}}" in harness_template
     assert re.search(r"sv2v\s+--write=.*_v2v\.v", flow_text)
     assert not re.search(r"sv2v\s+--write[^\n]*(?:_props|\.sva)", flow_text)
     assert "Do NOT pass full concurrent SVA" in flow_text or "Do NOT run sv2v on full concurrent SVA" in flow_text
@@ -99,11 +110,12 @@ def test_sby_template_uses_copied_basenames_explicit_tasks_and_property_gate():
     assert "sby -f formal/demo_dut.sby bmc" in sby
     assert "sby -f formal/demo_dut.sby prove" in sby
     assert "sby -f formal/demo_dut.sby cover" in sby
-    assert "read -formal rtl/demo_dut/demo_dut_v2v.v" in sby
-    assert "read -formal -sv formal/demo_dut_formal_harness.sv" in sby
+    assert "read -formal demo_dut_v2v.v" in sby
+    assert "read -formal -sv demo_dut_formal_harness.sv" in sby
     assert "prep -top demo_dut_formal_harness" in sby
-    assert re.search(r"rtl/demo_dut/demo_dut_v2v\.v", sby)
-    assert re.search(r"formal/demo_dut_formal_harness\.sv", sby)
+    assert "select -assert-min 1 t:$check" in sby
+    assert "demo_dut_v2v.v formal/demo_dut_v2v.v" in sby
+    assert "demo_dut_formal_harness.sv formal/demo_dut_formal_harness.sv" in sby
     assert "{{RTL_SRC_DIR}}/demo_dut_v2v.v" not in sby
     assert "formal/demo_dut_props.sv" not in sby
 

@@ -74,6 +74,116 @@ validate_shell_safe() {
   done
 }
 
+trim_filelist_line() {
+  local line="$1"
+  line="${line%%//*}"
+  # Filelist tokens with whitespace are outside this wrapper's safe replay/Tcl
+  # policy; trim only leading/trailing whitespace before explicit validation.
+  line="${line#"${line%%[![:space:]]*}"}"
+  line="${line%"${line##*[![:space:]]}"}"
+  printf '%s\n' "$line"
+}
+
+filelist_dirname() {
+  local p="$1"
+  if [[ "$p" == */* ]]; then
+    printf '%s\n' "${p%/*}"
+  else
+    printf '%s\n' "."
+  fi
+}
+
+resolve_filelist_path() {
+  local base="$1"
+  local entry="$2"
+  if [[ "$entry" == /* ]]; then
+    printf '%s\n' "$entry"
+  elif [[ -e "$PROJECT_ROOT/$entry" ]]; then
+    # Generated filelists use project-root-relative paths such as rtl/top.sv.
+    printf '%s\n' "$PROJECT_ROOT/$entry"
+  else
+    # Nested filelists may use entries relative to their own directory.
+    printf '%s/%s\n' "$base" "$entry"
+  fi
+}
+
+resolve_incdir_option() {
+  local base="$1"
+  local option="$2"
+  local body="${option#+incdir+}"
+  local item result="+incdir+" separator=""
+
+  [[ -n "$body" ]] || { echo "ERROR: malformed +incdir+ option" >&2; exit 1; }
+  while [[ "$body" == *+* ]]; do
+    item="${body%%+*}"
+    [[ -n "$item" ]] || { echo "ERROR: malformed +incdir+ option" >&2; exit 1; }
+    result+="${separator}$(resolve_filelist_path "$base" "$item")"
+    separator="+"
+    body="${body#*+}"
+  done
+  [[ -n "$body" ]] || { echo "ERROR: malformed +incdir+ option" >&2; exit 1; }
+  result+="${separator}$(resolve_filelist_path "$base" "$body")"
+  printf '%s\n' "$result"
+}
+
+collect_rtl_filelist() {
+  local filelist="$1"
+  local base line nested resolved stack_item
+
+  validate_shell_safe "RTL filelist path" "$filelist"
+  [[ -f "$filelist" ]] || { echo "ERROR: RTL filelist not found: $filelist" >&2; exit 1; }
+
+  if ((${#FILELIST_STACK[@]})); then
+    for stack_item in "${FILELIST_STACK[@]}"; do
+      [[ "$stack_item" == "$filelist" ]] && {
+        echo "ERROR: recursive RTL filelist include cycle at: $filelist" >&2
+        exit 1
+      }
+    done
+  fi
+
+  FILELIST_STACK+=("$filelist")
+  base="$(filelist_dirname "$filelist")"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="$(trim_filelist_line "$line")"
+    line="${line%%#*}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" ]] && continue
+    case "$line" in
+      +incdir+*)
+        resolved="$(resolve_incdir_option "$base" "$line")"
+        validate_shell_safe "RTL filelist option" "$resolved"
+        RTL_ARGS+=("$resolved")
+        ;;
+      +define+*)
+        validate_shell_safe "RTL filelist option" "$line"
+        RTL_ARGS+=("$line")
+        ;;
+      -f\ *)
+        nested="${line#-f }"
+        nested="$(resolve_filelist_path "$base" "$nested")"
+        collect_rtl_filelist "$nested"
+        ;;
+      -f*)
+        nested="${line#-f}"
+        nested="$(resolve_filelist_path "$base" "$nested")"
+        collect_rtl_filelist "$nested"
+        ;;
+      -*)
+        echo "ERROR: unsupported RTL filelist option: $line" >&2
+        exit 1
+        ;;
+      *)
+        resolved="$(resolve_filelist_path "$base" "$line")"
+        validate_shell_safe "RTL file path" "$resolved"
+        RTL_ARGS+=("$resolved")
+        RTL_FILES+=("$resolved")
+        ;;
+    esac
+  done < "$filelist"
+  unset 'FILELIST_STACK[${#FILELIST_STACK[@]}-1]'
+}
+
 # ─── Parse args ─────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -123,17 +233,11 @@ mkdir -p "$REPLAY_DIR"
 REPLAY_SCRIPT="$REPLAY_DIR/run_formality_${TOP}_${TIMESTAMP}.sh"
 REPORT="$OUTDIR/formality_${TOP}_${TIMESTAMP}.log"
 
-# ─── Collect RTL files ────────────────────────────────────────────────────
+# ─── Collect RTL files/options ────────────────────────────────────────────
+RTL_ARGS=()
 RTL_FILES=()
-while IFS= read -r line; do
-  line=$(echo "$line" | sed 's|//.*||' | xargs)
-  [[ -z "$line" ]] && continue
-  [[ "$line" == +* ]] && continue
-  RTL_FILES+=("$line")
-done < "$RTL_FILELIST"
-
-# Filelist entries are emitted into the generated Tcl — validate them too.
-validate_shell_safe "RTL file path" "${RTL_FILES[@]}"
+FILELIST_STACK=()
+collect_rtl_filelist "$RTL_FILELIST"
 
 # ─── Generate Formality Tcl ──────────────────────────────────────────────
 FM_TCL="$SCRIPT_PATH"
@@ -149,9 +253,11 @@ if [[ ! -f "$FM_TCL" ]] || [[ -z "$SCRIPT_PATH" ]]; then
     [[ -n "$SVF" ]] && echo "set_svf \"$SVF\""
     echo ""
     echo "# --- Reference design (RTL) ---"
-    for f in "${RTL_FILES[@]}"; do
-      echo "read_verilog -container r -libname WORK -05 \"$f\""
+    printf 'read_sverilog -container r -libname WORK'
+    for f in "${RTL_ARGS[@]}"; do
+      printf ' "%s"' "$f"
     done
+    printf '\n'
     echo "set_top r:/WORK/$TOP"
     echo ""
     echo "# --- Implementation design (netlist) ---"

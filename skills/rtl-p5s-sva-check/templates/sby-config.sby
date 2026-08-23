@@ -33,12 +33,16 @@ cover: smtbmc boolector
 #   abc pdr         — unbounded proof (prove mode only)
 
 [script]
-# SBY copies the listed project-root paths into <outdir>/src, preserving the
-# relative paths that the script reads here.
-read -formal {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
-read -formal -sv formal/{{MODULE}}_formal_harness.sv
+# SBY copies [files] into <outdir>/src. Read the destination basenames here,
+# not their project-root source paths.
+read -formal {{MODULE}}_v2v.v
+read -formal -sv {{MODULE}}_formal_harness.sv
 prep -top {{MODULE}}_formal_harness
+# Fail before invoking a solver if the generated OSS harness did not elaborate
+# into at least one immediate formal check cell.
+select -assert-min 1 t:$check
 
 [files]
-{{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
-formal/{{MODULE}}_formal_harness.sv
+# destination basename, then project-root source path
+{{MODULE}}_v2v.v formal/{{MODULE}}_v2v.v
+{{MODULE}}_formal_harness.sv formal/{{MODULE}}_formal_harness.sv

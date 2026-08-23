@@ -381,7 +381,7 @@ class TestValidInputsStillWork:
         netlist = tmp_path / "n.v"
         netlist.write_text("module m; endmodule\n")
         fake_bin = tmp_path / "bin"
-        _make_fake_tool(fake_bin, "lec", 'echo LEC_FAKE "$@"')
+        _make_fake_tool(fake_bin, "lec", 'echo RAT_CONFORMAL_EQUIVALENT "$@"')
         result = run_script(
             RUN_CONFORMAL, "--top", "m", "--rtl", str(flist),
             "--netlist", str(netlist), "--outdir", "syn_rpt",
@@ -554,7 +554,7 @@ class TestRatProjectRootOverride:
         (proj / "f.f").write_text("m.sv\n")
         (proj / "n.v").write_text("module m; endmodule\n")
         fake_bin = tmp_path / "bin"
-        _make_fake_tool(fake_bin, "lec", 'echo LEC_FAKE "$@"')
+        _make_fake_tool(fake_bin, "lec", 'echo RAT_CONFORMAL_EQUIVALENT "$@"')
         result = run_script(
             RUN_CONFORMAL, "--top", "m", "--rtl", "f.f", "--netlist", "n.v",
             env=_env_with(fake_bin, RAT_PROJECT_ROOT=str(proj)),

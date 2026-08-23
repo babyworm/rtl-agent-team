@@ -43,6 +43,8 @@ LIBERTY=""
 SDC_FILE=""
 SCRIPT_PATH=""
 FILES=()
+INCLUDE_DIRS=()
+FILE_DEFINES=()
 VERBOSE=0
 FLATTEN=0
 SKIP_IF_UNAVAILABLE=0
@@ -229,15 +231,161 @@ if type check_tool_licensed >/dev/null 2>&1; then
   esac
 fi
 
-# ─── Collect source files ──────────────────────────────────────────────────
+# ─── Collect source files and filelist options ──────────────────────────────
 SRC_FILES=()
-if [[ -n "$FILELIST" ]]; then
-  while IFS= read -r line; do
-    line=$(echo "$line" | sed 's|//.*||' | xargs)
+COMMON_RTL_FILES=()
+ALL_SYNTH_FILES=()
+FILELIST_STACK=()
+
+is_known_source_file() {
+  case "$1" in
+    *.v|*.sv) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+append_src_file() {
+  local f="$1"
+  SRC_FILES+=("$f")
+}
+
+append_include_dir() {
+  local d="$1"
+  local e
+  for e in "${INCLUDE_DIRS[@]+"${INCLUDE_DIRS[@]}"}"; do
+    [[ "$e" == "$d" ]] && return 0
+  done
+  INCLUDE_DIRS+=("$d")
+}
+
+append_file_define() {
+  local d="$1"
+  local e
+  for e in "${FILE_DEFINES[@]+"${FILE_DEFINES[@]}"}"; do
+    [[ "$e" == "$d" ]] && return 0
+  done
+  FILE_DEFINES+=("$d")
+}
+
+append_synth_file() {
+  local f="$1"
+  local e
+  for e in "${ALL_SYNTH_FILES[@]+"${ALL_SYNTH_FILES[@]}"}"; do
+    [[ "$e" == "$f" ]] && return 0
+  done
+  ALL_SYNTH_FILES+=("$f")
+}
+
+resolve_project_path() {
+  case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PROJECT_ROOT/$1" ;; esac
+}
+
+validate_file_define_token() {
+  local d="$1"
+  case "$d" in
+    ""|*=) echo "ERROR: malformed +define+ token: '$d'" >&2; exit 1 ;;
+  esac
+  if ! [[ "$d" =~ ^[A-Za-z_][A-Za-z0-9_]*(=.*)?$ ]]; then
+    echo "ERROR: malformed +define+ token: '$d'" >&2
+    exit 1
+  fi
+  case "$d" in
+    *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *\\* | *[[:space:]]* | *$'\n'* | *$'\r'* )
+      echo "ERROR: +define+ value contains unsupported or unsafe characters: '$d'" >&2
+      exit 1 ;;
+  esac
+}
+
+reject_filelist_glob_token() {
+  local token="$1"
+  local list_path="$2"
+  case "$token" in
+    *'*'* | *'?'* )
+      echo "ERROR: unsupported wildcard/glob token '$token' in $list_path" >&2
+      exit 1 ;;
+  esac
+}
+
+parse_filelist() {
+  local list_path="$1"
+  local token next_token inc_body inc_part define_body active_list had_noglob stack_idx
+  [[ -f "$list_path" ]] || { echo "ERROR: filelist not found: $list_path" >&2; exit 1; }
+
+  for active_list in "${FILELIST_STACK[@]+"${FILELIST_STACK[@]}"}"; do
+    if [[ "$active_list" == "$list_path" ]]; then
+      echo "ERROR: recursive synthesis filelist include cycle at $list_path" >&2
+      exit 1
+    fi
+  done
+  FILELIST_STACK+=("$list_path")
+
+  # shellcheck disable=SC2094
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%//*}"
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
     [[ -z "$line" ]] && continue
-    [[ "$line" == +* ]] && continue
-    SRC_FILES+=("$line")
-  done < "$FILELIST"
+
+    # Vendor .f files often allow whitespace-separated tokens. This wrapper
+    # intentionally rejects paths/options with embedded spaces rather than
+    # trying to emulate every simulator's quoting dialect inside Bash.
+    case "$-" in *f*) had_noglob=1 ;; *) had_noglob=0; set -f ;; esac
+    # shellcheck disable=SC2086
+    set -- $line
+    [[ "$had_noglob" -eq 1 ]] || set +f
+    while [[ $# -gt 0 ]]; do
+      token="$1"
+      shift
+      reject_filelist_glob_token "$token" "$list_path"
+      case "$token" in
+        -f)
+          [[ $# -gt 0 ]] || { echo "ERROR: malformed filelist: -f without path in $list_path" >&2; exit 1; }
+          next_token="$1"
+          shift
+          parse_filelist "$(resolve_project_path "$next_token")"
+          ;;
+        -f*)
+          parse_filelist "$(resolve_project_path "${token#-f}")"
+          ;;
+        +incdir+*)
+          inc_body="${token#+incdir+}"
+          [[ -n "$inc_body" ]] || { echo "ERROR: malformed +incdir+ token in $list_path" >&2; exit 1; }
+          while [[ "$inc_body" == *+* ]]; do
+            inc_part="${inc_body%%+*}"
+            [[ -n "$inc_part" ]] || { echo "ERROR: malformed +incdir+ token in $list_path" >&2; exit 1; }
+            append_include_dir "$(resolve_project_path "$inc_part")"
+            inc_body="${inc_body#*+}"
+          done
+          [[ -n "$inc_body" ]] || { echo "ERROR: malformed +incdir+ token in $list_path" >&2; exit 1; }
+          append_include_dir "$(resolve_project_path "$inc_body")"
+          ;;
+        +define+*)
+          define_body="${token#+define+}"
+          validate_file_define_token "$define_body"
+          append_file_define "$define_body"
+          ;;
+        -*|+*)
+          echo "ERROR: unsupported synthesis filelist token '$token' in $list_path" >&2
+          exit 1
+          ;;
+        *)
+          if ! is_known_source_file "$token"; then
+            echo "ERROR: unsupported synthesis filelist source '$token' in $list_path" >&2
+            exit 1
+          fi
+          append_src_file "$token"
+          ;;
+      esac
+    done
+  done < "$list_path"
+
+  stack_idx=$((${#FILELIST_STACK[@]} - 1))
+  unset "FILELIST_STACK[$stack_idx]"
+}
+
+if [[ -n "$FILELIST" ]]; then
+  parse_filelist "$FILELIST"
 fi
 [[ ${#FILES[@]} -gt 0 ]] && SRC_FILES+=("${FILES[@]}")
 
@@ -250,10 +398,18 @@ if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
   # Resolve source files to absolute paths (before cd)
   _abs_src=()
   for f in "${SRC_FILES[@]}"; do
-    case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
+    _abs_src+=("$(resolve_project_path "$f")")
   done
   SRC_FILES=("${_abs_src[@]}")
 fi
+
+if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
+  while IFS= read -r cf; do
+    COMMON_RTL_FILES+=("$cf")
+  done < <(find "$PROJECT_ROOT/rtl/common" \( -name '*.sv' -o -name '*.v' \) 2>/dev/null | sort)
+fi
+for _p in "${COMMON_RTL_FILES[@]+"${COMMON_RTL_FILES[@]}"}"; do append_synth_file "$_p"; done
+for _p in "${SRC_FILES[@]+"${SRC_FILES[@]}"}"; do append_synth_file "$_p"; done
 
 # DC/Genus emit EVERY source/library/work path into Tcl double quotes (`analyze ... "$f"`,
 # `read_hdl ... "$f"`, target/link library, SDC, --mem-lib). A path containing Tcl-active
@@ -267,16 +423,14 @@ fi
 # SYN_ROOT-derived paths into its generated script and into the replay shell
 # script (`yosys -s "$SCRIPT"`), where the same character set is shell-active.
 _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}|${SCRIPT_PATH}"
-if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
-  for _p in "${SRC_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+if [[ ${#ALL_SYNTH_FILES[@]} -gt 0 ]]; then
+  for _p in "${ALL_SYNTH_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
 fi
-if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
-  for _p in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-    [[ -e "$_p" ]] && _tcl_paths="${_tcl_paths}|${_p}"
-  done
+if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
+  for _p in "${INCLUDE_DIRS[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
 fi
 case "$_tcl_paths" in
-  *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *'\'* | *$'\n'* | *$'\r'* )
+  *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *\\* | *$'\n'* | *$'\r'* )
     echo "ERROR: a synthesis path (project/synth root, source file, rtl/common, --liberty," >&2
     echo "       --sdc, --script, or --mem-lib) contains Tcl-unsafe characters ([ ] { } \$ ; \" \` \\)." >&2
     echo "       DC/Genus emit paths into Tcl and Yosys embeds them into its script and" >&2
@@ -293,6 +447,7 @@ esac
 # path is parameterizable (fine) and won't match this literal-relative pattern.
 _relmem=""
 if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
+  # shellcheck disable=SC2016
   _relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true)
 fi
 if [[ -n "$_relmem" ]]; then
@@ -300,7 +455,9 @@ if [[ -n "$_relmem" ]]; then
   echo "         '$SYN_ROOT' (cd below), so these may load EMPTY (silent wrong synthesis)." >&2
   echo "         Fix: use absolute paths, parameterize the dir (+define+MEM_DIR=...), or" >&2
   echo "         ensure the .mem files resolve relative to \$SYN_ROOT. Offending loads:" >&2
-  echo "$_relmem" | sed 's/^/           /' >&2
+  while IFS= read -r _relmem_line; do
+    echo "           $_relmem_line" >&2
+  done <<< "$_relmem"
 fi
 
 # ─── Memory-wrapper blackbox setup (DC/Genus) ───────────────────────────────
@@ -330,6 +487,13 @@ done
 # Verilog +define+ clause for the selected memory process(es), shared by DC/Genus
 MEM_DEFINE_TOKENS=""
 [[ ${#MEM_PROCESS[@]} -gt 0 ]] && MEM_DEFINE_TOKENS="${MEM_PROCESS[*]}"
+if [[ ${#FILE_DEFINES[@]} -gt 0 ]]; then
+  if [[ -n "$MEM_DEFINE_TOKENS" ]]; then
+    MEM_DEFINE_TOKENS="$MEM_DEFINE_TOKENS ${FILE_DEFINES[*]}"
+  else
+    MEM_DEFINE_TOKENS="${FILE_DEFINES[*]}"
+  fi
+fi
 
 # ─── cd to synthesis root — all tool artifacts stay contained ─────────
 cd "$SYN_ROOT"
@@ -368,15 +532,20 @@ case "$TOOL" in
     SV2V_OUT="${DIR_TEMP}/${TOP}_sv2v.v"
     USE_SV2V=0
     if command -v sv2v >/dev/null 2>&1; then
-      COMMON_FILES=()
-      if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
-        while IFS= read -r cf; do
-          COMMON_FILES+=("$cf")
-        done < <(find "$PROJECT_ROOT/rtl/common" -name '*.sv' -o -name '*.v' 2>/dev/null | sort)
-      fi
+      SV2V_ARGS=()
+      for d in "${INCLUDE_DIRS[@]+"${INCLUDE_DIRS[@]}"}"; do
+        SV2V_ARGS+=("-I" "$d")
+      done
+      for d in "${FILE_DEFINES[@]+"${FILE_DEFINES[@]}"}"; do
+        SV2V_ARGS+=("-D" "$d")
+      done
+      SV2V_ARGS+=("--write=$SV2V_OUT")
+      for f in "${ALL_SYNTH_FILES[@]+"${ALL_SYNTH_FILES[@]}"}"; do
+        SV2V_ARGS+=("$f")
+      done
       echo "=== sv2v Conversion ==="
-      sv2v "${COMMON_FILES[@]}" "${SRC_FILES[@]}" -o "$SV2V_OUT"
-      echo "Converted: $SV2V_OUT (${#SRC_FILES[@]} source + ${#COMMON_FILES[@]} common files)"
+      sv2v "${SV2V_ARGS[@]}"
+      echo "Converted: $SV2V_OUT (${#ALL_SYNTH_FILES[@]} total source files)"
       USE_SV2V=1
     else
       echo "WARNING: sv2v not found — using read_verilog -sv (limited SV support in Yosys)"
@@ -390,14 +559,16 @@ case "$TOOL" in
       if [[ $USE_SV2V -eq 1 ]]; then
         echo "read_verilog $SV2V_OUT"
       else
-        for f in "${SRC_FILES[@]}"; do
-          echo "read_verilog -sv $f"
+        _yosys_opts="-sv"
+        for d in "${INCLUDE_DIRS[@]+"${INCLUDE_DIRS[@]}"}"; do
+          _yosys_opts="$_yosys_opts -I$d"
         done
-        if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
-          for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-            [[ -f "$f" ]] && echo "read_verilog -sv $f"
-          done
-        fi
+        for d in "${FILE_DEFINES[@]+"${FILE_DEFINES[@]}"}"; do
+          _yosys_opts="$_yosys_opts -D$d"
+        done
+        for f in "${ALL_SYNTH_FILES[@]+"${ALL_SYNTH_FILES[@]}"}"; do
+          echo "read_verilog $_yosys_opts $f"
+        done
       fi
       echo ""
       echo "hierarchy -check -top $TOP"
@@ -473,6 +644,9 @@ case "$TOOL" in
       echo "# Generated: $(date)"
       echo ""
       echo "set_app_var search_path [list . ${DIR_DB} ${DIR_WORK}/dc]"
+      if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
+        echo "set_app_var search_path [concat [get_app_var search_path] [list ${INCLUDE_DIRS[*]}]]"
+      fi
       echo "set_app_var sh_command_log_file \"${DIR_LOG}/command.log\""
       if [[ -n "$LIBERTY" ]]; then
         echo "set_app_var target_library [list \"$LIBERTY\"]"
@@ -509,12 +683,7 @@ case "$TOOL" in
         echo "# --- Read RTL ---"
         _dcdef=""
         [[ -n "$MEM_DEFINE_TOKENS" ]] && _dcdef=" -define {$MEM_DEFINE_TOKENS}"
-        if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
-          for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-            [[ -f "$f" ]] && echo "analyze -format sverilog${_dcdef} \"$f\""
-          done
-        fi
-        for f in "${SRC_FILES[@]}"; do
+        for f in "${ALL_SYNTH_FILES[@]+"${ALL_SYNTH_FILES[@]}"}"; do
           echo "analyze -format sverilog${_dcdef} \"$f\""
         done
         echo ""
@@ -616,6 +785,9 @@ case "$TOOL" in
         fi
         echo ""
         echo "# Work directory"
+        if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
+          echo "set_db init_hdl_search_path [list ${INCLUDE_DIRS[*]}]"
+        fi
         echo "set_db hdl_work_directory \"${GENUS_WORK}\""
         echo "set_db log_directory \"${DIR_LOG}\""
         echo "set_db temp_directory \"${GENUS_TEMP}\""
@@ -628,12 +800,7 @@ case "$TOOL" in
         echo "# --- Read RTL ---"
         _gndef=""
         [[ -n "$MEM_DEFINE_TOKENS" ]] && _gndef=" -define {$MEM_DEFINE_TOKENS}"
-        if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
-          for f in "$PROJECT_ROOT"/rtl/common/*.sv "$PROJECT_ROOT"/rtl/common/*.v; do
-            [[ -f "$f" ]] && echo "read_hdl -sv${_gndef} \"$f\""
-          done
-        fi
-        for f in "${SRC_FILES[@]}"; do
+        for f in "${ALL_SYNTH_FILES[@]+"${ALL_SYNTH_FILES[@]}"}"; do
           echo "read_hdl -sv${_gndef} \"$f\""
         done
         echo ""

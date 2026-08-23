@@ -30,16 +30,9 @@ module {{MODULE}}_formal_harness;
   initial {{DOMAIN}}_clk = 1'b0;
   always #1 {{DOMAIN}}_clk = !{{DOMAIN}}_clk;
 
-  always @(posedge {{DOMAIN}}_clk) begin
-    if (!$initstate) begin
-      assume ({{DOMAIN}}_rst_n);
-      assume (!$isunknown(i_valid));
-      assume (!$isunknown(i_data));
-      assert (!$isunknown(o_data));
-      if (i_valid && !o_ready) begin
-        assert (i_valid);
-      end
-      cover (i_valid && o_ready);
-    end
-  end
+  // Replace this marker with DUT-specific immediate assume/assert/cover
+  // statements derived from requirements. Do not leave tautological checks in
+  // place: the SBY template requires at least one real $check cell and stops
+  // before solver execution when this harness has not been completed.
+  // {{FORMAL_CHECKS}}
 endmodule

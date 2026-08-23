@@ -83,9 +83,18 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Genus produces mapping data in its native format → Conformal natively understands
     - Cross-pairing (DC+Conformal or Genus+Formality) works but loses guided-verification advantage
 
-    If `env_source` is set for the tool in `rat_config.json`, source it before invocation:
+    If a commercial tool needs environment setup, do not evaluate strings from
+    `rat_config.json`. Use an existing setup script under an allowlisted project
+    or site-tools directory, validate the resolved path, then source it directly:
     ```bash
-    eval "$(python3 -c "import json; print(json.load(open('rat_config.json'))['tools']['equivalence']['fm_shell']['env_source'])")"
+    setup_script="tools/env/formality.sh"
+    case "$setup_script" in
+      tools/env/*.sh|/opt/eda/*/setup.sh) ;;
+      *) echo "refusing unapproved setup script: $setup_script" >&2; exit 1 ;;
+    esac
+    [ -f "$setup_script" ] || { echo "missing setup script: $setup_script" >&2; exit 1; }
+    # shellcheck source=/dev/null
+    source "$setup_script"
     ```
   </Tool_Selection_Protocol>
 
@@ -133,7 +142,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     set_svf "syn/svf/top.svf"
 
     # 2. Reference design (RTL)
-    read_verilog -container r -libname WORK -05 {rtl_files}
+    read_sverilog -container r -libname WORK {rtl_files}
     set_top r:/WORK/{module}
 
     # 3. Implementation design (netlist + technology library)
@@ -278,8 +287,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     ### sv2v prerequisite
     Yosys has limited SystemVerilog support — convert RTL first:
     ```bash
-    sv2v rtl/common/*.sv rtl/{module}/*.sv -o /tmp/reference.v
-    sv2v rtl/common/*.sv rtl/{module}_modified/*.sv -o /tmp/implementation.v
+    sv2v rtl/common/*.sv rtl/{module}/*.sv --write=/tmp/reference.v
+    sv2v rtl/common/*.sv rtl/{module}_modified/*.sv --write=/tmp/implementation.v
     ```
 
     ### Full Yosys equivalence flow

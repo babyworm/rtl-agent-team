@@ -107,11 +107,10 @@ def test_templates_pass_the_plugin_convention_checker(tmp_path):
 
 
 def test_oss_formal_harness_uses_immediate_assertions():
-    """The OSS harness must keep real $assert/$cover cells after sv2v/Yosys."""
+    """The OSS harness requires generated immediate checks, never SVA syntax."""
     template = SKILLS_DIR / "rtl-p5s-sva-check" / "templates" / "yosys-formal-harness-template.sv"
     body = _render(template)
-    assert "assert (" in body, "OSS harness must contain at least one immediate assert"
-    assert "cover (" in body, "OSS harness must contain at least one immediate cover"
+    assert "// {{FORMAL_CHECKS}}" in body, "OSS harness must require generated checks"
     assert "assert property" not in body, "OSS harness should not use concurrent assertions"
     assert "cover property" not in body, "OSS harness should not use concurrent covers"
 
@@ -120,9 +119,11 @@ def test_oss_sby_template_points_to_the_harness_top():
     """The OSS .sby template must read and top the generated harness, not the DUT."""
     template = SKILLS_DIR / "rtl-p5s-sva-check" / "templates" / "sby-config.sby"
     body = template.read_text()
-    assert "read -formal {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v" in body
-    assert "read -formal -sv formal/{{MODULE}}_formal_harness.sv" in body
+    assert "read -formal {{MODULE}}_v2v.v" in body
+    assert "{{MODULE}}_v2v.v formal/{{MODULE}}_v2v.v" in body
+    assert "read -formal -sv {{MODULE}}_formal_harness.sv" in body
     assert "prep -top {{MODULE}}_formal_harness" in body
+    assert "select -assert-min 1 t:$check" in body
     assert "formal/{{MODULE}}_props.sv" not in body
 
 

@@ -125,10 +125,11 @@ to the DUT, and use procedural immediate `assert(...)`, `assume(...)`, and
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="For each module, generate SymbiYosys .sby config at formal/{module}.sby.
-Use templates/sby-config.sby as template. [files] section MUST list the project-root
-RTL path formal/{module}_v2v.v and the generated harness path
-formal/{module}_formal_harness.sv. [script] MUST read those same paths and prep
-{module}_formal_harness as top.
+Use templates/sby-config.sby as template. [files] MUST map the project-root
+RTL path formal/{module}_v2v.v and generated harness path
+formal/{module}_formal_harness.sv to destination basenames. [script] MUST read
+those basenames from SBY's copied src/ workdir, prep `{module}_formal_harness`
+as top, and require at least one `$check` cell before solver execution.
 Engine selection: smtbmc boolector (default), smtbmc yices (bitvector-heavy), abc pdr (unbounded).
 Generate both BMC (mode bmc) and prove (mode prove) configurations.
 Then run BMC explicitly: sby -f formal/{module}.sby bmc

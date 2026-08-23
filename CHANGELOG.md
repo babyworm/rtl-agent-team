@@ -7,6 +7,36 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.14.6] - 2026-08-24
+
+### Fixed — synthesis and equivalence execution
+
+- Repaired the Yosys path when sv2v is installed: Bash 3.2 empty arrays are
+  safe, sv2v uses its supported `--write=` form, and generated project filelists
+  retain recursive `-f`, `+incdir+`, and `+define+` semantics.
+- Normalized root-relative and nested-relative filelist paths for synthesis,
+  Formality, and Conformal. Unsupported or wildcard filelist tokens now fail
+  before they can silently alter the input design.
+- Made Make synthesis/formal targets validate all command-bearing variables
+  before shell expansion, including `SYN_SCRIPT`.
+- Made Formality read SystemVerilog reference RTL, made Conformal use its
+  SystemVerilog golden mode, and made Conformal fail closed without an explicit
+  equivalence-success result.
+
+### Fixed — OSS formal proof contract
+
+- Corrected SBY copied-file basename mapping and require at least one `$check`
+  cell before a solver runs.
+- Require a DUT-specific immediate-check harness for OSS SBY rather than a
+  vacuous default assertion; keep full concurrent SVA/bind assets on the
+  commercial formal path.
+
+### Testing
+
+- Added real Yosys/sv2v integration and contracts for nested filelists, include
+  directories, defines, recursion, Make input safety, equivalence result gates,
+  SBY copied basenames, and non-empty formal checks.
+
 ## [0.14.5] - 2026-08-23
 
 ### Fixed — OSS SymbiYosys formal contract

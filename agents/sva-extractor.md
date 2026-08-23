@@ -188,13 +188,14 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     cover: smtbmc boolector
 
     [script]
-    read -formal rtl/{module}/module_name_v2v.v
-    read -formal -sv formal/module_name_formal_harness.sv
+    read -formal module_name_v2v.v
+    read -formal -sv module_name_formal_harness.sv
     prep -top module_name_formal_harness
+    select -assert-min 1 t:$check
 
     [files]
-    rtl/{module}/module_name_v2v.v
-    formal/module_name_formal_harness.sv
+    module_name_v2v.v formal/{module}_v2v.v
+    module_name_formal_harness.sv formal/module_name_formal_harness.sv
     ```
   </Tool_Usage>
 
