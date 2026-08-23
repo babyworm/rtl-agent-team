@@ -1,4 +1,6 @@
-// SVA Property Template for {{MODULE}}
+// Commercial formal concurrent SVA property template for {{MODULE}}.
+// Do not feed this file through sv2v for the OSS SymbiYosys flow; sv2v can
+// drop assertion/cover semantics. Use yosys-formal-harness-template.sv for OSS.
 // Convention: i_ prefix inputs, o_ prefix outputs, {domain}_clk, {domain}_rst_n
 // Principle: assume inputs, assert outputs
 

@@ -7,8 +7,11 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
 <Purpose>
-Extract SystemVerilog Assertions from RTL and run formal verification.
-Outputs: formal/*.sv assertion files + formal_verify.json with prove/fail status per property.
+Extract formal properties from RTL and run formal verification.
+Outputs:
+- `formal/*_props.sv` commercial/full-SVA assets for bind-file flows
+- `formal/*_formal_harness.sv` OSS SymbiYosys harness tops with procedural immediate `assert`/`assume`/`cover`
+- `formal/formal_verify_{module}.json` with aggregate task-level formal results
 
 See `references/sva-patterns.md` for SVA temporal operator reference, common assertion patterns,
 and SymbiYosys engine selection guide.
@@ -45,5 +48,7 @@ Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
      prompt="Execute SVA formal verification. User input: $ARGUMENTS")
 
 Do not perform any work directly.
-The orchestrator agent manages 3-round SVA refinement, sv2v conversion,
-SymbiYosys BMC/induction execution, and counterexample diagnosis.
+The orchestrator agent manages 3-round SVA refinement, explicit DUT-only sv2v
+conversion, OSS harness generation, SymbiYosys BMC/prove/cover execution, and
+counterexample diagnosis. Full concurrent SVA assets are not routed through sv2v;
+sv2v can drop formal semantics.

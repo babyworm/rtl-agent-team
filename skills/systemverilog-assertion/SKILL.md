@@ -98,7 +98,10 @@ SymbiYosys uses Yosys internally, which has limited SystemVerilog support.
 sv2v rtl/{module}/*.sv -o rtl/{module}/{module}_v2v.v
 ```
 - The `.sby` config `[files]` section must list the converted `_v2v.v` file, not `.sv`
-- SVA bind files / property files (`sva_*.sv`) do **NOT** need conversion — they are read with `-formal -sv` by SymbiYosys
+- OSS SymbiYosys uses a generated immediate-assert harness top read with `-formal -sv`
+  so Yosys keeps real `$assert` / `$cover` cells.
+- SVA bind files / property files (`sva_*.sv`) do **NOT** need conversion — they remain the
+  commercial/full-SVA path and are read with `-formal -sv` by tools that support bind.
 - The RTL that the SVA binds **to** needs sv2v conversion
 
 ### 5.1 Formal Verification Modes

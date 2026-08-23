@@ -1,6 +1,14 @@
 # SymbiYosys Configuration Template
-# Usage: sby -f formal/{{MODULE}}.sby
-# Generates: formal/{{MODULE}}/{{ENGINE}}/
+# Usage:
+#   sby -f formal/{{MODULE}}.sby bmc
+#   sby -f formal/{{MODULE}}.sby prove
+#   sby -f formal/{{MODULE}}.sby cover
+# Generates: formal/{{MODULE}}/
+#
+# OSS path: convert DUT RTL explicitly before SBY:
+#   sv2v --write=formal/{{MODULE}}_v2v.v {{RTL_SRC_DIR}}/*.sv
+# Keep full concurrent SVA (`assert property`, temporal operators, bind files)
+# commercial-only. Do not pass it through sv2v.
 
 [tasks]
 bmc       # Bounded Model Checking
@@ -25,14 +33,12 @@ cover: smtbmc boolector
 #   abc pdr         — unbounded proof (prove mode only)
 
 [script]
-# RTL files: use sv2v-converted .v (NOT .sv directly)
-# Convert before running sby: sv2v {{RTL_SRC_DIR}}/*.sv -o {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
+# SBY copies the listed project-root paths into <outdir>/src, preserving the
+# relative paths that the script reads here.
 read -formal {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
-# SVA property files: read with -sv (formal constructs, no sv2v needed)
-read -formal -sv formal/{{MODULE}}_props.sv
-prep -top {{MODULE}}
+read -formal -sv formal/{{MODULE}}_formal_harness.sv
+prep -top {{MODULE}}_formal_harness
 
 [files]
-# sv2v-converted RTL (run: sv2v {{RTL_SRC_DIR}}/*.sv -o {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v)
 {{RTL_SRC_DIR}}/{{MODULE}}_v2v.v
-formal/{{MODULE}}_props.sv
+formal/{{MODULE}}_formal_harness.sv

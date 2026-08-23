@@ -7,6 +7,22 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.14.5] - 2026-08-23
+
+### Fixed — OSS SymbiYosys formal contract
+
+- Split the commercial full-SVA property files from the OSS harness path so
+  SymbiYosys now reads a generated `formal/*_formal_harness.sv` top with
+  procedural immediate `assert`/`assume`/`cover`.
+- Kept concurrent `assert property` / `bind` examples on the commercial path
+  and made the SBY template read the DUT-converted RTL plus the harness by
+  project-root path, with `prep -top {{MODULE}}_formal_harness`.
+
+### Testing
+
+- Added regression coverage for the Yosys-elaborated harness and the SBY
+  template contract so the OSS path cannot silently lose all properties again.
+
 ## [0.14.4] - 2026-08-24
 
 ### Fixed — UVM regression integrity

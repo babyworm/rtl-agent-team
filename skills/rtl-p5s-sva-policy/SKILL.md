@@ -36,9 +36,10 @@ Each round produces a review note at `.rat/scratch/phase-5/sva-iteration-r{N}.md
 
 ## Final Checklist
 
-- [ ] formal/*.sv written with meaningful properties
+- [ ] `formal/*_props.sv` written with meaningful concurrent SVA properties for commercial formal tools
+- [ ] `formal/*_formal_harness.sv` written with Yosys-compatible procedural immediate checks for OSS SBY
 - [ ] All SVA signal references match RTL port names (`i_`/`o_` prefix, `{domain}_clk`/`{domain}_rst_n`)
-- [ ] formal_verify.json produced with status per property
+- [ ] `formal/formal_verify_{module}.json` produced with task-level result status
 - [ ] No "failed" status without counterexample attached
 - [ ] Timeouts documented and flagged for simulation fallback
 
@@ -63,11 +64,18 @@ SymbiYosys engine guide:
 See `{plugin_root}/skills/rtl-p5s-sva-check/references/sva-patterns.md` for complete temporal operator reference and pattern library.
 
 **sv2v conversion note:**
-SymbiYosys relies on Yosys for reading design files. Yosys has limited SystemVerilog support,
-so RTL `.sv` files need Verilog conversion before `sby`. This is a **Layer 2 concern** —
-formal verification scripts handle sv2v conversion internally. Do NOT run sv2v manually.
-SVA property files (formal/*_props.sv) are read with `-formal -sv` and do NOT need conversion.
+SymbiYosys relies on Yosys for reading design files. Yosys has limited SystemVerilog
+support, so DUT RTL `.sv` files need explicit Verilog conversion before `sby`.
+Run sv2v on DUT RTL only:
 ```bash
-# Scripts handle sv2v internally:
-sby -f formal/{module}.sby   # .sby task script runs sv2v as a pre-step
+sv2v --write=formal/{module}_v2v.v rtl/{module}/*.sv
+test -s formal/{module}_v2v.v
+sby -f formal/{module}.sby bmc
+sby -f formal/{module}.sby prove
+sby -f formal/{module}.sby cover
 ```
+Do NOT run sv2v on full concurrent SVA property files (`formal/*_props.sv`);
+sv2v can remove assertions/covers. For OSS SBY, generate a dedicated
+`formal/*_formal_harness.sv` from `yosys-formal-harness-template.sv` and use
+procedural immediate `assert(...)`, `assume(...)`, and `cover(...)` in that harness.
+Keep concurrent SVA assets as commercial-formal input.

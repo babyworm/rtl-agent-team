@@ -72,7 +72,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Success_Criteria>
 
   <Constraints>
-    - Do NOT modify SVA files or .sby files. Write review reports only.
+    - Do NOT modify formal files. Write review reports only.
     - Every finding must cite the specific assertion/assume/cover with file:line.
     - Vacuity claims must be supported by analysis (e.g., antecedent condition is unreachable).
     - Do not claim an assertion is vacuous without checking if the antecedent is reachable.
@@ -80,7 +80,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read all .sva files in formal/ directory. Catalog every assertion, assume, and cover property.
+    1. Read all formal/*.sv files, including `*_props.sv` commercial bind examples and
+       `*_formal_harness.sv` OSS harness tops. Catalog every assertion, assume, and cover property.
     2. Read all .sby files. Extract solver configuration, depth, engine, and task definitions.
     3. Read docs/phase-1-research/iron-requirements.json and map assertions to requirements (REQ-XXXX → assertion name).
     4. For each assertion:
@@ -121,9 +122,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Investigation_Protocol>
 
   <Tool_Usage>
-    - Read: read .sva files, .sby files, docs/phase-1-research/iron-requirements.json
+    - Read: read formal/*.sv files, .sby files, docs/phase-1-research/iron-requirements.json
     - Grep: find assert/assume/cover property patterns across all formal files
-    - Glob: find all formal/*.sva, formal/*.sby files
+    - Glob: find all formal/*.sv, formal/*.sby files
     - Bash: run `sby -f *.sby` to check formal results (if not already run)
     - Write: save review report to reviews/ path
 
@@ -131,17 +132,17 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     ```bash
     # Count assert/assume/cover balance
     echo "=== Formal Property Balance ==="
-    echo -n "Assertions: "; grep -rc "assert property" formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
-    echo -n "Assumptions: "; grep -rc "assume property" formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
-    echo -n "Covers: "; grep -rc "cover property" formal/ --include="*.sva" | awk -F: '{sum+=$2} END{print sum}'
+    echo -n "Assertions: "; grep -rcE "\\bassert property\\b|\\bassert[[:space:]]*\\(" formal/ --include="*.sv" | awk -F: '{sum+=$2} END{print sum}'
+    echo -n "Assumptions: "; grep -rcE "\\bassume property\\b|\\bassume[[:space:]]*\\(" formal/ --include="*.sv" | awk -F: '{sum+=$2} END{print sum}'
+    echo -n "Covers: "; grep -rcE "\\bcover property\\b|\\bcover[[:space:]]*\\(" formal/ --include="*.sv" | awk -F: '{sum+=$2} END{print sum}'
     ```
 
     Vacuity risk detection:
     ```bash
     # Find assertions with complex antecedents (potential vacuity)
-    grep -n "assert property" formal/*.sva | grep "|[-=]>"
+    grep -nE "\\bassert property\\b|\\bassert[[:space:]]*\\(" formal/*.sv | grep "|[-=]>"
     # Cross-reference with cover properties
-    grep -n "cover property" formal/*.sva
+    grep -nE "\\bcover property\\b|\\bcover[[:space:]]*\\(" formal/*.sv
     ```
   </Tool_Usage>
 
@@ -165,9 +166,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     ## Property Balance
     | Type | Count | Files |
     |------|-------|-------|
-    | assert property | N | formal/*.sva |
-    | assume property | N | formal/*.sva |
-    | cover property | N | formal/*.sva |
+    | assert / immediate assert | N | formal/*.sv |
+    | assume / immediate assume | N | formal/*.sv |
+    | cover / immediate cover | N | formal/*.sv |
     | Ratio (assert:assume) | X:Y | (healthy > 2:1) |
 
     ## Requirement Traceability
