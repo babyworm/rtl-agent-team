@@ -7,6 +7,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-08-23
+
 ### Fixed — EDA tool invocations
 
 Audited every command line the runners build against each vendor's documented
