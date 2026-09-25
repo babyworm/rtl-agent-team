@@ -98,9 +98,10 @@ if [ "$(jsonu_get_file_path_string "$SKILL_STATE" "strategy")" = "upstream_chall
 fi
 
 # The ladder counts attempts, so only a Stop this gate blocks advances it: a
-# notice or a silent Stop leaves the iteration where it is.
+# notice or a silent Stop leaves the iteration where it is. The reason covers a
+# budget that another session rewrites in between, which turns the call into a block.
 if [ "$(stopu_decision skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS")" != "block" ]; then
-  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "" "$GATE_NOTICE"
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "[RTL Skill Completion Loop] ${SKILL_NAME} in progress. Remaining criteria: ${PENDING}." "$GATE_NOTICE"
 fi
 
 # Lock state file for atomic read → compute → write of mutable fields

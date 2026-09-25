@@ -2197,6 +2197,30 @@ class TestSkillCompletionGate:
         again, _ = self._stops_with_iterations(tmp_project, [False])  # the next turn
         assert "User decision required" in again[0]["systemMessage"]
 
+    def test_pre_check_block_after_a_race_still_instructs_claude(self, tmp_project):
+        # Another session's chain start rewrites the budget between the pre-check's decision
+        # (notice) and its stopu_gate call, which then blocks. A cksum shim stages that write:
+        # the budget's fingerprint calls cksum once per decision, before reading the file.
+        budget = tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt"
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        budget.write_text("0\n\n6\n0\np-1\n")  # this Stop is the chain's seventh: past the cap
+        shim = tmp_project / "shim"
+        shim.mkdir()
+        (shim / "cksum").write_text(
+            '#!/bin/sh\n'
+            'n=$(($(cat "$SHIM_DIR/calls" 2>/dev/null || echo 0) + 1))\n'
+            'echo "$n" > "$SHIM_DIR/calls"\n'
+            'if [ "$n" = 2 ]; then printf \'0\\n\\n1\\n0\\np-1\\n\' > "$RACE_BUDGET"; fi\n'
+            'exec "$REAL_CKSUM" "$@"\n')
+        (shim / "cksum").chmod(0o755)
+        env = {"PATH": f"{shim}{os.pathsep}{os.environ['PATH']}", "SHIM_DIR": str(shim),
+               "RACE_BUDGET": str(budget), "REAL_CKSUM": shutil.which("cksum")}
+        stop = {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"}
+        result = run_hook(self.HOOK, stop, env=env)
+        assert (shim / "calls").read_text().strip() == "2"  # the pre-check, then stopu_gate
+        assert result["decision"] == "block"
+        assert result["reason"].startswith("[RTL Skill Completion Loop] rtl-p4s-bugfix in progress.")
+
     @pytest.mark.parametrize("iteration,stage", [
         (2, "primary strategy"), (3, "fallback strategy"), (4, "fallback strategy"), (5, "last_chance"),
     ])
