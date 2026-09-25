@@ -478,6 +478,35 @@ class TestRtlVerifyStopGate:
         assert "jsonu_get_input_string" in content
         assert "teamu_should_skip_gate" in content
 
+    def test_block_leaves_waiver_to_the_user(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert "touch .rat/state/rtl-verify-waiver" not in result["reason"]
+        assert "ask the user" in result["reason"]
+
+    def test_chain_without_progress_hands_waiver_to_user(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        notice = results[3]["systemMessage"]
+        assert "still unverified" in notice
+        assert "rtl-verify-waiver" in notice
+
+    def test_new_rtl_edit_restarts_budget(self, tmp_project):
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        track.write_text("rtl/a.sv\nrtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result["decision"] == "block"
+
 
 class TestStopGate:
     """Tests for hooks/stop-gate.sh."""

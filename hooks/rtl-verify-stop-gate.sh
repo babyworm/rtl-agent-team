@@ -1,16 +1,19 @@
 #!/bin/sh
-# RTL Verify Stop Gate: blocks session exit if RTL files were modified without verification.
+# RTL Verify Stop Gate: keeps Claude working when RTL files were modified without verification.
 #
 # Tracking file: .rat/state/rtl-modified-files.txt (one path per line)
 # Verification evidence: .rat/state/rtl-verify-done (marker file)
-# Waiver: .rat/state/rtl-verify-waiver (bypass marker)
+# Waiver: .rat/state/rtl-verify-waiver (the user's decision)
 #
-# If modified RTL files exist and no evidence/waiver is found, session exit is BLOCKED.
+# Unverified RTL blocks the stop so Claude keeps working. After RAT_STOP_BLOCK_LIMIT
+# blocks without progress in one continuation chain, the gate lets Claude stop and
+# shows the user a notice (hooks/lib/stop-budget-util.sh).
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/stop-budget-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
@@ -28,6 +31,7 @@ VERIFY_WAIVER="$STATE_DIR/rtl-verify-waiver"
 if teamu_should_skip_gate "$STATE_DIR"; then
   emit_post_continue
 fi
+STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" verify)
 
 # Team mode aggregation: merge all session-scoped tracking files into a combined view.
 # In team mode, each worker writes to rtl-modified-files-{SESSION_ID}.txt.
@@ -88,6 +92,7 @@ fi
 # If no tracked files, allow exit
 if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
   rm -f "$AGGREGATED_TRACK"
+  stopu_clear verify "$STATE_DIR"
   emit_post_continue
 fi
 
@@ -98,15 +103,17 @@ if [ -f "$VERIFY_DONE" ] || [ -f "$VERIFY_WAIVER" ]; then
   for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
     [ -f "$sf" ] && rm -f "$sf"
   done
+  stopu_clear verify "$STATE_DIR"
   emit_post_continue
 fi
 
-# Modified RTL files exist without verification — BLOCK exit
+# Modified RTL files exist without verification — block; the breaker bounds the chain.
 COUNT=$(wc -l < "$TRACK_FILE" | tr -d ' ')
 FILES=$(while IFS= read -r f; do basename "$f"; done < "$TRACK_FILE" | tr '\n' ', ' | sed 's/,$//')
+PROGRESS=$(cat "$TRACK_FILE")
 # Clean up temporary aggregated file
 rm -f "$AGGREGATED_TRACK"
-# Note: no jsonu_escape here — emit_stop_block handles JSON escaping internally
 
-MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Options: (1) Run /rtl-agent-team:rtl-p5s-func-verify for functional verification (2) Waive: touch .rat/state/rtl-verify-waiver (3) Reset: rm .rat/state/rtl-modified-files.txt"
-emit_stop_block "$MSG"
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules (for example /rtl-agent-team:rtl-p5s-func-verify, or the module unit-test flow) before finishing. If verification cannot run here, report what is missing and ask the user; a waiver is the user's decision."
+NOTICE="[RTL Verify Gate] ${COUNT} RTL files are still unverified: ${FILES}. The verify gate stopped asking Claude to continue. Run functional verification, or waive it if the change is non-functional: touch .rat/state/rtl-verify-waiver"
+stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$PROGRESS" "$MSG" "$NOTICE"
