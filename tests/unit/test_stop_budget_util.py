@@ -33,24 +33,31 @@ def _fp(text):
     return _run('stopu_fingerprint "$1"', text)
 
 
-def _input(active):
-    return json.dumps({"stop_hook_active": active})
+def _input(active, prompt="prompt-1"):
+    """A Stop input; like real Stops it carries a prompt_id unless prompt is None."""
+    payload = {"stop_hook_active": active}
+    if prompt is not None:
+        payload["prompt_id"] = prompt
+    return json.dumps(payload)
 
 
-def _stop(state_dir, active, blocking, gates=("verify",), limit=None, env=None):
-    """One Stop: every gate counts the chain; gates in `blocking` (gate -> progress) try to block, the rest take their allow path."""
+def _stop(state_dir, active, blocking, gates=("verify",), limit=None, env=None, prompt="prompt-1"):
+    """One Stop: every gate counts the chain; gates in `blocking` (gate -> progress) try to block, the rest take their allow path.
+
+    A gate left out of `gates` misses this Stop, as a gate that exits before counting does.
+    """
     out = {}
     for gate in gates:
         count = 'STOP_CHAIN=$(stopu_chain_active "$1" "$2" "$3"); '
         if gate in blocking:
-            args = [_input(active), str(state_dir), gate, blocking[gate]]
+            args = [_input(active, prompt), str(state_dir), gate, blocking[gate]]
             if limit is not None:
                 args.append(str(limit))
             out[gate] = json.loads(_run(
                 count + 'stopu_gate "$3" "$2" "$STOP_CHAIN" "$4" "keep working" "your call" ${5:+"$5"}',
                 *args, env=env))
         else:
-            _run(count + 'stopu_clear "$3" "$2"', _input(active), str(state_dir), gate, env=env)
+            _run(count + 'stopu_clear "$3" "$2"', _input(active, prompt), str(state_dir), gate, env=env)
     return out
 
 
@@ -70,10 +77,16 @@ def _budget(state_dir, gate="verify"):
     return (state_dir / f"stop-budget-{gate}.txt").read_text()
 
 
+def _missed_start(state_dir, prompt="prompt-1"):
+    """p6-cascade blocks a chain's first 4 Stops; the verify gate misses them."""
+    for i in range(4):
+        _stop(state_dir, i > 0, {"p6-cascade": f"p{i}.md"}, gates=("p6-cascade",), prompt=prompt)
+
+
 # 1: the per-gate limit
 def test_same_progress_hands_over_after_the_limit(tmp_path):
     results = [_stop(tmp_path, False, {"verify": "a.sv"})["verify"]]
-    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n0\n"
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n0\nprompt-1\n"
     results += [_stop(tmp_path, True, {"verify": "a.sv"})["verify"] for _ in range(4)]
     assert results == [BLOCK, BLOCK, BLOCK, NOTICE, SILENT]
 
@@ -161,14 +174,14 @@ def test_staggered_gates_hand_over_at_the_seventh_stop(tmp_path):
 def test_chain_start_resets_named_budgets(tmp_path):
     _chain(tmp_path, ["a.sv"] * 4)
     assert _start_chain(tmp_path, "verify", "p6-cascade") == "false"
-    assert _budget(tmp_path) == "0\n\n1\n0\n"
-    assert _budget(tmp_path, "p6-cascade") == "0\n\n1\n0\n"
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
+    assert _budget(tmp_path, "p6-cascade") == "0\n\n1\n0\nprompt-1\n"
 
 
 def test_chained_stop_advances_the_stop_count(tmp_path):
     _stop(tmp_path, False, {"verify": "a.sv"})
     assert _run('stopu_chain_active "$@"', _input(True), str(tmp_path), "verify") == "true"
-    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n2\n0\n"
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n2\n0\nprompt-1\n"
 
 
 def test_chain_start_keeps_other_gates_budgets(tmp_path):
@@ -183,6 +196,58 @@ def test_clear_restores_the_budget(tmp_path):
     assert _chain(tmp_path, ["a.sv"] * 4) == [BLOCK, BLOCK, BLOCK, NOTICE]
     _stop(tmp_path, True, {})
     assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == BLOCK
+
+
+# Missed chain starts and the prompt_id (line 5)
+@pytest.mark.parametrize("notice_shown", ["0", "1"])
+def test_missed_chain_start_is_detected_by_the_prompt_id(tmp_path, notice_shown):
+    # The previous prompt's chain ended normally (or with a notice) and left this file.
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n{notice_shown}\nprompt-0\n")
+    _missed_start(tmp_path)
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
+
+
+def test_without_a_prompt_id_a_leftover_count_is_trusted(tmp_path):
+    # The documented limit: without prompt_id a missed chain start cannot be told apart.
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n0\nprompt-0\n")
+    _missed_start(tmp_path, prompt=None)
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt=None)["verify"] == BLOCK
+
+
+def test_prompt_change_mid_chain_takes_the_worst_case(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt="prompt-1")["verify"] == BLOCK
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt="prompt-2")["verify"] == NOTICE
+
+
+@pytest.mark.parametrize("prompt", ["a/../b", "x y"])
+def test_unsafe_prompt_id_is_ignored(tmp_path, prompt):
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n0\nprompt-0\n")
+    _missed_start(tmp_path, prompt=prompt)
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt=prompt)["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[4] == ""
+
+
+@pytest.mark.parametrize("prompt,expected", [
+    ("3f2b9a1c-7d4e-4b8a-9c21-0a1b2c3d4e5f", "3f2b9a1c-7d4e-4b8a-9c21-0a1b2c3d4e5f"),
+    ("a/../b", ""),
+    ("x y", ""),
+    ("", ""),
+    (None, ""),
+])
+def test_prompt_id_accepts_only_plain_tokens(prompt, expected):
+    assert _run('stopu_prompt_id "$1"', _input(True, prompt)) == expected
+
+
+def test_gate_without_a_chain_count_takes_the_worst_case(tmp_path):
+    # A gate that breaks the contract (no stopu_chain_active call) still hands over.
+    out = _run('stopu_gate verify "$1" true a.sv "keep working" "your call"', str(tmp_path))
+    assert json.loads(out) == NOTICE
+
+
+def test_clear_keeps_the_prompt_id(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+    _run('stopu_clear verify "$1"', str(tmp_path))
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
 
 
 # 9: limits, corrupt counts, state dir, chain detection, fingerprint
@@ -211,21 +276,21 @@ def test_invalid_env_limit_falls_back_to_default(tmp_path, limit):
 
 @pytest.mark.parametrize("count", ["abc", "08", "1234567"])
 def test_corrupt_count_is_treated_as_zero(tmp_path, count):
-    (tmp_path / "stop-budget-verify.txt").write_text(f"{count}\n{_fp('a.sv')}\n1\n0\n")
+    (tmp_path / "stop-budget-verify.txt").write_text(f"{count}\n{_fp('a.sv')}\n1\n0\nprompt-1\n")
     assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == BLOCK
-    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n2\n0\n"
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n2\n0\nprompt-1\n"
 
 
 @pytest.mark.parametrize("stops", ["", "abc", "0"])
 def test_corrupt_stop_count_takes_the_worst_case(tmp_path, stops):
-    (tmp_path / "stop-budget-verify.txt").write_text(f"0\n\n{stops}\n0\n")
+    (tmp_path / "stop-budget-verify.txt").write_text(f"0\n\n{stops}\n0\nprompt-1\n")
     assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
 
 
 def test_missing_state_dir_is_created(tmp_path):
     state = tmp_path / "missing" / "state"
     assert _stop(state, False, {"verify": "a.sv"})["verify"] == BLOCK
-    assert _budget(state) == f"1\n{_fp('a.sv')}\n1\n0\n"
+    assert _budget(state) == f"1\n{_fp('a.sv')}\n1\n0\nprompt-1\n"
 
 
 def test_unwritable_state_dir_hands_over_instead_of_looping(tmp_path):

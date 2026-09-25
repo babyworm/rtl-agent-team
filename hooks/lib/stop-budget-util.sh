@@ -19,9 +19,11 @@
 # hooks, under Claude Code's own cap, which counts consecutive Stops that any hook
 # blocked, once per Stop, and past CLAUDE_CODE_STOP_HOOK_BLOCK_CAP (default 8; 0
 # disables it) overrides the block and ends the turn with a warning and an empty
-# result (CLI 2.1.282). A continuation Stop that finds no budget file, or no valid
-# Stop count, means the gate missed the chain start: the gate assumes the worst
-# case and hands over instead of blocking blind.
+# result (CLI 2.1.282). A continuation Stop whose budget file is missing, has no
+# valid Stop count, or was written for another prompt (line 5) means the gate
+# missed the chain start: the gate assumes the worst case and hands over instead
+# of blocking blind. An input without prompt_id cannot tell a leftover file from
+# an earlier prompt, so its count is trusted.
 #
 # N is RAT_STOP_BLOCK_LIMIT (default 3; invalid values fall back to 3). A gate may
 # pass a lower per-call limit, never a higher one, so RAT_STOP_BLOCK_LIMIT=0 turns
@@ -37,10 +39,11 @@
 #
 # Budget file: <state-dir>/stop-budget-<gate-id>.txt. Line 1 counts the blocks
 # without progress, line 2 holds the progress fingerprint, line 3 is this chain's
-# Stop number as seen by this gate, and line 4 is 1 once the gate showed its
-# notice in this chain (0 otherwise). Budgets are per project, so two sessions
-# working in one project share them; Claude Code's own Stop block cap still bounds
-# each session.
+# Stop number as seen by this gate, line 4 is 1 once the gate showed its notice in
+# this chain (0 otherwise), and line 5 is the prompt_id of the Stop that last wrote
+# the file (empty when the input has none). Budgets are per project, so two
+# sessions working in one project share them; Claude Code's own Stop block cap
+# still bounds each session.
 
 STOPU_CHAIN_CAP=6
 
@@ -48,7 +51,9 @@ STOPU_CHAIN_CAP=6
 # count the chain's Stops for each named gate: line 3 of its budget file is 1 at the
 # chain start and grows by one on every later Stop of the chain, whoever blocked.
 # A continuation that finds no file (the gate missed the chain start) records the
-# worst case, so the gate hands over instead of blocking blind.
+# worst case, so the gate hands over instead of blocking blind. Line 5 records the
+# Stop's prompt_id, so a file written for another prompt is a missed chain start
+# too.
 # Usage: STOP_CHAIN=$(stopu_chain_active "$INPUT" [<state-dir> <gate-id>...])
 stopu_chain_active() {
   if printf '%s' "$1" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
@@ -57,22 +62,24 @@ stopu_chain_active() {
     _SCA_CHAIN=false
   fi
   if [ -n "${2:-}" ]; then
+    _SCA_PROMPT=$(stopu_prompt_id "$1")
     _SCA_DIR=$2
     shift 2
     mkdir -p "$_SCA_DIR" 2>/dev/null
     for _SCA_ID in "$@"; do
       _SCA_FILE="$_SCA_DIR/stop-budget-$_SCA_ID.txt"
       if [ "$_SCA_CHAIN" = "false" ]; then
-        { printf '0\n\n1\n0\n' > "$_SCA_FILE"; } 2>/dev/null
-      elif [ -f "$_SCA_FILE" ]; then
+        { printf '0\n\n1\n0\n%s\n' "$_SCA_PROMPT" > "$_SCA_FILE"; } 2>/dev/null
+      elif [ -f "$_SCA_FILE" ] && { [ -z "$_SCA_PROMPT" ] || [ "$(sed -n '5p' "$_SCA_FILE")" = "$_SCA_PROMPT" ]; }; then
         _SCA_L1=$(sed -n '1p' "$_SCA_FILE")
         _SCA_L2=$(sed -n '2p' "$_SCA_FILE")
         _SCA_L4=$(sed -n '4p' "$_SCA_FILE")
         _SCA_STOPS=$(stopu_count_line "$_SCA_FILE" 3)
         [ "$_SCA_STOPS" -ge 1 ] || _SCA_STOPS=$STOPU_CHAIN_CAP
-        { printf '%s\n%s\n%s\n%s\n' "$_SCA_L1" "$_SCA_L2" "$((_SCA_STOPS + 1))" "$_SCA_L4" > "$_SCA_FILE"; } 2>/dev/null
+        { printf '%s\n%s\n%s\n%s\n%s\n' "$_SCA_L1" "$_SCA_L2" "$((_SCA_STOPS + 1))" "$_SCA_L4" "$_SCA_PROMPT" > "$_SCA_FILE"; } 2>/dev/null
       else
-        { printf '0\n\n%s\n0\n' "$((STOPU_CHAIN_CAP + 1))" > "$_SCA_FILE"; } 2>/dev/null
+        # No file, or one written for another prompt: this gate missed the chain start.
+        { printf '0\n\n%s\n0\n%s\n' "$((STOPU_CHAIN_CAP + 1))" "$_SCA_PROMPT" > "$_SCA_FILE"; } 2>/dev/null
       fi
     done
   fi
@@ -83,6 +90,15 @@ stopu_chain_active() {
 # Usage: FP=$(stopu_fingerprint "text")
 stopu_fingerprint() {
   printf '%s' "$1" | cksum | awk '{printf "%s-%s", $1, $2}'
+}
+
+# Print the prompt id of a hook input (Claude Code's UUID for the user prompt a
+# Stop belongs to), or nothing when the input has none or it is not a plain token.
+# Usage: PROMPT=$(stopu_prompt_id "$INPUT")
+stopu_prompt_id() {
+  _SPI=$(jsonu_get_input_string "$1" "prompt_id")
+  case "$_SPI" in *[!0-9A-Za-z-]*) _SPI="" ;; esac
+  printf '%s' "$_SPI"
 }
 
 # Block, or hand over to the user once the chain's budget is spent. Always exits.
@@ -99,6 +115,7 @@ stopu_gate() {
   esac
   _SG_COUNT=0
   _SG_STOPS=1
+  _SG_PROMPT=$(sed -n '5p' "$_SG_FILE" 2>/dev/null)
   if [ "$3" = "true" ]; then
     _SG_STOPS=$((STOPU_CHAIN_CAP + 1))
     if [ -f "$_SG_FILE" ]; then
@@ -114,12 +131,12 @@ stopu_gate() {
   # Hand over after N blocks without progress, or once the chain has already had
   # STOPU_CHAIN_CAP blocked Stops from any hook.
   if [ "$_SG_COUNT" -ge "$_SG_LIMIT" ] || [ "$_SG_STOPS" -gt "$STOPU_CHAIN_CAP" ]; then
-    { printf '%s\n%s\n%s\n1\n' "$_SG_COUNT" "$_SG_FP" "$_SG_STOPS" > "$_SG_FILE"; } 2>/dev/null
+    { printf '%s\n%s\n%s\n1\n%s\n' "$_SG_COUNT" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" > "$_SG_FILE"; } 2>/dev/null
     emit_stop_notice "$6"
   fi
   # Record the block before making it. If it cannot be recorded the count never
   # advances, so hand over to the user instead of blocking without a bound.
-  if ! { printf '%s\n%s\n%s\n0\n' "$((_SG_COUNT + 1))" "$_SG_FP" "$_SG_STOPS" > "$_SG_FILE"; } 2>/dev/null; then
+  if ! { printf '%s\n%s\n%s\n0\n%s\n' "$((_SG_COUNT + 1))" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" > "$_SG_FILE"; } 2>/dev/null; then
     emit_stop_notice "$6"
   fi
   emit_stop_block "$5"
@@ -140,5 +157,6 @@ stopu_clear() {
   _SC_FILE="$2/stop-budget-$1.txt"
   [ -f "$_SC_FILE" ] || return 0
   _SC_TOTAL=$(stopu_count_line "$_SC_FILE" 3)
-  { printf '0\n\n%s\n0\n' "$_SC_TOTAL" > "$_SC_FILE"; } 2>/dev/null
+  _SC_PROMPT=$(sed -n '5p' "$_SC_FILE")
+  { printf '0\n\n%s\n0\n%s\n' "$_SC_TOTAL" "$_SC_PROMPT" > "$_SC_FILE"; } 2>/dev/null
 }
