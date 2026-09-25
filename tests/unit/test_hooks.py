@@ -2182,8 +2182,33 @@ class TestSkillCompletionGate:
         assert second[0]["decision"] == "block"
         assert second[0]["reason"].startswith("[RTL Skill Completion Loop - last_chance]")
         assert "decision" not in second[1]
-        assert "last_chance failed. User decision required." in second[1]["systemMessage"]
+        assert "has used its automatic attempts. User decision required." in second[1]["systemMessage"]
         assert second_iterations == [6, 6]
+
+    def test_escalation_after_a_budget_shrink_claims_no_last_chance(self, tmp_project):
+        # Spec re-review P1: an authority-1 compliance FAIL shrinks the ladder to 3/2 (last
+        # chance at 6) while the iteration is already past it, so the next Stop escalates
+        # without any last-chance block. The notice must not claim that one failed.
+        state_dir = tmp_project / ".rat" / "state"
+        state_file = state_dir / "skill-active.json"
+        self._write_skill_state(tmp_project, skill="rtl-p4-implement", iteration=8, max_iterations=5,
+                                pending="sim_pass, compliance-pass")
+        state = json.loads(state_file.read_text())
+        state.update({"use_escalation_ladder": True, "strategy": "primary", "dynamic_prompt": "",
+                      "compliance_authority": None, "max_primary": None, "max_fallback": None})
+        state_file.write_text(json.dumps(state, indent=2))
+        first = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert first["reason"].startswith("[RTL Skill Completion Loop - 8/10] rtl-p4-implement fallback")
+        (state_dir / "compliance-report.json").write_text(json.dumps({"summary": {
+            "verdict": "FAIL", "max_violation_authority": 1, "infeasibility_detected": False}}))
+        second = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        shrunk = json.loads(state_file.read_text())
+        assert (shrunk["max_primary"], shrunk["max_fallback"], shrunk["iteration"]) == (3, 2, 9)
+        notice = second["systemMessage"]
+        assert notice.startswith("[RTL Skill Completion Loop - escalation] rtl-p4-implement has used"
+                                 " its automatic attempts. User decision required.")
+        assert "last_chance" not in notice
+        assert "Suggested context: [CRITICAL" in notice  # the compliance prompt still follows
 
     def test_escalation_shows_once_per_chain(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=6, max_iterations=2)

@@ -202,7 +202,7 @@ case "$STAGE" in
     fi
     ;;
   user_escalated)
-    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance failed. User decision required. Remaining criteria: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} has used its automatic attempts. User decision required. Remaining criteria: ${PENDING}."
     if [ -n "$DYNAMIC_PROMPT" ]; then
       STAGE_MSG="${STAGE_MSG} Suggested context: ${DYNAMIC_PROMPT}"
     fi
