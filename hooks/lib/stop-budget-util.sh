@@ -16,10 +16,12 @@
 # their own limit, and no gate reads another gate's file. From the chain's Stop
 # STOPU_CHAIN_CAP + 1 on, a gate that would block shows its notice instead: the
 # notice comes after at most STOPU_CHAIN_CAP (6) consecutive blocked Stops from any
-# hooks, under Claude Code's own cap of 8 (measured on CLI 2.1.282) that ends the
-# turn with an empty result. A continuation Stop that finds no budget file, or no
-# valid Stop count, means the gate missed the chain start: the gate assumes the
-# worst case and hands over instead of blocking blind.
+# hooks, under Claude Code's own cap, which counts consecutive Stops that any hook
+# blocked, once per Stop, and past CLAUDE_CODE_STOP_HOOK_BLOCK_CAP (default 8; 0
+# disables it) overrides the block and ends the turn with a warning and an empty
+# result (CLI 2.1.282). A continuation Stop that finds no budget file, or no valid
+# Stop count, means the gate missed the chain start: the gate assumes the worst
+# case and hands over instead of blocking blind.
 #
 # N is RAT_STOP_BLOCK_LIMIT (default 3; invalid values fall back to 3). A gate may
 # pass a lower per-call limit, never a higher one, so RAT_STOP_BLOCK_LIMIT=0 turns

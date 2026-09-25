@@ -67,7 +67,10 @@ AGGREGATED_TRACK=""
 if [ "$TEAM_MODE" = "true" ] || [ "$HAS_SESSION_TRACK" = "true" ]; then
   # Merge solo + all session-scoped files into a temporary aggregated file
   AGGREGATED_TRACK="$STATE_DIR/rtl-modified-files-aggregated.$$.tmp"
-  trap 'rm -f "$AGGREGATED_TRACK" "$AGGREGATED_TRACK.dedup"' EXIT INT TERM
+  trap 'rm -f "$AGGREGATED_TRACK" "$AGGREGATED_TRACK.dedup"' EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   rm -f "$AGGREGATED_TRACK"
   touch "$AGGREGATED_TRACK"
   # Include solo file if it exists
