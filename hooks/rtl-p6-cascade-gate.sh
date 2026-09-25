@@ -5,11 +5,18 @@
 # Stale marker:   .rat/state/phase6-stale       (set by rtl-edit-tracker.sh)
 # Cascade done:   .rat/state/phase6-cascade-done (set after updating the review documents)
 #
-# Flow:
+# Flow (first match wins):
 #   - phase6-stale absent            → allow exit (Phase 6 was never completed or no RTL edits)
-#   - phase6-cascade-done present    → verify document mtimes, clean up both markers, allow exit
-#   - otherwise                      → block; after RAT_STOP_BLOCK_LIMIT blocks without progress
-#                                      in one chain, hand over to the user (stop-budget-util.sh)
+#   - phase6-cascade-done present    → if every Phase 6 document is newer than phase6-stale,
+#                                      clean up both markers and allow exit; otherwise block
+#                                      and keep the marker
+#   - ppa-opt-done newer than a design-note*.md → block (PPA-Opt ran after the Phase 6 review)
+#   - otherwise                      → block (RTL changed after the Phase 6 review)
+#
+# Every block goes through hooks/lib/stop-budget-util.sh: after RAT_STOP_BLOCK_LIMIT blocks
+# without progress in one continuation chain, the gate lets Claude stop and shows the user a
+# notice. From the chain's Stop STOPU_CHAIN_CAP + 1 on, whichever hooks blocked the earlier
+# Stops, the gate shows the notice instead of blocking.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -42,15 +49,18 @@ if [ ! -f "$STALE_MARKER" ]; then
   emit_post_continue
 fi
 
-# Progress: markers and Phase 6 document mtimes. Updating any of them restarts
-# the breaker.
+# Progress: file name and mtime of the stale marker, ppa-opt-done and each Phase 6
+# document. Before the notice, updating a document or the stale marker restarts the
+# no-progress count; the chain cap still applies. The cascade-done marker counts by
+# presence: touching it again moves nothing.
 P6_PROGRESS=""
-for doc in "$STALE_MARKER" "$CASCADE_DONE" "$STATE_DIR/ppa-opt-done" \
+[ -f "$CASCADE_DONE" ] && P6_PROGRESS="cascade-done"
+for doc in "$STALE_MARKER" "$STATE_DIR/ppa-opt-done" \
            "$REVIEW_DIR/code-review.md" "$REVIEW_DIR/design-review.md" \
            "$REVIEW_DIR/improvements.md" "$REVIEW_DIR"/design-note*.md; do
-  [ -f "$doc" ] && P6_PROGRESS="$P6_PROGRESS $doc:$(get_mtime_epoch "$doc")"
+  [ -f "$doc" ] && P6_PROGRESS="$P6_PROGRESS ${doc##*/}:$(get_mtime_epoch "$doc")"
 done
-P6_NOTICE="[Phase 6 Cascade Gate] RTL changed after the Phase 6 review and the review documents are not yet updated. The Phase 6 cascade gate is not asking Claude to continue in this turn and will ask again on your next message. Re-run /rtl-agent-team:rtl-p6-design-review, then record it: touch $(shq "$CASCADE_DONE")"
+P6_NOTICE="[Phase 6 Cascade Gate] RTL changed after the Phase 6 review, and updated review documents are not yet recorded. The Phase 6 cascade gate is not asking Claude to continue in this turn and will ask again on your next message. Re-run /rtl-agent-team:rtl-p6-design-review, then record it: touch $(shq "$CASCADE_DONE")"
 
 # If cascade work is confirmed done, verify documents were actually updated (G5: mtime check)
 if [ -f "$CASCADE_DONE" ]; then
@@ -87,7 +97,7 @@ if [ -f "$CASCADE_DONE" ]; then
   fi
 
   if [ "$DOCS_STALE" = "true" ]; then
-    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after RTL change. Document mtime must be newer than the stale marker. Action: Update documents to reflect RTL modifications, then record it again: touch $(shq "$CASCADE_DONE")" "$P6_NOTICE"
+    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] The cascade-done marker is present, but the Phase 6 documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after the last RTL change. Re-run /rtl-agent-team:rtl-p6-design-review or update them to reflect the RTL changes. The marker stays in place: the gate passes once every document is newer than the stale marker." "$P6_NOTICE"
   fi
 
   rm -f "$STALE_MARKER" "$CASCADE_DONE"
@@ -114,9 +124,9 @@ if [ -f "$STATE_DIR/ppa-opt-done" ]; then
     fi
   done
   if [ "$stale" = "1" ]; then
-    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note*.md was last written. RTL may have changed. Required: re-run /rtl-agent-team:rtl-p6-design-review to reflect the PPA-Opt results." "$P6_NOTICE"
+    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note*.md was last written, so RTL may have changed. Re-run /rtl-agent-team:rtl-p6-design-review to reflect the PPA-Opt results, then record it: touch $(shq "$CASCADE_DONE")" "$P6_NOTICE"
   fi
 fi
 
 # Phase 6 stale and cascade not yet confirmed — block; the breaker bounds the chain.
-stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] Phase 6 review documents exist but RTL files were modified. Required steps: (1) Re-run lint (verilator --lint-only -Wall) (2) Update code-review.md (3) Update design-review.md (4) Update design-note*.md (single or split files per P6 policy) (5) Update improvements.md. When done: touch $(shq "$CASCADE_DONE")" "$P6_NOTICE"
+stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] RTL files were modified after the Phase 6 review. Re-run /rtl-agent-team:rtl-p6-design-review, or update the Phase 6 documents by hand: (1) re-run lint (verilator --lint-only -Wall) (2) update code-review.md (3) update design-review.md (4) update design-note*.md (single or split files per P6 policy) (5) update improvements.md. When done: touch $(shq "$CASCADE_DONE")" "$P6_NOTICE"

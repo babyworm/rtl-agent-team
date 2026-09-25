@@ -1571,6 +1571,8 @@ class TestP6CascadeGate:
         notice = results[3]["systemMessage"]
         assert "/rtl-agent-team:rtl-p6-design-review" in notice
         assert notice.endswith("phase6-cascade-done'")  # the command can be copied as is
+        assert "decision" not in results[3]
+        assert "is not asking Claude to continue in this turn" in notice
 
     def test_doc_update_before_the_notice_restarts_the_count(self, tmp_project):
         (tmp_project / ".rat" / "state" / "phase6-stale").touch()
@@ -1623,6 +1625,115 @@ class TestP6CascadeGate:
         result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
         assert "decision" not in result
         assert "rtl-p6-design-review" in result["systemMessage"]
+
+    @pytest.mark.parametrize("satisfy", ["cascade_done", "marker_removed"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
+        state = tmp_project / ".rat" / "state"
+        stale = state / "phase6-stale"
+        stale.touch()
+        os.utime(stale, (1000, 1000))
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        if satisfy == "cascade_done":
+            review = tmp_project / "reviews" / "phase-6-review"
+            review.mkdir(parents=True)
+            for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+                (review / name).write_text("updated")
+            (state / "phase6-cascade-done").touch()
+        else:
+            stale.unlink()
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        lines = (state / "stop-budget-p6-cascade.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        stale.touch()  # a new RTL edit later in the same chain
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})["decision"] == "block"
+
+    def test_ppa_result_newer_than_the_design_note_is_bounded(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "design-note.md").write_text("# before PPA")
+        os.utime(review / "design-note.md", (1000, 1000))
+        (state / "phase6-stale").touch()
+        (state / "ppa-opt-done").write_text("converge cycle 3\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "PPA" in results[0]["reason"]
+        assert "/rtl-agent-team:rtl-p6-design-review" in results[0]["reason"]
+        assert results[0]["reason"].endswith("phase6-cascade-done'")
+        assert "decision" not in results[3]
+        assert "systemMessage" in results[3]
+
+    @pytest.mark.parametrize("cascade_done", [False, True])
+    @pytest.mark.parametrize("doc", ["code-review.md", "design-review.md", "improvements.md", "design-note-top.md"])
+    def test_updating_an_existing_document_restarts_the_count(self, tmp_project, doc, cascade_done):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note-top.md"):
+            (review / name).write_text("old")
+            os.utime(review / name, (1000, 1000))
+        (state / "phase6-stale").touch()
+        if cascade_done:
+            (state / "phase6-cascade-done").touch()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(2)
+        ]
+        os.utime(review / doc, (2000, 2000))  # rewritten, and still older than the stale marker
+        results += [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
+        assert "systemMessage" in results[5]
+
+    def test_retouching_the_marker_alone_is_not_progress(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "phase6-stale").touch()
+        done = state / "phase6-cascade-done"
+        done.touch()
+        results = []
+        for i in range(4):
+            os.utime(done, (3000 + i, 3000 + i))  # touched again, documents unchanged
+            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}))
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "touch" not in results[0]["reason"]
+        assert "systemMessage" in results[3]
+
+    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        state = project / ".rat" / "state"
+        state.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        done = state / "phase6-cascade-done"
+        commands = [
+            results[0]["reason"].split("When done: ", 1)[1],
+            results[3]["systemMessage"].split("then record it: ", 1)[1],
+        ]
+        # PPA-Opt finished after the design note was written.
+        review = project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "design-note.md").write_text("# before PPA")
+        os.utime(review / "design-note.md", (1000, 1000))
+        (state / "ppa-opt-done").touch()
+        commands.append(run_hook(self.HOOK, {"cwd": str(project)})["reason"].split("then record it: ", 1)[1])
+        for command in commands:
+            done.unlink(missing_ok=True)
+            before = set(tmp_path.rglob("*"))
+            subprocess.run(["sh", "-c", command], check=True, cwd=tmp_path)
+            assert set(tmp_path.rglob("*")) - before == {done}  # exactly the marker
 
 
 class TestSkillCompletionGate:
