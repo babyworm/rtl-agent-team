@@ -1975,9 +1975,9 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "사용자" in ctx or "user" in ctx.lower()
+        assert "decision" not in result
+        notice = result["systemMessage"]
+        assert "사용자" in notice or "user" in notice.lower()
 
     def test_legacy_disabled_ladder_is_migrated_and_still_blocks(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
@@ -1998,6 +1998,193 @@ class TestSkillCompletionGate:
         assert "jsonu_get_file_path_string" in content
         assert "jsonu_get_file_path_bool" in content
         assert "jsonu_get_file_path_num" in content
+
+    def test_pending_without_progress_pauses_in_chain(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "still has pending criteria" in results[3]["systemMessage"]
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        lead = {"CLAUDE_SESSION_ID": "leader-001"}
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        assert (state / "stop-budget-skill-completion.txt").read_text().startswith("2\n")
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "still has pending criteria" in result["systemMessage"]
+
+    def _write_upstream_challenge(self, tmp_project, iteration=4):
+        """The state as rtl-skill-activation.sh writes it, plus a compliance report with a
+        validated infeasible iron requirement. Past the authority-1 primary budget (3),
+        compliance-gate-util.sh switches the strategy to upstream_challenge."""
+        state_dir = tmp_project / ".rat" / "state"
+        self._write_skill_state(tmp_project, skill="rtl-p4-implement", iteration=iteration,
+                                pending="compliance-pass")
+        state_file = state_dir / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state.update({"use_escalation_ladder": True, "strategy": "primary", "dynamic_prompt": "",
+                      "compliance_authority": None, "max_primary": None, "max_fallback": None})
+        state_file.write_text(json.dumps(state, indent=2))
+        (state_dir / "compliance-report.json").write_text(json.dumps({"summary": {
+            "verdict": "FAIL", "max_violation_authority": 1, "infeasibility_detected": True}}))
+
+    def test_upstream_challenge_without_progress_pauses_in_chain(self, tmp_project):
+        self._write_upstream_challenge(tmp_project)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert all(r["reason"].startswith("[Upstream Challenge Required]") for r in results[:3])
+        assert "decision" not in results[3]
+        notice = results[3]["systemMessage"]
+        # The user decides about the upstream requirement; saying continue settles nothing.
+        assert notice.startswith("[Upstream Challenge] rtl-p4-implement:")
+        assert "is not asking Claude to continue in this turn" in notice
+        assert "decide whether to amend the upstream requirement" in notice
+        assert "Say continue" not in notice
+
+    @pytest.mark.parametrize("satisfy", ["state_removed", "stale_state", "all_complete", "compliance_pass"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
+        state = tmp_project / ".rat" / "state"
+        skill_state = state / "skill-active.json"
+        upstream = satisfy == "compliance_pass"
+        site = "[Upstream Challenge Required]" if upstream else "[RTL Skill Completion Loop - 1/10]"
+
+        def start_skill():
+            if upstream:
+                self._write_upstream_challenge(tmp_project)
+            else:
+                self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+
+        start_skill()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        if satisfy == "state_removed":
+            skill_state.unlink()
+        elif satisfy == "compliance_pass":  # the requirement was amended and the check passes
+            (state / "compliance-report.json").write_text(json.dumps({"summary": {"verdict": "PASS"}}))
+        else:
+            data = json.loads(skill_state.read_text())
+            if satisfy == "stale_state":
+                data["started_at"] = (datetime.datetime.now(datetime.timezone.utc)
+                                      - datetime.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            else:
+                data["all_complete"] = True
+            skill_state.write_text(json.dumps(data, indent=2))
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert not skill_state.exists()
+        lines = (state / "stop-budget-skill-completion.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        start_skill()  # the same condition comes back later in this chain
+        again = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert again["decision"] == "block"
+        assert again["reason"].startswith(site)
+
+    def test_pending_change_before_the_notice_restarts_the_count(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        for i in range(2):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["pending"] = "tb_updated, sim_pass"  # lint_pass is met
+        state_file.write_text(json.dumps(state, indent=2))
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "still has pending criteria: tb_updated, sim_pass." in results[3]["systemMessage"]
+
+    def test_ladder_stage_change_is_not_progress(self, tmp_project):
+        # The ladder advances on every Stop; only a change in the pending criteria is progress.
+        self._write_skill_state(tmp_project, iteration=9, max_iterations=10)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "primary strategy" in results[1]["reason"] and "fallback strategy" in results[2]["reason"]
+        notice = results[3]["systemMessage"]
+        assert notice.startswith("[RTL Skill Completion Loop] rtl-p4s-bugfix still has pending criteria:")
+        assert "is not asking Claude to continue in this turn" in notice
+        assert notice.endswith("Say continue to resume.")
+
+    def test_escalation_hands_over_mid_chain(self, tmp_project):
+        # The last chance blocks once; the next Stop, chained or not, is the user's decision.
+        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(2)
+        ]
+        assert "last_chance" in results[0]["reason"]
+        assert "decision" not in results[1]
+        assert "User decision required" in results[1]["systemMessage"]
+
+    def test_silent_chained_stops_still_advance_the_ladder(self, tmp_project):
+        # Known interaction: the ladder advances on every Stop before the breaker decides.
+        # After the notice, Stops that another hook keeps alive are silent here but still
+        # advance the ladder, so it escalates to the user sooner (the safe direction).
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(6)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "still has pending criteria" in results[3]["systemMessage"]
+        assert results[4] == {"continue": True}  # the last-chance Stop passes silently
+        assert "User decision required" in results[5]["systemMessage"]
+        state = json.loads((tmp_project / ".rat" / "state" / "skill-active.json").read_text())
+        assert state["iteration"] == 7
+
+    @pytest.mark.parametrize("iteration,stage", [
+        (2, "primary strategy"), (3, "fallback strategy"), (4, "fallback strategy"), (5, "last_chance"),
+    ])
+    def test_ladder_stage_at_each_boundary(self, tmp_project, iteration, stage):
+        # N=2: primary through N, fallback through 2N, last chance at 2N+1, then the user.
+        self._write_skill_state(tmp_project, iteration=iteration, max_iterations=2)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert stage in result["reason"]
+
+    def test_cleared_compliance_budget_uses_max_iterations(self, tmp_project):
+        # compliance-gate-util.sh resets max_primary and max_fallback to 0 once the report
+        # passes or is gone; the ladder must fall back to max_iterations, not escalate.
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=5)
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state.update({"max_primary": 0, "max_fallback": 0})
+        state_file.write_text(json.dumps(state, indent=2))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert "[RTL Skill Completion Loop - 1/5] rtl-p4s-bugfix primary strategy" in result["reason"]
 
 
 class TestSkillActivation:

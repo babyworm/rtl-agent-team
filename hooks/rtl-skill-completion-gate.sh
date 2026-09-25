@@ -6,7 +6,14 @@
 #
 # If skill is active and not all_complete, session exit is BLOCKED and iteration incremented.
 # max_iterations is treated as primary retry budget (N): N -> 2N -> last-chance -> user escalation.
+# At user escalation the gate lets Claude stop and shows the escalation to the user, unless
+# compliance-gate-util.sh set an upstream challenge, which blocks at any stage.
 # Staleness check: state older than 2 hours is ignored (prevents blocking new sessions).
+#
+# Every block goes through hooks/lib/stop-budget-util.sh: after RAT_STOP_BLOCK_LIMIT blocks
+# without progress (no change in the pending criteria) in one continuation chain, the gate
+# lets Claude stop and shows the user a notice. From the chain's Stop STOPU_CHAIN_CAP + 1 on,
+# whichever hooks blocked the earlier Stops, the gate shows the notice instead of blocking.
 
 INPUT=$(cat)
 
@@ -15,6 +22,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/stop-budget-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/compliance-gate-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
@@ -31,9 +39,11 @@ SKILL_STATE="$STATE_DIR/skill-active.json"
 if teamu_should_skip_gate "$STATE_DIR"; then
   emit_post_continue
 fi
+STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" skill-completion)
 
 # If no active skill state, allow exit
 if [ ! -f "$SKILL_STATE" ]; then
+  stopu_clear skill-completion "$STATE_DIR"
   emit_post_continue
 fi
 
@@ -48,6 +58,7 @@ if [ -n "$STARTED_AT" ]; then
     if [ "$AGE" -gt 7200 ]; then
       # Stale state, clean up and allow exit
       rm -f "$SKILL_STATE"
+      stopu_clear skill-completion "$STATE_DIR"
       emit_post_continue
     fi
   fi
@@ -70,10 +81,14 @@ fi
 # If all complete, clean up and allow exit
 if [ "$COMPLETED" = "true" ]; then
   rm -f "$SKILL_STATE"
+  stopu_clear skill-completion "$STATE_DIR"
   emit_post_continue
 fi
 
 DYNAMIC_PROMPT=$(jsonu_get_file_path_string "$SKILL_STATE" "dynamic_prompt")
+# Progress means the pending criteria changed; the ladder counts attempts across turns.
+SKILL_PROGRESS="$SKILL_NAME|$PENDING"
+SKILL_NOTICE="[RTL Skill Completion Loop] ${SKILL_NAME} still has pending criteria: ${PENDING}. The skill completion gate is not asking Claude to continue in this turn. Say continue to resume."
 
 # Lock state file for atomic read → compute → write of mutable fields
 STAGE=""
@@ -102,6 +117,9 @@ if acquire_lock "$SKILL_STATE"; then
     FALLBACK_LIMIT=$((MAX_ITER * 2))
   fi
   LAST_CHANCE_INDEX=$((FALLBACK_LIMIT + 1))
+  # Every Stop advances the ladder, before the breaker decides: after the breaker's
+  # notice, the chained Stops it leaves silent still advance it, so the ladder can
+  # reach user escalation sooner, never later.
   NEXT_ITER=$((ITERATION + 1))
 
   # Determine escalation stage using authority-aware limits
@@ -149,7 +167,9 @@ if [ "$_CURRENT_STRATEGY" = "upstream_challenge" ]; then
   if [ -n "$DYNAMIC_PROMPT" ]; then
     STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
   fi
-  emit_stop_block "$STAGE_MSG"
+  # The user's decision here is about the upstream requirement, not about continuing.
+  UPSTREAM_NOTICE="[Upstream Challenge] ${SKILL_NAME}: the compliance checker found an iron requirement that cannot be met. The skill completion gate is not asking Claude to continue in this turn. Review the Upstream Challenge Report (or ask Claude for it) and decide whether to amend the upstream requirement. Remaining criteria: ${PENDING}."
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$UPSTREAM_NOTICE"
 fi
 
 MAX_ITER=${MAX_ITER:-5}
@@ -182,4 +202,8 @@ case "$STAGE" in
     ;;
 esac
 
-emit_stop_block "$STAGE_MSG"
+# A user decision is the next step: let Claude stop and show the escalation to the user.
+if [ "$STAGE" = "user_escalated" ]; then
+  emit_stop_notice "$STAGE_MSG"
+fi
+stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$SKILL_NOTICE"
