@@ -2068,6 +2068,24 @@ class TestSkillCompletionGate:
         assert "decide whether to amend the upstream requirement" in notice
         assert "Say continue" not in notice
 
+    def test_upstream_switch_on_the_notice_stop_shows_the_upstream_notice(self, tmp_project):
+        # The compliance report turns infeasible during the third continuation, so the
+        # strategy switches on the Stop where the breaker hands over. The notice must
+        # follow the switch, which the compliance preprocess makes on that same Stop.
+        self._write_upstream_challenge(tmp_project, iteration=1)
+        report = tmp_project / ".rat" / "state" / "compliance-report.json"
+        saved = report.read_text()
+        report.unlink()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(3)
+        ]
+        assert [r.get("decision") for r in results] == ["block"] * 3
+        report.write_text(saved)  # iteration 4 is past the authority-1 primary budget (3)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert "decision" not in result
+        assert result["systemMessage"].startswith("[Upstream Challenge] rtl-p4-implement:")
+
     @pytest.mark.parametrize("satisfy", ["state_removed", "stale_state", "all_complete", "compliance_pass"])
     def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
         state = tmp_project / ".rat" / "state"
@@ -2125,7 +2143,7 @@ class TestSkillCompletionGate:
         assert "still has pending criteria: tb_updated, sim_pass." in results[3]["systemMessage"]
 
     def test_ladder_stage_change_is_not_progress(self, tmp_project):
-        # The ladder advances on every Stop; only a change in the pending criteria is progress.
+        # The ladder advances on every Stop it blocks; only a change in the pending criteria is progress.
         self._write_skill_state(tmp_project, iteration=9, max_iterations=10)
         results = [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
@@ -2182,7 +2200,9 @@ class TestSkillCompletionGate:
         assert second[0]["decision"] == "block"
         assert second[0]["reason"].startswith("[RTL Skill Completion Loop - last_chance]")
         assert "decision" not in second[1]
-        assert "has used its automatic attempts. User decision required." in second[1]["systemMessage"]
+        assert second[1]["systemMessage"].startswith(
+            "[RTL Skill Completion Loop - escalation] rtl-p4s-bugfix has used its automatic attempts"
+            " and still has pending criteria:")
         assert second_iterations == [6, 6]
 
     def test_escalation_after_a_budget_shrink_claims_no_last_chance(self, tmp_project):
@@ -2206,14 +2226,18 @@ class TestSkillCompletionGate:
         assert (shrunk["max_primary"], shrunk["max_fallback"], shrunk["iteration"]) == (3, 2, 9)
         notice = second["systemMessage"]
         assert notice.startswith("[RTL Skill Completion Loop - escalation] rtl-p4-implement has used"
-                                 " its automatic attempts. User decision required.")
+                                 " its automatic attempts and still has pending criteria:"
+                                 " sim_pass, compliance-pass. User decision required.")
         assert "last_chance" not in notice
-        assert "Suggested context: [CRITICAL" in notice  # the compliance prompt still follows
+        # The compliance prompt still follows, before the command, which comes last.
+        assert notice.index("Compliance context: [CRITICAL") < notice.index("end the loop: rm ")
+        assert notice.endswith("skill-active.json'")
 
     def test_escalation_shows_once_per_chain(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
         results, iterations = self._stops_with_iterations(tmp_project, [False, True, True])
         assert "User decision required" in results[0]["systemMessage"]
+        assert "is not asking Claude to continue, and shows this once per turn" in results[0]["systemMessage"]
         assert results[1:] == [{"continue": True}] * 2
         assert iterations == [6, 6, 6]  # the escalation blocks nothing, so it uses no attempt
         # Recorded in this gate's budget, where the pre-check reads it.
@@ -2221,6 +2245,16 @@ class TestSkillCompletionGate:
         assert budget.split("\n")[3] == "1"
         again, _ = self._stops_with_iterations(tmp_project, [False])  # the next turn
         assert "User decision required" in again[0]["systemMessage"]
+
+    def test_escalation_command_ends_the_loop_in_a_quoted_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        self._write_skill_state(project, iteration=6, max_iterations=2)
+        notice = run_hook(self.HOOK, {"cwd": str(project)})["systemMessage"]
+        assert notice.endswith("skill-active.json'")  # the command comes last and can be copied as is
+        skill_state = project / ".rat" / "state" / "skill-active.json"
+        before = set(tmp_path.rglob("*"))
+        subprocess.run(["sh", "-c", notice.split("end the loop: ", 1)[1]], check=True, cwd=tmp_path)
+        assert set(tmp_path.rglob("*")) == before - {skill_state}  # exactly the skill state is gone
 
     def test_pre_check_block_after_a_race_still_instructs_claude(self, tmp_project):
         # Another session's chain start rewrites the budget between the pre-check's decision

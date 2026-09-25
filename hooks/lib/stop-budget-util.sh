@@ -123,7 +123,10 @@ stopu_gate() {
 
 # Print what stopu_gate would do now (block, notice or silent) without writing
 # anything. A gate that keeps its own attempt counter asks first and counts only
-# the Stops it blocks.
+# the Stops it blocks. The answer is only a prediction: the gate still ends the
+# Stop through stopu_gate (the only call that records a block, sets the notice
+# flag and hands over when the budget cannot be written), with the same id,
+# chain flag, progress and limit, or a lower limit when that Stop counts nothing.
 # Usage: DECISION=$(stopu_decision <gate-id> <state-dir> "$STOP_CHAIN" <progress> [limit])
 stopu_decision() {
   _stopu_decide "$1" "$2" "$3" "$4" "${5:-}"

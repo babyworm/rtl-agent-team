@@ -4,7 +4,7 @@
 # State file: .rat/state/skill-active.json
 # Contains: skill name, iteration count, pending criteria, all_complete flag
 #
-# If skill is active and not all_complete, session exit is BLOCKED and iteration incremented.
+# If skill is active and not all_complete, the gate blocks the stop and increments the iteration.
 # max_iterations is treated as primary retry budget (N): N -> 2N -> last-chance -> user escalation.
 # At user escalation the gate lets Claude stop and shows the escalation to the user once per
 # chain, unless compliance-gate-util.sh set an upstream challenge, which blocks at any stage.
@@ -26,6 +26,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/stop-budget-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/compliance-gate-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
@@ -202,10 +203,11 @@ case "$STAGE" in
     fi
     ;;
   user_escalated)
-    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} has used its automatic attempts. User decision required. Remaining criteria: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} has used its automatic attempts and still has pending criteria: ${PENDING}. User decision required. The skill completion gate is not asking Claude to continue, and shows this once per turn until the criteria are met."
     if [ -n "$DYNAMIC_PROMPT" ]; then
-      STAGE_MSG="${STAGE_MSG} Suggested context: ${DYNAMIC_PROMPT}"
+      STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
     fi
+    STAGE_MSG="${STAGE_MSG} Tell Claude how to proceed, or end the loop: rm $(shq "$SKILL_STATE")"
     ;;
   *)
     STAGE_MSG="[RTL Skill Completion Loop] ${SKILL_NAME} in progress. Remaining criteria: ${PENDING}."
