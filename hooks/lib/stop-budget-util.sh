@@ -35,7 +35,8 @@
 # count to 1 whatever files are left over, and every continuation adds 1. Once the
 # gate's condition is satisfied, call stopu_clear: it resets lines 1, 2 and 4 but
 # keeps the Stop count, so a gate that blocks again later in the chain still
-# hands over in time.
+# hands over in time. A gate that counts its own attempts asks stopu_decision
+# before counting one, so a Stop that ends in a notice or silence is no attempt.
 #
 # Budget file: <state-dir>/stop-budget-<gate-id>.txt. Line 1 counts the blocks
 # without progress, line 2 holds the progress fingerprint, line 3 is this chain's
@@ -105,32 +106,10 @@ stopu_prompt_id() {
 # <progress> is any text that changes when the gate's condition moves.
 # Usage: stopu_gate <gate-id> <state-dir> "$STOP_CHAIN" <progress> <reason> <notice> [limit]
 stopu_gate() {
-  _SG_FILE="$2/stop-budget-$1.txt"
-  _SG_FP=$(stopu_fingerprint "$4")
-  _SG_LIMIT=${RAT_STOP_BLOCK_LIMIT:-3}
-  case "$_SG_LIMIT" in ''|*[!0-9]*|??????*) _SG_LIMIT=3 ;; esac
-  case "${7:-}" in
-    ''|*[!0-9]*|??????*) ;;
-    *) [ "$7" -lt "$_SG_LIMIT" ] && _SG_LIMIT=$7 ;;
-  esac
-  _SG_COUNT=0
-  _SG_STOPS=1
-  _SG_PROMPT=$(sed -n '5p' "$_SG_FILE" 2>/dev/null)
-  if [ "$3" = "true" ]; then
-    _SG_STOPS=$((STOPU_CHAIN_CAP + 1))
-    if [ -f "$_SG_FILE" ]; then
-      # A gate that already showed its notice stays silent until the chain ends.
-      [ "$(sed -n '4p' "$_SG_FILE")" = "1" ] && emit_post_continue
-      _SG_STOPS=$(stopu_count_line "$_SG_FILE" 3)
-      [ "$_SG_STOPS" -ge 1 ] || _SG_STOPS=$((STOPU_CHAIN_CAP + 1))
-      _SG_COUNT=$(stopu_count_line "$_SG_FILE" 1)
-      [ "$(sed -n '2p' "$_SG_FILE")" = "$_SG_FP" ] || _SG_COUNT=0
-    fi
-  fi
+  _stopu_decide "$1" "$2" "$3" "$4" "${7:-}"
+  [ "$_SG_DECISION" = "silent" ] && emit_post_continue
   mkdir -p "$2" 2>/dev/null
-  # Hand over after N blocks without progress, or once the chain has already had
-  # STOPU_CHAIN_CAP blocked Stops from any hook.
-  if [ "$_SG_COUNT" -ge "$_SG_LIMIT" ] || [ "$_SG_STOPS" -gt "$STOPU_CHAIN_CAP" ]; then
+  if [ "$_SG_DECISION" = "notice" ]; then
     { printf '%s\n%s\n%s\n1\n%s\n' "$_SG_COUNT" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" > "$_SG_FILE"; } 2>/dev/null
     emit_stop_notice "$6"
   fi
@@ -140,6 +119,54 @@ stopu_gate() {
     emit_stop_notice "$6"
   fi
   emit_stop_block "$5"
+}
+
+# Print what stopu_gate would do now (block, notice or silent) without writing
+# anything. A gate that keeps its own attempt counter asks first and counts only
+# the Stops it blocks.
+# Usage: DECISION=$(stopu_decision <gate-id> <state-dir> "$STOP_CHAIN" <progress> [limit])
+stopu_decision() {
+  _stopu_decide "$1" "$2" "$3" "$4" "${5:-}"
+  printf '%s' "$_SG_DECISION"
+}
+
+# Read the budget and decide, writing nothing: sets _SG_DECISION to silent, notice
+# or block, and _SG_FILE, _SG_FP, _SG_LIMIT, _SG_COUNT, _SG_STOPS and _SG_PROMPT
+# for stopu_gate to act on.
+# Usage: _stopu_decide <gate-id> <state-dir> "$STOP_CHAIN" <progress> [limit]
+_stopu_decide() {
+  _SG_FILE="$2/stop-budget-$1.txt"
+  _SG_FP=$(stopu_fingerprint "$4")
+  _SG_LIMIT=${RAT_STOP_BLOCK_LIMIT:-3}
+  case "$_SG_LIMIT" in ''|*[!0-9]*|??????*) _SG_LIMIT=3 ;; esac
+  case "${5:-}" in
+    ''|*[!0-9]*|??????*) ;;
+    *) [ "$5" -lt "$_SG_LIMIT" ] && _SG_LIMIT=$5 ;;
+  esac
+  _SG_COUNT=0
+  _SG_STOPS=1
+  _SG_PROMPT=$(sed -n '5p' "$_SG_FILE" 2>/dev/null)
+  if [ "$3" = "true" ]; then
+    _SG_STOPS=$((STOPU_CHAIN_CAP + 1))
+    if [ -f "$_SG_FILE" ]; then
+      # A gate that already showed its notice stays silent until the chain ends.
+      if [ "$(sed -n '4p' "$_SG_FILE")" = "1" ]; then
+        _SG_DECISION=silent
+        return 0
+      fi
+      _SG_STOPS=$(stopu_count_line "$_SG_FILE" 3)
+      [ "$_SG_STOPS" -ge 1 ] || _SG_STOPS=$((STOPU_CHAIN_CAP + 1))
+      _SG_COUNT=$(stopu_count_line "$_SG_FILE" 1)
+      [ "$(sed -n '2p' "$_SG_FILE")" = "$_SG_FP" ] || _SG_COUNT=0
+    fi
+  fi
+  # Hand over after N blocks without progress, or once the chain has already had
+  # STOPU_CHAIN_CAP blocked Stops from any hook.
+  if [ "$_SG_COUNT" -ge "$_SG_LIMIT" ] || [ "$_SG_STOPS" -gt "$STOPU_CHAIN_CAP" ]; then
+    _SG_DECISION=notice
+  else
+    _SG_DECISION=block
+  fi
 }
 
 # Print line <n> of a budget file as a count; anything but a plain number is 0.

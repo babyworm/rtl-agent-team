@@ -2149,21 +2149,53 @@ class TestSkillCompletionGate:
         assert "decision" not in results[1]
         assert "User decision required" in results[1]["systemMessage"]
 
-    def test_silent_chained_stops_still_advance_the_ladder(self, tmp_project):
-        # Known interaction: the ladder advances on every Stop before the breaker decides.
-        # After the notice, Stops that another hook keeps alive are silent here but still
-        # advance the ladder, so it escalates to the user sooner (the safe direction).
+    def _stops_with_iterations(self, tmp_project, actives):
+        """Run one Stop per stop_hook_active value; return the outputs and the iteration after each."""
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
+        results, iterations = [], []
+        for active in actives:
+            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": active}))
+            iterations.append(json.loads(state_file.read_text())["iteration"])
+        return results, iterations
+
+    def test_notice_and_silent_stops_leave_the_ladder_alone(self, tmp_project):
+        # The ladder counts attempts: after the notice, chained Stops that another hook
+        # keeps alive are silent here and leave the iteration where it is.
         self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(6)
-        ]
+        results, iterations = self._stops_with_iterations(tmp_project, [False] + [True] * 5)
         assert [r.get("decision") for r in results[:3]] == ["block"] * 3
         assert "still has pending criteria" in results[3]["systemMessage"]
-        assert results[4] == {"continue": True}  # the last-chance Stop passes silently
-        assert "User decision required" in results[5]["systemMessage"]
-        state = json.loads((tmp_project / ".rat" / "state" / "skill-active.json").read_text())
-        assert state["iteration"] == 7
+        assert results[4:] == [{"continue": True}] * 2
+        assert iterations == [2, 3, 4, 4, 4, 4]
+
+    def test_last_chance_reaches_claude_before_the_escalation(self, tmp_project):
+        # Spec review repro A: with N=2 the chain's notice falls on the last-chance iteration.
+        self._write_skill_state(tmp_project, iteration=2, max_iterations=2)
+        first, first_iterations = self._stops_with_iterations(tmp_project, [False] + [True] * 4)
+        assert [r.get("decision") for r in first[:3]] == ["block"] * 3
+        assert "still has pending criteria" in first[3]["systemMessage"]
+        assert first[4] == {"continue": True}
+        assert first_iterations == [3, 4, 5, 5, 5]  # the notice leaves the last chance unused
+        assert not any("last_chance" in json.dumps(r) for r in first)
+        # The next turn: the last chance reaches Claude as a block, then the escalation.
+        second, second_iterations = self._stops_with_iterations(tmp_project, [False, True])
+        assert second[0]["decision"] == "block"
+        assert second[0]["reason"].startswith("[RTL Skill Completion Loop - last_chance]")
+        assert "decision" not in second[1]
+        assert "last_chance failed. User decision required." in second[1]["systemMessage"]
+        assert second_iterations == [6, 6]
+
+    def test_escalation_shows_once_per_chain(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
+        results, iterations = self._stops_with_iterations(tmp_project, [False, True, True])
+        assert "User decision required" in results[0]["systemMessage"]
+        assert results[1:] == [{"continue": True}] * 2
+        assert iterations == [6, 6, 6]  # the escalation blocks nothing, so it uses no attempt
+        # Recorded in this gate's budget, where the pre-check reads it.
+        budget = (tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt").read_text()
+        assert budget.split("\n")[3] == "1"
+        again, _ = self._stops_with_iterations(tmp_project, [False])  # the next turn
+        assert "User decision required" in again[0]["systemMessage"]
 
     @pytest.mark.parametrize("iteration,stage", [
         (2, "primary strategy"), (3, "fallback strategy"), (4, "fallback strategy"), (5, "last_chance"),

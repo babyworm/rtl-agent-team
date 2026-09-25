@@ -6,14 +6,15 @@
 #
 # If skill is active and not all_complete, session exit is BLOCKED and iteration incremented.
 # max_iterations is treated as primary retry budget (N): N -> 2N -> last-chance -> user escalation.
-# At user escalation the gate lets Claude stop and shows the escalation to the user, unless
-# compliance-gate-util.sh set an upstream challenge, which blocks at any stage.
+# At user escalation the gate lets Claude stop and shows the escalation to the user once per
+# chain, unless compliance-gate-util.sh set an upstream challenge, which blocks at any stage.
 # Staleness check: state older than 2 hours is ignored (prevents blocking new sessions).
 #
 # Every block goes through hooks/lib/stop-budget-util.sh: after RAT_STOP_BLOCK_LIMIT blocks
 # without progress (no change in the pending criteria) in one continuation chain, the gate
 # lets Claude stop and shows the user a notice. From the chain's Stop STOPU_CHAIN_CAP + 1 on,
 # whichever hooks blocked the earlier Stops, the gate shows the notice instead of blocking.
+# Only a Stop the gate blocks advances the ladder: a notice or a silent Stop is no attempt.
 
 INPUT=$(cat)
 
@@ -89,6 +90,18 @@ DYNAMIC_PROMPT=$(jsonu_get_file_path_string "$SKILL_STATE" "dynamic_prompt")
 # Progress means the pending criteria changed; the ladder counts attempts across turns.
 SKILL_PROGRESS="$SKILL_NAME|$PENDING"
 SKILL_NOTICE="[RTL Skill Completion Loop] ${SKILL_NAME} still has pending criteria: ${PENDING}. The skill completion gate is not asking Claude to continue in this turn. Say continue to resume."
+# On an upstream challenge the user's decision is about the upstream requirement, not about continuing.
+UPSTREAM_NOTICE="[Upstream Challenge] ${SKILL_NAME}: the compliance checker found an iron requirement that cannot be met. The skill completion gate is not asking Claude to continue in this turn. Review the Upstream Challenge Report (or ask Claude for it) and decide whether to amend the upstream requirement. Remaining criteria: ${PENDING}."
+GATE_NOTICE=$SKILL_NOTICE
+if [ "$(jsonu_get_file_path_string "$SKILL_STATE" "strategy")" = "upstream_challenge" ]; then
+  GATE_NOTICE=$UPSTREAM_NOTICE
+fi
+
+# The ladder counts attempts, so only a Stop this gate blocks advances it: a
+# notice or a silent Stop leaves the iteration where it is.
+if [ "$(stopu_decision skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS")" != "block" ]; then
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "" "$GATE_NOTICE"
+fi
 
 # Lock state file for atomic read → compute → write of mutable fields
 STAGE=""
@@ -117,9 +130,6 @@ if acquire_lock "$SKILL_STATE"; then
     FALLBACK_LIMIT=$((MAX_ITER * 2))
   fi
   LAST_CHANCE_INDEX=$((FALLBACK_LIMIT + 1))
-  # Every Stop advances the ladder, before the breaker decides: after the breaker's
-  # notice, the chained Stops it leaves silent still advance it, so the ladder can
-  # reach user escalation sooner, never later.
   NEXT_ITER=$((ITERATION + 1))
 
   # Determine escalation stage using authority-aware limits
@@ -131,6 +141,7 @@ if acquire_lock "$SKILL_STATE"; then
     STAGE="last_chance"
   else
     STAGE="user_escalated"
+    NEXT_ITER=$ITERATION  # the escalation blocks nothing, so it uses no attempt
   fi
 
   # Preserve TWO_X_LIMIT for stage message (backward compat)
@@ -167,8 +178,6 @@ if [ "$_CURRENT_STRATEGY" = "upstream_challenge" ]; then
   if [ -n "$DYNAMIC_PROMPT" ]; then
     STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
   fi
-  # The user's decision here is about the upstream requirement, not about continuing.
-  UPSTREAM_NOTICE="[Upstream Challenge] ${SKILL_NAME}: the compliance checker found an iron requirement that cannot be met. The skill completion gate is not asking Claude to continue in this turn. Review the Upstream Challenge Report (or ask Claude for it) and decide whether to amend the upstream requirement. Remaining criteria: ${PENDING}."
   stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$UPSTREAM_NOTICE"
 fi
 
@@ -202,8 +211,9 @@ case "$STAGE" in
     ;;
 esac
 
-# A user decision is the next step: let Claude stop and show the escalation to the user.
+# A user decision is the next step: let Claude stop and show the escalation to the
+# user once per chain (limit 0: the breaker hands over now and stays silent after).
 if [ "$STAGE" = "user_escalated" ]; then
-  emit_stop_notice "$STAGE_MSG"
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$STAGE_MSG" 0
 fi
 stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$SKILL_NOTICE"

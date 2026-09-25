@@ -83,6 +83,20 @@ def _missed_start(state_dir, prompt="prompt-1"):
         _stop(state_dir, i > 0, {"p6-cascade": f"p{i}.md"}, gates=("p6-cascade",), prompt=prompt)
 
 
+def _decide_then_gate(state_dir, active, progress="a.sv", limit=None):
+    """One verify Stop that asks stopu_decision first, then lets stopu_gate act."""
+    args = [_input(active), str(state_dir), "verify", progress]
+    if limit is not None:
+        args.append(str(limit))
+    out = _run(
+        'STOP_CHAIN=$(stopu_chain_active "$1" "$2" "$3"); '
+        'printf "%s\\n" "$(stopu_decision "$3" "$2" "$STOP_CHAIN" "$4" ${5:+"$5"})"; '
+        'stopu_gate "$3" "$2" "$STOP_CHAIN" "$4" "keep working" "your call" ${5:+"$5"}',
+        *args)
+    decision, result = out.split("\n", 1)
+    return decision, json.loads(result)
+
+
 # 1: the per-gate limit
 def test_same_progress_hands_over_after_the_limit(tmp_path):
     results = [_stop(tmp_path, False, {"verify": "a.sv"})["verify"]]
@@ -255,6 +269,41 @@ def test_clear_keeps_the_prompt_id(tmp_path):
     assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
     _run('stopu_clear verify "$1"', str(tmp_path))
     assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
+
+
+# stopu_decision: what stopu_gate would do, without writing
+@pytest.mark.parametrize("progress,expected", [
+    ([], ("block", BLOCK)),
+    (["a.sv"] * 3, ("notice", NOTICE)),                   # the no-progress limit
+    ([f"a{i}.sv" for i in range(6)], ("notice", NOTICE)),  # the chain cap
+    (["a.sv"] * 4, ("silent", SILENT)),                   # after the notice
+])
+def test_decision_predicts_what_the_gate_does(tmp_path, progress, expected):
+    _chain(tmp_path, progress)
+    last = progress[-1] if progress else "a.sv"
+    assert _decide_then_gate(tmp_path, bool(progress), progress=last) == expected
+
+
+@pytest.mark.parametrize("earlier,expected", [(1, "block"), (3, "notice"), (4, "silent")])
+def test_decision_writes_nothing(tmp_path, earlier, expected):
+    _chain(tmp_path, ["a.sv"] * earlier)
+    budget = tmp_path / "stop-budget-verify.txt"
+    before = budget.read_bytes()
+    assert _run('stopu_decision verify "$1" true a.sv', str(tmp_path)) == expected
+    assert budget.read_bytes() == before
+
+
+def test_decision_leaves_a_missing_budget_missing(tmp_path):
+    state = tmp_path / "missing" / "state"
+    assert _run('stopu_decision verify "$1" true a.sv', str(state)) == "notice"  # missed chain start
+    assert _run('stopu_decision verify "$1" false a.sv', str(state)) == "block"
+    assert not (tmp_path / "missing").exists()
+
+
+def test_per_call_limit_zero_notices_once_per_chain(tmp_path):
+    assert _decide_then_gate(tmp_path, False, limit=0) == ("notice", NOTICE)
+    assert [_decide_then_gate(tmp_path, True, limit=0) for _ in range(2)] == [("silent", SILENT)] * 2
+    assert _decide_then_gate(tmp_path, False, limit=0) == ("notice", NOTICE)  # the next chain
 
 
 # 9: limits, corrupt counts, state dir, chain detection, fingerprint
