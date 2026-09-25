@@ -484,6 +484,8 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["decision"] == "block"
         assert "touch .rat/state/rtl-verify-waiver" not in result["reason"]
+        assert "rtl-verify-waiver" not in result["reason"]
+        assert "rtl-modified-files" not in result["reason"]
         assert "ask the user" in result["reason"]
 
     def test_chain_without_progress_hands_waiver_to_user(self, tmp_project):
@@ -494,18 +496,77 @@ class TestRtlVerifyStopGate:
             for i in range(4)
         ]
         assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "decision" not in results[3]
         notice = results[3]["systemMessage"]
-        assert "still unverified" in notice
+        assert "no recorded verification" in notice
         assert "rtl-verify-waiver" in notice
+        assert str(tmp_project / ".rat" / "state" / "rtl-verify-waiver") in notice
 
     def test_new_rtl_edit_restarts_budget(self, tmp_project):
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("rtl/a.sv\n")
-        for i in range(4):
+        results = [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
         track.write_text("rtl/a.sv\nrtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result["decision"] == "block"
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        config = {
+            "team_mode": True,
+            "team_name": "test-team",
+            "leader_session_id": "leader-001",
+            "phase": "p4",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(config))
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        lead = {"CLAUDE_SESSION_ID": "leader-001"}
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        assert (state_dir / "stop-budget-verify.txt").read_text().startswith("2\n")
+
+    @pytest.mark.parametrize("marker", ["rtl-verify-waiver", "rtl-verify-done"])
+    def test_waiver_and_done_clear_the_budget(self, tmp_project, marker):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert (state_dir / "stop-budget-verify.txt").exists()
+        (state_dir / marker).touch()
+        # A chained Stop, so the chain-start reset cannot be what removes the budget.
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result == {"continue": True}
+        assert not (state_dir / "stop-budget-verify.txt").exists()
+
+    def test_legacy_project_notice_uses_resolved_path(self, tmp_legacy_project):
+        state_dir = tmp_legacy_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_legacy_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        notice = results[3]["systemMessage"]
+        assert ".rtl-agent-team/state/rtl-verify-waiver" in notice
+        assert "'.rat/state" not in notice
+
+    def test_file_list_is_relative_and_deduplicated(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+            f"rtl/a.sv\n{tmp_project}/rtl/a.sv\nrtl/b.sv\n"
+        )
+        reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+        assert "2 RTL files" in reason
+        assert "rtl/a.sv, rtl/b.sv" in reason
 
 
 class TestStopGate:

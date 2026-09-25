@@ -61,7 +61,7 @@ done
 AGGREGATED_TRACK=""
 if [ "$TEAM_MODE" = "true" ] || [ "$HAS_SESSION_TRACK" = "true" ]; then
   # Merge solo + all session-scoped files into a temporary aggregated file
-  AGGREGATED_TRACK="$STATE_DIR/rtl-modified-files-aggregated.tmp"
+  AGGREGATED_TRACK="$STATE_DIR/rtl-modified-files-aggregated.$$.tmp"
   rm -f "$AGGREGATED_TRACK"
   touch "$AGGREGATED_TRACK"
   # Include solo file if it exists
@@ -108,12 +108,13 @@ if [ -f "$VERIFY_DONE" ] || [ -f "$VERIFY_WAIVER" ]; then
 fi
 
 # Modified RTL files exist without verification — block; the breaker bounds the chain.
-COUNT=$(wc -l < "$TRACK_FILE" | tr -d ' ')
-FILES=$(while IFS= read -r f; do basename "$f"; done < "$TRACK_FILE" | tr '\n' ', ' | sed 's/,$//')
-PROGRESS=$(cat "$TRACK_FILE")
+# One project-relative, de-duplicated list drives the count, the display and the progress.
+TRACKED=$(awk -v p="$CWD/" 'NF { if (index($0, p) == 1) $0 = substr($0, length(p) + 1); print }' "$TRACK_FILE" | sort -u)
+COUNT=$(printf '%s\n' "$TRACKED" | grep -c .)
+FILES=$(printf '%s\n' "$TRACKED" | awk -v max=10 'NF { n++; if (n <= max) printf "%s%s", (n > 1 ? ", " : ""), $0 } END { if (n > max) printf ", and %d more", n - max }')
 # Clean up temporary aggregated file
 rm -f "$AGGREGATED_TRACK"
 
-MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules (for example /rtl-agent-team:rtl-p5s-func-verify, or the module unit-test flow) before finishing. If verification cannot run here, report what is missing and ask the user; a waiver is the user's decision."
-NOTICE="[RTL Verify Gate] ${COUNT} RTL files are still unverified: ${FILES}. The verify gate stopped asking Claude to continue. Run functional verification, or waive it if the change is non-functional: touch .rat/state/rtl-verify-waiver"
-stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$PROGRESS" "$MSG" "$NOTICE"
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules (for example /rtl-agent-team:rtl-p5s-func-verify, or /rtl-agent-team:rtl-p4s-unit-test for unit tests). When the simulation passes, record it: touch '${VERIFY_DONE}'. If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
+NOTICE="[RTL Verify Gate] ${COUNT} RTL files have no recorded verification: ${FILES}. The verify gate stopped asking Claude to continue and will ask again on your next message. Run functional verification, or waive it if the change is non-functional: touch '${VERIFY_WAIVER}'"
+stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED" "$MSG" "$NOTICE"
