@@ -1561,6 +1561,67 @@ class TestP6CascadeGate:
         ctx = result.get("reason", "")
         assert "not found" in ctx.lower() or "not updated" in ctx.lower()
 
+    def test_stale_docs_without_progress_pause_in_chain(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "rtl-p6-design-review" in results[3]["systemMessage"]
+
+    def test_doc_update_before_the_notice_restarts_the_count(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        for i in range(2):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "code-review.md").write_text("updated")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "systemMessage" in results[3]
+
+    def test_notice_holds_for_the_chain_despite_a_doc_update(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "code-review.md").write_text("updated")
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        lead = {"CLAUDE_SESSION_ID": "leader-001"}
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        assert (state / "stop-budget-p6-cascade.txt").read_text().startswith("2\n")
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-p6-cascade.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "rtl-p6-design-review" in result["systemMessage"]
+
 
 class TestSkillCompletionGate:
     """Tests for hooks/rtl-skill-completion-gate.sh."""

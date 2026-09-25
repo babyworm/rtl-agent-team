@@ -20,3 +20,6 @@ posix_elapsed_seconds() {
   [ "$_elapsed" -lt 0 ] && _elapsed=0
   printf '%s' "$_elapsed"
 }
+
+# Quote a path as one shell word for the commands the gate shows.
+shq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
