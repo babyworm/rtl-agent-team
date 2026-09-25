@@ -102,6 +102,7 @@ if [ -f "$CASCADE_DONE" ]; then
   fi
 
   if [ "$DOCS_STALE" = "true" ]; then
+    P6_NOTICE="[Phase 6 Cascade Gate] The Phase 6 review is recorded as updated, but its documents are missing or older than the last RTL change or PPA-Opt result. The Phase 6 cascade gate is not asking Claude to continue in this turn and will ask again on your next message. Re-run /rtl-agent-team:rtl-p6-design-review; the recorded marker stays in place."
     stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] The cascade-done marker is present, but the Phase 6 documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after the last RTL change or PPA-Opt result. Re-run /rtl-agent-team:rtl-p6-design-review or update them to reflect those changes. The marker stays in place: the gate passes once every document is newer than phase6-stale and no design-note*.md is older than ppa-opt-done." "$P6_NOTICE"
   fi
 

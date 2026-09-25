@@ -1574,6 +1574,7 @@ class TestP6CascadeGate:
         assert notice.endswith("phase6-cascade-done'")  # the command can be copied as is
         assert "decision" not in results[3]
         assert "is not asking Claude to continue in this turn" in notice
+        assert "updated review documents are not yet recorded" in notice
 
     def test_doc_update_before_the_notice_restarts_the_count(self, tmp_project):
         (tmp_project / ".rat" / "state" / "phase6-stale").touch()
@@ -1707,7 +1708,10 @@ class TestP6CascadeGate:
             results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}))
         assert [r.get("decision") for r in results[:3]] == ["block"] * 3
         assert "touch" not in results[0]["reason"]
+        assert "stays in place" in results[0]["reason"]
         assert "systemMessage" in results[3]
+        notice = results[3]["systemMessage"]
+        assert "recorded as updated" in notice and "touch" not in notice  # the marker already exists
 
     def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
         project = tmp_path / "o'brien"
@@ -1775,6 +1779,41 @@ class TestP6CascadeGate:
         ]
         assert [r.get("decision") for r in results] == ["block"] * 3 + [None]
         assert "systemMessage" in results[3]
+
+    @pytest.mark.parametrize("cascade_done", [False, True])
+    def test_a_design_note_as_new_as_the_ppa_result_is_current(self, tmp_project, cascade_done):
+        # The PPA branch and the cascade-done check must agree on a same-second tie.
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review / name).write_text("reviewed")
+            os.utime(review / name, (3000, 3000))
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        if cascade_done:
+            (state / "phase6-cascade-done").touch()
+            assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
+        else:
+            assert "PPA" not in run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+
+    def test_every_split_design_note_must_postdate_the_ppa_result(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md",
+                     "design-note-overview.md", "design-note-top.md"):
+            (review / name).write_text("reviewed")
+            os.utime(review / name, (4000, 4000))
+        os.utime(review / "design-note-top.md", (2000, 2000))  # one split note predates PPA-Opt
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        (state / "phase6-cascade-done").touch()
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
 
 
 class TestSkillCompletionGate:
