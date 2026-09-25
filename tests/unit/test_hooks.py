@@ -499,6 +499,7 @@ class TestRtlVerifyStopGate:
         assert "decision" not in results[3]
         notice = results[3]["systemMessage"]
         assert "no recorded verification" in notice
+        assert "is not asking Claude to continue in this turn" in notice
         assert "rtl-verify-waiver" in notice
         assert str(tmp_project / ".rat" / "state" / "rtl-verify-waiver") in notice
 
@@ -579,6 +580,7 @@ class TestRtlVerifyStopGate:
         notice = results[3]["systemMessage"]
         assert ".rtl-agent-team/state/rtl-verify-waiver" in notice
         assert "'.rat/state" not in notice
+        assert str(state_dir / "rtl-verify-done") in results[0]["reason"]
 
     def test_file_list_is_relative_and_deduplicated(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
@@ -603,6 +605,46 @@ class TestRtlVerifyStopGate:
     def test_blank_tracking_file_allows_exit(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("\n\n")
         assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
+
+    def test_file_list_shows_ten_files_and_counts_the_rest(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+            "".join(f"rtl/m{i:02d}.sv\n" for i in range(12))
+        )
+        reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+        assert "12 RTL files" in reason
+        assert ", and 2 more" in reason
+
+    def test_fallback_duplicate_mid_chain_keeps_the_count(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(2)
+        ]
+        # The same file again, recorded by the lock-failure fallback in absolute form.
+        (state_dir / "rtl-modified-files-fallback.txt").write_text(f"{tmp_project}/rtl/a.sv\n")
+        results += [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(2)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "systemMessage" in results[3]
+
+    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        state_dir = project / ".rat" / "state"
+        state_dir.mkdir(parents=True)
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        waive = results[3]["systemMessage"].split("non-functional: ", 1)[1]
+        subprocess.run(["sh", "-c", waive], check=True)
+        assert (state_dir / "rtl-verify-waiver").exists()
+        done = results[0]["reason"].split("record it: ", 1)[1].split(". If verification", 1)[0]
+        subprocess.run(["sh", "-c", done], check=True)
+        assert (state_dir / "rtl-verify-done").exists()
 
 
 class TestStopGate:
