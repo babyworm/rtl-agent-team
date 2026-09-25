@@ -1568,7 +1568,9 @@ class TestP6CascadeGate:
             for i in range(4)
         ]
         assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "rtl-p6-design-review" in results[3]["systemMessage"]
+        notice = results[3]["systemMessage"]
+        assert "/rtl-agent-team:rtl-p6-design-review" in notice
+        assert notice.endswith("phase6-cascade-done'")  # the command can be copied as is
 
     def test_doc_update_before_the_notice_restarts_the_count(self, tmp_project):
         (tmp_project / ".rat" / "state" / "phase6-stale").touch()

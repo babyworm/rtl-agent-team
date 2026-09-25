@@ -50,7 +50,7 @@ for doc in "$STALE_MARKER" "$CASCADE_DONE" "$STATE_DIR/ppa-opt-done" \
            "$REVIEW_DIR/improvements.md" "$REVIEW_DIR"/design-note*.md; do
   [ -f "$doc" ] && P6_PROGRESS="$P6_PROGRESS $doc:$(get_mtime_epoch "$doc")"
 done
-P6_NOTICE="[Phase 6 Cascade Gate] RTL changed after the Phase 6 review and the review documents are not yet updated. The Phase 6 cascade gate is not asking Claude to continue in this turn and will ask again on your next message. Re-run /rtl-agent-team:rtl-p6-design-review, then touch $(shq "$CASCADE_DONE")."
+P6_NOTICE="[Phase 6 Cascade Gate] RTL changed after the Phase 6 review and the review documents are not yet updated. The Phase 6 cascade gate is not asking Claude to continue in this turn and will ask again on your next message. Re-run /rtl-agent-team:rtl-p6-design-review, then record it: touch $(shq "$CASCADE_DONE")"
 
 # If cascade work is confirmed done, verify documents were actually updated (G5: mtime check)
 if [ -f "$CASCADE_DONE" ]; then
@@ -87,7 +87,7 @@ if [ -f "$CASCADE_DONE" ]; then
   fi
 
   if [ "$DOCS_STALE" = "true" ]; then
-    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after RTL change. Document mtime must be newer than the stale marker. Action: Update documents to reflect RTL modifications, then touch $(shq "$CASCADE_DONE") again." "$P6_NOTICE"
+    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] cascade-done marker present but design documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after RTL change. Document mtime must be newer than the stale marker. Action: Update documents to reflect RTL modifications, then record it again: touch $(shq "$CASCADE_DONE")" "$P6_NOTICE"
   fi
 
   rm -f "$STALE_MARKER" "$CASCADE_DONE"
@@ -114,7 +114,7 @@ if [ -f "$STATE_DIR/ppa-opt-done" ]; then
     fi
   done
   if [ "$stale" = "1" ]; then
-    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note*.md was last written. RTL may have changed. Required: re-run rtl-p6-design-review to reflect PPA-Opt results." "$P6_NOTICE"
+    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] PPA optimization completed after Phase 6 design-note*.md was last written. RTL may have changed. Required: re-run /rtl-agent-team:rtl-p6-design-review to reflect the PPA-Opt results." "$P6_NOTICE"
   fi
 fi
 
