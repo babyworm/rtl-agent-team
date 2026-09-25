@@ -214,6 +214,13 @@ def test_without_a_prompt_id_a_leftover_count_is_trusted(tmp_path):
     assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt=None)["verify"] == BLOCK
 
 
+def test_leftover_file_without_a_prompt_id_is_not_trusted(tmp_path):
+    # A round-3 budget file has no line 5; an input with a prompt_id must not trust it.
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n0\n")
+    _missed_start(tmp_path)
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
+
+
 def test_prompt_change_mid_chain_takes_the_worst_case(tmp_path):
     assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt="prompt-1")["verify"] == BLOCK
     assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt="prompt-2")["verify"] == NOTICE

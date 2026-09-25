@@ -649,12 +649,14 @@ class TestRtlVerifyStopGate:
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
         state = tmp_project / ".rat" / "state"
-        # An earlier chain left this gate's budget; allowed Stops must still count.
-        (state / "stop-budget-verify.txt").write_text("0\n\n1\n0\n")
+        # A budget written earlier for this prompt; allowed Stops must still count, or
+        # Stop 7 would trust it. Inputs carry a prompt_id, as production Stops do.
+        (state / "stop-budget-verify.txt").write_text("0\n\n1\n0\np-1\n")
         for i in range(6):
-            assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}) == {"continue": True}
+            stop = {"cwd": str(tmp_project), "stop_hook_active": i > 0, "prompt_id": "p-1"}
+            assert run_hook(self.HOOK, stop) == {"continue": True}
         (state / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"})
         assert "decision" not in result
         assert "rtl-verify-waiver" in result["systemMessage"]
 
