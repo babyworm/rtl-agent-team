@@ -50,7 +50,7 @@ def _budget(state_dir, gate="verify"):
 
 def test_first_stop_blocks_and_records_budget(tmp_path):
     assert _gate(tmp_path, "false", "a.sv") == BLOCK
-    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n"
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n0\n"
 
 
 def test_chain_without_progress_releases_after_limit(tmp_path):
@@ -64,11 +64,29 @@ def test_notice_is_shown_once_per_chain(tmp_path):
     assert results == [BLOCK, BLOCK, BLOCK, NOTICE, SILENT, SILENT]
 
 
-def test_progress_restarts_a_full_budget(tmp_path):
-    for _ in range(2):
+def test_progress_restarts_the_count_before_the_notice(tmp_path):
+    results = [_gate(tmp_path, "true", p) for p in ["a.sv", "a.sv", "b.sv", "b.sv", "b.sv", "b.sv"]]
+    assert results == [BLOCK] * 5 + [NOTICE]
+
+
+def test_notice_holds_for_the_rest_of_the_chain_despite_progress(tmp_path):
+    for _ in range(4):
         _gate(tmp_path, "true", "a.sv")
-    results = [_gate(tmp_path, "true", "a.sv b.sv") for _ in range(4)]
-    assert results == [BLOCK, BLOCK, BLOCK, NOTICE]
+    assert _gate(tmp_path, "true", "b.sv") == SILENT
+
+
+def test_chain_cap_is_shared_by_all_gates(tmp_path):
+    results = [_gate(tmp_path, "true", f"v{i}.sv") for i in range(3)]
+    results += [_gate(tmp_path, "true", f"p{i}.md", gate="p6-cascade") for i in range(4)]
+    assert results == [BLOCK] * 6 + [NOTICE]
+
+
+def test_clear_keeps_the_chain_total(tmp_path):
+    for i in range(3):
+        _gate(tmp_path, "true", f"v{i}.sv")
+    _run('stopu_clear verify "$1"', str(tmp_path))
+    results = [_gate(tmp_path, "true", f"p{i}.md", gate="p6-cascade") for i in range(4)]
+    assert results == [BLOCK] * 3 + [NOTICE]
 
 
 def test_chain_cap_hands_over_before_claude_codes_limit(tmp_path):
@@ -124,7 +142,7 @@ def test_clear_restores_the_budget(tmp_path):
 def test_missing_state_dir_is_created(tmp_path):
     state = tmp_path / "missing" / "state"
     assert _gate(state, "false", "a.sv") == BLOCK
-    assert _budget(state) == f"1\n{_fp('a.sv')}\n1\n"
+    assert _budget(state) == f"1\n{_fp('a.sv')}\n1\n0\n"
 
 
 def test_unwritable_state_dir_hands_over_instead_of_looping(tmp_path):
@@ -143,7 +161,7 @@ def test_unwritable_state_dir_hands_over_instead_of_looping(tmp_path):
 def test_corrupt_count_is_treated_as_zero(tmp_path, count):
     (tmp_path / "stop-budget-verify.txt").write_text(f"{count}\n{_fp('a.sv')}\n")
     assert _gate(tmp_path, "true", "a.sv") == BLOCK
-    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n"
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n0\n"
 
 
 @pytest.mark.parametrize("limit", ["x", "99999999999999999999"])

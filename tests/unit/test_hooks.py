@@ -505,6 +505,17 @@ class TestRtlVerifyStopGate:
     def test_new_rtl_edit_restarts_budget(self, tmp_project):
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("rtl/a.sv\n")
+        results = []
+        for i in range(6):
+            if i == 2:
+                track.write_text("rtl/a.sv\nrtl/b.sv\n")
+            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}))
+        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
+        assert "systemMessage" in results[5]
+
+    def test_notice_holds_for_the_chain_despite_a_new_rtl_edit(self, tmp_project):
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
         results = [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             for i in range(4)
@@ -512,7 +523,7 @@ class TestRtlVerifyStopGate:
         assert "systemMessage" in results[3]
         track.write_text("rtl/a.sv\nrtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        assert result["decision"] == "block"
+        assert result == {"continue": True}
 
     def test_new_chain_after_notice_blocks_again(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
@@ -540,14 +551,23 @@ class TestRtlVerifyStopGate:
     @pytest.mark.parametrize("marker", ["rtl-verify-waiver", "rtl-verify-done"])
     def test_waiver_and_done_clear_the_budget(self, tmp_project, marker):
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert (state_dir / "stop-budget-verify.txt").exists()
+        track = state_dir / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
         (state_dir / marker).touch()
-        # A chained Stop, so the chain-start reset cannot be what removes the budget.
+        # A chained Stop, so the chain-start reset cannot be what resets the budget.
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result == {"continue": True}
-        assert not (state_dir / "stop-budget-verify.txt").exists()
+        lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "3", "0")
+        # The cleared gate is not left silent: a new edit in the same chain blocks.
+        track.write_text("rtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result["decision"] == "block"
 
     def test_legacy_project_notice_uses_resolved_path(self, tmp_legacy_project):
         state_dir = tmp_legacy_project / ".rtl-agent-team" / "state"
