@@ -109,7 +109,15 @@ fi
 
 # Modified RTL files exist without verification — block; the breaker bounds the chain.
 # One project-relative, de-duplicated list drives the count, the display and the progress.
-TRACKED=$(awk -v p="$CWD/" 'NF { if (index($0, p) == 1) $0 = substr($0, length(p) + 1); print }' "$TRACK_FILE" | sort -u)
+PROJECT_ROOT=$(dirname "$RAT_DIR")
+TRACKED=$(RAT_TRACK_ROOT="$PROJECT_ROOT/" awk 'BEGIN { p = ENVIRON["RAT_TRACK_ROOT"] }
+  NF { if (index($0, p) == 1) $0 = substr($0, length(p) + 1); sub(/^\.\//, ""); print }' "$TRACK_FILE" | sort -u)
+# A tracking file with blank lines only lists no files: allow exit.
+if [ -z "$TRACKED" ]; then
+  rm -f "$AGGREGATED_TRACK"
+  stopu_clear verify "$STATE_DIR"
+  emit_post_continue
+fi
 COUNT=$(printf '%s\n' "$TRACKED" | grep -c .)
 FILES=$(printf '%s\n' "$TRACKED" | awk -v max=10 'NF { n++; if (n <= max) printf "%s%s", (n > 1 ? ", " : ""), $0 } END { if (n > max) printf ", and %d more", n - max }')
 # Clean up temporary aggregated file

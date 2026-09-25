@@ -582,11 +582,27 @@ class TestRtlVerifyStopGate:
 
     def test_file_list_is_relative_and_deduplicated(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
-            f"rtl/a.sv\n{tmp_project}/rtl/a.sv\nrtl/b.sv\n"
+            f"rtl/a.sv\n{tmp_project}/rtl/a.sv\n./rtl/a.sv\nrtl/b.sv\n"
         )
         reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
         assert "2 RTL files" in reason
         assert "rtl/a.sv, rtl/b.sv" in reason
+
+    def test_file_list_is_relative_to_the_project_root(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+            f"{tmp_project}/rtl/a.sv\n"
+        )
+        elsewhere = tmp_project / "elsewhere"
+        elsewhere.mkdir()
+        reason = run_hook(
+            self.HOOK, {"cwd": str(elsewhere)}, env={"RAT_PROJECT_ROOT": str(tmp_project)}
+        )["reason"]
+        assert "rtl/a.sv" in reason
+        assert f"{tmp_project}/rtl/a.sv" not in reason
+
+    def test_blank_tracking_file_allows_exit(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("\n\n")
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
 
 
 class TestStopGate:
