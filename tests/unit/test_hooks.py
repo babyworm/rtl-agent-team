@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -645,6 +646,52 @@ class TestRtlVerifyStopGate:
         done = results[0]["reason"].split("record it: ", 1)[1].split(". If verification", 1)[0]
         subprocess.run(["sh", "-c", done], check=True)
         assert (state_dir / "rtl-verify-done").exists()
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        # An earlier chain left this gate's budget; allowed Stops must still count.
+        (state / "stop-budget-verify.txt").write_text("0\n\n1\n0\n")
+        for i in range(6):
+            assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}) == {"continue": True}
+        (state / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert "decision" not in result
+        assert "rtl-verify-waiver" in result["systemMessage"]
+
+    def test_signal_mid_aggregation_ends_the_gate_after_cleanup(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        # A worker's tracking file makes the gate aggregate through `sort`.
+        (state / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
+        shim = tmp_project / "shim"
+        shim.mkdir()
+        ready, hold = tmp_project / "sort-started", tmp_project / "hold"
+        os.mkfifo(hold)
+        # The shim reports that the gate reached `sort`, then blocks on the FIFO.
+        (shim / "sort").write_text('#!/bin/sh\n: > "$RAT_TEST_READY"\nread _ < "$RAT_TEST_HOLD"\n')
+        (shim / "sort").chmod(0o755)
+        env = {**os.environ, "PATH": f"{shim}:{os.environ['PATH']}",
+               "RAT_TEST_READY": str(ready), "RAT_TEST_HOLD": str(hold)}
+        gate = subprocess.Popen(
+            ["sh", str(self.HOOK)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, env=env, text=True, start_new_session=True,
+        )
+        try:
+            gate.stdin.write(json.dumps({"cwd": str(tmp_project)}))
+            gate.stdin.close()
+            deadline = time.monotonic() + 10
+            while not ready.exists():
+                assert time.monotonic() < deadline, "the gate never reached the aggregation"
+                time.sleep(0.01)
+            os.killpg(gate.pid, signal.SIGTERM)
+            out = gate.stdout.read()
+            rc = gate.wait(timeout=10)
+        finally:
+            if gate.poll() is None:
+                os.killpg(gate.pid, signal.SIGKILL)
+                gate.wait()
+        assert rc == 143
+        assert out == ""
+        assert not list(state.glob("rtl-modified-files-aggregated.*"))
 
 
 class TestStopGate:
