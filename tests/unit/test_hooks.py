@@ -563,7 +563,7 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result == {"continue": True}
         lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
-        assert (lines[0], lines[2], lines[3]) == ("0", "3", "0")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
         # The cleared gate is not left silent: a new edit in the same chain blocks.
         track.write_text("rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
