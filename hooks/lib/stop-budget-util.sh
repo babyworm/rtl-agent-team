@@ -9,16 +9,19 @@
 # (stop_hook_active false) and lasts while Stop blocks keep the turn going. A
 # change in the gate's progress text restarts the count.
 #
-# N is RAT_STOP_BLOCK_LIMIT (default 3). A gate may pass a lower per-call limit,
-# never a higher one, so RAT_STOP_BLOCK_LIMIT=0 turns every block into a notice.
+# N is RAT_STOP_BLOCK_LIMIT (default 3; invalid values fall back to 3). A gate may
+# pass a lower per-call limit, never a higher one, so RAT_STOP_BLOCK_LIMIT=0 turns
+# every block into a notice.
 #
 # Caller contract: set STOP_CHAIN=$(stopu_chain_active "$INPUT" <state-dir> <ids>)
 # right after the team-mode skip and before any other exit. That call resets the
 # gate's budgets at the start of each chain, whichever path the gate takes next.
 #
 # Budget file: <state-dir>/stop-budget-<gate-id>.txt, line 1 the count, line 2 the
-# progress fingerprint. Budgets are per project, so two sessions working in one
-# project share them; Claude Code's own Stop block cap still bounds each session.
+# progress fingerprint; a count of N+1 means the notice was already shown in this
+# chain. Budgets are per project, so two sessions working in one project share
+# them; Claude Code's own Stop block cap (8 consecutive blocks, measured on CLI
+# 2.1.282) still bounds each session.
 
 # Print "true" when this Stop continues a chain started by an earlier block.
 # At the start of a chain, remove the named gates' budget files.

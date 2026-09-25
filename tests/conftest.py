@@ -16,6 +16,12 @@ HOOKS_DIR = REPO_ROOT / "hooks"
 SKILLS_DIR = REPO_ROOT / "skills"
 
 
+@pytest.fixture(autouse=True)
+def _default_stop_block_limit(monkeypatch):
+    """Hook tests pin the Stop breaker's default budget; only an explicit env changes it."""
+    monkeypatch.delenv("RAT_STOP_BLOCK_LIMIT", raising=False)
+
+
 @pytest.fixture
 def tmp_project(tmp_path):
     """Create a temporary project directory with .rat/state/."""
@@ -239,9 +245,7 @@ def run_hook(hook_path, stdin_json, cwd=None, timeout=10, env=None):
     """Run a hook script with JSON on stdin, return parsed JSON output."""
     if isinstance(stdin_json, dict):
         stdin_json = json.dumps(stdin_json)
-    # Hook tests pin the breaker's default budget; only an explicit env may change it.
-    base = {k: v for k, v in os.environ.items() if k != "RAT_STOP_BLOCK_LIMIT"}
-    merged_env = {**base, **(env or {})}
+    merged_env = {**os.environ, **(env or {})}
     result = subprocess.run(
         ["sh", str(hook_path)],
         capture_output=True,

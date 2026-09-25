@@ -22,11 +22,10 @@ SILENT = {"continue": True}
 
 
 def _run(call, *args, env=None):
-    base = {k: v for k, v in os.environ.items() if k != "RAT_STOP_BLOCK_LIMIT"}
     return subprocess.run(
         ["sh", "-c", _LOAD_LIB + call, "sh", str(LIB), *args],
         capture_output=True, text=True, timeout=10, check=True,
-        env={**base, **(env or {})},
+        env={**os.environ, **(env or {})},
     ).stdout
 
 
@@ -166,3 +165,10 @@ def test_fingerprint_is_one_token_deterministic_and_sensitive():
     assert first and "\n" not in first and " " not in first
     assert _fp("a.sv\nb.sv\n") == first
     assert _fp("a.sv\nc.sv\n") != first
+
+
+def test_chain_start_keeps_other_gates_budgets(tmp_path):
+    for _ in range(4):
+        _gate(tmp_path, "true", "a.sv", gate="p6-cascade")
+    _start_chain(tmp_path, "verify")
+    assert _gate(tmp_path, "true", "a.sv", gate="p6-cascade") == SILENT
