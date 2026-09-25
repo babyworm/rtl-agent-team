@@ -22,15 +22,28 @@ def _setup_marker(tmp_project):
     (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
 
 
-def _assert_blocked(result):
-    """The gate refused: a Stop block or a PreToolUse deny, never continue=false.
+def _assert_stop_blocked(result):
+    """A Stop gate blocked the stop and handed Claude a reason to keep working.
 
-    continue=false ends the whole turn and drops the reason (verified live on
-    Claude Code 2.1.282), so gates block through decision/permissionDecision.
+    continue=false would end the whole turn and drop the reason (verified live
+    on Claude Code 2.1.282), so a Stop gate blocks through decision/reason only.
     """
     assert result.get("continue") is not False, result
-    denied = result.get("hookSpecificOutput", {}).get("permissionDecision") == "deny"
-    assert result.get("decision") == "block" or denied, result
+    assert result.get("decision") == "block", result
+    reason = result.get("reason")
+    assert isinstance(reason, str) and reason.strip(), result
+    assert "hookSpecificOutput" not in result, result
+
+
+def _assert_denied(result):
+    """A PreToolUse gate refused only this tool call and told Claude why."""
+    assert result.get("continue") is not False, result
+    hso = result.get("hookSpecificOutput")
+    assert isinstance(hso, dict), result
+    assert hso.get("hookEventName") == "PreToolUse", result
+    assert hso.get("permissionDecision") == "deny", result
+    reason = hso.get("permissionDecisionReason")
+    assert isinstance(reason, str) and reason.strip(), result
 
 
 class TestRtlOrchestratorInject:
@@ -307,7 +320,7 @@ class TestSessionScopedState:
             env={"CLAUDE_SESSION_ID": "leader-001"},
         )
         # Gate should block because there are unverified files
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         # Should mention both files (aggregated)
         assert "2 RTL files" in ctx  # 2 files total
@@ -364,7 +377,7 @@ class TestRtlVerifyStopGate:
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("rtl/module/top.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_verify_done_allows_exit(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
@@ -405,7 +418,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "3 RTL files" in ctx  # 3 files
 
@@ -414,7 +427,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/alu/alu.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "1 RTL files" in ctx
 
@@ -424,7 +437,7 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "2 RTL files" in ctx
 
@@ -456,7 +469,7 @@ class TestRtlVerifyStopGate:
             {"cwd": str(tmp_project)},
             env={"CLAUDE_SESSION_ID": "leader-001"},
         )
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_verify_stop_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-verify-stop-gate.sh").read_text()
@@ -487,7 +500,7 @@ class TestStopGate:
         legacy_file.parent.mkdir(parents=True, exist_ok=True)
         legacy_file.write_text(json.dumps({"phase": 3}))
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         # Legacy file should have been migrated to new name
         new_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         assert new_file.exists()
@@ -511,7 +524,7 @@ class TestStopGate:
     def test_state_file_exists_blocks_exit(self, tmp_project):
         self._write_autopilot_state(tmp_project, {"phase": 3})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         assert "Auto-Design" in result.get("reason", "")
 
     def test_completed_state_allows_exit(self, tmp_project):
@@ -536,7 +549,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "primary strategy" in ctx
         assert "p2-quality-gate" in ctx
@@ -559,7 +572,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "fallback strategy" in ctx
         assert "Switch to module-split bugfix strategy." in ctx
@@ -581,7 +594,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "last-chance" in ctx.lower()
 
@@ -603,7 +616,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "Ask user" in ctx or "user" in ctx.lower()
 
@@ -627,7 +640,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "p3-quality-gate" in ctx
         assert "primary=1" in ctx
@@ -1220,7 +1233,7 @@ class TestP6CascadeGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "Phase 6" in ctx
 
@@ -1297,7 +1310,7 @@ class TestP6CascadeGate:
         (state_dir / "phase6-stale").touch()
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "not updated" in ctx.lower() or "cascade" in ctx.lower()
 
@@ -1327,7 +1340,7 @@ class TestP6CascadeGate:
         (state_dir / "phase6-stale").touch()
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "not found" in ctx.lower() or "not updated" in ctx.lower()
 
@@ -1363,7 +1376,7 @@ class TestSkillCompletionGate:
         """Active skill with all_complete=false → block exit."""
         self._write_skill_state(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_completed_skill_allows_exit(self, tmp_project):
         """Active skill with all_complete=true → allow exit."""
@@ -1382,7 +1395,7 @@ class TestSkillCompletionGate:
         """At iteration == max_iterations, ladder remains active and blocks exit."""
         self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "primary" in ctx.lower()
 
@@ -1453,7 +1466,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "primary" in ctx.lower()
 
@@ -1466,7 +1479,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "fallback" in ctx.lower()
         assert "fallback prompt" in ctx
@@ -1479,7 +1492,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "last_chance" in ctx or "last-chance" in ctx
 
@@ -1491,7 +1504,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "사용자" in ctx or "user" in ctx.lower()
 
@@ -1503,7 +1516,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         migrated = json.loads(state_file.read_text())
         assert migrated["use_escalation_ladder"] is True
 
@@ -1748,7 +1761,7 @@ class TestPhaseStateBootstrap:
     def test_p5b_blocks_without_p5a_state(self, tmp_project):
         _setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
-        _assert_blocked(result)
+        _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "P5B Gate BLOCKED" in ctx
         assert "rtl-p5a-functional-closure" in ctx
@@ -1763,7 +1776,7 @@ class TestPhaseStateBootstrap:
         )
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
-        _assert_blocked(result)
+        _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "gates.p5a_exit.verdict=fail" in ctx
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
@@ -1799,7 +1812,7 @@ class TestPhaseStateBootstrap:
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
-        _assert_blocked(result)
+        _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "stale functional closure" in ctx
         assert not (state_dir / "p5b-state.json").exists()
@@ -1915,7 +1928,7 @@ class TestHookConcurrency:
         # Run 3 calls sequentially (parallel would be racy by design — we test lock correctness)
         for _ in range(3):
             result = run_gate()
-            _assert_blocked(result)
+            _assert_stop_blocked(result)
 
         final_state = json.loads((state_dir / "skill-active.json").read_text())
         assert final_state["iteration"] == 4, f"Expected iteration=4, got {final_state['iteration']}"
@@ -1999,7 +2012,7 @@ class TestTeamAwarenessGuard:
             env=env, timeout=10,
         )
         parsed = json.loads(result.stdout)
-        _assert_blocked(parsed)
+        _assert_stop_blocked(parsed)
 
     def test_worker_bypasses_verify_gate(self, tmp_project):
         """Worker in team mode → verify gate allows exit even with tracked files."""
@@ -2045,7 +2058,7 @@ class TestTeamAwarenessGuard:
             env=env, timeout=10,
         )
         parsed = json.loads(result.stdout)
-        _assert_blocked(parsed)
+        _assert_stop_blocked(parsed)
 
     def test_leader_session_still_blocked_by_p6_cascade(self, tmp_project):
         """Leader session in team mode → P6 cascade gate still blocks."""
@@ -2061,7 +2074,7 @@ class TestTeamAwarenessGuard:
             env=env, timeout=10,
         )
         parsed = json.loads(result.stdout)
-        _assert_blocked(parsed)
+        _assert_stop_blocked(parsed)
 
     def test_leader_session_still_blocked_by_skill_completion(self, tmp_project):
         """Leader session in team mode → skill completion gate still blocks."""
@@ -2083,7 +2096,7 @@ class TestTeamAwarenessGuard:
             env=env, timeout=10,
         )
         parsed = json.loads(result.stdout)
-        _assert_blocked(parsed)
+        _assert_stop_blocked(parsed)
 
     def test_empty_leader_id_enforces_gate_fail_closed(self, tmp_project):
         """Empty leader_session_id with team_mode=true → fail-closed, gate enforced for all."""
@@ -2091,7 +2104,7 @@ class TestTeamAwarenessGuard:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
         """team-config.json older than 2h → removed, normal gate behavior resumes."""
@@ -2108,7 +2121,7 @@ class TestTeamAwarenessGuard:
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
         # Stale config removed → gate blocks as normal
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
         assert not (state_dir / "team-config.json").exists()
 
     def test_team_mode_false_does_not_bypass(self, tmp_project):
@@ -2117,7 +2130,7 @@ class TestTeamAwarenessGuard:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_stop_hooks_use_shared_team_gate_util(self):
         for _, hook_path in self.HOOKS.items():
@@ -2154,7 +2167,7 @@ class TestSedFallbackContract:
         assert result["continue"] is True
 
     def test_stop_gate_fallback_blocks_active(self, tmp_project):
-        """Active autopilot state → continue=false under sed fallback."""
+        """Active autopilot state → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         state_file = state_dir / "rat-auto-design-state.json"
         state_file.write_text(json.dumps({"status": "in_progress", "phase": 3}, indent=2))
@@ -2163,12 +2176,12 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     # ── verify-stop-gate ─────────────────────────────────────────────────────
 
     def test_verify_gate_fallback_blocks_unverified(self, tmp_project):
-        """Tracked files without verification → continue=false under sed fallback."""
+        """Tracked files without verification → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
         result = run_hook(
@@ -2176,7 +2189,7 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_verify_gate_fallback_allows_verified(self, tmp_project):
         """Tracked files with verify-done → continue=true under sed fallback."""
@@ -2193,7 +2206,7 @@ class TestSedFallbackContract:
     # ── p6-cascade-gate ──────────────────────────────────────────────────────
 
     def test_p6_cascade_fallback_blocks_stale(self, tmp_project):
-        """phase6-stale marker → continue=false under sed fallback."""
+        """phase6-stale marker → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(
@@ -2201,7 +2214,7 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_p6_cascade_fallback_allows_clean(self, tmp_project):
         """No stale marker → continue=true under sed fallback."""
@@ -2215,7 +2228,7 @@ class TestSedFallbackContract:
     # ── skill-completion-gate ────────────────────────────────────────────────
 
     def test_skill_completion_fallback_blocks_active(self, tmp_project):
-        """Active skill state → continue=false under sed fallback."""
+        """Active skill state → blocked under sed fallback."""
 
         state_dir = tmp_project / ".rat" / "state"
         state = {
@@ -2235,7 +2248,7 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_skill_completion_fallback_allows_complete(self, tmp_project):
         """all_complete=true → continue=true under sed fallback."""
@@ -3618,7 +3631,7 @@ class TestLegacyDirFallback:
             self.VERIFY_HOOK,
             {"cwd": str(tmp_legacy_project)},
         )
-        _assert_blocked(result)
+        _assert_stop_blocked(result)
 
     def test_orchestrator_inject_fires_with_legacy_dir(self, tmp_legacy_project):
         # Since v0.10.3 the hook emits a JSON envelope; routing markdown is

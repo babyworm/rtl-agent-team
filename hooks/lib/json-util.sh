@@ -12,7 +12,7 @@ jsonu_escape() {
   elif command -v python >/dev/null 2>&1; then
     printf '%s' "$1" | python -c 'import json,sys; s=sys.stdin.read(); sys.stdout.write(json.dumps(s)[1:-1])' 2>/dev/null
   else
-    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' ' ' | tr '\r' ' ' | tr '\b' ' ' | tr '\f' ' '
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\001-\037' ' '
   fi
 }
 
