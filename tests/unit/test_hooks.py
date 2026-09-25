@@ -1502,6 +1502,7 @@ class TestP6CascadeGate:
         assert "design-review" in ctx.lower() or "design_review" in ctx.lower()
         assert "design-note" in ctx.lower() or "design_note" in ctx.lower()
         assert "improvements" in ctx.lower()
+        assert "/rtl-agent-team:rtl-p6-design-review" in ctx
 
     def test_p6_cascade_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-p6-cascade-gate.sh").read_text()
@@ -1734,6 +1735,46 @@ class TestP6CascadeGate:
             before = set(tmp_path.rglob("*"))
             subprocess.run(["sh", "-c", command], check=True, cwd=tmp_path)
             assert set(tmp_path.rglob("*")) - before == {done}  # exactly the marker
+
+    def test_cascade_done_does_not_bypass_a_newer_ppa_result(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        stale, done = state / "phase6-stale", state / "phase6-cascade-done"
+        stale.touch()
+        os.utime(stale, (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review / name).write_text("reviewed before PPA-Opt")
+            os.utime(review / name, (2000, 2000))
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        done.touch()
+        results = [run_hook(self.HOOK, {"cwd": str(tmp_project)})]
+        assert "PPA-Opt" in results[0]["reason"]
+        assert stale.exists() and done.exists()
+        results += [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(3)
+        ]
+        assert [r.get("decision") for r in results] == ["block"] * 3 + [None]
+        assert "systemMessage" in results[3]
+        os.utime(review / "design-note.md", (4000, 4000))  # the review re-ran after PPA-Opt
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert not stale.exists() and not done.exists()
+
+    def test_a_symlinked_cwd_is_not_progress(self, tmp_path):
+        project = tmp_path / "project"
+        (project / ".rat" / "state").mkdir(parents=True)
+        (project / ".rat" / "state" / "phase6-stale").touch()
+        link = tmp_path / "link"
+        link.symlink_to(project)
+        # One chain whose input cwd alternates between the project and a symlink to it.
+        results = [
+            run_hook(self.HOOK, {"cwd": str(link if i % 2 else project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results] == ["block"] * 3 + [None]
+        assert "systemMessage" in results[3]
 
 
 class TestSkillCompletionGate:

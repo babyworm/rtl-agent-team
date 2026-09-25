@@ -7,9 +7,10 @@
 #
 # Flow (first match wins):
 #   - phase6-stale absent            → allow exit (Phase 6 was never completed or no RTL edits)
-#   - phase6-cascade-done present    → if every Phase 6 document is newer than phase6-stale,
-#                                      clean up both markers and allow exit; otherwise block
-#                                      and keep the marker
+#   - phase6-cascade-done present    → if every Phase 6 document is newer than phase6-stale
+#                                      and no design-note*.md is older than ppa-opt-done, clean
+#                                      up both markers and allow exit; otherwise block and keep
+#                                      the marker
 #   - ppa-opt-done newer than a design-note*.md → block (PPA-Opt ran after the Phase 6 review)
 #   - otherwise                      → block (RTL changed after the Phase 6 review)
 #
@@ -66,6 +67,10 @@ P6_NOTICE="[Phase 6 Cascade Gate] RTL changed after the Phase 6 review, and upda
 if [ -f "$CASCADE_DONE" ]; then
   STALE_MTIME=$(get_mtime_epoch "$STALE_MARKER")
   [ -z "$STALE_MTIME" ] && STALE_MTIME=0
+  # A PPA-Opt result newer than a design note also leaves the review stale.
+  PPA_MTIME=0
+  [ -f "$STATE_DIR/ppa-opt-done" ] && PPA_MTIME=$(get_mtime_epoch "$STATE_DIR/ppa-opt-done")
+  [ -z "$PPA_MTIME" ] && PPA_MTIME=0
   DOCS_STALE=false
   # All four P6 deliverables must exist and be updated after the stale marker:
   # code-review.md, design-review.md, design-note*.md (at least one), improvements.md
@@ -88,7 +93,7 @@ if [ -f "$CASCADE_DONE" ]; then
     DN_FOUND=true
     DOC_MTIME=$(get_mtime_epoch "$doc")
     [ -z "$DOC_MTIME" ] && DOC_MTIME=0
-    if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null; then
+    if [ "$DOC_MTIME" -le "$STALE_MTIME" ] 2>/dev/null || [ "$DOC_MTIME" -lt "$PPA_MTIME" ] 2>/dev/null; then
       DOCS_STALE=true
     fi
   done
@@ -97,7 +102,7 @@ if [ -f "$CASCADE_DONE" ]; then
   fi
 
   if [ "$DOCS_STALE" = "true" ]; then
-    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] The cascade-done marker is present, but the Phase 6 documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after the last RTL change. Re-run /rtl-agent-team:rtl-p6-design-review or update them to reflect the RTL changes. The marker stays in place: the gate passes once every document is newer than the stale marker." "$P6_NOTICE"
+    stopu_gate p6-cascade "$STATE_DIR" "$STOP_CHAIN" "$P6_PROGRESS" "[Phase 6 Cascade Gate BLOCKED] The cascade-done marker is present, but the Phase 6 documents (code-review.md, design-review.md, design-note*.md, improvements.md) were not found or not updated after the last RTL change or PPA-Opt result. Re-run /rtl-agent-team:rtl-p6-design-review or update them to reflect those changes. The marker stays in place: the gate passes once every document is newer than phase6-stale and no design-note*.md is older than ppa-opt-done." "$P6_NOTICE"
   fi
 
   rm -f "$STALE_MARKER" "$CASCADE_DONE"
