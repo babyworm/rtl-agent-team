@@ -53,12 +53,13 @@ if [ ! -d "$REVIEW_DIR" ]; then
   emit_post_continue
 fi
 
-# Scan for non-standard exclusion entries in module + system exclusion files
+# Scan for non-standard exclusion entries in module + system exclusion files. The glob
+# also matches system-coverage-exclusions.md, so every file is read once.
 # Non-standard patterns: "Unimplemented" or "Ambiguous" in exclusion category columns
 UNAPPROVED_COUNT=0
 UNAPPROVED_BINS=""
 
-for excl_file in "$REVIEW_DIR"/*-coverage-exclusions.md "$REVIEW_DIR"/system-coverage-exclusions.md; do
+for excl_file in "$REVIEW_DIR"/*-coverage-exclusions.md; do
   [ -f "$excl_file" ] || continue
   # Grep for non-standard category lines in markdown tables
   # Pattern: table row containing "Unimplemented" or "Ambiguous" (case insensitive)

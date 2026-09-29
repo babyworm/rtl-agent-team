@@ -4929,6 +4929,17 @@ class TestCoverageExclusionGate:
             f" alu-coverage-exclusions.md(1). To approve: touch '{marker}'")}
         assert results[2:] == [{"continue": True}] * 2
 
+    def test_the_system_file_is_counted_once(self, tmp_project):
+        # The module-file glob also matches system-coverage-exclusions.md.
+        self._write_table(tmp_project, "system-coverage-exclusions.md", "Ambiguous spec")
+        results = self._stops(tmp_project, [False, True])
+        reason, notice = results[0]["reason"], results[1]["systemMessage"]
+        assert reason.startswith("[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:"
+                                 " system-coverage-exclusions.md(1).")
+        assert notice.startswith("[Coverage Exclusion Gate] 1 non-standard coverage exclusion(s) still await"
+                                 " your approval: system-coverage-exclusions.md(1).")
+        assert reason.count("system-coverage-exclusions.md") == notice.count("system-coverage-exclusions.md") == 1
+
     @pytest.mark.parametrize("satisfy", ["approved", "reclassified", "review_dir_removed"])
     def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
         state = tmp_project / ".rat" / "state"
