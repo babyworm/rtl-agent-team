@@ -5065,6 +5065,25 @@ class TestCoverageExclusionGate:
         # Approved: the chain's next Stop lets Claude stop.
         assert self._stops(project, [True]) == [{"continue": True}]
 
+    def test_categories_match_in_any_case(self, tmp_project):
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "unimplemented feature", "AMBIGUOUS spec")
+        reason = self._stops(tmp_project, [False])[0]["reason"]
+        assert reason.startswith("[Coverage Exclusion Gate] 2 non-standard exclusion(s) require user approval:"
+                                 " alu-coverage-exclusions.md(2).")
+
+    def test_every_file_is_listed_with_its_own_count(self, tmp_project):
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature")
+        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec", "Ambiguous spec")
+        reason = self._stops(tmp_project, [False])[0]["reason"]
+        assert ("3 non-standard exclusion(s) require user approval:"
+                " alu-coverage-exclusions.md(1), fifo-coverage-exclusions.md(2).") in reason
+
+    def test_a_space_in_the_project_path_still_finds_the_exclusions(self, tmp_path):
+        project = tmp_path / "my project"
+        (project / ".rat" / "state").mkdir(parents=True)
+        self._write_exclusions(project)
+        assert self._stops(project, [False])[0]["decision"] == "block"
+
     def test_sed_fallback_asks_once_then_notifies(self, tmp_project):
         # Without jq and python the gate parses and escapes with sed; the output stays valid JSON.
         self._write_exclusions(tmp_project)

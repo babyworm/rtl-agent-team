@@ -133,13 +133,33 @@ def _code_lines(name):
     ]
 
 
+# Stop hooks that never block, so the breaker contract does not apply to them (none today).
+STOP_NON_GATES = set()
+
+# A line that ends the script: an emit_* helper, exit, or stopu_gate, which always exits.
+EXIT = re.compile(r"\bemit_\w+|\bexit\b|\bstopu_gate\b")
+
+
 def test_stop_gate_list_matches_hooks_json():
     config = json.loads((HOOKS_DIR / "hooks.json").read_text())
-    registered = {
-        re.search(r"hooks/([\w.-]+\.sh)", hook["command"]).group(1)
-        for entry in config["hooks"]["Stop"] for hook in entry["hooks"]
-    }
-    assert registered == set(STOP_GATES)
+    registered = set()
+    for entry in config["hooks"]["Stop"]:
+        for hook in entry["hooks"]:
+            match = re.search(r"hooks/([\w.-]+\.sh)", hook.get("command", ""))
+            assert match, f"a Stop hook this contract cannot check: {hook}"
+            registered.add(match.group(1))
+    assert registered - STOP_NON_GATES == set(STOP_GATES)
+
+
+def _allowed_early_exits(lines, chain):
+    """The RAT-directory guard's exit and the team skip's exit: the first exit on the
+    condition's own line or on the next code line (blank lines and comments skipped)."""
+    code = [(i, line.strip()) for i, line in lines if i < chain and line.strip()]
+    allowed = []
+    for n, (_, line) in enumerate(code):
+        if re.match(r'(if )?\[ -z "\$RAT_DIR" \]', line) or "teamu_should_skip_gate" in line:
+            allowed += [i for i, later in code[n:n + 2] if EXIT.search(later)][:1]
+    return allowed
 
 
 @pytest.mark.parametrize("name", sorted(STOP_GATES))
@@ -149,19 +169,22 @@ def test_stop_gate_counts_every_stop_before_any_other_exit(name):
     call = re.fullmatch(
         r'STOP_CHAIN=\$\(stopu_chain_active "\$INPUT" "[^"]+" ([\w -]+)\)', dict(lines)[chain])
     assert call and call.group(1).split() == STOP_GATES[name]
-    skip = next(i for i, line in lines if line.startswith("if teamu_should_skip_gate"))
     # stopu_gate always exits, so it counts as an exit too (Task 7 follow-up).
-    early = [i for i, line in lines if i < chain and re.search(r"\bemit_\w+|\bexit\b|\bstopu_gate\b", line)]
-    guard = [i for i in early if dict(lines)[i].startswith('[ -z "$RAT_DIR" ]')]
-    assert early == guard + [skip + 1]
+    early = [i for i, line in lines if i < chain and EXIT.search(line)]
+    skips = [i for i, line in lines if i < chain and "teamu_should_skip_gate" in line]
+    assert skips, "the team skip must come before the chain count"
+    assert early == _allowed_early_exits(lines, chain)
+    assert any(i >= skips[0] for i in early), "the team skip must exit"
 
 
 @pytest.mark.parametrize("name", sorted(STOP_GATES))
 def test_stop_gate_budget_ids_match_its_chain_count(name):
     # A typo in an id silently removes the chain cap for that call (Task 4 review).
     code = "\n".join(line for _, line in _code_lines(name))
-    used = re.findall(r"\bstopu_(?:gate|clear|decision) ([\w-]+)", code)
-    assert used and set(used) <= set(STOP_GATES[name])
+    used = re.findall(r"\bstopu_(?:gate|clear|decision)\b[ \t]*(\S*)", code)
+    # Literal ids only: an id in a variable, or on a continuation line, would escape this check.
+    assert used and all(re.fullmatch(r"[\w-]+", u) for u in used), used
+    assert set(used) <= set(STOP_GATES[name])
 
 
 @pytest.mark.parametrize("name", sorted(STOP_GATES))
@@ -170,3 +193,6 @@ def test_stop_gate_blocks_only_through_the_breaker(name):
     assert "emit_stop_block" not in code
     assert "emit_stop_notice" not in code  # a direct notice would repeat on every chained Stop
     assert not re.search(r'\\?"decision\\?"\s*:', code)
+    # Raw JSON built in the gate, as a printf'd notice or a jq object, bypasses the breaker too.
+    assert "systemMessage" not in code
+    assert not re.search(r"[{,]\s*decision\s*:", code)
