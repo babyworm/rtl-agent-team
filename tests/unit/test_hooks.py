@@ -700,12 +700,38 @@ class TestStopGate:
     """Tests for hooks/stop-gate.sh."""
 
     HOOK = HOOKS_DIR / "stop-gate.sh"
+    LOOP_STATE = {"ultraloop": "ultraloop-state.json", "ppa-loop": "ppa-loop-state.json"}
+    # How each stopu_gate site starts its reason (block sites) or its notice (notice sites).
+    SITE_PREFIX = {
+        "ultraloop": "[Ultraloop] auto-continue:",
+        "ppa-loop": "[PPA-Opt loop] auto-continue:",
+        "upper-spec": "[RAT Auto-Design STOP] Upper-spec violation",
+        "user-decision": "[RAT Auto-Design Loop p4-gate] The gate needs your decision",
+        "ladder": "[RAT Auto-Design Loop p4-gate] primary strategy",
+    }
 
     def _write_autopilot_state(self, tmp_project, payload):
         state_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_text(json.dumps(payload, indent=2))
         return state_file
+
+    def _write_ladder(self, tmp_project, **control):
+        """An in-progress run at gate p4-gate (N=2, one primary attempt), with overrides."""
+        control = {"active_gate_id": "p4-gate", "active_gate_retry_limit": 2,
+                   "active_gate_primary_attempts": 1, "needs_user_decision": False, **control}
+        return self._write_autopilot_state(
+            tmp_project, {"status": "in_progress", "orchestration_control": control})
+
+    def _write_loop(self, tmp_project, loop, ts, minutes=30):
+        path = tmp_project / ".rat" / "state" / self.LOOP_STATE[loop]
+        path.write_text(json.dumps(
+            {"mode": loop, "last_cycle_timestamp": ts, "auto_continue_minutes": minutes}))
+        return path
+
+    def _stops(self, project, actives):
+        """Run one Stop per stop_hook_active value and return the outputs."""
+        return [run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": a}) for a in actives]
 
     def test_no_state_file_allows_exit(self, tmp_project):
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
@@ -833,9 +859,9 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "Ask user" in ctx or "user" in ctx.lower()
+        assert "decision" not in result
+        notice = result["systemMessage"]
+        assert "Ask user" in notice or "user" in notice.lower()
 
     def test_nested_orchestration_control_fields_take_precedence(self, tmp_project):
         """Nested orchestration_control values must win over same-name top-level keys."""
@@ -868,6 +894,349 @@ class TestStopGate:
         assert "jsonu_get_file_path_string" in content
         assert "jsonu_get_file_path_bool" in content
         assert "jsonu_get_file_path_num" in content
+
+    def test_upper_spec_violation_hands_decision_to_user(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project, {"status": "in_progress", "upper_spec_blocking": True}
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert "decision" not in result
+        assert "Upper-spec violation" in result["systemMessage"]
+        # Once per chain: a chained Stop stays silent.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
+    def test_ladder_without_progress_pauses_in_chain(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "orchestration_control": {
+                    "active_gate_id": "p4-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 1,
+                    "needs_user_decision": False,
+                },
+            },
+        )
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "paused" in results[3]["systemMessage"]
+
+    def test_ultraloop_blocks_while_cycles_advance(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ultraloop-state.json"
+
+        def write(ts):
+            state.write_text(json.dumps(
+                {"mode": "ultraloop", "last_cycle_timestamp": ts, "auto_continue_minutes": 30}
+            ))
+
+        now = int(time.time())
+        write(now)
+        for i in range(2):
+            chained = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            assert chained["decision"] == "block"
+        write(now + 1)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "paused" in results[3]["systemMessage"]
+
+    def test_ultraloop_pause_holds_until_the_next_message(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ultraloop-state.json"
+        now = int(time.time())
+        state.write_text(json.dumps(
+            {"mode": "ultraloop", "last_cycle_timestamp": now, "auto_continue_minutes": 30}))
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        state.write_text(json.dumps(
+            {"mode": "ultraloop", "last_cycle_timestamp": now + 1, "auto_continue_minutes": 30}))
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
+             "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
+             "needs_user_decision": False}},
+        )
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        self._write_autopilot_state(
+            tmp_project,
+            {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
+             "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
+             "needs_user_decision": False}},
+        )
+        lead = {"CLAUDE_SESSION_ID": "leader-001"}
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        assert (state / "stop-budget-autopilot.txt").read_text().startswith("2\n")
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-autopilot.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_autopilot_state(
+            tmp_project,
+            {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
+             "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
+             "needs_user_decision": False}},
+        )
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "paused" in result["systemMessage"]
+
+    def test_ppa_loop_blocks_while_cycles_advance(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ppa-loop-state.json"
+
+        def write(ts):
+            state.write_text(json.dumps(
+                {"mode": "ppa-loop", "last_cycle_timestamp": ts, "auto_continue_minutes": 30}
+            ))
+
+        now = int(time.time())
+        write(now)
+        for i in range(2):
+            chained = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            assert chained["decision"] == "block"
+            assert chained["reason"].startswith("[PPA-Opt loop] auto-continue:")
+        write(now + 1)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert results[3]["systemMessage"].startswith("[PPA-Opt loop] The loop is paused")
+
+    def test_ppa_loop_pause_holds_until_the_next_message(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ppa-loop-state.json"
+        now = int(time.time())
+        state.write_text(json.dumps(
+            {"mode": "ppa-loop", "last_cycle_timestamp": now, "auto_continue_minutes": 30}))
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        state.write_text(json.dumps(
+            {"mode": "ppa-loop", "last_cycle_timestamp": now + 1, "auto_continue_minutes": 30}))
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    def test_loop_notice_command_ends_the_loop_in_a_quoted_path(self, tmp_path, loop):
+        project = tmp_path / "o'brien"
+        (project / ".rat" / "state").mkdir(parents=True)
+        loop_state = self._write_loop(project, loop, int(time.time()))
+        results = self._stops(project, [False, True, True, True])
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        notice = results[3]["systemMessage"]
+        name = {"ultraloop": "[Ultraloop]", "ppa-loop": "[PPA-Opt loop]"}[loop]
+        assert notice.startswith(f"{name} The loop is paused: automatic continuation stopped for this turn."
+                                 " Say continue to resume, or end the loop: rm ")
+        assert notice.endswith(f"{loop_state.name}'")  # the command comes last and can be copied as is
+        before = set(tmp_path.rglob("*"))
+        subprocess.run(["sh", "-c", notice.split("end the loop: ", 1)[1]], check=True, cwd=tmp_path)
+        assert set(tmp_path.rglob("*")) == before - {loop_state}  # exactly the loop state is gone
+        # The loop has ended, so the chain's next Stop lets Claude stop.
+        assert self._stops(project, [True]) == [{"continue": True}]
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    def test_allowed_stops_count_toward_the_loop_chain_cap(self, tmp_project, loop):
+        # As for the autopilot: another hook kept a new chain going for six Stops while
+        # this gate allowed them, and then the loop started.
+        (tmp_project / ".rat" / "state" / f"stop-budget-{loop}.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_loop(tmp_project, loop, int(time.time()))
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "The loop is paused" in result["systemMessage"]
+
+    @pytest.mark.parametrize("site", ["ultraloop", "ppa-loop", "ladder"])
+    def test_progress_on_every_stop_still_hands_over_at_the_chain_cap(self, tmp_project, site):
+        now = int(time.time())
+        results = []
+        for i in range(8):
+            if site == "ladder":
+                self._write_ladder(tmp_project, active_gate_primary_attempts=i)  # an attempt every Stop
+            else:
+                self._write_loop(tmp_project, site, now + i)  # a new cycle every Stop
+            results += self._stops(tmp_project, [i > 0])
+        assert [r.get("decision") for r in results[:6]] == ["block"] * 6
+        assert "paused" in results[6]["systemMessage"]
+        assert results[7] == {"continue": True}
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    @pytest.mark.parametrize("offset,minutes", [(-31 * 60, 30), (3600, 0)])
+    def test_a_loop_outside_its_window_does_not_block(self, tmp_project, loop, offset, minutes):
+        # A future timestamp counts as 0 seconds elapsed, so a 0-minute window pins the
+        # boundary: as much time elapsed as the window allows is outside the window.
+        self._write_loop(tmp_project, loop, int(time.time()) + offset, minutes=minutes)
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
+
+    def test_upper_spec_notice_tells_the_user_what_to_decide(self, tmp_project):
+        self._write_autopilot_state(tmp_project, {"status": "in_progress", "upper_spec_blocking": True})
+        results = self._stops(tmp_project, [False, True, True])
+        assert results[0] == {"systemMessage": (
+            "[RAT Auto-Design STOP] Upper-spec violation is unresolved, so the pipeline is paused."
+            " Decide whether to approve the violation or send the pipeline back to fix it, then tell Claude.")}
+        assert results[1:] == [{"continue": True}] * 2
+        assert "Upper-spec violation" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
+
+    def test_user_decision_shows_once_per_chain(self, tmp_project):
+        # The orchestrator's contract: once the last chance fails, it records needs_user_decision.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=2, active_gate_fallback_attempts=2,
+                           active_gate_last_chance_attempts=1, active_gate_strategy="last_chance",
+                           needs_user_decision=True, dynamic_prompt_text="Approve rollback to phase 3?")
+        results = self._stops(tmp_project, [False, True, True])
+        assert results[0] == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused."
+            " Suggested context: Approve rollback to phase 3? Tell Claude how to proceed."
+            " (strategy=last_chance, primary=2, fallback=2, last_chance=1)")}
+        assert results[1:] == [{"continue": True}] * 2
+        assert "needs your decision" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
+
+    @pytest.mark.parametrize("primary,fallback,last_chance", [(1, 0, 0), (3, 0, 0), (3, 2, 0), (3, 2, 1)])
+    def test_user_decision_notice_holds_at_every_stage(self, tmp_project, primary, fallback, last_chance):
+        # The orchestrator may ask at any ladder stage. The user reads this notice, so none of
+        # the stage's instructions to Claude may reach it.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
+                           active_gate_fallback_attempts=fallback,
+                           active_gate_last_chance_attempts=last_chance,
+                           needs_user_decision=True, dynamic_prompt_text="Pick a strategy.")
+        notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
+        assert notice.startswith("[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline"
+                                 " is paused. Suggested context: Pick a strategy. Tell Claude how to proceed.")
+        for text in ("Continue agent loop", "Split failure scope", "last-chance alternative", "Ask user"):
+            assert text not in notice
+
+    def test_exhausted_ladder_hands_the_decision_to_the_user(self, tmp_project):
+        # N=2 and the last chance is used: the gate escalates on its own.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=3, active_gate_fallback_attempts=2,
+                           active_gate_last_chance_attempts=1)
+        results = self._stops(tmp_project, [False, True])
+        assert results[0] == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused."
+            " Tell Claude how to proceed. (strategy=user_escalated, primary=3, fallback=2, last_chance=1)")}
+        assert results[1] == {"continue": True}
+
+    def test_ladder_pause_notice_holds_for_the_chain(self, tmp_project):
+        self._write_ladder(tmp_project)
+        results = self._stops(tmp_project, [False] + [True] * 5)
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert results[0]["reason"] == (
+            "[RAT Auto-Design Loop p4-gate] primary strategy (1/2). Continue agent loop and satisfy"
+            " the gate conditions. (strategy=primary, primary=1, fallback=0, last_chance=0)")
+        assert results[3] == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The pipeline is paused: automatic continuation stopped"
+            " for this turn. Say continue to resume.")}
+        assert results[4:] == [{"continue": True}] * 2
+
+    @pytest.mark.parametrize("attempt", [
+        {"active_gate_primary_attempts": 2},
+        {"active_gate_fallback_attempts": 1},
+        {"active_gate_last_chance_attempts": 1},
+        {"active_gate_id": "p5-gate"},
+    ])
+    def test_recorded_attempt_before_the_notice_restarts_the_count(self, tmp_project, attempt):
+        self._write_ladder(tmp_project)
+        results = self._stops(tmp_project, [False, True])
+        self._write_ladder(tmp_project, **attempt)  # the orchestrator recorded another attempt
+        results += self._stops(tmp_project, [True] * 4)
+        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
+        assert "paused" in results[5]["systemMessage"]
+
+    def test_prompt_rewrite_without_an_attempt_is_not_progress(self, tmp_project):
+        results = []
+        for i in range(4):
+            # Fallback stage (3 of 3-4): the reason carries the dynamic prompt, rewritten each Stop.
+            self._write_ladder(tmp_project, active_gate_primary_attempts=3,
+                               dynamic_prompt_text=f"Try variant {i}.")
+            results += self._stops(tmp_project, [i > 0])
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "Dynamic prompt: Try variant 1." in results[1]["reason"]
+        assert "paused" in results[3]["systemMessage"]
+
+    @pytest.mark.parametrize("primary,fallback,last_chance,stage", [
+        (2, 0, 0, "primary strategy (2/2)"),
+        (3, 0, 0, "fallback strategy (3/3-4)"),
+        (2, 2, 0, "fallback strategy (4/3-4)"),
+        (3, 2, 0, "reached 2x retry budget"),
+    ])
+    def test_ladder_stage_at_each_boundary(self, tmp_project, primary, fallback, last_chance, stage):
+        # N=2: primary through N attempts, fallback through 2N, then one last chance.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
+                           active_gate_fallback_attempts=fallback,
+                           active_gate_last_chance_attempts=last_chance)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert stage in result["reason"]
+
+    def test_a_run_as_old_as_the_stale_bound_is_abandoned(self, tmp_project):
+        run_state = self._write_ladder(tmp_project)
+        future = time.time() + 3600
+        os.utime(run_state, (future, future))  # a future mtime counts as 0 seconds old
+        stale = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"RAT_STOP_STALE_SECONDS": "0"})
+        assert stale == {"continue": True}
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"  # the 2h default
+
+    @pytest.mark.parametrize("exit_path", ["no_state", "stale_state", "completed"])
+    @pytest.mark.parametrize("site", ["ultraloop", "ppa-loop", "upper-spec", "user-decision", "ladder"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, site, exit_path):
+        state = tmp_project / ".rat" / "state"
+        run_state = state / "rat-auto-design-state.json"
+        loop = site in self.LOOP_STATE
+        notice_only = site in ("upper-spec", "user-decision")  # limit 0: the notice, then silence
+
+        def start():  # the site's condition holds
+            if loop:
+                self._write_loop(tmp_project, site, int(time.time()))
+            elif site == "upper-spec":
+                self._write_autopilot_state(tmp_project, {"status": "in_progress", "upper_spec_blocking": True})
+            else:
+                self._write_ladder(tmp_project, needs_user_decision=site == "user-decision")
+
+        start()
+        results = self._stops(tmp_project, [False, True, True, True])
+        assert "systemMessage" in results[0 if notice_only else 3]
+        # The gate is satisfied, and the chain's next Stop leaves through this exit.
+        if loop:
+            (state / self.LOOP_STATE[site]).unlink()
+        if exit_path == "no_state":
+            run_state.unlink(missing_ok=True)
+        elif exit_path == "stale_state":
+            if not run_state.exists():
+                self._write_ladder(tmp_project)
+            os.utime(run_state, (1000, 1000))  # abandoned long ago
+        else:
+            self._write_autopilot_state(tmp_project, {"status": "completed"})
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert self._stops(tmp_project, [True]) == [{"continue": True}]
+        budget = state / f"stop-budget-{site if loop else 'autopilot'}.txt"
+        lines = budget.read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        start()  # the same condition comes back later in this chain
+        again = self._stops(tmp_project, [True])[0]
+        if notice_only:
+            assert again["systemMessage"].startswith(self.SITE_PREFIX[site])  # its notice again, not silence
+        else:
+            assert again["decision"] == "block"
+            assert again["reason"].startswith(self.SITE_PREFIX[site])
 
 
 class TestRtlEditTrackerBash:

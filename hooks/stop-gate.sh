@@ -1,7 +1,16 @@
 #!/bin/sh
-# Stop Gate: block session exit while rat-auto-design is running.
+# Stop Gate: keeps Claude working while rat-auto-design runs, and auto-continues an
+# ultraloop or a PPA-Opt loop within its time window.
 # Supports escalation ladder:
 #   primary attempts (<=N) -> fallback strategy (N+1..2N) -> last chance (2N+1) -> user escalation.
+# A user decision (the orchestrator asks for one, the ladder is used up, or an upper-spec
+# violation is unresolved) lets Claude stop and shows the user a notice once per chain.
+#
+# Every block goes through hooks/lib/stop-budget-util.sh (budget ids ultraloop, ppa-loop and
+# autopilot): after RAT_STOP_BLOCK_LIMIT blocks without progress (a new loop cycle, or another
+# gate or gate attempt recorded by the orchestrator) in one continuation chain, the gate lets
+# Claude stop and shows the user a notice. From the chain's Stop STOPU_CHAIN_CAP + 1 on,
+# whichever hooks blocked the earlier Stops, the gate shows the notice instead of blocking.
 
 INPUT=$(cat)
 
@@ -10,7 +19,9 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/stop-budget-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
@@ -30,11 +41,21 @@ fi
 if teamu_should_skip_gate "$RAT_DIR/state"; then
   emit_post_continue
 fi
+STOP_CHAIN=$(stopu_chain_active "$INPUT" "$RAT_DIR/state" ultraloop ppa-loop autopilot)
+
+# Let Claude stop once no loop and no autopilot run holds the stop. Every condition this
+# gate checks is then satisfied, so all three budgets are reset (the chain's Stop count
+# stays): a condition that comes back later in the chain is not left silent.
+_allow_stop() {
+  stopu_clear ultraloop "$RAT_DIR/state"
+  stopu_clear ppa-loop "$RAT_DIR/state"
+  stopu_clear autopilot "$RAT_DIR/state"
+  emit_post_continue
+}
 
 # Ultraloop auto-continue: if ultraloop is active and within its time window, keep going
 ULTRALOOP_STATE="$RAT_DIR/state/ultraloop-state.json"
 if [ -f "$ULTRALOOP_STATE" ]; then
-  . "$SCRIPT_DIR/lib/posix-util.sh"
   UL_MODE=$(jsonu_get_file_path_string "$ULTRALOOP_STATE" "mode")
   if [ "$UL_MODE" = "ultraloop" ]; then
     UL_TIMESTAMP=$(jsonu_get_file_path_num "$ULTRALOOP_STATE" "last_cycle_timestamp")
@@ -43,8 +64,10 @@ if [ -f "$ULTRALOOP_STATE" ]; then
     UL_THRESHOLD=$((UL_MINUTES * 60))
     UL_ELAPSED=$(posix_elapsed_seconds "$UL_TIMESTAMP")
     if [ "$UL_ELAPSED" -lt "$UL_THRESHOLD" ]; then
+      # Progress means a new cycle: the loop refreshes last_cycle_timestamp at each one.
       MSG="[Ultraloop] auto-continue: ${UL_ELAPSED}s elapsed (threshold=${UL_THRESHOLD}s). Continuing autonomous loop."
-      emit_stop_block "$MSG"
+      stopu_gate ultraloop "$RAT_DIR/state" "$STOP_CHAIN" "ultraloop|$UL_TIMESTAMP" "$MSG" \
+        "[Ultraloop] The loop is paused: automatic continuation stopped for this turn. Say continue to resume, or end the loop: rm $(shq "$ULTRALOOP_STATE")"
     fi
   fi
 fi
@@ -52,7 +75,6 @@ fi
 # PPA-Opt loop auto-continue: if ppa-loop is active and within its time window, keep going
 PPA_LOOP_STATE="$RAT_DIR/state/ppa-loop-state.json"
 if [ -f "$PPA_LOOP_STATE" ]; then
-  . "$SCRIPT_DIR/lib/posix-util.sh"
   PPA_MODE=$(jsonu_get_file_path_string "$PPA_LOOP_STATE" "mode")
   if [ "$PPA_MODE" = "ppa-loop" ]; then
     PPA_TIMESTAMP=$(jsonu_get_file_path_num "$PPA_LOOP_STATE" "last_cycle_timestamp")
@@ -61,14 +83,16 @@ if [ -f "$PPA_LOOP_STATE" ]; then
     PPA_THRESHOLD=$((PPA_MINUTES * 60))
     PPA_ELAPSED=$(posix_elapsed_seconds "$PPA_TIMESTAMP")
     if [ "$PPA_ELAPSED" -lt "$PPA_THRESHOLD" ]; then
+      # Progress means a new cycle: the loop refreshes last_cycle_timestamp at each one.
       MSG="[PPA-Opt loop] auto-continue: ${PPA_ELAPSED}s elapsed (threshold=${PPA_THRESHOLD}s). Continuing PPA optimization loop."
-      emit_stop_block "$MSG"
+      stopu_gate ppa-loop "$RAT_DIR/state" "$STOP_CHAIN" "ppa-loop|$PPA_TIMESTAMP" "$MSG" \
+        "[PPA-Opt loop] The loop is paused: automatic continuation stopped for this turn. Say continue to resume, or end the loop: rm $(shq "$PPA_LOOP_STATE")"
     fi
   fi
 fi
 
 if [ ! -f "$STATE_FILE" ]; then
-  emit_post_continue
+  _allow_stop
 fi
 
 # Staleness escape: an autopilot run that crashed or was abandoned leaves a
@@ -76,25 +100,26 @@ fi
 # in EVERY future session forever. Mirror the 2h bound used by
 # rtl-skill-completion-gate.sh: if the state file has not been touched within
 # the bound, treat the run as abandoned and allow the session to stop.
-. "$SCRIPT_DIR/lib/posix-util.sh"
 STOP_STALE_BOUND=${RAT_STOP_STALE_SECONDS:-7200}
 STATE_MTIME=$(get_mtime_epoch "$STATE_FILE")
 if [ -n "$STATE_MTIME" ]; then
   STATE_AGE=$(posix_elapsed_seconds "$STATE_MTIME")
   if [ "$STATE_AGE" -ge "$STOP_STALE_BOUND" ] 2>/dev/null; then
-    emit_post_continue
+    _allow_stop
   fi
 fi
 
 STATUS=$(jsonu_get_file_path_string "$STATE_FILE" "status")
 if [ "$STATUS" = "completed" ]; then
-  emit_post_continue
+  _allow_stop
 fi
 
 UPPER_SPEC_BLOCKING=$(jsonu_get_file_path_bool "$STATE_FILE" "upper_spec_blocking")
 if [ "$UPPER_SPEC_BLOCKING" = "true" ]; then
-  MSG="[RAT Auto-Design STOP] Upper-spec violation is unresolved. Resolve violation or obtain user approval before proceeding."
-  emit_stop_block "$MSG"
+  # The user reads this notice, so it tells the user what to decide.
+  MSG="[RAT Auto-Design STOP] Upper-spec violation is unresolved, so the pipeline is paused. Decide whether to approve the violation or send the pipeline back to fix it, then tell Claude."
+  # A user decision: notify once per chain (limit 0), then stay silent.
+  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "upper-spec" "$MSG" "$MSG" 0
 fi
 
 ACTIVE_GATE_ID=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.active_gate_id")
@@ -138,14 +163,26 @@ elif [ "$LAST_CHANCE_ATTEMPTS" -lt 1 ]; then
 else
   NEEDS_USER_DECISION=true
   [ -z "$STRATEGY" ] && STRATEGY="user_escalated"
-  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] last-chance attempt exhausted. Ask user for direction before further retries."
 fi
 
 if [ "$NEEDS_USER_DECISION" = "true" ]; then
+  # The user reads this notice, so it tells the user what to decide. The orchestrator may
+  # ask at any ladder stage, so the notice replaces that stage's instructions to Claude.
+  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] The gate needs your decision, so the pipeline is paused."
   if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
     MSG="${MSG} Suggested context: ${DYNAMIC_PROMPT_TEXT}"
   fi
+  MSG="${MSG} Tell Claude how to proceed."
 fi
 
 MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})"
-emit_stop_block "$MSG"
+# A user decision is the next step: let Claude stop and show the escalation to the
+# user, once per chain (limit 0).
+if [ "$NEEDS_USER_DECISION" = "true" ]; then
+  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "user-decision|$ACTIVE_GATE_ID" "$MSG" "$MSG" 0
+fi
+# Progress means the orchestrator recorded another gate attempt.
+stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" \
+  "$ACTIVE_GATE_ID|$PRIMARY_ATTEMPTS|$FALLBACK_ATTEMPTS|$LAST_CHANCE_ATTEMPTS" \
+  "$MSG" \
+  "[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] The pipeline is paused: automatic continuation stopped for this turn. Say continue to resume."
