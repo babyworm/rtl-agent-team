@@ -14,15 +14,9 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-# Optional override for external drivers whose session CWD differs from the
-# real project root (see hooks/lib/rat-dir-util.sh). The -d guard makes a
-# bogus env value fall back to the legacy CWD. Needed here beyond the
-# rat_project_dir override: the setup-marker checks, sctx_write_manifest
-# artifact/quality-gate scans, and P5B relative-path staleness resolution all
-# use $CWD directly.
-[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")

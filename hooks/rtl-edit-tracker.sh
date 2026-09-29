@@ -12,16 +12,14 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-# External Workflow drivers: honor RAT_PROJECT_ROOT so project-relative scans
-# (cascade downstream checks, validator report resolution, tracked RTL paths)
-# resolve against the real project root, matching the other hooks' guard.
-[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
+SESSION_CWD=$CWD  # a relative path in a Bash command is relative to the session's directory
 
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # --- Shared helpers (used by both Bash and Edit/Write paths) ---
 
@@ -247,6 +245,11 @@ if [ -z "$FILE_PATH" ]; then
     printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"ppa-loop scope edit — skipping rtl-edit staleness"}}'
     exit 0
   fi
+  # Record each path absolute, as an Edit reports it: a relative path names a file in the
+  # session's directory, which a `cd` may have moved below the project root.
+  BASH_RTL_FILES=$(printf '%s\n' "$BASH_RTL_FILES" | RAT_SESSION_CWD="${SESSION_CWD%/}" awk '
+    substr($0, 1, 1) != "/" { sub(/^(\.\/)+/, ""); $0 = ENVIRON["RAT_SESSION_CWD"] "/" $0 }
+    { print }')
   _track_and_invalidate "$BASH_RTL_FILES"
   _prepare_gate_output
   printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"

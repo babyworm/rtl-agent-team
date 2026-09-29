@@ -20,22 +20,23 @@
 
 # Consume stdin (hook protocol)
 INPUT=$(cat)
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+. "$SCRIPT_DIR/lib/rat-dir-util.sh"
 CWD=$(printf '%s' "$INPUT" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 [ -z "$CWD" ] && CWD="$(pwd)"
-# Optional override for external drivers whose session CWD differs from the real
-# project root (see hooks/lib/rat-dir-util.sh). Unset ⇒ identical to legacy.
-[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
 
 # RAT project marker: .rat/ (current) or .rtl-agent-team/ (legacy v0.8.11-).
 # These directories are created by rtl-agent-team skills (including
 # rat-init-project) when first invoked. Their presence means the project
 # has actively used rtl-agent-team at least once. Generic directory names
 # like rtl/ or docs/ are NOT used as markers — too many false positives.
+# rat_is_project finds the marker by the rule every RAT hook uses
+# (hooks/lib/rat-dir-util.sh), including the RAT_PROJECT_ROOT override.
 #
 # When no marker is present, emit minimal valid SessionStart JSON and exit
 # silently. Per-skill init advisory (when a user invokes a rtl-agent-team
 # skill in an unmarked project) is handled by rtl-skill-activation.sh.
-if [ ! -d "$CWD/.rat" ] && [ ! -d "$CWD/.rtl-agent-team" ]; then
+if ! rat_is_project "$CWD"; then
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
   exit 0
 fi

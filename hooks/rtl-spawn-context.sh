@@ -15,14 +15,9 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-# Optional override for external drivers whose session CWD differs from the
-# real project root (see hooks/lib/rat-dir-util.sh). The -d guard makes a
-# bogus env value fall back to the legacy CWD. Needed here beyond the
-# rat_project_dir override: sctx_write_manifest resolves artifact existence,
-# quality gates, and the setup marker directly against $CWD.
-[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # Extract subagent_type from tool input.
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")

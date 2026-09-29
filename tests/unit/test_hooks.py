@@ -695,6 +695,23 @@ class TestRtlVerifyStopGate:
         assert out == ""
         assert not list(state.glob("rtl-modified-files-aggregated.*"))
 
+    def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        (tmp_project / "sim").mkdir(exist_ok=True)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project / "sim")},
+                          env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
+        _assert_stop_blocked(result)
+        assert "a.sv" in result["reason"]
+
+    def test_stray_marker_in_a_subdirectory_cannot_waive_verification(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        stray = tmp_project / "rtl" / ".rat" / "state"
+        stray.mkdir(parents=True)
+        (stray / "rtl-verify-done").touch()  # `touch .rat/state/rtl-verify-done` run from rtl/
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project / "rtl")},
+                          env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
+        _assert_stop_blocked(result)
+
 
 class TestStopGate:
     """Tests for hooks/stop-gate.sh."""
@@ -1504,6 +1521,17 @@ class TestRtlEditTrackerBash:
         stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert stale.exists()
 
+    def test_edits_from_a_subdirectory_track_one_project_path(self, tmp_project):
+        rtl = tmp_project / "rtl"
+        rtl.mkdir(exist_ok=True)
+        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
+        run_hook(self.HOOK, {"cwd": str(rtl), "command": "sed -i 's/a/b/' alu.sv"}, env=env)
+        run_hook(self.HOOK, {"cwd": str(rtl), "file_path": str(rtl / "alu.sv")}, env=env)
+        gate = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", {"cwd": str(rtl)}, env=env)
+        _assert_stop_blocked(gate)
+        assert "1 RTL files" in gate["reason"]
+        assert "rtl/alu.sv" in gate["reason"]
+
 
 class TestRtlEditTrackerPhase6:
     """Tests for Phase 6 stale detection in hooks/rtl-edit-tracker.sh."""
@@ -2230,6 +2258,30 @@ class TestP6CascadeGate:
         os.utime(state / "ppa-opt-done", (3000, 3000))
         (state / "phase6-cascade-done").touch()
         assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_session_in_a_subdirectory_checks_the_project_review_documents(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        docs = [review / name for name in
+                ("code-review.md", "design-review.md", "design-note.md", "improvements.md")]
+        for doc in docs:
+            doc.write_text("reviewed")
+            os.utime(doc, (1000, 1000))
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (2000, 2000))
+        (state / "phase6-cascade-done").touch()
+        (tmp_project / "rtl").mkdir()
+        stdin = {"cwd": str(tmp_project / "rtl")}
+        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
+        result = run_hook(self.HOOK, stdin, env=env)
+        _assert_stop_blocked(result)
+        for name in ("code-review.md", "design-review.md", "design-note", "improvements.md"):
+            assert name in result["reason"]
+        # The documents are read from the project root, not rtl/reviews/: updating them passes.
+        for doc in docs:
+            os.utime(doc, (3000, 3000))
+        assert run_hook(self.HOOK, stdin, env=env) == {"continue": True}
 
 
 class TestSkillCompletionGate:
@@ -4791,6 +4843,57 @@ class TestRatDirUtil:
         )
         assert rc == 1
         assert out == ""
+
+    def _resolve(self, start, project_dir=None):
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PROJECT_DIR"}
+        if project_dir is not None:
+            env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+        result = subprocess.run(
+            ["sh", "-c", f'. "{HOOKS_DIR}/lib/rat-dir-util.sh"\nrat_project_dir "$1"', "sh", str(start)],
+            capture_output=True, text=True, env=env,
+        )
+        return result.stdout.strip(), result.returncode
+
+    def test_subdirectory_resolves_to_the_project(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl" / "core").mkdir(parents=True)
+        assert self._resolve(tmp_path / "rtl" / "core", tmp_path) == (f"{tmp_path}/.rat", 0)
+
+    def test_root_marker_wins_over_a_stray_nested_one(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl" / ".rat" / "state").mkdir(parents=True)  # a relative write made from rtl/
+        assert self._resolve(tmp_path / "rtl", tmp_path) == (f"{tmp_path}/.rat", 0)
+
+    def test_without_a_root_marker_the_nearest_initialized_project_wins(self, tmp_path):
+        ip = tmp_path / "ip"
+        (ip / ".rat").mkdir(parents=True)
+        (ip / "rat_config.json").write_text("{}")
+        (ip / "rtl" / ".rat").mkdir(parents=True)                   # stray, not initialized
+        assert self._resolve(ip / "rtl", tmp_path) == (f"{ip}/.rat", 0)
+
+    def test_without_a_root_marker_a_legacy_project_is_still_found(self, tmp_path):
+        ip = tmp_path / "ip"
+        (ip / ".rtl-agent-team").mkdir(parents=True)
+        (ip / "rtl").mkdir()
+        assert self._resolve(ip / "rtl", tmp_path) == (f"{ip}/.rtl-agent-team", 0)
+
+    def test_walk_stops_at_the_project_root(self, tmp_path):
+        (tmp_path / ".rat").mkdir()                      # stray marker above the project
+        project = tmp_path / "work" / "proj"
+        (project / "rtl").mkdir(parents=True)
+        assert self._resolve(project / "rtl", project) == ("", 1)
+
+    def test_cwd_outside_the_project_falls_back_to_the_project_root(self, tmp_path):
+        project = tmp_path / "proj"
+        (project / ".rat").mkdir(parents=True)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        assert self._resolve(elsewhere, project) == (f"{project}/.rat", 0)
+
+    def test_without_project_dir_only_the_cwd_counts(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl").mkdir()
+        assert self._resolve(tmp_path / "rtl") == ("", 1)
 
 
 # ── Legacy .rtl-agent-team fallback integration tests ────────────────────────

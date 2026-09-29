@@ -140,14 +140,32 @@ class TestHookRuntimeContract:
                     assert 1 <= timeout <= 10
 
 
+def _hooks_resolving_rat_dir() -> list:
+    """Every hook that calls rat_project_dir, read from hooks/ so that a new hook is covered."""
+    return sorted(
+        path.name for path in (REPO_ROOT / "hooks").glob("*.sh")
+        if any(re.search(r"\brat_project_dir\b", line)
+               for line in path.read_text().splitlines() if not line.lstrip().startswith("#"))
+    )
+
+
+RAT_DIR_HOOKS = _hooks_resolving_rat_dir()
+
+
 class TestSpawnContextProjectRootContract:
     """v0.13.x Workflow-drivability contract: the spawn-context manifest ships
-    project_root (RAT_PROJECT_ROOT override, CWD fallback) and the two
-    manifest-writing hooks honor the override for paths not routed through
-    rat_project_dir()."""
+    project_root (RAT_PROJECT_ROOT override, CWD fallback), and every hook honors
+    the override for paths not routed through rat_project_dir(). rat_project_dir()
+    applies the override, and each hook that calls it re-bases CWD on the marker it
+    returns before it builds a path from CWD. The same re-base moves CWD to the
+    project root when the session has cd'd into a subdirectory."""
 
     SPAWN_CTX_UTIL = REPO_ROOT / "hooks" / "lib" / "spawn-context-util.sh"
-    OVERRIDE_LINE = '[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"'
+    REBASE_LINE = 'CWD=$(dirname "$RAT_DIR")'
+    # A path built from CWD: "$CWD/..." or "${CWD%/}/...".
+    CWD_PATH = re.compile(r"\$CWD/|\$\{CWD\b")
+    # The RAT-directory guard reads the session's CWD by design.
+    GUARD = re.compile(r'\brat_project_dir\b|\brat_is_project\b|\[ -z "\$RAT_DIR" \]')
 
     def test_manifest_emits_project_root_field(self):
         content = self.SPAWN_CTX_UTIL.read_text()
@@ -162,15 +180,27 @@ class TestSpawnContextProjectRootContract:
             in content
         )
 
-    @pytest.mark.parametrize(
-        "hook_name", ["rtl-spawn-context.sh", "rtl-phase-state-bootstrap.sh"]
-    )
-    def test_manifest_hooks_honor_project_root_override(self, hook_name):
-        content = (REPO_ROOT / "hooks" / hook_name).read_text()
-        assert self.OVERRIDE_LINE in content, (
-            f"{hook_name} must apply the -d guarded RAT_PROJECT_ROOT CWD "
-            "override right after CWD resolution"
+    def test_the_manifest_writing_hooks_are_checked(self):
+        # An empty parameter set would skip the check below instead of failing it.
+        assert {"rtl-spawn-context.sh", "rtl-phase-state-bootstrap.sh"} <= set(RAT_DIR_HOOKS)
+
+    @pytest.mark.parametrize("hook_name", RAT_DIR_HOOKS)
+    def test_hooks_honor_project_root_override(self, hook_name):
+        code = [
+            (i, line.strip())
+            for i, line in enumerate((REPO_ROOT / "hooks" / hook_name).read_text().splitlines())
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        resolve = next(i for i, line in code if re.search(r"\brat_project_dir\b", line))
+        rebase = next((i for i, line in code if line.startswith(self.REBASE_LINE)), None)
+        assert rebase is not None and rebase > resolve, (
+            f"{hook_name} must re-base CWD after resolving RAT_DIR: {self.REBASE_LINE}"
         )
+        early = [
+            line for i, line in code
+            if resolve < i < rebase and self.CWD_PATH.search(line) and not self.GUARD.search(line)
+        ]
+        assert not early, f"{hook_name} builds a path from CWD before re-basing it: {early}"
 
 
 class TestPluginManifestRuntimeContract:

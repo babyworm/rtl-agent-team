@@ -42,6 +42,7 @@ if ! rat_is_project "$CWD"; then
   esac
 fi
 RAT_DIR=$(rat_project_dir "$CWD")
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 SETUP_EXTRA_CONTEXT=""
 if [ "$SHORT_NAME" = "rat-init-project" ]; then

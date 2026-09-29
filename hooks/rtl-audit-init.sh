@@ -21,6 +21,8 @@ if ! rat_is_project "$CWD"; then
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
   exit 0
 fi
+RAT_DIR=$(rat_project_dir "$CWD")
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # Initialize session and prune old sessions
 if audit_init_session "$CWD"; then

@@ -13,6 +13,7 @@ CWD=$(jsonu_get_input_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # Only handle rtl-agent-team agents
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")
