@@ -1089,6 +1089,14 @@ class TestStopGate:
         self._write_loop(tmp_project, loop, int(time.time()) + offset, minutes=minutes)
         assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
 
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    def test_a_loop_inside_its_window_blocks(self, tmp_project, loop):
+        # Five minutes into a 30-minute window: the window is counted in minutes, not seconds.
+        self._write_loop(tmp_project, loop, int(time.time()) - 300, minutes=30)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert "(threshold=1800s)" in result["reason"]
+
     def test_upper_spec_notice_tells_the_user_what_to_decide(self, tmp_project):
         self._write_autopilot_state(tmp_project, {"status": "in_progress", "upper_spec_blocking": True})
         results = self._stops(tmp_project, [False, True, True])
@@ -1146,6 +1154,18 @@ class TestStopGate:
         notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
         assert notice.endswith(" Tell Claude how to proceed.")
         assert ("Orchestrator note:" in notice) is bool(prompt)
+
+    @pytest.mark.parametrize("note,shown", [
+        ("Approve rollback to phase 3", "Approve rollback to phase 3."),
+        ("Approve rollback to phase 3?", "Approve rollback to phase 3?"),
+        ("Rollback approved by review (see report)", "Rollback approved by review (see report)."),
+    ])
+    def test_decision_note_ends_as_a_sentence(self, tmp_project, note, shown):
+        # The note is the orchestrator's own text; without final punctuation it would run
+        # into the user's action.
+        self._write_ladder(tmp_project, needs_user_decision=True, dynamic_prompt_text=note)
+        notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
+        assert notice.endswith(f" Orchestrator note: {shown} Tell Claude how to proceed.")
 
     def test_no_output_uses_the_old_suggested_context_label(self, tmp_project):
         # One Stop at each ladder stage, all with a dynamic prompt: the decision notice, the

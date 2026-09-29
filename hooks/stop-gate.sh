@@ -173,7 +173,12 @@ MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLB
 if [ "$NEEDS_USER_DECISION" = "true" ]; then
   DECISION_NOTICE="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] The gate needs your decision, so the pipeline is paused (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})."
   if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
-    DECISION_NOTICE="${DECISION_NOTICE} Orchestrator note: ${DYNAMIC_PROMPT_TEXT}"
+    # End the orchestrator's note as a sentence, so it cannot run into the user's action.
+    case "$DYNAMIC_PROMPT_TEXT" in
+      *[.?!]) DECISION_NOTE=$DYNAMIC_PROMPT_TEXT ;;
+      *) DECISION_NOTE="${DYNAMIC_PROMPT_TEXT}." ;;
+    esac
+    DECISION_NOTICE="${DECISION_NOTICE} Orchestrator note: ${DECISION_NOTE}"
   fi
   DECISION_NOTICE="${DECISION_NOTICE} Tell Claude how to proceed."
   stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "user-decision|$ACTIVE_GATE_ID" "$DECISION_NOTICE" "$DECISION_NOTICE" 0
