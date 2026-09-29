@@ -114,3 +114,58 @@ def test_no_hook_emits_continue_false():
         if CONTINUE_NOT_TRUE.search(p.read_text())
     )
     assert offenders == []
+
+
+# Stop gates and the budget ids each counts (hooks/lib/stop-budget-util.sh).
+STOP_GATES = {
+    "rtl-verify-stop-gate.sh": ["verify"],
+    "rtl-p6-cascade-gate.sh": ["p6-cascade"],
+    "rtl-skill-completion-gate.sh": ["skill-completion"],
+    "stop-gate.sh": ["ultraloop", "ppa-loop", "autopilot"],
+    "rtl-coverage-exclusion-gate.sh": ["coverage-exclusion"],
+}
+
+
+def _code_lines(name):
+    return [
+        (i, line) for i, line in enumerate((HOOKS_DIR / name).read_text().splitlines())
+        if not line.lstrip().startswith("#")
+    ]
+
+
+def test_stop_gate_list_matches_hooks_json():
+    config = json.loads((HOOKS_DIR / "hooks.json").read_text())
+    registered = {
+        re.search(r"hooks/([\w.-]+\.sh)", hook["command"]).group(1)
+        for entry in config["hooks"]["Stop"] for hook in entry["hooks"]
+    }
+    assert registered == set(STOP_GATES)
+
+
+@pytest.mark.parametrize("name", sorted(STOP_GATES))
+def test_stop_gate_counts_every_stop_before_any_other_exit(name):
+    lines = _code_lines(name)
+    chain = next(i for i, line in lines if line.startswith("STOP_CHAIN=$(stopu_chain_active"))
+    call = re.fullmatch(
+        r'STOP_CHAIN=\$\(stopu_chain_active "\$INPUT" "[^"]+" ([\w -]+)\)', dict(lines)[chain])
+    assert call and call.group(1).split() == STOP_GATES[name]
+    skip = next(i for i, line in lines if line.startswith("if teamu_should_skip_gate"))
+    early = [i for i, line in lines if i < chain and re.search(r"\bemit_\w+|\bexit\b", line)]
+    guard = [i for i in early if dict(lines)[i].startswith('[ -z "$RAT_DIR" ]')]
+    assert early == guard + [skip + 1]
+
+
+@pytest.mark.parametrize("name", sorted(STOP_GATES))
+def test_stop_gate_budget_ids_match_its_chain_count(name):
+    # A typo in an id silently removes the chain cap for that call (Task 4 review).
+    code = "\n".join(line for _, line in _code_lines(name))
+    used = re.findall(r"\bstopu_(?:gate|clear|decision) ([\w-]+)", code)
+    assert used and set(used) <= set(STOP_GATES[name])
+
+
+@pytest.mark.parametrize("name", sorted(STOP_GATES))
+def test_stop_gate_blocks_only_through_the_breaker(name):
+    code = "\n".join(line for _, line in _code_lines(name))
+    assert "emit_stop_block" not in code
+    assert "emit_stop_notice" not in code  # a direct notice would repeat on every chained Stop
+    assert not re.search(r'\\?"decision\\?"\s*:', code)
