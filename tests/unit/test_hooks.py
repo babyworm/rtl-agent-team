@@ -5197,3 +5197,14 @@ class TestCoverageExclusionGate:
         ]
         assert results[0]["decision"] == "block"
         assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
+
+    def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        (tmp_project / "rtl").mkdir()
+        stop = {"cwd": str(tmp_project / "rtl")}
+        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
+        result = run_hook(self.HOOK, stop, env=env)
+        _assert_stop_blocked(result)
+        assert "alu-coverage-exclusions.md" in result["reason"]
+        (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
+        assert run_hook(self.HOOK, {**stop, "stop_hook_active": True}, env=env) == {"continue": True}

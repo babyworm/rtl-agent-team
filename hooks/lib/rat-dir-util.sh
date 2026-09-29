@@ -14,13 +14,13 @@
 # directory, it replaces the caller-supplied directory for the marker check.
 # This lets an external driver (e.g. a Workflow orchestrator whose subagents
 # default to a different CWD) point all hooks at the real project root.
-# When RAT_PROJECT_ROOT is unset, empty, OR not a directory, behavior falls back
-# to the legacy CWD-based logic UNCHANGED, so this is fully backward-compatible.
+# When RAT_PROJECT_ROOT is unset, empty, OR not a directory, resolution follows
+# the rules in rat_project_dir below. Only when CLAUDE_PROJECT_DIR is unset too
+# is that the legacy CWD-based logic, unchanged.
 # The existence contract (return 1 when no marker) is preserved: if an overriding
 # RAT_PROJECT_ROOT directory has no .rat/.rtl-agent-team marker, resolution still
-# fails exactly as before. The `-d` guard is set -u safe (${..:-}) and set -e
-# safe (AND-OR non-final exemption; matches the existing `[ -z "$CWD" ] && ...`
-# idiom).
+# fails exactly as before. The `-d` test is set -u safe (it reads ${..:-}) and
+# set -e safe (a failing `if` condition does not trigger errexit).
 
 # Print the marker directory (.rat, else legacy .rtl-agent-team) inside $1, or
 # return 1 when $1 has neither.
