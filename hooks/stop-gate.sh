@@ -161,25 +161,22 @@ elif [ "$LAST_CHANCE_ATTEMPTS" -lt 1 ]; then
     MSG="${MSG} Dynamic prompt: ${DYNAMIC_PROMPT_TEXT}"
   fi
 else
+  # The ladder is used up: the user decides (the decision notice below).
   NEEDS_USER_DECISION=true
   [ -z "$STRATEGY" ] && STRATEGY="user_escalated"
 fi
 
-if [ "$NEEDS_USER_DECISION" = "true" ]; then
-  # The user reads this notice, so it tells the user what to decide. The orchestrator may
-  # ask at any ladder stage, so the notice replaces that stage's instructions to Claude.
-  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] The gate needs your decision, so the pipeline is paused."
-  if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
-    MSG="${MSG} Suggested context: ${DYNAMIC_PROMPT_TEXT}"
-  fi
-  MSG="${MSG} Tell Claude how to proceed."
-fi
-
 MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})"
 # A user decision is the next step: let Claude stop and show the escalation to the
-# user, once per chain (limit 0).
+# user, once per chain (limit 0). The user reads this notice, and the orchestrator may
+# ask at any ladder stage, so the notice carries none of that stage's instructions to Claude.
 if [ "$NEEDS_USER_DECISION" = "true" ]; then
-  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "user-decision|$ACTIVE_GATE_ID" "$MSG" "$MSG" 0
+  DECISION_NOTICE="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] The gate needs your decision, so the pipeline is paused (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})."
+  if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
+    DECISION_NOTICE="${DECISION_NOTICE} Orchestrator note: ${DYNAMIC_PROMPT_TEXT}"
+  fi
+  DECISION_NOTICE="${DECISION_NOTICE} Tell Claude how to proceed."
+  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "user-decision|$ACTIVE_GATE_ID" "$DECISION_NOTICE" "$DECISION_NOTICE" 0
 fi
 # Progress means the orchestrator recorded another gate attempt.
 stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" \

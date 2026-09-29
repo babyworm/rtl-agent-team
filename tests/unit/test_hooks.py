@@ -1105,25 +1105,27 @@ class TestStopGate:
                            needs_user_decision=True, dynamic_prompt_text="Approve rollback to phase 3?")
         results = self._stops(tmp_project, [False, True, True])
         assert results[0] == {"systemMessage": (
-            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused."
-            " Suggested context: Approve rollback to phase 3? Tell Claude how to proceed."
-            " (strategy=last_chance, primary=2, fallback=2, last_chance=1)")}
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
+            " (strategy=last_chance, primary=2, fallback=2, last_chance=1)."
+            " Orchestrator note: Approve rollback to phase 3? Tell Claude how to proceed.")}
         assert results[1:] == [{"continue": True}] * 2
         assert "needs your decision" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
 
-    @pytest.mark.parametrize("primary,fallback,last_chance", [(1, 0, 0), (3, 0, 0), (3, 2, 0), (3, 2, 1)])
-    def test_user_decision_notice_holds_at_every_stage(self, tmp_project, primary, fallback, last_chance):
+    @pytest.mark.parametrize("primary,fallback,last_chance,strategy", [
+        (1, 0, 0, "primary"), (3, 0, 0, "fallback"), (3, 2, 0, "last_chance"), (3, 2, 1, "user_escalated"),
+    ])
+    def test_user_decision_notice_holds_at_every_stage(self, tmp_project, primary, fallback, last_chance,
+                                                       strategy):
         # The orchestrator may ask at any ladder stage. The user reads this notice, so none of
         # the stage's instructions to Claude may reach it.
         self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
                            active_gate_fallback_attempts=fallback,
                            active_gate_last_chance_attempts=last_chance,
                            needs_user_decision=True, dynamic_prompt_text="Pick a strategy.")
-        notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
-        assert notice.startswith("[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline"
-                                 " is paused. Suggested context: Pick a strategy. Tell Claude how to proceed.")
-        for text in ("Continue agent loop", "Split failure scope", "last-chance alternative", "Ask user"):
-            assert text not in notice
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
+            f" (strategy={strategy}, primary={primary}, fallback={fallback}, last_chance={last_chance})."
+            " Orchestrator note: Pick a strategy. Tell Claude how to proceed.")}
 
     def test_exhausted_ladder_hands_the_decision_to_the_user(self, tmp_project):
         # N=2 and the last chance is used: the gate escalates on its own.
@@ -1131,8 +1133,8 @@ class TestStopGate:
                            active_gate_last_chance_attempts=1)
         results = self._stops(tmp_project, [False, True])
         assert results[0] == {"systemMessage": (
-            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused."
-            " Tell Claude how to proceed. (strategy=user_escalated, primary=3, fallback=2, last_chance=1)")}
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
+            " (strategy=user_escalated, primary=3, fallback=2, last_chance=1). Tell Claude how to proceed.")}
         assert results[1] == {"continue": True}
 
     def test_ladder_pause_notice_holds_for_the_chain(self, tmp_project):
