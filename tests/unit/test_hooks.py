@@ -4846,3 +4846,221 @@ class TestLegacyDirFallback:
             assert not (tmp_path / ".rat").exists(), (
                 f"{hook_name} created .rat in non-project dir"
             )
+
+
+class TestCoverageExclusionGate:
+    """Tests for hooks/rtl-coverage-exclusion-gate.sh."""
+
+    HOOK = HOOKS_DIR / "rtl-coverage-exclusion-gate.sh"
+
+    def _write_exclusions(self, tmp_project):
+        review = tmp_project / "reviews" / "phase-5-verify"
+        review.mkdir(parents=True)
+        (review / "alu-coverage-exclusions.md").write_text(
+            "| Bin | Category |\n|---|---|\n| cp_mode.dbg | Unimplemented feature |\n"
+        )
+
+    def test_asks_once_then_hands_approval_to_user(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        first = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": False})
+        second = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert first["decision"] == "block"
+        assert "AskUserQuestion" in first["reason"]
+        assert "decision" not in second
+        assert "coverage-exclusion-approved" in second["systemMessage"]
+
+    def test_approval_marker_allows_exit(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["continue"] is True
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        self._write_exclusions(tmp_project)
+        lead = {"CLAUDE_SESSION_ID": "leader-001"}
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
+        budget = state / "stop-budget-coverage-exclusion.txt"
+        before = budget.read_text()
+        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        assert budget.read_text() == before
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-coverage-exclusion.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_exclusions(tmp_project)
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "coverage-exclusion-approved" in result["systemMessage"]
+
+    def _stops(self, project, actives):
+        """Run one Stop per stop_hook_active value and return the outputs."""
+        return [run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": a}) for a in actives]
+
+    def _write_table(self, project, name, *categories):
+        """Write reviews/phase-5-verify/<name> with one bin per category."""
+        review = project / "reviews" / "phase-5-verify"
+        review.mkdir(parents=True, exist_ok=True)
+        rows = "".join(f"| cp_{i}.bin | {category} |\n" for i, category in enumerate(categories))
+        (review / name).write_text("| Bin | Category |\n|---|---|\n" + rows)
+
+    def test_notice_holds_for_the_rest_of_the_chain(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        marker = tmp_project / ".rat" / "state" / "coverage-exclusion-approved"
+        results = self._stops(tmp_project, [False, True, True, True])
+        assert results[0] == {"decision": "block", "reason": (
+            "[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:"
+            " alu-coverage-exclusions.md(1). These bins (Unimplemented features / Ambiguous spec)"
+            f" need explicit confirmation via AskUserQuestion. After approval: touch '{marker}'")}
+        assert results[1] == {"systemMessage": (
+            "[Coverage Exclusion Gate] 1 non-standard coverage exclusion(s) still await your approval:"
+            f" alu-coverage-exclusions.md(1). To approve: touch '{marker}'")}
+        assert results[2:] == [{"continue": True}] * 2
+
+    @pytest.mark.parametrize("satisfy", ["approved", "reclassified", "review_dir_removed"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
+        state = tmp_project / ".rat" / "state"
+        marker = state / "coverage-exclusion-approved"
+        self._write_exclusions(tmp_project)
+        assert "systemMessage" in self._stops(tmp_project, [False, True])[1]
+        if satisfy == "approved":
+            marker.touch()
+        elif satisfy == "reclassified":  # the bin is out of reach after all: a standard category
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
+        else:
+            shutil.rmtree(tmp_project / "reviews" / "phase-5-verify")
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert self._stops(tmp_project, [True]) == [{"continue": True}]
+        lines = (state / "stop-budget-coverage-exclusion.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "3", "0")
+        # The same condition comes back later in this chain.
+        if satisfy == "approved":
+            marker.unlink()
+        else:
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature")
+        again = self._stops(tmp_project, [True])[0]
+        assert again["decision"] == "block"
+        assert again["reason"].startswith(
+            "[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:")
+
+    @pytest.mark.parametrize("exit_path", ["approved", "standard_only"])
+    def test_allowed_stops_count_at_every_allow_exit(self, tmp_project, exit_path):
+        # As above, with the six Stops allowed through the approval marker, or through
+        # exclusion records whose bins all have standard categories.
+        state = tmp_project / ".rat" / "state"
+        marker = state / "coverage-exclusion-approved"
+        (state / "stop-budget-coverage-exclusion.txt").write_text("0\n\n1\n0\np-1\n")
+        if exit_path == "approved":
+            self._write_exclusions(tmp_project)
+            marker.touch()
+        else:
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        if exit_path == "approved":
+            marker.unlink()  # the approval is withdrawn
+        else:
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Ambiguous spec")
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "coverage-exclusion-approved" in result["systemMessage"]
+
+    def test_progress_on_every_stop_still_hands_over_at_the_chain_cap(self, tmp_project):
+        results = []
+        for i in range(8):
+            # One more bin awaits approval on every Stop.
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", *["Ambiguous spec"] * (i + 1))
+            results += self._stops(tmp_project, [i > 0])
+        assert [r.get("decision") for r in results[:6]] == ["block"] * 6
+        assert "still await your approval" in results[6]["systemMessage"]
+        assert results[7] == {"continue": True}
+
+    def test_a_change_in_the_unapproved_bins_restarts_the_count(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        results = self._stops(tmp_project, [False])
+        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec")  # one more to approve
+        results += self._stops(tmp_project, [True, True])
+        assert [r.get("decision") for r in results] == ["block", "block", None]
+        assert results[1]["reason"].startswith("[Coverage Exclusion Gate] 2 non-standard exclusion(s)")
+        assert "still await your approval" in results[2]["systemMessage"]
+
+    def test_a_bin_awaiting_approval_in_another_file_restarts_the_count(self, tmp_project):
+        # Still one bin, but a different one awaits approval: the condition moved.
+        self._write_exclusions(tmp_project)
+        results = self._stops(tmp_project, [False])
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
+        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec")
+        results += self._stops(tmp_project, [True, True])
+        assert [r.get("decision") for r in results] == ["block", "block", None]
+        assert results[1]["reason"].startswith("[Coverage Exclusion Gate] 1 non-standard exclusion(s)"
+                                               " require user approval: fifo-coverage-exclusions.md(1).")
+        assert "still await your approval" in results[2]["systemMessage"]
+
+    def test_rewriting_a_file_without_changing_its_unapproved_bins_is_not_progress(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        results = self._stops(tmp_project, [False])
+        # Claude adds a standard exclusion; the one bin that needs approval still does.
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature", "Unreachable")
+        results += self._stops(tmp_project, [True])
+        assert results[0]["decision"] == "block"
+        assert "still await your approval" in results[1]["systemMessage"]
+
+    def test_a_symlinked_cwd_is_not_progress(self, tmp_path):
+        project = tmp_path / "project"
+        (project / ".rat" / "state").mkdir(parents=True)
+        self._write_exclusions(project)
+        link = tmp_path / "link"
+        link.symlink_to(project)
+        # One chain whose input cwd alternates between the project and a symlink to it.
+        results = [
+            run_hook(self.HOOK, {"cwd": str(link if i % 2 else project), "stop_hook_active": i > 0})
+            for i in range(3)
+        ]
+        assert [r.get("decision") for r in results] == ["block", None, None]
+        assert "systemMessage" in results[1]
+        assert results[2] == {"continue": True}
+
+    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        (project / ".rat" / "state").mkdir(parents=True)
+        self._write_exclusions(project)
+        results = self._stops(project, [False, True])
+        marker = project / ".rat" / "state" / "coverage-exclusion-approved"
+        # The command comes last and can be copied as is.
+        assert results[0]["reason"].endswith("coverage-exclusion-approved'")
+        assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
+        commands = [
+            results[0]["reason"].split("After approval: ", 1)[1],
+            results[1]["systemMessage"].split("To approve: ", 1)[1],
+        ]
+        for command in commands:
+            marker.unlink(missing_ok=True)
+            before = set(tmp_path.rglob("*"))
+            subprocess.run(["sh", "-c", command], check=True, cwd=tmp_path)
+            assert set(tmp_path.rglob("*")) - before == {marker}  # exactly the marker
+        # Approved: the chain's next Stop lets Claude stop.
+        assert self._stops(project, [True]) == [{"continue": True}]
+
+    def test_sed_fallback_asks_once_then_notifies(self, tmp_project):
+        # Without jq and python the gate parses and escapes with sed; the output stays valid JSON.
+        self._write_exclusions(tmp_project)
+        fallback = {"RTL_FORCE_JSON_FALLBACK": "1"}
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}, env=fallback)
+            for i in range(2)
+        ]
+        assert results[0]["decision"] == "block"
+        assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
