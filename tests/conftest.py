@@ -18,8 +18,9 @@ SKILLS_DIR = REPO_ROOT / "skills"
 
 @pytest.fixture(autouse=True)
 def _default_stop_block_limit(monkeypatch):
-    """Hook tests pin the Stop breaker's default budget; only an explicit env changes it."""
+    """Hook tests pin the Stop breaker's default budget and chain cap; only an explicit env changes them."""
     monkeypatch.delenv("RAT_STOP_BLOCK_LIMIT", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", raising=False)
 
 
 @pytest.fixture

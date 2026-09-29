@@ -15,15 +15,18 @@
 # so blocks by other plugins' Stop hooks count, gates that block together keep
 # their own limit, and no gate reads another gate's file. From the chain's Stop
 # STOPU_CHAIN_CAP + 1 on, a gate that would block shows its notice instead: the
-# notice comes after at most STOPU_CHAIN_CAP (6) consecutive blocked Stops from any
-# hooks, under Claude Code's own cap, which counts consecutive Stops that any hook
-# blocked, once per Stop, and past CLAUDE_CODE_STOP_HOOK_BLOCK_CAP (default 8; 0
-# disables it) overrides the block and ends the turn with a warning and an empty
-# result (CLI 2.1.282). A continuation Stop whose budget file is missing, has no
-# valid Stop count, or was written for another prompt (line 5) means the gate
-# missed the chain start: the gate assumes the worst case and hands over instead
-# of blocking blind. An input without prompt_id cannot tell a leftover file from
-# an earlier prompt, so its count is trusted.
+# notice comes after at most STOPU_CHAIN_CAP (6 by default) consecutive blocked
+# Stops from any hooks, under Claude Code's own cap, which counts consecutive Stops
+# that any hook blocked, once per Stop, and past CLAUDE_CODE_STOP_HOOK_BLOCK_CAP
+# (default 8; 0 disables it) overrides the block and ends the turn with a warning
+# and an empty result (CLI 2.1.282). When the user sets that variable,
+# STOPU_CHAIN_CAP follows it: two Stops under it (at least 1), or 99999 when it is
+# 0, which keeps Stop counts under stopu_count_line's six-digit guard. A
+# continuation Stop whose budget file is missing, has no valid Stop count, or was
+# written for another prompt (line 5) means the gate missed the chain start: the
+# gate assumes the worst case and hands over instead of blocking blind. An input
+# without prompt_id cannot tell a leftover file from an earlier prompt, so its
+# count is trusted.
 #
 # N is RAT_STOP_BLOCK_LIMIT (default 3; invalid values fall back to 3). A gate may
 # pass a lower per-call limit, never a higher one, so RAT_STOP_BLOCK_LIMIT=0 turns
@@ -43,10 +46,21 @@
 # Stop number as seen by this gate, line 4 is 1 once the gate showed its notice in
 # this chain (0 otherwise), and line 5 is the prompt_id of the Stop that last wrote
 # the file (empty when the input has none). Budgets are per project, so two
-# sessions working in one project share them; Claude Code's own Stop block cap
-# still bounds each session.
+# sessions working in one project share them; Claude Code's own Stop block cap,
+# unless the user disables it, still bounds each session.
 
 STOPU_CHAIN_CAP=6
+# Follow Claude Code's own cap when the user changed it: stay two Stops under it
+# (at least 1), or lift the cap when it is disabled (0). The no-progress limit
+# still applies either way. Anything but a plain number of up to five digits keeps
+# 6. A leading zero counts as not plain, because $((...)) reads it as octal or
+# fails on it.
+case "${CLAUDE_CODE_STOP_HOOK_BLOCK_CAP:-}" in
+  ''|*[!0-9]*|0?*|??????*) ;;
+  0) STOPU_CHAIN_CAP=99999 ;;
+  1|2) STOPU_CHAIN_CAP=1 ;;
+  *) STOPU_CHAIN_CAP=$((CLAUDE_CODE_STOP_HOOK_BLOCK_CAP - 2)) ;;
+esac
 
 # Print "true" when this Stop continues a chain started by an earlier block, and
 # count the chain's Stops for each named gate: line 3 of its budget file is 1 at the

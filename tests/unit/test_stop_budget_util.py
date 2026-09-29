@@ -119,6 +119,41 @@ def test_stops_blocked_by_other_hooks_count_toward_the_cap(tmp_path):
     assert results == [BLOCK, BLOCK, NOTICE]
 
 
+# 2, continued: the chain cap follows Claude Code's own cap when the user changes it
+@pytest.mark.parametrize("cap,blocked", [
+    (None, 6),  # unset: two Stops under Claude Code's default of 8
+    ("12", 10),
+    ("5", 3),
+    ("2", 1),
+    ("1", 1),
+    ("x", 6),
+    ("-3", 6),
+    ("1000000", 6),
+    ("08", 6),  # a leading zero would read as octal, or fail
+    ("012", 6),
+])
+def test_chain_cap_follows_claude_codes_setting(tmp_path, cap, blocked):
+    env = None if cap is None else {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": cap}
+    results = _chain(tmp_path, [f"a{i}.sv" for i in range(blocked + 2)], env=env)
+    assert results == [BLOCK] * blocked + [NOTICE, SILENT]
+
+
+def test_disabled_claude_code_cap_lifts_the_chain_cap(tmp_path):
+    env = {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "0"}
+    assert _chain(tmp_path, [f"a{i}.sv" for i in range(20)], env=env) == [BLOCK] * 20
+    # The no-progress limit still applies.
+    assert _chain(tmp_path, ["a.sv"] * 4, env=env) == [BLOCK, BLOCK, BLOCK, NOTICE]
+
+
+def test_disabled_claude_code_cap_still_hands_over_after_a_missed_chain_start(tmp_path):
+    # The worst case, 99999 + 1, has six digits: it reads back as no valid count, which
+    # is the worst case again.
+    env = {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "0"}
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, env=env)["verify"] == NOTICE
+    assert _budget(tmp_path).split("\n")[2] == "100000"
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, env=env)["verify"] == SILENT
+
+
 # 4
 @pytest.mark.parametrize("gates", [
     ("verify", "p6-cascade"),
