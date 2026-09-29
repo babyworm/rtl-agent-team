@@ -129,8 +129,18 @@ def test_stops_blocked_by_other_hooks_count_toward_the_cap(tmp_path):
     ("x", 6),
     ("-3", 6),
     ("1000000", 6),
-    ("08", 6),  # a leading zero would read as octal, or fail
-    ("012", 6),
+    ("08", 6),  # leading zeros are dropped, as Claude Code's parseInt drops them
+    ("012", 10),
+    # Claude Code trims the value and reads it with parseInt; a cap it reads as small
+    # must not leave the default 6 above it.
+    ("05", 3),
+    ("+5", 3),
+    (" 5", 3),
+    ("5 ", 3),
+    ("5abc", 3),
+    ("2.5", 1),
+    ("0.5", 6),  # Claude Code reads 0 and turns its cap off; only a plain zero lifts ours
+    ("0x10", 6),
 ])
 def test_chain_cap_follows_claude_codes_setting(tmp_path, cap, blocked):
     env = None if cap is None else {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": cap}
@@ -138,8 +148,9 @@ def test_chain_cap_follows_claude_codes_setting(tmp_path, cap, blocked):
     assert results == [BLOCK] * blocked + [NOTICE, SILENT]
 
 
-def test_disabled_claude_code_cap_lifts_the_chain_cap(tmp_path):
-    env = {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "0"}
+@pytest.mark.parametrize("cap", ["0", "00", " 0 "])
+def test_disabled_claude_code_cap_lifts_the_chain_cap(tmp_path, cap):
+    env = {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": cap}
     assert _chain(tmp_path, [f"a{i}.sv" for i in range(20)], env=env) == [BLOCK] * 20
     # The no-progress limit still applies.
     assert _chain(tmp_path, ["a.sv"] * 4, env=env) == [BLOCK, BLOCK, BLOCK, NOTICE]

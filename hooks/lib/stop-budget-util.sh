@@ -52,14 +52,28 @@
 STOPU_CHAIN_CAP=6
 # Follow Claude Code's own cap when the user changed it: stay two Stops under it
 # (at least 1), or lift the cap when it is disabled (0). The no-progress limit
-# still applies either way. Anything but a plain number of up to five digits keeps
-# 6. A leading zero counts as not plain, because $((...)) reads it as octal or
-# fails on it.
-case "${CLAUDE_CODE_STOP_HOOK_BLOCK_CAP:-}" in
-  ''|*[!0-9]*|0?*|??????*) ;;
-  0) STOPU_CHAIN_CAP=99999 ;;
+# still applies either way. Read the value as Claude Code 2.1.282 does: trimmed,
+# then parseInt, which takes an optional plus sign and the leading digits ("05",
+# " 5", "5abc" and "2.5" are 5, 5, 5 and 2). A value Claude Code reads as a small
+# cap then never leaves the default 6 above it. Leading zeros are dropped, because
+# $((...)) reads them as octal or fails on them. No leading number, a minus sign,
+# or six or more digits keeps 6; only a plain zero lifts the cap.
+_SCC_RAW=${CLAUDE_CODE_STOP_HOOK_BLOCK_CAP:-}
+while :; do
+  case "$_SCC_RAW" in
+    [[:space:]]*) _SCC_RAW=${_SCC_RAW#?} ;;
+    *[[:space:]]) _SCC_RAW=${_SCC_RAW%?} ;;
+    *) break ;;
+  esac
+done
+_SCC_RAW=${_SCC_RAW#+}
+_SCC_NUM=${_SCC_RAW%%[!0-9]*}
+while :; do case "$_SCC_NUM" in 0?*) _SCC_NUM=${_SCC_NUM#0} ;; *) break ;; esac; done
+case "$_SCC_NUM" in
+  ''|??????*) ;;
+  0) [ "$_SCC_RAW" = "${_SCC_RAW%%[!0]*}" ] && STOPU_CHAIN_CAP=99999 ;;
   1|2) STOPU_CHAIN_CAP=1 ;;
-  *) STOPU_CHAIN_CAP=$((CLAUDE_CODE_STOP_HOOK_BLOCK_CAP - 2)) ;;
+  *) STOPU_CHAIN_CAP=$((_SCC_NUM - 2)) ;;
 esac
 
 # Print "true" when this Stop continues a chain started by an earlier block, and
