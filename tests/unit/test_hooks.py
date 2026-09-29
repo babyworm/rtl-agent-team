@@ -1137,6 +1137,31 @@ class TestStopGate:
             " (strategy=user_escalated, primary=3, fallback=2, last_chance=1). Tell Claude how to proceed.")}
         assert results[1] == {"continue": True}
 
+    @pytest.mark.parametrize("prompt", ["Approve rollback to phase 3?", ""])
+    def test_decision_notice_ends_with_the_users_action(self, tmp_project, prompt):
+        # The user's action comes last; the orchestrator's note is labelled only when there is one.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=2, active_gate_fallback_attempts=2,
+                           active_gate_last_chance_attempts=1, needs_user_decision=True,
+                           dynamic_prompt_text=prompt)
+        notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
+        assert notice.endswith(" Tell Claude how to proceed.")
+        assert ("Orchestrator note:" in notice) is bool(prompt)
+
+    def test_no_output_uses_the_old_suggested_context_label(self, tmp_project):
+        # One Stop at each ladder stage, all with a dynamic prompt: the decision notice, the
+        # fallback and last-chance reasons, and the notice once the ladder is used up.
+        outputs = []
+        for primary, fallback, last_chance, decision in [
+            (1, 0, 0, True), (3, 0, 0, False), (3, 2, 0, False), (3, 2, 1, False),
+        ]:
+            self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
+                               active_gate_fallback_attempts=fallback,
+                               active_gate_last_chance_attempts=last_chance,
+                               needs_user_decision=decision, dynamic_prompt_text="Approve rollback?")
+            outputs.append(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+        assert [o.get("decision", "notice") for o in outputs] == ["notice", "block", "block", "notice"]
+        assert not any("Suggested context" in json.dumps(o) for o in outputs)
+
     def test_ladder_pause_notice_holds_for_the_chain(self, tmp_project):
         self._write_ladder(tmp_project)
         results = self._stops(tmp_project, [False] + [True] * 5)
