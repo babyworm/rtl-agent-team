@@ -62,6 +62,14 @@ def test_stop_notice_lets_claude_stop_and_informs_user():
     assert out == {"systemMessage": "waiver needs your decision"}
 
 
+def test_post_context_uses_the_posttooluse_envelope():
+    out = _emit("emit_post_context", "loop started")
+    assert out == {
+        "continue": True,
+        "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "loop started"},
+    }
+
+
 def test_sed_fallback_escaper_keeps_json_valid(tmp_path):
     """With neither jq nor python on PATH, jsonu_escape falls back to sed + tr.
 

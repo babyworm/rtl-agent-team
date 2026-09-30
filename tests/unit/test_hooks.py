@@ -355,8 +355,8 @@ class TestSessionScopedState:
         env = {"CLAUDE_PLUGIN_ROOT": str(HOOKS_DIR / "..")}
         result = run_hook(
             self.SKILL_HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5-verify",
-             "session_id": "worker-session-99"},
+            {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+             "skill": "rtl-agent-team:rtl-p5-verify", "session_id": "worker-session-99"},
             env=env,
         )
         assert result["continue"] is True
@@ -2827,7 +2827,8 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
@@ -2844,7 +2845,8 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:systemverilog"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:systemverilog"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
@@ -2853,7 +2855,8 @@ class TestSkillActivation:
     def test_no_criteria_file_no_state(self, tmp_project):
         """Missing criteria file should not create state."""
         _setup_marker(tmp_project)
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
@@ -2870,7 +2873,8 @@ class TestSkillActivation:
         existing = {"skill": "rtl-p4-implement", "iteration": 3, "all_complete": False, "pending": "something"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         # State should NOT be overridden (different skill)
         state = json.loads((state_dir / "skill-active.json").read_text())
@@ -2888,7 +2892,8 @@ class TestSkillActivation:
         existing = {"skill": "rtl-p4s-bugfix", "iteration": 3, "all_complete": False, "pending": "sim_pass"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state = json.loads((state_dir / "skill-active.json").read_text())
@@ -2901,7 +2906,8 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "rtl-p4s-bugfix" in ctx
@@ -2944,6 +2950,7 @@ class TestSkillActivation:
         raw_input = json.dumps(
             {
                 "cwd": str(tmp_project),
+                "hook_event_name": "PostToolUse",
                 "skill": "rtl-agent-team:rtl-p4s-bugfix",
                 "meta": {"skill": "rtl-agent-team:rat-setup"},
             }
@@ -2970,7 +2977,8 @@ class TestSkillActivation:
         path.write_text(json.dumps(config))
         written = time.time() - age_hours * 3600
         os.utime(path, (written, written))
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix", **ids}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix", **ids}
         run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         return (tmp_project / ".rat" / "state" / "skill-active.json").exists()
 
@@ -3013,10 +3021,73 @@ class TestSkillActivation:
             (tmp_project / ".rat" / "state" / "team-config.json").write_text(json.dumps(config))
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix",
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix",
                  "session_id": "leader-abc", "agent_id": "subagent-1"}
         run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+    def _criteria_env(self, tmp_project):
+        _setup_marker(tmp_project)
+        (tmp_project / "skill-completion-criteria.json").write_text(
+            json.dumps({"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"})
+        )
+        return {"CLAUDE_PLUGIN_ROOT": str(tmp_project)}
+
+    def _skill_input(self, tmp_project, event):
+        return {
+            "cwd": str(tmp_project),
+            "hook_event_name": event,
+            "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p4s-bugfix"},
+        }
+
+    def test_pretooluse_creates_no_state(self, tmp_project):
+        env = self._criteria_env(tmp_project)
+        result = run_hook(self.HOOK, self._skill_input(tmp_project, "PreToolUse"), env=env)
+        assert result["continue"] is True
+        assert not (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+    def test_posttooluse_creates_state_and_announces_loop(self, tmp_project):
+        env = self._criteria_env(tmp_project)
+        result = run_hook(self.HOOK, self._skill_input(tmp_project, "PostToolUse"), env=env)
+        hso = result["hookSpecificOutput"]
+        assert hso["hookEventName"] == "PostToolUse"
+        assert "Completion Loop ACTIVATED" in hso["additionalContext"]
+        state = json.loads((tmp_project / ".rat" / "state" / "skill-active.json").read_text())
+        assert state["skill"] == "rtl-p4s-bugfix"
+
+    @pytest.mark.parametrize("missing", ["setup-marker", "rat-dir"])
+    def test_posttooluse_before_setup_starts_no_loop(self, tmp_project, missing):
+        # PreToolUse only advised setup, so the skill ran. No loop starts, and the answer
+        # is a plain PostToolUse continue, not PreToolUse's [SETUP REQUIRED] envelope.
+        env = {**self._criteria_env(tmp_project), "HOME": str(tmp_project)}
+        if missing == "setup-marker":
+            (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").unlink()
+        else:
+            shutil.rmtree(tmp_project / ".rat")
+        result = run_hook(self.HOOK, self._skill_input(tmp_project, "PostToolUse"), env=env)
+        assert result == {"continue": True}
+        assert not (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+
+class TestDeniedSkillStartsNoLoop:
+    """A Skill call denied at PreToolUse must not leave a completion loop behind."""
+
+    def test_p5b_denied_without_p5a_leaves_no_state(self, tmp_project):
+        _setup_marker(tmp_project)
+        stdin = {
+            "cwd": str(tmp_project),
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+        }
+        bootstrap = run_hook(HOOKS_DIR / "rtl-phase-state-bootstrap.sh", stdin)
+        activation = run_hook(HOOKS_DIR / "rtl-skill-activation.sh", stdin)
+        _assert_denied(bootstrap)
+        assert "ask the user" in bootstrap["hookSpecificOutput"]["permissionDecisionReason"]
+        assert activation["continue"] is True
+        assert not (tmp_project / ".rat" / "state" / "skill-active.json").exists()
 
 
 class TestPhaseStateBootstrap:
@@ -3119,6 +3190,7 @@ class TestPhaseStateBootstrap:
         _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "gates.p5a_exit.verdict=fail" in ctx
+        assert "ask the user" in ctx.lower()
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
     def test_p5b_bootstraps_when_p5a_pass(self, tmp_project):
@@ -3155,6 +3227,7 @@ class TestPhaseStateBootstrap:
         _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "stale functional closure" in ctx
+        assert "ask the user" in ctx.lower()
         assert not (state_dir / "p5b-state.json").exists()
 
     def test_p5b_allows_when_p5a_newer_than_tracked_rtl_changes(self, tmp_project):

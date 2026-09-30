@@ -641,7 +641,8 @@ class TestSkillActivationTrace:
 
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:arch-review"},
+            {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+             "skill": "rtl-agent-team:arch-review"},
             env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)},
         )
         assert result["continue"] is True
@@ -665,7 +666,8 @@ class TestSkillActivationTrace:
         # rtl-p7-exploration has no completion criteria → no activation → no trace
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p7-exploration"},
+            {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+             "skill": "rtl-agent-team:rtl-p7-exploration"},
             env={"CLAUDE_PLUGIN_ROOT": str(REPO_ROOT)},
         )
         trace = (

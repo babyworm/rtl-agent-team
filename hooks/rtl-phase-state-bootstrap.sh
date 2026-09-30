@@ -123,7 +123,7 @@ case "$SHORT_NAME" in
   rtl-p5b-silicon-validation)
     P5A_STATE="$RAT_DIR/state/p5a-state.json"
     if [ ! -f "$P5A_STATE" ]; then
-      MSG="[P5B Gate BLOCKED] P5A functional closure state file (.rat/state/p5a-state.json) not found. Run /rtl-agent-team:rtl-p5a-functional-closure first."
+      MSG="[P5B Gate BLOCKED] P5A functional closure state file (.rat/state/p5a-state.json) not found. P5B needs a P5A PASS first: ask the user whether to run /rtl-agent-team:rtl-p5a-functional-closure now."
       if [ -n "$SETUP_HINT" ]; then
         MSG="$MSG $SETUP_HINT"
       fi
@@ -137,7 +137,7 @@ case "$SHORT_NAME" in
     fi
     if [ "$P5A_VERDICT" != "pass" ]; then
       [ -z "$P5A_VERDICT" ] && P5A_VERDICT="unknown"
-      MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict=$P5A_VERDICT. Complete P5A with PASS verdict before running P5B."
+      MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict=$P5A_VERDICT. P5B needs a P5A PASS: ask the user how to proceed."
       if [ -n "$SETUP_HINT" ]; then
         MSG="$MSG $SETUP_HINT"
       fi
@@ -169,7 +169,7 @@ $_P5B_COMBINED
 _P5B_TRACK_EOF
 
       if [ -n "$LATEST_RTL_MTIME" ] && [ "$LATEST_RTL_MTIME" -gt "$P5A_MTIME" ]; then
-        MSG="[P5B Gate BLOCKED] RTL changes detected after P5A PASS (stale functional closure). Re-run /rtl-agent-team:rtl-p5a-functional-closure to refresh functional closure."
+        MSG="[P5B Gate BLOCKED] RTL changes detected after P5A PASS (stale functional closure). Ask the user whether to re-run /rtl-agent-team:rtl-p5a-functional-closure now."
         if [ -n "$SETUP_HINT" ]; then
           MSG="$MSG $SETUP_HINT"
         fi

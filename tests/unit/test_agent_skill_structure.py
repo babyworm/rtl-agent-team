@@ -1324,6 +1324,7 @@ class TestHooksJsonMatrix:
             "Agent": ["rtl-spawn-context.sh"],
         },
         "PostToolUse": {
+            "Skill": ["rtl-skill-activation.sh"],
             "Edit|Write|Bash": ["rtl-edit-tracker.sh"],
             "TaskUpdate": ["rtl-team-progress.sh"],
             "Agent": ["rtl-audit-spawn-complete.sh"],

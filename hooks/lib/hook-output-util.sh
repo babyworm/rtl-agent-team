@@ -47,6 +47,18 @@ emit_stop_notice() {
   exit 0
 }
 
+# Give Claude context after a tool ran (PostToolUse envelope), then exit 0.
+# Usage: emit_post_context "message"   (an empty message emits a plain continue)
+emit_post_context() {
+  _EPC_MSG="$1"
+  if [ -n "$_EPC_MSG" ]; then
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' "$(jsonu_escape "$_EPC_MSG")"
+  else
+    printf '{"continue":true}'
+  fi
+  exit 0
+}
+
 # Emit a PostToolUse continue response (no additionalContext), then exit 0.
 # Usage: emit_post_continue
 emit_post_continue() {

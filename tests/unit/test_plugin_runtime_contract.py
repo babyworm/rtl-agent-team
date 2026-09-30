@@ -117,7 +117,11 @@ class TestHookRuntimeContract:
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in entries]
-        assert matchers == ["Edit|Write|Bash", "TaskUpdate", "Agent"]
+        assert matchers == ["Skill", "Edit|Write|Bash", "TaskUpdate", "Agent"]
+        # Skill matcher: the completion loop starts once the call ran
+        assert [h["command"] for h in entries[0]["hooks"]] == [
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
+        ]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]
