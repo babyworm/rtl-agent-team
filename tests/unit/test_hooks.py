@@ -2982,6 +2982,15 @@ class TestSkillActivation:
         run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         return (tmp_project / ".rat" / "state" / "skill-active.json").exists()
 
+    @pytest.mark.parametrize("ids", [{"session_id": "leader-abc", "agent_id": "teammate-1"},
+                                     {"session_id": "worker-1"}], ids=["in-process", "tmux"])
+    def test_teammate_reinvoking_the_leaders_skill_keeps_its_loop(self, tmp_project, ids):
+        # G6 resets the loop of a re-invoked skill, so the team check must stop a teammate first.
+        state = tmp_project / ".rat" / "state" / "skill-active.json"
+        state.write_text(json.dumps({"skill": "rtl-p4s-bugfix", "iteration": 3}))
+        assert self._invoke_in_team(tmp_project, "leader-abc", **ids)
+        assert json.loads(state.read_text())["iteration"] == 3
+
     def test_in_process_teammate_does_not_start_the_leaders_loop(self, tmp_project):
         # An in-process teammate runs in the leader's session; only its agent_id tells it apart.
         assert not self._invoke_in_team(tmp_project, "leader-abc",
@@ -3177,6 +3186,15 @@ class TestPhaseStateBootstrap:
         assert "P5B Gate BLOCKED" in ctx
         assert "rtl-p5a-functional-closure" in ctx
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
+
+    def test_p5b_before_setup_is_not_gated(self, tmp_project):
+        # Before rat-init-project the setup advisory speaks; like the template bootstrap,
+        # the P5B gate applies only once the project is set up.
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project),
+                                      "skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+                          env={"HOME": str(tmp_project)})
+        assert result["continue"] is True
+        assert "permissionDecision" not in result.get("hookSpecificOutput", {})
 
     def test_p5b_denied_leaves_state_untouched(self, tmp_project):
         """The P5B gate runs before the bootstrap writes: a call it denies keeps the
@@ -4873,12 +4891,13 @@ class TestMappingSyncParity:
         """Parse the compliance state bootstrap case in rtl-phase-state-bootstrap.sh.
         Returns a set of skill short-names that have compliance entries."""
         content = path.read_text()
-        # Find the case "$SHORT_NAME" block inside the compliance bootstrap section
+        # The compliance map is the file's generated PHASE_MAP block. Reading the first
+        # case on $SHORT_NAME instead would let an earlier case (a gate) stand in for it.
         m = re.search(
-            r'case\s+"\$SHORT_NAME"\s+in\s*\n(.*?)esac',
+            r'# BEGIN GENERATED PHASE_MAP\n(.*?)# END GENERATED PHASE_MAP',
             content, re.DOTALL,
         )
-        assert m, "Could not find compliance bootstrap case block"
+        assert m, "Could not find the compliance bootstrap's generated PHASE_MAP block"
         block = m.group(1)
         skills = set()
         for line in block.splitlines():
