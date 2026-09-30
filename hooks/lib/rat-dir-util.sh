@@ -63,14 +63,16 @@ rat_project_dir() {
 
 # Walk up from $1 to $2 inclusive and print the first marker directory found.
 # With "initialized", only a marker whose directory holds rat_config.json counts.
+# The walk ends at the first directory outside $2, so a trailing slash in $1
+# cannot carry it past $2.
 _rat_walk() {
   _RW=$1
   while :; do
     if [ "$3" = "any" ] || [ -f "$_RW/rat_config.json" ]; then
       _rat_marker_dir "$_RW" && return 0
     fi
-    [ "$_RW" = "$2" ] && return 1
     _RW_UP=$(dirname "$_RW")
+    case "$_RW_UP/" in "$2"/*) ;; *) return 1 ;; esac
     [ "$_RW_UP" = "$_RW" ] && return 1
     _RW=$_RW_UP
   done

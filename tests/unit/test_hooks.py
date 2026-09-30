@@ -115,6 +115,16 @@ class TestRtlOrchestratorInject:
         assert "## Pipeline Rules" in output
         assert "/rtl-agent-team:p1-spec-research" in output
 
+    @pytest.mark.parametrize("root_env", ["CLAUDE_PROJECT_DIR", "RAT_PROJECT_ROOT"])
+    def test_session_away_from_the_marker_still_gets_the_rules(self, tmp_path, root_env):
+        """SessionStart also fires on compaction, when the session may sit in rtl/;
+        an external driver may run elsewhere and name the project in RAT_PROJECT_ROOT."""
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path / "rtl")}, env={root_env: str(tmp_path)})
+        output = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "# RTL Agent Team — Active Project Rules" in output
+
 
 class TestRtlEditTracker:
     """Tests for hooks/rtl-edit-tracker.sh."""
@@ -1521,11 +1531,12 @@ class TestRtlEditTrackerBash:
         stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert stale.exists()
 
-    def test_edits_from_a_subdirectory_track_one_project_path(self, tmp_project):
+    @pytest.mark.parametrize("token", ["alu.sv", "./alu.sv"])
+    def test_edits_from_a_subdirectory_track_one_project_path(self, tmp_project, token):
         rtl = tmp_project / "rtl"
         rtl.mkdir(exist_ok=True)
         env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
-        run_hook(self.HOOK, {"cwd": str(rtl), "command": "sed -i 's/a/b/' alu.sv"}, env=env)
+        run_hook(self.HOOK, {"cwd": str(rtl), "command": f"sed -i 's/a/b/' {token}"}, env=env)
         run_hook(self.HOOK, {"cwd": str(rtl), "file_path": str(rtl / "alu.sv")}, env=env)
         gate = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", {"cwd": str(rtl)}, env=env)
         _assert_stop_blocked(gate)
@@ -3590,8 +3601,9 @@ class TestSpawnContextManifest:
         )
 
     def test_manifest_project_root_defaults_to_cwd(self, tmp_project):
-        """v0.13.x: without RAT_PROJECT_ROOT, project_root equals the session
-        CWD. Empty env value counts as unset (${RAT_PROJECT_ROOT:-} guard)."""
+        """v0.13.x: without RAT_PROJECT_ROOT, project_root is the project root the
+        hook resolved (here also the session CWD). Empty env value counts as unset
+        (${RAT_PROJECT_ROOT:-} guard)."""
         self._setup_project(tmp_project)
         self._invoke(
             tmp_project, "rtl-p4-implement", env={"RAT_PROJECT_ROOT": ""},
@@ -3851,6 +3863,19 @@ class TestSpawnContextTaskCreate:
         assert m["pipeline"]["current_phase"] == 6
         assert m["project_root"] == str(tmp_project)
         assert not (elsewhere / ".rat").exists()
+
+    def test_taskcreate_from_a_subdirectory_ships_the_project_root(self, tmp_project):
+        """Spawned agents treat project_root as authoritative, so a session that has
+        cd'd into rtl/ must still ship the project root."""
+        (tmp_project / "rtl").mkdir(exist_ok=True)
+        result = run_hook(
+            self.HOOK,
+            {"subagent_type": "rtl-agent-team:p6-review-orchestrator", "cwd": str(tmp_project / "rtl")},
+            env={"CLAUDE_PROJECT_DIR": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        assert self._read_manifest(tmp_project)["project_root"] == str(tmp_project)
+        assert not (tmp_project / "rtl" / ".rat").exists()
 
     def test_taskcreate_non_orchestrator_ignored(self, tmp_project):
         """Non-orchestrator agent type → no manifest written."""
@@ -4882,6 +4907,26 @@ class TestRatDirUtil:
         project = tmp_path / "work" / "proj"
         (project / "rtl").mkdir(parents=True)
         assert self._resolve(project / "rtl", project) == ("", 1)
+
+    def test_a_trailing_slash_does_not_carry_the_walk_above_the_project_root(self, tmp_path):
+        (tmp_path / ".rat").mkdir()                      # stray marker above the project
+        project = tmp_path / "proj"
+        project.mkdir()
+        assert self._resolve(f"{project}/", project) == ("", 1)
+
+    @pytest.mark.parametrize("start", ["elsewhere/sub", "proj2/rtl"])
+    def test_a_start_outside_the_project_checks_only_itself(self, tmp_path, start):
+        (tmp_path / ".rat").mkdir()                      # marker above the start
+        (tmp_path / "proj").mkdir()
+        (tmp_path / start).mkdir(parents=True)           # proj2 only shares the project's prefix
+        assert self._resolve(tmp_path / start, tmp_path / "proj") == ("", 1)
+
+    def test_a_trailing_slash_in_the_project_dir_still_bounds_the_walk(self, tmp_path):
+        ip = tmp_path / "ip"
+        (ip / ".rat").mkdir(parents=True)
+        (ip / "rat_config.json").write_text("{}")
+        (ip / "rtl").mkdir()
+        assert self._resolve(ip / "rtl", f"{tmp_path}/") == (f"{ip}/.rat", 0)
 
     def test_cwd_outside_the_project_falls_back_to_the_project_root(self, tmp_path):
         project = tmp_path / "proj"

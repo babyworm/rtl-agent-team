@@ -157,23 +157,26 @@ class TestSpawnContextProjectRootContract:
     project_root (RAT_PROJECT_ROOT override, CWD fallback), and every hook honors
     the override for paths not routed through rat_project_dir(). rat_project_dir()
     applies the override, and each hook that calls it re-bases CWD on the marker it
-    returns before it builds a path from CWD. The same re-base moves CWD to the
+    returns before it uses CWD for anything else. The same re-base moves CWD to the
     project root when the session has cd'd into a subdirectory."""
 
     SPAWN_CTX_UTIL = REPO_ROOT / "hooks" / "lib" / "spawn-context-util.sh"
     REBASE_LINE = 'CWD=$(dirname "$RAT_DIR")'
-    # A path built from CWD: "$CWD/..." or "${CWD%/}/...".
-    CWD_PATH = re.compile(r"\$CWD/|\$\{CWD\b")
-    # The RAT-directory guard reads the session's CWD by design.
-    GUARD = re.compile(r'\brat_project_dir\b|\brat_is_project\b|\[ -z "\$RAT_DIR" \]')
+    # Any read of CWD: "$CWD", "$CWD/...", "${CWD%/}".
+    CWD_READ = re.compile(r"\$\{?CWD\b")
+    # Before the re-base CWD is the session's directory. Only its default, the
+    # RAT-directory guard and resolve, and the tracker's copy for Bash paths read it.
+    SESSION_CWD_READ = re.compile(
+        r'^\[ -z "\$CWD" \]|\brat_project_dir\b|\brat_is_project\b|^SESSION_CWD=\$CWD\b'
+    )
 
     def test_manifest_emits_project_root_field(self):
         content = self.SPAWN_CTX_UTIL.read_text()
         assert '"project_root":"$SCTX_PROJECT_ROOT_ESC"' in content, (
             "spawn-context manifest must emit a project_root field"
         )
-        # Resolution: -d guarded env override, session-CWD fallback (mirrors
-        # rat-dir-util.sh semantics).
+        # Resolution: -d guarded env override, else the CWD the hook passes, which
+        # the hook has re-based on the project root (mirrors rat-dir-util.sh).
         assert 'SCTX_PROJECT_ROOT="$SCTX_CWD"' in content
         assert (
             '[ -d "${RAT_PROJECT_ROOT:-}" ] && SCTX_PROJECT_ROOT="$RAT_PROJECT_ROOT"'
@@ -196,11 +199,13 @@ class TestSpawnContextProjectRootContract:
         assert rebase is not None and rebase > resolve, (
             f"{hook_name} must re-base CWD after resolving RAT_DIR: {self.REBASE_LINE}"
         )
+        # From the top of the file: a path built before the resolve is just as wrong,
+        # and "$CWD" passed to a helper builds its paths inside the helper.
         early = [
             line for i, line in code
-            if resolve < i < rebase and self.CWD_PATH.search(line) and not self.GUARD.search(line)
+            if i < rebase and self.CWD_READ.search(line) and not self.SESSION_CWD_READ.search(line)
         ]
-        assert not early, f"{hook_name} builds a path from CWD before re-basing it: {early}"
+        assert not early, f"{hook_name} reads the session's CWD before re-basing it: {early}"
 
 
 class TestPluginManifestRuntimeContract:
