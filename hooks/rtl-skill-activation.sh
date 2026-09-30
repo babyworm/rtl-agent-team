@@ -109,16 +109,20 @@ TEAM_CONFIG="$STATE_DIR/team-config.json"
 if [ -f "$TEAM_CONFIG" ]; then
   TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
   if [ "$TEAM_MODE" = "true" ]; then
+    # In-process teammates and subagents (an agent_id) never drive the leader's loop,
+    # whatever the leader value: autopilot's config has no leader at all.
+    AGENT_ID=$(jsonu_get_input_string "$INPUT" "agent_id")
+    if [ -n "$AGENT_ID" ]; then
+      emit_continue "$SETUP_EXTRA_CONTEXT"
+    fi
     SESSION_ID=$(jsonu_session_id "$INPUT")
     LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")
-    AGENT_ID=$(jsonu_get_input_string "$INPUT" "agent_id")
     case "$LEADER_ID" in
-      ''|*'<'*|*'$'*) ;;  # unknown leader: every session manages its own loop (fail-closed)
+      ''|*'<'*|*'$'*) ;;  # unknown leader: the session manages its own loop (fail-closed)
       *)
-        # Known other sessions, and in-process teammates (same session, with an agent_id),
-        # are not the leader. An unknown session may be the leader, so it starts the loop
-        # (fail-closed, as the Stop gates enforce the gate for it).
-        if [ -n "$AGENT_ID" ] || { [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "$LEADER_ID" ]; }; then
+        # A known other session is not the leader. An unknown session may be the leader,
+        # so it starts the loop (fail-closed, as the Stop gates enforce the gate for it).
+        if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "$LEADER_ID" ]; then
           emit_continue "$SETUP_EXTRA_CONTEXT"
         fi
         ;;

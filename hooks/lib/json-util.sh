@@ -281,11 +281,16 @@ PY
 
 # Print the session id of a hook input: its session_id field, else
 # CLAUDE_CODE_SESSION_ID (which Claude Code exports to command hooks), else the
-# legacy CLAUDE_SESSION_ID. Anything but a plain token prints nothing.
+# legacy CLAUDE_SESSION_ID. Anything but a plain token prints nothing: at most 128
+# ASCII letters, digits, '.', '_' and '-'. The letters are spelled out because in a
+# UTF-8 locale bash's A-Z and a-z ranges also match letters such as é.
 # Usage: SID=$(jsonu_session_id "$INPUT")
 jsonu_session_id() {
   _JSI=$(jsonu_get_input_string "$1" "session_id")
   [ -n "$_JSI" ] || _JSI=${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}
-  case "$_JSI" in *[!0-9A-Za-z._-]*) _JSI="" ;; esac
+  case "$_JSI" in
+    *[!0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz._-]*) _JSI="" ;;
+  esac
+  [ "${#_JSI}" -le 128 ] || _JSI=""
   printf '%s' "$_JSI"
 }

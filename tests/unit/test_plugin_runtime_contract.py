@@ -998,5 +998,10 @@ class TestPipelineRuleCoverage:
 def test_team_skills_record_the_real_leader_session():
     offenders = [p.parent.name for p in SKILLS_DIR.glob("*/SKILL.md") if "<current_session_id>" in p.read_text()]
     assert offenders == []
-    writers = [p for p in SKILLS_DIR.glob("*/SKILL.md") if '"leader_session_id"' in p.read_text()]
-    assert writers and all('"leader_session_id": "${CLAUDE_SESSION_ID}"' in p.read_text() for p in writers)
+    # Every occurrence, not one per file: rtl-p4-block-parallel writes two.
+    values = [
+        (p.parent.name, value)
+        for p in SKILLS_DIR.glob("*/SKILL.md")
+        for value in re.findall(r'"leader_session_id":\s*"([^"]*)"', p.read_text())
+    ]
+    assert values and all(value == "${CLAUDE_SESSION_ID}" for _, value in values), values

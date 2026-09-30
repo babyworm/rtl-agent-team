@@ -335,7 +335,7 @@ Full state is maintained at `.rat/state/block-parallel-state.json`:
 {
   "phase": "merge",
   "created_at": "2026-03-15T10:00:00Z",
-  "leader_session_id": "session-abc123",
+  "leader_session_id": "${CLAUDE_SESSION_ID}",
   "base_commit": "abc1234",
   "frozen_hash": "sha256:deadbeef...",
   "merge_frontier_commit": "def5678",

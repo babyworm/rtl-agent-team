@@ -364,12 +364,16 @@ class TestSessionScopedState:
         skill_state = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not skill_state.exists(), "Worker should not create skill-active.json"
 
-    def test_edit_tracker_ignores_a_session_id_that_is_not_a_plain_token(self, tmp_project):
-        """The session id names a file, so anything but a plain token is no session id."""
+    @pytest.mark.parametrize("sid", ["../escape", "\u00e9t\u00e9", "a" * 200],
+                             ids=["traversal", "non-ascii", "overlong"])
+    def test_edit_tracker_ignores_a_session_id_that_is_not_a_plain_token(self, tmp_project, sid):
+        """The session id names a file, so anything but a short ASCII token is no session
+        id. bash's A-Z range matches é in a UTF-8 locale, and a file name has at most 255
+        bytes."""
         self._write_team_config(tmp_project)
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": "../escape"},
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": sid},
         )
         state_dir = tmp_project / ".rat" / "state"
         assert "rtl/mod_a.sv" in (state_dir / "rtl-modified-files.txt").read_text()
@@ -2938,12 +2942,15 @@ class TestSkillActivation:
 
     def _invoke_in_team(self, tmp_project, leader, **ids):
         """Invoke rtl-p4s-bugfix, as test_rtl_skill_creates_state does, while a team whose
-        leader is `leader` is active. Returns whether the completion loop started."""
+        leader is `leader` is active (None: no leader key, as autopilot writes it). Returns
+        whether the completion loop started."""
         _setup_marker(tmp_project)
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
-        (tmp_project / ".rat" / "state" / "team-config.json").write_text(json.dumps(
-            {"team_mode": True, "leader_session_id": leader}))
+        config = {"team_mode": True}
+        if leader is not None:
+            config["leader_session_id"] = leader
+        (tmp_project / ".rat" / "state" / "team-config.json").write_text(json.dumps(config))
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix", **ids}
         run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         return (tmp_project / ".rat" / "state" / "skill-active.json").exists()
@@ -2964,6 +2971,23 @@ class TestSkillActivation:
     @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
     def test_placeholder_leader_leaves_each_session_its_own_loop(self, tmp_project, leader):
         assert self._invoke_in_team(tmp_project, leader, session_id="worker-1")
+
+    @pytest.mark.parametrize("ids, starts", [({"agent_id": "t1"}, False), ({}, True)],
+                             ids=["agent_id", "main-thread"])
+    def test_leaderless_team_keeps_agents_off_the_loop(self, tmp_project, ids, starts):
+        # Autopilot writes {"team_mode": true} without a leader. An agent_id still never
+        # drives the loop; the main thread still manages its own.
+        assert self._invoke_in_team(tmp_project, None, **ids) is starts
+
+    def test_subagent_outside_team_mode_starts_the_loop(self, tmp_project):
+        # The agent_id check protects the leader's loop only while a team is active.
+        _setup_marker(tmp_project)
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix",
+                 "session_id": "leader-abc", "agent_id": "subagent-1"}
+        run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
+        assert (tmp_project / ".rat" / "state" / "skill-active.json").exists()
 
 
 class TestPhaseStateBootstrap:
@@ -3360,8 +3384,12 @@ class TestTeamAwarenessGuard:
         result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         _assert_stop_blocked(result)
 
-    def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
-        """team-config.json older than 2h → removed, normal gate behavior resumes."""
+    @pytest.mark.parametrize("created_at", [None, "<ISO_TIMESTAMP>", "2020-01-01T00:00:00Z"],
+                             ids=["no-created_at", "placeholder", "old-utc"])
+    def test_stale_team_config_removed_and_gate_applies(self, tmp_project, created_at):
+        """team-config.json last written over 2h ago → removed, normal gate behavior resumes.
+        The age is the file's mtime: the model-written created_at may be missing, a
+        placeholder or local time."""
         state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         stale_config = {
@@ -3369,14 +3397,58 @@ class TestTeamAwarenessGuard:
             "team_name": "p5-verify",
             "leader_session_id": "leader-old",
             "phase": "p5",
-            "created_at": "2020-01-01T00:00:00Z"
         }
-        (state_dir / "team-config.json").write_text(json.dumps(stale_config, indent=2))
+        if created_at is not None:
+            stale_config["created_at"] = created_at
+        config = state_dir / "team-config.json"
+        config.write_text(json.dumps(stale_config, indent=2))
+        three_hours_ago = time.time() - 3 * 3600
+        os.utime(config, (three_hours_ago, three_hours_ago))
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "new-session"})
         # Stale config removed → gate blocks as normal
         _assert_stop_blocked(result)
-        assert not (state_dir / "team-config.json").exists()
+        assert not config.exists()
+
+    def test_config_refreshed_during_the_staleness_check_is_kept(self, tmp_project):
+        """A team skill that rewrites a stale config while the gate judges it must not lose
+        the new config: the gate re-reads the mtime before removing the file."""
+        config = tmp_project / ".rat" / "state" / "team-config.json"
+        config.write_text(json.dumps({"team_mode": True, "leader_session_id": "leader-abc"}))
+        three_hours_ago = time.time() - 3 * 3600
+        os.utime(config, (three_hours_ago, three_hours_ago))
+        # get_mtime_epoch as in posix-util.sh, except that the writer refreshes the config
+        # right after the gate's first read.
+        script = f"""
+. "{HOOKS_DIR}/lib/json-util.sh"
+. "{HOOKS_DIR}/lib/posix-util.sh"
+. "{HOOKS_DIR}/lib/team-gate-util.sh"
+jsonu_detect_parser
+get_mtime_epoch() {{
+  _m=$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)
+  [ -e "$1.refreshed" ] || {{ : > "$1.refreshed"; touch "$1"; }}
+  printf '%s' "$_m"
+}}
+teamu_should_skip_gate "{config.parent}" '{{"session_id":"worker-1"}}'
+echo "rc=$?"
+"""
+        result = subprocess.run(["sh", "-c", script], capture_output=True, text=True, timeout=10)
+        assert result.stdout.strip() == "rc=1", result  # judged stale: enforced this once
+        assert config.exists()
+
+    @pytest.mark.parametrize("age_hours", [0, 1.5])
+    def test_fresh_team_config_stays_despite_an_old_created_at(self, tmp_project, age_hours):
+        """A config last written under 2h ago is team mode whatever its created_at says."""
+        state_dir = tmp_project / ".rat" / "state"
+        config = state_dir / "team-config.json"
+        config.write_text(json.dumps({"team_mode": True, "leader_session_id": "leader-abc",
+                                      "created_at": "2020-01-01T00:00:00Z"}))
+        written = time.time() - age_hours * 3600
+        os.utime(config, (written, written))
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert result == {"continue": True}
+        assert config.exists()
 
     def test_team_mode_false_does_not_bypass(self, tmp_project):
         """team_mode=false → no bypass, normal behavior."""
@@ -3391,6 +3463,16 @@ class TestTeamAwarenessGuard:
             content = hook_path.read_text()
             assert "lib/team-gate-util.sh" in content
             assert "teamu_should_skip_gate" in content
+
+    def test_team_skip_callers_source_posix_util_first(self):
+        # teamu_should_skip_gate reads the config's mtime with the posix-util.sh helpers.
+        callers = [p for p in sorted(HOOKS_DIR.glob("*.sh")) if "teamu_should_skip_gate" in p.read_text()]
+        assert callers
+        for path in callers:
+            lines = path.read_text().splitlines()
+            source = lines.index('. "$SCRIPT_DIR/lib/posix-util.sh"')
+            call = next(i for i, line in enumerate(lines) if line.startswith("if teamu_should_skip_gate"))
+            assert source < call, path.name
 
     def test_leader_from_the_hook_input_is_enforced(self, tmp_project):
         self._write_team_config(tmp_project, leader_id="leader-abc")
