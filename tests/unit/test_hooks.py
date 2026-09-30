@@ -4656,6 +4656,28 @@ class TestTeamProgressHook:
                           {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result == {"continue": True}
 
+    @pytest.mark.parametrize("parser_env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"},
+                                            {"RTL_FORCE_JSON_FALLBACK": "1"}],
+                             ids=["default", "python", "sed"])
+    def test_session_id_comes_from_the_hook_input_root(self, tmp_project, parser_env):
+        # A session id is session information: a tool_input field of the same name must not
+        # replace the root's, so the leader's teammate still keeps the team fresh.
+        config = self._stale_team(tmp_project, "leader-abc")
+        before = config.stat().st_mtime
+        run_hook(
+            self.HOOK,
+            {
+                "session_id": "leader-abc",
+                "cwd": str(tmp_project),
+                "agent_id": "coordinator",
+                "hook_event_name": "PostToolUse",
+                "tool_name": "TaskUpdate",
+                "tool_input": {"taskId": "1", "status": "completed", "session_id": "stranger"},
+            },
+            env=parser_env,
+        )
+        assert config.stat().st_mtime > before
+
     @pytest.mark.parametrize("leader, session, agent", [("leader-abc", "other-session", "t1"),
                                                         ("leader-abc", "leader-abc", None),
                                                         ("<current_session_id>", "leader-abc", "t1"),

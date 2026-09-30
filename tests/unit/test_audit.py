@@ -402,6 +402,13 @@ class TestAuditSpawnComplete:
         )
         assert result["continue"] is True
 
+    @pytest.mark.parametrize("name", ['spec"analyst', "spec\\analyst"])
+    def test_spawn_ok_context_escapes_the_agent_name(self, tmp_project, name):
+        """The agent name goes into a JSON string, so the output must stay valid JSON."""
+        self._setup_audit(tmp_project)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "subagent_type": f"rtl-agent-team:{name}"})
+        assert result["hookSpecificOutput"]["additionalContext"] == f"[SPAWN OK] {name}"
+
     @pytest.mark.parametrize("agent_type", ["general-purpose", "other-plugin:spec-analyst"])
     def test_real_agent_tool_payload_ignores_other_agents(self, tmp_project, agent_type):
         """PostToolUse:Agent runs on every spawn. With an audit session open, only an
