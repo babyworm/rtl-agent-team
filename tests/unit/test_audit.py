@@ -4,7 +4,7 @@ Validates:
 - audit-util.sh: session init, trace append, prompt save, prune
 - rtl-audit-init.sh: SessionStart hook behavior
 - rtl-audit-subagent.sh: SubagentStart/Stop diagnostic capture
-- rtl-audit-spawn-complete.sh: PostToolUse:TaskCreate trace
+- rtl-audit-spawn-complete.sh: PostToolUse:Agent trace
 - Hook trace extensions in spawn-context, edit-tracker, skill-activation
 """
 
@@ -336,7 +336,7 @@ class TestAuditSubagentHook:
 
 
 class TestAuditSpawnComplete:
-    """Tests for hooks/rtl-audit-spawn-complete.sh PostToolUse:TaskCreate."""
+    """Tests for hooks/rtl-audit-spawn-complete.sh PostToolUse:Agent."""
 
     HOOK = HOOKS_DIR / "rtl-audit-spawn-complete.sh"
 
@@ -448,6 +448,43 @@ class TestSpawnContextProjectRootTrace:
         assert manifest.exists()
         m = json.loads(manifest.read_text())
         assert m["project_root"] == str(tmp_project)
+
+    def test_real_agent_tool_payload_writes_manifest(self, tmp_project):
+        """PreToolUse:Agent delivers subagent_type inside tool_input."""
+        result = run_hook(
+            HOOKS_DIR / "rtl-spawn-context.sh",
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Agent",
+                "tool_input": {
+                    "subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+                    "prompt": "implement",
+                },
+            },
+        )
+        assert result["continue"] is True
+        assert (tmp_project / ".rat" / "state" / "spawn-context.json").exists()
+
+    @pytest.mark.parametrize("agent_type", [
+        "general-purpose",
+        "p4-implement-orchestrator",
+        "other-plugin:p4-implement-orchestrator",
+    ])
+    def test_real_agent_tool_payload_ignores_other_agents(self, tmp_project, agent_type):
+        """The hook now runs on every Agent spawn. Only an rtl-agent-team: agent
+        refreshes the manifest, even when another agent shares an orchestrator's name."""
+        result = run_hook(
+            HOOKS_DIR / "rtl-spawn-context.sh",
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": agent_type, "prompt": "implement"},
+            },
+        )
+        assert result == {"continue": True}
+        assert not (tmp_project / ".rat" / "state" / "spawn-context.json").exists()
 
 
 class TestEditTrackerArtifactTrace:
@@ -641,8 +678,8 @@ class TestAuditFileStructure:
         assert "SubagentStart" in hooks["hooks"]
         assert "SubagentStop" in hooks["hooks"]
 
-        # PostToolUse:TaskCreate has spawn-complete
-        tc_matchers = [e for e in hooks["hooks"]["PostToolUse"] if e["matcher"] == "TaskCreate"]
+        # PostToolUse:Agent has spawn-complete
+        tc_matchers = [e for e in hooks["hooks"]["PostToolUse"] if e["matcher"] == "Agent"]
         assert len(tc_matchers) == 1
         tc_commands = [h["command"] for h in tc_matchers[0]["hooks"]]
         assert any("rtl-audit-spawn-complete.sh" in c for c in tc_commands)

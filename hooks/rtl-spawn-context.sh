@@ -1,8 +1,7 @@
 #!/bin/sh
-# RTL Spawn Context Hook: PreToolUse:TaskCreate
-# Refreshes spawn-context.json when an agent is spawned directly via Task()
-# without going through a Skill. If TaskCreate is not a valid matcher,
-# this hook simply never fires (no harm).
+# RTL Spawn Context Hook: PreToolUse:Agent
+# Refreshes spawn-context.json whenever an rtl-agent-team agent is spawned through
+# the Agent tool, including direct spawns that bypass a Skill.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)

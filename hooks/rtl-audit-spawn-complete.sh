@@ -1,5 +1,5 @@
 #!/bin/sh
-# RTL Audit Spawn Complete: PostToolUse:TaskCreate hook
+# RTL Audit Spawn Complete: PostToolUse:Agent hook
 # Records spawn_complete event in the audit trace after an agent is spawned.
 
 INPUT=$(cat)

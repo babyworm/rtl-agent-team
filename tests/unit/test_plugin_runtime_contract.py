@@ -107,8 +107,8 @@ class TestHookRuntimeContract:
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-phase-state-bootstrap.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
         ]
-        # TaskCreate matcher: spawn-context (experimental)
-        assert entries[1]["matcher"] == "TaskCreate"
+        # Agent matcher: spawn-context
+        assert entries[1]["matcher"] == "Agent"
         tc_commands = [h["command"] for h in entries[1]["hooks"]]
         assert tc_commands == [
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-spawn-context.sh"',
@@ -117,7 +117,7 @@ class TestHookRuntimeContract:
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in entries]
-        assert matchers == ["Edit|Write|Bash", "TaskUpdate", "TaskCreate"]
+        assert matchers == ["Edit|Write|Bash", "TaskUpdate", "Agent"]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]
