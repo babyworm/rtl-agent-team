@@ -160,7 +160,9 @@ When modifying this plugin:
     - Verify no stale version references remain: `grep -r '0\.OLD\.VER' package.json .claude-plugin/ README.md README_kr.md`
     - **Sub-plugin sha pin (marketplace.json)**: when bumping a github-source sub-plugin (e.g., `systemverilog-lsp`), use the **commit sha**, not the annotated tag-object sha. `git rev-parse <tag>` returns the tag-object sha for annotated tags; `git rev-parse <tag>^{commit}` always returns the commit sha. They are equal only for lightweight tags. Verify with `git cat-file -t <sha>` — must print `commit`, never `tag`. v0.10.5 pinned a tag-object sha by mistake; v0.10.6 corrected it.
 15. **Hook stdout must be valid JSON when non-empty** — Claude Code validates hook output against per-event schemas (`hookSpecificOutput.hookEventName` is mandatory for SessionStart, PreToolUse, PostToolUse). Raw text stdout silently fails validation. To inject context, embed JSON-encoded content inside `additionalContext` (SessionStart) or `permissionDecisionReason` (PreToolUse). For large/multi-line content, perform the JSON encoding at **sync/build time** in a dev script — never at runtime — so the hook stays POSIX-only with zero jq/python dependency. Canonical pattern in this plugin: `hooks/rtl-orchestrator-inject.sh` + `scripts/sync_orchestrator_inject.sh`. Validation: `echo '{"cwd":"<dir>"}' | sh hooks/<hook>.sh | python3 -m json.tool`.
+    Gates never emit `"continue": false`: it overrides `decision: "block"` and `permissionDecision: "deny"`, ends the turn, and drops the reason. Stop gates block and notify only through `stopu_gate` (`hooks/lib/stop-budget-util.sh`). They hand user decisions over with `stopu_gate … 0`, which shows the notice once per chain.
 16. **`agents/` must stay flat — no subdirectories** — Claude Code discovers agents by scanning `agents/` **recursively** (`plugin.json` has no `agents` field, so auto-discovery applies). A `.md` file in any subdirectory is registered as a real, spawnable agent named `rtl-agent-team:<subdir>:<stem>`, described as "Agent from rtl-agent-team plugin", granted **all tools**, and carrying no role prompt — an unconstrained agent in the always-on registry. Shared prompt fragments and sync templates belong in `plugin_docs/agent-lib/`. v0.14.1 and earlier leaked 6 phantom agents this way from `agents/lib/`; guarded since v0.14.2 by `test_agents_dir_has_no_nested_markdown`. Note the trap: the agent test fixture globs `agents/*.md` non-recursively, so nested files are invisible to every other agent test.
+17. **Hook context comes from the hook input's root, and the project from `rat_project_dir`.** Claude Code reports the session's current directory as `cwd`, and a `cd` persists. So every hook resolves the project with `rat_project_dir` (it walks up to `$CLAUDE_PROJECT_DIR`; the root marker wins) and re-bases `CWD=$(dirname "$RAT_DIR")` before building any path. Read session fields with `jsonu_get_root_string` or `jsonu_session_id`, never from `tool_input`. `test_hooks_honor_project_root_override` enforces the re-base; `test_session_id_comes_from_the_hook_input_root` and `test_agent_cwd_does_not_move_the_session_project` pin the root reads.
 
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
@@ -187,7 +189,7 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
 │   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write/Bash: RTL modification tracking + P6 stale detection
 │   ├── rtl-phase-state-bootstrap.sh     #   PreToolUse:Skill: phase state bootstrap
-│   ├── rtl-skill-activation.sh          #   PreToolUse:Skill: skill completion loop
+│   ├── rtl-skill-activation.sh          #   PreToolUse+PostToolUse:Skill: skill completion loop
 │   ├── stop-gate.sh                     #   Stop: autopilot state gate
 │   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
@@ -195,13 +197,13 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-coverage-exclusion-gate.sh  #   Stop: coverage exclusion approval enforcement
 │   ├── rtl-audit-init.sh                #   SessionStart: audit session initialization
 │   ├── rtl-audit-subagent.sh            #   SubagentStart/SubagentStop: per-subagent audit capture
-│   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:TaskCreate: audit spawn completion
-│   ├── rtl-spawn-context.sh             #   PreToolUse:TaskCreate: spawn context manifest
+│   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:Agent: audit spawn completion
+│   ├── rtl-spawn-context.sh             #   PreToolUse:Agent: spawn context manifest
 │   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
-│   └── lib/                             #   10 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
+│   └── lib/                             #   11 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
 │                                        #     hook-output-util.sh, spawn-context-util.sh,
 │                                        #     team-gate-util.sh, audit-util.sh, artifact-map.sh,
-│                                        #     compliance-gate-util.sh, rat-dir-util.sh)
+│                                        #     compliance-gate-util.sh, rat-dir-util.sh, stop-budget-util.sh)
 ├── plugin_docs/                         # Plugin development documents (tracked)
 │   ├── specs/                           #   Design specifications
 │   ├── plans/                           #   Implementation plans
@@ -260,7 +262,7 @@ order will therefore warn but still execute with adaptive scope.
 | 2 | Do not write a Testbench without a Reference Model | Policy — skill entry warning |
 | 3 | Do not run synthesis without RTL code | Policy — skill entry warning |
 | 4 | Do not run Formal verification without passing Lint | Policy — skill entry warning (`rtl-p5s-sva-check`) |
-| 5 | **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient) | **Hard — `rtl-verify-stop-gate.sh` blocks session stop until `.rat/state/rtl-verify-done` or `rtl-verify-waiver` is present** |
+| 5 | **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient) | **Hard — `rtl-verify-stop-gate.sh` blocks the stop (Claude keeps working) until `.rat/state/rtl-verify-done` or `rtl-verify-waiver` is present. It hands the decision to the user after `RAT_STOP_BLOCK_LIMIT` (default 3) blocks without progress in one continuation chain, or from the chain's seventh Stop on, whichever comes first. The seventh-Stop bound follows `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`.** |
 | 6 | Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion + Stream B artifacts | Policy — skill entry warning (`rtl-p5-verify[-team]`) |
 | 7 | When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded | Policy — loop counter tracked by phase state; escalation advisory |
 | 8 | Do not proceed to Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) | Policy — skill entry warning (`rtl-p6-design-review`); orchestrator rechecks verdict |
@@ -333,17 +335,17 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + pipeline rules for user projects |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |
-| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop with criteria + same-skill re-invocation counter reset |
+| `rtl-skill-activation.sh` | PreToolUse:Skill, PostToolUse:Skill | Setup and phase advisory before the call; completion-loop state (criteria, same-skill counter reset) once the call ran |
 | `stop-gate.sh` | Stop | Autopilot gate ladder enforcement (`N→2N→last-chance→user escalation`) + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
 | `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval (non-standard bins require user confirmation) |
-| `rtl-spawn-context.sh` | PreToolUse:TaskCreate | Spawn context manifest for direct Task() agent spawns |
-| `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode |
+| `rtl-spawn-context.sh` | PreToolUse:Agent | Spawn context manifest for agent spawns |
+| `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode; an in-process teammate's TaskUpdate refreshes team-config.json (team heartbeat) |
 | `rtl-audit-init.sh` | SessionStart | Initialize audit session directory and trace log |
 | `rtl-audit-subagent.sh` | SubagentStart/SubagentStop | Log subagent lifecycle events to audit trace |
-| `rtl-audit-spawn-complete.sh` | PostToolUse:TaskCreate | Log spawn completion events to audit trace |
+| `rtl-audit-spawn-complete.sh` | PostToolUse:Agent | Log spawn completion events to audit trace |
 
 **State files**: Stored under `.rat/state/`. Pipeline state, verification gates, skill completion tracking.
 
@@ -391,6 +393,14 @@ Skill (main session = leader)
 **Team-awareness**: Stop hooks check `.rat/state/team-config.json` — coordinator
 and workers bypass gates, only the leader session is subject to stop enforcement.
 Hook concurrency is protected by POSIX file locking (`hooks/lib/flock-util.sh`).
+
+Hooks identify sessions by the hook input's root `session_id`, falling back to
+`CLAUDE_CODE_SESSION_ID`. `CLAUDE_SESSION_ID` is never set by Claude Code. The team
+skills record the leader as `${CLAUDE_SESSION_ID}`, which Claude Code substitutes
+when it loads the skill. A placeholder or empty leader, or an unknown session, is
+fail-closed: every session is gated. Hooks judge a team config by its mtime: it goes
+stale after 2 hours without in-process teammate activity, and every hook treats a
+stale config as no team mode.
 
 **Fallback**: If `TeamCreate` fails at skill level, the skill falls back to the sequential
 (non-team) orchestrator automatically.

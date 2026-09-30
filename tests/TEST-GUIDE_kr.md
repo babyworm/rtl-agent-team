@@ -115,11 +115,15 @@ python3 -m pytest tests/unit/ -n auto
 | `rtl-verify-stop-gate.sh` | RTL 수정 후 검증 완료 전 세션 종료 차단 | 차단/허용 조건, 정리(cleanup) |
 | `stop-gate.sh` | autopilot 실행 중 세션 종료 차단 | 상태 파일 유무에 따른 차단 |
 | `rtl-p6-cascade-gate.sh` | Phase 6 이후 RTL 수정 시 cascade 재검토 강제 | stale 마커, cascade-done, 차단/허용 |
-| `rtl-skill-activation.sh` | 스킬 호출 시 완료 상태 자동 생성 (PreToolUse:Skill) | 상태 파일 생성, 재진입 방지, 기준 로딩 |
+| `rtl-skill-activation.sh` | 스킬 호출 전 안내 (PreToolUse:Skill), 실행된 스킬의 완료 상태 생성 (PostToolUse:Skill) | 상태 파일 생성, 재진입 방지, 기준 로딩 |
 | `rtl-skill-completion-gate.sh` | 스킬 완료 전 세션 종료 차단 (Stop) | escalation ladder(`N→2N→last-chance→user escalation`), 반복 카운트, staleness, 정리 |
 
-**동작 원리:** 훅은 stdin으로 JSON을 받고, stdout으로 `{"continue": true/false}` JSON을 출력합니다.
-테스트는 `run_hook()` helper로 실제 셸 스크립트를 실행하고 출력 JSON을 검증합니다.
+**동작 원리:** 훅은 stdin으로 JSON을 받고 stdout으로 JSON 객체 하나를 출력합니다.
+허용은 `{"continue": true}`, Stop에서 Claude가 계속 작업하게 하려면
+`{"decision": "block", "reason": ...}`, PreToolUse 거부는 `permissionDecision: "deny"`,
+사용자에게 알릴 때는 `{"systemMessage": ...}`를 씁니다. `"continue": false`는 출력하지
+않습니다(`tests/unit/test_hook_output_contract.py`). 테스트는 `run_hook()` helper로
+실제 셸 스크립트를 실행하고 출력 JSON을 검증합니다.
 
 ### 2. Python 스크립트 테스트
 

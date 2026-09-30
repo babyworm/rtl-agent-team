@@ -436,7 +436,7 @@ This rule applies to ALL tasks that modify `.sv/.svh/.v/.vh` files.
 
 **Gate signals:**
 - Verification done: `touch .rat/state/rtl-verify-done`
-- Waiver (non-functional changes): `touch .rat/state/rtl-verify-waiver`
+- Waiver (non-functional changes): the user's decision. Ask before creating `.rat/state/rtl-verify-waiver`.
 
 **Phase 4 Parallel Streams:**
 - Stream A: RTL coding (wave-based) → lint → unit TB → unit sim
@@ -509,7 +509,7 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 |------|-------|---------|
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and pipeline rules |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track RTL file modifications |
-| `rtl-skill-activation.sh` | PreToolUse:Skill | Activate skill completion loop + same-skill re-invocation counter reset |
+| `rtl-skill-activation.sh` | PreToolUse:Skill, PostToolUse:Skill | Setup and phase advisory before the call; completion-loop state (criteria, same-skill counter reset) once the call ran |
 | `stop-gate.sh` | Stop | Autopilot escalation ladder enforcement + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement + document mtime verification |
@@ -652,7 +652,7 @@ Port prefix `i_`/`o_`/`io_` (NOT suffix; clk/rst exempt). Clock `clk`/`{domain}_
 
 ## Mandatory Verification After RTL Changes
 RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
-Gate: `touch .rat/state/rtl-verify-done` (or `rtl-verify-waiver` for non-functional changes)
+Gate: `touch .rat/state/rtl-verify-done` after a passing simulation. A waiver for non-functional changes (`.rat/state/rtl-verify-waiver`) is the user's decision; ask first.
 
 ## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)

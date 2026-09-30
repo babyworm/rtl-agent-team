@@ -174,7 +174,7 @@ class TestNewHook:
         # 차단 조건 설정
         (tmp_project / ".rat" / "state" / "block-file").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        assert result["decision"] == "block"  # Stop gate — PreToolUse gate는 hookSpecificOutput.permissionDecision으로 거부
 ```
 
 ## 발견된 버그

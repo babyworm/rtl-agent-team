@@ -23,10 +23,10 @@ Hook Events (SessionStart/PreToolUse/PostToolUse/Stop)
 | Audit Utility Library | `hooks/lib/audit-util.sh` | Session init, trace append, prompt save, prune |
 | Session Initializer | `hooks/rtl-audit-init.sh` | SessionStart: create audit dir, cache session ID |
 | Subagent Diagnostic | `hooks/rtl-audit-subagent.sh` | SubagentStart/Stop: experimental event capture |
-| Spawn Tracer | `hooks/rtl-spawn-context.sh` | PreToolUse:TaskCreate: spawn_start event |
-| Spawn Complete | `hooks/rtl-audit-spawn-complete.sh` | PostToolUse:TaskCreate: spawn_complete event |
+| Spawn Tracer | `hooks/rtl-spawn-context.sh` | PreToolUse:Agent: spawn_start event |
+| Spawn Complete | `hooks/rtl-audit-spawn-complete.sh` | PostToolUse:Agent: spawn_complete event |
 | Artifact Tracer | `hooks/rtl-edit-tracker.sh` | PostToolUse:Edit/Write: artifact_write for docs/ |
-| Skill Tracer | `hooks/rtl-skill-activation.sh` | PreToolUse:Skill: skill_invoke event |
+| Skill Tracer | `hooks/rtl-skill-activation.sh` | PostToolUse:Skill: skill_invoke event |
 | RAT Protocol | `agents/lib/audit-output-protocol.md` | Agent structured output annotation standard |
 | CLI Viewer | `scripts/show-audit.sh` | Terminal viewer with ANSI colors |
 | Summary Generator | `scripts/generate-audit-summary.sh` | trace.jsonl → summary.md conversion |
@@ -60,7 +60,7 @@ Agents annotate key decision moments with structured tags:
 
 ### Session Management
 
-- Sessions identified by `CLAUDE_SESSION_ID` or timestamp+PID fallback
+- Sessions identified by `CLAUDE_CODE_SESSION_ID` (Claude Code exports it to command hooks), else the cached `session-id.txt`, else a timestamp+PID fallback
 - Maximum 10 sessions retained, 50MB total limit
 - Automatic pruning on SessionStart
 

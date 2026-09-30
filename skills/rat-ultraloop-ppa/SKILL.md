@@ -212,3 +212,10 @@ Reuses the `stop-gate.sh` escalation pattern: when
 `.rat/state/ppa-loop-state.json` is present with `mode == "ppa-loop"` and
 `last_cycle_timestamp + auto_continue_minutes*60 > now`, the hook auto-continues
 instead of stopping.
+
+Every auto-continue is a blocked Stop, so `stop-gate.sh` bounds it. Per user message it
+auto-continues at most `STOPU_CHAIN_CAP` times: 6 by default, two under
+`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` when that is set, no bound when it is 0. It also pauses
+the loop after `RAT_STOP_BLOCK_LIMIT` (default 3) automatic continuations without a new
+cycle (a refreshed `last_cycle_timestamp`, step 1a). Either way the user sees a pause
+notice: say continue to resume, or end the loop with `rm .rat/state/ppa-loop-state.json`.
