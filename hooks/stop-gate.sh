@@ -39,7 +39,7 @@ if [ ! -f "$STATE_FILE" ] && [ -f "$LEGACY_STATE_FILE" ]; then
   mv "$LEGACY_STATE_FILE" "$STATE_FILE"
 fi
 
-if teamu_should_skip_gate "$RAT_DIR/state"; then
+if teamu_should_skip_gate "$RAT_DIR/state" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$RAT_DIR/state" ultraloop ppa-loop autopilot)

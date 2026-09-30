@@ -39,7 +39,7 @@ CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd in
 STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
-if teamu_should_skip_gate "$STATE_DIR"; then
+if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" skill-completion)

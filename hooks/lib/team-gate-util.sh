@@ -6,7 +6,7 @@
 # The coordinator's session ID differs from the leader's, so it bypasses stop gates
 # just like worker sessions. Only the leader session is subject to stop enforcement.
 #
-# teamu_should_skip_gate <state_dir>
+# teamu_should_skip_gate <state_dir> <hook-input>
 # Returns:
 #   0 -> caller should skip stop-gate logic (coordinator/worker session in team mode)
 #   1 -> caller should continue normal stop-gate logic
@@ -43,13 +43,11 @@ teamu_should_skip_gate() {
     fi
   fi
 
-  # Fail-closed: empty leader = unknown ownership → enforce gate for all sessions
-  if [ -z "$TEAMU_LEADER" ]; then
-    return 1
-  fi
-  # Known leader: skip gate only for worker sessions (non-leader)
-  if [ "$TEAMU_LEADER" != "${CLAUDE_SESSION_ID:-}" ]; then
-    return 0
-  fi
-  return 1
+  # Fail-closed: an empty or placeholder leader, or an unknown session, enforces
+  # the gate for every session.
+  case "$TEAMU_LEADER" in ''|*'<'*|*'$'*) return 1 ;; esac
+  TEAMU_SESSION=$(jsonu_session_id "${2:-}")
+  [ -n "$TEAMU_SESSION" ] || return 1
+  # Known leader: skip the gate only for other sessions (coordinator, workers).
+  [ "$TEAMU_LEADER" != "$TEAMU_SESSION" ]
 }

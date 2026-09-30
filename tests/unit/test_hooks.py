@@ -269,13 +269,11 @@ class TestSessionScopedState:
         (state_dir / "team-config.json").write_text(json.dumps(config))
 
     def test_edit_tracker_session_scoped_in_team_mode(self, tmp_project):
-        """In team mode with SESSION_ID, tracking file uses session suffix."""
+        """In team mode with a session id, tracking file uses session suffix."""
         self._write_team_config(tmp_project)
-        env = {"CLAUDE_SESSION_ID": "worker-abc-123"}
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv"},
-            env=env,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": "worker-abc-123"},
         )
         state_dir = tmp_project / ".rat" / "state"
         session_file = state_dir / "rtl-modified-files-worker-abc-123.txt"
@@ -296,17 +294,15 @@ class TestSessionScopedState:
         assert "rtl/mod_b.sv" in solo_file.read_text()
 
     def test_two_sessions_produce_separate_files(self, tmp_project):
-        """Two different SESSION_IDs write to separate tracking files."""
+        """Two different session ids write to separate tracking files."""
         self._write_team_config(tmp_project)
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/a.sv"},
-            env={"CLAUDE_SESSION_ID": "session-1"},
+            {"cwd": str(tmp_project), "file_path": "rtl/a.sv", "session_id": "session-1"},
         )
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/b.sv"},
-            env={"CLAUDE_SESSION_ID": "session-2"},
+            {"cwd": str(tmp_project), "file_path": "rtl/b.sv", "session_id": "session-2"},
         )
         state_dir = tmp_project / ".rat" / "state"
         f1 = state_dir / "rtl-modified-files-session-1.txt"
@@ -327,8 +323,7 @@ class TestSessionScopedState:
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
             self.GATE_HOOK,
-            {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "leader-001"},
+            {"cwd": str(tmp_project), "session_id": "leader-001"},
         )
         # Gate should block because there are unverified files
         _assert_stop_blocked(result)
@@ -346,8 +341,7 @@ class TestSessionScopedState:
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
             self.GATE_HOOK,
-            {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "leader-001"},
+            {"cwd": str(tmp_project), "session_id": "leader-001"},
         )
         assert result["continue"] is True
         # All session files should be cleaned up
@@ -356,17 +350,30 @@ class TestSessionScopedState:
 
     def test_skill_activation_skipped_for_worker(self, tmp_project):
         """Worker sessions should skip skill state management."""
+        _setup_marker(tmp_project)  # without it the hook stops at the setup check
         self._write_team_config(tmp_project, leader_id="leader-001")
-        env = {"CLAUDE_SESSION_ID": "worker-session-99", "CLAUDE_PLUGIN_ROOT": str(HOOKS_DIR / "..")}
+        env = {"CLAUDE_PLUGIN_ROOT": str(HOOKS_DIR / "..")}
         result = run_hook(
             self.SKILL_HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5-verify"},
+            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5-verify",
+             "session_id": "worker-session-99"},
             env=env,
         )
         assert result["continue"] is True
         # skill-active.json should NOT be created by worker
         skill_state = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not skill_state.exists(), "Worker should not create skill-active.json"
+
+    def test_edit_tracker_ignores_a_session_id_that_is_not_a_plain_token(self, tmp_project):
+        """The session id names a file, so anything but a plain token is no session id."""
+        self._write_team_config(tmp_project)
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": "../escape"},
+        )
+        state_dir = tmp_project / ".rat" / "state"
+        assert "rtl/mod_a.sv" in (state_dir / "rtl-modified-files.txt").read_text()
+        assert not list(state_dir.glob("rtl-modified-files-*"))
 
 
 class TestRtlVerifyStopGate:
@@ -477,8 +484,7 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/c.sv\n")
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "leader-001"},
+            {"cwd": str(tmp_project), "session_id": "leader-001"},
         )
         _assert_stop_blocked(result)
 
@@ -554,10 +560,10 @@ class TestRtlVerifyStopGate:
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        lead = {"CLAUDE_SESSION_ID": "leader-001"}
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert (state_dir / "stop-budget-verify.txt").read_text().startswith("2\n")
 
     @pytest.mark.parametrize("marker", ["rtl-verify-waiver", "rtl-verify-done"])
@@ -1006,10 +1012,10 @@ class TestStopGate:
              "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
              "needs_user_decision": False}},
         )
-        lead = {"CLAUDE_SESSION_ID": "leader-001"}
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert (state / "stop-budget-autopilot.txt").read_text().startswith("2\n")
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
@@ -2065,10 +2071,10 @@ class TestP6CascadeGate:
         (state / "team-config.json").write_text(json.dumps(
             {"team_mode": True, "leader_session_id": "leader-001"}))
         (tmp_project / ".rat" / "state" / "phase6-stale").touch()
-        lead = {"CLAUDE_SESSION_ID": "leader-001"}
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert (state / "stop-budget-p6-cascade.txt").read_text().startswith("2\n")
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
@@ -2498,10 +2504,10 @@ class TestSkillCompletionGate:
         (state / "team-config.json").write_text(json.dumps(
             {"team_mode": True, "leader_session_id": "leader-001"}))
         self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        lead = {"CLAUDE_SESSION_ID": "leader-001"}
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert (state / "stop-budget-skill-completion.txt").read_text().startswith("2\n")
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
@@ -2930,6 +2936,30 @@ class TestSkillActivation:
         state = json.loads(state_file.read_text())
         assert state["skill"] == "rtl-p4s-bugfix"
 
+    def _invoke_in_team(self, tmp_project, leader, **ids):
+        """Invoke rtl-p4s-bugfix, as test_rtl_skill_creates_state does, while a team whose
+        leader is `leader` is active. Returns whether the completion loop started."""
+        _setup_marker(tmp_project)
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        (tmp_project / ".rat" / "state" / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": leader}))
+        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix", **ids}
+        run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
+        return (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+    def test_in_process_teammate_does_not_start_the_leaders_loop(self, tmp_project):
+        # An in-process teammate runs in the leader's session; only its agent_id tells it apart.
+        assert not self._invoke_in_team(tmp_project, "leader-abc",
+                                        session_id="leader-abc", agent_id="teammate-1")
+
+    def test_leader_starts_its_loop_in_team_mode(self, tmp_project):
+        assert self._invoke_in_team(tmp_project, "leader-abc", session_id="leader-abc")
+
+    @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
+    def test_placeholder_leader_leaves_each_session_its_own_loop(self, tmp_project, leader):
+        assert self._invoke_in_team(tmp_project, leader, session_id="worker-1")
+
 
 class TestPhaseStateBootstrap:
     """Tests for hooks/rtl-phase-state-bootstrap.sh."""
@@ -3240,8 +3270,8 @@ class TestTeamAwarenessGuard:
             "active_gate_last_chance_attempts": 0, "needs_user_decision": False
         }}
         (state_dir / "rat-auto-design-state.json").write_text(json.dumps(state))
-        # Worker session (no CLAUDE_SESSION_ID or different from leader)
-        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project)})
+        # Worker session (its session id differs from the leader's)
+        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_leader_session_still_blocked_by_stop_gate(self, tmp_project):
@@ -3254,24 +3284,15 @@ class TestTeamAwarenessGuard:
             "active_gate_last_chance_attempts": 0, "needs_user_decision": False
         }}
         (state_dir / "rat-auto-design-state.json").write_text(json.dumps(state))
-        # Simulate leader session via env
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["stop-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        _assert_stop_blocked(parsed)
+        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_worker_bypasses_verify_gate(self, tmp_project):
         """Worker in team mode → verify gate allows exit even with tracked files."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
-        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_worker_bypasses_p6_cascade(self, tmp_project):
@@ -3279,7 +3300,7 @@ class TestTeamAwarenessGuard:
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_worker_bypasses_skill_completion(self, tmp_project):
@@ -3293,7 +3314,7 @@ class TestTeamAwarenessGuard:
             "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
-        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_leader_session_still_blocked_by_verify_gate(self, tmp_project):
@@ -3301,32 +3322,16 @@ class TestTeamAwarenessGuard:
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["verify-stop-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        _assert_stop_blocked(parsed)
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_leader_session_still_blocked_by_p6_cascade(self, tmp_project):
         """Leader session in team mode → P6 cascade gate still blocks."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["p6-cascade-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        _assert_stop_blocked(parsed)
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_leader_session_still_blocked_by_skill_completion(self, tmp_project):
         """Leader session in team mode → skill completion gate still blocks."""
@@ -3339,23 +3344,15 @@ class TestTeamAwarenessGuard:
             "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["skill-completion-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        _assert_stop_blocked(parsed)
+        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_empty_leader_id_enforces_gate_fail_closed(self, tmp_project):
         """Empty leader_session_id with team_mode=true → fail-closed, gate enforced for all."""
         self._write_team_config(tmp_project, leader_id="")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         _assert_stop_blocked(result)
 
     def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
@@ -3371,7 +3368,7 @@ class TestTeamAwarenessGuard:
         }
         (state_dir / "team-config.json").write_text(json.dumps(stale_config, indent=2))
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         # Stale config removed → gate blocks as normal
         _assert_stop_blocked(result)
         assert not (state_dir / "team-config.json").exists()
@@ -3381,7 +3378,7 @@ class TestTeamAwarenessGuard:
         self._write_team_config(tmp_project, team_mode=False, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         _assert_stop_blocked(result)
 
     def test_stop_hooks_use_shared_team_gate_util(self):
@@ -3389,6 +3386,64 @@ class TestTeamAwarenessGuard:
             content = hook_path.read_text()
             assert "lib/team-gate-util.sh" in content
             assert "teamu_should_skip_gate" in content
+
+    def test_leader_from_the_hook_input_is_enforced(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"],
+                          {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
+
+    def test_worker_from_the_hook_input_skips(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"],
+                          {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert result == {"continue": True}
+
+    def test_session_from_claude_code_env_when_the_input_has_none(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)},
+                          env={"CLAUDE_CODE_SESSION_ID": "leader-abc"})
+        _assert_stop_blocked(result)
+
+    @pytest.mark.parametrize("var", ["CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID"])
+    def test_worker_from_the_env_skips(self, tmp_project, var):
+        # The gate enforces a leader and an unknown session alike, so only a worker shows
+        # that the env was read.
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)},
+                          env={var: "worker-1"})
+        assert result == {"continue": True}
+
+    @pytest.mark.parametrize("stdin, env", [
+        ({"session_id": "leader-abc"}, {"CLAUDE_CODE_SESSION_ID": "worker-1"}),
+        ({}, {"CLAUDE_CODE_SESSION_ID": "leader-abc", "CLAUDE_SESSION_ID": "worker-1"}),
+    ])
+    def test_session_sources_in_order(self, tmp_project, stdin, env):
+        # The input's session_id, then CLAUDE_CODE_SESSION_ID, then the legacy CLAUDE_SESSION_ID.
+        # The first source present names the leader, so the gate must block.
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), **stdin},
+                          env=env)
+        _assert_stop_blocked(result)
+
+    def test_unknown_session_enforces_the_gate(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
+        _assert_stop_blocked(result)
+
+    @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
+    def test_placeholder_leader_enforces_for_everyone(self, tmp_project, leader):
+        self._write_team_config(tmp_project, leader_id=leader)
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"],
+                          {"cwd": str(tmp_project), "session_id": "worker-1"})
+        _assert_stop_blocked(result)
 
 
 class TestSedFallbackContract:
@@ -5033,12 +5088,12 @@ class TestCoverageExclusionGate:
         (state / "team-config.json").write_text(json.dumps(
             {"team_mode": True, "leader_session_id": "leader-001"}))
         self._write_exclusions(tmp_project)
-        lead = {"CLAUDE_SESSION_ID": "leader-001"}
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=lead)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}, env=lead)
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
         budget = state / "stop-budget-coverage-exclusion.txt"
         before = budget.read_text()
-        run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"CLAUDE_SESSION_ID": "worker-1"})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert budget.read_text() == before
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):

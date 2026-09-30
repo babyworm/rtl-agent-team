@@ -993,3 +993,10 @@ class TestPipelineRuleCoverage:
             f"Rules declared in CLAUDE.md but missing from the rtl-orchestrate body: "
             f"{sorted(declared - body)}"
         )
+
+
+def test_team_skills_record_the_real_leader_session():
+    offenders = [p.parent.name for p in SKILLS_DIR.glob("*/SKILL.md") if "<current_session_id>" in p.read_text()]
+    assert offenders == []
+    writers = [p for p in SKILLS_DIR.glob("*/SKILL.md") if '"leader_session_id"' in p.read_text()]
+    assert writers and all('"leader_session_id": "${CLAUDE_SESSION_ID}"' in p.read_text() for p in writers)

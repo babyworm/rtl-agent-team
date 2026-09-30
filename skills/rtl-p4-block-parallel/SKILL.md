@@ -100,7 +100,7 @@ except:
 Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p4-block-parallel",
-    "leader_session_id": "<current_session_id>",
+    "leader_session_id": "${CLAUDE_SESSION_ID}",
     "coordinator_name": "coordinator",
     "worker_count": 6,
     "phase": "p4",
@@ -157,7 +157,7 @@ else:
     state = {
         "phase": "implement",
         "created_at": ISO_TIMESTAMP,
-        "leader_session_id": "<current_session_id>",
+        "leader_session_id": "${CLAUDE_SESSION_ID}",
         "base_commit": base_commit,
         "frozen_hash": frozen_hash,
         "merge_frontier_commit": base_commit,

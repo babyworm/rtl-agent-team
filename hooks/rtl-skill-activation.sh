@@ -106,13 +106,22 @@ CRITERIA_FILE="$PLUGIN_ROOT/skill-completion-criteria.json"
 
 # Team mode: worker sessions skip skill state management (leader only)
 TEAM_CONFIG="$STATE_DIR/team-config.json"
-if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
+if [ -f "$TEAM_CONFIG" ]; then
   TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
   if [ "$TEAM_MODE" = "true" ]; then
+    SESSION_ID=$(jsonu_session_id "$INPUT")
     LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")
-    if [ -n "$LEADER_ID" ] && [ "$CLAUDE_SESSION_ID" != "$LEADER_ID" ]; then
-      emit_continue "$SETUP_EXTRA_CONTEXT"
-    fi
+    AGENT_ID=$(jsonu_get_input_string "$INPUT" "agent_id")
+    case "$LEADER_ID" in
+      ''|*'<'*|*'$'*) ;;  # unknown leader: every session manages its own loop (fail-closed)
+      *)
+        # Other sessions, and in-process teammates (same session, with an agent_id),
+        # are not the leader.
+        if [ -n "$AGENT_ID" ] || [ "$SESSION_ID" != "$LEADER_ID" ]; then
+          emit_continue "$SETUP_EXTRA_CONTEXT"
+        fi
+        ;;
+    esac
   fi
 fi
 

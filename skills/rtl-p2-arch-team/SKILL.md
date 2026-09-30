@@ -46,7 +46,7 @@ TeamCreate(team_name="p2-arch", description="Phase 2 architecture: dual-stream a
 Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p2-arch",
-    "leader_session_id": "<current_session_id>",
+    "leader_session_id": "${CLAUDE_SESSION_ID}",
     "coordinator_name": "coordinator",
     "worker_count": 3,
     "phase": "p2",

@@ -63,20 +63,26 @@ jsonu_detect_parser
         assert sid_file.exists()
         assert len(sid_file.read_text().strip()) > 0
 
-    def test_init_session_uses_claude_session_id(self, tmp_project):
+    @pytest.mark.parametrize("env, expected", [
+        ({"CLAUDE_CODE_SESSION_ID": "test-session-123"}, "test-session-123"),
+        ({"CLAUDE_SESSION_ID": "legacy-456"}, "legacy-456"),
+        ({"CLAUDE_CODE_SESSION_ID": "test-session-123", "CLAUDE_SESSION_ID": "legacy-456"},
+         "test-session-123"),
+    ])
+    def test_init_session_uses_the_session_id_from_the_env(self, tmp_project, env, expected):
         self._source_and_run(
             tmp_project,
             f'audit_init_session "{tmp_project}"',
-            env={"CLAUDE_SESSION_ID": "test-session-123"},
+            env=env,
         )
         sid_file = tmp_project / ".rat" / "audit" / "session-id.txt"
-        assert sid_file.read_text().strip() == "test-session-123"
+        assert sid_file.read_text().strip() == expected
 
     def test_init_session_creates_prompts_dir(self, tmp_project):
         self._source_and_run(
             tmp_project,
             f'audit_init_session "{tmp_project}"',
-            env={"CLAUDE_SESSION_ID": "sess-001"},
+            env={"CLAUDE_CODE_SESSION_ID": "sess-001"},
         )
         prompts = tmp_project / ".rat" / "audit" / "sess-001" / "prompts"
         assert prompts.is_dir()
@@ -105,7 +111,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}" && '
             f'audit_trace_append "{tmp_project}" '
             f'\'{{"event":"test","agent":"tester","status":"started"}}\'',
-            env={"CLAUDE_SESSION_ID": "trace-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "trace-test"},
         )
         trace = tmp_project / ".rat" / "audit" / "trace-test" / "trace.jsonl"
         assert trace.exists()
@@ -122,7 +128,7 @@ jsonu_detect_parser
             f'audit_trace_append "{tmp_project}" \'{{"event":"e1","agent":"a"}}\' >/dev/null && '
             f'audit_trace_append "{tmp_project}" \'{{"event":"e2","agent":"a"}}\' >/dev/null && '
             f'audit_trace_append "{tmp_project}" \'{{"event":"e3","agent":"a"}}\'',
-            env={"CLAUDE_SESSION_ID": "seq-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "seq-test"},
         )
         trace = tmp_project / ".rat" / "audit" / "seq-test" / "trace.jsonl"
         lines = [json.loads(l) for l in trace.read_text().strip().splitlines()]
@@ -136,7 +142,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}" && '
             f'SEQ=$(audit_trace_append "{tmp_project}" \'{{"event":"x","agent":"a"}}\') && '
             f'echo "SEQ=$SEQ"',
-            env={"CLAUDE_SESSION_ID": "ret-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "ret-test"},
         )
         assert "SEQ=1" in stdout
 
@@ -145,7 +151,7 @@ jsonu_detect_parser
             tmp_project,
             f'audit_init_session "{tmp_project}" && '
             f'audit_save_prompt "{tmp_project}" "1" "spec-analyst" "Analyze the spec"',
-            env={"CLAUDE_SESSION_ID": "prompt-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "prompt-test"},
         )
         prompt_file = (
             tmp_project
@@ -163,7 +169,7 @@ jsonu_detect_parser
             tmp_project,
             f'audit_init_session "{tmp_project}" && '
             f'audit_save_prompt "{tmp_project}" "42" "agent-x" "content"',
-            env={"CLAUDE_SESSION_ID": "pad-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "pad-test"},
         )
         files = list(
             (tmp_project / ".rat" / "audit" / "pad-test" / "prompts").glob(
@@ -255,7 +261,7 @@ class TestAuditInitHook:
         run_hook(
             self.HOOK,
             {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "init-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "init-test"},
         )
         trace = (
             tmp_project / ".rat" / "audit" / "init-test" / "trace.jsonl"

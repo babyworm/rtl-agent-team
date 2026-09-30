@@ -36,7 +36,7 @@ STATE_DIR="$RAT_DIR/state"
 APPROVAL_MARKER="$STATE_DIR/coverage-exclusion-approved"
 
 # Team mode: only leader checks
-if teamu_should_skip_gate "$STATE_DIR"; then
+if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" coverage-exclusion)

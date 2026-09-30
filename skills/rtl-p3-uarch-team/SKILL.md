@@ -45,7 +45,7 @@ TeamCreate(team_name="p3-uarch", description="Phase 3 uArch: dual-stream uArch +
 Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p3-uarch",
-    "leader_session_id": "<current_session_id>",
+    "leader_session_id": "${CLAUDE_SESSION_ID}",
     "coordinator_name": "coordinator",
     "worker_count": 3,
     "phase": "p3",

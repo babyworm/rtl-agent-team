@@ -32,7 +32,7 @@ TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
 VERIFY_DONE="$STATE_DIR/rtl-verify-done"
 VERIFY_WAIVER="$STATE_DIR/rtl-verify-waiver"
 
-if teamu_should_skip_gate "$STATE_DIR"; then
+if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" verify)

@@ -109,16 +109,17 @@ PY
 }
 
 # Set up STATE_DIR and TRACK_FILE with team mode awareness.
-# Sets globals: STATE_DIR, TRACK_FILE
+# Sets globals: STATE_DIR, TRACK_FILE, SESSION_ID
 _setup_tracking() {
   STATE_DIR="$RAT_DIR/state"
   mkdir -p "$STATE_DIR"
   TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
+  SESSION_ID=$(jsonu_session_id "$INPUT")
   _ST_TEAM_CONFIG="$STATE_DIR/team-config.json"
-  if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$_ST_TEAM_CONFIG" ]; then
+  if [ -n "$SESSION_ID" ] && [ -f "$_ST_TEAM_CONFIG" ]; then
     _ST_TEAM_MODE=$(jsonu_get_file_path_bool "$_ST_TEAM_CONFIG" "team_mode")
     if [ "$_ST_TEAM_MODE" = "true" ]; then
-      TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
+      TRACK_FILE="$STATE_DIR/rtl-modified-files-${SESSION_ID}.txt"
     fi
   fi
 }

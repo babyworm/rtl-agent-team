@@ -40,7 +40,7 @@ STALE_MARKER="$STATE_DIR/phase6-stale"
 CASCADE_DONE="$STATE_DIR/phase6-cascade-done"
 REVIEW_DIR="$CWD/reviews/phase-6-review"
 
-if teamu_should_skip_gate "$STATE_DIR"; then
+if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" p6-cascade)

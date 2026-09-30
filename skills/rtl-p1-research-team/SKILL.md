@@ -41,7 +41,7 @@ TeamCreate(team_name="p1-research", description="Phase 1 research: tree-of-thoug
 Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p1-research",
-    "leader_session_id": "<current_session_id>",
+    "leader_session_id": "${CLAUDE_SESSION_ID}",
     "coordinator_name": "coordinator",
     "worker_count": 4,
     "phase": "p1",
