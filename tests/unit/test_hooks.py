@@ -3178,6 +3178,33 @@ class TestPhaseStateBootstrap:
         assert "rtl-p5a-functional-closure" in ctx
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
+    def test_p5b_denied_leaves_state_untouched(self, tmp_project):
+        """The P5B gate runs before the bootstrap writes: a call it denies keeps the
+        current compliance phase and report, and writes no spawn-context manifest."""
+        _setup_marker(tmp_project)
+        rat = tmp_project / ".rat"
+        compliance = rat / "state" / "compliance-state.json"
+        compliance.write_text(json.dumps({
+            "phase": "p2-arch-design",
+            "upstream_iron_paths": ["docs/phase-1-research/iron-requirements.json"],
+            "open_requirements_path": "docs/phase-1-research/open-requirements.json",
+        }))
+        (rat / "state" / "compliance-report.json").write_text('{"verdict": "PASS"}')
+        before = compliance.read_bytes()
+        snapshot = {p: p.read_bytes() for p in rat.rglob("*") if p.is_file()}
+        result = run_hook(self.HOOK, {
+            "cwd": str(tmp_project),
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+        })
+        _assert_denied(result)
+        assert "ask the user" in result["hookSpecificOutput"]["permissionDecisionReason"]
+        assert compliance.read_bytes() == before
+        assert (rat / "state" / "compliance-report.json").exists()
+        assert not (rat / "state" / "spawn-context.json").exists()
+        assert {p: p.read_bytes() for p in rat.rglob("*") if p.is_file()} == snapshot
+
     def test_p5b_blocks_when_p5a_verdict_not_pass(self, tmp_project):
         _setup_marker(tmp_project)
         p5a_state = tmp_project / ".rat" / "state" / "p5a-state.json"
