@@ -2956,6 +2956,11 @@ class TestSkillActivation:
     def test_leader_starts_its_loop_in_team_mode(self, tmp_project):
         assert self._invoke_in_team(tmp_project, "leader-abc", session_id="leader-abc")
 
+    def test_unknown_session_starts_the_loop_in_team_mode(self, tmp_project):
+        # No session_id in the input and (conftest) no session env: the session may be the
+        # leader, so the loop starts, as the Stop gates enforce for an unknown session.
+        assert self._invoke_in_team(tmp_project, "leader-abc")
+
     @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
     def test_placeholder_leader_leaves_each_session_its_own_loop(self, tmp_project, leader):
         assert self._invoke_in_team(tmp_project, leader, session_id="worker-1")

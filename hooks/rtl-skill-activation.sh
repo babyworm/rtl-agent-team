@@ -115,9 +115,10 @@ if [ -f "$TEAM_CONFIG" ]; then
     case "$LEADER_ID" in
       ''|*'<'*|*'$'*) ;;  # unknown leader: every session manages its own loop (fail-closed)
       *)
-        # Other sessions, and in-process teammates (same session, with an agent_id),
-        # are not the leader.
-        if [ -n "$AGENT_ID" ] || [ "$SESSION_ID" != "$LEADER_ID" ]; then
+        # Known other sessions, and in-process teammates (same session, with an agent_id),
+        # are not the leader. An unknown session may be the leader, so it starts the loop
+        # (fail-closed, as the Stop gates enforce the gate for it).
+        if [ -n "$AGENT_ID" ] || { [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "$LEADER_ID" ]; }; then
           emit_continue "$SETUP_EXTRA_CONTEXT"
         fi
         ;;
