@@ -25,16 +25,18 @@ TEAM_CONFIG="$STATE_DIR/team-config.json"
 PROGRESS_FILE="$STATE_DIR/team-progress.json"
 
 # Team activity keeps the config fresh: the 2h staleness bound (team-gate-util.sh)
-# measures time since the team was last active. Only the recorded leader's session
-# counts, and in-process teammates share it. TaskUpdate is not team-only, so another
-# session's own task list must not keep an abandoned team alive. Tmux teammates are
-# separate sessions, so they do not refresh the config until a hook-recorded team
-# exists (roadmap).
+# measures time since the team was last active. Only an in-process teammate of the
+# recorded leader counts: its TaskUpdate carries the leader's session id and an
+# agent_id. TaskUpdate is not team-only (Claude 4.x sessions keep their own task list
+# with it), so neither another session nor the leader's own main thread keeps an
+# abandoned team alive. Tmux teammates are separate sessions, so they do not refresh
+# the config until a hook-recorded team exists (roadmap). touch -c never recreates a
+# config removed meanwhile.
 if [ -f "$TEAM_CONFIG" ]; then
   _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
-  if [ -n "$_TP_SESSION" ] && \
+  if [ -n "$_TP_SESSION" ] && [ -n "$(jsonu_get_input_string "$INPUT" "agent_id")" ] && \
      [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")" ]; then
-    touch "$TEAM_CONFIG"
+    touch -c "$TEAM_CONFIG"
   fi
 fi
 

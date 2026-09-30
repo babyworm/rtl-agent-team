@@ -3004,9 +3004,13 @@ class TestSkillActivation:
         # drives the loop; the main thread still manages its own.
         assert self._invoke_in_team(tmp_project, None, **ids) is starts
 
-    def test_subagent_outside_team_mode_starts_the_loop(self, tmp_project):
-        # The agent_id check protects the leader's loop only while a team is active.
+    @pytest.mark.parametrize("config", [None, {"team_mode": False}], ids=["no-config", "team-mode-false"])
+    def test_subagent_outside_team_mode_starts_the_loop(self, tmp_project, config):
+        # The agent_id check protects the leader's loop only while a team is active;
+        # autopilot's --no-team run writes {"team_mode": false}.
         _setup_marker(tmp_project)
+        if config is not None:
+            (tmp_project / ".rat" / "state" / "team-config.json").write_text(json.dumps(config))
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix",
@@ -4641,35 +4645,64 @@ class TestTeamProgressHook:
         os.utime(config, (three_hours_ago, three_hours_ago))
         return config
 
-    def test_leader_activity_keeps_the_team_fresh(self, tmp_project):
-        # The 2h bound measures time since the team was last active: a TaskUpdate from the
-        # leader's session (in-process teammates share it) refreshes the config.
+    def test_teammate_activity_keeps_the_team_fresh(self, tmp_project):
+        # The 2h bound measures time since the team was last active: a TaskUpdate from an
+        # in-process teammate (the leader's session id plus an agent_id) refreshes the config.
         self._stale_team(tmp_project, "leader-abc")
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
+                             "agent_id": "coordinator"})
         result = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh",
                           {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result == {"continue": True}
 
-    @pytest.mark.parametrize("leader, session", [("leader-abc", "other-session"),
-                                                 ("<current_session_id>", "leader-abc"),
-                                                 (None, "leader-abc"),
-                                                 (None, None)],
-                             ids=["other-session", "placeholder-leader", "no-leader",
-                                  "no-leader-no-session"])
-    def test_other_activity_does_not_revive_the_team(self, tmp_project, leader, session):
-        # TaskUpdate is not team-only: another session's task list must not keep an
-        # abandoned team alive, and without a known leader no call is team activity.
+    @pytest.mark.parametrize("leader, session, agent", [("leader-abc", "other-session", "t1"),
+                                                        ("leader-abc", "leader-abc", None),
+                                                        ("<current_session_id>", "leader-abc", "t1"),
+                                                        (None, "leader-abc", "t1"),
+                                                        (None, None, None)],
+                             ids=["other-session", "leader-main-thread", "placeholder-leader",
+                                  "no-leader", "no-leader-no-session"])
+    def test_other_activity_does_not_revive_the_team(self, tmp_project, leader, session, agent):
+        # TaskUpdate is not team-only: another session's task list, or the leader's own after
+        # an abandoned run, must not keep the team alive; without a known leader no call is
+        # team activity.
         config = self._stale_team(tmp_project, leader)
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         before = config.stat().st_mtime
         stdin = {"cwd": str(tmp_project)}
         if session is not None:
             stdin["session_id"] = session
+        if agent is not None:
+            stdin["agent_id"] = agent
         run_hook(self.HOOK, stdin)
         assert config.stat().st_mtime == before
         # The config stays stale, so the session's next Stop removes it and enforces the gate.
         _assert_stop_blocked(run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", stdin))
+        assert not config.exists()
+
+    def test_activity_before_any_team_creates_no_config(self, tmp_project):
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
+                             "agent_id": "coordinator"})
+        assert not (tmp_project / ".rat" / "state" / "team-config.json").exists()
+
+    @pytest.mark.skipif(shutil.which("jq") is None, reason="the race is staged through jq")
+    def test_heartbeat_does_not_recreate_a_config_removed_meanwhile(self, tmp_project):
+        # A gate may remove the stale config between this hook's read of the leader and its
+        # touch; a plain touch would then leave an empty team-config.json behind.
+        config = self._stale_team(tmp_project, "leader-abc")
+        shim = tmp_project / "bin"
+        shim.mkdir()
+        (shim / "jq").write_text(
+            "#!/bin/sh\n"
+            f'"{shutil.which("jq")}" "$@"; rc=$?\n'
+            'for a in "$@"; do case "$a" in */team-config.json)\n'
+            '  [ -e "$a.gone" ] || { rm -f "$a"; : > "$a.gone"; } ;; esac; done\n'
+            "exit $rc\n")
+        (shim / "jq").chmod(0o755)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
+                             "agent_id": "coordinator"},
+                 env={"PATH": f"{shim}:{os.environ['PATH']}"})
         assert not config.exists()
 
 
