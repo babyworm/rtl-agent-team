@@ -279,6 +279,40 @@ PY
   esac
 }
 
+# Print a top-level string field of a hook input. Unlike jsonu_get_input_string it
+# never reads tool_input, whose fields can share a name with the root's: the Agent
+# tool's full input schema has a cwd of its own (the directory to run the agent in).
+# The sed fallback drops everything from "tool_input" on, since Claude Code writes the
+# root fields first, and scans the whole input only when that finds nothing.
+# Usage: CWD=$(jsonu_get_root_string "$INPUT" "cwd")
+jsonu_get_root_string() {
+  case "$JSONU_PARSER_MODE" in
+    jq)
+      printf '%s' "$1" | jq -r --arg key "$2" '.[$key] | strings' 2>/dev/null
+      ;;
+    python)
+      printf '%s' "$1" | "$JSONU_PY_BIN" -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+value = payload.get(sys.argv[1]) if isinstance(payload, dict) else None
+if isinstance(value, str):
+    sys.stdout.write(value)
+' "$2" 2>/dev/null
+      ;;
+    *)
+      _JGR=$(printf '%s' "$1" | sed 's/"tool_input"[[:space:]]*:.*//' | \
+        sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1)
+      [ -n "$_JGR" ] || _JGR=$(jsonu_get_input_string "$1" "$2")
+      printf '%s' "$_JGR"
+      ;;
+  esac
+}
+
 # Print the session id of a hook input: its session_id field, else
 # CLAUDE_CODE_SESSION_ID (which Claude Code exports to command hooks), else the
 # legacy CLAUDE_SESSION_ID. Anything but a plain token prints nothing: at most 128

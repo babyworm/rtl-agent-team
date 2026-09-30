@@ -346,6 +346,20 @@ class TestAuditSpawnComplete:
         (audit_dir / "session-id.txt").write_text(sid)
         (audit_dir / sid).mkdir(exist_ok=True)
 
+    def test_agent_cwd_does_not_move_the_session_project(self, tmp_project, tmp_path_factory):
+        # The Agent tool's full input schema has a cwd for the spawned agent; the audit
+        # trail stays with the session that spawned it.
+        self._setup_audit(tmp_project)
+        elsewhere = tmp_path_factory.mktemp("agent-cwd")
+        result = run_hook(self.HOOK, {
+            "cwd": str(tmp_project),
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": "rtl-agent-team:spec-analyst", "cwd": str(elsewhere)},
+        })
+        assert "[SPAWN OK] spec-analyst" in result["hookSpecificOutput"]["additionalContext"]
+        assert (tmp_project / ".rat" / "audit" / "spawn-complete-test" / "trace.jsonl").exists()
+
     def test_logs_spawn_complete_for_rtl_agent(self, tmp_project):
         self._setup_audit(tmp_project)
         result = run_hook(
@@ -502,6 +516,29 @@ class TestSpawnContextProjectRootTrace:
         )
         assert result == {"continue": True}
         assert not (tmp_project / ".rat" / "state" / "spawn-context.json").exists()
+
+    @pytest.mark.parametrize("parser_env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"},
+                                            {"RTL_FORCE_JSON_FALLBACK": "1"}],
+                             ids=["default", "python", "sed"])
+    def test_agent_cwd_does_not_move_the_session_project(self, tmp_project, tmp_path_factory,
+                                                         parser_env):
+        """The Agent tool's full input schema has a cwd for the spawned agent. The
+        manifest still belongs to the project of the session that spawns it."""
+        elsewhere = tmp_path_factory.mktemp("agent-cwd")
+        result = run_hook(
+            HOOKS_DIR / "rtl-spawn-context.sh",
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+                               "prompt": "implement", "cwd": str(elsewhere)},
+            },
+            env=parser_env,
+        )
+        assert result == {"continue": True}
+        manifest = tmp_project / ".rat" / "state" / "spawn-context.json"
+        assert json.loads(manifest.read_text())["project_root"] == str(tmp_project)
 
 
 class TestEditTrackerArtifactTrace:

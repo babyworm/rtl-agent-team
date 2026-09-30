@@ -1,7 +1,7 @@
 #!/bin/sh
 # RTL Spawn Context Hook: PreToolUse:Agent
-# Refreshes spawn-context.json whenever an rtl-agent-team agent is spawned through
-# the Agent tool, including direct spawns that bypass a Skill.
+# Refreshes spawn-context.json whenever an rtl-agent-team orchestrator (PHASE_MAP below)
+# is spawned through the Agent tool, including direct spawns that bypass a Skill.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -12,7 +12,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")  # the session's cwd, not the agent's
 [ -z "$CWD" ] && CWD="$(pwd)"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_continue; }
