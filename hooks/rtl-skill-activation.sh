@@ -8,6 +8,8 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/team-gate-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_input_string "$INPUT" "cwd")
@@ -104,9 +106,10 @@ STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 CRITERIA_FILE="$PLUGIN_ROOT/skill-completion-criteria.json"
 
-# Team mode: worker sessions skip skill state management (leader only)
+# Team mode: worker sessions skip skill state management (leader only).
+# A stale config is no team mode (teamu_config_is_stale removes it).
 TEAM_CONFIG="$STATE_DIR/team-config.json"
-if [ -f "$TEAM_CONFIG" ]; then
+if [ -f "$TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
   TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
   if [ "$TEAM_MODE" = "true" ]; then
     # In-process teammates and subagents (an agent_id) never drive the leader's loop,

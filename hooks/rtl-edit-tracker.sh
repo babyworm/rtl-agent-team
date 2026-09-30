@@ -17,6 +17,8 @@ SESSION_CWD=$CWD  # a relative path in a Bash command is relative to the session
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/team-gate-util.sh"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
 CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
@@ -116,7 +118,8 @@ _setup_tracking() {
   TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
   SESSION_ID=$(jsonu_session_id "$INPUT")
   _ST_TEAM_CONFIG="$STATE_DIR/team-config.json"
-  if [ -n "$SESSION_ID" ] && [ -f "$_ST_TEAM_CONFIG" ]; then
+  # A stale config is no team mode (teamu_config_is_stale removes it).
+  if [ -n "$SESSION_ID" ] && [ -f "$_ST_TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
     _ST_TEAM_MODE=$(jsonu_get_file_path_bool "$_ST_TEAM_CONFIG" "team_mode")
     if [ "$_ST_TEAM_MODE" = "true" ]; then
       TRACK_FILE="$STATE_DIR/rtl-modified-files-${SESSION_ID}.txt"

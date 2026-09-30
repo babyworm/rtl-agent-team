@@ -9,6 +9,7 @@ These tests focus on runtime behavior as a Claude Code plugin:
 import json
 import os
 import re
+import string
 import subprocess
 from pathlib import Path
 
@@ -1005,3 +1006,17 @@ def test_team_skills_record_the_real_leader_session():
         for value in re.findall(r'"leader_session_id":\s*"([^"]*)"', p.read_text())
     ]
     assert values and all(value == "${CLAUDE_SESSION_ID}" for _, value in values), values
+
+
+def test_session_id_filter_lists_its_ascii_characters():
+    """Ranges such as a-z and classes such as [:alnum:] follow the locale: bash in a UTF-8
+    locale matches é with a-z, while dash compares bytes, so Linux CI (dash) cannot catch
+    a range behaviorally. The filter must spell out every character it allows."""
+    text = (REPO_ROOT / "hooks" / "lib" / "json-util.sh").read_text()
+    body = re.search(r"^jsonu_session_id\(\) \{\n(.*?)^\}", text, re.S | re.M).group(1)
+    brackets = re.findall(r"\[!([^\]]*)\]", body)
+    assert len(brackets) == 1, brackets
+    allowed = brackets[0]
+    assert "[:" not in allowed, allowed
+    assert "-" not in allowed[:-1], f"a '-' before the last position makes a range: {allowed}"
+    assert sorted(allowed) == sorted(string.digits + string.ascii_letters + "._-"), allowed

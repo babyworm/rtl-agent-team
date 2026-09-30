@@ -24,6 +24,18 @@ STATE_DIR="$RAT_DIR/state"
 TEAM_CONFIG="$STATE_DIR/team-config.json"
 PROGRESS_FILE="$STATE_DIR/team-progress.json"
 
+# Team activity keeps the config fresh: the 2h staleness bound (team-gate-util.sh)
+# measures time since the team was last active. Only the recorded leader's session
+# counts, and in-process teammates share it. TaskUpdate is not team-only, so another
+# session's own task list must not keep an abandoned team alive.
+if [ -f "$TEAM_CONFIG" ]; then
+  _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
+  if [ -n "$_TP_SESSION" ] && \
+     [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")" ]; then
+    touch "$TEAM_CONFIG"
+  fi
+fi
+
 # Only active during team mode
 if [ ! -f "$TEAM_CONFIG" ]; then
   emit_post_continue
