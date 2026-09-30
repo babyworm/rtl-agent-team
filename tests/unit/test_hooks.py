@@ -512,7 +512,7 @@ class TestRtlVerifyStopGate:
         content = (HOOKS_DIR / "rtl-verify-stop-gate.sh").read_text()
         assert "lib/json-util.sh" in content
         assert "lib/team-gate-util.sh" in content
-        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_root_string" in content
         assert "teamu_should_skip_gate" in content
 
     def test_block_leaves_waiver_to_the_user(self, tmp_project):
@@ -1989,7 +1989,7 @@ class TestP6CascadeGate:
         content = (HOOKS_DIR / "rtl-p6-cascade-gate.sh").read_text()
         assert "lib/json-util.sh" in content
         assert "lib/team-gate-util.sh" in content
-        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_root_string" in content
         assert "teamu_should_skip_gate" in content
 
     def test_cascade_done_blocks_when_docs_older_than_stale(self, tmp_project):
@@ -2499,7 +2499,7 @@ class TestSkillCompletionGate:
     def test_skill_completion_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-skill-completion-gate.sh").read_text()
         assert "lib/json-util.sh" in content
-        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_root_string" in content
         assert "jsonu_get_file_path_string" in content
         assert "jsonu_get_file_path_bool" in content
         assert "jsonu_get_file_path_num" in content
@@ -4100,8 +4100,8 @@ class TestSpawnContextManifest:
         assert "setup=OK" in ctx
 
 
-class TestSpawnContextTaskCreate:
-    """Tests for rtl-spawn-context.sh (PreToolUse:TaskCreate hook)."""
+class TestSpawnContextAgent:
+    """Tests for rtl-spawn-context.sh (PreToolUse:Agent hook)."""
 
     HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
 
@@ -4116,8 +4116,8 @@ class TestSpawnContextTaskCreate:
         assert mpath.exists(), "spawn-context.json not written"
         return json.loads(mpath.read_text())
 
-    def test_taskcreate_overwrites_stale_manifest(self, tmp_project):
-        """TaskCreate for different agent overwrites existing manifest phase."""
+    def test_agent_spawn_overwrites_stale_manifest(self, tmp_project):
+        """An Agent spawn of a different agent overwrites the existing manifest phase."""
         (tmp_project / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
         (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").touch()
 
@@ -4129,14 +4129,14 @@ class TestSpawnContextTaskCreate:
         m1 = self._read_manifest(tmp_project)
         assert m1["pipeline"]["current_phase"] == 1
 
-        # TaskCreate for P6 agent → must overwrite
+        # Agent spawn of the P6 orchestrator → must overwrite
         self._invoke(tmp_project, "p6-review-orchestrator")
         m2 = self._read_manifest(tmp_project)
         assert m2["pipeline"]["current_phase"] == 6
 
-    def test_taskcreate_project_root_override(self, tmp_project, tmp_path_factory):
+    def test_agent_spawn_project_root_override(self, tmp_project, tmp_path_factory):
         """v0.13.x: RAT_PROJECT_ROOT redirects manifest writes for direct
-        Task() spawns whose session cwd is not the project root."""
+        Agent spawns whose session cwd is not the project root."""
         (tmp_project / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
         (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").touch()
         elsewhere = tmp_path_factory.mktemp("driver-cwd")
@@ -4154,7 +4154,7 @@ class TestSpawnContextTaskCreate:
         assert m["project_root"] == str(tmp_project)
         assert not (elsewhere / ".rat").exists()
 
-    def test_taskcreate_from_a_subdirectory_ships_the_project_root(self, tmp_project):
+    def test_agent_spawn_from_a_subdirectory_ships_the_project_root(self, tmp_project):
         """Spawned agents treat project_root as authoritative, so a session that has
         cd'd into rtl/ must still ship the project root."""
         (tmp_project / "rtl").mkdir(exist_ok=True)
@@ -4167,7 +4167,7 @@ class TestSpawnContextTaskCreate:
         assert self._read_manifest(tmp_project)["project_root"] == str(tmp_project)
         assert not (tmp_project / "rtl" / ".rat").exists()
 
-    def test_taskcreate_non_orchestrator_ignored(self, tmp_project):
+    def test_agent_spawn_non_orchestrator_ignored(self, tmp_project):
         """Non-orchestrator agent type → no manifest written."""
         result = run_hook(
             self.HOOK,
@@ -4179,17 +4179,17 @@ class TestSpawnContextTaskCreate:
 
     # ── Robustness: malformed / unexpected input payloads ────────────
 
-    def test_taskcreate_missing_subagent_type(self, tmp_project):
+    def test_agent_spawn_missing_subagent_type(self, tmp_project):
         """No subagent_type field → continue=true, no crash."""
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
-    def test_taskcreate_empty_input(self, tmp_project):
+    def test_agent_spawn_empty_input(self, tmp_project):
         """Empty JSON → continue=true, no crash."""
         result = run_hook(self.HOOK, {})
         assert result["continue"] is True
 
-    def test_taskcreate_non_rtl_agent(self, tmp_project):
+    def test_agent_spawn_non_rtl_agent(self, tmp_project):
         """Non-rtl-agent-team subagent_type → continue=true, no manifest."""
         result = run_hook(
             self.HOOK,
@@ -4551,7 +4551,7 @@ class TestSpawnContextStructuralContracts:
                 f"sctx_skill_to_phase({skill!r}) = {actual!r}, expected {expected_phase}"
             )
 
-    # ── Agent-to-skill mapping in TaskCreate hook ────────────────────
+    # ── Agent-to-skill mapping in the spawn-context hook ─────────────
 
     EXPECTED_AGENT_MAPPINGS = {
         # Non-team orchestrators
@@ -4595,8 +4595,8 @@ class TestSpawnContextStructuralContracts:
         "dc-report-parser": "rtl-ppa-optimize-dc",
     }
 
-    def test_taskcreate_agent_mapping_complete(self, tmp_project):
-        """All expected orchestrator agents produce correct phase via TaskCreate hook."""
+    def test_agent_spawn_mapping_complete(self, tmp_project):
+        """All expected orchestrator agents produce correct phase via the spawn-context hook."""
         rules = tmp_project / ".claude" / "rules"
         rules.mkdir(parents=True, exist_ok=True)
         (rules / "rtl-coding-conventions.md").touch()
@@ -4668,8 +4668,8 @@ class TestSpawnContextStructuralContracts:
 
     # ── Full event chain simulation ──────────────────────────────────
 
-    def test_skill_then_taskcreate_chain(self, tmp_project):
-        """Skill invoke → manifest → TaskCreate different agent → manifest updated."""
+    def test_skill_then_agent_spawn_chain(self, tmp_project):
+        """Skill invoke → manifest → Agent spawn of a different agent → manifest updated."""
         rules = tmp_project / ".claude" / "rules"
         rules.mkdir(parents=True, exist_ok=True)
         (rules / "rtl-coding-conventions.md").touch()
@@ -4683,7 +4683,7 @@ class TestSpawnContextStructuralContracts:
         m1 = json.loads(mpath.read_text())
         assert m1["pipeline"]["current_phase"] == 1
 
-        # Step 2: TaskCreate for P4 orchestrator overwrites
+        # Step 2: an Agent spawn of the P4 orchestrator overwrites
         run_hook(
             self.SPAWN_HOOK,
             {"subagent_type": "rtl-agent-team:p4-implement-orchestrator",

@@ -125,7 +125,7 @@ stopu_fingerprint() {
 # Stop belongs to), or nothing when the input has none or it is not a plain token.
 # Usage: PROMPT=$(stopu_prompt_id "$INPUT")
 stopu_prompt_id() {
-  _SPI=$(jsonu_get_input_string "$1" "prompt_id")
+  _SPI=$(jsonu_get_root_string "$1" "prompt_id")
   case "$_SPI" in *[!0-9A-Za-z-]*) _SPI="" ;; esac
   printf '%s' "$_SPI"
 }

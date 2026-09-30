@@ -18,7 +18,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 HOOK_EVENT=$(jsonu_get_root_string "$INPUT" "hook_event_name")
@@ -128,7 +128,7 @@ if [ -f "$TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
   if [ "$TEAM_MODE" = "true" ]; then
     # In-process teammates and subagents (an agent_id) never drive the leader's loop,
     # whatever the leader value: autopilot's config has no leader at all.
-    AGENT_ID=$(jsonu_get_input_string "$INPUT" "agent_id")
+    AGENT_ID=$(jsonu_get_root_string "$INPUT" "agent_id")
     if [ -n "$AGENT_ID" ]; then
       emit_post_continue
     fi

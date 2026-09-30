@@ -14,7 +14,7 @@ jsonu_detect_parser
 
 # Extract CWD from hook input (consistent with peer hooks)
 INPUT=$(cat)
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
@@ -34,7 +34,7 @@ PROGRESS_FILE="$STATE_DIR/team-progress.json"
 # config removed meanwhile.
 if [ -f "$TEAM_CONFIG" ]; then
   _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
-  if [ -n "$_TP_SESSION" ] && [ -n "$(jsonu_get_input_string "$INPUT" "agent_id")" ] && \
+  if [ -n "$_TP_SESSION" ] && [ -n "$(jsonu_get_root_string "$INPUT" "agent_id")" ] && \
      [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")" ]; then
     touch -c "$TEAM_CONFIG"
   fi

@@ -27,7 +27,7 @@ Hook Events (SessionStart/PreToolUse/PostToolUse/Stop)
 | Spawn Complete | `hooks/rtl-audit-spawn-complete.sh` | PostToolUse:Agent: spawn_complete event |
 | Artifact Tracer | `hooks/rtl-edit-tracker.sh` | PostToolUse:Edit/Write: artifact_write for docs/ |
 | Skill Tracer | `hooks/rtl-skill-activation.sh` | PostToolUse:Skill: skill_invoke event |
-| RAT Protocol | `agents/lib/audit-output-protocol.md` | Agent structured output annotation standard |
+| RAT Protocol | `plugin_docs/agent-lib/audit-output-protocol.md` | Agent structured output annotation standard |
 | CLI Viewer | `scripts/show-audit.sh` | Terminal viewer with ANSI colors |
 | Summary Generator | `scripts/generate-audit-summary.sh` | trace.jsonl → summary.md conversion |
 

@@ -1024,3 +1024,31 @@ def test_session_id_filter_lists_its_ascii_characters():
     assert "[:" not in allowed, allowed
     assert "-" not in allowed[:-1], f"a '-' before the last position makes a range: {allowed}"
     assert sorted(allowed) == sorted(string.digits + string.ascii_letters + "._-"), allowed
+
+
+def test_hooks_read_session_fields_from_the_input_root():
+    """Best practice 17. jsonu_get_input_string reads tool_input before the root, and a tool
+    input can carry a field of the same name (the Agent tool's full schema has its own cwd),
+    so no hook reads a session field through it. Comments do not count; a call continued
+    with a trailing backslash is read as one line."""
+    session_fields = {"cwd", "session_id", "agent_id", "prompt_id", "hook_event_name",
+                      "transcript_path", "stop_hook_active"}
+    call = re.compile(r"""jsonu_get_input_string\s+(?:"[^"]*"|'[^']*'|\S+)\s+["']?(\w+)["']?""")
+    scripts = sorted((REPO_ROOT / "hooks").glob("*.sh")) + sorted((REPO_ROOT / "hooks" / "lib").glob("*.sh"))
+    keys, offenders = [], []
+    for script in scripts:
+        logical, start = "", None
+        for lineno, line in enumerate(script.read_text().splitlines(), 1):
+            code = re.sub(r"(^|\s)#.*", "", line)
+            start = start or lineno
+            if code.endswith("\\"):
+                logical += code[:-1] + " "
+                continue
+            logical += code
+            for key in call.findall(logical):
+                keys.append(key)
+                if key in session_fields:
+                    offenders.append(f"{script.relative_to(REPO_ROOT)}:{start}: {logical.strip()}")
+            logical, start = "", None
+    assert keys, "no jsonu_get_input_string call found: the scan is broken"
+    assert offenders == [], "session fields read through jsonu_get_input_string:\n" + "\n".join(offenders)
