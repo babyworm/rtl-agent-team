@@ -4661,12 +4661,16 @@ class TestTeamProgressHook:
         # TaskUpdate is not team-only: another session's task list must not keep an
         # abandoned team alive, and without a known leader no call is team activity.
         config = self._stale_team(tmp_project, leader)
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         before = config.stat().st_mtime
         stdin = {"cwd": str(tmp_project)}
         if session is not None:
             stdin["session_id"] = session
         run_hook(self.HOOK, stdin)
         assert config.stat().st_mtime == before
+        # The config stays stale, so the session's next Stop removes it and enforces the gate.
+        _assert_stop_blocked(run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", stdin))
+        assert not config.exists()
 
 
 # ── P1-1 Mapping Drift Detection ────────────────────────────────────────────

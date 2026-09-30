@@ -27,7 +27,9 @@ PROGRESS_FILE="$STATE_DIR/team-progress.json"
 # Team activity keeps the config fresh: the 2h staleness bound (team-gate-util.sh)
 # measures time since the team was last active. Only the recorded leader's session
 # counts, and in-process teammates share it. TaskUpdate is not team-only, so another
-# session's own task list must not keep an abandoned team alive.
+# session's own task list must not keep an abandoned team alive. Tmux teammates are
+# separate sessions, so they do not refresh the config until a hook-recorded team
+# exists (roadmap).
 if [ -f "$TEAM_CONFIG" ]; then
   _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
   if [ -n "$_TP_SESSION" ] && \
