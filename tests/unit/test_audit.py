@@ -388,6 +388,23 @@ class TestAuditSpawnComplete:
         )
         assert result["continue"] is True
 
+    @pytest.mark.parametrize("agent_type", ["general-purpose", "other-plugin:spec-analyst"])
+    def test_real_agent_tool_payload_ignores_other_agents(self, tmp_project, agent_type):
+        """PostToolUse:Agent runs on every spawn. With an audit session open, only an
+        rtl-agent-team: agent is logged."""
+        self._setup_audit(tmp_project)
+        result = run_hook(
+            self.HOOK,
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PostToolUse",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": agent_type, "prompt": "analyze"},
+            },
+        )
+        assert result == {"continue": True}
+        assert not (tmp_project / ".rat" / "audit" / "spawn-complete-test" / "trace.jsonl").exists()
+
 
 # ── Trace extension tests ────────────────────────────────────────────────────
 
