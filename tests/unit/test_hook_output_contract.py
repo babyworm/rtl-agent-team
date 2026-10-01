@@ -199,7 +199,7 @@ def test_stop_gate_yields_to_a_background_agent_right_after_the_chain_count(name
 def test_stop_gate_budget_ids_match_its_chain_count(name):
     # A typo in an id silently removes the chain cap for that call (Task 4 review).
     code = "\n".join(line for _, line in _code_lines(name))
-    used = re.findall(r"\bstopu_(?:gate|clear|decision)\b[ \t]*(\S*)", code)
+    used = re.findall(r"\bstopu_(?:gate|clear|decision|renotify)\b[ \t]*(\S*)", code)
     # Literal ids only: an id in a variable, or on a continuation line, would escape this check.
     assert used and all(re.fullmatch(r"[\w-]+", u) for u in used), used
     assert set(used) <= set(STOP_GATES[name])

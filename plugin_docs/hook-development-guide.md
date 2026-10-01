@@ -114,7 +114,11 @@ Claude stop with a notice to the user in two cases:
   user sets `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, the bound follows it: two Stops under
   it (at least 1), and none when it is 0.
 
-After its notice a gate stays silent for the rest of the chain.
+After its notice a gate does not block again in that chain. It stays silent unless it
+opts in to `stopu_renotify`, as the verify gate does: when its progress moves later in
+the chain, the notice is shown again. Another Stop hook (Claude Code's `/goal`, a
+persistent-loop plugin) can keep a chain going long after the notice, and Claude Code's
+own cap counts only blocked Stops with no tool call between them.
 
 To use it:
 - Set `STOP_CHAIN=$(stopu_chain_active "$INPUT" <state-dir> <gate-ids>)` on every

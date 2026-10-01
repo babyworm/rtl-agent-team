@@ -9,7 +9,8 @@
 # hooks/lib/stop-budget-util.sh. After RAT_STOP_BLOCK_LIMIT blocks without progress in
 # one continuation chain, the gate lets Claude stop and shows the user a notice.
 # From the chain's Stop STOPU_CHAIN_CAP + 1 on, whichever hooks blocked the earlier
-# Stops, the gate shows the notice instead of blocking.
+# Stops, the gate shows the notice instead of blocking. When another Stop hook keeps the
+# chain going after the notice, new unverified files show the notice again.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -134,4 +135,9 @@ rm -f "$AGGREGATED_TRACK"
 
 MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules (for example /rtl-agent-team:rtl-p5s-func-verify, or /rtl-agent-team:rtl-p4s-unit-test for unit tests). When the simulation passes, record it: touch $(shq "$VERIFY_DONE"). If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
 NOTICE="[RTL Verify Gate] ${COUNT} RTL files have no recorded verification: ${FILES}. The verify gate is not asking Claude to continue in this turn and will ask again on your next message. Run functional verification, or waive it if the change is non-functional: touch $(shq "$VERIFY_WAIVER")"
+# After its notice the gate does not block again in this chain. When another Stop hook keeps
+# the chain going and more RTL changes meanwhile, show the notice again with the new files.
+if stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED"; then
+  stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED" "$MSG" "$NOTICE" 0
+fi
 stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED" "$MSG" "$NOTICE"

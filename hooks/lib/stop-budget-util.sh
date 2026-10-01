@@ -7,9 +7,10 @@
 # Claude stop and shows its notice to the user. A chain starts at the first Stop
 # after a user turn (stop_hook_active false) and lasts while Stop blocks from any
 # hook keep the turn going. A change in the gate's progress text restarts the
-# count, but only before the notice: a gate that showed its notice stays silent
-# for the rest of the chain whatever its progress, because the notice tells the
-# user the gate will ask again on their next message.
+# count, but only before the notice: a gate that showed its notice never blocks
+# again in that chain, because the notice tells the user the gate will ask again
+# on their next message. It stays silent unless it opts in to stopu_renotify,
+# which shows the notice again (never a block) when its progress moves.
 #
 # Each gate also counts the chain's Stops itself (line 3), whoever blocked them,
 # so blocks by other plugins' Stop hooks count, gates that block together keep
@@ -213,6 +214,21 @@ stopu_gate() {
     emit_stop_notice "$6"
   fi
   emit_stop_block "$5"
+}
+
+# Succeed, and re-arm the gate's notice, when this chained Stop's progress differs from
+# the progress the gate's notice showed earlier in the chain. Another Stop hook (Claude
+# Code's /goal, a persistent-loop plugin) can keep a chain going long after the notice,
+# and a tool call between Stops resets Claude Code's own block cap, so without this the
+# gate would stay silent through new work until the chain ends. The caller then shows
+# the notice again with a limit of 0, which never blocks.
+# Usage: stopu_renotify <gate-id> <state-dir> "$STOP_CHAIN" <progress> && stopu_gate ... 0
+stopu_renotify() {
+  [ "$3" = "true" ] || return 1
+  _SRN_FILE="$2/stop-budget-$1.txt"
+  [ "$(sed -n '4p' "$_SRN_FILE" 2>/dev/null)" = "1" ] || return 1
+  [ "$(sed -n '2p' "$_SRN_FILE")" != "$(stopu_fingerprint "$4")" ] || return 1
+  { sed '4s/.*/0/' "$_SRN_FILE" > "$_SRN_FILE.tmp" && mv "$_SRN_FILE.tmp" "$_SRN_FILE"; } 2>/dev/null
 }
 
 # Print what stopu_gate would do now (block, notice or silent) without writing

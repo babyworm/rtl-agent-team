@@ -551,7 +551,9 @@ class TestRtlVerifyStopGate:
         assert [r.get("decision") for r in results[:5]] == ["block"] * 5
         assert "systemMessage" in results[5]
 
-    def test_notice_holds_for_the_chain_despite_a_new_rtl_edit(self, tmp_project):
+    def test_new_rtl_edit_after_the_notice_shows_it_again_without_blocking(self, tmp_project):
+        # Another Stop hook (Claude Code's /goal, a persistent-loop plugin) can keep the chain
+        # going after the notice; new unverified files are shown, but the gate never blocks.
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("rtl/a.sv\n")
         results = [
@@ -559,9 +561,28 @@ class TestRtlVerifyStopGate:
             for i in range(4)
         ]
         assert "systemMessage" in results[3]
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
         track.write_text("rtl/a.sv\nrtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        assert result == {"continue": True}
+        assert "decision" not in result
+        assert "2 RTL files have no recorded verification: rtl/a.sv, rtl/b.sv" in result["systemMessage"]
+        # Shown once per change: the next chained Stop without a new file is silent again.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
+    def test_long_chain_never_blocks_after_the_notice(self, tmp_project):
+        # Twenty chained Stops kept going by another hook; an edit lands every fifth Stop.
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+        files = ["rtl/a.sv"]
+        track.write_text("rtl/a.sv\n")
+        outcomes = []
+        for i in range(20):
+            if i and i % 5 == 0:
+                files.append(f"rtl/f{i}.sv")
+                track.write_text("".join(f + "\n" for f in files))
+            result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            outcomes.append("B" if result.get("decision") == "block" else "N" if "systemMessage" in result else "-")
+        # Three blocks and the notice, then one notice per new file (Stops 6, 11 and 16).
+        assert "".join(outcomes) == "BBBN-N----N----N----"
 
     def test_new_chain_after_notice_blocks_again(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")

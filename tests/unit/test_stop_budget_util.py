@@ -574,3 +574,38 @@ def test_clear_drops_a_carried_count(tmp_path):
     _yield_stop(tmp_path, True, prompt="prompt-2")
     assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt="prompt-3")["verify"] == BLOCK
     assert _budget(tmp_path).split("\n")[0] == "1"
+
+
+def _renotify(state_dir, active, progress):
+    """stopu_renotify for the verify gate: "rearm" or "keep"."""
+    return _run('if stopu_renotify verify "$1" "$2" "$3"; then echo rearm; else echo keep; fi',
+                str(state_dir), "true" if active else "false", progress).strip()
+
+
+@pytest.mark.parametrize("budget,active,progress,expected", [
+    pytest.param("3\n{fp}\n4\n1\nprompt-1\n", True, "a.sv\nb.sv", "rearm", id="moved-after-notice"),
+    pytest.param("3\n{fp}\n4\n1\nprompt-1\n", True, "a.sv", "keep", id="same-progress"),
+    pytest.param("3\n{fp}\n4\n0\nprompt-1\n", True, "a.sv\nb.sv", "keep", id="no-notice-yet"),
+    pytest.param("3\n{fp}\n4\n1\nprompt-1\n", False, "a.sv\nb.sv", "keep", id="chain-start"),
+    pytest.param(None, True, "a.sv", "keep", id="no-budget"),
+])
+def test_renotify_rearms_only_a_shown_notice_whose_progress_moved(tmp_path, budget, active, progress, expected):
+    if budget is not None:
+        (tmp_path / "stop-budget-verify.txt").write_text(budget.format(fp=_fp("a.sv")))
+    assert _renotify(tmp_path, active, progress) == expected
+    if budget is not None:
+        line4 = (tmp_path / "stop-budget-verify.txt").read_text().split("\n")[3]
+        assert line4 == ("0" if expected == "rearm" else budget.split("\n")[3])
+
+
+def test_a_rearmed_notice_is_shown_again_and_never_blocks(tmp_path):
+    out = _chain(tmp_path, ["a.sv"] * 4)
+    assert out == [BLOCK, BLOCK, BLOCK, NOTICE]
+    assert _renotify(tmp_path, True, "a.sv\nb.sv") == "rearm"
+    gate = 'stopu_gate verify "$2" true "$3" "keep working" "your call" 0'
+    assert json.loads(_run('STOP_CHAIN=$(stopu_chain_active "$1" "$2" verify); ' + gate,
+                           _input(True), str(tmp_path), "a.sv\nb.sv")) == NOTICE
+    lines = _budget(tmp_path).split("\n")
+    assert (lines[1], lines[3]) == (_fp("a.sv\nb.sv"), "1")
+    # The new progress is recorded with the notice, so the same files stay silent.
+    assert _renotify(tmp_path, True, "a.sv\nb.sv") == "keep"
