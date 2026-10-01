@@ -607,6 +607,29 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result["decision"] == "block"
 
+    @pytest.mark.parametrize("emptied", ["removed", "blank-lines"])
+    def test_an_emptied_tracking_file_clears_the_budget(self, tmp_project, emptied):
+        # The other two allow paths (no tracking file, blank lines only) clear the budget too.
+        state_dir = tmp_project / ".rat" / "state"
+        track = state_dir / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        if emptied == "removed":
+            track.unlink()
+        else:
+            track.write_text("\n\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result == {"continue": True}
+        lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        track.write_text("rtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result["decision"] == "block"
+
     def test_legacy_project_notice_uses_resolved_path(self, tmp_legacy_project):
         state_dir = tmp_legacy_project / ".rtl-agent-team" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
@@ -2013,6 +2036,21 @@ class TestP6CascadeGate:
         ctx = result.get("reason", "")
         assert "not updated" in ctx.lower() or "cascade" in ctx.lower()
 
+    @pytest.mark.parametrize("doc", ["code-review.md", "design-note.md"])
+    def test_cascade_done_blocks_when_a_doc_shares_the_stale_markers_second(self, tmp_project, doc):
+        """G5: a document written in the same second as the last RTL change is not newer."""
+        state_dir = tmp_project / ".rat" / "state"
+        review_dir = tmp_project / "reviews" / "phase-6-review"
+        review_dir.mkdir(parents=True)
+        (state_dir / "phase6-stale").touch()
+        os.utime(state_dir / "phase6-stale", (2000, 2000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review_dir / name).write_text("reviewed")
+            os.utime(review_dir / name, (3000, 3000))
+        os.utime(review_dir / doc, (2000, 2000))
+        (state_dir / "phase6-cascade-done").touch()
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+
     def test_cascade_done_allows_when_docs_newer_than_stale(self, tmp_project):
         """G5: cascade-done with docs newer than stale marker → allow and clean up."""
         state_dir = tmp_project / ".rat" / "state"
@@ -2279,6 +2317,26 @@ class TestP6CascadeGate:
             assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
         else:
             assert "PPA" not in run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+
+    @pytest.mark.parametrize("cascade_done", [False, True])
+    def test_a_design_note_one_second_older_than_the_ppa_result_is_stale(self, tmp_project, cascade_done):
+        # The other side of the same-second tie: one second older is already stale.
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review / name).write_text("reviewed")
+            os.utime(review / name, (3000, 3000))
+        os.utime(review / "design-note.md", (2999, 2999))
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        if cascade_done:
+            (state / "phase6-cascade-done").touch()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        _assert_stop_blocked(result)
+        assert "PPA" in result["reason"]
 
     def test_every_split_design_note_must_postdate_the_ppa_result(self, tmp_project):
         state = tmp_project / ".rat" / "state"
@@ -3065,6 +3123,17 @@ class TestSkillActivation:
         assert "Completion Loop ACTIVATED" in hso["additionalContext"]
         state = json.loads((tmp_project / ".rat" / "state" / "skill-active.json").read_text())
         assert state["skill"] == "rtl-p4s-bugfix"
+
+    def test_announcement_names_the_project_state_file_from_a_subdirectory(self, tmp_project):
+        # A relative .rat/state path would send Claude, working in rtl/, to a stray rtl/.rat
+        # that the completion gate never reads.
+        env = {**self._criteria_env(tmp_project), "CLAUDE_PROJECT_DIR": str(tmp_project)}
+        (tmp_project / "rtl").mkdir()
+        stdin = {**self._skill_input(tmp_project, "PostToolUse"), "cwd": str(tmp_project / "rtl")}
+        result = run_hook(self.HOOK, stdin, env=env)
+        state = tmp_project / ".rat" / "state" / "skill-active.json"
+        assert result["hookSpecificOutput"]["additionalContext"].endswith(f"set all_complete to true in {state}")
+        assert state.exists()
 
     @pytest.mark.parametrize("missing", ["setup-marker", "rat-dir"])
     def test_posttooluse_before_setup_starts_no_loop(self, tmp_project, missing):

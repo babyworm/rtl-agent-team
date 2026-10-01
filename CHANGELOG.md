@@ -78,15 +78,24 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
     - after `RAT_STOP_BLOCK_LIMIT` (default 3) blocks without progress in one
       continuation chain;
     - from the chain's seventh Stop on, whichever hooks blocked the earlier Stops.
-      This keeps RAT gates inside Claude Code's cap of 8.
+      This keeps RAT gates inside Claude Code's cap of 8. When
+      `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` is set, the bound follows it: two Stops
+      under it (at least 1), and none when it is 0.
   - Escalations to the user (the autopilot and skill-loop ladders, upper-spec
-    violations) use the notice directly.
+    violations) show their notice at once, once per chain.
   - The coverage-exclusion gate asks once per chain.
 
 ### Changed
 
 - The RTL verify gate no longer tells the model to create the waiver itself; the
   waiver is the user's decision.
+- The edit tracker records an RTL path from a Bash command as an absolute path,
+  resolved against the session's current directory.
+- An agent spawned with `isolation: "worktree"` now counts as the main project: the
+  hooks resolve the project from `CLAUDE_PROJECT_DIR`. Its RTL edits are tracked in
+  the main project's state, so the leader's verify gate asks for their verification,
+  and they remove the main project's `rtl-verify-done` or waiver. A discarded
+  worktree trial can therefore cause a false block (roadmap).
 
 ## [0.14.6] - 2026-08-24
 

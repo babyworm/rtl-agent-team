@@ -3,8 +3,10 @@
 # Requires json-util.sh (parser mode initialized) and posix-util.sh to be sourced.
 #
 # In "Orchestrator as Teammate" pattern, the coordinator is a teammate (not a subagent).
-# The coordinator's session ID differs from the leader's, so it bypasses stop gates
-# just like worker sessions. Only the leader session is subject to stop enforcement.
+# A tmux or iTerm2 teammate is a separate session with its own session id, so it bypasses
+# the stop gates just like worker sessions. An in-process teammate shares the leader's
+# session id, but its turn end fires SubagentStop, so the Stop gates never run for it.
+# Only the leader session is subject to stop enforcement.
 #
 # teamu_config_is_stale <state_dir>
 # Returns 0 when team-config.json exists and its mtime is over 2h old, after removing

@@ -110,7 +110,9 @@ Claude stop with a notice to the user in two cases:
 - after `RAT_STOP_BLOCK_LIMIT` blocks (default 3) without progress in one
   continuation chain;
 - from the chain's seventh Stop on, whichever hooks blocked the earlier Stops. This
-  keeps RAT gates inside Claude Code's cap of 8 consecutive blocked Stops.
+  keeps RAT gates inside Claude Code's cap of 8 consecutive blocked Stops. When the
+  user sets `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, the bound follows it: two Stops under
+  it (at least 1), and none when it is 0.
 
 After its notice a gate stays silent for the rest of the chain.
 
@@ -168,13 +170,13 @@ Stop hooks do **not** use the tool-call helpers, because Stop hooks block sessio
 | `flock-util.sh` | POSIX mkdir-based file locking. `acquire_lock()`, `release_lock()`. Stale lock detection via PID and age |
 | `hook-output-util.sh` | `emit_continue()`, `emit_block()` for PreToolUse; `emit_post_context()` for PostToolUse; `emit_post_continue()`, a plain continue for any event, which Stop gates also use to allow; `emit_stop_block()`, `emit_stop_notice()` for Stop gates, called through `stopu_gate` |
 | `team-gate-util.sh` | `teamu_should_skip_gate()` — bypass stop gates for worker/coordinator sessions in team mode; `teamu_config_is_stale()` — a config whose mtime is over 2 hours old is no team mode, and the call removes it. An in-process teammate's TaskUpdate refreshes the mtime (`touch -c` in `rtl-team-progress.sh`) |
-| `posix-util.sh` | `get_mtime_epoch()` — portable file mtime across GNU/BSD stat |
+| `posix-util.sh` | `get_mtime_epoch()` — portable file mtime across GNU/BSD stat; `posix_elapsed_seconds()`; `shq()` — quote a path as one shell word for the commands a gate shows |
 | `spawn-context-util.sh` | Spawn context manifest writer for Agent spawns |
 | `audit-util.sh` | Audit session init, trace append, prompt save, prune |
 | `artifact-map.sh` | Phase-to-artifact path mapping |
 | `compliance-gate-util.sh` | `compliance_preprocess()` — compliance-pass auto-resolution for skill completion gate |
 | `rat-dir-util.sh` | `rat_project_dir()`, `rat_is_project()` — find the project's `.rat` directory, walking up to `$CLAUDE_PROJECT_DIR` |
-| `stop-budget-util.sh` | No-progress breaker for Stop gates. `stopu_chain_active()`, `stopu_gate()`, `stopu_decision()`, `stopu_clear()` |
+| `stop-budget-util.sh` | No-progress breaker for Stop gates. `stopu_chain_active()`, `stopu_background_agent_pending()`, `stopu_gate()`, `stopu_decision()`, `stopu_clear()` |
 
 ## Testing Workflow
 

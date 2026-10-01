@@ -215,4 +215,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-emit_post_context "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. Stopping before every criterion is met returns the remaining criteria to you. When complete, set all_complete to true in .rat/state/skill-active.json."
+emit_post_context "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. Stopping before every criterion is met returns the remaining criteria to you. When complete, set all_complete to true in ${SKILL_STATE}"
