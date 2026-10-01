@@ -480,6 +480,9 @@ def _agent_pending(payload, mode, env):
     pytest.param(_stop_input([{**AGENT_TASK, "type": "local_agent"}]), "yield", id="raw-local_agent"),
     pytest.param(_stop_input([{"id": "r2", "type": "remote_agent", "status": "pending",
                                "description": "Review the plan"}]), "yield", id="raw-remote_agent"),
+    # A workflow runs agents; Claude Code counts it as agent work too.
+    pytest.param(_stop_input([{"id": "w1", "type": "workflow", "status": "running",
+                               "description": "Dynamic workflow", "name": "regress"}]), "yield", id="workflow"),
     pytest.param(_stop_input([SHELL_TASK]), "stop", id="shell-only"),
     # Only type counts; an agent_type names an agent but is not one.
     pytest.param(_stop_input([{**SHELL_TASK, "agent_type": "rtl-agent-team:p4-implement-orchestrator"}]),
@@ -509,9 +512,65 @@ def test_background_agent_pending(payload, expected, mode, env):
 
 
 @pytest.mark.parametrize("mode,env", PARSERS)
-@pytest.mark.parametrize("label", ["shell", "monitor", "MCP task", "workflow", "teammate", "dream",
+@pytest.mark.parametrize("label", ["shell", "monitor", "MCP task", "teammate", "dream",
                                    "auto-mode scan"])
 def test_background_work_that_is_not_an_agent_does_not_count(label, mode, env):
     # A long-lived process, a monitor or an idle teammate would switch the gates off for good.
     task = {"id": "t1", "type": label, "status": "running", "description": "Background work"}
     assert _agent_pending(_stop_input([task]), mode, env) == "stop"
+
+
+def _yield_stop(state_dir, active, prompt="prompt-1", env=None):
+    """A Stop the gate lets through for a background agent: it only counts the chain."""
+    payload = {"stop_hook_active": active, "prompt_id": prompt, "background_tasks": [AGENT_TASK]}
+    _run('stopu_chain_active "$@"', json.dumps(payload), str(state_dir), "verify", env=env)
+
+
+def test_a_yield_marks_line_6_and_a_counted_stop_does_not(tmp_path):
+    _yield_stop(tmp_path, False)
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\nyield\n"
+    _start_chain(tmp_path, "verify")
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
+
+
+@pytest.mark.parametrize("mode,env", PARSERS)
+@pytest.mark.parametrize("limit,expected", [
+    (None, ["block", "block", "block", "notice"]),
+    ("1", ["block", "notice"]),
+])
+def test_a_chain_after_a_yield_keeps_the_no_progress_count(tmp_path, mode, env, limit, expected):
+    # Each completion turn starts a chain: the gate blocks, then Claude hands the work to a
+    # new background agent and the chain ends in a yield. The count must survive the yield,
+    # or the gate blocks once per turn and never hands over to the user.
+    env = {**env, **({"RAT_STOP_BLOCK_LIMIT": limit} if limit else {})}
+    outcomes = []
+    for turn in range(1, 6):
+        out = _stop(tmp_path, False, {"verify": "a.sv"}, env=env, prompt=f"prompt-{turn}")["verify"]
+        outcomes.append("notice" if out == NOTICE else "block")
+        if out == NOTICE:
+            break
+        assert out == BLOCK
+        _yield_stop(tmp_path, True, prompt=f"prompt-{turn}", env=env)
+    assert outcomes == expected
+
+
+def test_a_chain_after_a_stop_that_did_not_yield_starts_from_zero(tmp_path):
+    for turn in range(1, 4):
+        assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt=f"prompt-{turn}")["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[0] == "1"
+
+
+def test_progress_restarts_a_carried_count(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+    _yield_stop(tmp_path, True)
+    assert _stop(tmp_path, False, {"verify": "a.sv\nb.sv"}, prompt="prompt-2")["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[0] == "1"
+
+
+def test_clear_drops_a_carried_count(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+    _yield_stop(tmp_path, True)
+    _stop(tmp_path, False, {}, prompt="prompt-2")  # the gate's condition holds: stopu_clear
+    _yield_stop(tmp_path, True, prompt="prompt-2")
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt="prompt-3")["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[0] == "1"

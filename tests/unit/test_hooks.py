@@ -5714,10 +5714,10 @@ class TestStopGatesYieldToBackgroundAgents:
         before = self._snapshot(tmp_project)
         assert self._stop(tmp_project, gate, True, [self.SHELL, self.AGENT], [self.CRON]) == {"continue": True}
         after = self._snapshot(tmp_project)
-        # Only each budget's line 3, the chain's Stop count, moved.
+        # Only each budget's line 3, the chain's Stop count, moved; line 6 records the yield.
         for budget_id in ids:
             name = f".rat/state/stop-budget-{budget_id}.txt"
-            assert after.pop(name).decode() == f"1\nfp-x\n3\n{notice}\np-1\n"
+            assert after.pop(name).decode() == f"1\nfp-x\n3\n{notice}\np-1\nyield\n"
             before.pop(name)
         assert after == before
 
@@ -5738,6 +5738,25 @@ class TestStopGatesYieldToBackgroundAgents:
         assert self._stop(tmp_project, gate, False, [self.AGENT]) == {"continue": True}
         for budget_id in ids:
             budget = tmp_project / ".rat" / "state" / f"stop-budget-{budget_id}.txt"
-            assert budget.read_text() == "0\n\n1\n0\np-1\n"
+            assert budget.read_text() == "0\n\n1\n0\np-1\nyield\n"
         # The completion notification starts a new turn; at its Stop nothing is in flight.
         _assert_stop_blocked(self._stop(tmp_project, gate, False, [], prompt="p-2"))
+
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_handing_the_work_to_new_background_agents_still_reaches_the_notice(self, tmp_project, gate):
+        # Each completion turn starts a new chain. If the gate blocks there and Claude hands
+        # the work to another background agent, the chain ends in a yield; the next chain
+        # keeps the count, so the user still gets the notice after the usual blocks.
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        outcomes = []
+        for turn in range(1, 6):
+            result = self._stop(tmp_project, gate, False, [], prompt=f"p-{turn}")
+            if "systemMessage" in result:
+                outcomes.append("notice")
+                break
+            _assert_stop_blocked(result)
+            outcomes.append("block")
+            assert self._stop(tmp_project, gate, True, [self.AGENT], prompt=f"p-{turn}") == {"continue": True}
+        assert outcomes[-1] == "notice", outcomes
+        assert outcomes.count("block") <= 3, outcomes

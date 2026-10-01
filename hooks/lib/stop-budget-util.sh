@@ -39,19 +39,22 @@
 # line lets the Stop through, silently and without spending the budget, while a
 # background agent is in flight: stopu_background_agent_pending "$INPUT" &&
 # emit_post_continue. The agent's completion wakes the session, and the gate
-# enforces at that turn's Stop. Once the gate's condition is satisfied, call
-# stopu_clear: it resets lines 1, 2 and 4 but keeps the Stop count, so a gate that
-# blocks again later in the chain still hands over in time. A gate that counts its
-# own attempts asks stopu_decision before counting one, so a Stop that ends in a
-# notice or silence is no attempt.
+# enforces at that turn's Stop. That chain starts with the no-progress count the
+# yielding chain left, so handing the work to new background agents does not reset
+# the budget. Once the gate's condition is satisfied, call stopu_clear: it resets
+# lines 1, 2 and 4 but keeps the Stop count, so a gate that blocks again later in
+# the chain still hands over in time. A gate that counts its own attempts asks
+# stopu_decision before counting one, so a Stop that ends in a notice or silence is
+# no attempt.
 #
 # Budget file: <state-dir>/stop-budget-<gate-id>.txt. Line 1 counts the blocks
 # without progress, line 2 holds the progress fingerprint, line 3 is this chain's
 # Stop number as seen by this gate, line 4 is 1 once the gate showed its notice in
-# this chain (0 otherwise), and line 5 is the prompt_id of the Stop that last wrote
-# the file (empty when the input has none). Budgets are per project, so two
-# sessions working in one project share them; Claude Code's own Stop block cap,
-# unless the user disables it, still bounds each session.
+# this chain (0 otherwise), line 5 is the prompt_id of the Stop that last wrote
+# the file (empty when the input has none), and line 6 is "yield" when that Stop
+# was let through for a background agent (absent otherwise). Budgets are per
+# project, so two sessions working in one project share them; Claude Code's own
+# Stop block cap, unless the user disables it, still bounds each session.
 
 STOPU_CHAIN_CAP=6
 # Follow Claude Code's own cap when the user changed it: stay two Stops under it
@@ -96,23 +99,36 @@ stopu_chain_active() {
   fi
   if [ -n "${2:-}" ]; then
     _SCA_PROMPT=$(stopu_prompt_id "$1")
+    # Line 6 marks a Stop that the gate lets through for a background agent. Each
+    # completion turn starts a new chain, so without it a gate that blocks, sees Claude
+    # hand the work to a new background agent, and blocks again at that agent's
+    # completion would never reach its notice: the chain after a yield keeps the
+    # no-progress count (lines 1 and 2) instead.
+    _SCA_YIELD=
+    stopu_background_agent_pending "$1" && _SCA_YIELD=yield
     _SCA_DIR=$2
     shift 2
     mkdir -p "$_SCA_DIR" 2>/dev/null
     for _SCA_ID in "$@"; do
       _SCA_FILE="$_SCA_DIR/stop-budget-$_SCA_ID.txt"
       if [ "$_SCA_CHAIN" = "false" ]; then
-        { printf '0\n\n1\n0\n%s\n' "$_SCA_PROMPT" > "$_SCA_FILE"; } 2>/dev/null
+        _SCA_L1=0
+        _SCA_L2=
+        if [ "$(sed -n '6p' "$_SCA_FILE" 2>/dev/null)" = "yield" ]; then
+          _SCA_L1=$(stopu_count_line "$_SCA_FILE" 1)
+          _SCA_L2=$(sed -n '2p' "$_SCA_FILE")
+        fi
+        { { printf '%s\n%s\n1\n0\n%s\n' "$_SCA_L1" "$_SCA_L2" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } > "$_SCA_FILE"; } 2>/dev/null
       elif [ -f "$_SCA_FILE" ] && { [ -z "$_SCA_PROMPT" ] || [ "$(sed -n '5p' "$_SCA_FILE")" = "$_SCA_PROMPT" ]; }; then
         _SCA_L1=$(sed -n '1p' "$_SCA_FILE")
         _SCA_L2=$(sed -n '2p' "$_SCA_FILE")
         _SCA_L4=$(sed -n '4p' "$_SCA_FILE")
         _SCA_STOPS=$(stopu_count_line "$_SCA_FILE" 3)
         [ "$_SCA_STOPS" -ge 1 ] || _SCA_STOPS=$STOPU_CHAIN_CAP
-        { printf '%s\n%s\n%s\n%s\n%s\n' "$_SCA_L1" "$_SCA_L2" "$((_SCA_STOPS + 1))" "$_SCA_L4" "$_SCA_PROMPT" > "$_SCA_FILE"; } 2>/dev/null
+        { { printf '%s\n%s\n%s\n%s\n%s\n' "$_SCA_L1" "$_SCA_L2" "$((_SCA_STOPS + 1))" "$_SCA_L4" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } > "$_SCA_FILE"; } 2>/dev/null
       else
         # No file, or one written for another prompt: this gate missed the chain start.
-        { printf '0\n\n%s\n0\n%s\n' "$((STOPU_CHAIN_CAP + 1))" "$_SCA_PROMPT" > "$_SCA_FILE"; } 2>/dev/null
+        { { printf '0\n\n%s\n0\n%s\n' "$((STOPU_CHAIN_CAP + 1))" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } > "$_SCA_FILE"; } 2>/dev/null
       fi
     done
   fi
@@ -122,16 +138,18 @@ stopu_chain_active() {
 # Succeed while a background agent is in flight: the root background_tasks of a Stop
 # input lists a task whose type names an agent. Claude Code 2.1.282 labels a local agent
 # "subagent" and a remote one "cloud session", and keeps the name of a task type it has
-# no label for, so a type containing "agent" counts too. Other background work does not,
-# nor do session_crons: a long-lived shell, a monitor, an idle teammate or a far-off cron
-# would switch the gates off. The sed fallback drops escapes and blanks every other
-# string first, so no description or command can match or end the array early.
+# no label for, so a type containing "agent" counts too. A "workflow" counts as well: it
+# runs agents, and Claude Code itself treats it as agent work (it waits for both before
+# a print-mode exit). Other background work does not, nor do session_crons: a long-lived
+# shell, a monitor, an idle teammate or a far-off cron would switch the gates off. The
+# sed fallback drops escapes and blanks every other string first, so no description or
+# command can match or end the array early.
 # Usage: stopu_background_agent_pending "$INPUT" && emit_post_continue
 stopu_background_agent_pending() {
   case "$JSONU_PARSER_MODE" in
     jq)
       printf '%s' "$1" | jq -e 'any(.background_tasks | arrays | .[] | objects | .type | strings;
-        contains("agent") or . == "cloud session")' >/dev/null 2>&1
+        contains("agent") or . == "cloud session" or . == "workflow")' >/dev/null 2>&1
       ;;
     python)
       printf '%s' "$1" | "$JSONU_PY_BIN" -c '
@@ -145,7 +163,7 @@ except Exception:
 tasks = payload.get("background_tasks") if isinstance(payload, dict) else None
 for task in tasks if isinstance(tasks, list) else []:
     kind = task.get("type") if isinstance(task, dict) else None
-    if isinstance(kind, str) and ("agent" in kind or kind == "cloud session"):
+    if isinstance(kind, str) and ("agent" in kind or kind in ("cloud session", "workflow")):
         sys.exit(0)
 sys.exit(1)
 ' 2>/dev/null
@@ -155,6 +173,7 @@ sys.exit(1)
         -e 's/\\.//g' \
         -e 's/"type"[[:space:]]*:[[:space:]]*"[^"]*agent[^"]*"/@/g' \
         -e 's/"type"[[:space:]]*:[[:space:]]*"cloud session"/@/g' \
+        -e 's/"type"[[:space:]]*:[[:space:]]*"workflow"/@/g' \
         -e 's/"background_tasks"[[:space:]]*:[[:space:]]*\[/%[/g' \
         -e 's/"[^"]*"/""/g' | \
         sed -n 's/.*%\[\([^]]*\)].*/\1/p' | grep -q @
@@ -237,6 +256,11 @@ _stopu_decide() {
       _SG_COUNT=$(stopu_count_line "$_SG_FILE" 1)
       [ "$(sed -n '2p' "$_SG_FILE")" = "$_SG_FP" ] || _SG_COUNT=0
     fi
+  elif [ -f "$_SG_FILE" ]; then
+    # A chain start: stopu_chain_active left line 1 at 0, or at the count of a chain
+    # that ended in a yield.
+    _SG_COUNT=$(stopu_count_line "$_SG_FILE" 1)
+    [ "$(sed -n '2p' "$_SG_FILE")" = "$_SG_FP" ] || _SG_COUNT=0
   fi
   # Hand over after N blocks without progress, or once the chain has already had
   # STOPU_CHAIN_CAP blocked Stops from any hook.

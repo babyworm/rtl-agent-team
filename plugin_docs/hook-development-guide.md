@@ -119,6 +119,10 @@ To use it:
   Stop, right after the team-mode skip and before any other exit. The call counts the
   chain's Stops, so a gate that skips a Stop undercounts. A gate that missed the
   chain start (its budget was written for another `prompt_id`) hands over.
+- On the next line, let the Stop through while a background agent or workflow is in
+  flight: `stopu_background_agent_pending "$INPUT" && emit_post_continue`. Its
+  completion wakes the session and the gate enforces at that turn's Stop, starting
+  from the no-progress count the yielding chain left.
 - Pass progress text that changes when the gate's condition moves.
 - Call `stopu_clear` where the gate is satisfied.
 

@@ -15,6 +15,13 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   Phase 6 cascade gate ended the turn and dropped their reason instead of returning
   it to Claude (verified live on Claude Code 2.1.282). PreToolUse denies no longer
   halt the whole turn either.
+  - While a background agent or workflow is in flight, the Stop gates let the Stop
+    through instead, and enforce at the Stop of the turn its completion starts.
+    Claude Code 2.1.282 runs agents in the background by default, so the leader's
+    Stop comes while its orchestrator still works. Shells, monitors, MCP tasks,
+    teammates and scheduled crons do not pause the gates.
+  - A gate that blocks while Claude keeps handing the work to new background agents
+    still hands the decision to the user after the usual blocks without progress.
 - The spawn-context and audit spawn-complete hooks now match the `Agent` tool; they
   were registered on `TaskCreate` and never saw an agent spawn.
 - Skill completion loops now start only after the Skill tool returns
