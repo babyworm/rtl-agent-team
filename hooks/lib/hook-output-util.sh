@@ -10,6 +10,8 @@
 #   Deny         hookSpecificOutput.permissionDecision "deny"  Only that tool call is refused.
 
 # Emit a continue response with optional additionalContext message, then exit 0.
+# PreToolUse only: a message rides in a PreToolUse envelope. After a tool ran, give
+# context with emit_post_context; to allow any other event, use emit_post_continue.
 # Usage: emit_continue "message"   or   emit_continue ""
 emit_continue() {
   _EC_MSG="$1"
@@ -59,8 +61,8 @@ emit_post_context() {
   exit 0
 }
 
-# Emit a plain continue response (no additionalContext), then exit 0. Valid for any
-# event: tool hooks and Stop gates allow with it.
+# Emit a plain continue response (no additionalContext), then exit 0. Despite its
+# name it is the plain allow for any event: PreToolUse hooks and Stop gates use it too.
 # Usage: emit_post_continue
 emit_post_continue() {
   printf '{"continue":true}'

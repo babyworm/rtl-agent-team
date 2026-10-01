@@ -238,8 +238,9 @@ The auto-continue mechanism leverages the existing `stop-gate.sh` escalation pat
 3. This avoids idle sessions while allowing user override at any time
 
 Every auto-continue is a blocked Stop, so `stop-gate.sh` bounds it. Per user message it
-auto-continues at most `STOPU_CHAIN_CAP` times: 6 by default, two under
-`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` when that is set, no bound when it is 0. It also pauses
-the loop after `RAT_STOP_BLOCK_LIMIT` (default 3) automatic continuations without a new
-cycle (a refreshed `last_cycle_timestamp`). Either way the user sees a pause notice: say
-continue to resume, or end the loop with `rm .rat/state/ultraloop-state.json`.
+auto-continues at most `STOPU_CHAIN_CAP` times: 6 by default; when
+`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` is set, two under it (at least 1), and no bound when
+it is 0. It also pauses the loop after `RAT_STOP_BLOCK_LIMIT` (default 3) automatic
+continuations without a new cycle (a refreshed `last_cycle_timestamp`). Either way the
+user sees a pause notice: say continue to resume, or end the loop with
+`rm .rat/state/ultraloop-state.json`.

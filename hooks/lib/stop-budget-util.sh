@@ -1,6 +1,7 @@
 #!/bin/sh
 # stop-budget-util.sh — no-progress breaker shared by the Stop gates.
-# Requires: json-util.sh and hook-output-util.sh sourced.
+# Requires: json-util.sh and hook-output-util.sh sourced, and jsonu_detect_parser
+# run (the input readers need JSONU_PARSER_MODE).
 #
 # A Stop gate blocks (Claude keeps working) until it has blocked N times in one
 # continuation chain while its progress stayed the same; on the next Stop it lets
@@ -17,10 +18,13 @@
 # their own limit, and no gate reads another gate's file. From the chain's Stop
 # STOPU_CHAIN_CAP + 1 on, a gate that would block shows its notice instead: the
 # notice comes after at most STOPU_CHAIN_CAP (6 by default) consecutive blocked
-# Stops from any hooks, under Claude Code's own cap, which counts consecutive Stops
-# that any hook blocked, once per Stop, and past CLAUDE_CODE_STOP_HOOK_BLOCK_CAP
-# (default 8; 0 disables it) overrides the block and ends the turn with a warning
-# and an empty result (CLI 2.1.282). When the user sets that variable,
+# Stops from any hooks. That count is what bounds a chain. Claude Code's own cap
+# counts only the Stops that hooks blocked with no tool call between them (a tool
+# call resets it), and past CLAUDE_CODE_STOP_HOOK_BLOCK_CAP (default 8; 0 disables
+# it) it overrides the block and ends the turn with a warning and an empty result
+# (CLI 2.1.282). The chain count never resets at a tool call, so it keeps RAT gates
+# inside that cap, and it still bounds them when another Stop hook keeps a chain
+# going with tool calls between Stops. When the user sets that variable,
 # STOPU_CHAIN_CAP follows it: two Stops under it (at least 1), or 99999 when it is
 # 0, which keeps Stop counts under stopu_count_line's six-digit guard. A
 # continuation Stop whose budget file is missing, has no valid Stop count, or was
@@ -54,8 +58,9 @@
 # this chain (0 otherwise), line 5 is the prompt_id of the Stop that last wrote
 # the file (empty when the input has none), and line 6 is "yield" when that Stop
 # was let through for a background agent (absent otherwise). Budgets are per
-# project, so two sessions working in one project share them; Claude Code's own
-# Stop block cap, unless the user disables it, still bounds each session.
+# project, so two sessions working in one project share them. A file that the other
+# session wrote last carries its prompt_id, so a continuing gate takes it as a missed
+# chain start and hands over: sharing only brings the notice sooner.
 
 STOPU_CHAIN_CAP=6
 # Follow Claude Code's own cap when the user changed it: stay two Stops under it

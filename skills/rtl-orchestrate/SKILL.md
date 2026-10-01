@@ -531,6 +531,7 @@ Hook-enforced (quality gates):
 - `.rat/state/phase6-stale` — Phase 6 cascade marker (rtl-edit-tracker, rtl-p6-cascade-gate)
 - `.rat/state/phase6-cascade-done` — Phase 6 cascade completion (rtl-p6-cascade-gate)
 - `.rat/state/rtl-modified-files.txt` — Modified RTL file tracking (rtl-edit-tracker, rtl-verify-stop-gate)
+- `.rat/state/stop-budget-<gate-id>.txt` — A Stop gate's no-progress budget and chain count (hooks/lib/stop-budget-util.sh)
 
 Agent-managed (orchestrator resumability):
 - `.rat/state/rat-p1p3-spec-uarch-state.json` — Spec-to-μArch pipeline progress

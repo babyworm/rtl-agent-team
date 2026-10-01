@@ -347,7 +347,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `rtl-audit-subagent.sh` | SubagentStart/SubagentStop | Log subagent lifecycle events to audit trace |
 | `rtl-audit-spawn-complete.sh` | PostToolUse:Agent | Log spawn completion events to audit trace |
 
-**State files**: Stored under `.rat/state/`. Pipeline state, verification gates, skill completion tracking.
+**State files**: Stored under `.rat/state/`. Pipeline state, verification gates, skill completion tracking, and each Stop gate's no-progress budget (`stop-budget-<gate-id>.txt`).
 
 ## Native Team Mode (v0.6.6) — Orchestrator as Teammate Pattern
 

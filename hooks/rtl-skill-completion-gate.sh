@@ -1,5 +1,7 @@
 #!/bin/sh
-# RTL Skill Completion Gate: blocks session exit if an RTL skill is active without completion.
+# RTL Skill Completion Gate: keeps Claude working while an active RTL skill has pending
+# completion criteria. When a pipeline skill's orchestrator waits for the user's decision,
+# it hands over to the user instead.
 #
 # State file: .rat/state/skill-active.json
 # Contains: skill name, iteration count, pending criteria, all_complete flag

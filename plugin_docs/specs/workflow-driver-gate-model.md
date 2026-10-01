@@ -7,6 +7,17 @@
 - Validation: 2026-07-15 huffman_vld flow-test —
   `plugin_docs/plans/2026-07-15-vld-flowtest-design.md`
 
+> **Note (2026-10-01, v2.0.0 Phase 1a).** Phase 1a changed how `rtl-verify-stop-gate.sh`
+> enforces Rule 5 (§1, and the "MUST NOT be modified" row in §2):
+> - it blocks the Stop with `decision: "block"`, so Claude keeps working;
+> - it hands the decision to the user with a notice after the no-progress breaker's
+>   blocks (`hooks/lib/stop-budget-util.sh`);
+> - it lets the Stop through while a background agent or workflow runs, and enforces at
+>   the Stop of the turn that the agent's completion starts.
+>
+> Rule 5's invariant ("RTL change ⇒ functional sim must pass before completion") is
+> unchanged, and so is the Workflow-side sanity check in §2.
+
 ## 1. Context
 
 Pipeline Rule 5 ("no completion after RTL modification without functional
