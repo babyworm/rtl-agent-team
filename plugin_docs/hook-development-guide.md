@@ -46,7 +46,9 @@ Practical rules:
 **Matcher**: For `PreToolUse`/`PostToolUse`, matches the tool name (e.g., `Edit|Write|Bash`,
 `Skill`, `Agent`). Use `*` for all-tool matching (SessionStart, Stop, Subagent events).
 
-**Timeout**: Seconds before the hook is killed. Default 3s for responsiveness.
+**Timeout**: Seconds before the hook is killed. Default 3s for responsiveness. The skill
+completion gate and `stop-gate.sh` get 10s: in python parser mode each starts python about
+two dozen times on a blocking Stop, and a Stop hook that times out fails open.
 
 ## Hook Input/Output Protocol
 
@@ -212,7 +214,7 @@ python3 -m pytest tests/unit/test_audit.py -x -q
 3. **Parse input** via `INPUT=$(cat)` and `jsonu_*` functions
 4. **Emit valid JSON** output matching the event type protocol
 5. **Register in `hooks/hooks.json`** under the correct event and matcher
-6. **Keep execution under 3 seconds** (timeout constraint)
+6. **Keep execution under the hook's timeout** (3 seconds unless `hooks.json` gives more; a Stop gate that times out fails open)
 7. **Use `_` prefix** for internal variables to avoid namespace collisions
 8. **Add tests** in `tests/unit/test_hooks.py` using `run_hook()` from conftest
 9. **Update routing** if the hook affects skill/agent behavior:

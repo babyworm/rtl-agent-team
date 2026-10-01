@@ -144,6 +144,20 @@ class TestHookRuntimeContract:
                     assert isinstance(timeout, int)
                     assert 1 <= timeout <= 10
 
+    def test_python_heavy_stop_gates_get_ten_seconds(self, hooks):
+        # In python parser mode the skill completion gate and stop-gate.sh each start python
+        # about two dozen times on a blocking Stop, and a Stop hook that times out fails open.
+        # Every other hook keeps 3 seconds.
+        slow = {"rtl-skill-completion-gate.sh", "stop-gate.sh"}
+        timeouts = {}
+        for event_entries in hooks["hooks"].values():
+            for entry in event_entries:
+                for hook in entry.get("hooks", []):
+                    script = re.search(r"/hooks/([a-z0-9-]+\.sh)", hook["command"]).group(1)
+                    timeouts.setdefault(script, set()).add(hook["timeout"])
+        assert {s: t for s, t in timeouts.items() if s in slow} == {s: {10} for s in slow}
+        assert all(t == {3} for s, t in timeouts.items() if s not in slow), timeouts
+
 
 def _hooks_resolving_rat_dir() -> list:
     """Every hook that calls rat_project_dir, read from hooks/ so that a new hook is covered."""

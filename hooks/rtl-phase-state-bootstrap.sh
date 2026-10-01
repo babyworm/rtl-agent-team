@@ -42,7 +42,7 @@ if [ "$SHORT_NAME" = "rtl-p5b-silicon-validation" ] &&
    { [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; }; then
   P5A_STATE="$RAT_DIR/state/p5a-state.json"
   if [ ! -f "$P5A_STATE" ]; then
-    MSG="[P5B Gate BLOCKED] P5A functional closure state file (.rat/state/p5a-state.json) not found. P5B needs a P5A PASS first: ask the user whether to run /rtl-agent-team:rtl-p5a-functional-closure now."
+    MSG="[P5B Gate BLOCKED] P5A functional closure state file ${P5A_STATE} not found. P5B needs a P5A PASS first: ask the user whether to run /rtl-agent-team:rtl-p5a-functional-closure now."
     if [ -n "$SETUP_HINT" ]; then
       MSG="$MSG $SETUP_HINT"
     fi

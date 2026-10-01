@@ -3339,6 +3339,17 @@ class TestPhaseStateBootstrap:
         assert "rtl-p5a-functional-closure" in ctx
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
+    def test_p5b_deny_from_a_subdirectory_names_the_project_state_file(self, tmp_project):
+        # A relative .rat/state path would send Claude, working in rtl/, to a stray rtl/.rat.
+        _setup_marker(tmp_project)
+        (tmp_project / "rtl").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project / "rtl"),
+                                      "skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+                          env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
+        _assert_denied(result)
+        state = tmp_project / ".rat" / "state" / "p5a-state.json"
+        assert f"state file {state} not found" in result["hookSpecificOutput"]["permissionDecisionReason"]
+
     def test_p5b_before_setup_is_not_gated(self, tmp_project):
         # Before rat-init-project the setup advisory speaks; like the template bootstrap,
         # the P5B gate applies only once the project is set up.
