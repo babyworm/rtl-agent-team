@@ -60,7 +60,9 @@
 # was let through for a background agent (absent otherwise). Budgets are per
 # project, so two sessions working in one project share them. A file that the other
 # session wrote last carries its prompt_id, so a continuing gate takes it as a missed
-# chain start and hands over: sharing only brings the notice sooner.
+# chain start and hands over: with prompt ids, sharing only brings the notice sooner.
+# Without them (an input that has none), a chain start in one session resets the
+# other's counts.
 
 STOPU_CHAIN_CAP=6
 # Follow Claude Code's own cap when the user changed it: stay two Stops under it
