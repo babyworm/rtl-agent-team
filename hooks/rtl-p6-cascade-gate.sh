@@ -44,6 +44,7 @@ if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" p6-cascade)
+stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
 
 # If no stale marker, Phase 6 was not affected — allow exit
 if [ ! -f "$STALE_MARKER" ]; then

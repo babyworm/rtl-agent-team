@@ -36,6 +36,7 @@ if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" verify)
+stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
 
 # Team mode aggregation: merge all session-scoped tracking files into a combined view.
 # In team mode, each worker writes to rtl-modified-files-{SESSION_ID}.txt.

@@ -1035,11 +1035,14 @@ def test_hooks_read_session_fields_from_the_input_root():
     as one line."""
     tool_fields = {"skill", "file_path", "command", "subagent_type", "prompt"}
     session_fields = {"cwd", "session_id", "agent_id", "prompt_id", "hook_event_name",
-                      "transcript_path", "stop_hook_active", "agent_type", "permission_mode"}
+                      "transcript_path", "stop_hook_active", "agent_type", "permission_mode",
+                      "background_tasks", "session_crons"}
     # SessionStart and Stop inputs carry no tool_input. The inject hook sources no JSON
-    # parser, and stop_hook_active is a boolean, which jsonu_get_root_string does not read.
+    # parser; stop_hook_active is a boolean and background_tasks an array of objects, and
+    # jsonu_get_root_string reads neither.
     hand_scans = {("hooks/rtl-orchestrator-inject.sh", "cwd"),
-                  ("hooks/lib/stop-budget-util.sh", "stop_hook_active")}
+                  ("hooks/lib/stop-budget-util.sh", "stop_hook_active"),
+                  ("hooks/lib/stop-budget-util.sh", "background_tasks")}
     call = re.compile(r"""jsonu_get_input_string\s+(?:"[^"]*"|'[^']*'|\S+)\s+("[^"]*"|'[^']*'|[^\s);|&]+)""")
     parser = re.compile(r"\b(?:sed|grep|awk|jq|python3?)\b")
     quoted_field = re.compile(r'\\?"(%s)\\?"' % "|".join(sorted(session_fields)))

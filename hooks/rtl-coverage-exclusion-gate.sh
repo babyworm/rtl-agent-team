@@ -40,6 +40,7 @@ if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" coverage-exclusion)
+stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
 
 # If approval marker exists, pass immediately
 if [ -f "$APPROVAL_MARKER" ]; then

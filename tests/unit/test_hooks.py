@@ -5637,3 +5637,107 @@ class TestCoverageExclusionGate:
         assert "alu-coverage-exclusions.md" in result["reason"]
         (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
         assert run_hook(self.HOOK, {**stop, "stop_hook_active": True}, env=env) == {"continue": True}
+
+
+def _verify_blocks(project):
+    (project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/alu.sv\n")
+
+
+def _p6_cascade_blocks(project):
+    (project / ".rat" / "state" / "phase6-stale").touch()
+
+
+def _skill_completion_blocks(project):
+    started = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    (project / ".rat" / "state" / "skill-active.json").write_text(json.dumps({
+        "skill": "rtl-p4s-bugfix", "active": True, "iteration": 1, "max_iterations": 5,
+        "pending": "lint_pass, sim_pass", "all_complete": False, "started_at": started}))
+
+
+def _autopilot_blocks(project):
+    (project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
+        json.dumps({"status": "in_progress", "phase": 3}))
+
+
+def _coverage_exclusion_blocks(project):
+    review = project / "reviews" / "phase-5-verify"
+    review.mkdir(parents=True)
+    (review / "alu-coverage-exclusions.md").write_text(
+        "| Bin | Category |\n|---|---|\n| cp_mode.dbg | Unimplemented feature |\n")
+
+
+class TestStopGatesYieldToBackgroundAgents:
+    """Agents run in the background by default (CLI 2.1.282), so the leader's Stop comes while
+    its orchestrator still works. Every Stop gate lets that Stop through, silently and without
+    spending its budget; the agent's completion wakes the session, and the gates enforce at
+    that turn's Stop."""
+
+    # Each gate, the budget ids its chain count names, and a setup that makes it block.
+    GATES = {
+        "rtl-verify-stop-gate.sh": (("verify",), _verify_blocks),
+        "rtl-p6-cascade-gate.sh": (("p6-cascade",), _p6_cascade_blocks),
+        "rtl-skill-completion-gate.sh": (("skill-completion",), _skill_completion_blocks),
+        "stop-gate.sh": (("ultraloop", "ppa-loop", "autopilot"), _autopilot_blocks),
+        "rtl-coverage-exclusion-gate.sh": (("coverage-exclusion",), _coverage_exclusion_blocks),
+    }
+    # Background work as Claude Code 2.1.282 writes it into a Stop input.
+    AGENT = {"id": "a6480a3838dc76cfa", "type": "subagent", "status": "running",
+             "description": "Run the Phase 4 orchestrator",
+             "agent_type": "rtl-agent-team:p4-implement-orchestrator"}
+    SHELL = {"id": "b2f1c9d0e4", "type": "shell", "status": "running",
+             "description": "Serve the waveform viewer", "command": "python3 -m http.server 8000"}
+    CRON = {"id": "c7d3e1", "schedule": "*/5 * * * *", "recurring": True,
+            "prompt": "Check the regression"}
+
+    def _stop(self, project, gate, active, tasks, crons=(), prompt="p-1"):
+        return run_hook(HOOKS_DIR / gate, {
+            "cwd": str(project), "prompt_id": prompt, "hook_event_name": "Stop",
+            "stop_hook_active": active, "last_assistant_message": "Launched the orchestrator.",
+            "background_tasks": list(tasks), "session_crons": list(crons)})
+
+    def _seed_budgets(self, project, ids, notice):
+        """Earlier blocks in this chain spent part of each budget, and maybe showed the notice."""
+        for budget_id in ids:
+            (project / ".rat" / "state" / f"stop-budget-{budget_id}.txt").write_text(
+                f"1\nfp-x\n2\n{notice}\np-1\n")
+
+    @staticmethod
+    def _snapshot(project):
+        return {str(p.relative_to(project)): p.read_bytes() for p in project.rglob("*") if p.is_file()}
+
+    @pytest.mark.parametrize("notice", ["0", "1"])
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_agent_in_flight_lets_the_stop_through_without_spending_the_budget(self, tmp_project, gate, notice):
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        self._seed_budgets(tmp_project, ids, notice)
+        before = self._snapshot(tmp_project)
+        assert self._stop(tmp_project, gate, True, [self.SHELL, self.AGENT], [self.CRON]) == {"continue": True}
+        after = self._snapshot(tmp_project)
+        # Only each budget's line 3, the chain's Stop count, moved.
+        for budget_id in ids:
+            name = f".rat/state/stop-budget-{budget_id}.txt"
+            assert after.pop(name).decode() == f"1\nfp-x\n3\n{notice}\np-1\n"
+            before.pop(name)
+        assert after == before
+
+    @pytest.mark.parametrize("tasks,crons", [([], []), ([SHELL], [CRON])],
+                             ids=["nothing-in-flight", "shell-and-cron"])
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_the_same_stop_without_an_agent_blocks(self, tmp_project, gate, tasks, crons):
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        self._seed_budgets(tmp_project, ids, "0")
+        _assert_stop_blocked(self._stop(tmp_project, gate, True, tasks, crons))
+
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_gate_enforces_at_the_stop_after_the_agent_finished(self, tmp_project, gate):
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        # The leader's turn ends right after it launched the agent.
+        assert self._stop(tmp_project, gate, False, [self.AGENT]) == {"continue": True}
+        for budget_id in ids:
+            budget = tmp_project / ".rat" / "state" / f"stop-budget-{budget_id}.txt"
+            assert budget.read_text() == "0\n\n1\n0\np-1\n"
+        # The completion notification starts a new turn; at its Stop nothing is in flight.
+        _assert_stop_blocked(self._stop(tmp_project, gate, False, [], prompt="p-2"))

@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 
 import pytest
@@ -423,3 +424,94 @@ def test_fingerprint_is_one_token_deterministic_and_sensitive():
     assert first and "\n" not in first and " " not in first
     assert _fp("a.sv\nb.sv\n") == first
     assert _fp("a.sv\nc.sv\n") != first
+
+
+# stopu_background_agent_pending: a background agent in flight pauses the gates.
+# Entries as Claude Code 2.1.282 writes them into a Stop input: type is a label, "subagent"
+# for a local agent and "cloud session" for a remote one, and a task type without a label
+# keeps its own name.
+AGENT_TASK = {"id": "a6480a3838dc76cfa", "type": "subagent", "status": "running",
+              "description": "Run the Phase 4 orchestrator",
+              "agent_type": "rtl-agent-team:p4-implement-orchestrator"}
+# Text that names an agent, brackets and escaped quotes in a task that is not an agent.
+SHELL_TASK = {"id": "b2f1c9d0e4", "type": "shell", "status": "running",
+              "description": 'Watch for "type": "subagent" [debug]',
+              "command": 'while [ ! -f done ]; do tail -n 1 "agent.log"; sleep 5; done'}
+CRON = {"id": "c7d3e1", "schedule": "*/5 * * * *", "recurring": True,
+        "prompt": "Check whether the subagent finished"}
+
+PARSERS = [
+    pytest.param("jq", {}, id="jq",
+                 marks=pytest.mark.skipif(not shutil.which("jq"), reason="jq is not installed")),
+    pytest.param("python", {"RTL_FORCE_PYTHON_PARSER": "1"}, id="python"),
+    pytest.param("sed", {"RTL_FORCE_JSON_FALLBACK": "1"}, id="sed"),
+]
+
+
+def _stop_input(tasks=None, **fields):
+    """A Stop input in Claude Code's field order; tasks=None leaves background_tasks out."""
+    payload = {"session_id": "s-1", "cwd": "/x", "prompt_id": "prompt-1", "hook_event_name": "Stop",
+               "stop_hook_active": False, "last_assistant_message": "Launched the orchestrator."}
+    if tasks is not None:
+        payload["background_tasks"] = tasks
+        payload["session_crons"] = []
+    payload.update(fields)
+    return payload
+
+
+def _agent_pending(payload, mode, env):
+    """Run stopu_background_agent_pending in the given parser mode: "yield" or "stop"."""
+    text = payload if isinstance(payload, str) else json.dumps(payload)
+    out = _run('printf "%s " "$JSONU_PARSER_MODE"; '
+               'if stopu_background_agent_pending "$1"; then echo yield; else echo stop; fi',
+               text, env=env)
+    parser, verdict = out.split()
+    assert parser == mode
+    return verdict
+
+
+@pytest.mark.parametrize("mode,env", PARSERS)
+@pytest.mark.parametrize("payload,expected", [
+    pytest.param(_stop_input([]), "stop", id="nothing-in-flight"),
+    pytest.param(_stop_input(), "stop", id="no-field"),
+    pytest.param(_stop_input([AGENT_TASK]), "yield", id="subagent"),
+    pytest.param(_stop_input([{"id": "r1", "type": "cloud session", "status": "running",
+                               "description": "Review the plan"}]), "yield", id="cloud-session"),
+    pytest.param(_stop_input([{**AGENT_TASK, "type": "local_agent"}]), "yield", id="raw-local_agent"),
+    pytest.param(_stop_input([{"id": "r2", "type": "remote_agent", "status": "pending",
+                               "description": "Review the plan"}]), "yield", id="raw-remote_agent"),
+    pytest.param(_stop_input([SHELL_TASK]), "stop", id="shell-only"),
+    # Only type counts; an agent_type names an agent but is not one.
+    pytest.param(_stop_input([{**SHELL_TASK, "agent_type": "rtl-agent-team:p4-implement-orchestrator"}]),
+                 "stop", id="agent_type-on-shell"),
+    pytest.param(_stop_input([SHELL_TASK, AGENT_TASK]), "yield", id="shell-then-subagent"),
+    pytest.param(_stop_input([], session_crons=[CRON]), "stop", id="cron-only"),
+    pytest.param(_stop_input([SHELL_TASK], session_crons=[CRON]), "stop", id="shell-and-cron"),
+    pytest.param(_stop_input([], last_assistant_message='Waiting: "background_tasks": [{"type": "subagent"}]'),
+                 "stop", id="escaped-message"),
+    pytest.param(_stop_input(last_assistant_message='"background_tasks":[{"type":"cloud session"}]'),
+                 "stop", id="escaped-message-no-field"),
+    # A lone quote in a text: the sed fallback must not pair the wrong quotes.
+    pytest.param(_stop_input([AGENT_TASK], last_assistant_message='The cable is 5" long.'), "yield",
+                 id="odd-quote-message"),
+    pytest.param(_stop_input([{**SHELL_TASK, "description": 'Mail "ops@example.com'}]), "stop",
+                 id="odd-quote-and-at"),
+    pytest.param(json.dumps(_stop_input([SHELL_TASK, AGENT_TASK]), indent=2), "yield", id="multi-line-agent"),
+    pytest.param(json.dumps(_stop_input([SHELL_TASK]), indent=2), "stop", id="multi-line-shell"),
+    # Only the root counts; Claude Code writes tool_input after the session fields.
+    pytest.param(_stop_input([], tool_input={"background_tasks": [AGENT_TASK]}), "stop", id="tool-input"),
+    pytest.param(_stop_input({"type": "subagent"}), "stop", id="object-not-array"),
+    pytest.param(_stop_input("subagent"), "stop", id="string-not-array"),
+    pytest.param('{"background_tasks": [{"type": "subagent"', "stop", id="invalid-json"),
+])
+def test_background_agent_pending(payload, expected, mode, env):
+    assert _agent_pending(payload, mode, env) == expected
+
+
+@pytest.mark.parametrize("mode,env", PARSERS)
+@pytest.mark.parametrize("label", ["shell", "monitor", "MCP task", "workflow", "teammate", "dream",
+                                   "auto-mode scan"])
+def test_background_work_that_is_not_an_agent_does_not_count(label, mode, env):
+    # A long-lived process, a monitor or an idle teammate would switch the gates off for good.
+    task = {"id": "t1", "type": label, "status": "running", "description": "Background work"}
+    assert _agent_pending(_stop_input([task]), mode, env) == "stop"

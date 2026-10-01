@@ -186,6 +186,16 @@ def test_stop_gate_counts_every_stop_before_any_other_exit(name):
 
 
 @pytest.mark.parametrize("name", sorted(STOP_GATES))
+def test_stop_gate_yields_to_a_background_agent_right_after_the_chain_count(name):
+    # The Stop is counted first, so the chain cap holds across yielded Stops, and nothing
+    # between the count and the yield can spend the budget.
+    code = [re.sub(r"\s+#.*", "", line).strip() for _, line in _code_lines(name) if line.strip()]
+    chain = next(n for n, line in enumerate(code) if line.startswith("STOP_CHAIN=$(stopu_chain_active"))
+    assert code[chain + 1] == 'stopu_background_agent_pending "$INPUT" && emit_post_continue'
+    assert sum("stopu_background_agent_pending" in line for line in code) == 1
+
+
+@pytest.mark.parametrize("name", sorted(STOP_GATES))
 def test_stop_gate_budget_ids_match_its_chain_count(name):
     # A typo in an id silently removes the chain cap for that call (Task 4 review).
     code = "\n".join(line for _, line in _code_lines(name))

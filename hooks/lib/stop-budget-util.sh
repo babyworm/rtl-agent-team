@@ -35,11 +35,15 @@
 # Caller contract: every gate calls STOP_CHAIN=$(stopu_chain_active "$INPUT"
 # <state-dir> <ids>) on every Stop, right after its team-mode skip and before any
 # other exit; the Stop count depends on it. At a chain start the call sets the
-# count to 1 whatever files are left over, and every continuation adds 1. Once the
-# gate's condition is satisfied, call stopu_clear: it resets lines 1, 2 and 4 but
-# keeps the Stop count, so a gate that blocks again later in the chain still
-# hands over in time. A gate that counts its own attempts asks stopu_decision
-# before counting one, so a Stop that ends in a notice or silence is no attempt.
+# count to 1 whatever files are left over, and every continuation adds 1. The next
+# line lets the Stop through, silently and without spending the budget, while a
+# background agent is in flight: stopu_background_agent_pending "$INPUT" &&
+# emit_post_continue. The agent's completion wakes the session, and the gate
+# enforces at that turn's Stop. Once the gate's condition is satisfied, call
+# stopu_clear: it resets lines 1, 2 and 4 but keeps the Stop count, so a gate that
+# blocks again later in the chain still hands over in time. A gate that counts its
+# own attempts asks stopu_decision before counting one, so a Stop that ends in a
+# notice or silence is no attempt.
 #
 # Budget file: <state-dir>/stop-budget-<gate-id>.txt. Line 1 counts the blocks
 # without progress, line 2 holds the progress fingerprint, line 3 is this chain's
@@ -113,6 +117,49 @@ stopu_chain_active() {
     done
   fi
   printf '%s' "$_SCA_CHAIN"
+}
+
+# Succeed while a background agent is in flight: the root background_tasks of a Stop
+# input lists a task whose type names an agent. Claude Code 2.1.282 labels a local agent
+# "subagent" and a remote one "cloud session", and keeps the name of a task type it has
+# no label for, so a type containing "agent" counts too. Other background work does not,
+# nor do session_crons: a long-lived shell, a monitor, an idle teammate or a far-off cron
+# would switch the gates off. The sed fallback drops escapes and blanks every other
+# string first, so no description or command can match or end the array early.
+# Usage: stopu_background_agent_pending "$INPUT" && emit_post_continue
+stopu_background_agent_pending() {
+  case "$JSONU_PARSER_MODE" in
+    jq)
+      printf '%s' "$1" | jq -e 'any(.background_tasks | arrays | .[] | objects | .type | strings;
+        contains("agent") or . == "cloud session")' >/dev/null 2>&1
+      ;;
+    python)
+      printf '%s' "$1" | "$JSONU_PY_BIN" -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+tasks = payload.get("background_tasks") if isinstance(payload, dict) else None
+for task in tasks if isinstance(tasks, list) else []:
+    kind = task.get("type") if isinstance(task, dict) else None
+    if isinstance(kind, str) and ("agent" in kind or kind == "cloud session"):
+        sys.exit(0)
+sys.exit(1)
+' 2>/dev/null
+      ;;
+    *)
+      printf '%s' "$1" | tr '\n' ' ' | sed 's/"tool_input"[[:space:]]*:.*//' | sed \
+        -e 's/\\.//g' \
+        -e 's/"type"[[:space:]]*:[[:space:]]*"[^"]*agent[^"]*"/@/g' \
+        -e 's/"type"[[:space:]]*:[[:space:]]*"cloud session"/@/g' \
+        -e 's/"background_tasks"[[:space:]]*:[[:space:]]*\[/%[/g' \
+        -e 's/"[^"]*"/""/g' | \
+        sed -n 's/.*%\[\([^]]*\)].*/\1/p' | grep -q @
+      ;;
+  esac
 }
 
 # Reduce arbitrary text to a one-token fingerprint.

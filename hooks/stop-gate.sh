@@ -43,6 +43,7 @@ if teamu_should_skip_gate "$RAT_DIR/state" "$INPUT"; then
   emit_post_continue
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$RAT_DIR/state" ultraloop ppa-loop autopilot)
+stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
 
 # Let Claude stop once no loop and no autopilot run holds the stop. Every condition this
 # gate checks is then satisfied, so all three budgets are reset (the chain's Stop count
