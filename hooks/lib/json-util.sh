@@ -282,8 +282,9 @@ PY
 # Print a top-level string field of a hook input. Unlike jsonu_get_input_string it
 # never reads tool_input, whose fields can share a name with the root's: the Agent
 # tool's full input schema has a cwd of its own (the directory to run the agent in).
-# The sed fallback drops everything from "tool_input" on, since Claude Code writes the
-# root fields first, and scans the whole input only when that finds nothing.
+# The sed fallback drops everything from "tool_input" on: Claude Code writes the session
+# fields first, and a field the root lacks (agent_id on the main thread) must not be
+# found in tool_input or tool_response instead.
 # Usage: CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 jsonu_get_root_string() {
   case "$JSONU_PARSER_MODE" in
@@ -305,10 +306,8 @@ if isinstance(value, str):
 ' "$2" 2>/dev/null
       ;;
     *)
-      _JGR=$(printf '%s' "$1" | sed 's/"tool_input"[[:space:]]*:.*//' | \
-        sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1)
-      [ -n "$_JGR" ] || _JGR=$(jsonu_get_input_string "$1" "$2")
-      printf '%s' "$_JGR"
+      printf '%s' "$1" | tr '\n' ' ' | sed 's/"tool_input"[[:space:]]*:.*//' | \
+        sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1
       ;;
   esac
 }
