@@ -62,12 +62,13 @@ jsonu_path_to_jq_query() {
   printf '%s' "$JSONU_QUERY"
 }
 
-# Read a string field from a Claude Code hook stdin payload.
+# Read a tool parameter from a Claude Code hook stdin payload.
 # Claude Code nests tool parameters under `.tool_input` (e.g. Edit's file_path,
-# Bash's command, Skill's skill arg); only session-level fields (cwd, session_id,
+# Bash's command, Skill's skill arg); session-level fields (cwd, session_id,
 # hook_event_name, tool_name) sit at the root. We look inside `tool_input` FIRST,
-# then fall back to the root — the fallback also covers root-level fields and
-# legacy/flat test payloads, so both shapes work.
+# then fall back to the root, so legacy/flat test payloads work too. A tool
+# parameter can share a session field's name, so read session fields with
+# jsonu_get_root_string instead.
 jsonu_get_input_string() {
   JSONU_INPUT="$1"
   JSONU_KEY="$2"

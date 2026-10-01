@@ -28,7 +28,7 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
     loop's announcement replaced them.
   - The loop announcement now reads: "Stopping before every criterion is met
     returns the remaining criteria to you".
-  - Typed slash commands still start no loop; plan 1b covers them.
+  - Typed slash commands still start no loop (roadmap).
 - The sed fallback JSON escaper maps every control byte, so hook output stays valid
   JSON on hosts without jq or Python.
 - `RAT_PROJECT_ROOT` now re-bases every hook, not only three. When the session is

@@ -7,9 +7,10 @@
 # just like worker sessions. Only the leader session is subject to stop enforcement.
 #
 # teamu_config_is_stale <state_dir>
-# Returns 0 when team-config.json exists and was last written over 2h ago, after
-# removing it (unless a concurrent write refreshed it meanwhile); 1 otherwise.
-# Every team check treats a stale config as no team mode.
+# Returns 0 when team-config.json exists and its mtime is over 2h old, after removing
+# it (unless a concurrent write or touch refreshed it meanwhile); 1 otherwise.
+# The Stop gates, the edit tracker and skill activation treat a stale config as no
+# team mode; the spawn manifest and team-progress tracking do not check staleness.
 #
 # teamu_should_skip_gate <state_dir> <hook-input>
 # Returns:

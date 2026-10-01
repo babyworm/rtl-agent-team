@@ -51,11 +51,20 @@ Practical rules:
 ## Hook Input/Output Protocol
 
 ### Input
-Hooks receive JSON on **stdin** containing event-specific fields. Common fields:
+Hooks receive JSON on **stdin**. Session fields sit at the root of every event's input:
 - `cwd` — current working directory of the user session
+- `session_id`, `hook_event_name`; `prompt_id` when Claude Code sets it
+- `agent_id` — only when the call runs inside a subagent or a teammate
+
+Tool events nest the tool's parameters under `tool_input`:
 - `skill` — skill name (PreToolUse:Skill and PostToolUse:Skill)
 - `file_path` — edited file path (PostToolUse:Edit/Write)
-- `subagent_type` — agent type (SubagentStart/Stop)
+- `command` — shell command (PostToolUse:Bash)
+- `subagent_type` — type of the spawned agent (PreToolUse:Agent and PostToolUse:Agent)
+
+Read session fields with `jsonu_get_root_string` (or `jsonu_session_id`), and tool
+parameters with `jsonu_get_input_string`, which looks in `tool_input` first. A tool
+parameter can share a session field's name: the Agent tool's full schema has its own `cwd`.
 
 Standard preamble to read and parse input:
 ```sh
@@ -70,11 +79,15 @@ CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 
 **PreToolUse/PostToolUse hooks** — emit JSON to stdout:
 ```sh
-# Allow with context injection
+# PreToolUse: allow with context injection (emit_continue)
 printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"msg"}}'
 
 # Deny one tool call; Claude receives the reason (emit_block)
 printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"msg"}}'
+
+# PostToolUse: give Claude context after the tool ran (emit_post_context). The
+# hookEventName must match the event, or Claude Code rejects the output.
+printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"msg"}}'
 ```
 
 **Stop hooks** — emit JSON to stdout:
@@ -134,13 +147,14 @@ printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
 
 ### When to Use emit_continue/emit_block
 
-The helpers in `hooks/lib/hook-output-util.sh` standardize PreToolUse/PostToolUse output:
-- `emit_continue "message"` — allow the tool call, inject `additionalContext`
+The helpers in `hooks/lib/hook-output-util.sh` standardize tool-hook output:
+- `emit_continue "message"` — PreToolUse: allow the tool call, inject `additionalContext` (`hookEventName` `PreToolUse`)
 - `emit_continue ""` — allow silently (no context injection)
-- `emit_block "reason"` — deny the tool call with a reason
+- `emit_block "reason"` — PreToolUse: deny the tool call with a reason
 - `emit_post_context "message"` — PostToolUse: give Claude context after the tool ran (`hookEventName` `PostToolUse`)
+- `emit_post_continue` — a plain `{"continue":true}`, valid for any event
 
-Stop hooks do **not** use these helpers, because Stop hooks block session exit rather than tool calls. They block and notify only through `stopu_gate` (see Output above), which calls `emit_stop_block` or `emit_stop_notice`, and allow the stop with `emit_post_continue`.
+Stop hooks do **not** use the tool-call helpers, because Stop hooks block session exit rather than tool calls. They block and notify only through `stopu_gate` (see Output above), which calls `emit_stop_block` or `emit_stop_notice`, and allow the stop with `emit_post_continue`.
 
 ## Shared Libraries (`hooks/lib/`)
 
@@ -148,8 +162,8 @@ Stop hooks do **not** use these helpers, because Stop hooks block session exit r
 |------|---------|
 | `json-util.sh` | JSON parsing with jq/python/sed fallback chain. `jsonu_detect_parser()`, `jsonu_get_input_string()`, `jsonu_get_root_string()`, `jsonu_session_id()`, `jsonu_get_file_path_string()`, `jsonu_get_file_path_bool()`, `jsonu_get_file_path_num()`, `jsonu_escape()` |
 | `flock-util.sh` | POSIX mkdir-based file locking. `acquire_lock()`, `release_lock()`. Stale lock detection via PID and age |
-| `hook-output-util.sh` | `emit_continue()`, `emit_block()`, `emit_post_context()`, `emit_post_continue()` for PreToolUse/PostToolUse JSON output; `emit_stop_block()`, `emit_stop_notice()` for Stop gates, called through `stopu_gate` |
-| `team-gate-util.sh` | `teamu_should_skip_gate()` — bypass stop gates for worker/coordinator sessions in team mode; `teamu_config_is_stale()` — a config not written for 2 hours is no team mode |
+| `hook-output-util.sh` | `emit_continue()`, `emit_block()` for PreToolUse; `emit_post_context()` for PostToolUse; `emit_post_continue()`, a plain continue for any event, which Stop gates also use to allow; `emit_stop_block()`, `emit_stop_notice()` for Stop gates, called through `stopu_gate` |
+| `team-gate-util.sh` | `teamu_should_skip_gate()` — bypass stop gates for worker/coordinator sessions in team mode; `teamu_config_is_stale()` — a config whose mtime is over 2 hours old is no team mode, and the call removes it. An in-process teammate's TaskUpdate refreshes the mtime (`touch -c` in `rtl-team-progress.sh`) |
 | `posix-util.sh` | `get_mtime_epoch()` — portable file mtime across GNU/BSD stat |
 | `spawn-context-util.sh` | Spawn context manifest writer for Agent spawns |
 | `audit-util.sh` | Audit session init, trace append, prompt save, prune |

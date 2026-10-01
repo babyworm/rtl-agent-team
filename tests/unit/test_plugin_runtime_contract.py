@@ -1029,14 +1029,24 @@ def test_session_id_filter_lists_its_ascii_characters():
 def test_hooks_read_session_fields_from_the_input_root():
     """Best practice 17. jsonu_get_input_string reads tool_input before the root, and a tool
     input can carry a field of the same name (the Agent tool's full schema has its own cwd),
-    so no hook reads a session field through it. Comments do not count; a call continued
-    with a trailing backslash is read as one line."""
+    so it reads only the tool parameters in tool_fields, each named literally. Outside
+    json-util.sh no hook scans the input for a session field by hand, except the scans in
+    hand_scans. Comments do not count; a call continued with a trailing backslash is read
+    as one line."""
+    tool_fields = {"skill", "file_path", "command", "subagent_type", "prompt"}
     session_fields = {"cwd", "session_id", "agent_id", "prompt_id", "hook_event_name",
-                      "transcript_path", "stop_hook_active"}
-    call = re.compile(r"""jsonu_get_input_string\s+(?:"[^"]*"|'[^']*'|\S+)\s+["']?(\w+)["']?""")
+                      "transcript_path", "stop_hook_active", "agent_type", "permission_mode"}
+    # SessionStart and Stop inputs carry no tool_input. The inject hook sources no JSON
+    # parser, and stop_hook_active is a boolean, which jsonu_get_root_string does not read.
+    hand_scans = {("hooks/rtl-orchestrator-inject.sh", "cwd"),
+                  ("hooks/lib/stop-budget-util.sh", "stop_hook_active")}
+    call = re.compile(r"""jsonu_get_input_string\s+(?:"[^"]*"|'[^']*'|\S+)\s+("[^"]*"|'[^']*'|[^\s);|&]+)""")
+    parser = re.compile(r"\b(?:sed|grep|awk|jq|python3?)\b")
+    quoted_field = re.compile(r'\\?"(%s)\\?"' % "|".join(sorted(session_fields)))
     scripts = sorted((REPO_ROOT / "hooks").glob("*.sh")) + sorted((REPO_ROOT / "hooks" / "lib").glob("*.sh"))
-    keys, offenders = [], []
+    keys, scans, offenders = [], set(), []
     for script in scripts:
+        name = script.relative_to(REPO_ROOT).as_posix()
         logical, start = "", None
         for lineno, line in enumerate(script.read_text().splitlines(), 1):
             code = re.sub(r"(^|\s)#.*", "", line)
@@ -1045,10 +1055,16 @@ def test_hooks_read_session_fields_from_the_input_root():
                 logical += code[:-1] + " "
                 continue
             logical += code
-            for key in call.findall(logical):
-                keys.append(key)
-                if key in session_fields:
-                    offenders.append(f"{script.relative_to(REPO_ROOT)}:{start}: {logical.strip()}")
+            for arg in call.findall(logical):
+                keys.append(arg)
+                if arg.strip("\"'") not in tool_fields:
+                    offenders.append(f"{name}:{start}: key not in tool_fields (list a new tool parameter there): {logical.strip()}")
+            if name != "hooks/lib/json-util.sh" and parser.search(logical):
+                for field in quoted_field.findall(logical):
+                    scans.add((name, field))
+                    if (name, field) not in hand_scans:
+                        offenders.append(f"{name}:{start}: session field scanned by hand: {logical.strip()}")
             logical, start = "", None
     assert keys, "no jsonu_get_input_string call found: the scan is broken"
-    assert offenders == [], "session fields read through jsonu_get_input_string:\n" + "\n".join(offenders)
+    assert offenders == [], "read session fields with jsonu_get_root_string:\n" + "\n".join(offenders)
+    assert scans == hand_scans, f"drop the hand scans that are gone: {sorted(hand_scans - scans)}"

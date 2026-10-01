@@ -59,7 +59,8 @@ emit_post_context() {
   exit 0
 }
 
-# Emit a PostToolUse continue response (no additionalContext), then exit 0.
+# Emit a plain continue response (no additionalContext), then exit 0. Valid for any
+# event: tool hooks and Stop gates allow with it.
 # Usage: emit_post_continue
 emit_post_continue() {
   printf '{"continue":true}'
