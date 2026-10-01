@@ -100,6 +100,27 @@ if [ "$(jsonu_get_file_path_string "$SKILL_STATE" "strategy")" = "upstream_chall
   GATE_NOTICE=$UPSTREAM_NOTICE
 fi
 
+# A pipeline skill whose orchestrator waits for the user's decision (an unresolved
+# upper-spec violation, or the orchestrator asked): the next step is the user's, so let
+# Claude stop once per chain instead of pushing the remaining criteria, and leave the
+# ladder where it is. stop-gate.sh shows the autopilot's own notice at the same Stop;
+# the P1-P3 and P4-P5 pipeline states have no other reader. A state file untouched for
+# RAT_STOP_STALE_SECONDS is an abandoned run, as in stop-gate.sh.
+case "$SKILL_NAME" in
+  rat-auto-design|rat-p1p3-spec-uarch|rat-p1p3-spec-uarch-team|rat-p4p5-impl-verify)
+    PIPELINE_STATE="$STATE_DIR/${SKILL_NAME%-team}-state.json"
+    PIPELINE_MTIME=$(get_mtime_epoch "$PIPELINE_STATE")
+    if [ -n "$PIPELINE_MTIME" ] &&
+       [ "$(posix_elapsed_seconds "$PIPELINE_MTIME")" -lt "${RAT_STOP_STALE_SECONDS:-7200}" ] 2>/dev/null &&
+       [ "$(jsonu_get_file_path_string "$PIPELINE_STATE" "status")" != "completed" ] &&
+       { [ "$(jsonu_get_file_path_bool "$PIPELINE_STATE" "upper_spec_blocking")" = "true" ] ||
+         [ "$(jsonu_get_file_path_bool "$PIPELINE_STATE" "orchestration_control.needs_user_decision")" = "true" ]; }; then
+      PIPELINE_NOTICE="[RTL Skill Completion Loop] ${SKILL_NAME} is waiting for your decision (an unresolved upper-spec violation, or the orchestrator asked for one), so the skill completion gate is not asking Claude to continue. Remaining criteria: ${PENDING}. Tell Claude how to proceed."
+      stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$PIPELINE_NOTICE" "$PIPELINE_NOTICE" 0
+    fi
+    ;;
+esac
+
 # The ladder counts attempts, so only a Stop this gate blocks advances it: a
 # notice or a silent Stop leaves the iteration where it is. The reason covers a
 # budget that another session rewrites in between, which turns the call into a block.

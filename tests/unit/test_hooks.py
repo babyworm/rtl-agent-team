@@ -2864,6 +2864,68 @@ class TestSkillCompletionGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert "[RTL Skill Completion Loop - 1/5] rtl-p4s-bugfix primary strategy" in result["reason"]
 
+    # A pipeline whose orchestrator waits for the user's decision. stop-gate.sh tells the user
+    # the autopilot is paused; the skill loop must not push Claude past the decision meanwhile.
+    PIPELINE_DECISIONS = {
+        "upper-spec": {"status": "in_progress", "upper_spec_blocking": True},
+        "orchestrator-asks": {"status": "in_progress",
+                              "orchestration_control": {"needs_user_decision": True}},
+    }
+
+    @pytest.mark.parametrize("skill,state_name", [
+        ("rat-auto-design", "rat-auto-design-state.json"),
+        ("rat-p1p3-spec-uarch", "rat-p1p3-spec-uarch-state.json"),
+        ("rat-p1p3-spec-uarch-team", "rat-p1p3-spec-uarch-state.json"),
+        ("rat-p4p5-impl-verify", "rat-p4p5-impl-verify-state.json"),
+    ])
+    @pytest.mark.parametrize("decision", sorted(PIPELINE_DECISIONS))
+    def test_pipeline_waiting_for_the_user_hands_over(self, tmp_project, skill, state_name, decision):
+        self._write_skill_state(tmp_project, skill=skill, pending="phase-gate-passed|artifacts-written")
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / state_name).write_text(json.dumps(self.PIPELINE_DECISIONS[decision]))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert "decision" not in result
+        assert f"{skill} is waiting for your decision" in result["systemMessage"]
+        assert "phase-gate-passed|artifacts-written" in result["systemMessage"]
+        assert json.loads((state_dir / "skill-active.json").read_text())["iteration"] == 1
+        # Once per chain: the chained Stop is silent and still leaves the ladder alone.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert json.loads((state_dir / "skill-active.json").read_text())["iteration"] == 1
+
+    @pytest.mark.parametrize("env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"}, {"RTL_FORCE_JSON_FALLBACK": "1"}],
+                             ids=["default", "python", "sed"])
+    def test_upper_spec_hand_over_in_every_parser_mode(self, tmp_project, env):
+        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
+        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
+            json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=env)
+        assert "waiting for your decision" in result["systemMessage"]
+
+    @pytest.mark.parametrize("state", [
+        {"status": "completed", "upper_spec_blocking": True},
+        {"status": "in_progress", "upper_spec_blocking": False,
+         "orchestration_control": {"needs_user_decision": False}},
+    ], ids=["completed-run", "no-decision"])
+    def test_pipeline_without_a_pending_decision_keeps_the_loop(self, tmp_project, state):
+        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
+        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(json.dumps(state))
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+
+    def test_abandoned_pipeline_decision_keeps_the_loop(self, tmp_project):
+        # Same staleness bound as stop-gate.sh: an untouched state file is an abandoned run.
+        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
+        state_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
+        state_file.write_text(json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
+        old = time.time() - 3 * 3600
+        os.utime(state_file, (old, old))
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+
+    def test_other_skills_do_not_read_a_pipeline_state(self, tmp_project):
+        self._write_skill_state(tmp_project, skill="rtl-p4-implement", pending="rtl-written")
+        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
+            json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+
 
 class TestSkillActivation:
     """Tests for hooks/rtl-skill-activation.sh."""
