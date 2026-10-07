@@ -156,8 +156,8 @@ document it in a MANDATORY header comment at the top of the function/task:
 | Total Bits | Access Pattern | Implementation | Rationale |
 |-----------|---------------|---------------|-----------|
 | ≤256 | any | Flip-flop array (`logic [W-1:0] name [0:D-1]`) | SRAM overhead exceeds benefit |
-| 257–4096 | 1 R/W | `sram_sp` wrapper | Area-efficient; register acceptable with rationale |
-| 257–4096 | R+W simultaneous | `sram_tp` (single-clock) or `sram_dp` (dual-clock) | Separate read/write ports |
+| 257–4096 | 1 R/W | `spsram` or `spreg` wrapper | Area-efficient; register acceptable with rationale |
+| 257–4096 | R+W simultaneous | `tpreg` (single-clock) or `dpreg` (dual-clock) | Separate read/write ports |
 | >4096 | any | SRAM wrapper (mandatory) | Register file wastes area and power |
 | any | >2 ports | Flip-flop array (register file) | Multi-port SRAM macros are rare in modern processes |
 
