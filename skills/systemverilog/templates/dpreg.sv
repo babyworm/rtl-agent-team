@@ -1,5 +1,5 @@
 // Standard SRAM Wrapper — Dual-Port (DP)
-// Deploy to: rtl/common/sram_dp.sv
+// Deploy to: rtl/common/dpreg.sv and rtl/common/wrapper/dpreg_<depth>_<width>.sv 
 // Separate read and write ports, DUAL clock (`wclk`/`rclk`). Use at clock domain
 // crossings (e.g., async FIFO memory backend, cross-domain shared buffer).
 // Instance naming: `u_mem_{purpose}`.
@@ -7,7 +7,7 @@
 // behavioral block; the behavioral body stays translate_off-guarded.
 // Note: two always_ff blocks writing different signals (`mem` from wclk,
 // `o_rdata` from rclk) is correct — each signal has a single driver.
-module sram_dp #(
+module dpreg #(
   parameter int DEPTH = 256,
   parameter int WIDTH = 32
 ) (
@@ -23,7 +23,23 @@ module sram_dp #(
   output logic [WIDTH-1:0]        o_rdata
 );
 
-  // Behavioral model — SIMULATION ONLY
+// To use ASIC compiled memory 
+`ifdef ASIC_SYNTHESIS
+  `ifdef RAT_MEM_TSMC_N22
+     // ── Compiled SRAM macro (TSMC N22) — replace with the real instance + pin map ──
+     // 
+  `elsif RAT_MEM_SKY130
+    // ── Compiled SRAM macro (SkyWater 130) ──
+    // sky130_sram_1rw1r_... u_macro ( ... );
+  `else
+  $warning("compiled memory is not instanced while synthesis");
+  `endif 
+
+
+// To use behavioral model  
+`else // end of ASIC_SYNTHESIS
+  
+  // Behavioral model — SIMULATION ONLY 
   // synopsys translate_off
   logic [WIDTH-1:0] mem [0:DEPTH-1];
 
@@ -39,5 +55,5 @@ module sram_dp #(
     end
   end
   // synopsys translate_on
-
+`endif // !ASIC_SYNTHESIS
 endmodule
