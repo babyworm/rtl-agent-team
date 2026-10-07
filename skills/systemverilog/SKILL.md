@@ -161,8 +161,9 @@ document it in a MANDATORY header comment at the top of the function/task:
 | >4096 | any | SRAM wrapper (mandatory) | Register file wastes area and power |
 | any | >2 ports | Flip-flop array (register file) | Multi-port SRAM macros are rare in modern processes |
 
-Wrapper code: `templates/sram_sp.sv`, `templates/sram_tp.sv`, `templates/sram_dp.sv` — copy into
-`rtl/common/` if not already present. Parameters `DEPTH`/`WIDTH`; instances named `u_mem_{purpose}`;
+Wrapper code: `templates/spreg.sv`, `templ`templates/tpreg.sv`, `templates/dpreg.sv` — copy into
+`rtl/common/` and `rtl/common/wrapper/<model_name>_<width>_<depth>.sv if not already present. 
+Parameters `DEPTH`/`WIDTH`; instances named `u_mem_{purpose}`;
 synchronous read (1-cycle latency, matches real SRAM macro behavior). Register file (flip-flop
 array) reads are combinational (0-cycle) — use only when downstream logic requires same-cycle data.
 
