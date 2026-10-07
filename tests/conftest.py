@@ -16,6 +16,15 @@ HOOKS_DIR = REPO_ROOT / "hooks"
 SKILLS_DIR = REPO_ROOT / "skills"
 
 
+@pytest.fixture(autouse=True)
+def _default_stop_block_limit(monkeypatch):
+    """Hook tests pin the Stop breaker's default budget and run outside any Claude
+    Code session; only an explicit env changes either."""
+    for name in ("RAT_STOP_BLOCK_LIMIT", "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", "CLAUDE_PROJECT_DIR",
+                 "CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID", "RAT_PROJECT_ROOT"):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture
 def tmp_project(tmp_path):
     """Create a temporary project directory with .rat/state/."""

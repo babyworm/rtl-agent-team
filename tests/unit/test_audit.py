@@ -4,7 +4,7 @@ Validates:
 - audit-util.sh: session init, trace append, prompt save, prune
 - rtl-audit-init.sh: SessionStart hook behavior
 - rtl-audit-subagent.sh: SubagentStart/Stop diagnostic capture
-- rtl-audit-spawn-complete.sh: PostToolUse:TaskCreate trace
+- rtl-audit-spawn-complete.sh: PostToolUse:Agent trace
 - Hook trace extensions in spawn-context, edit-tracker, skill-activation
 """
 
@@ -63,20 +63,26 @@ jsonu_detect_parser
         assert sid_file.exists()
         assert len(sid_file.read_text().strip()) > 0
 
-    def test_init_session_uses_claude_session_id(self, tmp_project):
+    @pytest.mark.parametrize("env, expected", [
+        ({"CLAUDE_CODE_SESSION_ID": "test-session-123"}, "test-session-123"),
+        ({"CLAUDE_SESSION_ID": "legacy-456"}, "legacy-456"),
+        ({"CLAUDE_CODE_SESSION_ID": "test-session-123", "CLAUDE_SESSION_ID": "legacy-456"},
+         "test-session-123"),
+    ])
+    def test_init_session_uses_the_session_id_from_the_env(self, tmp_project, env, expected):
         self._source_and_run(
             tmp_project,
             f'audit_init_session "{tmp_project}"',
-            env={"CLAUDE_SESSION_ID": "test-session-123"},
+            env=env,
         )
         sid_file = tmp_project / ".rat" / "audit" / "session-id.txt"
-        assert sid_file.read_text().strip() == "test-session-123"
+        assert sid_file.read_text().strip() == expected
 
     def test_init_session_creates_prompts_dir(self, tmp_project):
         self._source_and_run(
             tmp_project,
             f'audit_init_session "{tmp_project}"',
-            env={"CLAUDE_SESSION_ID": "sess-001"},
+            env={"CLAUDE_CODE_SESSION_ID": "sess-001"},
         )
         prompts = tmp_project / ".rat" / "audit" / "sess-001" / "prompts"
         assert prompts.is_dir()
@@ -105,7 +111,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}" && '
             f'audit_trace_append "{tmp_project}" '
             f'\'{{"event":"test","agent":"tester","status":"started"}}\'',
-            env={"CLAUDE_SESSION_ID": "trace-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "trace-test"},
         )
         trace = tmp_project / ".rat" / "audit" / "trace-test" / "trace.jsonl"
         assert trace.exists()
@@ -122,7 +128,7 @@ jsonu_detect_parser
             f'audit_trace_append "{tmp_project}" \'{{"event":"e1","agent":"a"}}\' >/dev/null && '
             f'audit_trace_append "{tmp_project}" \'{{"event":"e2","agent":"a"}}\' >/dev/null && '
             f'audit_trace_append "{tmp_project}" \'{{"event":"e3","agent":"a"}}\'',
-            env={"CLAUDE_SESSION_ID": "seq-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "seq-test"},
         )
         trace = tmp_project / ".rat" / "audit" / "seq-test" / "trace.jsonl"
         lines = [json.loads(l) for l in trace.read_text().strip().splitlines()]
@@ -136,7 +142,7 @@ jsonu_detect_parser
             f'audit_init_session "{tmp_project}" && '
             f'SEQ=$(audit_trace_append "{tmp_project}" \'{{"event":"x","agent":"a"}}\') && '
             f'echo "SEQ=$SEQ"',
-            env={"CLAUDE_SESSION_ID": "ret-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "ret-test"},
         )
         assert "SEQ=1" in stdout
 
@@ -145,7 +151,7 @@ jsonu_detect_parser
             tmp_project,
             f'audit_init_session "{tmp_project}" && '
             f'audit_save_prompt "{tmp_project}" "1" "spec-analyst" "Analyze the spec"',
-            env={"CLAUDE_SESSION_ID": "prompt-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "prompt-test"},
         )
         prompt_file = (
             tmp_project
@@ -163,7 +169,7 @@ jsonu_detect_parser
             tmp_project,
             f'audit_init_session "{tmp_project}" && '
             f'audit_save_prompt "{tmp_project}" "42" "agent-x" "content"',
-            env={"CLAUDE_SESSION_ID": "pad-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "pad-test"},
         )
         files = list(
             (tmp_project / ".rat" / "audit" / "pad-test" / "prompts").glob(
@@ -255,7 +261,7 @@ class TestAuditInitHook:
         run_hook(
             self.HOOK,
             {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "init-test"},
+            env={"CLAUDE_CODE_SESSION_ID": "init-test"},
         )
         trace = (
             tmp_project / ".rat" / "audit" / "init-test" / "trace.jsonl"
@@ -330,7 +336,7 @@ class TestAuditSubagentHook:
 
 
 class TestAuditSpawnComplete:
-    """Tests for hooks/rtl-audit-spawn-complete.sh PostToolUse:TaskCreate."""
+    """Tests for hooks/rtl-audit-spawn-complete.sh PostToolUse:Agent."""
 
     HOOK = HOOKS_DIR / "rtl-audit-spawn-complete.sh"
 
@@ -339,6 +345,20 @@ class TestAuditSpawnComplete:
         audit_dir.mkdir(parents=True, exist_ok=True)
         (audit_dir / "session-id.txt").write_text(sid)
         (audit_dir / sid).mkdir(exist_ok=True)
+
+    def test_agent_cwd_does_not_move_the_session_project(self, tmp_project, tmp_path_factory):
+        # The Agent tool's full input schema has a cwd for the spawned agent; the audit
+        # trail stays with the session that spawned it.
+        self._setup_audit(tmp_project)
+        elsewhere = tmp_path_factory.mktemp("agent-cwd")
+        result = run_hook(self.HOOK, {
+            "cwd": str(tmp_project),
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": "rtl-agent-team:spec-analyst", "cwd": str(elsewhere)},
+        })
+        assert "[SPAWN OK] spec-analyst" in result["hookSpecificOutput"]["additionalContext"]
+        assert (tmp_project / ".rat" / "audit" / "spawn-complete-test" / "trace.jsonl").exists()
 
     def test_logs_spawn_complete_for_rtl_agent(self, tmp_project):
         self._setup_audit(tmp_project)
@@ -381,6 +401,30 @@ class TestAuditSpawnComplete:
             {"cwd": str(tmp_project), "subagent_type": "rtl-agent-team:rtl-coder"},
         )
         assert result["continue"] is True
+
+    @pytest.mark.parametrize("name", ['spec"analyst', "spec\\analyst"])
+    def test_spawn_ok_context_escapes_the_agent_name(self, tmp_project, name):
+        """The agent name goes into a JSON string, so the output must stay valid JSON."""
+        self._setup_audit(tmp_project)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "subagent_type": f"rtl-agent-team:{name}"})
+        assert result["hookSpecificOutput"]["additionalContext"] == f"[SPAWN OK] {name}"
+
+    @pytest.mark.parametrize("agent_type", ["general-purpose", "other-plugin:spec-analyst"])
+    def test_real_agent_tool_payload_ignores_other_agents(self, tmp_project, agent_type):
+        """PostToolUse:Agent runs on every spawn. With an audit session open, only an
+        rtl-agent-team: agent is logged."""
+        self._setup_audit(tmp_project)
+        result = run_hook(
+            self.HOOK,
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PostToolUse",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": agent_type, "prompt": "analyze"},
+            },
+        )
+        assert result == {"continue": True}
+        assert not (tmp_project / ".rat" / "audit" / "spawn-complete-test" / "trace.jsonl").exists()
 
 
 # ── Trace extension tests ────────────────────────────────────────────────────
@@ -442,6 +486,66 @@ class TestSpawnContextProjectRootTrace:
         assert manifest.exists()
         m = json.loads(manifest.read_text())
         assert m["project_root"] == str(tmp_project)
+
+    def test_real_agent_tool_payload_writes_manifest(self, tmp_project):
+        """PreToolUse:Agent delivers subagent_type inside tool_input."""
+        result = run_hook(
+            HOOKS_DIR / "rtl-spawn-context.sh",
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Agent",
+                "tool_input": {
+                    "subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+                    "prompt": "implement",
+                },
+            },
+        )
+        assert result["continue"] is True
+        assert (tmp_project / ".rat" / "state" / "spawn-context.json").exists()
+
+    @pytest.mark.parametrize("agent_type", [
+        "general-purpose",
+        "p4-implement-orchestrator",
+        "other-plugin:p4-implement-orchestrator",
+    ])
+    def test_real_agent_tool_payload_ignores_other_agents(self, tmp_project, agent_type):
+        """The hook now runs on every Agent spawn. Only an rtl-agent-team: agent
+        refreshes the manifest, even when another agent shares an orchestrator's name."""
+        result = run_hook(
+            HOOKS_DIR / "rtl-spawn-context.sh",
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": agent_type, "prompt": "implement"},
+            },
+        )
+        assert result == {"continue": True}
+        assert not (tmp_project / ".rat" / "state" / "spawn-context.json").exists()
+
+    @pytest.mark.parametrize("parser_env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"},
+                                            {"RTL_FORCE_JSON_FALLBACK": "1"}],
+                             ids=["default", "python", "sed"])
+    def test_agent_cwd_does_not_move_the_session_project(self, tmp_project, tmp_path_factory,
+                                                         parser_env):
+        """The Agent tool's full input schema has a cwd for the spawned agent. The
+        manifest still belongs to the project of the session that spawns it."""
+        elsewhere = tmp_path_factory.mktemp("agent-cwd")
+        result = run_hook(
+            HOOKS_DIR / "rtl-spawn-context.sh",
+            {
+                "cwd": str(tmp_project),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "Agent",
+                "tool_input": {"subagent_type": "rtl-agent-team:p4-implement-orchestrator",
+                               "prompt": "implement", "cwd": str(elsewhere)},
+            },
+            env=parser_env,
+        )
+        assert result == {"continue": True}
+        manifest = tmp_project / ".rat" / "state" / "spawn-context.json"
+        assert json.loads(manifest.read_text())["project_root"] == str(tmp_project)
 
 
 class TestEditTrackerArtifactTrace:
@@ -537,7 +641,8 @@ class TestSkillActivationTrace:
 
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:arch-review"},
+            {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+             "skill": "rtl-agent-team:arch-review"},
             env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)},
         )
         assert result["continue"] is True
@@ -561,7 +666,8 @@ class TestSkillActivationTrace:
         # rtl-p7-exploration has no completion criteria → no activation → no trace
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p7-exploration"},
+            {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+             "skill": "rtl-agent-team:rtl-p7-exploration"},
             env={"CLAUDE_PLUGIN_ROOT": str(REPO_ROOT)},
         )
         trace = (
@@ -635,8 +741,8 @@ class TestAuditFileStructure:
         assert "SubagentStart" in hooks["hooks"]
         assert "SubagentStop" in hooks["hooks"]
 
-        # PostToolUse:TaskCreate has spawn-complete
-        tc_matchers = [e for e in hooks["hooks"]["PostToolUse"] if e["matcher"] == "TaskCreate"]
+        # PostToolUse:Agent has spawn-complete
+        tc_matchers = [e for e in hooks["hooks"]["PostToolUse"] if e["matcher"] == "Agent"]
         assert len(tc_matchers) == 1
         tc_commands = [h["command"] for h in tc_matchers[0]["hooks"]]
         assert any("rtl-audit-spawn-complete.sh" in c for c in tc_commands)

@@ -55,6 +55,13 @@ def _input_string(json_str, key, env=None):
     return out
 
 
+def _root_string(json_str, key, env=None):
+    """Call jsonu_get_root_string reading JSON from stdin."""
+    script = _preamble(env) + 'INPUT=$(cat)\njsonu_get_root_string "$INPUT" ' + f'"{key}"'
+    out, _ = _run_sh(script, stdin_data=json_str, env_override=env)
+    return out
+
+
 def _file_string(tmp_path, data, key_path, env=None):
     """Write data to a temp JSON file; call jsonu_get_file_path_string."""
     f = tmp_path / "test.json"
@@ -243,6 +250,66 @@ class TestJsonuGetInputString:
         )
         out, _ = _run_sh(script, stdin_data=stdin)
         assert out == ""
+
+
+# ── TestJsonuGetRootString ────────────────────────────────────────────────────
+
+class TestJsonuGetRootString:
+    """Tests for jsonu_get_root_string: session fields come from the hook input's root
+    only, never from tool_input or tool_response (best practice 17)."""
+
+    # Claude Code 2.1.282 writes the session fields first, then the event fields.
+    PAYLOAD = {
+        "session_id": "s-1", "transcript_path": "/t/s-1.jsonl", "cwd": "/proj",
+        "permission_mode": "default", "agent_id": "t-1", "hook_event_name": "PostToolUse",
+        "tool_name": "Edit", "tool_input": {"file_path": "x.sv", "cwd": "/agent", "agent_id": "x"},
+        "tool_response": {"filePath": "x.sv", "agent_id": "y"},
+    }
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    @pytest.mark.parametrize("key, expected", [("cwd", "/proj"), ("agent_id", "t-1"), ("session_id", "s-1")])
+    def test_root_key_before_tool_input(self, env, key, expected):
+        assert _root_string(json.dumps(self.PAYLOAD), key, env) == expected
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_key_only_in_tool_input_prints_nothing(self, env):
+        # The main thread carries no agent_id; a tool_input field must not stand in for it.
+        stdin = json.dumps({"session_id": "s-1", "cwd": "/proj", "hook_event_name": "PostToolUse",
+                            "tool_name": "TaskUpdate", "tool_input": {"taskId": "1", "agent_id": "x"}})
+        assert _root_string(stdin, "agent_id", env) == ""
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_key_only_in_tool_response_prints_nothing(self, env):
+        stdin = json.dumps({"session_id": "s-1", "cwd": "/proj", "hook_event_name": "PostToolUse",
+                            "tool_name": "TaskUpdate", "tool_input": {"taskId": "1"},
+                            "tool_response": {"agent_id": "x"}})
+        assert _root_string(stdin, "agent_id", env) == ""
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    def test_missing_key_prints_nothing(self, env):
+        assert _root_string(json.dumps({"session_id": "s-1", "cwd": "/proj"}), "agent_id", env) == ""
+        assert _root_string("{}", "cwd", env) == ""
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    @pytest.mark.parametrize("key, expected", [("cwd", "/proj"), ("agent_id", "")])
+    def test_nested_objects_and_escaped_quotes_do_not_leak(self, env, key, expected):
+        # Escaped quotes in other values and nested objects carrying the key leave the root read alone.
+        stdin = json.dumps({
+            "session_id": "s-1", "transcript_path": '/t/"quoted".jsonl', "cwd": "/proj",
+            "hook_event_name": "PostToolUse", "tool_name": "Agent",
+            "tool_input": {"prompt": 'set "cwd": "/evil" and "agent_id": "x"',
+                           "edits": [{"cwd": "/a"}], "meta": {"agent_id": "y"}},
+            "tool_response": {"result": {"cwd": "/z", "agent_id": "z"}},
+        })
+        assert _root_string(stdin, key, env) == expected
+
+    @pytest.mark.parametrize("env", PARSER_ENVS)
+    @pytest.mark.parametrize("key, expected", [("cwd", "/proj"), ("agent_id", "")])
+    def test_multi_line_input(self, env, key, expected):
+        stdin = json.dumps({"session_id": "s-1", "cwd": "/proj", "hook_event_name": "PostToolUse",
+                            "tool_input": {"cwd": "/agent", "agent_id": "x"}}, indent=2)
+        assert "\n" in stdin
+        assert _root_string(stdin, key, env) == expected
 
 
 # ── TestJsonuGetFilePathString ────────────────────────────────────────────────

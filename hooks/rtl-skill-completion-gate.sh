@@ -1,12 +1,22 @@
 #!/bin/sh
-# RTL Skill Completion Gate: blocks session exit if an RTL skill is active without completion.
+# RTL Skill Completion Gate: keeps Claude working while an active RTL skill has pending
+# completion criteria. When a pipeline skill's orchestrator waits for the user's decision,
+# it hands over to the user instead.
 #
 # State file: .rat/state/skill-active.json
 # Contains: skill name, iteration count, pending criteria, all_complete flag
 #
-# If skill is active and not all_complete, session exit is BLOCKED and iteration incremented.
+# If skill is active and not all_complete, the gate blocks the stop and increments the iteration.
 # max_iterations is treated as primary retry budget (N): N -> 2N -> last-chance -> user escalation.
+# At user escalation the gate lets Claude stop and shows the escalation to the user once per
+# chain, unless compliance-gate-util.sh set an upstream challenge, which blocks at any stage.
 # Staleness check: state older than 2 hours is ignored (prevents blocking new sessions).
+#
+# Every block goes through hooks/lib/stop-budget-util.sh: after RAT_STOP_BLOCK_LIMIT blocks
+# without progress (no change in the pending criteria) in one continuation chain, the gate
+# lets Claude stop and shows the user a notice. From the chain's Stop STOPU_CHAIN_CAP + 1 on,
+# whichever hooks blocked the earlier Stops, the gate shows the notice instead of blocking.
+# Only a Stop the gate blocks advances the ladder: a notice or a silent Stop is no attempt.
 
 INPUT=$(cat)
 
@@ -15,25 +25,31 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/stop-budget-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/compliance-gate-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 
-if teamu_should_skip_gate "$STATE_DIR"; then
+if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
   emit_post_continue
 fi
+STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" skill-completion)
+stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
 
 # If no active skill state, allow exit
 if [ ! -f "$SKILL_STATE" ]; then
+  stopu_clear skill-completion "$STATE_DIR"
   emit_post_continue
 fi
 
@@ -48,6 +64,7 @@ if [ -n "$STARTED_AT" ]; then
     if [ "$AGE" -gt 7200 ]; then
       # Stale state, clean up and allow exit
       rm -f "$SKILL_STATE"
+      stopu_clear skill-completion "$STATE_DIR"
       emit_post_continue
     fi
   fi
@@ -70,10 +87,48 @@ fi
 # If all complete, clean up and allow exit
 if [ "$COMPLETED" = "true" ]; then
   rm -f "$SKILL_STATE"
+  stopu_clear skill-completion "$STATE_DIR"
   emit_post_continue
 fi
 
 DYNAMIC_PROMPT=$(jsonu_get_file_path_string "$SKILL_STATE" "dynamic_prompt")
+# Progress means the pending criteria changed; the ladder counts attempts across turns.
+SKILL_PROGRESS="$SKILL_NAME|$PENDING"
+SKILL_NOTICE="[RTL Skill Completion Loop] ${SKILL_NAME} still has pending criteria: ${PENDING}. The skill completion gate is not asking Claude to continue in this turn. Say continue to resume."
+# On an upstream challenge the user's decision is about the upstream requirement, not about continuing.
+UPSTREAM_NOTICE="[Upstream Challenge] ${SKILL_NAME}: the compliance checker found an iron requirement that cannot be met. The skill completion gate is not asking Claude to continue in this turn. Review the Upstream Challenge Report (or ask Claude for it) and decide whether to amend the upstream requirement. Remaining criteria: ${PENDING}."
+GATE_NOTICE=$SKILL_NOTICE
+if [ "$(jsonu_get_file_path_string "$SKILL_STATE" "strategy")" = "upstream_challenge" ]; then
+  GATE_NOTICE=$UPSTREAM_NOTICE
+fi
+
+# A pipeline skill whose orchestrator waits for the user's decision (an unresolved
+# upper-spec violation, or the orchestrator asked): the next step is the user's, so let
+# Claude stop once per chain instead of pushing the remaining criteria, and leave the
+# ladder where it is. stop-gate.sh shows the autopilot's own notice at the same Stop;
+# the P1-P3 and P4-P5 pipeline states have no other reader. A state file untouched for
+# RAT_STOP_STALE_SECONDS is an abandoned run, as in stop-gate.sh.
+case "$SKILL_NAME" in
+  rat-auto-design|rat-p1p3-spec-uarch|rat-p1p3-spec-uarch-team|rat-p4p5-impl-verify)
+    PIPELINE_STATE="$STATE_DIR/${SKILL_NAME%-team}-state.json"
+    PIPELINE_MTIME=$(get_mtime_epoch "$PIPELINE_STATE")
+    if [ -n "$PIPELINE_MTIME" ] &&
+       [ "$(posix_elapsed_seconds "$PIPELINE_MTIME")" -lt "${RAT_STOP_STALE_SECONDS:-7200}" ] 2>/dev/null &&
+       [ "$(jsonu_get_file_path_string "$PIPELINE_STATE" "status")" != "completed" ] &&
+       { [ "$(jsonu_get_file_path_bool "$PIPELINE_STATE" "upper_spec_blocking")" = "true" ] ||
+         [ "$(jsonu_get_file_path_bool "$PIPELINE_STATE" "orchestration_control.needs_user_decision")" = "true" ]; }; then
+      PIPELINE_NOTICE="[RTL Skill Completion Loop] ${SKILL_NAME} is waiting for your decision (an unresolved upper-spec violation, or the orchestrator asked for one), so the skill completion gate is not asking Claude to continue. Remaining criteria: ${PENDING}. Tell Claude how to proceed."
+      stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$PIPELINE_NOTICE" "$PIPELINE_NOTICE" 0
+    fi
+    ;;
+esac
+
+# The ladder counts attempts, so only a Stop this gate blocks advances it: a
+# notice or a silent Stop leaves the iteration where it is. The reason covers a
+# budget that another session rewrites in between, which turns the call into a block.
+if [ "$(stopu_decision skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS")" != "block" ]; then
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "[RTL Skill Completion Loop] ${SKILL_NAME} in progress. Remaining criteria: ${PENDING}." "$GATE_NOTICE"
+fi
 
 # Lock state file for atomic read → compute → write of mutable fields
 STAGE=""
@@ -113,6 +168,7 @@ if acquire_lock "$SKILL_STATE"; then
     STAGE="last_chance"
   else
     STAGE="user_escalated"
+    NEXT_ITER=$ITERATION  # the escalation blocks nothing, so it uses no attempt
   fi
 
   # Preserve TWO_X_LIMIT for stage message (backward compat)
@@ -149,7 +205,7 @@ if [ "$_CURRENT_STRATEGY" = "upstream_challenge" ]; then
   if [ -n "$DYNAMIC_PROMPT" ]; then
     STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
   fi
-  emit_stop_block "$STAGE_MSG"
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$UPSTREAM_NOTICE"
 fi
 
 MAX_ITER=${MAX_ITER:-5}
@@ -172,14 +228,20 @@ case "$STAGE" in
     fi
     ;;
   user_escalated)
-    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} last_chance failed. User decision required. Remaining criteria: ${PENDING}."
+    STAGE_MSG="[RTL Skill Completion Loop - escalation] ${SKILL_NAME} has used its automatic attempts and still has pending criteria: ${PENDING}. User decision required. The skill completion gate is not asking Claude to continue, and shows this once per turn until the criteria are met."
     if [ -n "$DYNAMIC_PROMPT" ]; then
-      STAGE_MSG="${STAGE_MSG} Suggested context: ${DYNAMIC_PROMPT}"
+      STAGE_MSG="${STAGE_MSG} Compliance context: ${DYNAMIC_PROMPT}"
     fi
+    STAGE_MSG="${STAGE_MSG} Tell Claude how to proceed, or end the loop: rm $(shq "$SKILL_STATE")"
     ;;
   *)
     STAGE_MSG="[RTL Skill Completion Loop] ${SKILL_NAME} in progress. Remaining criteria: ${PENDING}."
     ;;
 esac
 
-emit_stop_block "$STAGE_MSG"
+# A user decision is the next step: let Claude stop and show the escalation to the
+# user once per chain (limit 0: the breaker hands over now and stays silent after).
+if [ "$STAGE" = "user_escalated" ]; then
+  stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$STAGE_MSG" 0
+fi
+stopu_gate skill-completion "$STATE_DIR" "$STOP_CHAIN" "$SKILL_PROGRESS" "$STAGE_MSG" "$SKILL_NOTICE"

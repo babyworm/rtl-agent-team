@@ -7,6 +7,96 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Fixed — hook enforcement
+
+- Stop gates now keep Claude working. `emit_stop_block` emitted `continue: false`
+  next to `decision: "block"`; Claude Code gives `continue: false` precedence, so
+  the Rule 5 verify gate, the skill completion loop, the autopilot ladder and the
+  Phase 6 cascade gate ended the turn and dropped their reason instead of returning
+  it to Claude (verified live on Claude Code 2.1.282). PreToolUse denies no longer
+  halt the whole turn either.
+  - While a background agent or workflow is in flight, the Stop gates let the Stop
+    through instead, and enforce at the Stop of the turn its completion starts.
+    Claude Code 2.1.282 runs agents in the background by default, so the leader's
+    Stop comes while its orchestrator still works. Shells, monitors, MCP tasks,
+    teammates and scheduled crons do not pause the gates.
+  - A gate that blocks while Claude keeps handing the work to new background agents
+    still hands the decision to the user after the usual blocks without progress.
+- The spawn-context and audit spawn-complete hooks now match the `Agent` tool; they
+  were registered on `TaskCreate` and never saw an agent spawn.
+- Skill completion loops now start only after the Skill tool returns
+  (PostToolUse:Skill), which is when the skill's prompt has loaded. They used to
+  start at PreToolUse, so a Skill call that the P5B gate denied, or that the user
+  rejected, still left a loop pushing Claude toward that skill.
+  - P5B denials now ask the user before running P5A.
+  - The P5B gate check runs before the bootstrap writes compliance state. A denied
+    call no longer switches the compliance phase or deletes the compliance report.
+  - PreToolUse now always delivers phase-prerequisite warnings. Before, a starting
+    loop's announcement replaced them.
+  - The loop announcement now reads: "Stopping before every criterion is met
+    returns the remaining criteria to you".
+  - Typed slash commands still start no loop (roadmap).
+- The sed fallback JSON escaper maps every control byte, so hook output stays valid
+  JSON on hosts without jq or Python.
+- `RAT_PROJECT_ROOT` now re-bases every hook, not only three. When the session is
+  elsewhere, the coverage and Phase 6 gates and skill activation also read the
+  override root.
+- Team mode now writes session-scoped tracking files and keys audit directories by
+  the real session id. A Skill call from an in-process teammate (one that carries an
+  `agent_id`) no longer drives the leader's completion loop.
+- A team config goes stale after 2 hours without teammate activity. The hooks
+  measure this from the file's mtime.
+  - Only a TaskUpdate from an in-process teammate refreshes the file, that is, one
+    with the recorded leader's session id and an `agent_id`.
+  - TaskUpdate is not team-only: every Claude 4.x session keeps its todo list with
+    it. So neither the leader's own main thread nor any other session refreshes the
+    config. Otherwise a leader session left open after an abandoned run would keep
+    other sessions' gates off.
+  - Tmux teammates are separate sessions, so they do not refresh the config until a
+    hook-recorded team exists (roadmap).
+  - Hooks no longer read the model-written `created_at`. It could be missing, a
+    placeholder, or in local time, and then it never expired.
+- RAT hooks now work while the session is in a project subdirectory.
+  - Claude Code reports the session's current directory as the hook `cwd`, and the
+    hooks looked for `.rat` only there.
+  - So after a `cd rtl`, the edit tracker recorded nothing and the verify gate let
+    unverified RTL through.
+  - Hooks now walk up to the Claude Code project root.
+- Team mode no longer exempts the leader from the Stop gates.
+  - The team skills wrote a literal `<current_session_id>` placeholder, and the
+    hooks compared it with `CLAUDE_SESSION_ID`, which Claude Code never sets.
+  - So while a team config existed, every session skipped all five Stop gates, the
+    leader included.
+  - The skills now write `${CLAUDE_SESSION_ID}`, which Claude Code substitutes, and
+    the hooks read the input's `session_id`. A placeholder leader enforces the gates
+    for every session.
+
+### Added
+
+- A no-progress breaker for Stop gates (`hooks/lib/stop-budget-util.sh`).
+  - A gate lets Claude stop and shows the user a notice in two cases:
+    - after `RAT_STOP_BLOCK_LIMIT` (default 3) blocks without progress in one
+      continuation chain;
+    - from the chain's seventh Stop on, whichever hooks blocked the earlier Stops.
+      This keeps RAT gates inside Claude Code's cap of 8. When
+      `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` is set, the bound follows it: two Stops
+      under it (at least 1), and none when it is 0.
+  - Escalations to the user (the autopilot and skill-loop ladders, upper-spec
+    violations) show their notice at once, once per chain.
+  - The coverage-exclusion gate asks once per chain.
+
+### Changed
+
+- The RTL verify gate no longer tells the model to create the waiver itself; the
+  waiver is the user's decision.
+- The edit tracker records an RTL path from a Bash command as an absolute path,
+  resolved against the session's current directory.
+- An agent spawned with `isolation: "worktree"` now counts as the main project: the
+  hooks resolve the project from `CLAUDE_PROJECT_DIR`. Its RTL edits are tracked in
+  the main project's state, so the leader's verify gate asks for their verification,
+  and they remove the main project's `rtl-verify-done` or waiver. A discarded
+  worktree trial can therefore cause a false block (roadmap).
+
 ## [0.14.6] - 2026-08-24
 
 ### Fixed — synthesis and equivalence execution

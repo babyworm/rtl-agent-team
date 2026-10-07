@@ -1,8 +1,7 @@
 #!/bin/sh
-# RTL Spawn Context Hook: PreToolUse:TaskCreate
-# Refreshes spawn-context.json when an agent is spawned directly via Task()
-# without going through a Skill. If TaskCreate is not a valid matcher,
-# this hook simply never fires (no harm).
+# RTL Spawn Context Hook: PreToolUse:Agent
+# Refreshes spawn-context.json whenever an rtl-agent-team orchestrator (PHASE_MAP below)
+# is spawned through the Agent tool, including direct spawns that bypass a Skill.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -13,16 +12,11 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")  # the session's cwd, not the agent's
 [ -z "$CWD" ] && CWD="$(pwd)"
-# Optional override for external drivers whose session CWD differs from the
-# real project root (see hooks/lib/rat-dir-util.sh). The -d guard makes a
-# bogus env value fall back to the legacy CWD. Needed here beyond the
-# rat_project_dir override: sctx_write_manifest resolves artifact existence,
-# quality gates, and the setup marker directly against $CWD.
-[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # Extract subagent_type from tool input.
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")

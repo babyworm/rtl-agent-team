@@ -290,7 +290,8 @@ sctx_write_manifest() {
   # env override so an external Workflow driver (whose subagent CWD is not the
   # user project) can ship the real root to spawned agents via the manifest.
   # The -d guard matches hooks/lib/rat-dir-util.sh: a bogus (non-directory)
-  # override falls back to the session CWD, same as unset/empty.
+  # override falls back to the CWD the hook passes, same as unset/empty. Hooks
+  # pass the project root, re-based on the marker rat_project_dir found.
   SCTX_PROJECT_ROOT="$SCTX_CWD"
   [ -d "${RAT_PROJECT_ROOT:-}" ] && SCTX_PROJECT_ROOT="$RAT_PROJECT_ROOT"
   SCTX_PROJECT_ROOT_ESC=$(printf '%s' "$SCTX_PROJECT_ROOT" | sed 's/\\/\\\\/g; s/"/\\"/g')

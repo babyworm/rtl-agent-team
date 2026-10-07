@@ -10,18 +10,18 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-# External Workflow drivers: honor RAT_PROJECT_ROOT so project-relative scans
-# (cascade downstream checks, validator report resolution, tracked RTL paths)
-# resolve against the real project root, matching the other hooks' guard.
-[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"
+SESSION_CWD=$CWD  # a relative path in a Bash command is relative to the session's directory
 
 # Load flock utility for concurrent access protection
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/team-gate-util.sh"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # --- Shared helpers (used by both Bash and Edit/Write paths) ---
 
@@ -111,16 +111,18 @@ PY
 }
 
 # Set up STATE_DIR and TRACK_FILE with team mode awareness.
-# Sets globals: STATE_DIR, TRACK_FILE
+# Sets globals: STATE_DIR, TRACK_FILE, SESSION_ID
 _setup_tracking() {
   STATE_DIR="$RAT_DIR/state"
   mkdir -p "$STATE_DIR"
   TRACK_FILE="$STATE_DIR/rtl-modified-files.txt"
+  SESSION_ID=$(jsonu_session_id "$INPUT")
   _ST_TEAM_CONFIG="$STATE_DIR/team-config.json"
-  if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$_ST_TEAM_CONFIG" ]; then
+  # A stale config is no team mode (teamu_config_is_stale removes it).
+  if [ -n "$SESSION_ID" ] && [ -f "$_ST_TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
     _ST_TEAM_MODE=$(jsonu_get_file_path_bool "$_ST_TEAM_CONFIG" "team_mode")
     if [ "$_ST_TEAM_MODE" = "true" ]; then
-      TRACK_FILE="$STATE_DIR/rtl-modified-files-${CLAUDE_SESSION_ID}.txt"
+      TRACK_FILE="$STATE_DIR/rtl-modified-files-${SESSION_ID}.txt"
     fi
   fi
 }
@@ -247,6 +249,11 @@ if [ -z "$FILE_PATH" ]; then
     printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"ppa-loop scope edit — skipping rtl-edit staleness"}}'
     exit 0
   fi
+  # Record each path absolute, as an Edit reports it: a relative path names a file in the
+  # session's directory, which a `cd` may have moved below the project root.
+  BASH_RTL_FILES=$(printf '%s\n' "$BASH_RTL_FILES" | RAT_SESSION_CWD="${SESSION_CWD%/}" awk '
+    substr($0, 1, 1) != "/" { sub(/^(\.\/)+/, ""); $0 = ENVIRON["RAT_SESSION_CWD"] "/" $0 }
+    { print }')
   _track_and_invalidate "$BASH_RTL_FILES"
   _prepare_gate_output
   printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"

@@ -9,6 +9,7 @@ These tests focus on runtime behavior as a Claude Code plugin:
 import json
 import os
 import re
+import string
 import subprocess
 from pathlib import Path
 
@@ -106,8 +107,8 @@ class TestHookRuntimeContract:
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-phase-state-bootstrap.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
         ]
-        # TaskCreate matcher: spawn-context (experimental)
-        assert entries[1]["matcher"] == "TaskCreate"
+        # Agent matcher: spawn-context
+        assert entries[1]["matcher"] == "Agent"
         tc_commands = [h["command"] for h in entries[1]["hooks"]]
         assert tc_commands == [
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-spawn-context.sh"',
@@ -116,7 +117,11 @@ class TestHookRuntimeContract:
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in entries]
-        assert matchers == ["Edit|Write|Bash", "TaskUpdate", "TaskCreate"]
+        assert matchers == ["Skill", "Edit|Write|Bash", "TaskUpdate", "Agent"]
+        # Skill matcher: the completion loop starts once the call ran
+        assert [h["command"] for h in entries[0]["hooks"]] == [
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
+        ]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]
@@ -139,38 +144,87 @@ class TestHookRuntimeContract:
                     assert isinstance(timeout, int)
                     assert 1 <= timeout <= 10
 
+    def test_python_heavy_stop_gates_get_ten_seconds(self, hooks):
+        # In python parser mode the skill completion gate and stop-gate.sh each start python
+        # about two dozen times on a blocking Stop, and a Stop hook that times out fails open.
+        # Every other hook keeps 3 seconds.
+        slow = {"rtl-skill-completion-gate.sh", "stop-gate.sh"}
+        timeouts = {}
+        for event_entries in hooks["hooks"].values():
+            for entry in event_entries:
+                for hook in entry.get("hooks", []):
+                    script = re.search(r"/hooks/([a-z0-9-]+\.sh)", hook["command"]).group(1)
+                    timeouts.setdefault(script, set()).add(hook["timeout"])
+        assert {s: t for s, t in timeouts.items() if s in slow} == {s: {10} for s in slow}
+        assert all(t == {3} for s, t in timeouts.items() if s not in slow), timeouts
+
+
+def _hooks_resolving_rat_dir() -> list:
+    """Every hook that calls rat_project_dir, read from hooks/ so that a new hook is covered."""
+    return sorted(
+        path.name for path in (REPO_ROOT / "hooks").glob("*.sh")
+        if any(re.search(r"\brat_project_dir\b", line)
+               for line in path.read_text().splitlines() if not line.lstrip().startswith("#"))
+    )
+
+
+RAT_DIR_HOOKS = _hooks_resolving_rat_dir()
+
 
 class TestSpawnContextProjectRootContract:
     """v0.13.x Workflow-drivability contract: the spawn-context manifest ships
-    project_root (RAT_PROJECT_ROOT override, CWD fallback) and the two
-    manifest-writing hooks honor the override for paths not routed through
-    rat_project_dir()."""
+    project_root (RAT_PROJECT_ROOT override, CWD fallback), and every hook honors
+    the override for paths not routed through rat_project_dir(). rat_project_dir()
+    applies the override, and each hook that calls it re-bases CWD on the marker it
+    returns before it uses CWD for anything else. The same re-base moves CWD to the
+    project root when the session has cd'd into a subdirectory."""
 
     SPAWN_CTX_UTIL = REPO_ROOT / "hooks" / "lib" / "spawn-context-util.sh"
-    OVERRIDE_LINE = '[ -d "${RAT_PROJECT_ROOT:-}" ] && CWD="$RAT_PROJECT_ROOT"'
+    REBASE_LINE = 'CWD=$(dirname "$RAT_DIR")'
+    # Any read of CWD: "$CWD", "$CWD/...", "${CWD%/}".
+    CWD_READ = re.compile(r"\$\{?CWD\b")
+    # Before the re-base CWD is the session's directory. Only its default, the
+    # RAT-directory guard and resolve, and the tracker's copy for Bash paths read it.
+    SESSION_CWD_READ = re.compile(
+        r'^\[ -z "\$CWD" \]|\brat_project_dir\b|\brat_is_project\b|^SESSION_CWD=\$CWD\b'
+    )
 
     def test_manifest_emits_project_root_field(self):
         content = self.SPAWN_CTX_UTIL.read_text()
         assert '"project_root":"$SCTX_PROJECT_ROOT_ESC"' in content, (
             "spawn-context manifest must emit a project_root field"
         )
-        # Resolution: -d guarded env override, session-CWD fallback (mirrors
-        # rat-dir-util.sh semantics).
+        # Resolution: -d guarded env override, else the CWD the hook passes, which
+        # the hook has re-based on the project root (mirrors rat-dir-util.sh).
         assert 'SCTX_PROJECT_ROOT="$SCTX_CWD"' in content
         assert (
             '[ -d "${RAT_PROJECT_ROOT:-}" ] && SCTX_PROJECT_ROOT="$RAT_PROJECT_ROOT"'
             in content
         )
 
-    @pytest.mark.parametrize(
-        "hook_name", ["rtl-spawn-context.sh", "rtl-phase-state-bootstrap.sh"]
-    )
-    def test_manifest_hooks_honor_project_root_override(self, hook_name):
-        content = (REPO_ROOT / "hooks" / hook_name).read_text()
-        assert self.OVERRIDE_LINE in content, (
-            f"{hook_name} must apply the -d guarded RAT_PROJECT_ROOT CWD "
-            "override right after CWD resolution"
+    def test_the_manifest_writing_hooks_are_checked(self):
+        # An empty parameter set would skip the check below instead of failing it.
+        assert {"rtl-spawn-context.sh", "rtl-phase-state-bootstrap.sh"} <= set(RAT_DIR_HOOKS)
+
+    @pytest.mark.parametrize("hook_name", RAT_DIR_HOOKS)
+    def test_hooks_honor_project_root_override(self, hook_name):
+        code = [
+            (i, line.strip())
+            for i, line in enumerate((REPO_ROOT / "hooks" / hook_name).read_text().splitlines())
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        resolve = next(i for i, line in code if re.search(r"\brat_project_dir\b", line))
+        rebase = next((i for i, line in code if line.startswith(self.REBASE_LINE)), None)
+        assert rebase is not None and rebase > resolve, (
+            f"{hook_name} must re-base CWD after resolving RAT_DIR: {self.REBASE_LINE}"
         )
+        # From the top of the file: a path built before the resolve is just as wrong,
+        # and "$CWD" passed to a helper builds its paths inside the helper.
+        early = [
+            line for i, line in code
+            if i < rebase and self.CWD_READ.search(line) and not self.SESSION_CWD_READ.search(line)
+        ]
+        assert not early, f"{hook_name} reads the session's CWD before re-basing it: {early}"
 
 
 class TestPluginManifestRuntimeContract:
@@ -958,3 +1012,76 @@ class TestPipelineRuleCoverage:
             f"Rules declared in CLAUDE.md but missing from the rtl-orchestrate body: "
             f"{sorted(declared - body)}"
         )
+
+
+def test_team_skills_record_the_real_leader_session():
+    offenders = [p.parent.name for p in SKILLS_DIR.glob("*/SKILL.md") if "<current_session_id>" in p.read_text()]
+    assert offenders == []
+    # Every occurrence, not one per file: rtl-p4-block-parallel writes two.
+    values = [
+        (p.parent.name, value)
+        for p in SKILLS_DIR.glob("*/SKILL.md")
+        for value in re.findall(r'"leader_session_id":\s*"([^"]*)"', p.read_text())
+    ]
+    assert values and all(value == "${CLAUDE_SESSION_ID}" for _, value in values), values
+
+
+def test_session_id_filter_lists_its_ascii_characters():
+    """Ranges such as a-z and classes such as [:alnum:] follow the locale: bash in a UTF-8
+    locale matches é with a-z, while dash compares bytes, so Linux CI (dash) cannot catch
+    a range behaviorally. The filter must spell out every character it allows."""
+    text = (REPO_ROOT / "hooks" / "lib" / "json-util.sh").read_text()
+    body = re.search(r"^jsonu_session_id\(\) \{\n(.*?)^\}", text, re.S | re.M).group(1)
+    brackets = re.findall(r"\[!([^\]]*)\]", body)
+    assert len(brackets) == 1, brackets
+    allowed = brackets[0]
+    assert "[:" not in allowed, allowed
+    assert "-" not in allowed[:-1], f"a '-' before the last position makes a range: {allowed}"
+    assert sorted(allowed) == sorted(string.digits + string.ascii_letters + "._-"), allowed
+
+
+def test_hooks_read_session_fields_from_the_input_root():
+    """Best practice 17. jsonu_get_input_string reads tool_input before the root, and a tool
+    input can carry a field of the same name (the Agent tool's full schema has its own cwd),
+    so it reads only the tool parameters in tool_fields, each named literally. Outside
+    json-util.sh no hook scans the input for a session field by hand, except the scans in
+    hand_scans. Comments do not count; a call continued with a trailing backslash is read
+    as one line."""
+    tool_fields = {"skill", "file_path", "command", "subagent_type", "prompt"}
+    session_fields = {"cwd", "session_id", "agent_id", "prompt_id", "hook_event_name",
+                      "transcript_path", "stop_hook_active", "agent_type", "permission_mode",
+                      "background_tasks", "session_crons"}
+    # SessionStart and Stop inputs carry no tool_input. The inject hook sources no JSON
+    # parser; stop_hook_active is a boolean and background_tasks an array of objects, and
+    # jsonu_get_root_string reads neither.
+    hand_scans = {("hooks/rtl-orchestrator-inject.sh", "cwd"),
+                  ("hooks/lib/stop-budget-util.sh", "stop_hook_active"),
+                  ("hooks/lib/stop-budget-util.sh", "background_tasks")}
+    call = re.compile(r"""jsonu_get_input_string\s+(?:"[^"]*"|'[^']*'|\S+)\s+("[^"]*"|'[^']*'|[^\s);|&]+)""")
+    parser = re.compile(r"\b(?:sed|grep|awk|jq|python3?)\b")
+    quoted_field = re.compile(r'\\?"(%s)\\?"' % "|".join(sorted(session_fields)))
+    scripts = sorted((REPO_ROOT / "hooks").glob("*.sh")) + sorted((REPO_ROOT / "hooks" / "lib").glob("*.sh"))
+    keys, scans, offenders = [], set(), []
+    for script in scripts:
+        name = script.relative_to(REPO_ROOT).as_posix()
+        logical, start = "", None
+        for lineno, line in enumerate(script.read_text().splitlines(), 1):
+            code = re.sub(r"(^|\s)#.*", "", line)
+            start = start or lineno
+            if code.endswith("\\"):
+                logical += code[:-1] + " "
+                continue
+            logical += code
+            for arg in call.findall(logical):
+                keys.append(arg)
+                if arg.strip("\"'") not in tool_fields:
+                    offenders.append(f"{name}:{start}: key not in tool_fields (list a new tool parameter there): {logical.strip()}")
+            if name != "hooks/lib/json-util.sh" and parser.search(logical):
+                for field in quoted_field.findall(logical):
+                    scans.add((name, field))
+                    if (name, field) not in hand_scans:
+                        offenders.append(f"{name}:{start}: session field scanned by hand: {logical.strip()}")
+            logical, start = "", None
+    assert keys, "no jsonu_get_input_string call found: the scan is broken"
+    assert offenders == [], "read session fields with jsonu_get_root_string:\n" + "\n".join(offenders)
+    assert scans == hand_scans, f"drop the hand scans that are gone: {sorted(hand_scans - scans)}"

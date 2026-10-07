@@ -1321,12 +1321,13 @@ class TestHooksJsonMatrix:
         "SessionStart": ["rtl-orchestrator-inject.sh", "rtl-audit-init.sh"],
         "PreToolUse": {
             "Skill": ["rtl-phase-state-bootstrap.sh", "rtl-skill-activation.sh"],
-            "TaskCreate": ["rtl-spawn-context.sh"],
+            "Agent": ["rtl-spawn-context.sh"],
         },
         "PostToolUse": {
+            "Skill": ["rtl-skill-activation.sh"],
             "Edit|Write|Bash": ["rtl-edit-tracker.sh"],
             "TaskUpdate": ["rtl-team-progress.sh"],
-            "TaskCreate": ["rtl-audit-spawn-complete.sh"],
+            "Agent": ["rtl-audit-spawn-complete.sh"],
         },
         "SubagentStart": ["rtl-audit-subagent.sh"],
         "SubagentStop": ["rtl-audit-subagent.sh"],

@@ -19,6 +19,16 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh\"",
+            "timeout": 3
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write|Bash",
         "hooks": [
           {
@@ -39,7 +49,7 @@
         ]
       },
       {
-        "matcher": "TaskCreate",
+        "matcher": "Agent",
         "hooks": [
           {
             "type": "command",
@@ -66,7 +76,7 @@
         ]
       },
       {
-        "matcher": "TaskCreate",
+        "matcher": "Agent",
         "hooks": [
           {
             "type": "command",
@@ -117,7 +127,7 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-completion-gate.sh\"",
-            "timeout": 3
+            "timeout": 10
           },
           {
             "type": "command",
@@ -127,7 +137,7 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-gate.sh\"",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }

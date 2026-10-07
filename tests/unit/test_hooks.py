@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,6 +21,30 @@ def _setup_marker(tmp_project):
     rules_dir = tmp_project / ".claude" / "rules"
     rules_dir.mkdir(parents=True, exist_ok=True)
     (rules_dir / "rtl-coding-conventions.md").write_text("# marker")
+
+
+def _assert_stop_blocked(result):
+    """A Stop gate blocked the stop and handed Claude a reason to keep working.
+
+    continue=false would end the whole turn and drop the reason (verified live
+    on Claude Code 2.1.282), so a Stop gate blocks through decision/reason only.
+    """
+    assert result.get("continue") is not False, result
+    assert result.get("decision") == "block", result
+    reason = result.get("reason")
+    assert isinstance(reason, str) and reason.strip(), result
+    assert "hookSpecificOutput" not in result, result
+
+
+def _assert_denied(result):
+    """A PreToolUse gate refused only this tool call and told Claude why."""
+    assert result.get("continue") is not False, result
+    hso = result.get("hookSpecificOutput")
+    assert isinstance(hso, dict), result
+    assert hso.get("hookEventName") == "PreToolUse", result
+    assert hso.get("permissionDecision") == "deny", result
+    reason = hso.get("permissionDecisionReason")
+    assert isinstance(reason, str) and reason.strip(), result
 
 
 class TestRtlOrchestratorInject:
@@ -89,6 +114,16 @@ class TestRtlOrchestratorInject:
         output = hso.get("additionalContext", "")
         assert "## Pipeline Rules" in output
         assert "/rtl-agent-team:p1-spec-research" in output
+
+    @pytest.mark.parametrize("root_env", ["CLAUDE_PROJECT_DIR", "RAT_PROJECT_ROOT"])
+    def test_session_away_from_the_marker_still_gets_the_rules(self, tmp_path, root_env):
+        """SessionStart also fires on compaction, when the session may sit in rtl/;
+        an external driver may run elsewhere and name the project in RAT_PROJECT_ROOT."""
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_path / "rtl")}, env={root_env: str(tmp_path)})
+        output = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+        assert "# RTL Agent Team — Active Project Rules" in output
 
 
 class TestRtlEditTracker:
@@ -234,13 +269,11 @@ class TestSessionScopedState:
         (state_dir / "team-config.json").write_text(json.dumps(config))
 
     def test_edit_tracker_session_scoped_in_team_mode(self, tmp_project):
-        """In team mode with SESSION_ID, tracking file uses session suffix."""
+        """In team mode with a session id, tracking file uses session suffix."""
         self._write_team_config(tmp_project)
-        env = {"CLAUDE_SESSION_ID": "worker-abc-123"}
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv"},
-            env=env,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": "worker-abc-123"},
         )
         state_dir = tmp_project / ".rat" / "state"
         session_file = state_dir / "rtl-modified-files-worker-abc-123.txt"
@@ -261,17 +294,15 @@ class TestSessionScopedState:
         assert "rtl/mod_b.sv" in solo_file.read_text()
 
     def test_two_sessions_produce_separate_files(self, tmp_project):
-        """Two different SESSION_IDs write to separate tracking files."""
+        """Two different session ids write to separate tracking files."""
         self._write_team_config(tmp_project)
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/a.sv"},
-            env={"CLAUDE_SESSION_ID": "session-1"},
+            {"cwd": str(tmp_project), "file_path": "rtl/a.sv", "session_id": "session-1"},
         )
         run_hook(
             self.EDIT_HOOK,
-            {"cwd": str(tmp_project), "file_path": "rtl/b.sv"},
-            env={"CLAUDE_SESSION_ID": "session-2"},
+            {"cwd": str(tmp_project), "file_path": "rtl/b.sv", "session_id": "session-2"},
         )
         state_dir = tmp_project / ".rat" / "state"
         f1 = state_dir / "rtl-modified-files-session-1.txt"
@@ -292,11 +323,10 @@ class TestSessionScopedState:
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
             self.GATE_HOOK,
-            {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "leader-001"},
+            {"cwd": str(tmp_project), "session_id": "leader-001"},
         )
         # Gate should block because there are unverified files
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         # Should mention both files (aggregated)
         assert "2 RTL files" in ctx  # 2 files total
@@ -311,8 +341,7 @@ class TestSessionScopedState:
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
             self.GATE_HOOK,
-            {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "leader-001"},
+            {"cwd": str(tmp_project), "session_id": "leader-001"},
         )
         assert result["continue"] is True
         # All session files should be cleaned up
@@ -321,17 +350,50 @@ class TestSessionScopedState:
 
     def test_skill_activation_skipped_for_worker(self, tmp_project):
         """Worker sessions should skip skill state management."""
+        _setup_marker(tmp_project)  # without it the hook stops at the setup check
         self._write_team_config(tmp_project, leader_id="leader-001")
-        env = {"CLAUDE_SESSION_ID": "worker-session-99", "CLAUDE_PLUGIN_ROOT": str(HOOKS_DIR / "..")}
+        env = {"CLAUDE_PLUGIN_ROOT": str(HOOKS_DIR / "..")}
         result = run_hook(
             self.SKILL_HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5-verify"},
+            {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+             "skill": "rtl-agent-team:rtl-p5-verify", "session_id": "worker-session-99"},
             env=env,
         )
         assert result["continue"] is True
         # skill-active.json should NOT be created by worker
         skill_state = tmp_project / ".rat" / "state" / "skill-active.json"
         assert not skill_state.exists(), "Worker should not create skill-active.json"
+
+    def test_edit_tracker_treats_an_abandoned_team_config_as_solo(self, tmp_project):
+        """A config last written 3h ago is no team mode: the edit goes to the solo file,
+        and the stale config is removed."""
+        self._write_team_config(tmp_project, leader_id="leader-old")
+        config = tmp_project / ".rat" / "state" / "team-config.json"
+        three_hours_ago = time.time() - 3 * 3600
+        os.utime(config, (three_hours_ago, three_hours_ago))
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": "new-session"},
+        )
+        state_dir = tmp_project / ".rat" / "state"
+        assert "rtl/mod_a.sv" in (state_dir / "rtl-modified-files.txt").read_text()
+        assert not list(state_dir.glob("rtl-modified-files-*"))
+        assert not config.exists()
+
+    @pytest.mark.parametrize("sid", ["../escape", "\u00e9t\u00e9", "a" * 200],
+                             ids=["traversal", "non-ascii", "overlong"])
+    def test_edit_tracker_ignores_a_session_id_that_is_not_a_plain_token(self, tmp_project, sid):
+        """The session id names a file, so anything but a short ASCII token is no session
+        id. bash's A-Z range matches é in a UTF-8 locale, and a file name has at most 255
+        bytes."""
+        self._write_team_config(tmp_project)
+        run_hook(
+            self.EDIT_HOOK,
+            {"cwd": str(tmp_project), "file_path": "rtl/mod_a.sv", "session_id": sid},
+        )
+        state_dir = tmp_project / ".rat" / "state"
+        assert "rtl/mod_a.sv" in (state_dir / "rtl-modified-files.txt").read_text()
+        assert not list(state_dir.glob("rtl-modified-files-*"))
 
 
 class TestRtlVerifyStopGate:
@@ -353,7 +415,7 @@ class TestRtlVerifyStopGate:
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         track.write_text("rtl/module/top.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_verify_done_allows_exit(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
@@ -394,7 +456,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "3 RTL files" in ctx  # 3 files
 
@@ -403,7 +465,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/alu/alu.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "1 RTL files" in ctx
 
@@ -413,7 +475,7 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "2 RTL files" in ctx
 
@@ -442,29 +504,331 @@ class TestRtlVerifyStopGate:
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/c.sv\n")
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project)},
-            env={"CLAUDE_SESSION_ID": "leader-001"},
+            {"cwd": str(tmp_project), "session_id": "leader-001"},
         )
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_verify_stop_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-verify-stop-gate.sh").read_text()
         assert "lib/json-util.sh" in content
         assert "lib/team-gate-util.sh" in content
-        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_root_string" in content
         assert "teamu_should_skip_gate" in content
+
+    def test_block_leaves_waiver_to_the_user(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert "touch .rat/state/rtl-verify-waiver" not in result["reason"]
+        assert "rtl-verify-waiver" not in result["reason"]
+        assert "rtl-modified-files" not in result["reason"]
+        assert "ask the user" in result["reason"]
+
+    def test_chain_without_progress_hands_waiver_to_user(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "decision" not in results[3]
+        notice = results[3]["systemMessage"]
+        assert "no recorded verification" in notice
+        assert "is not asking Claude to continue in this turn" in notice
+        assert "rtl-verify-waiver" in notice
+        assert str(tmp_project / ".rat" / "state" / "rtl-verify-waiver") in notice
+
+    def test_new_rtl_edit_restarts_budget(self, tmp_project):
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        results = []
+        for i in range(6):
+            if i == 2:
+                track.write_text("rtl/a.sv\nrtl/b.sv\n")
+            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}))
+        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
+        assert "systemMessage" in results[5]
+
+    def test_new_rtl_edit_after_the_notice_shows_it_again_without_blocking(self, tmp_project):
+        # Another Stop hook (Claude Code's /goal, a persistent-loop plugin) can keep the chain
+        # going after the notice; new unverified files are shown, but the gate never blocks.
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        track.write_text("rtl/a.sv\nrtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert "decision" not in result
+        assert "2 RTL files have no recorded verification: rtl/a.sv, rtl/b.sv" in result["systemMessage"]
+        # Shown once per change: the next chained Stop without a new file is silent again.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
+    def test_long_chain_never_blocks_after_the_notice(self, tmp_project):
+        # Twenty chained Stops kept going by another hook; an edit lands every fifth Stop.
+        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+        files = ["rtl/a.sv"]
+        track.write_text("rtl/a.sv\n")
+        outcomes = []
+        for i in range(20):
+            if i and i % 5 == 0:
+                files.append(f"rtl/f{i}.sv")
+                track.write_text("".join(f + "\n" for f in files))
+            result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            outcomes.append("B" if result.get("decision") == "block" else "N" if "systemMessage" in result else "-")
+        # Three blocks and the notice, then one notice per new file (Stops 6, 11 and 16).
+        assert "".join(outcomes) == "BBBN-N----N----N----"
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        config = {
+            "team_mode": True,
+            "team_name": "test-team",
+            "leader_session_id": "leader-001",
+            "phase": "p4",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        (state_dir / "team-config.json").write_text(json.dumps(config))
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert (state_dir / "stop-budget-verify.txt").read_text().startswith("2\n")
+
+    @pytest.mark.parametrize("marker", ["rtl-verify-waiver", "rtl-verify-done"])
+    def test_waiver_and_done_clear_the_budget(self, tmp_project, marker):
+        state_dir = tmp_project / ".rat" / "state"
+        track = state_dir / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        (state_dir / marker).touch()
+        # A chained Stop, so the chain-start reset cannot be what resets the budget.
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result == {"continue": True}
+        lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        # The cleared gate is not left silent: a new edit in the same chain blocks.
+        track.write_text("rtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result["decision"] == "block"
+
+    @pytest.mark.parametrize("emptied", ["removed", "blank-lines"])
+    def test_an_emptied_tracking_file_clears_the_budget(self, tmp_project, emptied):
+        # The other two allow paths (no tracking file, blank lines only) clear the budget too.
+        state_dir = tmp_project / ".rat" / "state"
+        track = state_dir / "rtl-modified-files.txt"
+        track.write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        if emptied == "removed":
+            track.unlink()
+        else:
+            track.write_text("\n\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result == {"continue": True}
+        lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        track.write_text("rtl/b.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert result["decision"] == "block"
+
+    def test_legacy_project_notice_uses_resolved_path(self, tmp_legacy_project):
+        state_dir = tmp_legacy_project / ".rtl-agent-team" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_legacy_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        notice = results[3]["systemMessage"]
+        assert ".rtl-agent-team/state/rtl-verify-waiver" in notice
+        assert "'.rat/state" not in notice
+        assert str(state_dir / "rtl-verify-done") in results[0]["reason"]
+
+    def test_file_list_is_relative_and_deduplicated(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+            f"rtl/a.sv\n{tmp_project}/rtl/a.sv\n./rtl/a.sv\nrtl/b.sv\n"
+        )
+        reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+        assert "2 RTL files" in reason
+        assert "rtl/a.sv, rtl/b.sv" in reason
+
+    def test_file_list_is_relative_to_the_project_root(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+            f"{tmp_project}/rtl/a.sv\n"
+        )
+        elsewhere = tmp_project / "elsewhere"
+        elsewhere.mkdir()
+        reason = run_hook(
+            self.HOOK, {"cwd": str(elsewhere)}, env={"RAT_PROJECT_ROOT": str(tmp_project)}
+        )["reason"]
+        assert "rtl/a.sv" in reason
+        assert f"{tmp_project}/rtl/a.sv" not in reason
+
+    def test_blank_tracking_file_allows_exit(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("\n\n")
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
+
+    def test_file_list_shows_ten_files_and_counts_the_rest(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+            "".join(f"rtl/m{i:02d}.sv\n" for i in range(12))
+        )
+        reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+        assert "12 RTL files" in reason
+        assert ", and 2 more" in reason
+
+    def test_fallback_duplicate_mid_chain_keeps_the_count(self, tmp_project):
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(2)
+        ]
+        # The same file again, recorded by the lock-failure fallback in absolute form.
+        (state_dir / "rtl-modified-files-fallback.txt").write_text(f"{tmp_project}/rtl/a.sv\n")
+        results += [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(2)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "systemMessage" in results[3]
+
+    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        state_dir = project / ".rat" / "state"
+        state_dir.mkdir(parents=True)
+        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        waive = results[3]["systemMessage"].split("non-functional: ", 1)[1]
+        subprocess.run(["sh", "-c", waive], check=True)
+        assert (state_dir / "rtl-verify-waiver").exists()
+        done = results[0]["reason"].split("record it: ", 1)[1].split(". If verification", 1)[0]
+        subprocess.run(["sh", "-c", done], check=True)
+        assert (state_dir / "rtl-verify-done").exists()
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        # A budget written earlier for this prompt; allowed Stops must still count, or
+        # Stop 7 would trust it. Inputs carry a prompt_id, as production Stops do.
+        (state / "stop-budget-verify.txt").write_text("0\n\n1\n0\np-1\n")
+        for i in range(6):
+            stop = {"cwd": str(tmp_project), "stop_hook_active": i > 0, "prompt_id": "p-1"}
+            assert run_hook(self.HOOK, stop) == {"continue": True}
+        (state / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"})
+        assert "decision" not in result
+        assert "rtl-verify-waiver" in result["systemMessage"]
+
+    def test_signal_mid_aggregation_ends_the_gate_after_cleanup(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        # A worker's tracking file makes the gate aggregate through `sort`.
+        (state / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
+        shim = tmp_project / "shim"
+        shim.mkdir()
+        ready, hold = tmp_project / "sort-started", tmp_project / "hold"
+        os.mkfifo(hold)
+        # The shim reports that the gate reached `sort`, then blocks on the FIFO.
+        (shim / "sort").write_text('#!/bin/sh\n: > "$RAT_TEST_READY"\nread _ < "$RAT_TEST_HOLD"\n')
+        (shim / "sort").chmod(0o755)
+        env = {**os.environ, "PATH": f"{shim}:{os.environ['PATH']}",
+               "RAT_TEST_READY": str(ready), "RAT_TEST_HOLD": str(hold)}
+        gate = subprocess.Popen(
+            ["sh", str(self.HOOK)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, env=env, text=True, start_new_session=True,
+        )
+        try:
+            gate.stdin.write(json.dumps({"cwd": str(tmp_project)}))
+            gate.stdin.close()
+            deadline = time.monotonic() + 10
+            while not ready.exists():
+                assert time.monotonic() < deadline, "the gate never reached the aggregation"
+                time.sleep(0.01)
+            os.killpg(gate.pid, signal.SIGTERM)
+            out = gate.stdout.read()
+            rc = gate.wait(timeout=10)
+        finally:
+            if gate.poll() is None:
+                os.killpg(gate.pid, signal.SIGKILL)
+                gate.wait()
+        assert rc == 143
+        assert out == ""
+        assert not list(state.glob("rtl-modified-files-aggregated.*"))
+
+    def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        (tmp_project / "sim").mkdir(exist_ok=True)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project / "sim")},
+                          env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
+        _assert_stop_blocked(result)
+        assert "a.sv" in result["reason"]
+
+    def test_stray_marker_in_a_subdirectory_cannot_waive_verification(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        stray = tmp_project / "rtl" / ".rat" / "state"
+        stray.mkdir(parents=True)
+        (stray / "rtl-verify-done").touch()  # `touch .rat/state/rtl-verify-done` run from rtl/
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project / "rtl")},
+                          env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
+        _assert_stop_blocked(result)
 
 
 class TestStopGate:
     """Tests for hooks/stop-gate.sh."""
 
     HOOK = HOOKS_DIR / "stop-gate.sh"
+    LOOP_STATE = {"ultraloop": "ultraloop-state.json", "ppa-loop": "ppa-loop-state.json"}
+    # How each stopu_gate site starts its reason (block sites) or its notice (notice sites).
+    SITE_PREFIX = {
+        "ultraloop": "[Ultraloop] auto-continue:",
+        "ppa-loop": "[PPA-Opt loop] auto-continue:",
+        "upper-spec": "[RAT Auto-Design STOP] Upper-spec violation",
+        "user-decision": "[RAT Auto-Design Loop p4-gate] The gate needs your decision",
+        "ladder": "[RAT Auto-Design Loop p4-gate] primary strategy",
+    }
 
     def _write_autopilot_state(self, tmp_project, payload):
         state_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         state_file.parent.mkdir(parents=True, exist_ok=True)
         state_file.write_text(json.dumps(payload, indent=2))
         return state_file
+
+    def _write_ladder(self, tmp_project, **control):
+        """An in-progress run at gate p4-gate (N=2, one primary attempt), with overrides."""
+        control = {"active_gate_id": "p4-gate", "active_gate_retry_limit": 2,
+                   "active_gate_primary_attempts": 1, "needs_user_decision": False, **control}
+        return self._write_autopilot_state(
+            tmp_project, {"status": "in_progress", "orchestration_control": control})
+
+    def _write_loop(self, tmp_project, loop, ts, minutes=30):
+        path = tmp_project / ".rat" / "state" / self.LOOP_STATE[loop]
+        path.write_text(json.dumps(
+            {"mode": loop, "last_cycle_timestamp": ts, "auto_continue_minutes": minutes}))
+        return path
+
+    def _stops(self, project, actives):
+        """Run one Stop per stop_hook_active value and return the outputs."""
+        return [run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": a}) for a in actives]
 
     def test_no_state_file_allows_exit(self, tmp_project):
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
@@ -476,7 +840,7 @@ class TestStopGate:
         legacy_file.parent.mkdir(parents=True, exist_ok=True)
         legacy_file.write_text(json.dumps({"phase": 3}))
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         # Legacy file should have been migrated to new name
         new_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
         assert new_file.exists()
@@ -500,7 +864,7 @@ class TestStopGate:
     def test_state_file_exists_blocks_exit(self, tmp_project):
         self._write_autopilot_state(tmp_project, {"phase": 3})
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         assert "Auto-Design" in result.get("reason", "")
 
     def test_completed_state_allows_exit(self, tmp_project):
@@ -525,7 +889,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "primary strategy" in ctx
         assert "p2-quality-gate" in ctx
@@ -548,7 +912,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "fallback strategy" in ctx
         assert "Switch to module-split bugfix strategy." in ctx
@@ -570,7 +934,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "last-chance" in ctx.lower()
 
@@ -592,9 +956,9 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
-        ctx = result.get("reason", "")
-        assert "Ask user" in ctx or "user" in ctx.lower()
+        assert "decision" not in result
+        notice = result["systemMessage"]
+        assert "Ask user" in notice or "user" in notice.lower()
 
     def test_nested_orchestration_control_fields_take_precedence(self, tmp_project):
         """Nested orchestration_control values must win over same-name top-level keys."""
@@ -616,7 +980,7 @@ class TestStopGate:
             },
         )
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "p3-quality-gate" in ctx
         assert "primary=1" in ctx
@@ -627,6 +991,396 @@ class TestStopGate:
         assert "jsonu_get_file_path_string" in content
         assert "jsonu_get_file_path_bool" in content
         assert "jsonu_get_file_path_num" in content
+
+    def test_upper_spec_violation_hands_decision_to_user(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project, {"status": "in_progress", "upper_spec_blocking": True}
+        )
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert "decision" not in result
+        assert "Upper-spec violation" in result["systemMessage"]
+        # Once per chain: a chained Stop stays silent.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
+    def test_ladder_without_progress_pauses_in_chain(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {
+                "status": "in_progress",
+                "orchestration_control": {
+                    "active_gate_id": "p4-gate",
+                    "active_gate_retry_limit": 2,
+                    "active_gate_primary_attempts": 1,
+                    "needs_user_decision": False,
+                },
+            },
+        )
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "paused" in results[3]["systemMessage"]
+
+    def test_ultraloop_blocks_while_cycles_advance(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ultraloop-state.json"
+
+        def write(ts):
+            state.write_text(json.dumps(
+                {"mode": "ultraloop", "last_cycle_timestamp": ts, "auto_continue_minutes": 30}
+            ))
+
+        now = int(time.time())
+        write(now)
+        for i in range(2):
+            chained = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            assert chained["decision"] == "block"
+        write(now + 1)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "paused" in results[3]["systemMessage"]
+
+    def test_ultraloop_pause_holds_until_the_next_message(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ultraloop-state.json"
+        now = int(time.time())
+        state.write_text(json.dumps(
+            {"mode": "ultraloop", "last_cycle_timestamp": now, "auto_continue_minutes": 30}))
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        state.write_text(json.dumps(
+            {"mode": "ultraloop", "last_cycle_timestamp": now + 1, "auto_continue_minutes": 30}))
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        self._write_autopilot_state(
+            tmp_project,
+            {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
+             "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
+             "needs_user_decision": False}},
+        )
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        self._write_autopilot_state(
+            tmp_project,
+            {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
+             "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
+             "needs_user_decision": False}},
+        )
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert (state / "stop-budget-autopilot.txt").read_text().startswith("2\n")
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-autopilot.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_autopilot_state(
+            tmp_project,
+            {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
+             "active_gate_retry_limit": 2, "active_gate_primary_attempts": 1,
+             "needs_user_decision": False}},
+        )
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "paused" in result["systemMessage"]
+
+    def test_ppa_loop_blocks_while_cycles_advance(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ppa-loop-state.json"
+
+        def write(ts):
+            state.write_text(json.dumps(
+                {"mode": "ppa-loop", "last_cycle_timestamp": ts, "auto_continue_minutes": 30}
+            ))
+
+        now = int(time.time())
+        write(now)
+        for i in range(2):
+            chained = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            assert chained["decision"] == "block"
+            assert chained["reason"].startswith("[PPA-Opt loop] auto-continue:")
+        write(now + 1)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert results[3]["systemMessage"].startswith("[PPA-Opt loop] The loop is paused")
+
+    def test_ppa_loop_pause_holds_until_the_next_message(self, tmp_project):
+        state = tmp_project / ".rat" / "state" / "ppa-loop-state.json"
+        now = int(time.time())
+        state.write_text(json.dumps(
+            {"mode": "ppa-loop", "last_cycle_timestamp": now, "auto_continue_minutes": 30}))
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        state.write_text(json.dumps(
+            {"mode": "ppa-loop", "last_cycle_timestamp": now + 1, "auto_continue_minutes": 30}))
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    def test_loop_notice_command_ends_the_loop_in_a_quoted_path(self, tmp_path, loop):
+        project = tmp_path / "o'brien"
+        (project / ".rat" / "state").mkdir(parents=True)
+        loop_state = self._write_loop(project, loop, int(time.time()))
+        results = self._stops(project, [False, True, True, True])
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        notice = results[3]["systemMessage"]
+        name = {"ultraloop": "[Ultraloop]", "ppa-loop": "[PPA-Opt loop]"}[loop]
+        assert notice.startswith(f"{name} The loop is paused: automatic continuation stopped for this turn."
+                                 " Say continue to resume, or end the loop: rm ")
+        assert notice.endswith(f"{loop_state.name}'")  # the command comes last and can be copied as is
+        before = set(tmp_path.rglob("*"))
+        subprocess.run(["sh", "-c", notice.split("end the loop: ", 1)[1]], check=True, cwd=tmp_path)
+        assert set(tmp_path.rglob("*")) == before - {loop_state}  # exactly the loop state is gone
+        # The loop has ended, so the chain's next Stop lets Claude stop.
+        assert self._stops(project, [True]) == [{"continue": True}]
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    def test_allowed_stops_count_toward_the_loop_chain_cap(self, tmp_project, loop):
+        # As for the autopilot: another hook kept a new chain going for six Stops while
+        # this gate allowed them, and then the loop started.
+        (tmp_project / ".rat" / "state" / f"stop-budget-{loop}.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_loop(tmp_project, loop, int(time.time()))
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "The loop is paused" in result["systemMessage"]
+
+    @pytest.mark.parametrize("site", ["ultraloop", "ppa-loop", "ladder"])
+    def test_progress_on_every_stop_still_hands_over_at_the_chain_cap(self, tmp_project, site):
+        now = int(time.time())
+        results = []
+        for i in range(8):
+            if site == "ladder":
+                self._write_ladder(tmp_project, active_gate_primary_attempts=i)  # an attempt every Stop
+            else:
+                self._write_loop(tmp_project, site, now + i)  # a new cycle every Stop
+            results += self._stops(tmp_project, [i > 0])
+        assert [r.get("decision") for r in results[:6]] == ["block"] * 6
+        assert "paused" in results[6]["systemMessage"]
+        assert results[7] == {"continue": True}
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    @pytest.mark.parametrize("offset,minutes", [(-31 * 60, 30), (3600, 0)])
+    def test_a_loop_outside_its_window_does_not_block(self, tmp_project, loop, offset, minutes):
+        # A future timestamp counts as 0 seconds elapsed, so a 0-minute window pins the
+        # boundary: as much time elapsed as the window allows is outside the window.
+        self._write_loop(tmp_project, loop, int(time.time()) + offset, minutes=minutes)
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
+
+    @pytest.mark.parametrize("loop", ["ultraloop", "ppa-loop"])
+    def test_a_loop_inside_its_window_blocks(self, tmp_project, loop):
+        # Five minutes into a 30-minute window: the window is counted in minutes, not seconds.
+        self._write_loop(tmp_project, loop, int(time.time()) - 300, minutes=30)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert "(threshold=1800s)" in result["reason"]
+
+    def test_upper_spec_notice_tells_the_user_what_to_decide(self, tmp_project):
+        self._write_autopilot_state(tmp_project, {"status": "in_progress", "upper_spec_blocking": True})
+        results = self._stops(tmp_project, [False, True, True])
+        assert results[0] == {"systemMessage": (
+            "[RAT Auto-Design STOP] Upper-spec violation is unresolved, so the pipeline is paused."
+            " Decide whether to approve the violation or send the pipeline back to fix it, then tell Claude.")}
+        assert results[1:] == [{"continue": True}] * 2
+        assert "Upper-spec violation" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
+
+    def test_user_decision_shows_once_per_chain(self, tmp_project):
+        # The orchestrator's contract: once the last chance fails, it records needs_user_decision.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=2, active_gate_fallback_attempts=2,
+                           active_gate_last_chance_attempts=1, active_gate_strategy="last_chance",
+                           needs_user_decision=True, dynamic_prompt_text="Approve rollback to phase 3?")
+        results = self._stops(tmp_project, [False, True, True])
+        assert results[0] == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
+            " (strategy=last_chance, primary=2, fallback=2, last_chance=1)."
+            " Orchestrator note: Approve rollback to phase 3? Tell Claude how to proceed.")}
+        assert results[1:] == [{"continue": True}] * 2
+        assert "needs your decision" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
+
+    @pytest.mark.parametrize("primary,fallback,last_chance,strategy", [
+        (1, 0, 0, "primary"), (3, 0, 0, "fallback"), (3, 2, 0, "last_chance"), (3, 2, 1, "user_escalated"),
+    ])
+    def test_user_decision_notice_holds_at_every_stage(self, tmp_project, primary, fallback, last_chance,
+                                                       strategy):
+        # The orchestrator may ask at any ladder stage. The user reads this notice, so none of
+        # the stage's instructions to Claude may reach it.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
+                           active_gate_fallback_attempts=fallback,
+                           active_gate_last_chance_attempts=last_chance,
+                           needs_user_decision=True, dynamic_prompt_text="Pick a strategy.")
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
+            f" (strategy={strategy}, primary={primary}, fallback={fallback}, last_chance={last_chance})."
+            " Orchestrator note: Pick a strategy. Tell Claude how to proceed.")}
+
+    def test_exhausted_ladder_hands_the_decision_to_the_user(self, tmp_project):
+        # N=2 and the last chance is used: the gate escalates on its own.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=3, active_gate_fallback_attempts=2,
+                           active_gate_last_chance_attempts=1)
+        results = self._stops(tmp_project, [False, True])
+        assert results[0] == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
+            " (strategy=user_escalated, primary=3, fallback=2, last_chance=1). Tell Claude how to proceed.")}
+        assert results[1] == {"continue": True}
+
+    @pytest.mark.parametrize("prompt", ["Approve rollback to phase 3?", ""])
+    def test_decision_notice_ends_with_the_users_action(self, tmp_project, prompt):
+        # The user's action comes last; the orchestrator's note is labelled only when there is one.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=2, active_gate_fallback_attempts=2,
+                           active_gate_last_chance_attempts=1, needs_user_decision=True,
+                           dynamic_prompt_text=prompt)
+        notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
+        assert notice.endswith(" Tell Claude how to proceed.")
+        assert ("Orchestrator note:" in notice) is bool(prompt)
+
+    @pytest.mark.parametrize("note,shown", [
+        ("Approve rollback to phase 3", "Approve rollback to phase 3."),
+        ("Approve rollback to phase 3?", "Approve rollback to phase 3?"),
+        ("Rollback approved by review (see report)", "Rollback approved by review (see report)."),
+    ])
+    def test_decision_note_ends_as_a_sentence(self, tmp_project, note, shown):
+        # The note is the orchestrator's own text; without final punctuation it would run
+        # into the user's action.
+        self._write_ladder(tmp_project, needs_user_decision=True, dynamic_prompt_text=note)
+        notice = run_hook(self.HOOK, {"cwd": str(tmp_project)})["systemMessage"]
+        assert notice.endswith(f" Orchestrator note: {shown} Tell Claude how to proceed.")
+
+    def test_no_output_uses_the_old_suggested_context_label(self, tmp_project):
+        # One Stop at each ladder stage, all with a dynamic prompt: the decision notice, the
+        # fallback and last-chance reasons, and the notice once the ladder is used up.
+        outputs = []
+        for primary, fallback, last_chance, decision in [
+            (1, 0, 0, True), (3, 0, 0, False), (3, 2, 0, False), (3, 2, 1, False),
+        ]:
+            self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
+                               active_gate_fallback_attempts=fallback,
+                               active_gate_last_chance_attempts=last_chance,
+                               needs_user_decision=decision, dynamic_prompt_text="Approve rollback?")
+            outputs.append(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+        assert [o.get("decision", "notice") for o in outputs] == ["notice", "block", "block", "notice"]
+        assert not any("Suggested context" in json.dumps(o) for o in outputs)
+
+    def test_ladder_pause_notice_holds_for_the_chain(self, tmp_project):
+        self._write_ladder(tmp_project)
+        results = self._stops(tmp_project, [False] + [True] * 5)
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert results[0]["reason"] == (
+            "[RAT Auto-Design Loop p4-gate] primary strategy (1/2). Continue agent loop and satisfy"
+            " the gate conditions. (strategy=primary, primary=1, fallback=0, last_chance=0)")
+        assert results[3] == {"systemMessage": (
+            "[RAT Auto-Design Loop p4-gate] The pipeline is paused: automatic continuation stopped"
+            " for this turn. Say continue to resume.")}
+        assert results[4:] == [{"continue": True}] * 2
+
+    @pytest.mark.parametrize("attempt", [
+        {"active_gate_primary_attempts": 2},
+        {"active_gate_fallback_attempts": 1},
+        {"active_gate_last_chance_attempts": 1},
+        {"active_gate_id": "p5-gate"},
+    ])
+    def test_recorded_attempt_before_the_notice_restarts_the_count(self, tmp_project, attempt):
+        self._write_ladder(tmp_project)
+        results = self._stops(tmp_project, [False, True])
+        self._write_ladder(tmp_project, **attempt)  # the orchestrator recorded another attempt
+        results += self._stops(tmp_project, [True] * 4)
+        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
+        assert "paused" in results[5]["systemMessage"]
+
+    def test_prompt_rewrite_without_an_attempt_is_not_progress(self, tmp_project):
+        results = []
+        for i in range(4):
+            # Fallback stage (3 of 3-4): the reason carries the dynamic prompt, rewritten each Stop.
+            self._write_ladder(tmp_project, active_gate_primary_attempts=3,
+                               dynamic_prompt_text=f"Try variant {i}.")
+            results += self._stops(tmp_project, [i > 0])
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "Dynamic prompt: Try variant 1." in results[1]["reason"]
+        assert "paused" in results[3]["systemMessage"]
+
+    @pytest.mark.parametrize("primary,fallback,last_chance,stage", [
+        (2, 0, 0, "primary strategy (2/2)"),
+        (3, 0, 0, "fallback strategy (3/3-4)"),
+        (2, 2, 0, "fallback strategy (4/3-4)"),
+        (3, 2, 0, "reached 2x retry budget"),
+    ])
+    def test_ladder_stage_at_each_boundary(self, tmp_project, primary, fallback, last_chance, stage):
+        # N=2: primary through N attempts, fallback through 2N, then one last chance.
+        self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
+                           active_gate_fallback_attempts=fallback,
+                           active_gate_last_chance_attempts=last_chance)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert stage in result["reason"]
+
+    def test_a_run_as_old_as_the_stale_bound_is_abandoned(self, tmp_project):
+        run_state = self._write_ladder(tmp_project)
+        future = time.time() + 3600
+        os.utime(run_state, (future, future))  # a future mtime counts as 0 seconds old
+        stale = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"RAT_STOP_STALE_SECONDS": "0"})
+        assert stale == {"continue": True}
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"  # the 2h default
+
+    @pytest.mark.parametrize("exit_path", ["no_state", "stale_state", "completed"])
+    @pytest.mark.parametrize("site", ["ultraloop", "ppa-loop", "upper-spec", "user-decision", "ladder"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, site, exit_path):
+        state = tmp_project / ".rat" / "state"
+        run_state = state / "rat-auto-design-state.json"
+        loop = site in self.LOOP_STATE
+        notice_only = site in ("upper-spec", "user-decision")  # limit 0: the notice, then silence
+
+        def start():  # the site's condition holds
+            if loop:
+                self._write_loop(tmp_project, site, int(time.time()))
+            elif site == "upper-spec":
+                self._write_autopilot_state(tmp_project, {"status": "in_progress", "upper_spec_blocking": True})
+            else:
+                self._write_ladder(tmp_project, needs_user_decision=site == "user-decision")
+
+        start()
+        results = self._stops(tmp_project, [False, True, True, True])
+        assert "systemMessage" in results[0 if notice_only else 3]
+        # The gate is satisfied, and the chain's next Stop leaves through this exit.
+        if loop:
+            (state / self.LOOP_STATE[site]).unlink()
+        if exit_path == "no_state":
+            run_state.unlink(missing_ok=True)
+        elif exit_path == "stale_state":
+            if not run_state.exists():
+                self._write_ladder(tmp_project)
+            os.utime(run_state, (1000, 1000))  # abandoned long ago
+        else:
+            self._write_autopilot_state(tmp_project, {"status": "completed"})
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert self._stops(tmp_project, [True]) == [{"continue": True}]
+        budget = state / f"stop-budget-{site if loop else 'autopilot'}.txt"
+        lines = budget.read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        start()  # the same condition comes back later in this chain
+        again = self._stops(tmp_project, [True])[0]
+        if notice_only:
+            assert again["systemMessage"].startswith(self.SITE_PREFIX[site])  # its notice again, not silence
+        else:
+            assert again["decision"] == "block"
+            assert again["reason"].startswith(self.SITE_PREFIX[site])
 
 
 class TestRtlEditTrackerBash:
@@ -846,6 +1600,18 @@ class TestRtlEditTrackerBash:
         result = run_hook(self.HOOK, stdin)
         stale = tmp_project / ".rat" / "state" / "phase6-stale"
         assert stale.exists()
+
+    @pytest.mark.parametrize("token", ["alu.sv", "./alu.sv"])
+    def test_edits_from_a_subdirectory_track_one_project_path(self, tmp_project, token):
+        rtl = tmp_project / "rtl"
+        rtl.mkdir(exist_ok=True)
+        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
+        run_hook(self.HOOK, {"cwd": str(rtl), "command": f"sed -i 's/a/b/' {token}"}, env=env)
+        run_hook(self.HOOK, {"cwd": str(rtl), "file_path": str(rtl / "alu.sv")}, env=env)
+        gate = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", {"cwd": str(rtl)}, env=env)
+        _assert_stop_blocked(gate)
+        assert "1 RTL files" in gate["reason"]
+        assert "rtl/alu.sv" in gate["reason"]
 
 
 class TestRtlEditTrackerPhase6:
@@ -1209,7 +1975,7 @@ class TestP6CascadeGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "Phase 6" in ctx
 
@@ -1261,12 +2027,13 @@ class TestP6CascadeGate:
         assert "design-review" in ctx.lower() or "design_review" in ctx.lower()
         assert "design-note" in ctx.lower() or "design_note" in ctx.lower()
         assert "improvements" in ctx.lower()
+        assert "/rtl-agent-team:rtl-p6-design-review" in ctx
 
     def test_p6_cascade_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-p6-cascade-gate.sh").read_text()
         assert "lib/json-util.sh" in content
         assert "lib/team-gate-util.sh" in content
-        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_root_string" in content
         assert "teamu_should_skip_gate" in content
 
     def test_cascade_done_blocks_when_docs_older_than_stale(self, tmp_project):
@@ -1286,9 +2053,24 @@ class TestP6CascadeGate:
         (state_dir / "phase6-stale").touch()
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "not updated" in ctx.lower() or "cascade" in ctx.lower()
+
+    @pytest.mark.parametrize("doc", ["code-review.md", "design-note.md"])
+    def test_cascade_done_blocks_when_a_doc_shares_the_stale_markers_second(self, tmp_project, doc):
+        """G5: a document written in the same second as the last RTL change is not newer."""
+        state_dir = tmp_project / ".rat" / "state"
+        review_dir = tmp_project / "reviews" / "phase-6-review"
+        review_dir.mkdir(parents=True)
+        (state_dir / "phase6-stale").touch()
+        os.utime(state_dir / "phase6-stale", (2000, 2000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review_dir / name).write_text("reviewed")
+            os.utime(review_dir / name, (3000, 3000))
+        os.utime(review_dir / doc, (2000, 2000))
+        (state_dir / "phase6-cascade-done").touch()
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
 
     def test_cascade_done_allows_when_docs_newer_than_stale(self, tmp_project):
         """G5: cascade-done with docs newer than stale marker → allow and clean up."""
@@ -1316,9 +2098,306 @@ class TestP6CascadeGate:
         (state_dir / "phase6-stale").touch()
         (state_dir / "phase6-cascade-done").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "not found" in ctx.lower() or "not updated" in ctx.lower()
+
+    def test_stale_docs_without_progress_pause_in_chain(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        notice = results[3]["systemMessage"]
+        assert "/rtl-agent-team:rtl-p6-design-review" in notice
+        assert notice.endswith("phase6-cascade-done'")  # the command can be copied as is
+        assert "decision" not in results[3]
+        assert "is not asking Claude to continue in this turn" in notice
+        assert "updated review documents are not yet recorded" in notice
+
+    def test_doc_update_before_the_notice_restarts_the_count(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        for i in range(2):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "code-review.md").write_text("updated")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "systemMessage" in results[3]
+
+    def test_notice_holds_for_the_chain_despite_a_doc_update(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        for i in range(4):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "code-review.md").write_text("updated")
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert (state / "stop-budget-p6-cascade.txt").read_text().startswith("2\n")
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-p6-cascade.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        (tmp_project / ".rat" / "state" / "phase6-stale").touch()
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "rtl-p6-design-review" in result["systemMessage"]
+
+    @pytest.mark.parametrize("satisfy", ["cascade_done", "marker_removed"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
+        state = tmp_project / ".rat" / "state"
+        stale = state / "phase6-stale"
+        stale.touch()
+        os.utime(stale, (1000, 1000))
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        if satisfy == "cascade_done":
+            review = tmp_project / "reviews" / "phase-6-review"
+            review.mkdir(parents=True)
+            for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+                (review / name).write_text("updated")
+            (state / "phase6-cascade-done").touch()
+        else:
+            stale.unlink()
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        lines = (state / "stop-budget-p6-cascade.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        stale.touch()  # a new RTL edit later in the same chain
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})["decision"] == "block"
+
+    def test_ppa_result_newer_than_the_design_note_is_bounded(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "design-note.md").write_text("# before PPA")
+        os.utime(review / "design-note.md", (1000, 1000))
+        (state / "phase6-stale").touch()
+        (state / "ppa-opt-done").write_text("converge cycle 3\n")
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "PPA" in results[0]["reason"]
+        assert "/rtl-agent-team:rtl-p6-design-review" in results[0]["reason"]
+        assert results[0]["reason"].endswith("phase6-cascade-done'")
+        assert "decision" not in results[3]
+        assert "systemMessage" in results[3]
+
+    @pytest.mark.parametrize("cascade_done", [False, True])
+    @pytest.mark.parametrize("doc", ["code-review.md", "design-review.md", "improvements.md", "design-note-top.md"])
+    def test_updating_an_existing_document_restarts_the_count(self, tmp_project, doc, cascade_done):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note-top.md"):
+            (review / name).write_text("old")
+            os.utime(review / name, (1000, 1000))
+        (state / "phase6-stale").touch()
+        if cascade_done:
+            (state / "phase6-cascade-done").touch()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(2)
+        ]
+        os.utime(review / doc, (2000, 2000))  # rewritten, and still older than the stale marker
+        results += [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
+        assert "systemMessage" in results[5]
+
+    def test_retouching_the_marker_alone_is_not_progress(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "phase6-stale").touch()
+        done = state / "phase6-cascade-done"
+        done.touch()
+        results = []
+        for i in range(4):
+            os.utime(done, (3000 + i, 3000 + i))  # touched again, documents unchanged
+            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}))
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "touch" not in results[0]["reason"]
+        assert "stays in place" in results[0]["reason"]
+        assert "systemMessage" in results[3]
+        notice = results[3]["systemMessage"]
+        assert "recorded as updated" in notice and "touch" not in notice  # the marker already exists
+
+    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        state = project / ".rat" / "state"
+        state.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        done = state / "phase6-cascade-done"
+        commands = [
+            results[0]["reason"].split("When done: ", 1)[1],
+            results[3]["systemMessage"].split("then record it: ", 1)[1],
+        ]
+        # PPA-Opt finished after the design note was written.
+        review = project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (review / "design-note.md").write_text("# before PPA")
+        os.utime(review / "design-note.md", (1000, 1000))
+        (state / "ppa-opt-done").touch()
+        commands.append(run_hook(self.HOOK, {"cwd": str(project)})["reason"].split("then record it: ", 1)[1])
+        for command in commands:
+            done.unlink(missing_ok=True)
+            before = set(tmp_path.rglob("*"))
+            subprocess.run(["sh", "-c", command], check=True, cwd=tmp_path)
+            assert set(tmp_path.rglob("*")) - before == {done}  # exactly the marker
+
+    def test_cascade_done_does_not_bypass_a_newer_ppa_result(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        stale, done = state / "phase6-stale", state / "phase6-cascade-done"
+        stale.touch()
+        os.utime(stale, (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review / name).write_text("reviewed before PPA-Opt")
+            os.utime(review / name, (2000, 2000))
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        done.touch()
+        results = [run_hook(self.HOOK, {"cwd": str(tmp_project)})]
+        assert "PPA-Opt" in results[0]["reason"]
+        assert stale.exists() and done.exists()
+        results += [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(3)
+        ]
+        assert [r.get("decision") for r in results] == ["block"] * 3 + [None]
+        assert "systemMessage" in results[3]
+        os.utime(review / "design-note.md", (4000, 4000))  # the review re-ran after PPA-Opt
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert not stale.exists() and not done.exists()
+
+    def test_a_symlinked_cwd_is_not_progress(self, tmp_path):
+        project = tmp_path / "project"
+        (project / ".rat" / "state").mkdir(parents=True)
+        (project / ".rat" / "state" / "phase6-stale").touch()
+        link = tmp_path / "link"
+        link.symlink_to(project)
+        # One chain whose input cwd alternates between the project and a symlink to it.
+        results = [
+            run_hook(self.HOOK, {"cwd": str(link if i % 2 else project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results] == ["block"] * 3 + [None]
+        assert "systemMessage" in results[3]
+
+    @pytest.mark.parametrize("cascade_done", [False, True])
+    def test_a_design_note_as_new_as_the_ppa_result_is_current(self, tmp_project, cascade_done):
+        # The PPA branch and the cascade-done check must agree on a same-second tie.
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review / name).write_text("reviewed")
+            os.utime(review / name, (3000, 3000))
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        if cascade_done:
+            (state / "phase6-cascade-done").touch()
+            assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
+        else:
+            assert "PPA" not in run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
+
+    @pytest.mark.parametrize("cascade_done", [False, True])
+    def test_a_design_note_one_second_older_than_the_ppa_result_is_stale(self, tmp_project, cascade_done):
+        # The other side of the same-second tie: one second older is already stale.
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md", "design-note.md"):
+            (review / name).write_text("reviewed")
+            os.utime(review / name, (3000, 3000))
+        os.utime(review / "design-note.md", (2999, 2999))
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        if cascade_done:
+            (state / "phase6-cascade-done").touch()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        _assert_stop_blocked(result)
+        assert "PPA" in result["reason"]
+
+    def test_every_split_design_note_must_postdate_the_ppa_result(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (1000, 1000))
+        for name in ("code-review.md", "design-review.md", "improvements.md",
+                     "design-note-overview.md", "design-note-top.md"):
+            (review / name).write_text("reviewed")
+            os.utime(review / name, (4000, 4000))
+        os.utime(review / "design-note-top.md", (2000, 2000))  # one split note predates PPA-Opt
+        (state / "ppa-opt-done").touch()
+        os.utime(state / "ppa-opt-done", (3000, 3000))
+        (state / "phase6-cascade-done").touch()
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_session_in_a_subdirectory_checks_the_project_review_documents(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        review = tmp_project / "reviews" / "phase-6-review"
+        review.mkdir(parents=True)
+        docs = [review / name for name in
+                ("code-review.md", "design-review.md", "design-note.md", "improvements.md")]
+        for doc in docs:
+            doc.write_text("reviewed")
+            os.utime(doc, (1000, 1000))
+        (state / "phase6-stale").touch()
+        os.utime(state / "phase6-stale", (2000, 2000))
+        (state / "phase6-cascade-done").touch()
+        (tmp_project / "rtl").mkdir()
+        stdin = {"cwd": str(tmp_project / "rtl")}
+        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
+        result = run_hook(self.HOOK, stdin, env=env)
+        _assert_stop_blocked(result)
+        for name in ("code-review.md", "design-review.md", "design-note", "improvements.md"):
+            assert name in result["reason"]
+        # The documents are read from the project root, not rtl/reviews/: updating them passes.
+        for doc in docs:
+            os.utime(doc, (3000, 3000))
+        assert run_hook(self.HOOK, stdin, env=env) == {"continue": True}
 
 
 class TestSkillCompletionGate:
@@ -1352,7 +2431,7 @@ class TestSkillCompletionGate:
         """Active skill with all_complete=false → block exit."""
         self._write_skill_state(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_completed_skill_allows_exit(self, tmp_project):
         """Active skill with all_complete=true → allow exit."""
@@ -1371,7 +2450,7 @@ class TestSkillCompletionGate:
         """At iteration == max_iterations, ladder remains active and blocks exit."""
         self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "primary" in ctx.lower()
 
@@ -1442,7 +2521,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "primary" in ctx.lower()
 
@@ -1455,7 +2534,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "fallback" in ctx.lower()
         assert "fallback prompt" in ctx
@@ -1468,7 +2547,7 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         ctx = result.get("reason", "")
         assert "last_chance" in ctx or "last-chance" in ctx
 
@@ -1480,9 +2559,9 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
-        ctx = result.get("reason", "")
-        assert "사용자" in ctx or "user" in ctx.lower()
+        assert "decision" not in result
+        notice = result["systemMessage"]
+        assert "사용자" in notice or "user" in notice.lower()
 
     def test_legacy_disabled_ladder_is_migrated_and_still_blocks(self, tmp_project):
         self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
@@ -1492,17 +2571,381 @@ class TestSkillCompletionGate:
         state_file.write_text(json.dumps(state, indent=2))
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
         migrated = json.loads(state_file.read_text())
         assert migrated["use_escalation_ladder"] is True
 
     def test_skill_completion_gate_uses_shared_json_util(self):
         content = (HOOKS_DIR / "rtl-skill-completion-gate.sh").read_text()
         assert "lib/json-util.sh" in content
-        assert "jsonu_get_input_string" in content
+        assert "jsonu_get_root_string" in content
         assert "jsonu_get_file_path_string" in content
         assert "jsonu_get_file_path_bool" in content
         assert "jsonu_get_file_path_num" in content
+
+    def test_pending_without_progress_pauses_in_chain(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "still has pending criteria" in results[3]["systemMessage"]
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert (state / "stop-budget-skill-completion.txt").read_text().startswith("2\n")
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "still has pending criteria" in result["systemMessage"]
+
+    def _write_upstream_challenge(self, tmp_project, iteration=4):
+        """The state as rtl-skill-activation.sh writes it, plus a compliance report with a
+        validated infeasible iron requirement. Past the authority-1 primary budget (3),
+        compliance-gate-util.sh switches the strategy to upstream_challenge."""
+        state_dir = tmp_project / ".rat" / "state"
+        self._write_skill_state(tmp_project, skill="rtl-p4-implement", iteration=iteration,
+                                pending="compliance-pass")
+        state_file = state_dir / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state.update({"use_escalation_ladder": True, "strategy": "primary", "dynamic_prompt": "",
+                      "compliance_authority": None, "max_primary": None, "max_fallback": None})
+        state_file.write_text(json.dumps(state, indent=2))
+        (state_dir / "compliance-report.json").write_text(json.dumps({"summary": {
+            "verdict": "FAIL", "max_violation_authority": 1, "infeasibility_detected": True}}))
+
+    def test_upstream_challenge_without_progress_pauses_in_chain(self, tmp_project):
+        self._write_upstream_challenge(tmp_project)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert all(r["reason"].startswith("[Upstream Challenge Required]") for r in results[:3])
+        assert "decision" not in results[3]
+        notice = results[3]["systemMessage"]
+        # The user decides about the upstream requirement; saying continue settles nothing.
+        assert notice.startswith("[Upstream Challenge] rtl-p4-implement:")
+        assert "is not asking Claude to continue in this turn" in notice
+        assert "decide whether to amend the upstream requirement" in notice
+        assert "Say continue" not in notice
+
+    def test_upstream_switch_on_the_notice_stop_shows_the_upstream_notice(self, tmp_project):
+        # The compliance report turns infeasible during the third continuation, so the
+        # strategy switches on the Stop where the breaker hands over. The notice must
+        # follow the switch, which the compliance preprocess makes on that same Stop.
+        self._write_upstream_challenge(tmp_project, iteration=1)
+        report = tmp_project / ".rat" / "state" / "compliance-report.json"
+        saved = report.read_text()
+        report.unlink()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(3)
+        ]
+        assert [r.get("decision") for r in results] == ["block"] * 3
+        report.write_text(saved)  # iteration 4 is past the authority-1 primary budget (3)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert "decision" not in result
+        assert result["systemMessage"].startswith("[Upstream Challenge] rtl-p4-implement:")
+
+    @pytest.mark.parametrize("satisfy", ["state_removed", "stale_state", "all_complete", "compliance_pass"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
+        state = tmp_project / ".rat" / "state"
+        skill_state = state / "skill-active.json"
+        upstream = satisfy == "compliance_pass"
+        site = "[Upstream Challenge Required]" if upstream else "[RTL Skill Completion Loop - 1/10]"
+
+        def start_skill():
+            if upstream:
+                self._write_upstream_challenge(tmp_project)
+            else:
+                self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+
+        start_skill()
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert "systemMessage" in results[3]
+        if satisfy == "state_removed":
+            skill_state.unlink()
+        elif satisfy == "compliance_pass":  # the requirement was amended and the check passes
+            (state / "compliance-report.json").write_text(json.dumps({"summary": {"verdict": "PASS"}}))
+        else:
+            data = json.loads(skill_state.read_text())
+            if satisfy == "stale_state":
+                data["started_at"] = (datetime.datetime.now(datetime.timezone.utc)
+                                      - datetime.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            else:
+                data["all_complete"] = True
+            skill_state.write_text(json.dumps(data, indent=2))
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert not skill_state.exists()
+        lines = (state / "stop-budget-skill-completion.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
+        start_skill()  # the same condition comes back later in this chain
+        again = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert again["decision"] == "block"
+        assert again["reason"].startswith(site)
+
+    def test_pending_change_before_the_notice_restarts_the_count(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        for i in range(2):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state["pending"] = "tb_updated, sim_pass"  # lint_pass is met
+        state_file.write_text(json.dumps(state, indent=2))
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+            for _ in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "still has pending criteria: tb_updated, sim_pass." in results[3]["systemMessage"]
+
+    def test_ladder_stage_change_is_not_progress(self, tmp_project):
+        # The ladder advances on every Stop it blocks; only a change in the pending criteria is progress.
+        self._write_skill_state(tmp_project, iteration=9, max_iterations=10)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(4)
+        ]
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "primary strategy" in results[1]["reason"] and "fallback strategy" in results[2]["reason"]
+        notice = results[3]["systemMessage"]
+        assert notice.startswith("[RTL Skill Completion Loop] rtl-p4s-bugfix still has pending criteria:")
+        assert "is not asking Claude to continue in this turn" in notice
+        assert notice.endswith("Say continue to resume.")
+
+    def test_escalation_hands_over_mid_chain(self, tmp_project):
+        # The last chance blocks once; the next Stop, chained or not, is the user's decision.
+        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+            for i in range(2)
+        ]
+        assert "last_chance" in results[0]["reason"]
+        assert "decision" not in results[1]
+        assert "User decision required" in results[1]["systemMessage"]
+
+    def _stops_with_iterations(self, tmp_project, actives):
+        """Run one Stop per stop_hook_active value; return the outputs and the iteration after each."""
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
+        results, iterations = [], []
+        for active in actives:
+            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": active}))
+            iterations.append(json.loads(state_file.read_text())["iteration"])
+        return results, iterations
+
+    def test_notice_and_silent_stops_leave_the_ladder_alone(self, tmp_project):
+        # The ladder counts attempts: after the notice, chained Stops that another hook
+        # keeps alive are silent here and leave the iteration where it is.
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
+        results, iterations = self._stops_with_iterations(tmp_project, [False] + [True] * 5)
+        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
+        assert "still has pending criteria" in results[3]["systemMessage"]
+        assert results[4:] == [{"continue": True}] * 2
+        assert iterations == [2, 3, 4, 4, 4, 4]
+
+    def test_last_chance_reaches_claude_before_the_escalation(self, tmp_project):
+        # Spec review repro A: with N=2 the chain's notice falls on the last-chance iteration.
+        self._write_skill_state(tmp_project, iteration=2, max_iterations=2)
+        first, first_iterations = self._stops_with_iterations(tmp_project, [False] + [True] * 4)
+        assert [r.get("decision") for r in first[:3]] == ["block"] * 3
+        assert "still has pending criteria" in first[3]["systemMessage"]
+        assert first[4] == {"continue": True}
+        assert first_iterations == [3, 4, 5, 5, 5]  # the notice leaves the last chance unused
+        assert not any("last_chance" in json.dumps(r) for r in first)
+        # The next turn: the last chance reaches Claude as a block, then the escalation.
+        second, second_iterations = self._stops_with_iterations(tmp_project, [False, True])
+        assert second[0]["decision"] == "block"
+        assert second[0]["reason"].startswith("[RTL Skill Completion Loop - last_chance]")
+        assert "decision" not in second[1]
+        assert second[1]["systemMessage"].startswith(
+            "[RTL Skill Completion Loop - escalation] rtl-p4s-bugfix has used its automatic attempts"
+            " and still has pending criteria:")
+        assert second_iterations == [6, 6]
+
+    def test_escalation_after_a_budget_shrink_claims_no_last_chance(self, tmp_project):
+        # Spec re-review P1: an authority-1 compliance FAIL shrinks the ladder to 3/2 (last
+        # chance at 6) while the iteration is already past it, so the next Stop escalates
+        # without any last-chance block. The notice must not claim that one failed.
+        state_dir = tmp_project / ".rat" / "state"
+        state_file = state_dir / "skill-active.json"
+        self._write_skill_state(tmp_project, skill="rtl-p4-implement", iteration=8, max_iterations=5,
+                                pending="sim_pass, compliance-pass")
+        state = json.loads(state_file.read_text())
+        state.update({"use_escalation_ladder": True, "strategy": "primary", "dynamic_prompt": "",
+                      "compliance_authority": None, "max_primary": None, "max_fallback": None})
+        state_file.write_text(json.dumps(state, indent=2))
+        first = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert first["reason"].startswith("[RTL Skill Completion Loop - 8/10] rtl-p4-implement fallback")
+        (state_dir / "compliance-report.json").write_text(json.dumps({"summary": {
+            "verdict": "FAIL", "max_violation_authority": 1, "infeasibility_detected": False}}))
+        second = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        shrunk = json.loads(state_file.read_text())
+        assert (shrunk["max_primary"], shrunk["max_fallback"], shrunk["iteration"]) == (3, 2, 9)
+        notice = second["systemMessage"]
+        assert notice.startswith("[RTL Skill Completion Loop - escalation] rtl-p4-implement has used"
+                                 " its automatic attempts and still has pending criteria:"
+                                 " sim_pass, compliance-pass. User decision required.")
+        assert "last_chance" not in notice
+        # The compliance prompt still follows, before the command, which comes last.
+        assert notice.index("Compliance context: [CRITICAL") < notice.index("end the loop: rm ")
+        assert notice.endswith("skill-active.json'")
+
+    def test_escalation_shows_once_per_chain(self, tmp_project):
+        self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
+        results, iterations = self._stops_with_iterations(tmp_project, [False, True, True])
+        assert "User decision required" in results[0]["systemMessage"]
+        assert "is not asking Claude to continue, and shows this once per turn" in results[0]["systemMessage"]
+        assert results[1:] == [{"continue": True}] * 2
+        assert iterations == [6, 6, 6]  # the escalation blocks nothing, so it uses no attempt
+        # Recorded in this gate's budget, where the pre-check reads it.
+        budget = (tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt").read_text()
+        assert budget.split("\n")[3] == "1"
+        again, _ = self._stops_with_iterations(tmp_project, [False])  # the next turn
+        assert "User decision required" in again[0]["systemMessage"]
+
+    def test_escalation_command_ends_the_loop_in_a_quoted_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        self._write_skill_state(project, iteration=6, max_iterations=2)
+        notice = run_hook(self.HOOK, {"cwd": str(project)})["systemMessage"]
+        assert notice.endswith("skill-active.json'")  # the command comes last and can be copied as is
+        skill_state = project / ".rat" / "state" / "skill-active.json"
+        before = set(tmp_path.rglob("*"))
+        subprocess.run(["sh", "-c", notice.split("end the loop: ", 1)[1]], check=True, cwd=tmp_path)
+        assert set(tmp_path.rglob("*")) == before - {skill_state}  # exactly the skill state is gone
+
+    def test_pre_check_block_after_a_race_still_instructs_claude(self, tmp_project):
+        # Another session's chain start rewrites the budget between the pre-check's decision
+        # (notice) and its stopu_gate call, which then blocks. A cksum shim stages that write:
+        # the budget's fingerprint calls cksum once per decision, before reading the file.
+        budget = tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt"
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
+        budget.write_text("0\n\n6\n0\np-1\n")  # this Stop is the chain's seventh: past the cap
+        shim = tmp_project / "shim"
+        shim.mkdir()
+        (shim / "cksum").write_text(
+            '#!/bin/sh\n'
+            'n=$(($(cat "$SHIM_DIR/calls" 2>/dev/null || echo 0) + 1))\n'
+            'echo "$n" > "$SHIM_DIR/calls"\n'
+            'if [ "$n" = 2 ]; then printf \'0\\n\\n1\\n0\\np-1\\n\' > "$RACE_BUDGET"; fi\n'
+            'exec "$REAL_CKSUM" "$@"\n')
+        (shim / "cksum").chmod(0o755)
+        env = {"PATH": f"{shim}{os.pathsep}{os.environ['PATH']}", "SHIM_DIR": str(shim),
+               "RACE_BUDGET": str(budget), "REAL_CKSUM": shutil.which("cksum")}
+        stop = {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"}
+        result = run_hook(self.HOOK, stop, env=env)
+        assert (shim / "calls").read_text().strip() == "2"  # the pre-check, then stopu_gate
+        assert result["decision"] == "block"
+        assert result["reason"].startswith("[RTL Skill Completion Loop] rtl-p4s-bugfix in progress.")
+
+    @pytest.mark.parametrize("iteration,stage", [
+        (2, "primary strategy"), (3, "fallback strategy"), (4, "fallback strategy"), (5, "last_chance"),
+    ])
+    def test_ladder_stage_at_each_boundary(self, tmp_project, iteration, stage):
+        # N=2: primary through N, fallback through 2N, last chance at 2N+1, then the user.
+        self._write_skill_state(tmp_project, iteration=iteration, max_iterations=2)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert result["decision"] == "block"
+        assert stage in result["reason"]
+
+    def test_cleared_compliance_budget_uses_max_iterations(self, tmp_project):
+        # compliance-gate-util.sh resets max_primary and max_fallback to 0 once the report
+        # passes or is gone; the ladder must fall back to max_iterations, not escalate.
+        self._write_skill_state(tmp_project, iteration=1, max_iterations=5)
+        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
+        state = json.loads(state_file.read_text())
+        state.update({"max_primary": 0, "max_fallback": 0})
+        state_file.write_text(json.dumps(state, indent=2))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert "[RTL Skill Completion Loop - 1/5] rtl-p4s-bugfix primary strategy" in result["reason"]
+
+    # A pipeline whose orchestrator waits for the user's decision. stop-gate.sh tells the user
+    # the autopilot is paused; the skill loop must not push Claude past the decision meanwhile.
+    PIPELINE_DECISIONS = {
+        "upper-spec": {"status": "in_progress", "upper_spec_blocking": True},
+        "orchestrator-asks": {"status": "in_progress",
+                              "orchestration_control": {"needs_user_decision": True}},
+    }
+
+    @pytest.mark.parametrize("skill,state_name", [
+        ("rat-auto-design", "rat-auto-design-state.json"),
+        ("rat-p1p3-spec-uarch", "rat-p1p3-spec-uarch-state.json"),
+        ("rat-p1p3-spec-uarch-team", "rat-p1p3-spec-uarch-state.json"),
+        ("rat-p4p5-impl-verify", "rat-p4p5-impl-verify-state.json"),
+    ])
+    @pytest.mark.parametrize("decision", sorted(PIPELINE_DECISIONS))
+    def test_pipeline_waiting_for_the_user_hands_over(self, tmp_project, skill, state_name, decision):
+        self._write_skill_state(tmp_project, skill=skill, pending="phase-gate-passed|artifacts-written")
+        state_dir = tmp_project / ".rat" / "state"
+        (state_dir / state_name).write_text(json.dumps(self.PIPELINE_DECISIONS[decision]))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        assert "decision" not in result
+        assert f"{skill} is waiting for your decision" in result["systemMessage"]
+        assert "phase-gate-passed|artifacts-written" in result["systemMessage"]
+        assert json.loads((state_dir / "skill-active.json").read_text())["iteration"] == 1
+        # Once per chain: the chained Stop is silent and still leaves the ladder alone.
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        assert json.loads((state_dir / "skill-active.json").read_text())["iteration"] == 1
+
+    @pytest.mark.parametrize("env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"}, {"RTL_FORCE_JSON_FALLBACK": "1"}],
+                             ids=["default", "python", "sed"])
+    def test_upper_spec_hand_over_in_every_parser_mode(self, tmp_project, env):
+        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
+        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
+            json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=env)
+        assert "waiting for your decision" in result["systemMessage"]
+
+    @pytest.mark.parametrize("state", [
+        {"status": "completed", "upper_spec_blocking": True},
+        {"status": "in_progress", "upper_spec_blocking": False,
+         "orchestration_control": {"needs_user_decision": False}},
+    ], ids=["completed-run", "no-decision"])
+    def test_pipeline_without_a_pending_decision_keeps_the_loop(self, tmp_project, state):
+        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
+        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(json.dumps(state))
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+
+    def test_abandoned_pipeline_decision_keeps_the_loop(self, tmp_project):
+        # Same staleness bound as stop-gate.sh: an untouched state file is an abandoned run.
+        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
+        state_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
+        state_file.write_text(json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
+        old = time.time() - 3 * 3600
+        os.utime(state_file, (old, old))
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+
+    def test_other_skills_do_not_read_a_pipeline_state(self, tmp_project):
+        self._write_skill_state(tmp_project, skill="rtl-p4-implement", pending="rtl-written")
+        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
+            json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
+        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
 
 
 class TestSkillActivation:
@@ -1525,7 +2968,8 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
@@ -1542,7 +2986,8 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:systemverilog"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:systemverilog"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
@@ -1551,7 +2996,8 @@ class TestSkillActivation:
     def test_no_criteria_file_no_state(self, tmp_project):
         """Missing criteria file should not create state."""
         _setup_marker(tmp_project)
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state_file = tmp_project / ".rat" / "state" / "skill-active.json"
@@ -1568,7 +3014,8 @@ class TestSkillActivation:
         existing = {"skill": "rtl-p4-implement", "iteration": 3, "all_complete": False, "pending": "something"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin)
         # State should NOT be overridden (different skill)
         state = json.loads((state_dir / "skill-active.json").read_text())
@@ -1586,7 +3033,8 @@ class TestSkillActivation:
         existing = {"skill": "rtl-p4s-bugfix", "iteration": 3, "all_complete": False, "pending": "sim_pass"}
         (state_dir / "skill-active.json").write_text(json.dumps(existing))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         assert result["continue"] is True
         state = json.loads((state_dir / "skill-active.json").read_text())
@@ -1599,7 +3047,8 @@ class TestSkillActivation:
         criteria = {"rtl-p4s-bugfix": "lint_pass, sim_pass"}
         (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
 
-        stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4s-bugfix"}
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix"}
         result = run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "rtl-p4s-bugfix" in ctx
@@ -1642,6 +3091,7 @@ class TestSkillActivation:
         raw_input = json.dumps(
             {
                 "cwd": str(tmp_project),
+                "hook_event_name": "PostToolUse",
                 "skill": "rtl-agent-team:rtl-p4s-bugfix",
                 "meta": {"skill": "rtl-agent-team:rat-setup"},
             }
@@ -1653,6 +3103,152 @@ class TestSkillActivation:
         assert state_file.exists()
         state = json.loads(state_file.read_text())
         assert state["skill"] == "rtl-p4s-bugfix"
+
+    def _invoke_in_team(self, tmp_project, leader, age_hours=0, **ids):
+        """Invoke rtl-p4s-bugfix, as test_rtl_skill_creates_state does, while a team whose
+        leader is `leader` is active (None: no leader key, as autopilot writes it) and whose
+        config was last written `age_hours` ago. Returns whether the completion loop started."""
+        _setup_marker(tmp_project)
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        config = {"team_mode": True}
+        if leader is not None:
+            config["leader_session_id"] = leader
+        path = tmp_project / ".rat" / "state" / "team-config.json"
+        path.write_text(json.dumps(config))
+        written = time.time() - age_hours * 3600
+        os.utime(path, (written, written))
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix", **ids}
+        run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
+        return (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+    @pytest.mark.parametrize("ids", [{"session_id": "leader-abc", "agent_id": "teammate-1"},
+                                     {"session_id": "worker-1"}], ids=["in-process", "tmux"])
+    def test_teammate_reinvoking_the_leaders_skill_keeps_its_loop(self, tmp_project, ids):
+        # G6 resets the loop of a re-invoked skill, so the team check must stop a teammate first.
+        state = tmp_project / ".rat" / "state" / "skill-active.json"
+        state.write_text(json.dumps({"skill": "rtl-p4s-bugfix", "iteration": 3}))
+        assert self._invoke_in_team(tmp_project, "leader-abc", **ids)
+        assert json.loads(state.read_text())["iteration"] == 3
+
+    def test_in_process_teammate_does_not_start_the_leaders_loop(self, tmp_project):
+        # An in-process teammate runs in the leader's session; only its agent_id tells it apart.
+        assert not self._invoke_in_team(tmp_project, "leader-abc",
+                                        session_id="leader-abc", agent_id="teammate-1")
+
+    def test_leader_starts_its_loop_in_team_mode(self, tmp_project):
+        assert self._invoke_in_team(tmp_project, "leader-abc", session_id="leader-abc")
+
+    def test_unknown_session_starts_the_loop_in_team_mode(self, tmp_project):
+        # No session_id in the input and (conftest) no session env: the session may be the
+        # leader, so the loop starts, as the Stop gates enforce for an unknown session.
+        assert self._invoke_in_team(tmp_project, "leader-abc")
+
+    @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
+    def test_placeholder_leader_leaves_each_session_its_own_loop(self, tmp_project, leader):
+        assert self._invoke_in_team(tmp_project, leader, session_id="worker-1")
+
+    def test_abandoned_team_config_lets_a_new_session_start_its_loop(self, tmp_project):
+        # A config last written 3h ago is no team mode, whatever leader it names: the new
+        # session's main thread starts its loop, and the stale config is removed.
+        assert self._invoke_in_team(tmp_project, "leader-old", age_hours=3, session_id="new-session")
+        assert not (tmp_project / ".rat" / "state" / "team-config.json").exists()
+
+    @pytest.mark.parametrize("ids, starts", [({"agent_id": "t1"}, False), ({}, True)],
+                             ids=["agent_id", "main-thread"])
+    def test_leaderless_team_keeps_agents_off_the_loop(self, tmp_project, ids, starts):
+        # Autopilot writes {"team_mode": true} without a leader. An agent_id still never
+        # drives the loop; the main thread still manages its own.
+        assert self._invoke_in_team(tmp_project, None, **ids) is starts
+
+    @pytest.mark.parametrize("config", [None, {"team_mode": False}], ids=["no-config", "team-mode-false"])
+    def test_subagent_outside_team_mode_starts_the_loop(self, tmp_project, config):
+        # The agent_id check protects the leader's loop only while a team is active;
+        # autopilot's --no-team run writes {"team_mode": false}.
+        _setup_marker(tmp_project)
+        if config is not None:
+            (tmp_project / ".rat" / "state" / "team-config.json").write_text(json.dumps(config))
+        criteria = {"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"}
+        (tmp_project / "skill-completion-criteria.json").write_text(json.dumps(criteria))
+        stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
+                 "skill": "rtl-agent-team:rtl-p4s-bugfix",
+                 "session_id": "leader-abc", "agent_id": "subagent-1"}
+        run_hook(self.HOOK, stdin, env={"CLAUDE_PLUGIN_ROOT": str(tmp_project)})
+        assert (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+    def _criteria_env(self, tmp_project):
+        _setup_marker(tmp_project)
+        (tmp_project / "skill-completion-criteria.json").write_text(
+            json.dumps({"rtl-p4s-bugfix": "lint_pass, tb_updated, sim_pass"})
+        )
+        return {"CLAUDE_PLUGIN_ROOT": str(tmp_project)}
+
+    def _skill_input(self, tmp_project, event):
+        return {
+            "cwd": str(tmp_project),
+            "hook_event_name": event,
+            "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p4s-bugfix"},
+        }
+
+    def test_pretooluse_creates_no_state(self, tmp_project):
+        env = self._criteria_env(tmp_project)
+        result = run_hook(self.HOOK, self._skill_input(tmp_project, "PreToolUse"), env=env)
+        assert result["continue"] is True
+        assert not (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+    def test_posttooluse_creates_state_and_announces_loop(self, tmp_project):
+        env = self._criteria_env(tmp_project)
+        result = run_hook(self.HOOK, self._skill_input(tmp_project, "PostToolUse"), env=env)
+        hso = result["hookSpecificOutput"]
+        assert hso["hookEventName"] == "PostToolUse"
+        assert "Completion Loop ACTIVATED" in hso["additionalContext"]
+        state = json.loads((tmp_project / ".rat" / "state" / "skill-active.json").read_text())
+        assert state["skill"] == "rtl-p4s-bugfix"
+
+    def test_announcement_names_the_project_state_file_from_a_subdirectory(self, tmp_project):
+        # A relative .rat/state path would send Claude, working in rtl/, to a stray rtl/.rat
+        # that the completion gate never reads.
+        env = {**self._criteria_env(tmp_project), "CLAUDE_PROJECT_DIR": str(tmp_project)}
+        (tmp_project / "rtl").mkdir()
+        stdin = {**self._skill_input(tmp_project, "PostToolUse"), "cwd": str(tmp_project / "rtl")}
+        result = run_hook(self.HOOK, stdin, env=env)
+        state = tmp_project / ".rat" / "state" / "skill-active.json"
+        assert result["hookSpecificOutput"]["additionalContext"].endswith(f"set all_complete to true in {state}")
+        assert state.exists()
+
+    @pytest.mark.parametrize("missing", ["setup-marker", "rat-dir"])
+    def test_posttooluse_before_setup_starts_no_loop(self, tmp_project, missing):
+        # PreToolUse only advised setup, so the skill ran. No loop starts, and the answer
+        # is a plain PostToolUse continue, not PreToolUse's [SETUP REQUIRED] envelope.
+        env = {**self._criteria_env(tmp_project), "HOME": str(tmp_project)}
+        if missing == "setup-marker":
+            (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").unlink()
+        else:
+            shutil.rmtree(tmp_project / ".rat")
+        result = run_hook(self.HOOK, self._skill_input(tmp_project, "PostToolUse"), env=env)
+        assert result == {"continue": True}
+        assert not (tmp_project / ".rat" / "state" / "skill-active.json").exists()
+
+
+class TestDeniedSkillStartsNoLoop:
+    """A Skill call denied at PreToolUse must not leave a completion loop behind."""
+
+    def test_p5b_denied_without_p5a_leaves_no_state(self, tmp_project):
+        _setup_marker(tmp_project)
+        stdin = {
+            "cwd": str(tmp_project),
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+        }
+        bootstrap = run_hook(HOOKS_DIR / "rtl-phase-state-bootstrap.sh", stdin)
+        activation = run_hook(HOOKS_DIR / "rtl-skill-activation.sh", stdin)
+        _assert_denied(bootstrap)
+        assert "ask the user" in bootstrap["hookSpecificOutput"]["permissionDecisionReason"]
+        assert activation["continue"] is True
+        assert not (tmp_project / ".rat" / "state" / "skill-active.json").exists()
 
 
 class TestPhaseStateBootstrap:
@@ -1737,11 +3333,58 @@ class TestPhaseStateBootstrap:
     def test_p5b_blocks_without_p5a_state(self, tmp_project):
         _setup_marker(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
-        assert result["continue"] is False
+        _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "P5B Gate BLOCKED" in ctx
         assert "rtl-p5a-functional-closure" in ctx
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
+
+    def test_p5b_deny_from_a_subdirectory_names_the_project_state_file(self, tmp_project):
+        # A relative .rat/state path would send Claude, working in rtl/, to a stray rtl/.rat.
+        _setup_marker(tmp_project)
+        (tmp_project / "rtl").mkdir()
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project / "rtl"),
+                                      "skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+                          env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
+        _assert_denied(result)
+        state = tmp_project / ".rat" / "state" / "p5a-state.json"
+        assert f"state file {state} not found" in result["hookSpecificOutput"]["permissionDecisionReason"]
+
+    def test_p5b_before_setup_is_not_gated(self, tmp_project):
+        # Before rat-init-project the setup advisory speaks; like the template bootstrap,
+        # the P5B gate applies only once the project is set up.
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project),
+                                      "skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+                          env={"HOME": str(tmp_project)})
+        assert result["continue"] is True
+        assert "permissionDecision" not in result.get("hookSpecificOutput", {})
+
+    def test_p5b_denied_leaves_state_untouched(self, tmp_project):
+        """The P5B gate runs before the bootstrap writes: a call it denies keeps the
+        current compliance phase and report, and writes no spawn-context manifest."""
+        _setup_marker(tmp_project)
+        rat = tmp_project / ".rat"
+        compliance = rat / "state" / "compliance-state.json"
+        compliance.write_text(json.dumps({
+            "phase": "p2-arch-design",
+            "upstream_iron_paths": ["docs/phase-1-research/iron-requirements.json"],
+            "open_requirements_path": "docs/phase-1-research/open-requirements.json",
+        }))
+        (rat / "state" / "compliance-report.json").write_text('{"verdict": "PASS"}')
+        before = compliance.read_bytes()
+        snapshot = {p: p.read_bytes() for p in rat.rglob("*") if p.is_file()}
+        result = run_hook(self.HOOK, {
+            "cwd": str(tmp_project),
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Skill",
+            "tool_input": {"skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+        })
+        _assert_denied(result)
+        assert "ask the user" in result["hookSpecificOutput"]["permissionDecisionReason"]
+        assert compliance.read_bytes() == before
+        assert (rat / "state" / "compliance-report.json").exists()
+        assert not (rat / "state" / "spawn-context.json").exists()
+        assert {p: p.read_bytes() for p in rat.rglob("*") if p.is_file()} == snapshot
 
     def test_p5b_blocks_when_p5a_verdict_not_pass(self, tmp_project):
         _setup_marker(tmp_project)
@@ -1752,9 +3395,10 @@ class TestPhaseStateBootstrap:
         )
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
-        assert result["continue"] is False
+        _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "gates.p5a_exit.verdict=fail" in ctx
+        assert "ask the user" in ctx.lower()
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
 
     def test_p5b_bootstraps_when_p5a_pass(self, tmp_project):
@@ -1788,9 +3432,10 @@ class TestPhaseStateBootstrap:
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
-        assert result["continue"] is False
+        _assert_denied(result)
         ctx = result.get("hookSpecificOutput", {}).get("permissionDecisionReason", "")
         assert "stale functional closure" in ctx
+        assert "ask the user" in ctx.lower()
         assert not (state_dir / "p5b-state.json").exists()
 
     def test_p5b_allows_when_p5a_newer_than_tracked_rtl_changes(self, tmp_project):
@@ -1904,7 +3549,7 @@ class TestHookConcurrency:
         # Run 3 calls sequentially (parallel would be racy by design — we test lock correctness)
         for _ in range(3):
             result = run_gate()
-            assert result.get("continue") is False
+            _assert_stop_blocked(result)
 
         final_state = json.loads((state_dir / "skill-active.json").read_text())
         assert final_state["iteration"] == 4, f"Expected iteration=4, got {final_state['iteration']}"
@@ -1964,8 +3609,8 @@ class TestTeamAwarenessGuard:
             "active_gate_last_chance_attempts": 0, "needs_user_decision": False
         }}
         (state_dir / "rat-auto-design-state.json").write_text(json.dumps(state))
-        # Worker session (no CLAUDE_SESSION_ID or different from leader)
-        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project)})
+        # Worker session (its session id differs from the leader's)
+        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_leader_session_still_blocked_by_stop_gate(self, tmp_project):
@@ -1978,24 +3623,15 @@ class TestTeamAwarenessGuard:
             "active_gate_last_chance_attempts": 0, "needs_user_decision": False
         }}
         (state_dir / "rat-auto-design-state.json").write_text(json.dumps(state))
-        # Simulate leader session via env
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["stop-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        assert parsed["continue"] is False
+        result = run_hook(self.HOOKS["stop-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_worker_bypasses_verify_gate(self, tmp_project):
         """Worker in team mode → verify gate allows exit even with tracked files."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
-        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_worker_bypasses_p6_cascade(self, tmp_project):
@@ -2003,7 +3639,7 @@ class TestTeamAwarenessGuard:
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_worker_bypasses_skill_completion(self, tmp_project):
@@ -2017,7 +3653,7 @@ class TestTeamAwarenessGuard:
             "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
-        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
     def test_leader_session_still_blocked_by_verify_gate(self, tmp_project):
@@ -2025,32 +3661,16 @@ class TestTeamAwarenessGuard:
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["verify-stop-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        assert parsed["continue"] is False
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_leader_session_still_blocked_by_p6_cascade(self, tmp_project):
         """Leader session in team mode → P6 cascade gate still blocks."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["p6-cascade-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        assert parsed["continue"] is False
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_leader_session_still_blocked_by_skill_completion(self, tmp_project):
         """Leader session in team mode → skill completion gate still blocks."""
@@ -2063,27 +3683,23 @@ class TestTeamAwarenessGuard:
             "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         (state_dir / "skill-active.json").write_text(json.dumps(skill_state))
-        import subprocess
-        env = {**os.environ, "CLAUDE_SESSION_ID": "leader-abc"}
-        result = subprocess.run(
-            ["sh", str(self.HOOKS["skill-completion-gate"])],
-            capture_output=True, text=True,
-            input=json.dumps({"cwd": str(tmp_project)}),
-            env=env, timeout=10,
-        )
-        parsed = json.loads(result.stdout)
-        assert parsed["continue"] is False
+        result = run_hook(self.HOOKS["skill-completion-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
 
     def test_empty_leader_id_enforces_gate_fail_closed(self, tmp_project):
         """Empty leader_session_id with team_mode=true → fail-closed, gate enforced for all."""
         self._write_team_config(tmp_project, leader_id="")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
+        _assert_stop_blocked(result)
 
-    def test_stale_team_config_removed_and_gate_applies(self, tmp_project):
-        """team-config.json older than 2h → removed, normal gate behavior resumes."""
+    @pytest.mark.parametrize("created_at", [None, "<ISO_TIMESTAMP>", "2020-01-01T00:00:00Z"],
+                             ids=["no-created_at", "placeholder", "old-utc"])
+    def test_stale_team_config_removed_and_gate_applies(self, tmp_project, created_at):
+        """team-config.json last written over 2h ago → removed, normal gate behavior resumes.
+        The age is the file's mtime: the model-written created_at may be missing, a
+        placeholder or local time."""
         state_dir = tmp_project / ".rat" / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         stale_config = {
@@ -2091,28 +3707,141 @@ class TestTeamAwarenessGuard:
             "team_name": "p5-verify",
             "leader_session_id": "leader-old",
             "phase": "p5",
-            "created_at": "2020-01-01T00:00:00Z"
         }
-        (state_dir / "team-config.json").write_text(json.dumps(stale_config, indent=2))
+        if created_at is not None:
+            stale_config["created_at"] = created_at
+        config = state_dir / "team-config.json"
+        config.write_text(json.dumps(stale_config, indent=2))
+        three_hours_ago = time.time() - 3 * 3600
+        os.utime(config, (three_hours_ago, three_hours_ago))
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "new-session"})
         # Stale config removed → gate blocks as normal
-        assert result["continue"] is False
-        assert not (state_dir / "team-config.json").exists()
+        _assert_stop_blocked(result)
+        assert not config.exists()
+
+    def test_config_refreshed_during_the_staleness_check_is_kept(self, tmp_project):
+        """A team skill that rewrites a stale config while the gate judges it must not lose
+        the new config: the gate re-reads the mtime before removing the file."""
+        config = tmp_project / ".rat" / "state" / "team-config.json"
+        config.write_text(json.dumps({"team_mode": True, "leader_session_id": "leader-abc"}))
+        three_hours_ago = time.time() - 3 * 3600
+        os.utime(config, (three_hours_ago, three_hours_ago))
+        # get_mtime_epoch as in posix-util.sh, except that the writer refreshes the config
+        # right after the gate's first read.
+        script = f"""
+. "{HOOKS_DIR}/lib/json-util.sh"
+. "{HOOKS_DIR}/lib/posix-util.sh"
+. "{HOOKS_DIR}/lib/team-gate-util.sh"
+jsonu_detect_parser
+get_mtime_epoch() {{
+  _m=$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null)
+  [ -e "$1.refreshed" ] || {{ : > "$1.refreshed"; touch "$1"; }}
+  printf '%s' "$_m"
+}}
+teamu_should_skip_gate "{config.parent}" '{{"session_id":"worker-1"}}'
+echo "rc=$?"
+"""
+        result = subprocess.run(["sh", "-c", script], capture_output=True, text=True, timeout=10)
+        assert result.stdout.strip() == "rc=1", result  # judged stale: enforced this once
+        assert config.exists()
+
+    @pytest.mark.parametrize("age_hours", [0, 1.5])
+    def test_fresh_team_config_stays_despite_an_old_created_at(self, tmp_project, age_hours):
+        """A config last written under 2h ago is team mode whatever its created_at says."""
+        state_dir = tmp_project / ".rat" / "state"
+        config = state_dir / "team-config.json"
+        config.write_text(json.dumps({"team_mode": True, "leader_session_id": "leader-abc",
+                                      "created_at": "2020-01-01T00:00:00Z"}))
+        written = time.time() - age_hours * 3600
+        os.utime(config, (written, written))
+        (state_dir / "phase6-stale").touch()
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert result == {"continue": True}
+        assert config.exists()
 
     def test_team_mode_false_does_not_bypass(self, tmp_project):
         """team_mode=false → no bypass, normal behavior."""
         self._write_team_config(tmp_project, team_mode=False, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
-        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        result = run_hook(self.HOOKS["p6-cascade-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
+        _assert_stop_blocked(result)
 
     def test_stop_hooks_use_shared_team_gate_util(self):
         for _, hook_path in self.HOOKS.items():
             content = hook_path.read_text()
             assert "lib/team-gate-util.sh" in content
             assert "teamu_should_skip_gate" in content
+
+    def test_team_skip_callers_source_posix_util_first(self):
+        # The teamu_* helpers read the config's mtime with the posix-util.sh helpers.
+        callers = [p for p in sorted(HOOKS_DIR.glob("*.sh")) if "teamu_" in p.read_text()]
+        assert {p.name for p in callers} >= {"rtl-edit-tracker.sh", "rtl-skill-activation.sh"}
+        for path in callers:
+            lines = path.read_text().splitlines()
+            call = next(i for i, line in enumerate(lines)
+                        if "teamu_" in line and not line.lstrip().startswith("#"))
+            for lib in ("posix-util.sh", "team-gate-util.sh"):
+                assert lines.index(f'. "$SCRIPT_DIR/lib/{lib}"') < call, (path.name, lib)
+
+    def test_leader_from_the_hook_input_is_enforced(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"],
+                          {"cwd": str(tmp_project), "session_id": "leader-abc"})
+        _assert_stop_blocked(result)
+
+    def test_worker_from_the_hook_input_skips(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"],
+                          {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert result == {"continue": True}
+
+    def test_session_from_claude_code_env_when_the_input_has_none(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)},
+                          env={"CLAUDE_CODE_SESSION_ID": "leader-abc"})
+        _assert_stop_blocked(result)
+
+    @pytest.mark.parametrize("var", ["CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID"])
+    def test_worker_from_the_env_skips(self, tmp_project, var):
+        # The gate enforces a leader and an unknown session alike, so only a worker shows
+        # that the env was read.
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)},
+                          env={var: "worker-1"})
+        assert result == {"continue": True}
+
+    @pytest.mark.parametrize("stdin, env", [
+        ({"session_id": "leader-abc"}, {"CLAUDE_CODE_SESSION_ID": "worker-1"}),
+        ({}, {"CLAUDE_CODE_SESSION_ID": "leader-abc", "CLAUDE_SESSION_ID": "worker-1"}),
+    ])
+    def test_session_sources_in_order(self, tmp_project, stdin, env):
+        # The input's session_id, then CLAUDE_CODE_SESSION_ID, then the legacy CLAUDE_SESSION_ID.
+        # The first source present names the leader, so the gate must block.
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), **stdin},
+                          env=env)
+        _assert_stop_blocked(result)
+
+    def test_unknown_session_enforces_the_gate(self, tmp_project):
+        self._write_team_config(tmp_project, leader_id="leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
+        _assert_stop_blocked(result)
+
+    @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
+    def test_placeholder_leader_enforces_for_everyone(self, tmp_project, leader):
+        self._write_team_config(tmp_project, leader_id=leader)
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        result = run_hook(self.HOOKS["verify-stop-gate"],
+                          {"cwd": str(tmp_project), "session_id": "worker-1"})
+        _assert_stop_blocked(result)
 
 
 class TestSedFallbackContract:
@@ -2143,7 +3872,7 @@ class TestSedFallbackContract:
         assert result["continue"] is True
 
     def test_stop_gate_fallback_blocks_active(self, tmp_project):
-        """Active autopilot state → continue=false under sed fallback."""
+        """Active autopilot state → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         state_file = state_dir / "rat-auto-design-state.json"
         state_file.write_text(json.dumps({"status": "in_progress", "phase": 3}, indent=2))
@@ -2152,12 +3881,12 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     # ── verify-stop-gate ─────────────────────────────────────────────────────
 
     def test_verify_gate_fallback_blocks_unverified(self, tmp_project):
-        """Tracked files without verification → continue=false under sed fallback."""
+        """Tracked files without verification → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
         result = run_hook(
@@ -2165,7 +3894,7 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_verify_gate_fallback_allows_verified(self, tmp_project):
         """Tracked files with verify-done → continue=true under sed fallback."""
@@ -2182,7 +3911,7 @@ class TestSedFallbackContract:
     # ── p6-cascade-gate ──────────────────────────────────────────────────────
 
     def test_p6_cascade_fallback_blocks_stale(self, tmp_project):
-        """phase6-stale marker → continue=false under sed fallback."""
+        """phase6-stale marker → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "phase6-stale").touch()
         result = run_hook(
@@ -2190,7 +3919,7 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_p6_cascade_fallback_allows_clean(self, tmp_project):
         """No stale marker → continue=true under sed fallback."""
@@ -2204,7 +3933,7 @@ class TestSedFallbackContract:
     # ── skill-completion-gate ────────────────────────────────────────────────
 
     def test_skill_completion_fallback_blocks_active(self, tmp_project):
-        """Active skill state → continue=false under sed fallback."""
+        """Active skill state → blocked under sed fallback."""
 
         state_dir = tmp_project / ".rat" / "state"
         state = {
@@ -2224,7 +3953,7 @@ class TestSedFallbackContract:
             {"cwd": str(tmp_project)},
             env=self.FALLBACK_ENV,
         )
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_skill_completion_fallback_allows_complete(self, tmp_project):
         """all_complete=true → continue=true under sed fallback."""
@@ -2325,8 +4054,9 @@ class TestSpawnContextManifest:
         )
 
     def test_manifest_project_root_defaults_to_cwd(self, tmp_project):
-        """v0.13.x: without RAT_PROJECT_ROOT, project_root equals the session
-        CWD. Empty env value counts as unset (${RAT_PROJECT_ROOT:-} guard)."""
+        """v0.13.x: without RAT_PROJECT_ROOT, project_root is the project root the
+        hook resolved (here also the session CWD). Empty env value counts as unset
+        (${RAT_PROJECT_ROOT:-} guard)."""
         self._setup_project(tmp_project)
         self._invoke(
             tmp_project, "rtl-p4-implement", env={"RAT_PROJECT_ROOT": ""},
@@ -2533,8 +4263,8 @@ class TestSpawnContextManifest:
         assert "setup=OK" in ctx
 
 
-class TestSpawnContextTaskCreate:
-    """Tests for rtl-spawn-context.sh (PreToolUse:TaskCreate hook)."""
+class TestSpawnContextAgent:
+    """Tests for rtl-spawn-context.sh (PreToolUse:Agent hook)."""
 
     HOOK = HOOKS_DIR / "rtl-spawn-context.sh"
 
@@ -2549,8 +4279,8 @@ class TestSpawnContextTaskCreate:
         assert mpath.exists(), "spawn-context.json not written"
         return json.loads(mpath.read_text())
 
-    def test_taskcreate_overwrites_stale_manifest(self, tmp_project):
-        """TaskCreate for different agent overwrites existing manifest phase."""
+    def test_agent_spawn_overwrites_stale_manifest(self, tmp_project):
+        """An Agent spawn of a different agent overwrites the existing manifest phase."""
         (tmp_project / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
         (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").touch()
 
@@ -2562,14 +4292,14 @@ class TestSpawnContextTaskCreate:
         m1 = self._read_manifest(tmp_project)
         assert m1["pipeline"]["current_phase"] == 1
 
-        # TaskCreate for P6 agent → must overwrite
+        # Agent spawn of the P6 orchestrator → must overwrite
         self._invoke(tmp_project, "p6-review-orchestrator")
         m2 = self._read_manifest(tmp_project)
         assert m2["pipeline"]["current_phase"] == 6
 
-    def test_taskcreate_project_root_override(self, tmp_project, tmp_path_factory):
+    def test_agent_spawn_project_root_override(self, tmp_project, tmp_path_factory):
         """v0.13.x: RAT_PROJECT_ROOT redirects manifest writes for direct
-        Task() spawns whose session cwd is not the project root."""
+        Agent spawns whose session cwd is not the project root."""
         (tmp_project / ".claude" / "rules").mkdir(parents=True, exist_ok=True)
         (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").touch()
         elsewhere = tmp_path_factory.mktemp("driver-cwd")
@@ -2587,7 +4317,20 @@ class TestSpawnContextTaskCreate:
         assert m["project_root"] == str(tmp_project)
         assert not (elsewhere / ".rat").exists()
 
-    def test_taskcreate_non_orchestrator_ignored(self, tmp_project):
+    def test_agent_spawn_from_a_subdirectory_ships_the_project_root(self, tmp_project):
+        """Spawned agents treat project_root as authoritative, so a session that has
+        cd'd into rtl/ must still ship the project root."""
+        (tmp_project / "rtl").mkdir(exist_ok=True)
+        result = run_hook(
+            self.HOOK,
+            {"subagent_type": "rtl-agent-team:p6-review-orchestrator", "cwd": str(tmp_project / "rtl")},
+            env={"CLAUDE_PROJECT_DIR": str(tmp_project)},
+        )
+        assert result["continue"] is True
+        assert self._read_manifest(tmp_project)["project_root"] == str(tmp_project)
+        assert not (tmp_project / "rtl" / ".rat").exists()
+
+    def test_agent_spawn_non_orchestrator_ignored(self, tmp_project):
         """Non-orchestrator agent type → no manifest written."""
         result = run_hook(
             self.HOOK,
@@ -2599,17 +4342,17 @@ class TestSpawnContextTaskCreate:
 
     # ── Robustness: malformed / unexpected input payloads ────────────
 
-    def test_taskcreate_missing_subagent_type(self, tmp_project):
+    def test_agent_spawn_missing_subagent_type(self, tmp_project):
         """No subagent_type field → continue=true, no crash."""
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
-    def test_taskcreate_empty_input(self, tmp_project):
+    def test_agent_spawn_empty_input(self, tmp_project):
         """Empty JSON → continue=true, no crash."""
         result = run_hook(self.HOOK, {})
         assert result["continue"] is True
 
-    def test_taskcreate_non_rtl_agent(self, tmp_project):
+    def test_agent_spawn_non_rtl_agent(self, tmp_project):
         """Non-rtl-agent-team subagent_type → continue=true, no manifest."""
         result = run_hook(
             self.HOOK,
@@ -2971,7 +4714,7 @@ class TestSpawnContextStructuralContracts:
                 f"sctx_skill_to_phase({skill!r}) = {actual!r}, expected {expected_phase}"
             )
 
-    # ── Agent-to-skill mapping in TaskCreate hook ────────────────────
+    # ── Agent-to-skill mapping in the spawn-context hook ─────────────
 
     EXPECTED_AGENT_MAPPINGS = {
         # Non-team orchestrators
@@ -3015,8 +4758,8 @@ class TestSpawnContextStructuralContracts:
         "dc-report-parser": "rtl-ppa-optimize-dc",
     }
 
-    def test_taskcreate_agent_mapping_complete(self, tmp_project):
-        """All expected orchestrator agents produce correct phase via TaskCreate hook."""
+    def test_agent_spawn_mapping_complete(self, tmp_project):
+        """All expected orchestrator agents produce correct phase via the spawn-context hook."""
         rules = tmp_project / ".claude" / "rules"
         rules.mkdir(parents=True, exist_ok=True)
         (rules / "rtl-coding-conventions.md").touch()
@@ -3088,8 +4831,8 @@ class TestSpawnContextStructuralContracts:
 
     # ── Full event chain simulation ──────────────────────────────────
 
-    def test_skill_then_taskcreate_chain(self, tmp_project):
-        """Skill invoke → manifest → TaskCreate different agent → manifest updated."""
+    def test_skill_then_agent_spawn_chain(self, tmp_project):
+        """Skill invoke → manifest → Agent spawn of a different agent → manifest updated."""
         rules = tmp_project / ".claude" / "rules"
         rules.mkdir(parents=True, exist_ok=True)
         (rules / "rtl-coding-conventions.md").touch()
@@ -3103,7 +4846,7 @@ class TestSpawnContextStructuralContracts:
         m1 = json.loads(mpath.read_text())
         assert m1["pipeline"]["current_phase"] == 1
 
-        # Step 2: TaskCreate for P4 orchestrator overwrites
+        # Step 2: an Agent spawn of the P4 orchestrator overwrites
         run_hook(
             self.SPAWN_HOOK,
             {"subagent_type": "rtl-agent-team:p4-implement-orchestrator",
@@ -3172,6 +4915,99 @@ class TestTeamProgressHook:
         updated = json.loads((state_dir / "team-progress.json").read_text())
         assert updated["last_updated"] != "2020-01-01T00:00:00Z"
 
+    def _stale_team(self, tmp_project, leader):
+        """A team-config.json last written 3h ago (None: no leader key)."""
+        config = tmp_project / ".rat" / "state" / "team-config.json"
+        team = {"team_mode": True, "team_name": "test-team"}
+        if leader is not None:
+            team["leader_session_id"] = leader
+        config.write_text(json.dumps(team))
+        three_hours_ago = time.time() - 3 * 3600
+        os.utime(config, (three_hours_ago, three_hours_ago))
+        return config
+
+    def test_teammate_activity_keeps_the_team_fresh(self, tmp_project):
+        # The 2h bound measures time since the team was last active: a TaskUpdate from an
+        # in-process teammate (the leader's session id plus an agent_id) refreshes the config.
+        self._stale_team(tmp_project, "leader-abc")
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
+                             "agent_id": "coordinator"})
+        result = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh",
+                          {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert result == {"continue": True}
+
+    @pytest.mark.parametrize("parser_env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"},
+                                            {"RTL_FORCE_JSON_FALLBACK": "1"}],
+                             ids=["default", "python", "sed"])
+    def test_session_id_comes_from_the_hook_input_root(self, tmp_project, parser_env):
+        # A session id is session information: a tool_input field of the same name must not
+        # replace the root's, so the leader's teammate still keeps the team fresh.
+        config = self._stale_team(tmp_project, "leader-abc")
+        before = config.stat().st_mtime
+        run_hook(
+            self.HOOK,
+            {
+                "session_id": "leader-abc",
+                "cwd": str(tmp_project),
+                "agent_id": "coordinator",
+                "hook_event_name": "PostToolUse",
+                "tool_name": "TaskUpdate",
+                "tool_input": {"taskId": "1", "status": "completed", "session_id": "stranger"},
+            },
+            env=parser_env,
+        )
+        assert config.stat().st_mtime > before
+
+    @pytest.mark.parametrize("leader, session, agent", [("leader-abc", "other-session", "t1"),
+                                                        ("leader-abc", "leader-abc", None),
+                                                        ("<current_session_id>", "leader-abc", "t1"),
+                                                        (None, "leader-abc", "t1"),
+                                                        (None, None, None)],
+                             ids=["other-session", "leader-main-thread", "placeholder-leader",
+                                  "no-leader", "no-leader-no-session"])
+    def test_other_activity_does_not_revive_the_team(self, tmp_project, leader, session, agent):
+        # TaskUpdate is not team-only: another session's task list, or the leader's own after
+        # an abandoned run, must not keep the team alive; without a known leader no call is
+        # team activity.
+        config = self._stale_team(tmp_project, leader)
+        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        before = config.stat().st_mtime
+        stdin = {"cwd": str(tmp_project)}
+        if session is not None:
+            stdin["session_id"] = session
+        if agent is not None:
+            stdin["agent_id"] = agent
+        run_hook(self.HOOK, stdin)
+        assert config.stat().st_mtime == before
+        # The config stays stale, so the session's next Stop removes it and enforces the gate.
+        _assert_stop_blocked(run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", stdin))
+        assert not config.exists()
+
+    def test_activity_before_any_team_creates_no_config(self, tmp_project):
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
+                             "agent_id": "coordinator"})
+        assert not (tmp_project / ".rat" / "state" / "team-config.json").exists()
+
+    @pytest.mark.skipif(shutil.which("jq") is None, reason="the race is staged through jq")
+    def test_heartbeat_does_not_recreate_a_config_removed_meanwhile(self, tmp_project):
+        # A gate may remove the stale config between this hook's read of the leader and its
+        # touch; a plain touch would then leave an empty team-config.json behind.
+        config = self._stale_team(tmp_project, "leader-abc")
+        shim = tmp_project / "bin"
+        shim.mkdir()
+        (shim / "jq").write_text(
+            "#!/bin/sh\n"
+            f'"{shutil.which("jq")}" "$@"; rc=$?\n'
+            'for a in "$@"; do case "$a" in */team-config.json)\n'
+            '  [ -e "$a.gone" ] || { rm -f "$a"; : > "$a.gone"; } ;; esac; done\n'
+            "exit $rc\n")
+        (shim / "jq").chmod(0o755)
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
+                             "agent_id": "coordinator"},
+                 env={"PATH": f"{shim}:{os.environ['PATH']}"})
+        assert not config.exists()
+
 
 # ── P1-1 Mapping Drift Detection ────────────────────────────────────────────
 
@@ -3218,12 +5054,13 @@ class TestMappingSyncParity:
         """Parse the compliance state bootstrap case in rtl-phase-state-bootstrap.sh.
         Returns a set of skill short-names that have compliance entries."""
         content = path.read_text()
-        # Find the case "$SHORT_NAME" block inside the compliance bootstrap section
+        # The compliance map is the file's generated PHASE_MAP block. Reading the first
+        # case on $SHORT_NAME instead would let an earlier case (a gate) stand in for it.
         m = re.search(
-            r'case\s+"\$SHORT_NAME"\s+in\s*\n(.*?)esac',
+            r'# BEGIN GENERATED PHASE_MAP\n(.*?)# END GENERATED PHASE_MAP',
             content, re.DOTALL,
         )
-        assert m, "Could not find compliance bootstrap case block"
+        assert m, "Could not find the compliance bootstrap's generated PHASE_MAP block"
         block = m.group(1)
         skills = set()
         for line in block.splitlines():
@@ -3579,6 +5416,77 @@ class TestRatDirUtil:
         assert rc == 1
         assert out == ""
 
+    def _resolve(self, start, project_dir=None):
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PROJECT_DIR"}
+        if project_dir is not None:
+            env["CLAUDE_PROJECT_DIR"] = str(project_dir)
+        result = subprocess.run(
+            ["sh", "-c", f'. "{HOOKS_DIR}/lib/rat-dir-util.sh"\nrat_project_dir "$1"', "sh", str(start)],
+            capture_output=True, text=True, env=env,
+        )
+        return result.stdout.strip(), result.returncode
+
+    def test_subdirectory_resolves_to_the_project(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl" / "core").mkdir(parents=True)
+        assert self._resolve(tmp_path / "rtl" / "core", tmp_path) == (f"{tmp_path}/.rat", 0)
+
+    def test_root_marker_wins_over_a_stray_nested_one(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl" / ".rat" / "state").mkdir(parents=True)  # a relative write made from rtl/
+        assert self._resolve(tmp_path / "rtl", tmp_path) == (f"{tmp_path}/.rat", 0)
+
+    def test_without_a_root_marker_the_nearest_initialized_project_wins(self, tmp_path):
+        ip = tmp_path / "ip"
+        (ip / ".rat").mkdir(parents=True)
+        (ip / "rat_config.json").write_text("{}")
+        (ip / "rtl" / ".rat").mkdir(parents=True)                   # stray, not initialized
+        assert self._resolve(ip / "rtl", tmp_path) == (f"{ip}/.rat", 0)
+
+    def test_without_a_root_marker_a_legacy_project_is_still_found(self, tmp_path):
+        ip = tmp_path / "ip"
+        (ip / ".rtl-agent-team").mkdir(parents=True)
+        (ip / "rtl").mkdir()
+        assert self._resolve(ip / "rtl", tmp_path) == (f"{ip}/.rtl-agent-team", 0)
+
+    def test_walk_stops_at_the_project_root(self, tmp_path):
+        (tmp_path / ".rat").mkdir()                      # stray marker above the project
+        project = tmp_path / "work" / "proj"
+        (project / "rtl").mkdir(parents=True)
+        assert self._resolve(project / "rtl", project) == ("", 1)
+
+    def test_a_trailing_slash_does_not_carry_the_walk_above_the_project_root(self, tmp_path):
+        (tmp_path / ".rat").mkdir()                      # stray marker above the project
+        project = tmp_path / "proj"
+        project.mkdir()
+        assert self._resolve(f"{project}/", project) == ("", 1)
+
+    @pytest.mark.parametrize("start", ["elsewhere/sub", "proj2/rtl"])
+    def test_a_start_outside_the_project_checks_only_itself(self, tmp_path, start):
+        (tmp_path / ".rat").mkdir()                      # marker above the start
+        (tmp_path / "proj").mkdir()
+        (tmp_path / start).mkdir(parents=True)           # proj2 only shares the project's prefix
+        assert self._resolve(tmp_path / start, tmp_path / "proj") == ("", 1)
+
+    def test_a_trailing_slash_in_the_project_dir_still_bounds_the_walk(self, tmp_path):
+        ip = tmp_path / "ip"
+        (ip / ".rat").mkdir(parents=True)
+        (ip / "rat_config.json").write_text("{}")
+        (ip / "rtl").mkdir()
+        assert self._resolve(ip / "rtl", f"{tmp_path}/") == (f"{ip}/.rat", 0)
+
+    def test_cwd_outside_the_project_falls_back_to_the_project_root(self, tmp_path):
+        project = tmp_path / "proj"
+        (project / ".rat").mkdir(parents=True)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        assert self._resolve(elsewhere, project) == (f"{project}/.rat", 0)
+
+    def test_without_project_dir_only_the_cwd_counts(self, tmp_path):
+        (tmp_path / ".rat").mkdir()
+        (tmp_path / "rtl").mkdir()
+        assert self._resolve(tmp_path / "rtl") == ("", 1)
+
 
 # ── Legacy .rtl-agent-team fallback integration tests ────────────────────────
 
@@ -3607,7 +5515,7 @@ class TestLegacyDirFallback:
             self.VERIFY_HOOK,
             {"cwd": str(tmp_legacy_project)},
         )
-        assert result["continue"] is False
+        _assert_stop_blocked(result)
 
     def test_orchestrator_inject_fires_with_legacy_dir(self, tmp_legacy_project):
         # Since v0.10.3 the hook emits a JSON envelope; routing markdown is
@@ -3633,3 +5541,385 @@ class TestLegacyDirFallback:
             assert not (tmp_path / ".rat").exists(), (
                 f"{hook_name} created .rat in non-project dir"
             )
+
+
+class TestCoverageExclusionGate:
+    """Tests for hooks/rtl-coverage-exclusion-gate.sh."""
+
+    HOOK = HOOKS_DIR / "rtl-coverage-exclusion-gate.sh"
+
+    def _write_exclusions(self, tmp_project):
+        review = tmp_project / "reviews" / "phase-5-verify"
+        review.mkdir(parents=True)
+        (review / "alu-coverage-exclusions.md").write_text(
+            "| Bin | Category |\n|---|---|\n| cp_mode.dbg | Unimplemented feature |\n"
+        )
+
+    def test_asks_once_then_hands_approval_to_user(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        first = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": False})
+        second = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
+        assert first["decision"] == "block"
+        assert "AskUserQuestion" in first["reason"]
+        assert "decision" not in second
+        assert "coverage-exclusion-approved" in second["systemMessage"]
+
+    def test_approval_marker_allows_exit(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["continue"] is True
+
+    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        for i in range(5):
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+
+    def test_worker_stop_keeps_leader_budget(self, tmp_project):
+        state = tmp_project / ".rat" / "state"
+        (state / "team-config.json").write_text(json.dumps(
+            {"team_mode": True, "leader_session_id": "leader-001"}))
+        self._write_exclusions(tmp_project)
+        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
+        run_hook(self.HOOK, lead)
+        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
+        budget = state / "stop-budget-coverage-exclusion.txt"
+        before = budget.read_text()
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
+        assert budget.read_text() == before
+
+    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
+        # An earlier chain left this gate's budget; another hook then kept a new chain
+        # going for six Stops while this gate allowed them.
+        (tmp_project / ".rat" / "state" / "stop-budget-coverage-exclusion.txt").write_text("0\n\n1\n0\np-1\n")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        self._write_exclusions(tmp_project)
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "coverage-exclusion-approved" in result["systemMessage"]
+
+    def _stops(self, project, actives):
+        """Run one Stop per stop_hook_active value and return the outputs."""
+        return [run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": a}) for a in actives]
+
+    def _write_table(self, project, name, *categories):
+        """Write reviews/phase-5-verify/<name> with one bin per category."""
+        review = project / "reviews" / "phase-5-verify"
+        review.mkdir(parents=True, exist_ok=True)
+        rows = "".join(f"| cp_{i}.bin | {category} |\n" for i, category in enumerate(categories))
+        (review / name).write_text("| Bin | Category |\n|---|---|\n" + rows)
+
+    def test_notice_holds_for_the_rest_of_the_chain(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        marker = tmp_project / ".rat" / "state" / "coverage-exclusion-approved"
+        results = self._stops(tmp_project, [False, True, True, True])
+        assert results[0] == {"decision": "block", "reason": (
+            "[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:"
+            " alu-coverage-exclusions.md(1). These bins (Unimplemented features / Ambiguous spec)"
+            f" need explicit confirmation via AskUserQuestion. After approval: touch '{marker}'")}
+        assert results[1] == {"systemMessage": (
+            "[Coverage Exclusion Gate] 1 non-standard coverage exclusion(s) still await your approval:"
+            f" alu-coverage-exclusions.md(1). To approve: touch '{marker}'")}
+        assert results[2:] == [{"continue": True}] * 2
+
+    def test_the_system_file_is_counted_once(self, tmp_project):
+        # The module-file glob also matches system-coverage-exclusions.md.
+        self._write_table(tmp_project, "system-coverage-exclusions.md", "Ambiguous spec")
+        results = self._stops(tmp_project, [False, True])
+        reason, notice = results[0]["reason"], results[1]["systemMessage"]
+        assert reason.startswith("[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:"
+                                 " system-coverage-exclusions.md(1).")
+        assert notice.startswith("[Coverage Exclusion Gate] 1 non-standard coverage exclusion(s) still await"
+                                 " your approval: system-coverage-exclusions.md(1).")
+        assert reason.count("system-coverage-exclusions.md") == notice.count("system-coverage-exclusions.md") == 1
+
+    @pytest.mark.parametrize("satisfy", ["approved", "reclassified", "review_dir_removed"])
+    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
+        state = tmp_project / ".rat" / "state"
+        marker = state / "coverage-exclusion-approved"
+        self._write_exclusions(tmp_project)
+        assert "systemMessage" in self._stops(tmp_project, [False, True])[1]
+        if satisfy == "approved":
+            marker.touch()
+        elif satisfy == "reclassified":  # the bin is out of reach after all: a standard category
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
+        else:
+            shutil.rmtree(tmp_project / "reviews" / "phase-5-verify")
+        # A chained Stop, so the chain-start reset cannot be what clears the budget.
+        assert self._stops(tmp_project, [True]) == [{"continue": True}]
+        lines = (state / "stop-budget-coverage-exclusion.txt").read_text().split("\n")
+        assert (lines[0], lines[2], lines[3]) == ("0", "3", "0")
+        # The same condition comes back later in this chain.
+        if satisfy == "approved":
+            marker.unlink()
+        else:
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature")
+        again = self._stops(tmp_project, [True])[0]
+        assert again["decision"] == "block"
+        assert again["reason"].startswith(
+            "[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:")
+
+    @pytest.mark.parametrize("exit_path", ["approved", "standard_only"])
+    def test_allowed_stops_count_at_every_allow_exit(self, tmp_project, exit_path):
+        # As above, with the six Stops allowed through the approval marker, or through
+        # exclusion records whose bins all have standard categories.
+        state = tmp_project / ".rat" / "state"
+        marker = state / "coverage-exclusion-approved"
+        (state / "stop-budget-coverage-exclusion.txt").write_text("0\n\n1\n0\np-1\n")
+        if exit_path == "approved":
+            self._write_exclusions(tmp_project)
+            marker.touch()
+        else:
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
+        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}
+        for i in range(6):
+            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
+        if exit_path == "approved":
+            marker.unlink()  # the approval is withdrawn
+        else:
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Ambiguous spec")
+        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
+        assert "decision" not in result
+        assert "coverage-exclusion-approved" in result["systemMessage"]
+
+    def test_progress_on_every_stop_still_hands_over_at_the_chain_cap(self, tmp_project):
+        results = []
+        for i in range(8):
+            # One more bin awaits approval on every Stop.
+            self._write_table(tmp_project, "alu-coverage-exclusions.md", *["Ambiguous spec"] * (i + 1))
+            results += self._stops(tmp_project, [i > 0])
+        assert [r.get("decision") for r in results[:6]] == ["block"] * 6
+        assert "still await your approval" in results[6]["systemMessage"]
+        assert results[7] == {"continue": True}
+
+    def test_a_change_in_the_unapproved_bins_restarts_the_count(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        results = self._stops(tmp_project, [False])
+        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec")  # one more to approve
+        results += self._stops(tmp_project, [True, True])
+        assert [r.get("decision") for r in results] == ["block", "block", None]
+        assert results[1]["reason"].startswith("[Coverage Exclusion Gate] 2 non-standard exclusion(s)")
+        assert "still await your approval" in results[2]["systemMessage"]
+
+    def test_a_bin_awaiting_approval_in_another_file_restarts_the_count(self, tmp_project):
+        # Still one bin, but a different one awaits approval: the condition moved.
+        self._write_exclusions(tmp_project)
+        results = self._stops(tmp_project, [False])
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
+        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec")
+        results += self._stops(tmp_project, [True, True])
+        assert [r.get("decision") for r in results] == ["block", "block", None]
+        assert results[1]["reason"].startswith("[Coverage Exclusion Gate] 1 non-standard exclusion(s)"
+                                               " require user approval: fifo-coverage-exclusions.md(1).")
+        assert "still await your approval" in results[2]["systemMessage"]
+
+    def test_rewriting_a_file_without_changing_its_unapproved_bins_is_not_progress(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        results = self._stops(tmp_project, [False])
+        # Claude adds a standard exclusion; the one bin that needs approval still does.
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature", "Unreachable")
+        results += self._stops(tmp_project, [True])
+        assert results[0]["decision"] == "block"
+        assert "still await your approval" in results[1]["systemMessage"]
+
+    def test_a_symlinked_cwd_is_not_progress(self, tmp_path):
+        project = tmp_path / "project"
+        (project / ".rat" / "state").mkdir(parents=True)
+        self._write_exclusions(project)
+        link = tmp_path / "link"
+        link.symlink_to(project)
+        # One chain whose input cwd alternates between the project and a symlink to it.
+        results = [
+            run_hook(self.HOOK, {"cwd": str(link if i % 2 else project), "stop_hook_active": i > 0})
+            for i in range(3)
+        ]
+        assert [r.get("decision") for r in results] == ["block", None, None]
+        assert "systemMessage" in results[1]
+        assert results[2] == {"continue": True}
+
+    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
+        project = tmp_path / "o'brien"
+        (project / ".rat" / "state").mkdir(parents=True)
+        self._write_exclusions(project)
+        results = self._stops(project, [False, True])
+        marker = project / ".rat" / "state" / "coverage-exclusion-approved"
+        # The command comes last and can be copied as is.
+        assert results[0]["reason"].endswith("coverage-exclusion-approved'")
+        assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
+        commands = [
+            results[0]["reason"].split("After approval: ", 1)[1],
+            results[1]["systemMessage"].split("To approve: ", 1)[1],
+        ]
+        for command in commands:
+            marker.unlink(missing_ok=True)
+            before = set(tmp_path.rglob("*"))
+            subprocess.run(["sh", "-c", command], check=True, cwd=tmp_path)
+            assert set(tmp_path.rglob("*")) - before == {marker}  # exactly the marker
+        # Approved: the chain's next Stop lets Claude stop.
+        assert self._stops(project, [True]) == [{"continue": True}]
+
+    def test_categories_match_in_any_case(self, tmp_project):
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "unimplemented feature", "AMBIGUOUS spec")
+        reason = self._stops(tmp_project, [False])[0]["reason"]
+        assert reason.startswith("[Coverage Exclusion Gate] 2 non-standard exclusion(s) require user approval:"
+                                 " alu-coverage-exclusions.md(2).")
+
+    def test_every_file_is_listed_with_its_own_count(self, tmp_project):
+        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature")
+        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec", "Ambiguous spec")
+        reason = self._stops(tmp_project, [False])[0]["reason"]
+        assert ("3 non-standard exclusion(s) require user approval:"
+                " alu-coverage-exclusions.md(1), fifo-coverage-exclusions.md(2).") in reason
+
+    def test_a_space_in_the_project_path_still_finds_the_exclusions(self, tmp_path):
+        project = tmp_path / "my project"
+        (project / ".rat" / "state").mkdir(parents=True)
+        self._write_exclusions(project)
+        assert self._stops(project, [False])[0]["decision"] == "block"
+
+    def test_sed_fallback_asks_once_then_notifies(self, tmp_project):
+        # Without jq and python the gate parses and escapes with sed; the output stays valid JSON.
+        self._write_exclusions(tmp_project)
+        fallback = {"RTL_FORCE_JSON_FALLBACK": "1"}
+        results = [
+            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}, env=fallback)
+            for i in range(2)
+        ]
+        assert results[0]["decision"] == "block"
+        assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
+
+    def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
+        self._write_exclusions(tmp_project)
+        (tmp_project / "rtl").mkdir()
+        stop = {"cwd": str(tmp_project / "rtl")}
+        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
+        result = run_hook(self.HOOK, stop, env=env)
+        _assert_stop_blocked(result)
+        assert "alu-coverage-exclusions.md" in result["reason"]
+        (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
+        assert run_hook(self.HOOK, {**stop, "stop_hook_active": True}, env=env) == {"continue": True}
+
+
+def _verify_blocks(project):
+    (project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/alu.sv\n")
+
+
+def _p6_cascade_blocks(project):
+    (project / ".rat" / "state" / "phase6-stale").touch()
+
+
+def _skill_completion_blocks(project):
+    started = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    (project / ".rat" / "state" / "skill-active.json").write_text(json.dumps({
+        "skill": "rtl-p4s-bugfix", "active": True, "iteration": 1, "max_iterations": 5,
+        "pending": "lint_pass, sim_pass", "all_complete": False, "started_at": started}))
+
+
+def _autopilot_blocks(project):
+    (project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
+        json.dumps({"status": "in_progress", "phase": 3}))
+
+
+def _coverage_exclusion_blocks(project):
+    review = project / "reviews" / "phase-5-verify"
+    review.mkdir(parents=True)
+    (review / "alu-coverage-exclusions.md").write_text(
+        "| Bin | Category |\n|---|---|\n| cp_mode.dbg | Unimplemented feature |\n")
+
+
+class TestStopGatesYieldToBackgroundAgents:
+    """Agents run in the background by default (CLI 2.1.282), so the leader's Stop comes while
+    its orchestrator still works. Every Stop gate lets that Stop through, silently and without
+    spending its budget; the agent's completion wakes the session, and the gates enforce at
+    that turn's Stop."""
+
+    # Each gate, the budget ids its chain count names, and a setup that makes it block.
+    GATES = {
+        "rtl-verify-stop-gate.sh": (("verify",), _verify_blocks),
+        "rtl-p6-cascade-gate.sh": (("p6-cascade",), _p6_cascade_blocks),
+        "rtl-skill-completion-gate.sh": (("skill-completion",), _skill_completion_blocks),
+        "stop-gate.sh": (("ultraloop", "ppa-loop", "autopilot"), _autopilot_blocks),
+        "rtl-coverage-exclusion-gate.sh": (("coverage-exclusion",), _coverage_exclusion_blocks),
+    }
+    # Background work as Claude Code 2.1.282 writes it into a Stop input.
+    AGENT = {"id": "a6480a3838dc76cfa", "type": "subagent", "status": "running",
+             "description": "Run the Phase 4 orchestrator",
+             "agent_type": "rtl-agent-team:p4-implement-orchestrator"}
+    SHELL = {"id": "b2f1c9d0e4", "type": "shell", "status": "running",
+             "description": "Serve the waveform viewer", "command": "python3 -m http.server 8000"}
+    CRON = {"id": "c7d3e1", "schedule": "*/5 * * * *", "recurring": True,
+            "prompt": "Check the regression"}
+
+    def _stop(self, project, gate, active, tasks, crons=(), prompt="p-1"):
+        return run_hook(HOOKS_DIR / gate, {
+            "cwd": str(project), "prompt_id": prompt, "hook_event_name": "Stop",
+            "stop_hook_active": active, "last_assistant_message": "Launched the orchestrator.",
+            "background_tasks": list(tasks), "session_crons": list(crons)})
+
+    def _seed_budgets(self, project, ids, notice):
+        """Earlier blocks in this chain spent part of each budget, and maybe showed the notice."""
+        for budget_id in ids:
+            (project / ".rat" / "state" / f"stop-budget-{budget_id}.txt").write_text(
+                f"1\nfp-x\n2\n{notice}\np-1\n")
+
+    @staticmethod
+    def _snapshot(project):
+        return {str(p.relative_to(project)): p.read_bytes() for p in project.rglob("*") if p.is_file()}
+
+    @pytest.mark.parametrize("notice", ["0", "1"])
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_agent_in_flight_lets_the_stop_through_without_spending_the_budget(self, tmp_project, gate, notice):
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        self._seed_budgets(tmp_project, ids, notice)
+        before = self._snapshot(tmp_project)
+        assert self._stop(tmp_project, gate, True, [self.SHELL, self.AGENT], [self.CRON]) == {"continue": True}
+        after = self._snapshot(tmp_project)
+        # Only each budget's line 3, the chain's Stop count, moved; line 6 records the yield.
+        for budget_id in ids:
+            name = f".rat/state/stop-budget-{budget_id}.txt"
+            assert after.pop(name).decode() == f"1\nfp-x\n3\n{notice}\np-1\nyield\n"
+            before.pop(name)
+        assert after == before
+
+    @pytest.mark.parametrize("tasks,crons", [([], []), ([SHELL], [CRON])],
+                             ids=["nothing-in-flight", "shell-and-cron"])
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_the_same_stop_without_an_agent_blocks(self, tmp_project, gate, tasks, crons):
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        self._seed_budgets(tmp_project, ids, "0")
+        _assert_stop_blocked(self._stop(tmp_project, gate, True, tasks, crons))
+
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_gate_enforces_at_the_stop_after_the_agent_finished(self, tmp_project, gate):
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        # The leader's turn ends right after it launched the agent.
+        assert self._stop(tmp_project, gate, False, [self.AGENT]) == {"continue": True}
+        for budget_id in ids:
+            budget = tmp_project / ".rat" / "state" / f"stop-budget-{budget_id}.txt"
+            assert budget.read_text() == "0\n\n1\n0\np-1\nyield\n"
+        # The completion notification starts a new turn; at its Stop nothing is in flight.
+        _assert_stop_blocked(self._stop(tmp_project, gate, False, [], prompt="p-2"))
+
+    @pytest.mark.parametrize("gate", sorted(GATES))
+    def test_handing_the_work_to_new_background_agents_still_reaches_the_notice(self, tmp_project, gate):
+        # Each completion turn starts a new chain. If the gate blocks there and Claude hands
+        # the work to another background agent, the chain ends in a yield; the next chain
+        # keeps the count, so the user still gets the notice after the usual blocks.
+        ids, blocks = self.GATES[gate]
+        blocks(tmp_project)
+        outcomes = []
+        for turn in range(1, 6):
+            result = self._stop(tmp_project, gate, False, [], prompt=f"p-{turn}")
+            if "systemMessage" in result:
+                outcomes.append("notice")
+                break
+            _assert_stop_blocked(result)
+            outcomes.append("block")
+            assert self._stop(tmp_project, gate, True, [self.AGENT], prompt=f"p-{turn}") == {"continue": True}
+        assert outcomes[-1] == "notice", outcomes
+        assert outcomes.count("block") <= 3, outcomes

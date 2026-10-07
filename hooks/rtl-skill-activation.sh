@@ -1,18 +1,28 @@
 #!/bin/sh
-# RTL Skill Activation Hook: PreToolUse:Skill
-# Auto-creates completion state when an rtl-agent-team skill is invoked.
+# RTL Skill Activation Hook: PreToolUse:Skill and PostToolUse:Skill
+#   PreToolUse  — advisory context only: setup and phase prerequisites, and the
+#                 rat-init-project template bootstrap.
+#   PostToolUse — the Skill call ran: create the completion state that
+#                 rtl-skill-completion-gate.sh enforces. PreToolUse runs before the
+#                 permission decision and next to other PreToolUse hooks, so state
+#                 created there would also start loops for denied or rejected calls.
 # Reads completion criteria from skill-completion-criteria.json (plugin root).
+# Input without hook_event_name is handled as PreToolUse.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/team-gate-util.sh"
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+HOOK_EVENT=$(jsonu_get_root_string "$INPUT" "hook_event_name")
+[ -z "$HOOK_EVENT" ] && HOOK_EVENT="PreToolUse"
 
 # Extract skill name from tool input
 SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
@@ -23,95 +33,117 @@ case "$SKILL_NAME" in
     SHORT_NAME="${SKILL_NAME#rtl-agent-team:}"
     ;;
   *)
+    [ "$HOOK_EVENT" = "PostToolUse" ] && emit_post_continue
     emit_continue ""
     ;;
 esac
 
-# Init advisory: if project not initialized (.rat / .rtl-agent-team missing),
-# point users at rat-init-project. Exempt skills that must run pre-init:
+# Skills that run before project setup or carry reference content only:
 # self-reference (rat-init-project, rat-setup), passive policies (*-policy),
-# file-extension conventions, and routing-only references.
-if ! rat_is_project "$CWD"; then
+# file-extension conventions, and the routing reference.
+is_setup_exempt() {
   case "$SHORT_NAME" in
     rat-init-project|rat-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
-      emit_continue ""
-      ;;
-    *)
-      emit_continue "[SETUP REQUIRED] RTL project not initialized (.rat/ missing). Run /rtl-agent-team:rat-init-project first to install rules, guides, and directory layout."
-      ;;
+      return 0 ;;
   esac
+  return 1
+}
+
+# Init advisory: if project not initialized (.rat / .rtl-agent-team missing),
+# point users at rat-init-project. No completion loop starts there.
+if ! rat_is_project "$CWD"; then
+  [ "$HOOK_EVENT" = "PostToolUse" ] && emit_post_continue
+  is_setup_exempt && emit_continue ""
+  emit_continue "[SETUP REQUIRED] RTL project not initialized (.rat/ missing). Run /rtl-agent-team:rat-init-project first to install rules, guides, and directory layout."
 fi
 RAT_DIR=$(rat_project_dir "$CWD")
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
-SETUP_EXTRA_CONTEXT=""
-if [ "$SHORT_NAME" = "rat-init-project" ]; then
-  BOOTSTRAP_SCRIPT="$PLUGIN_ROOT/skills/rat-init-project/scripts/install_project_templates.sh"
-  if [ -x "$BOOTSTRAP_SCRIPT" ]; then
-    BOOTSTRAP_OUTPUT=$("$BOOTSTRAP_SCRIPT" "$CWD" 2>&1)
-    BOOTSTRAP_STATUS=$?
-    if [ "$BOOTSTRAP_STATUS" -eq 0 ]; then
-      BOOTSTRAP_SUMMARY=$(printf '%s\n' "$BOOTSTRAP_OUTPUT" | tail -n 1)
-      if [ -n "$BOOTSTRAP_SUMMARY" ]; then
-        SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] $BOOTSTRAP_SUMMARY"
+has_setup_marker() {
+  [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]
+}
+
+if [ "$HOOK_EVENT" != "PostToolUse" ]; then
+  # ---- PreToolUse: advisory context only ----
+  SETUP_EXTRA_CONTEXT=""
+  if [ "$SHORT_NAME" = "rat-init-project" ]; then
+    BOOTSTRAP_SCRIPT="$PLUGIN_ROOT/skills/rat-init-project/scripts/install_project_templates.sh"
+    if [ -x "$BOOTSTRAP_SCRIPT" ]; then
+      BOOTSTRAP_OUTPUT=$("$BOOTSTRAP_SCRIPT" "$CWD" 2>&1)
+      BOOTSTRAP_STATUS=$?
+      if [ "$BOOTSTRAP_STATUS" -eq 0 ]; then
+        BOOTSTRAP_SUMMARY=$(printf '%s\n' "$BOOTSTRAP_OUTPUT" | tail -n 1)
+        if [ -n "$BOOTSTRAP_SUMMARY" ]; then
+          SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] $BOOTSTRAP_SUMMARY"
+        else
+          SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template script installation completed."
+        fi
       else
-        SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template script installation completed."
+        SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template installation failed: $BOOTSTRAP_OUTPUT"
       fi
     else
-      SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template installation failed: $BOOTSTRAP_OUTPUT"
+      SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] installer not found: $BOOTSTRAP_SCRIPT"
     fi
-  else
-    SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] installer not found: $BOOTSTRAP_SCRIPT"
   fi
+
+  if ! is_setup_exempt && ! has_setup_marker; then
+    emit_continue "[SETUP REQUIRED] Project not initialized. Rules (.claude/rules/), guides, and directory structure are missing. Run /rtl-agent-team:rat-init-project first."
+  fi
+
+  # Phase entry soft prerequisites (WARNING only, not blocking — per Asymmetric Phase Gate Design)
+  PHASE_PREREQ_WARN=""
+  case "$SHORT_NAME" in
+    rtl-p4-*|rtl-p4s-*|rat-p4p5-*)
+      if [ ! -d "$CWD/docs/phase-3-uarch" ] || [ -z "$(ls "$CWD/docs/phase-3-uarch/" 2>/dev/null)" ]; then
+        PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 3 uArch docs not found (docs/phase-3-uarch/). P4 skills expect upstream uArch artifacts."
+      fi ;;
+    rtl-p5-*|rtl-p5s-*|rtl-p5a-*|rtl-p5b-*)
+      if [ ! -d "$CWD/rtl" ] || [ -z "$(ls "$CWD/rtl/" 2>/dev/null)" ]; then
+        PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 4 RTL not found (rtl/). P5 skills expect RTL artifacts."
+      fi ;;
+    rtl-p6-*)
+      if [ ! -f "$CWD/reviews/phase-5-verify/final-compliance.md" ]; then
+        PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 5 final-compliance.md not found. P6 requires Phase 5 PASS verdict."
+      fi ;;
+  esac
+  if [ -n "$PHASE_PREREQ_WARN" ]; then
+    SETUP_EXTRA_CONTEXT="$SETUP_EXTRA_CONTEXT $PHASE_PREREQ_WARN"
+  fi
+  emit_continue "$SETUP_EXTRA_CONTEXT"
 fi
 
-# Setup prerequisite check — exempt categories:
-# Category 1 — Self-reference: rat-init-project, rat-setup (cannot check setup before setup)
-# Category 2 — Passive policies: *-policy (loaded by agents via skills: field, not user-invocable)
-# Category 3 — File-extension conventions: systemverilog, systemverilog-assertion, systemc, uvm
-# Category 4 — Reference-only: rtl-orchestrate (routing table, no execution)
-case "$SHORT_NAME" in
-  rat-init-project|rat-setup|*-policy|systemverilog|systemverilog-assertion|systemc|uvm|rtl-orchestrate)
-    ;;
-  *)
-    if [ ! -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] && [ ! -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; then
-      emit_continue "[SETUP REQUIRED] Project not initialized. Rules (.claude/rules/), guides, and directory structure are missing. Run /rtl-agent-team:rat-init-project first."
-    fi
-    ;;
-esac
-
-# Phase entry soft prerequisites (WARNING only, not blocking — per Asymmetric Phase Gate Design)
-PHASE_PREREQ_WARN=""
-case "$SHORT_NAME" in
-  rtl-p4-*|rtl-p4s-*|rat-p4p5-*)
-    if [ ! -d "$CWD/docs/phase-3-uarch" ] || [ -z "$(ls "$CWD/docs/phase-3-uarch/" 2>/dev/null)" ]; then
-      PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 3 uArch docs not found (docs/phase-3-uarch/). P4 skills expect upstream uArch artifacts."
-    fi ;;
-  rtl-p5-*|rtl-p5s-*|rtl-p5a-*|rtl-p5b-*)
-    if [ ! -d "$CWD/rtl" ] || [ -z "$(ls "$CWD/rtl/" 2>/dev/null)" ]; then
-      PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 4 RTL not found (rtl/). P5 skills expect RTL artifacts."
-    fi ;;
-  rtl-p6-*)
-    if [ ! -f "$CWD/reviews/phase-5-verify/final-compliance.md" ]; then
-      PHASE_PREREQ_WARN="[PHASE PREREQUISITE] Phase 5 final-compliance.md not found. P6 requires Phase 5 PASS verdict."
-    fi ;;
-esac
-if [ -n "$PHASE_PREREQ_WARN" ]; then
-  SETUP_EXTRA_CONTEXT="$SETUP_EXTRA_CONTEXT $PHASE_PREREQ_WARN"
+# ---- PostToolUse: the Skill call ran; start its completion loop ----
+if ! is_setup_exempt && ! has_setup_marker; then
+  emit_post_continue
 fi
-
 STATE_DIR="$RAT_DIR/state"
 SKILL_STATE="$STATE_DIR/skill-active.json"
 CRITERIA_FILE="$PLUGIN_ROOT/skill-completion-criteria.json"
 
-# Team mode: worker sessions skip skill state management (leader only)
+# Team mode: worker sessions skip skill state management (leader only).
+# A stale config is no team mode (teamu_config_is_stale removes it).
 TEAM_CONFIG="$STATE_DIR/team-config.json"
-if [ -n "${CLAUDE_SESSION_ID:-}" ] && [ -f "$TEAM_CONFIG" ]; then
+if [ -f "$TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
   TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
   if [ "$TEAM_MODE" = "true" ]; then
-    LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")
-    if [ -n "$LEADER_ID" ] && [ "$CLAUDE_SESSION_ID" != "$LEADER_ID" ]; then
-      emit_continue "$SETUP_EXTRA_CONTEXT"
+    # In-process teammates and subagents (an agent_id) never drive the leader's loop,
+    # whatever the leader value: autopilot's config has no leader at all.
+    AGENT_ID=$(jsonu_get_root_string "$INPUT" "agent_id")
+    if [ -n "$AGENT_ID" ]; then
+      emit_post_continue
     fi
+    SESSION_ID=$(jsonu_session_id "$INPUT")
+    LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")
+    case "$LEADER_ID" in
+      ''|*'<'*|*'$'*) ;;  # unknown leader: the session manages its own loop (fail-closed)
+      *)
+        # A known other session is not the leader. An unknown session may be the leader,
+        # so it starts the loop (fail-closed, as the Stop gates enforce the gate for it).
+        if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "$LEADER_ID" ]; then
+          emit_post_continue
+        fi
+        ;;
+    esac
   fi
 fi
 
@@ -122,13 +154,13 @@ if [ -f "$SKILL_STATE" ]; then
     # Same skill re-invoked: user intentionally restarting — reset counter
     rm -f "$SKILL_STATE"
   else
-    emit_continue "$SETUP_EXTRA_CONTEXT"
+    emit_post_continue
   fi
 fi
 
 # Read criteria for this skill from config
 if [ ! -f "$CRITERIA_FILE" ]; then
-  emit_continue "$SETUP_EXTRA_CONTEXT"
+  emit_post_continue
 fi
 
 # Extract criteria for this skill using grep+sed (no jq dependency)
@@ -136,7 +168,7 @@ CRITERIA=$(sed -n "s/.*\"${SHORT_NAME}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".
 
 if [ -z "$CRITERIA" ]; then
   # No criteria defined for this skill, allow without loop
-  emit_continue "$SETUP_EXTRA_CONTEXT"
+  emit_post_continue
 fi
 
 # Create state file
@@ -183,4 +215,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-emit_continue "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. The session will not terminate until all criteria are met. When complete, set all_complete to true in .rat/state/skill-active.json."
+emit_post_context "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. Stopping before every criterion is met returns the remaining criteria to you. When complete, set all_complete to true in ${SKILL_STATE}"

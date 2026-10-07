@@ -1,5 +1,5 @@
 #!/bin/sh
-# RTL Audit Spawn Complete: PostToolUse:TaskCreate hook
+# RTL Audit Spawn Complete: PostToolUse:Agent hook
 # Records spawn_complete event in the audit trace after an agent is spawned.
 
 INPUT=$(cat)
@@ -9,10 +9,11 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")  # the session's cwd, not the agent's
 [ -z "$CWD" ] && CWD="$(pwd)"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # Only handle rtl-agent-team agents
 AGENT_TYPE=$(jsonu_get_input_string "$INPUT" "subagent_type")
@@ -47,4 +48,4 @@ audit_trace_append "$CWD" \
   "{\"event\":\"spawn_complete\",\"agent\":\"${_SAFE_AGENT}\",\"detail\":\"Agent ${_SAFE_AGENT} spawn completed\",\"status\":\"success\"}" \
   >/dev/null
 
-printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[SPAWN OK] %s"}}' "$SHORT_NAME"
+printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[SPAWN OK] %s"}}' "$_SAFE_AGENT"

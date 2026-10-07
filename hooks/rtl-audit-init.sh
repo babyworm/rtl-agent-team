@@ -11,7 +11,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/audit-util.sh"
 jsonu_detect_parser
 
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 
 # Only initialize audit when RAT marker exists (.rat/ or legacy .rtl-agent-team/).
@@ -21,6 +21,8 @@ if ! rat_is_project "$CWD"; then
   printf '{"hookSpecificOutput":{"hookEventName":"SessionStart"}}'
   exit 0
 fi
+RAT_DIR=$(rat_project_dir "$CWD")
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 # Initialize session and prune old sessions
 if audit_init_session "$CWD"; then

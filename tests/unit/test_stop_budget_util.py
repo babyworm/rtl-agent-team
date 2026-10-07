@@ -1,0 +1,611 @@
+"""No-progress breaker for Stop gates: hooks/lib/stop-budget-util.sh."""
+
+import json
+import os
+import shutil
+import subprocess
+
+import pytest
+
+from tests.conftest import HOOKS_DIR
+
+LIB = HOOKS_DIR / "lib"
+
+# Sources the helpers from the directory given as $1 (no path spliced into the
+# script text), then drops it so "$@" holds the function's own arguments.
+_LOAD_LIB = (
+    '. "$1/json-util.sh"; . "$1/hook-output-util.sh"; '
+    '. "$1/stop-budget-util.sh"; jsonu_detect_parser; shift; '
+)
+BLOCK = {"decision": "block", "reason": "keep working"}
+NOTICE = {"systemMessage": "your call"}
+SILENT = {"continue": True}
+
+
+def _run(call, *args, env=None):
+    return subprocess.run(
+        ["sh", "-c", _LOAD_LIB + call, "sh", str(LIB), *args],
+        capture_output=True, text=True, timeout=10, check=True,
+        env={**os.environ, **(env or {})},
+    ).stdout
+
+
+def _fp(text):
+    return _run('stopu_fingerprint "$1"', text)
+
+
+def _input(active, prompt="prompt-1"):
+    """A Stop input; like real Stops it carries a prompt_id unless prompt is None."""
+    payload = {"stop_hook_active": active}
+    if prompt is not None:
+        payload["prompt_id"] = prompt
+    return json.dumps(payload)
+
+
+def _stop(state_dir, active, blocking, gates=("verify",), limit=None, env=None, prompt="prompt-1"):
+    """One Stop: every gate counts the chain; gates in `blocking` (gate -> progress) try to block, the rest take their allow path.
+
+    A gate left out of `gates` misses this Stop, as a gate that exits before counting does.
+    """
+    out = {}
+    for gate in gates:
+        count = 'STOP_CHAIN=$(stopu_chain_active "$1" "$2" "$3"); '
+        if gate in blocking:
+            args = [_input(active, prompt), str(state_dir), gate, blocking[gate]]
+            if limit is not None:
+                args.append(str(limit))
+            out[gate] = json.loads(_run(
+                count + 'stopu_gate "$3" "$2" "$STOP_CHAIN" "$4" "keep working" "your call" ${5:+"$5"}',
+                *args, env=env))
+        else:
+            _run(count + 'stopu_clear "$3" "$2"', _input(active, prompt), str(state_dir), gate, env=env)
+    return out
+
+
+def _chain(state_dir, progress, gate="verify", **kwargs):
+    """One chain where a single gate tries to block on every Stop; returns its outputs."""
+    return [
+        _stop(state_dir, i > 0, {gate: text}, gates=(gate,), **kwargs)[gate]
+        for i, text in enumerate(progress)
+    ]
+
+
+def _start_chain(state_dir, *gates):
+    return _run('stopu_chain_active "$@"', _input(False), str(state_dir), *gates)
+
+
+def _budget(state_dir, gate="verify"):
+    return (state_dir / f"stop-budget-{gate}.txt").read_text()
+
+
+def _missed_start(state_dir, prompt="prompt-1"):
+    """p6-cascade blocks a chain's first 4 Stops; the verify gate misses them."""
+    for i in range(4):
+        _stop(state_dir, i > 0, {"p6-cascade": f"p{i}.md"}, gates=("p6-cascade",), prompt=prompt)
+
+
+def _decide_then_gate(state_dir, active, progress="a.sv", limit=None):
+    """One verify Stop that asks stopu_decision first, then lets stopu_gate act."""
+    args = [_input(active), str(state_dir), "verify", progress]
+    if limit is not None:
+        args.append(str(limit))
+    out = _run(
+        'STOP_CHAIN=$(stopu_chain_active "$1" "$2" "$3"); '
+        'printf "%s\\n" "$(stopu_decision "$3" "$2" "$STOP_CHAIN" "$4" ${5:+"$5"})"; '
+        'stopu_gate "$3" "$2" "$STOP_CHAIN" "$4" "keep working" "your call" ${5:+"$5"}',
+        *args)
+    decision, result = out.split("\n", 1)
+    return decision, json.loads(result)
+
+
+# 1: the per-gate limit
+def test_same_progress_hands_over_after_the_limit(tmp_path):
+    results = [_stop(tmp_path, False, {"verify": "a.sv"})["verify"]]
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n1\n0\nprompt-1\n"
+    results += [_stop(tmp_path, True, {"verify": "a.sv"})["verify"] for _ in range(4)]
+    assert results == [BLOCK, BLOCK, BLOCK, NOTICE, SILENT]
+
+
+# 2: the chain cap
+def test_chain_cap_hands_over_before_claude_codes_limit(tmp_path):
+    results = _chain(tmp_path, [f"a{i}.sv" for i in range(8)])
+    assert results == [BLOCK] * 6 + [NOTICE, SILENT]
+
+
+# 3: another plugin's Stop hook keeps the chain going
+def test_stops_blocked_by_other_hooks_count_toward_the_cap(tmp_path):
+    for i in range(4):
+        assert _stop(tmp_path, i > 0, {}) == {}
+    results = [_stop(tmp_path, True, {"verify": f"v{i}.sv"})["verify"] for i in range(3)]
+    assert results == [BLOCK, BLOCK, NOTICE]
+
+
+# 2, continued: the chain cap follows Claude Code's own cap when the user changes it
+@pytest.mark.parametrize("cap,blocked", [
+    (None, 6),  # unset: two Stops under Claude Code's default of 8
+    ("12", 10),
+    ("5", 3),
+    ("2", 1),
+    ("1", 1),
+    ("x", 6),
+    ("-3", 6),
+    ("1000000", 6),
+    ("08", 6),  # leading zeros are dropped, as Claude Code's parseInt drops them
+    ("012", 10),
+    # Claude Code trims the value and reads it with parseInt; a cap it reads as small
+    # must not leave the default 6 above it.
+    ("05", 3),
+    ("+5", 3),
+    (" 5", 3),
+    ("5 ", 3),
+    ("5abc", 3),
+    ("2.5", 1),
+    ("0.5", 6),  # Claude Code reads 0 and turns its cap off; only a plain zero lifts ours
+    ("0x10", 6),
+])
+def test_chain_cap_follows_claude_codes_setting(tmp_path, cap, blocked):
+    env = None if cap is None else {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": cap}
+    results = _chain(tmp_path, [f"a{i}.sv" for i in range(blocked + 2)], env=env)
+    assert results == [BLOCK] * blocked + [NOTICE, SILENT]
+
+
+@pytest.mark.parametrize("cap", ["0", "00", " 0 "])
+def test_disabled_claude_code_cap_lifts_the_chain_cap(tmp_path, cap):
+    env = {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": cap}
+    assert _chain(tmp_path, [f"a{i}.sv" for i in range(20)], env=env) == [BLOCK] * 20
+    # The no-progress limit still applies.
+    assert _chain(tmp_path, ["a.sv"] * 4, env=env) == [BLOCK, BLOCK, BLOCK, NOTICE]
+
+
+def test_disabled_claude_code_cap_still_hands_over_after_a_missed_chain_start(tmp_path):
+    # The worst case, 99999 + 1, has six digits: it reads back as no valid count, which
+    # is the worst case again.
+    env = {"CLAUDE_CODE_STOP_HOOK_BLOCK_CAP": "0"}
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, env=env)["verify"] == NOTICE
+    assert _budget(tmp_path).split("\n")[2] == "100000"
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, env=env)["verify"] == SILENT
+
+
+# 4
+@pytest.mark.parametrize("gates", [
+    ("verify", "p6-cascade"),
+    ("verify", "p6-cascade", "skill-completion"),
+])
+def test_gates_that_block_together_keep_their_own_limit(tmp_path, gates):
+    blocking = {gate: f"{gate}.txt" for gate in gates}
+    stops = [_stop(tmp_path, i > 0, blocking, gates=gates) for i in range(4)]
+    for gate in gates:
+        assert [stop[gate] for stop in stops] == [BLOCK, BLOCK, BLOCK, NOTICE]
+
+
+# 5
+def test_chain_start_ignores_files_left_from_an_earlier_chain(tmp_path):
+    (tmp_path / "stop-budget-verify.txt").write_text(f"3\n{_fp('a.sv')}\n6\n1\n")
+    (tmp_path / "stop-budget-p6-cascade.txt").write_text(f"3\n{_fp('b.md')}\n6\n0\n")
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+
+
+# 6
+def test_missed_chain_start_takes_the_worst_case(tmp_path):
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
+
+
+# 7
+def test_clear_keeps_the_chain_count(tmp_path):
+    results = [
+        _stop(tmp_path, False, {"verify": "a.sv"})["verify"],
+        _stop(tmp_path, True, {"verify": "a.sv"})["verify"],
+    ]
+    assert _stop(tmp_path, True, {}) == {}
+    results += [_stop(tmp_path, True, {"verify": f"b{i}.sv"})["verify"] for i in range(4)]
+    assert results == [BLOCK] * 5 + [NOTICE]
+
+
+# 8
+def test_notice_holds_for_the_rest_of_the_chain_despite_progress(tmp_path):
+    assert _chain(tmp_path, ["a.sv"] * 4) == [BLOCK, BLOCK, BLOCK, NOTICE]
+    assert _stop(tmp_path, True, {"verify": "b.sv"})["verify"] == SILENT
+
+
+def test_progress_restarts_the_count_before_the_notice(tmp_path):
+    results = _chain(tmp_path, ["a.sv", "a.sv", "b.sv", "b.sv", "b.sv", "b.sv"])
+    assert results == [BLOCK] * 5 + [NOTICE]
+
+
+def test_new_chain_after_a_notice_blocks_again(tmp_path):
+    assert _chain(tmp_path, ["a.sv"] * 5) == [BLOCK, BLOCK, BLOCK, NOTICE, SILENT]
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+
+
+def test_gate_ids_are_isolated(tmp_path):
+    gates = ("verify", "p6-cascade")
+    spent = [_stop(tmp_path, i > 0, {"p6-cascade": "a.md"}, gates=gates)["p6-cascade"] for i in range(4)]
+    assert spent == [BLOCK, BLOCK, BLOCK, NOTICE]
+    both = _stop(tmp_path, True, {"verify": "a.sv", "p6-cascade": "a.md"}, gates=gates)
+    assert both == {"verify": BLOCK, "p6-cascade": SILENT}
+
+
+def test_staggered_gates_hand_over_at_the_seventh_stop(tmp_path):
+    gates = ("verify", "p6-cascade")
+    results = [_stop(tmp_path, i > 0, {"verify": f"v{i}.sv"}, gates=gates)["verify"] for i in range(3)]
+    results += [_stop(tmp_path, True, {"p6-cascade": f"p{i}.md"}, gates=gates)["p6-cascade"] for i in range(4)]
+    assert results == [BLOCK] * 6 + [NOTICE]
+
+
+def test_chain_start_resets_named_budgets(tmp_path):
+    _chain(tmp_path, ["a.sv"] * 4)
+    assert _start_chain(tmp_path, "verify", "p6-cascade") == "false"
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
+    assert _budget(tmp_path, "p6-cascade") == "0\n\n1\n0\nprompt-1\n"
+
+
+def test_chained_stop_advances_the_stop_count(tmp_path):
+    _stop(tmp_path, False, {"verify": "a.sv"})
+    assert _run('stopu_chain_active "$@"', _input(True), str(tmp_path), "verify") == "true"
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n2\n0\nprompt-1\n"
+
+
+def test_chain_start_keeps_other_gates_budgets(tmp_path):
+    assert _chain(tmp_path, ["a.md"] * 4, gate="p6-cascade") == [BLOCK, BLOCK, BLOCK, NOTICE]
+    spent = _budget(tmp_path, "p6-cascade")
+    _start_chain(tmp_path, "verify")
+    assert _budget(tmp_path, "p6-cascade") == spent
+    assert _stop(tmp_path, True, {"p6-cascade": "a.md"}, gates=("p6-cascade",))["p6-cascade"] == SILENT
+
+
+def test_clear_restores_the_budget(tmp_path):
+    assert _chain(tmp_path, ["a.sv"] * 4) == [BLOCK, BLOCK, BLOCK, NOTICE]
+    _stop(tmp_path, True, {})
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == BLOCK
+
+
+# Missed chain starts and the prompt_id (line 5)
+@pytest.mark.parametrize("notice_shown", ["0", "1"])
+def test_missed_chain_start_is_detected_by_the_prompt_id(tmp_path, notice_shown):
+    # The previous prompt's chain ended normally (or with a notice) and left this file.
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n{notice_shown}\nprompt-0\n")
+    _missed_start(tmp_path)
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
+
+
+def test_without_a_prompt_id_a_leftover_count_is_trusted(tmp_path):
+    # The documented limit: without prompt_id a missed chain start cannot be told apart.
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n0\nprompt-0\n")
+    _missed_start(tmp_path, prompt=None)
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt=None)["verify"] == BLOCK
+
+
+def test_leftover_file_without_a_prompt_id_is_not_trusted(tmp_path):
+    # A round-3 budget file has no line 5; an input with a prompt_id must not trust it.
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n0\n")
+    _missed_start(tmp_path)
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
+
+
+def test_prompt_change_mid_chain_takes_the_worst_case(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt="prompt-1")["verify"] == BLOCK
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt="prompt-2")["verify"] == NOTICE
+
+
+@pytest.mark.parametrize("prompt", ["a/../b", "x y"])
+def test_unsafe_prompt_id_is_ignored(tmp_path, prompt):
+    (tmp_path / "stop-budget-verify.txt").write_text(f"1\n{_fp('a.sv')}\n1\n0\nprompt-0\n")
+    _missed_start(tmp_path, prompt=prompt)
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, prompt=prompt)["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[4] == ""
+
+
+@pytest.mark.parametrize("prompt,expected", [
+    ("3f2b9a1c-7d4e-4b8a-9c21-0a1b2c3d4e5f", "3f2b9a1c-7d4e-4b8a-9c21-0a1b2c3d4e5f"),
+    ("a/../b", ""),
+    ("x y", ""),
+    ("", ""),
+    (None, ""),
+])
+def test_prompt_id_accepts_only_plain_tokens(prompt, expected):
+    assert _run('stopu_prompt_id "$1"', _input(True, prompt)) == expected
+
+
+def test_gate_without_a_chain_count_takes_the_worst_case(tmp_path):
+    # A gate that breaks the contract (no stopu_chain_active call) still hands over.
+    out = _run('stopu_gate verify "$1" true a.sv "keep working" "your call"', str(tmp_path))
+    assert json.loads(out) == NOTICE
+
+
+def test_clear_keeps_the_prompt_id(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+    _run('stopu_clear verify "$1"', str(tmp_path))
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
+
+
+# stopu_decision: what stopu_gate would do, without writing
+@pytest.mark.parametrize("progress,expected", [
+    ([], ("block", BLOCK)),
+    (["a.sv"] * 3, ("notice", NOTICE)),                   # the no-progress limit
+    ([f"a{i}.sv" for i in range(6)], ("notice", NOTICE)),  # the chain cap
+    (["a.sv"] * 4, ("silent", SILENT)),                   # after the notice
+])
+def test_decision_predicts_what_the_gate_does(tmp_path, progress, expected):
+    _chain(tmp_path, progress)
+    last = progress[-1] if progress else "a.sv"
+    assert _decide_then_gate(tmp_path, bool(progress), progress=last) == expected
+
+
+@pytest.mark.parametrize("earlier,expected", [(1, "block"), (3, "notice"), (4, "silent")])
+def test_decision_writes_nothing(tmp_path, earlier, expected):
+    _chain(tmp_path, ["a.sv"] * earlier)
+    budget = tmp_path / "stop-budget-verify.txt"
+    before = budget.read_bytes()
+    assert _run('stopu_decision verify "$1" true a.sv', str(tmp_path)) == expected
+    assert budget.read_bytes() == before
+
+
+def test_decision_leaves_a_missing_budget_missing(tmp_path):
+    state = tmp_path / "missing" / "state"
+    assert _run('stopu_decision verify "$1" true a.sv', str(state)) == "notice"  # missed chain start
+    assert _run('stopu_decision verify "$1" false a.sv', str(state)) == "block"
+    assert not (tmp_path / "missing").exists()
+
+
+def test_per_call_limit_zero_notices_once_per_chain(tmp_path):
+    assert _decide_then_gate(tmp_path, False, limit=0) == ("notice", NOTICE)
+    assert [_decide_then_gate(tmp_path, True, limit=0) for _ in range(2)] == [("silent", SILENT)] * 2
+    assert _decide_then_gate(tmp_path, False, limit=0) == ("notice", NOTICE)  # the next chain
+
+
+# 9: limits, corrupt counts, state dir, chain detection, fingerprint
+def test_per_call_limit(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, limit=1)["verify"] == BLOCK
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, limit=1)["verify"] == NOTICE
+
+
+def test_env_limit_zero_turns_blocks_into_notices(tmp_path):
+    env = {"RAT_STOP_BLOCK_LIMIT": "0"}
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, env=env)["verify"] == NOTICE
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, limit=1, env=env)["verify"] == NOTICE
+
+
+def test_per_call_limit_cannot_raise_the_env_limit(tmp_path):
+    env = {"RAT_STOP_BLOCK_LIMIT": "1"}
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, limit=3, env=env)["verify"] == BLOCK
+    assert _stop(tmp_path, True, {"verify": "a.sv"}, limit=3, env=env)["verify"] == NOTICE
+
+
+@pytest.mark.parametrize("limit", ["x", "99999999999999999999"])
+def test_invalid_env_limit_falls_back_to_default(tmp_path, limit):
+    env = {"RAT_STOP_BLOCK_LIMIT": limit}
+    assert _chain(tmp_path, ["a.sv"] * 4, env=env) == [BLOCK, BLOCK, BLOCK, NOTICE]
+
+
+@pytest.mark.parametrize("count", ["abc", "08", "1234567"])
+def test_corrupt_count_is_treated_as_zero(tmp_path, count):
+    (tmp_path / "stop-budget-verify.txt").write_text(f"{count}\n{_fp('a.sv')}\n1\n0\nprompt-1\n")
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == BLOCK
+    assert _budget(tmp_path) == f"1\n{_fp('a.sv')}\n2\n0\nprompt-1\n"
+
+
+@pytest.mark.parametrize("stops", ["", "abc", "0"])
+def test_corrupt_stop_count_takes_the_worst_case(tmp_path, stops):
+    (tmp_path / "stop-budget-verify.txt").write_text(f"0\n\n{stops}\n0\nprompt-1\n")
+    assert _stop(tmp_path, True, {"verify": "a.sv"})["verify"] == NOTICE
+
+
+def test_missing_state_dir_is_created(tmp_path):
+    state = tmp_path / "missing" / "state"
+    assert _stop(state, False, {"verify": "a.sv"})["verify"] == BLOCK
+    assert _budget(state) == f"1\n{_fp('a.sv')}\n1\n0\nprompt-1\n"
+
+
+def test_unwritable_state_dir_hands_over_instead_of_looping(tmp_path):
+    if os.geteuid() == 0:
+        pytest.skip("root can write to a read-only directory")
+    state = tmp_path / "state"
+    state.mkdir()
+    state.chmod(0o555)
+    try:
+        assert _stop(state, False, {"verify": "a.sv"})["verify"] == NOTICE
+    finally:
+        state.chmod(0o755)
+
+
+@pytest.mark.parametrize("payload,expected", [
+    ('{"stop_hook_active":true}', "true"),
+    ('{"cwd": "/x", "stop_hook_active": true}', "true"),
+    ('{"stop_hook_active":false}', "false"),
+    ('{"cwd": "/x"}', "false"),
+    ('{"stop_hook_active": false, "last_assistant_message": "quoted \\"stop_hook_active\\": true"}', "false"),
+])
+def test_chain_active_detection(payload, expected):
+    assert _run('stopu_chain_active "$1"', payload) == expected
+
+
+def test_fingerprint_is_one_token_deterministic_and_sensitive():
+    first = _fp("a.sv\nb.sv\n")
+    assert first and "\n" not in first and " " not in first
+    assert _fp("a.sv\nb.sv\n") == first
+    assert _fp("a.sv\nc.sv\n") != first
+
+
+# stopu_background_agent_pending: a background agent in flight pauses the gates.
+# Entries as Claude Code 2.1.282 writes them into a Stop input: type is a label, "subagent"
+# for a local agent and "cloud session" for a remote one, and a task type without a label
+# keeps its own name.
+AGENT_TASK = {"id": "a6480a3838dc76cfa", "type": "subagent", "status": "running",
+              "description": "Run the Phase 4 orchestrator",
+              "agent_type": "rtl-agent-team:p4-implement-orchestrator"}
+# Text that names an agent, brackets and escaped quotes in a task that is not an agent.
+SHELL_TASK = {"id": "b2f1c9d0e4", "type": "shell", "status": "running",
+              "description": 'Watch for "type": "subagent" [debug]',
+              "command": 'while [ ! -f done ]; do tail -n 1 "agent.log"; sleep 5; done'}
+CRON = {"id": "c7d3e1", "schedule": "*/5 * * * *", "recurring": True,
+        "prompt": "Check whether the subagent finished"}
+
+PARSERS = [
+    pytest.param("jq", {}, id="jq",
+                 marks=pytest.mark.skipif(not shutil.which("jq"), reason="jq is not installed")),
+    pytest.param("python", {"RTL_FORCE_PYTHON_PARSER": "1"}, id="python"),
+    pytest.param("sed", {"RTL_FORCE_JSON_FALLBACK": "1"}, id="sed"),
+]
+
+
+def _stop_input(tasks=None, **fields):
+    """A Stop input in Claude Code's field order; tasks=None leaves background_tasks out."""
+    payload = {"session_id": "s-1", "cwd": "/x", "prompt_id": "prompt-1", "hook_event_name": "Stop",
+               "stop_hook_active": False, "last_assistant_message": "Launched the orchestrator."}
+    if tasks is not None:
+        payload["background_tasks"] = tasks
+        payload["session_crons"] = []
+    payload.update(fields)
+    return payload
+
+
+def _agent_pending(payload, mode, env):
+    """Run stopu_background_agent_pending in the given parser mode: "yield" or "stop"."""
+    text = payload if isinstance(payload, str) else json.dumps(payload)
+    out = _run('printf "%s " "$JSONU_PARSER_MODE"; '
+               'if stopu_background_agent_pending "$1"; then echo yield; else echo stop; fi',
+               text, env=env)
+    parser, verdict = out.split()
+    assert parser == mode
+    return verdict
+
+
+@pytest.mark.parametrize("mode,env", PARSERS)
+@pytest.mark.parametrize("payload,expected", [
+    pytest.param(_stop_input([]), "stop", id="nothing-in-flight"),
+    pytest.param(_stop_input(), "stop", id="no-field"),
+    pytest.param(_stop_input([AGENT_TASK]), "yield", id="subagent"),
+    pytest.param(_stop_input([{"id": "r1", "type": "cloud session", "status": "running",
+                               "description": "Review the plan"}]), "yield", id="cloud-session"),
+    pytest.param(_stop_input([{**AGENT_TASK, "type": "local_agent"}]), "yield", id="raw-local_agent"),
+    pytest.param(_stop_input([{"id": "r2", "type": "remote_agent", "status": "pending",
+                               "description": "Review the plan"}]), "yield", id="raw-remote_agent"),
+    # A workflow runs agents; Claude Code counts it as agent work too.
+    pytest.param(_stop_input([{"id": "w1", "type": "workflow", "status": "running",
+                               "description": "Dynamic workflow", "name": "regress"}]), "yield", id="workflow"),
+    pytest.param(_stop_input([SHELL_TASK]), "stop", id="shell-only"),
+    # Only type counts; an agent_type names an agent but is not one.
+    pytest.param(_stop_input([{**SHELL_TASK, "agent_type": "rtl-agent-team:p4-implement-orchestrator"}]),
+                 "stop", id="agent_type-on-shell"),
+    pytest.param(_stop_input([SHELL_TASK, AGENT_TASK]), "yield", id="shell-then-subagent"),
+    pytest.param(_stop_input([], session_crons=[CRON]), "stop", id="cron-only"),
+    pytest.param(_stop_input([SHELL_TASK], session_crons=[CRON]), "stop", id="shell-and-cron"),
+    pytest.param(_stop_input([], last_assistant_message='Waiting: "background_tasks": [{"type": "subagent"}]'),
+                 "stop", id="escaped-message"),
+    pytest.param(_stop_input(last_assistant_message='"background_tasks":[{"type":"cloud session"}]'),
+                 "stop", id="escaped-message-no-field"),
+    # A lone quote in a text: the sed fallback must not pair the wrong quotes.
+    pytest.param(_stop_input([AGENT_TASK], last_assistant_message='The cable is 5" long.'), "yield",
+                 id="odd-quote-message"),
+    pytest.param(_stop_input([{**SHELL_TASK, "description": 'Mail "ops@example.com'}]), "stop",
+                 id="odd-quote-and-at"),
+    pytest.param(json.dumps(_stop_input([SHELL_TASK, AGENT_TASK]), indent=2), "yield", id="multi-line-agent"),
+    pytest.param(json.dumps(_stop_input([SHELL_TASK]), indent=2), "stop", id="multi-line-shell"),
+    # Only the root counts; Claude Code writes tool_input after the session fields.
+    pytest.param(_stop_input([], tool_input={"background_tasks": [AGENT_TASK]}), "stop", id="tool-input"),
+    pytest.param(_stop_input({"type": "subagent"}), "stop", id="object-not-array"),
+    pytest.param(_stop_input("subagent"), "stop", id="string-not-array"),
+    pytest.param('{"background_tasks": [{"type": "subagent"', "stop", id="invalid-json"),
+])
+def test_background_agent_pending(payload, expected, mode, env):
+    assert _agent_pending(payload, mode, env) == expected
+
+
+@pytest.mark.parametrize("mode,env", PARSERS)
+@pytest.mark.parametrize("label", ["shell", "monitor", "MCP task", "teammate", "dream",
+                                   "auto-mode scan"])
+def test_background_work_that_is_not_an_agent_does_not_count(label, mode, env):
+    # A long-lived process, a monitor or an idle teammate would switch the gates off for good.
+    task = {"id": "t1", "type": label, "status": "running", "description": "Background work"}
+    assert _agent_pending(_stop_input([task]), mode, env) == "stop"
+
+
+def _yield_stop(state_dir, active, prompt="prompt-1", env=None):
+    """A Stop the gate lets through for a background agent: it only counts the chain."""
+    payload = {"stop_hook_active": active, "prompt_id": prompt, "background_tasks": [AGENT_TASK]}
+    _run('stopu_chain_active "$@"', json.dumps(payload), str(state_dir), "verify", env=env)
+
+
+def test_a_yield_marks_line_6_and_a_counted_stop_does_not(tmp_path):
+    _yield_stop(tmp_path, False)
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\nyield\n"
+    _start_chain(tmp_path, "verify")
+    assert _budget(tmp_path) == "0\n\n1\n0\nprompt-1\n"
+
+
+@pytest.mark.parametrize("mode,env", PARSERS)
+@pytest.mark.parametrize("limit,expected", [
+    (None, ["block", "block", "block", "notice"]),
+    ("1", ["block", "notice"]),
+])
+def test_a_chain_after_a_yield_keeps_the_no_progress_count(tmp_path, mode, env, limit, expected):
+    # Each completion turn starts a chain: the gate blocks, then Claude hands the work to a
+    # new background agent and the chain ends in a yield. The count must survive the yield,
+    # or the gate blocks once per turn and never hands over to the user.
+    env = {**env, **({"RAT_STOP_BLOCK_LIMIT": limit} if limit else {})}
+    outcomes = []
+    for turn in range(1, 6):
+        out = _stop(tmp_path, False, {"verify": "a.sv"}, env=env, prompt=f"prompt-{turn}")["verify"]
+        outcomes.append("notice" if out == NOTICE else "block")
+        if out == NOTICE:
+            break
+        assert out == BLOCK
+        _yield_stop(tmp_path, True, prompt=f"prompt-{turn}", env=env)
+    assert outcomes == expected
+
+
+def test_a_chain_after_a_stop_that_did_not_yield_starts_from_zero(tmp_path):
+    for turn in range(1, 4):
+        assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt=f"prompt-{turn}")["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[0] == "1"
+
+
+def test_progress_restarts_a_carried_count(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+    _yield_stop(tmp_path, True)
+    assert _stop(tmp_path, False, {"verify": "a.sv\nb.sv"}, prompt="prompt-2")["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[0] == "1"
+
+
+def test_clear_drops_a_carried_count(tmp_path):
+    assert _stop(tmp_path, False, {"verify": "a.sv"})["verify"] == BLOCK
+    _yield_stop(tmp_path, True)
+    _stop(tmp_path, False, {}, prompt="prompt-2")  # the gate's condition holds: stopu_clear
+    _yield_stop(tmp_path, True, prompt="prompt-2")
+    assert _stop(tmp_path, False, {"verify": "a.sv"}, prompt="prompt-3")["verify"] == BLOCK
+    assert _budget(tmp_path).split("\n")[0] == "1"
+
+
+def _renotify(state_dir, active, progress):
+    """stopu_renotify for the verify gate: "rearm" or "keep"."""
+    return _run('if stopu_renotify verify "$1" "$2" "$3"; then echo rearm; else echo keep; fi',
+                str(state_dir), "true" if active else "false", progress).strip()
+
+
+@pytest.mark.parametrize("budget,active,progress,expected", [
+    pytest.param("3\n{fp}\n4\n1\nprompt-1\n", True, "a.sv\nb.sv", "rearm", id="moved-after-notice"),
+    pytest.param("3\n{fp}\n4\n1\nprompt-1\n", True, "a.sv", "keep", id="same-progress"),
+    pytest.param("3\n{fp}\n4\n0\nprompt-1\n", True, "a.sv\nb.sv", "keep", id="no-notice-yet"),
+    pytest.param("3\n{fp}\n4\n1\nprompt-1\n", False, "a.sv\nb.sv", "keep", id="chain-start"),
+    pytest.param(None, True, "a.sv", "keep", id="no-budget"),
+])
+def test_renotify_rearms_only_a_shown_notice_whose_progress_moved(tmp_path, budget, active, progress, expected):
+    if budget is not None:
+        (tmp_path / "stop-budget-verify.txt").write_text(budget.format(fp=_fp("a.sv")))
+    assert _renotify(tmp_path, active, progress) == expected
+    if budget is not None:
+        line4 = (tmp_path / "stop-budget-verify.txt").read_text().split("\n")[3]
+        assert line4 == ("0" if expected == "rearm" else budget.split("\n")[3])
+
+
+def test_a_rearmed_notice_is_shown_again_and_never_blocks(tmp_path):
+    out = _chain(tmp_path, ["a.sv"] * 4)
+    assert out == [BLOCK, BLOCK, BLOCK, NOTICE]
+    assert _renotify(tmp_path, True, "a.sv\nb.sv") == "rearm"
+    gate = 'stopu_gate verify "$2" true "$3" "keep working" "your call" 0'
+    assert json.loads(_run('STOP_CHAIN=$(stopu_chain_active "$1" "$2" verify); ' + gate,
+                           _input(True), str(tmp_path), "a.sv\nb.sv")) == NOTICE
+    lines = _budget(tmp_path).split("\n")
+    assert (lines[1], lines[3]) == (_fp("a.sv\nb.sv"), "1")
+    # The new progress is recorded with the notice, so the same files stay silent.
+    assert _renotify(tmp_path, True, "a.sv\nb.sv") == "keep"

@@ -14,14 +14,31 @@ jsonu_detect_parser
 
 # Extract CWD from hook input (consistent with peer hooks)
 INPUT=$(cat)
-CWD=$(jsonu_get_input_string "$INPUT" "cwd")
+CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
 RAT_DIR=$(rat_project_dir "$CWD")
 [ -z "$RAT_DIR" ] && { emit_post_continue; }
+CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 STATE_DIR="$RAT_DIR/state"
 TEAM_CONFIG="$STATE_DIR/team-config.json"
 PROGRESS_FILE="$STATE_DIR/team-progress.json"
+
+# Team activity keeps the config fresh: the 2h staleness bound (team-gate-util.sh)
+# measures time since the team was last active. Only an in-process teammate of the
+# recorded leader counts: its TaskUpdate carries the leader's session id and an
+# agent_id. TaskUpdate is not team-only (Claude 4.x sessions keep their own task list
+# with it), so neither another session nor the leader's own main thread keeps an
+# abandoned team alive. Tmux teammates are separate sessions, so they do not refresh
+# the config until a hook-recorded team exists (roadmap). touch -c never recreates a
+# config removed meanwhile.
+if [ -f "$TEAM_CONFIG" ]; then
+  _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
+  if [ -n "$_TP_SESSION" ] && [ -n "$(jsonu_get_root_string "$INPUT" "agent_id")" ] && \
+     [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")" ]; then
+    touch -c "$TEAM_CONFIG"
+  fi
+fi
 
 # Only active during team mode
 if [ ! -f "$TEAM_CONFIG" ]; then

@@ -13,7 +13,8 @@
 #   audit_save_prompt "$CWD" "$SEQ" "spec-analyst" "Analyze the spec..."
 #   audit_prune "$CWD" 10
 
-# Session ID: prefer CLAUDE_SESSION_ID, fallback to timestamp+PID.
+# Session ID: prefer CLAUDE_CODE_SESSION_ID, then the legacy CLAUDE_SESSION_ID,
+# then the cached file, fallback to timestamp+PID.
 _AUDIT_SESSION_ID_CACHE=""
 
 AUDIT_MAX_SESSIONS=${AUDIT_MAX_SESSIONS:-10}
@@ -52,14 +53,16 @@ audit_session_id() {
     return 0
   fi
 
-  # CLAUDE_SESSION_ID takes priority over cached file to prevent cross-session contamination.
-  if [ -n "${CLAUDE_SESSION_ID:-}" ]; then
-    _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$CLAUDE_SESSION_ID")
+  # A session id from the env takes priority over the cached file to prevent cross-session contamination.
+  # Claude Code exports CLAUDE_CODE_SESSION_ID to command hooks; CLAUDE_SESSION_ID is legacy.
+  _ASI_ENV_ID=${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}
+  if [ -n "$_ASI_ENV_ID" ]; then
+    _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$_ASI_ENV_ID")
     printf '%s' "$_AUDIT_SESSION_ID_CACHE"
     return 0
   fi
 
-  # Fallback: read from cached file (for environments without CLAUDE_SESSION_ID)
+  # Fallback: read from cached file (for environments without a session id)
   _ASI_RAT=$(rat_project_dir "$_ASI_CWD") || _ASI_RAT="$_ASI_CWD/.rat"
   _ASI_ID_FILE="$_ASI_RAT/audit/session-id.txt"
   if [ -f "$_ASI_ID_FILE" ]; then

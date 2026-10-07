@@ -175,7 +175,7 @@ class TestNewHook:
         # set up the blocking condition
         (tmp_project / ".rat" / "state" / "block-file").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is False
+        assert result["decision"] == "block"  # Stop gate; a PreToolUse gate denies via hookSpecificOutput.permissionDecision
 ```
 
 ## Bugs found

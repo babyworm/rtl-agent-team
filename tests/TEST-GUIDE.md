@@ -116,12 +116,15 @@ Validates the **hook system**, the plugin's central enforcement mechanism.
 | `rtl-verify-stop-gate.sh` | Block session stop after an RTL edit until verification completes | Block/allow conditions, cleanup |
 | `stop-gate.sh` | Block session stop while autopilot is running | Blocking based on state file presence |
 | `rtl-p6-cascade-gate.sh` | Force cascade re-review when RTL changes after Phase 6 | Stale marker, cascade-done, block/allow |
-| `rtl-skill-activation.sh` | Create completion state on skill invocation (PreToolUse:Skill) | State file creation, re-entry prevention, criteria loading |
+| `rtl-skill-activation.sh` | Advisory context before a skill call (PreToolUse:Skill); completion state once it ran (PostToolUse:Skill) | State file creation, re-entry prevention, criteria loading |
 | `rtl-skill-completion-gate.sh` | Block session stop before a skill completes (Stop) | Escalation ladder (`N→2N→last-chance→user escalation`), repeat counting, staleness, cleanup |
 
-**How it works:** hooks read JSON on stdin and print `{"continue": true/false}` JSON
-on stdout. The tests run the real shell script through the `run_hook()` helper and
-validate the output JSON.
+**How it works:** hooks read JSON on stdin and print one JSON object on stdout:
+`{"continue": true}` to allow, `{"decision": "block", "reason": ...}` to keep Claude
+working at Stop, a PreToolUse `permissionDecision: "deny"`, or a `{"systemMessage": ...}`
+notice for the user. They never print `"continue": false`
+(`tests/unit/test_hook_output_contract.py`). The tests run the real shell script
+through the `run_hook()` helper and validate the output JSON.
 
 ### 2. Python script tests
 

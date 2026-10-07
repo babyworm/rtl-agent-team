@@ -12,7 +12,7 @@ jsonu_escape() {
   elif command -v python >/dev/null 2>&1; then
     printf '%s' "$1" | python -c 'import json,sys; s=sys.stdin.read(); sys.stdout.write(json.dumps(s)[1:-1])' 2>/dev/null
   else
-    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\n' ' ' | tr '\r' ' ' | tr '\b' ' ' | tr '\f' ' '
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\001-\037' '[ *]'
   fi
 }
 
@@ -62,12 +62,13 @@ jsonu_path_to_jq_query() {
   printf '%s' "$JSONU_QUERY"
 }
 
-# Read a string field from a Claude Code hook stdin payload.
+# Read a tool parameter from a Claude Code hook stdin payload.
 # Claude Code nests tool parameters under `.tool_input` (e.g. Edit's file_path,
-# Bash's command, Skill's skill arg); only session-level fields (cwd, session_id,
+# Bash's command, Skill's skill arg); session-level fields (cwd, session_id,
 # hook_event_name, tool_name) sit at the root. We look inside `tool_input` FIRST,
-# then fall back to the root — the fallback also covers root-level fields and
-# legacy/flat test payloads, so both shapes work.
+# then fall back to the root, so legacy/flat test payloads work too. A tool
+# parameter can share a session field's name, so read session fields with
+# jsonu_get_root_string instead.
 jsonu_get_input_string() {
   JSONU_INPUT="$1"
   JSONU_KEY="$2"
@@ -277,4 +278,53 @@ PY
       sed -n "s/.*\"$JSONU_LEAF_KEY\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$JSONU_FILE" | head -n 1
       ;;
   esac
+}
+
+# Print a top-level string field of a hook input. Unlike jsonu_get_input_string it
+# never reads tool_input, whose fields can share a name with the root's: the Agent
+# tool's full input schema has a cwd of its own (the directory to run the agent in).
+# The sed fallback drops everything from "tool_input" on: Claude Code writes the session
+# fields first, and a field the root lacks (agent_id on the main thread) must not be
+# found in tool_input or tool_response instead.
+# Usage: CWD=$(jsonu_get_root_string "$INPUT" "cwd")
+jsonu_get_root_string() {
+  case "$JSONU_PARSER_MODE" in
+    jq)
+      printf '%s' "$1" | jq -r --arg key "$2" '.[$key] | strings' 2>/dev/null
+      ;;
+    python)
+      printf '%s' "$1" | "$JSONU_PY_BIN" -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+value = payload.get(sys.argv[1]) if isinstance(payload, dict) else None
+if isinstance(value, str):
+    sys.stdout.write(value)
+' "$2" 2>/dev/null
+      ;;
+    *)
+      printf '%s' "$1" | tr '\n' ' ' | sed 's/"tool_input"[[:space:]]*:.*//' | \
+        sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n 1
+      ;;
+  esac
+}
+
+# Print the session id of a hook input: its root session_id field (never tool_input's),
+# else CLAUDE_CODE_SESSION_ID (which Claude Code exports to command hooks), else the
+# legacy CLAUDE_SESSION_ID. Anything but a plain token prints nothing: at most 128
+# ASCII letters, digits, '.', '_' and '-'. The letters are spelled out because in a
+# UTF-8 locale bash's A-Z and a-z ranges also match letters such as é.
+# Usage: SID=$(jsonu_session_id "$INPUT")
+jsonu_session_id() {
+  _JSI=$(jsonu_get_root_string "$1" "session_id")
+  [ -n "$_JSI" ] || _JSI=${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}
+  case "$_JSI" in
+    *[!0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz._-]*) _JSI="" ;;
+  esac
+  [ "${#_JSI}" -le 128 ] || _JSI=""
+  printf '%s' "$_JSI"
 }

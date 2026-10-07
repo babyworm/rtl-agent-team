@@ -266,8 +266,8 @@ rtl-agent-team/
 │       ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리 (rtl-p5s-sva-check/)
 │       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (rtl-p5s-func-verify/)
 │       └── ...                     # + 23개 (CDC, UVM, Yosys, SDC 등)
-├── hooks/                      # 이벤트 기반 품질 게이트 (14개 hook 스크립트 / 15개 등록)
-│   ├── rtl-skill-activation.sh # PreToolUse:Skill — setup 체크 + 템플릿 bootstrap
+├── hooks/                      # 이벤트 기반 품질 게이트 (14개 hook 스크립트 / 16개 등록)
+│   ├── rtl-skill-activation.sh # PreToolUse+PostToolUse:Skill — setup 체크 + 템플릿 bootstrap, 완료 루프
 │   └── ...                     # + 13개 (라우팅 주입, 검증 게이트, cascade 등)
 ├── docker/                     # EDA 도구 Docker 이미지
 │   └── Dockerfile              # 오픈소스 EDA 전체 번들

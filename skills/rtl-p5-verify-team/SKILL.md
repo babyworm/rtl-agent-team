@@ -48,7 +48,7 @@ TeamCreate(team_name="p5-verify", description="Phase 5 verification: 9-category 
 Write(".rat/state/team-config.json", json.dumps({
     "team_mode": true,
     "team_name": "p5-verify",
-    "leader_session_id": "<current_session_id>",
+    "leader_session_id": "${CLAUDE_SESSION_ID}",
     "coordinator_name": "coordinator",
     "worker_count": 4,
     "phase": "p5",
