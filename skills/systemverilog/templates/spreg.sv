@@ -1,10 +1,10 @@
 // Standard SRAM Wrapper — Single-Port (SP)
-// Deploy to: rtl/common/sram_sp.sv
+// Deploy to: rtl/common/spreg.sv and and rtl/common/wrapper/spreg_<depth>_<width>.sv 
 // One R/W port, single clock. Instance naming: `u_mem_{purpose}`.
 // Synthesis: behavioral array is translate_off-guarded (DC/Genus skip it);
 // compiled-macro branches activate via `+define+RAT_MEM_<PROCESS>`
 // (passed by `run_syn.sh --mem-process`; pair with `--mem-lib` for real timing).
-module sram_sp #(
+module spreg #(
   parameter int DEPTH = 256,
   parameter int WIDTH = 32
 ) (
