@@ -1,10 +1,10 @@
 // Standard SRAM Wrapper — Two-Port (TP)
-// Deploy to: rtl/common/sram_tp.sv
+// Deploy to: rtl/common/tpreg.sv and rtl/common/wrapper/tpreg_<depth>_<width>.sv 
 // Separate read and write ports, SINGLE clock. Use for simultaneous read+write
 // within the same clock domain. Instance naming: `u_mem_{purpose}`.
 // For synthesis, add the sram_sp-style `ifdef compiled-macro branches above the
 // behavioral block; the behavioral body stays translate_off-guarded.
-module sram_tp #(
+module tpreg #(
   parameter int DEPTH = 256,
   parameter int WIDTH = 32
 ) (
@@ -19,6 +19,20 @@ module sram_tp #(
   output logic [WIDTH-1:0]        o_rdata
 );
 
+
+`ifdef ASIC_SYNTHESIS
+  `ifdef RAT_MEM_TSMC_N22
+     // ── Compiled SRAM macro (TSMC N22) — replace with the real instance + pin map ──
+     // 
+  `elsif RAT_MEM_SKY130
+    // ── Compiled SRAM macro (SkyWater 130) ──
+    // sky130_sram_1rw1r_... u_macro ( ... );
+  `else
+  $warning("compiled memory is not instanced while synthesis");
+  `endif 
+
+  // To use behavioral model  
+`else // end of ASIC_SYNTHESIS
   // Behavioral model — SIMULATION ONLY
   // synopsys translate_off
   logic [WIDTH-1:0] mem [0:DEPTH-1];
@@ -32,5 +46,6 @@ module sram_tp #(
     end
   end
   // synopsys translate_on
-
+  `endif 
+  
 endmodule
