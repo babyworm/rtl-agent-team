@@ -1,5 +1,9 @@
 > **한국어 문서**: [README_kr.md](./README_kr.md)
 
+> Please note that, this plugin is not good for fable5.x and opus5.5 or above with more than high effort reasoning level.
+> Since, from Claude 5.x series use "long-term reasoning", time consuming for the "iterative checking" in this plugin.
+> Maintainer try to update model, reasoning level, and descirptions on the plugin for recent models. 
+
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
