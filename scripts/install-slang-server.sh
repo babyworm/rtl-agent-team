@@ -10,6 +10,8 @@ BUILD_DIR="${HOME}/.local/src/slang-server"
 REPO_URL="https://github.com/hudson-trading/slang-server.git"
 MIN_CMAKE_VERSION="3.28"
 MIN_GCC_VERSION="11"
+# slang's code generators need Python >= 3.9 (str.removesuffix).
+PYTHON_BIN="${SLANG_SERVER_PYTHON:-}"
 
 # Colors
 RED='\033[0;31m'
@@ -41,9 +43,39 @@ version_gte() {
     }'
 }
 
+python_ok() {
+    "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1
+}
+
+# Pick an interpreter explicitly: CMake's FindPython may otherwise select an
+# older python (e.g. ~/.local/bin/python3.8) that is not the PATH default.
+find_python() {
+    local cand
+    if [[ -n "$PYTHON_BIN" ]]; then
+        python_ok "$PYTHON_BIN" && return 0
+        log_error "SLANG_SERVER_PYTHON=$PYTHON_BIN is not a Python >= 3.9 interpreter"
+        return 1
+    fi
+    for cand in python3 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9; do
+        if command_exists "$cand" && python_ok "$cand"; then
+            PYTHON_BIN="$(command -v "$cand")"
+            return 0
+        fi
+    done
+    log_error "python3 >= 3.9 not found"
+    return 1
+}
+
 check_prerequisites() {
     log_info "Checking build prerequisites..."
     local ok=true
+
+    # python (build-time code generation)
+    if find_python; then
+        log_success "python: $PYTHON_BIN"
+    else
+        ok=false
+    fi
 
     # git
     if command_exists git; then
@@ -128,6 +160,10 @@ build() {
     log_info "Configuring with CMake..."
 
     local cmake_args=("-B" "build" "-DCMAKE_BUILD_TYPE=Release")
+
+    # The update command skips check_prerequisites, so resolve python here too.
+    find_python
+    cmake_args+=("-DPython_EXECUTABLE=$PYTHON_BIN")
 
     # Use ninja if available
     if command_exists ninja; then

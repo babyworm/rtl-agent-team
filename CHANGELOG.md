@@ -23,6 +23,12 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   passed the prerequisite check and then failed at configure time), and
   submodules are initialized without `--recursive`, which slang-server
   no longer needs.
+- `scripts/install-slang-server.sh`: the build now selects a Python >= 3.9
+  itself and passes it to CMake as `Python_EXECUTABLE`
+  (`SLANG_SERVER_PYTHON` overrides it). CMake's `FindPython` could pick an
+  older interpreter that is not the `PATH` default (seen:
+  `~/.local/bin/python3.8` with `python3` at 3.14), failing in slang's
+  code generators with `'str' object has no attribute 'removesuffix'`.
 
 ## [0.14.6] - 2026-08-24
 
