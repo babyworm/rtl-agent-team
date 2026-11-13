@@ -7,6 +7,29 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Changed
+- **`systemverilog-lsp` sub-plugin pinned to v1.2.0.**
+  `.claude-plugin/marketplace.json` updates the `systemverilog-lsp`
+  source `ref` from `v1.1.4` to `v1.2.0` and the pinned commit `sha`
+  to `9354319`. v1.2.0 fixes the slang-server installer (the install
+  step failed after a successful build), adds an `update` command to
+  refresh an existing slang-server, and raises the CMake minimum to
+  3.28 to match slang-server. The README "Marketplace" tables are
+  updated in lockstep.
+
+### Fixed
+- `scripts/install-slang-server.sh`: minimum CMake raised from 3.20 to
+  3.28 to match slang-server's `cmake_minimum_required` (CMake 3.20–3.27
+  passed the prerequisite check and then failed at configure time), and
+  submodules are initialized without `--recursive`, which slang-server
+  no longer needs.
+- `scripts/install-slang-server.sh`: the build now selects a Python >= 3.9
+  itself and passes it to CMake as `Python_EXECUTABLE`
+  (`SLANG_SERVER_PYTHON` overrides it). CMake's `FindPython` could pick an
+  older interpreter that is not the `PATH` default (seen:
+  `~/.local/bin/python3.8` with `python3` at 3.14), failing in slang's
+  code generators with `'str' object has no attribute 'removesuffix'`.
+
 ## [0.14.6] - 2026-08-24
 
 ### Fixed — synthesis and equivalence execution
