@@ -7,6 +7,16 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+### Changed
+- **`systemverilog-lsp` sub-plugin pinned to v1.2.0.**
+  `.claude-plugin/marketplace.json` updates the `systemverilog-lsp`
+  source `ref` from `v1.1.4` to `v1.2.0` and the pinned commit `sha`
+  to `9354319`. v1.2.0 fixes the slang-server installer (the install
+  step failed after a successful build), adds an `update` command to
+  refresh an existing slang-server, and raises the CMake minimum to
+  3.28 to match slang-server. The README "Marketplace" tables are
+  updated in lockstep.
+
 ## [0.14.6] - 2026-08-24
 
 ### Fixed — synthesis and equivalence execution

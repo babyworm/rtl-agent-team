@@ -40,8 +40,8 @@
       "source": {
         "source": "github",
         "repo": "babyworm/systemverilog-lsp",
-        "ref": "v1.1.4",
-        "sha": "a874d3248d08606b50b71376c64ed8af99396c97"
+        "ref": "v1.2.0",
+        "sha": "9354319f46650b7f74f3b225ba7934a3ad8a664d"
       },
       "description": "SystemVerilog/Verilog language server for Claude Code, powered by slang-server (hudson-trading). Provides diagnostics, hover, completion, go-to-definition, references, rename, and inlay hints for .sv/.svh/.v/.vh files.",
       "author": {
