@@ -8,7 +8,7 @@ set -euo pipefail
 INSTALL_DIR="${HOME}/.local/bin"
 BUILD_DIR="${HOME}/.local/src/slang-server"
 REPO_URL="https://github.com/hudson-trading/slang-server.git"
-MIN_CMAKE_VERSION="3.20"
+MIN_CMAKE_VERSION="3.28"
 MIN_GCC_VERSION="11"
 
 # Colors
@@ -112,13 +112,13 @@ clone_or_update() {
         git fetch origin
         git checkout main
         git pull origin main
-        git submodule update --init --recursive
+        git submodule update --init
     else
         log_info "Cloning slang-server to $BUILD_DIR..."
         mkdir -p "$(dirname "$BUILD_DIR")"
         git clone "$REPO_URL" "$BUILD_DIR"
         cd "$BUILD_DIR"
-        git submodule update --init --recursive
+        git submodule update --init
     fi
     log_success "Source ready at $BUILD_DIR"
 }

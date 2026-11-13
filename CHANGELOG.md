@@ -17,6 +17,13 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
   3.28 to match slang-server. The README "Marketplace" tables are
   updated in lockstep.
 
+### Fixed
+- `scripts/install-slang-server.sh`: minimum CMake raised from 3.20 to
+  3.28 to match slang-server's `cmake_minimum_required` (CMake 3.20–3.27
+  passed the prerequisite check and then failed at configure time), and
+  submodules are initialized without `--recursive`, which slang-server
+  no longer needs.
+
 ## [0.14.6] - 2026-08-24
 
 ### Fixed — synthesis and equivalence execution
