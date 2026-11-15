@@ -1,3 +1,5 @@
+
+
 > **한국어 문서**: [README_kr.md](./README_kr.md)
 
 > Please note that, this plugin is not good for fable5.x and opus5.5 or above with more than high effort reasoning level.
@@ -33,7 +35,7 @@ The workflow has **three distinct stages**, each with a different scope and freq
 
 | Stage | Scope | Frequency | Commands |
 |-------|-------|-----------|----------|
-| **A. Machine Setup** | Per machine (global) | Once per machine | `/plugin install` + `/rtl-agent-team:rat-setup` |
+| **A. Machine Setup** | Per machine (global) | Once per machine | `/plugin marketplace add` + `/plugin install` + `/rtl-agent-team:rat-setup` |
 | **B. Project Init** | Per project directory | Once per project | `/rtl-agent-team:rat-init-project` |
 | **C. Design Work** | Inside project | Recurring | `/rtl-agent-team:rat-auto-design`, phase/sub-skills |
 
