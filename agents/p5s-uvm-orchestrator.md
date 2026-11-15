@@ -1,7 +1,7 @@
 ---
 name: p5s-uvm-orchestrator
-model: opus
-description: "UVM verification orchestrator. Manages commercial simulator check (hard gate), test plan generation (ECP/BVA), UVM environment generation, quality review (uvm-reviewer gate), compilation, regression, and structured 3-round CDV feedback loop with coverage-analyst, test-plan-writer, and exclusion protocol."
+model: fable
+description: "UVM verification orchestrator. Commercial simulator check, test plan, UVM environment, one regression, one coverage fill, then a report of bins that remain."
 skills: [rtl-p5s-uvm-policy]
 ---
 
@@ -226,70 +226,31 @@ HALT regression and invoke uvm-reviewer to diagnose:
 - TB top hardcoding values that should come from test class
 Only resume regression after stimulus connectivity is confirmed.
 
-## Step 5: Coverage Evaluation & CDV Feedback Loop (Structured 3-Round)
+## Step 5: One Coverage Fill
 
-After regression completes, run structured coverage-driven verification loop.
-
-### Round 1 — Initial Gap Analysis (HIGH priority)
+After the regression, if a target is missed, fill once and report what remains. Do not schedule a second fill.
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Round 1: Analyze merged UVM coverage from sim/uvm/coverage/.
-Coverage targets (per rtl-p5s-uvm-policy):
-  - Line ≥ 90%, Toggle ≥ 80%, FSM ≥ 70%, Branch ≥ 80%, Functional ≥ 95%
-Parse coverage report (VCS text/XML, Questa ucdb, Xcelium ucd).
-Compare against targets — identify gaps by category.
-For each gap: produce CDTG feedback row:
+     prompt="Analyze merged UVM coverage from sim/uvm/coverage/ once.
+Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%, branch ≥ 80%, functional ≥ 95%.
+If every target is met, report PASS and stop.
+Otherwise write one CDTG row per gap:
   | Gap ID | Type | Uncovered Bin/Line/State | REQ | Constraint | Sequence | Expected |
-Prioritize: functional gaps > FSM gaps > branch gaps > line/toggle gaps.
-Write sim/uvm/coverage/coverage_gaps_r1.md.
-Save .rat/scratch/phase-5/uvm-coverage-iteration-r1.md.
-If ALL targets met → report PASS, skip CDV iteration.")
+Write sim/uvm/coverage/coverage_gaps.md.
+Save .rat/scratch/phase-5/uvm-coverage-iteration.md.")
 
 Task(subagent_type="rtl-agent-team:test-plan-writer",
-     prompt="Round 1: Read sim/uvm/coverage/coverage_gaps_r1.md and sim/uvm/{module}_test_plan.md.
-For config-dependent gaps (requiring specific parameter combinations), apply ECP/BVA
-from the test plan to partition the parameter space systematically.
-For non-config-dependent gaps, identify direct stimulus targets.
-Write sim/uvm/coverage/directed_test_plan_r1.md.")
+     prompt="Read sim/uvm/coverage/coverage_gaps.md. Apply ECP/BVA for config-dependent gaps.
+Write sim/uvm/coverage/directed_test_plan.md.")
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Round 1: Read coverage_gaps_r1.md and directed_test_plan_r1.md.
-Write sim/uvm/seq/{design}_coverage_fill_r1.sv with directed UVM sequences targeting HIGH gaps.
-Use parameter combinations from the test plan for config-dependent gaps.
-Register sequences in environment.")
+     prompt="Read coverage_gaps.md and directed_test_plan.md.
+Write sim/uvm/seq/{design}_coverage_fill.sv with one directed sequence per high-value gap.
+Register the sequences.")
 ```
 
-Re-run regression with new tests via eda-runner, merge coverage.
-
-### Round 2 — Deepen (MED priority + cross-coverage)
-
-Repeat the same 3-agent pattern (coverage-analyst → test-plan-writer → testbench-dev)
-targeting MED priority gaps and cross-coverage combinations.
-Track delta coverage improvement from Round 1.
-
-### Round 3 — Close (convergence + exclusion)
-
-```
-Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Round 3: Analyze updated coverage. Check convergence: if < 0.5% improvement
-from Round 2, coverage has converged. Classify remaining uncovered bins:
-  - STIMULUS_GAP: reachable → recommend directed test
-  - STRUCTURAL_DEAD: unreachable → exclude with waiver
-  - INFRA_CODE: UVM/TB infrastructure → exclude from report scope
-Apply exclusion protocol per rtl-p5s-coverage-policy (auto-approved for standard categories,
-user-approved for non-standard via AskUserQuestion).
-Generate tool-neutral exclusion manifest at sim/uvm/coverage/coverage-exclusions.json.
-Document exclusions in reviews/phase-5-verify/{module}-coverage-exclusions.md.
-Report both raw and post-exclusion coverage numbers.
-Write sim/uvm/coverage/coverage_gaps_r3.md.")
-```
-
-### Escalation
-
-- If post-exclusion targets still not met after 3 rounds → escalate to user
-- If coverage persistently below 70% → escalate to rtl-architect for structural review
-- Convergence detection: 2 consecutive rounds with < 0.5% improvement → apply exclusion protocol
+Re-run the regression once and merge coverage. Then classify bins that remain (STIMULUS_GAP, STRUCTURAL_DEAD, INFRA_CODE) per rtl-p5s-coverage-policy. Standard exclusions are automatic. Non-standard exclusions need the user. Report raw and post-exclusion numbers. If a target is still missed, tell the user. Do not start another fill.
 
 ## Step 6: Failure Analysis (on scoreboard mismatch)
 

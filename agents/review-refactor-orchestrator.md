@@ -1,6 +1,6 @@
 ---
 name: review-refactor-orchestrator
-model: opus
+model: fable
 description: "LLM review and controlled refactor orchestrator. Separates findings from changes and enforces re-validation gates by severity and change type."
 skills: [code-review-policy, refactor-classification-policy, verification-recheck-policy]
 ---

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="140" viewBox="0 0 760 140">
+  <rect width="760" height="140" fill="#ffffff"/>
+  <rect x="24" y="40" width="140" height="48" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="64" y="68" font-family="Helvetica" font-size="13" fill="#000">ST_IDLE</text>
+  <rect x="280" y="40" width="160" height="48" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="312" y="68" font-family="Helvetica" font-size="13" fill="#000">ST_ENCODE</text>
+  <rect x="560" y="40" width="140" height="48" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="592" y="68" font-family="Helvetica" font-size="13" fill="#000">ST_FLUSH</text>
+  <line x1="164" y1="64" x2="272" y2="64" stroke="#000" stroke-width="1"/>
+  <polygon points="272,64 264,60 264,68" fill="#000"/>
+  <text x="186" y="56" font-family="Helvetica" font-size="11" fill="#000">i_valid</text>
+  <line x1="440" y1="64" x2="552" y2="64" stroke="#000" stroke-width="1"/>
+  <polygon points="552,64 544,60 544,68" fill="#000"/>
+  <text x="452" y="56" font-family="Helvetica" font-size="11" fill="#000">terminate</text>
+  <path d="M630 88 L630 112 L94 112 L94 88" fill="none" stroke="#000" stroke-width="1"/>
+  <polygon points="94,88 90,96 98,96" fill="#000"/>
+  <text x="320" y="128" font-family="Helvetica" font-size="11" fill="#000">flush_done</text>
+</svg>

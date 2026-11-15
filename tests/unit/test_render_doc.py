@@ -72,10 +72,14 @@ def test_fsm_and_diagram_when_present(tmp_path):
     assert r.returncode == 0
     body = out.read_text()
     assert "FSM States" in body
-    assert "stateDiagram-v2" in body
-    assert "```d2" in body
+    assert "figures/cabac_encoder-fsm.png" in body
+    assert "figures/cabac_encoder-block.png" in body
+    assert "stateDiagram-v2" not in body
+    assert "```d2" not in body
+    assert "ST_IDLE" in body
     assert "u_a" in body and "u_b" in body
     assert "LLM_FILL: FSM state semantics" in body
+    assert "## Registers" in body
 
 
 def test_violation_banner(tmp_path):

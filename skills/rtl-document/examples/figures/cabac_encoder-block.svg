@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="180" viewBox="0 0 760 180">
+  <rect width="760" height="180" fill="#ffffff"/>
+  <rect x="8" y="12" width="744" height="156" fill="none" stroke="#000" stroke-width="1"/>
+  <text x="20" y="32" font-family="Helvetica" font-size="12" fill="#000">cabac_encoder</text>
+  <rect x="24" y="52" width="180" height="80" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="48" y="96" font-family="Helvetica" font-size="12" fill="#000">u_bypass_encoder</text>
+  <rect x="280" y="52" width="180" height="80" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="304" y="96" font-family="Helvetica" font-size="12" fill="#000">u_context_memory</text>
+  <rect x="536" y="52" width="180" height="80" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="572" y="96" font-family="Helvetica" font-size="12" fill="#000">u_range_coder</text>
+  <line x1="204" y1="92" x2="272" y2="92" stroke="#000" stroke-width="1"/>
+  <polygon points="272,92 264,88 264,96" fill="#000"/>
+  <text x="214" y="84" font-family="Helvetica" font-size="11" fill="#000">bin</text>
+  <line x1="460" y1="92" x2="528" y2="92" stroke="#000" stroke-width="1"/>
+  <polygon points="528,92 520,88 520,96" fill="#000"/>
+  <text x="468" y="84" font-family="Helvetica" font-size="11" fill="#000">state</text>
+  <text x="24" y="156" font-family="Helvetica" font-size="11" fill="#000">i_bin</text>
+  <text x="680" y="156" font-family="Helvetica" font-size="11" fill="#000">o_byte</text>
+</svg>

@@ -155,7 +155,7 @@ Validates the plugin's **declarative structure**.
 | Agent YAML frontmatter | `name`, `model`, `description` present on all 99 agents |
 | Agent name ↔ filename | `agents/rtl-coder.md` declares `name: rtl-coder` |
 | `agents/` stays flat | No nested `.md`; a nested file would be registered as a phantom agent |
-| Skill SKILL.md exists | Every one of the 97 skill directories has a `SKILL.md` |
+| Skill SKILL.md exists | Every one of the 91 skill directories has a `SKILL.md` |
 | Skill name ↔ directory | `skills/rtl-p4-implement/SKILL.md` declares `name: rtl-p4-implement` |
 | Skill description budget | ≤160 chars per skill and ≤15 KB in total — the harness silently truncates once the global budget is exceeded |
 | Skill asset paths | Skill-relative asset paths resolve, and no prompt reads a plugin-internal path that is absent at runtime |

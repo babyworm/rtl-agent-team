@@ -12,14 +12,12 @@ reviews/
 ├── phase-1-research/
 │   └── research-review.md
 ├── phase-2-architecture/
-│   ├── architecture-review-r{N}.md        # Dynamic convergence (min 2, max 5 rounds)
-│   ├── architecture-review.md             # Consolidated verdict
+│   ├── architecture-review.md             # One review; open items named
 │   ├── feature-coverage.md                # 100% REQ mapping to arch blocks
 │   ├── ref-model-feature-coverage.md      # 100% REQ-F-* to C model code paths
 │   └── architecture-diagram.md            # D2 block diagram
 ├── phase-3-uarch/
-│   ├── uarch-review-r{N}.md               # Dynamic convergence (min 2, max 5 rounds)
-│   ├── uarch-review.md                    # Consolidated verdict
+│   ├── uarch-review.md                    # One review; open items named
 │   ├── feature-preservation.md            # 100% preserved
 │   ├── bfm-feature-coverage.md            # 100% REQ-F-* to BFM modules
 │   └── pipeline-diagram.md               # Mermaid pipeline/flow
@@ -65,12 +63,8 @@ All verdict reports follow this structure:
 PASS | FAIL: [Reason]
 ```
 
-## Iterative Review Structure
+## Review
 
-Phase 1 uses 3 mandatory chief-coordinated rounds; Phases 2-3 use dynamic convergence
-(min 2, max 5 rounds — convergence when finding_delta < 0.1 and all critical resolved):
-- Round N (`*-review-rN.md`): findings + rebuttal (accept/reject with rationale)
-- Last round: cross-block interface audit + final quality pass
-- Consolidated (`*-review.md`): Final verdict
+One review. The report names each finding, whether it was accepted, and what is still open. A further pass runs only when the user asks.
 
 <!-- rat-version: 0.7.7 -->

@@ -101,7 +101,7 @@ color: blue
 |-------|----------|-------------|
 | `name` | Required | Same as the filename (without `.md`), kebab-case |
 | `description` | Required | One sentence. Claude reads this text when selecting an agent |
-| `model` | Required | `opus` (complex analysis), `sonnet` (standard work), `haiku` (simple lookups) |
+| `model` | Required | `fable` (orchestration, judgment, architecture, microarchitecture), `opus` (design, verification, checking), `sonnet` (running a tool or parsing its report). Do not set `effort:` |
 | `color` | Optional | Display colour in the UI |
 | `disallowedTools` | Optional | Tools to forbid (e.g. `Write, Edit` for a read-only agent) |
 

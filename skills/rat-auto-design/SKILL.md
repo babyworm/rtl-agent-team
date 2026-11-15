@@ -8,8 +8,8 @@ allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill
 
 <Purpose>
 Execute the full RTL design pipeline from specification to verified silicon.
-In team mode (default), the skill directly sequences phases using phase-specific team skills
-for parallel execution. In sequential mode (--no-team), delegates to autopilot-orchestrator.
+In team mode (default), the skill sequences each phase skill with `team` in the arguments.
+In sequential mode (--no-team), delegates to autopilot-orchestrator.
 </Purpose>
 
 <Use_When>
@@ -46,23 +46,23 @@ if TEAM_MODE:
                     "5": {"status":"pending"}, "6": {"status":"pending"} } })
 
     # Phase 1: Research (team)
-    Skill(skill="rtl-agent-team:rtl-p1-research-team", args="$ARGUMENTS")
+    Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")
     # Gate check + state update
 
     # Phase 2: Architecture + RefC (team)
-    Skill(skill="rtl-agent-team:rtl-p2-arch-team", args="Phase 1 complete")
+    Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete")
     # Gate check + state update
 
     # Phase 3: uArch + BFM (team)
-    Skill(skill="rtl-agent-team:rtl-p3-uarch-team", args="Phase 2 complete")
+    Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete")
     # Gate check + state update
 
     # Phase 4: RTL Implementation (team)
-    Skill(skill="rtl-agent-team:rtl-p4-implement-team", args="Phase 3 complete")
+    Skill(skill="rtl-agent-team:rtl-p4-implement", args="team Phase 3 complete")
     # Gate check + state update
 
     # Phase 5: Verification (team)
-    Skill(skill="rtl-agent-team:rtl-p5-verify-team", args="Phase 4 complete")
+    Skill(skill="rtl-agent-team:rtl-p5-verify", args="team Phase 4 complete")
     # Gate check + state update
 
     # Phase 6: Design Review (no team — sequential only)
@@ -84,7 +84,7 @@ else:
 ```
 
 Team mode uses native teams within each phase for parallel execution (Orchestrator as Teammate pattern).
-Each phase team skill handles its own TeamCreate/TeamDelete lifecycle with a coordinator teammate + 3-5 workers.
+Each phase skill's team mode handles its own TeamCreate/TeamDelete lifecycle with a coordinator teammate + 3-5 workers.
 Sequential mode delegates everything to the autopilot-orchestrator.
 
 ## Output

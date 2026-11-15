@@ -1,6 +1,6 @@
 ---
 name: p4-implement-orchestrator
-model: opus
+model: fable
 description: "Phase 4 RTL implementation orchestrator. Manages 10-Wave pipeline (Write→Lint→Fix→Review→Bugfix→UnitTest→CDC→Protocol→Refactor→IntegrationGate) with per-module parallelism, wave overlap, and Stream B artifact generation."
 skills: [rtl-p4-implement-policy]
 ---
@@ -103,6 +103,7 @@ Launch N rtl-coder tasks simultaneously, one per module:
 ```
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Implement rtl/{module}/{module}.sv from docs/phase-3-uarch/{module}.md.
+Meet the required throughput, then use less area: share operators that are not needed in the same cycle and keep each shared operator busy. A μArch schedule that fixes the operator count is binding.
 Read clock-domain-map.md for clock domains. Conventions: i_/o_/io_ port prefix (NOT _i/_o suffix),
 {domain}_clk/{domain}_rst_n (NOT clk_i/rst_ni), logic only (no reg/wire),
 always_ff/always_comb, u_ instance prefix, gen_ generate prefix,
@@ -192,14 +193,14 @@ Classify: REVIEW_PASS or REVIEW_FAIL with finding list.",
 # ... one review per module, all in parallel
 ```
 
-## Wave 5: Bugfix from Review (parallel, ONLY REVIEW_FAIL modules, max 3 rounds)
+## Wave 5: Bugfix from Review (parallel, ONLY REVIEW_FAIL modules, one fix)
 
 ```
 Task(subagent_type="rtl-agent-team:rtl-coder",
      prompt="Fix code review findings in rtl/{module}/{module}.sv per review report:
 [paste findings]. Focus on: [critical/major items]. Maintain naming conventions.
 After fix, re-run lint.")
-# After fix → re-review by rtl-critic (max 3 review→fix iterations)
+# After the fix, rtl-critic checks the failed items once. If they still fail, report them and stop.
 Task(subagent_type="rtl-agent-team:rtl-critic",
      prompt="Re-review rtl/{module}/{module}.sv after bugfix. Focus on previously
 reported findings. Classify: REVIEW_PASS or REVIEW_FAIL.")
@@ -395,8 +396,7 @@ Generate `docs/phase-4-rtl/phase-4-summary.md` on gate PASS.
 
 ## Wave 11: Codex Cross-Review (MANDATORY — after Phase 4 Gate PASS)
 
-Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
-fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+Ask Codex once, as an independent second reviewer. Report disagreements. Do not open another exchange unless the user asks.
 
 ```
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",

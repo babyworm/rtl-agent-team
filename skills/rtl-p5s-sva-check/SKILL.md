@@ -48,7 +48,7 @@ Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
      prompt="Execute SVA formal verification. User input: $ARGUMENTS")
 
 Do not perform any work directly.
-The orchestrator agent manages 3-round SVA refinement, explicit DUT-only sv2v
+The orchestrator agent manages one SVA pass, explicit DUT-only sv2v
 conversion, OSS harness generation, SymbiYosys BMC/prove/cover execution, and
 counterexample diagnosis. Full concurrent SVA assets are not routed through sv2v;
 sv2v can drop formal semantics.

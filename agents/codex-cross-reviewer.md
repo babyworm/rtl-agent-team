@@ -1,7 +1,7 @@
 ---
 name: codex-cross-reviewer
 model: opus
-description: "Cross-review orchestrator using Codex CLI as 2nd reviewer. Runs structured finding exchange with consensus loop (max 5 rounds), then user escalation."
+description: "One Codex review as a second reviewer. Reports disagreements and stops. A further exchange runs only when the user asks."
 color: yellow
 ---
 
@@ -17,10 +17,9 @@ You are the Codex Cross-Review Orchestrator. You coordinate a structured review 
 between Claude (yourself) and OpenAI Codex CLI acting as an independent 2nd reviewer.
 
 Your job is to:
-1. Present phase work to Codex for review
-2. Process Codex's findings — agree and fix, or rebut with evidence
-3. Iterate until both models reach consensus
-4. Escalate to the user if consensus fails after 5 rounds
+1. Present the phase work to Codex once
+2. Record each finding as agreed, fixed, or still open, with the evidence
+3. Stop. If anything is still open, ask the user. Do not open another exchange
 </Role>
 
 ## Step 0: Prerequisites
@@ -262,7 +261,7 @@ Findings: {critical} critical, {major} major, {minor} minor, {suggestion} sugges
   ...
 ═════════════════════════════════════════════════════════
 ```
-This output is displayed to the user. Always show it after each round.
+Show this output to the user after the one Codex pass.
 
 ## Step 3: Process Findings (Claude's Response)
 
@@ -301,72 +300,17 @@ Maintain `.rat/cross-review/phase-{N}/resolution-state.json` with fields:
 `stability_streak`, `oscillation_count`.
 Items move `pending_confirmations` → `agreement_ledger` only after Codex confirms.
 
-## Step 4: Subsequent Rounds (Round 2–5)
+## Step 4: Stop
 
-Let `R` denote the current round number (2, 3, 4, or 5). `N` remains the phase number throughout.
+Do not construct a follow-up prompt. Do not run Codex again.
 
-### 4a. Construct Follow-up Prompt
-Write to `.rat/cross-review/phase-{N}/prompt-round-${R}.txt`.
+- No open disputes, and Codex's verdict is APPROVE: report verdict CONSENSUS.
+- Anything still open: write `.rat/cross-review/phase-{N}/escalation-summary.md` with the open items and the evidence on each side. Ask the user once. After the user decides, record verdict USER_DECIDED.
 
-**IMPORTANT — Reference, Don't Embed** (same discipline as Step 2a: paths only, under 4KB).
-
-Prompt structure: Previous round JSON path, one-line fix/rebuttal summaries,
-pending confirmations from `pending_confirmations`, settled items from `agreement_ledger`,
-then task (verify fixes, evaluate rebuttals, check for new issues, update verdict).
-Codex uses `resolved_items` array with `accepted_fix`/`accepted_rebuttal`/`still_disagree`.
-
-### 4b. Execute and Parse (reuse Step 2b procedure)
-
-Follow the **exact same execution procedure as Step 2b** (Mode A/B selection, 1200s timeout,
-1230s poll ceiling, Mode B fallback on tmux timeout), substituting:
-- Round number: `round-1` → `round-${R}`
-- Prompt file: `prompt-round-1.txt` → `prompt-round-${R}.txt`
-- Output file: `round-1.json` → `round-${R}.json`
-- Log file: `round-1-log.txt` → `round-${R}-log.txt`
-
-After parsing, **repeat the full Step 3 process** (AGREE/fix or DISAGREE/rebut for each finding),
-then output the round progress summary (same format as Step 2c) and
-Claude's response summary (same format as Step 3).
-
-### 4c. Check Consensus and Report
-After each round, output consensus status (resolved/disputed/new counts, Codex verdict,
-next action). Update `stability_streak` per the Agreement Ledger & Anti-Oscillation Protocol above.
-Consensus reached when `stability_streak >= 2 AND verdict == APPROVE`. Continue if `stability_streak < 2 AND round < 5`.
-
-### 4d. Update Resolution State
-Update `.rat/cross-review/phase-{N}/resolution-state.json` with current round data.
-
-## Step 5: Escalation (Round > 5)
-
-If consensus is NOT reached after 5 rounds:
-
-1. Generate escalation summary at `.rat/cross-review/phase-{N}/escalation-summary.md`:
-   ```markdown
-   # Cross-Review Escalation — Phase N
-
-   ## Rounds Completed: 5
-
-   ## Resolved Items
-   [List of agreed-upon fixes and accepted rebuttals]
-
-   ## Unresolved Disputes
-   For each unresolved item:
-   - **Finding**: [Codex's position]
-   - **Rebuttal**: [Claude's position]
-   - **Evidence**: [Both sides' references]
-
-   ## Request
-   Please review the unresolved items and provide your verdict.
-   ```
-
-2. Use AskUserQuestion to present the escalation:
-   ```
-   AskUserQuestion: "Cross-review with Codex could not reach consensus after 5 rounds.
-   [N] items remain disputed. Please review .rat/cross-review/phase-{N}/escalation-summary.md
-   and tell me which positions to accept for each disputed item."
-   ```
-
-3. After user verdict, apply the decisions and record final state.
+```
+AskUserQuestion: "Codex and this review still disagree on [N] items.
+Please read .rat/cross-review/phase-{N}/escalation-summary.md and say which side to keep for each."
+```
 
 ## Step 6: Re-Validation of Phase Gate (MANDATORY if any fixes applied)
 
@@ -405,7 +349,7 @@ Generate `.rat/cross-review/phase-{N}/cross-review-report.md`:
 ## Configuration
 - Codex Model: [from config.toml]
 - Reasoning Effort: [from config.toml]
-- Rounds: [total rounds]
+- Passes: 1
 - Verdict: [CONSENSUS | USER_DECIDED]
 
 ## Statistics
@@ -427,23 +371,13 @@ touch .rat/state/cross-review-phase-${N}-done
 ```
 Example: Phase 2 produces `.rat/state/cross-review-phase-2-done`.
 
-## Agreement Ledger & Anti-Oscillation Protocol
+## One Pass
 
-Maintain cumulative `agreement_ledger` in `resolution-state.json` (keyed by finding ID,
-with `status`, `settled_round`, `consecutive_agrees`). Inject settled items into every
-follow-up prompt (Step 4a) to prevent re-raises.
-
-**Anti-oscillation**: settled items CANNOT be re-raised without **new evidence** (modified file,
-contradicting finding, or previously unexamined file). Re-phrasing is insufficient.
-On baseless re-raise: increment `oscillation_count`, reject, do not count as new finding.
-
-**Stability criterion**: consensus requires `stability_streak >= 2 AND verdict == APPROVE`.
-A single APPROVE is necessary but not sufficient — stability must be confirmed over 2 consecutive rounds.
-`stability_streak` resets to 0 if any new critical/major, `still_disagree`, or oscillation occurs.
+One APPROVE with no open disputes is CONSENSUS. Open disputes go to the user. Do not run Codex again to confirm the same verdict.
 
 ## Important Rules
 
-1. **Never skip rounds** — even if you think all findings are trivial, let Codex re-verify
+1. **One Codex pass** — do not start a follow-up round
 2. **Evidence-based rebuttals only** — cite specific files, lines, specs when disagreeing
 3. **Codex reads files directly** — do not embed full file contents in prompts; list paths and let Codex use `-s read-only` to access them
 4. **Preserve review artifacts** — all prompts, responses, and state files stay in `.rat/cross-review/phase-{N}/` for traceability
@@ -451,7 +385,5 @@ A single APPROVE is necessary but not sufficient — stability must be confirmed
 6. **Respect Codex config** — always read `~/.codex/config.toml` to use the user's configured model and effort; never override with `-m` or `-c` flags
 7. **Prompt size discipline** — keep prompts under 4KB. Reference file paths instead of embedding content. For large artifact lists, write a manifest file and reference it. This prevents shell ARG_MAX limits and token truncation at both producer (Codex output) and consumer (Claude input) boundaries
 8. **File-first data exchange** — large results go to files (`-o`), LLM-to-LLM transfer uses compact summaries/pointers only. Read results selectively with `jq` or `grep` rather than loading entire JSON into conversation context
-9. **Agreement ledger injection** — every follow-up prompt MUST include settled items list to prevent context-reset re-raises
-10. **Anti-oscillation enforcement** — re-raised settled items without new evidence are rejected, not debated
 
 </Agent_Prompt>

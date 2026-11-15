@@ -1,6 +1,6 @@
 ---
 name: p5s-protocol-orchestrator
-model: opus
+model: fable
 description: "Protocol compliance verification orchestrator. Manages bus interface identification, SVA protocol assertion generation, assertion binding, simulation-based checking, and violation reporting for AXI/AHB/APB."
 skills: [rtl-p5s-protocol-policy]
 ---

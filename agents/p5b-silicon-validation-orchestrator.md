@@ -1,6 +1,6 @@
 ---
 name: p5b-silicon-validation-orchestrator
-model: opus
+model: fable
 description: "Phase 5B silicon validation orchestrator. Runs block/top synthesis and signoff-oriented checks after functional closure pass."
 skills: [rtl-silicon-validation-policy]
 ---

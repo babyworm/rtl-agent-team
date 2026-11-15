@@ -60,6 +60,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   - Testability assessment: observability points, controllability of internal state
   - Reset strategy review: consistent polarity, complete reset coverage of all state elements
   - Parameterization review: hardcoded widths that should be parameters
+  - Datapath cost: a private copy of an operator for each use, when those uses do not overlap in a cycle and one shared operator still meets throughput, is a Major finding unless the μArch required the copies. A shared operator left idle while input is waiting is the same finding.
   - Every finding cites file:line with the offending code snippet
   - Severity classification applied: Critical / Major / Minor
 </Success_Criteria>
@@ -99,10 +100,11 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
      e3. Types: `typedef enum` for FSM states? `typedef struct packed` for signal groups? No `reg`/`wire`?
      f. Parameters: all widths parameterized? Magic numbers present?
      f2. Combinational chain depth: any `for` loop in always_comb where iteration depends on
-         previous iteration? If > 4 sequential-dependency iterations, flag as MAJOR timing risk.
-         Recommend pipeline register split unless uArch requires single-cycle or technology
-         provides dedicated resources (e.g., FPGA carry chains, balanced adder trees,
-         low-frequency clock domains — must have documented justification per rtl-p4-implement-policy)
+         previous iteration? If > 4 sequential-dependency iterations, flag the timing risk.
+         Recommend a pipeline-register split only when the μArch spec budgets the extra latency.
+         If the μArch requires single-cycle, report the risk and do not recommend inserting registers.
+         FPGA carry chains, balanced adder trees, and low-frequency domains may tolerate the chain
+         when that justification is documented (rtl-p4-implement-policy).
      f3. Bus width derivation: any `localparam` ending in `_WIDTH` or `_W` set to a literal number?
          If the same module has BPC/DATA_WIDTH/NUM_COMPONENTS parameters, flag as MAJOR —
          datapath widths must derive from design parameters, not hardcoded constants

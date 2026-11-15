@@ -154,7 +154,7 @@ python3 -m pytest tests/unit/ -n auto
 | 에이전트 YAML frontmatter | 99개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
 | 에이전트 이름-파일명 일치 | `agents/rtl-coder.md`의 `name: rtl-coder` 일치 확인 |
 | `agents/` 평면 구조 유지 | 중첩 `.md` 금지 — 중첩 파일은 유령 에이전트로 등록됨 |
-| 스킬 SKILL.md 존재 | 97개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
+| 스킬 SKILL.md 존재 | 91개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
 | 스킬 이름-디렉토리 일치 | `skills/rtl-p4-implement/SKILL.md`의 `name: rtl-p4-implement` 일치 확인 |
 | 스킬 description 예산 | 스킬당 160자 이하, 전체 15 KB 이하 — 전역 예산 초과 시 하네스가 조용히 절삭 |
 | 스킬 자산 경로 | skill-relative 자산 경로 해석 가능 여부, 런타임에 없는 플러그인 내부 경로 참조 금지 |

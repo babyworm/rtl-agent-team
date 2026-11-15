@@ -38,27 +38,72 @@ AXI/AHB/APB signals.
 
 `Instance | Module | Purpose`
 
-## 3. Diagram tool choice
+## 3. Figures
 
-- **Block diagrams** (sub-instance hierarchy, data flow between blocks) →
-  **D2**. Match the project's `<markdown_diagram_rule>`.
-- **FSM** → **Mermaid `stateDiagram-v2`**.
-- **Flow / sequence** → **Mermaid `flowchart`** or `sequenceDiagram`.
-- Do not mix D2 and Mermaid for the same diagram type within a single doc.
+Reader-facing docs (`docs/rtl/{module}.md`, a design note) author each figure
+as SVG and insert the PNG.
 
-## 4. Length guidance
+If a diagram-design skill is available, use it to draw the SVG. Otherwise
+draw the SVG.
 
-- Overview: 100-200 characters. One or two sentences. State the module's
-  responsibility, not its implementation.
-- Per-state description: 1-2 lines. What the state does and what triggers
-  the transition out of it.
-- Per-port description: 1 line. Skip if the port name already conveys the
-  meaning (e.g., `i_valid`).
-- Design Notes: optional. Use only when the module has a non-obvious
-  property a reader of the code would not see immediately (e.g., "the
-  internal counter wraps at DATA_WIDTH-2 to avoid the W-1 edge case").
+ARM Developer's Guide style: white background, thin black strokes, left-to-right
+data flow, nested rectangles, signal names on the wires. Number the figure and
+give it a one-line caption:
 
-## 5. Anti-patterns
+`![Figure N-M. One-line caption.](figures/name.png)`
+
+Keep the SVG beside the PNG. Convert with the first tool present:
+
+`rsvg-convert -o figures/name.png figures/name.svg`
+
+`magick figures/name.svg figures/name.png`
+
+If neither tool exists, or the conversion fails, say so and keep the SVG. Do not paste SVG source into
+the markdown. Do not leave a D2 or Mermaid fence as the published figure.
+
+A register is a bit-field bar. MSB is on the left. Bit numbers sit above the
+cells. One box per field. Reserved uses a light gray fill.
+
+![Figure. Bit-field bar format. CTRL below is a format sample, not a design register.](figures/ctrl-bitfield.png)
+
+Architecture and μArch working notes still use D2 for block diagrams and
+Mermaid for an FSM or a flow.
+
+## 4. Length
+
+Write so the page can be scanned.
+
+- The heading states the point. The first sentence is the conclusion.
+- At most three sentences in a paragraph. One idea per section.
+- Prefer a table or a figure to a paragraph. Do not restate the heading.
+- Overview: 100-200 characters. State the module's responsibility.
+- Per-state description: 1-2 lines. What the state does, and what leaves it.
+- Per-port description: 1 line. Skip it when the name is already the meaning
+  (for example `i_valid`).
+- Design Notes: only for a property the code does not show on its own.
+
+## 5. Registers
+
+Every register states its name, offset, access (`RW`, `RO`, `WO`, `RW1C`, …),
+and reset. Then a bit-field figure and one row per field, including reserved.
+
+| Field | Bits | Access | Reset | Description |
+|-------|------|--------|-------|-------------|
+| EN | 0 | RW | 0 | Write 1 enables the block. Read returns the stored bit. |
+| MODE | 2:1 | RW | 0 | Write selects the mode. Read returns the stored mode. |
+| Reserved | 31:3 | RO | 0 | Write ignored. Read returns 0. |
+
+The CTRL rows above are the format sample for the figure. Copy the columns,
+not the fields.
+
+Use the access, reset, and width the RTL or the spec already gives, and still
+say what a read returns and what a write does. If a bit is unused, name it
+Reserved, access RO, reset 0, write ignored, read 0. If access or reset is
+not stated, choose a reasonable value, write that the choice was made in this
+doc, and explain the effect. Do not invent a field the register does not have.
+Do not leave a field unexplained. A module with no register says `_None._`.
+
+## 6. Anti-patterns
 
 - Leaving `<!-- LLM_FILL: ... -->` markers in the committed doc — fail.
 - Leaving `{{PLACEHOLDER}}` strings — fail (the renderer should have
@@ -66,5 +111,8 @@ AXI/AHB/APB signals.
 - Restating the port name in its description ("i_valid — input valid signal").
 - Inventing port descriptions when no comment or naming clue exists. Leave
   the cell blank rather than fabricating.
+- Leaving a register field without bits, access, reset, or its read and write
+  effect. Decide the field. Do not invent a field the register does not have.
+- Publishing a D2 or Mermaid fence as the figure. Author SVG, insert PNG.
 - Writing "TODO" inside the doc body. If something cannot be documented yet,
   remove the corresponding section and note absence in the document footer.

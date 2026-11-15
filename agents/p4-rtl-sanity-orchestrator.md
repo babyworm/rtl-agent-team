@@ -1,6 +1,6 @@
 ---
 name: p4-rtl-sanity-orchestrator
-model: opus
+model: fable
 description: "Phase 4 rapid RTL and sanity integration orchestrator. Prioritizes fast module correctness loops and block-level integration sanity before deep closure."
 skills: [rtl-p4-rapid-impl-policy]
 ---

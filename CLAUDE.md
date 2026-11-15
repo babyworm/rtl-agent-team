@@ -14,7 +14,7 @@ User-facing conversation may use Korean, but plugin prompt content must remain E
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 99 specialized agents, 97 skills, 14 hooks,
+When installed as a plugin, it provides 99 specialized agents, 91 skills, 14 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -24,7 +24,7 @@ Silicon IP design is a **reliability-critical domain** — a single RTL bug can 
 Traditional sequential design is error-prone. This plugin addresses these challenges through:
 
 1. **Phase-gated pipeline** — 6 mandatory phases with quality gates prevent premature progression
-2. **Iterative review enforcement** — Higher abstraction levels require MORE review rounds (Cascading Quality principle). Phase 1 enforces 3 mandatory rounds of review; Phase 2-3 use dynamic convergence (min 2, max 5 rounds)
+2. **Light review** — One review against the evidence, then stop and name the open items. A further round runs only when the user asks. With no measurement, the model's confidence is the gate: one spec reading, or one architecture choice, passes. Do not iterate to raise it. Low confidence is named and asked once. Lint, simulation, formal, coverage, synthesis, CDC, and model comparison are judged from the measured result. Confidence does not override a measurement. Prompts state the goal, the constraints, the evidence, and the done condition. Leave effort at the session default. (D5, 2026-11-15. Supersedes Cascading Quality's mandatory rounds.)
 3. **Parallel agent execution** — Specialized agents (spec-analyst, rtl-coder, func-verifier, etc.) work concurrently within each phase, spawned as subagents via the Task tool
 4. **Automated verification loops** — RTL changes trigger mandatory lint → TB → simulation cycles, enforced by Stop hooks (not by LLM compliance alone)
 5. **Document-as-Memory** — Design artifacts persist across phases and agent boundaries, enabling resumability
@@ -73,7 +73,7 @@ window efficient. Three sources are always-on and are the ones to budget:
 | Always-on source | Size | Contract |
 |---|---:|---|
 | Agent frontmatter (`name` + `description` × 99) | ~21.7 KB | none yet — largest, least governed |
-| Skill frontmatter (`name` + `description` × 97) | ~13.3 KB | action skills ≤160 chars; internal/policy skills carry minimal one-liners |
+| Skill frontmatter (`name` + `description` × 91) | ~13.3 KB | action skills ≤160 chars; internal/policy skills carry minimal one-liners |
 | SessionStart hook injection (Layer 1) | ~8.5 KB | RAT-marked projects only |
 
 Keep the description budget under control: the harness truncates skill descriptions
@@ -148,7 +148,7 @@ When modifying this plugin:
 8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-init-project` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
-11. **Model policy** — Use `opus` for reasoning-heavy tasks; reserve `sonnet` for documentation generation or tool-result summarization only
+11. **Model policy** — `fable` for orchestration, judgment, architecture, and microarchitecture. `opus` for design, verification, and checking. `sonnet` for running a tool or parsing its report. A spawn `model=` uses the same rule as that agent's frontmatter. Do not set agent `effort:`. The session default applies. Do not raise effort to force another review pass.
 12. **CI before push (CRITICAL)** — Always run `pytest tests/unit/ -x -q` locally before pushing to `main`. Shell scripts under `set -eo pipefail` are especially fragile — a single unguarded `grep` no-match can silently crash a script. CI failures on `main` block all contributors
 13. **Plugin docs location** — Plugin development documents (specs, plans, design docs) go in `plugin_docs/`, never in `docs/`. `docs/` is gitignored — it is reserved for user project artifacts deployed by `rat-init-project`. If `git add -f` is needed, the file is in the wrong location
 14. **Version bump checklist** — When bumping the plugin version, update ALL of the following in a single release-prep batch:
@@ -178,7 +178,7 @@ rtl-agent-team/                          # Plugin root
 ├── agents/                              # 99 specialized agent definitions (.md), FLAT — no subdirs
 │                                        #   (agents/ is scanned RECURSIVELY: any nested .md
 │                                        #    becomes a phantom agent — see rule 16 below)
-├── skills/                              # 97 skills: 56 action entry-points + 32 policies + 4 tool profiles + 4 conventions + 1 internal
+├── skills/                              # 91 skills: 50 action entry-points + 32 policies + 4 tool profiles + 4 conventions + 1 internal
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
 │   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project
@@ -263,7 +263,7 @@ order will therefore warn but still execute with adaptive scope.
 | 3 | Do not run synthesis without RTL code | Policy — skill entry warning |
 | 4 | Do not run Formal verification without passing Lint | Policy — skill entry warning (`rtl-p5s-sva-check`) |
 | 5 | **Do not declare completion after RTL modification without functional verification** (lint alone is insufficient) | **Hard — `rtl-verify-stop-gate.sh` blocks the stop (Claude keeps working) until `.rat/state/rtl-verify-done` or `rtl-verify-waiver` is present. It hands the decision to the user after `RAT_STOP_BLOCK_LIMIT` (default 3) blocks without progress in one continuation chain, or from the chain's seventh Stop on, whichever comes first. The seventh-Stop bound follows `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`. While a background agent or workflow is in flight, the gate lets the Stop through and enforces at the Stop of the turn its completion starts; the no-progress count carries over.** |
-| 6 | Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion + Stream B artifacts | Policy — skill entry warning (`rtl-p5-verify[-team]`) |
+| 6 | Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion + Stream B artifacts | Policy — skill entry warning (`rtl-p5-verify`) |
 | 7 | When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded | Policy — loop counter tracked by phase state; escalation advisory |
 | 8 | Do not proceed to Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) | Policy — skill entry warning (`rtl-p6-design-review`); orchestrator rechecks verdict |
 | 9 | Phase 7 is exempt from pipeline rules | N/A (by design) |
@@ -298,7 +298,7 @@ Artifacts: `docs/phase-N-*/` (design guides), `reviews/phase-N-*/` (verdicts). D
 
 **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Details in `skills/rtl-orchestrate/SKILL.md`.
 
-**Cascading Quality**: Higher abstraction = more review iterations. P1: 3 mandatory rounds; P2/P3: dynamic convergence (min 2, max 5). Fix at the top, not the bottom. Details in `skills/rtl-orchestrate/SKILL.md`.
+**Light review**: One review against the evidence, then stop and name the open items. A further round only when the user asks. With no measurement, the model's confidence is the gate: one spec reading, or one architecture choice, passes. Do not iterate to raise it. Low confidence is named and asked once. Lint, simulation, formal, coverage, synthesis, CDC, and model comparison are judged from the measured result. Confidence does not override a measurement. Prompts state the goal, the constraints, the evidence, and the done condition. Leave effort at the session default. Details in `skills/rtl-orchestrate/SKILL.md`.
 
 **Document-as-Memory**: Design artifacts are persistent memory. Each phase reads upstream docs, writes downstream. Enables resumability. Details in `skills/rtl-orchestrate/SKILL.md`.
 
@@ -375,12 +375,12 @@ Skill (main session = leader)
 
 | Component | Purpose |
 |-----------|---------|
-| `skills/rtl-p1-research-team/SKILL.md` | Team leader: creates team, spawns coordinator + 4 workers |
-| `skills/rtl-p2-arch-team/SKILL.md` | Team leader: dual-stream arch + RefC (coordinator + 3 workers) |
-| `skills/rtl-p3-uarch-team/SKILL.md` | Team leader: dual-stream uArch + BFM (coordinator + 3 workers) |
-| `skills/rtl-p4-implement-team/SKILL.md` | Team leader: 10-wave pipeline (coordinator + 4 workers) |
-| `skills/rtl-p5-verify-team/SKILL.md` | Team leader: 9-category verification (coordinator + 4 workers) |
-| `skills/rat-p1p3-spec-uarch-team/SKILL.md` | Pipeline: sequences P1→P2→P3 team skills |
+| `skills/p1-spec-research/SKILL.md` | Team mode: creates team, spawns coordinator + 4 workers |
+| `skills/p2-arch-design/SKILL.md` | Team mode: dual-stream arch + RefC (coordinator + 3 workers) |
+| `skills/rtl-p3-uarch-design/SKILL.md` | Team mode: dual-stream uArch + BFM (coordinator + 3 workers) |
+| `skills/rtl-p4-implement/SKILL.md` | Team mode: 10-wave pipeline (coordinator + 4 workers) |
+| `skills/rtl-p5-verify/SKILL.md` | Team mode: 9-category verification (coordinator + 4 workers) |
+| `skills/rat-p1p3-spec-uarch/SKILL.md` | Team mode: sequences P1→P2→P3 with `team` in the arguments |
 | `agents/p1-research-team-orchestrator.md` | Coordination teammate: task graph + SendMessage |
 | `agents/p2-arch-team-orchestrator.md` | Coordination teammate: dual-stream tasks |
 | `agents/p3-uarch-team-orchestrator.md` | Coordination teammate: uArch + BFM tasks |

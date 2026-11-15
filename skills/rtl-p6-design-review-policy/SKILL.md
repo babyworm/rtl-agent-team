@@ -34,25 +34,30 @@ A design note that only describes WHAT was built is half the story. Future engin
 - **Document Splitting**: Design notes exceeding line limits are split (see splitting rules)
 - **PDF Generation**: `make pdf` in `reviews/phase-6-review/`
 - **Quality Gate**: All deliverables must exist AND pass quality checks
-  - On FAIL: iterate review → fix cycle (max 2 rounds)
+  - On FAIL: fix the named inconsistencies once, then report what remains. Do not repeat a wave.
   - On agent failure: retry once, then escalate to user
 - State tracking: update `.rat/state/rat-auto-design-state.json` if running within autopilot
 
 ## Design Note Requirements
 
-**Mandatory content per module (all 10 items)**:
-1. **Purpose & Context**: What does this module do? Where in the hierarchy?
-2. **Decision Rationale (WHY)**: Why this approach? Trade-offs evaluated? Constraints? Alternatives rejected?
+**Mandatory content per module**:
+1. **Purpose & Context**: What this module does, and where it sits. One to three sentences.
+2. **Decision Rationale (WHY)**: Why this approach. The trade-off. The rejected alternative.
 3. **Module Connections (HOW)**: Data flow, control dependencies, shared resources, timing
 4. **I/O Table**: Verified against actual RTL ports (port name, width, direction, description)
-5. **Internal Structure**: D2 block diagram showing sub-modules, registers, muxes
-6. **Algorithm Description**: Key equations/transforms
-7. **FSM Diagrams**: Mermaid state diagram for every FSM (NOT ASCII art)
-8. **Timing Diagrams**: Key timing waveforms (handshake, pipeline stages)
-9. **Edge Cases & Gotchas**: Corner cases, what can go wrong
-10. **What-If Considerations**: What changes if requirements shift
+5. **Internal Structure**: ARM SVG inserted as PNG. Sub-modules, registers, muxes.
+6. **Registers**: Name, offset, access, reset, bit-field PNG, and one explained field per field. No register: `_None._`.
+7. **Algorithm Description**: Key equations or transforms
+8. **FSM**: ARM SVG inserted as PNG for every FSM. No ASCII art.
+9. **Timing**: Latency, throughput, and the handshake or pipeline waveform as an ARM SVG inserted as PNG
+10. **Edge Cases & Gotchas**: Corner cases, and what goes wrong
+11. **What-If Considerations**: What changes if a requirement shifts
 
-**System-level sections**: Architecture overview (D2), data/control flow, clock/reset architecture, mode operations, verification summary
+**System-level sections**: Architecture overview as an ARM SVG inserted as PNG, data/control flow, clock/reset architecture, mode operations, verification summary
+
+**Prose**: the heading states the point. The first sentence is the conclusion. At most three sentences in a paragraph. One idea per section.
+
+**Figures**: if a diagram-design skill is available, use it to draw the SVG. Otherwise draw the SVG. White background, thin black strokes, left-to-right flow, nested rectangles, signal names on the wires. Insert the PNG and keep the SVG beside it. Convert with `rsvg-convert` or `magick`. Do not paste the SVG. Do not leave a D2 or Mermaid fence.
 
 **Document Splitting Rules**:
 
@@ -83,7 +88,7 @@ A design note that only describes WHAT was built is half the story. Future engin
 | Completeness | Design note covers all reviewed modules | Add missing modules |
 | Terminology | All docs use same terms | Global terminology pass |
 | No contradictions | No conflicting statements | Resolve conflicts |
-| Diagram consistency | D2/Mermaid match textual descriptions | Update mismatched diagrams |
+| Diagram consistency | Each PNG matches the text, and the SVG sits beside it | Replace the mismatched figure |
 
 **CC log format** (appended to each corrected document):
 ```markdown
@@ -110,10 +115,9 @@ make check-deps # Verify required tools
 |------|---------|---------|
 | pandoc | `sudo apt install pandoc` | Markdown to LaTeX |
 | xelatex | `sudo apt install texlive-xetex texlive-fonts-recommended` | LaTeX to PDF |
-| d2 | `curl -fsSL https://d2lang.com/install.sh \| sh -s --` | D2 block diagrams (optional) |
-| mmdc | `npm install -g @mermaid-js/mermaid-cli` | Mermaid diagrams (optional) |
+| rsvg-convert or magick | librsvg, or ImageMagick | SVG to the PNG the note already inserts |
 
-**Pipeline**: Discover design-note*.md → extract D2/Mermaid → render PNGs → replace blocks → combine → pandoc + xelatex → PDF with TOC
+**Pipeline**: Discover design-note*.md. Each figure is already a PNG next to its SVG. Combine, then pandoc + xelatex, PDF with TOC.
 
 **Phase 7 Exploration**: For free exploration mode, see `rtl-p7-exploration-policy`.
 
@@ -142,7 +146,7 @@ make check-deps # Verify required tools
   - [ ] reviews/phase-6-review/design-note*.md exists?
   - [ ] reviews/phase-6-review/improvements.md exists?
   - [ ] Design note includes decision rationale (WHY/HOW/WHAT-IF)?
-  - [ ] Design note includes D2 block diagrams + Mermaid flow/FSM diagrams?
+  - [ ] Design note figures are ARM SVG inserted as PNG, and every register field is explained?
   - [ ] Document splitting rules applied if needed?
 - [ ] CC2 completed:
   - [ ] Narrative coherence verified?

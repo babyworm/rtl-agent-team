@@ -1,6 +1,6 @@
 ---
 name: p4-block-parallel-coordinator
-model: opus
+model: fable
 description: "Phase 4 block-parallel coordination teammate. Manages 6 worktree-based block workers, upstream-first merge sequence, contract test orchestration, and design freeze verification via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [rtl-block-interface-policy, rtl-block-contract-test-policy]
 ---

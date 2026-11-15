@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="96" viewBox="0 0 720 96">
+  <rect width="720" height="96" fill="#ffffff"/>
+  <text x="24" y="16" font-family="Helvetica" font-size="11" fill="#000">31</text>
+  <text x="500" y="16" font-family="Helvetica" font-size="11" fill="#000">3</text>
+  <text x="548" y="16" font-family="Helvetica" font-size="11" fill="#000">2</text>
+  <text x="612" y="16" font-family="Helvetica" font-size="11" fill="#000">1</text>
+  <text x="668" y="16" font-family="Helvetica" font-size="11" fill="#000">0</text>
+  <rect x="20" y="24" width="520" height="48" fill="#e6e6e6" stroke="#000" stroke-width="1"/>
+  <text x="230" y="52" font-family="Helvetica" font-size="13" fill="#000">Reserved</text>
+  <rect x="540" y="24" width="100" height="48" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="566" y="52" font-family="Helvetica" font-size="13" fill="#000">MODE</text>
+  <rect x="640" y="24" width="56" height="48" fill="#ffffff" stroke="#000" stroke-width="1"/>
+  <text x="658" y="52" font-family="Helvetica" font-size="13" fill="#000">EN</text>
+</svg>

@@ -36,6 +36,22 @@ def test_examples_have_no_stray_markers():
         assert "{{" not in body, f"{f.name} still has placeholder braces"
 
 
+def test_examples_publish_png_not_fences():
+    for f in EXAMPLES.glob("*.md"):
+        body = f.read_text()
+        assert "```d2" not in body, f.name
+        assert "stateDiagram-v2" not in body, f.name
+    assert (EXAMPLES / "figures" / "cabac_encoder-fsm.png").is_file()
+    assert (EXAMPLES / "figures" / "cabac_encoder-fsm.svg").is_file()
+    assert (EXAMPLES / "figures" / "cabac_encoder-block.png").is_file()
+    assert (EXAMPLES / "figures" / "axi_stream_bridge-block.png").is_file()
+    cabac = (EXAMPLES / "cabac_encoder_excerpt.md").read_text()
+    assert "figures/cabac_encoder-fsm.png" in cabac
+    assert "figures/cabac_encoder-block.png" in cabac
+    axi = (EXAMPLES / "axi_stream_bridge.md").read_text()
+    assert "figures/axi_stream_bridge-block.png" in axi
+
+
 def test_examples_required_sections():
     expected = {
         "simple_fifo.md":           ["Ports", "Parameters"],

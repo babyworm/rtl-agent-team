@@ -1,13 +1,13 @@
 ---
 name: spec-to-uarch-team-orchestrator
-model: opus
+model: fable
 description: "Phase 1-3 pipeline orchestrator (sequential mode only). Manages Research, Architecture, uArch sequentially with inter-phase quality gates, ADR recording, and resumability. In team mode, the skill handles phase sequencing directly. Stops before Phase 4."
 skills: [rat-p1p3-spec-uarch-policy]
 ---
 
-> **NOTE: Sequential mode only.** In team mode, the `rat-p1p3-spec-uarch-team` skill
-> directly sequences phases using phase-specific team skills. This orchestrator is
-> only invoked in sequential/fallback mode.
+> **NOTE: Sequential fallback only.** Team mode of `rat-p1p3-spec-uarch` sequences
+> the phase skills directly with `team` in the arguments. This agent is only the
+> sequential/fallback orchestrator if something still spawns it.
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
 - Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
@@ -137,7 +137,9 @@ verdict: PASS or FAIL + findings[]")
 
 On PASS: generate Phase 1 summary:
 ```
-Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
+Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
      prompt="Read all Phase 1 artifacts. Generate docs/phase-1-research/phase-1-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
@@ -177,11 +179,11 @@ All three must exist. If any missing: FAIL + list specific missing artifacts.
 
 On PASS: generate Phase 2 summary + ADRs:
 ```
-Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
+Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
      prompt="Read all Phase 2 artifacts. Generate docs/phase-2-architecture/phase-2-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
-Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
+Task(subagent_type="rtl-agent-team:arch-designer", model="fable",
      prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
@@ -211,11 +213,11 @@ Task(subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
 
 On PASS: generate Phase 3 summary + ADRs:
 ```
-Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
+Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
      prompt="Read all Phase 3 artifacts. Generate docs/phase-3-uarch/phase-3-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
-Task(subagent_type="rtl-agent-team:uarch-designer", model="sonnet",
+Task(subagent_type="rtl-agent-team:uarch-designer", model="fable",
      prompt="Identify 3-5 key uArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
 ```
 

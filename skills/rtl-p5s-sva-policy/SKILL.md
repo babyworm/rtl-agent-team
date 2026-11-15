@@ -15,17 +15,11 @@ SVA property files MUST follow the project coding conventions (CLAUDE.md):
 - Use `logic` in helper code (NOT `reg`/`wire`)
 - Assertion labels: descriptive snake_case (e.g., `no_fifo_overflow`, `valid_handshake`)
 
-## SVA Property Iterative Refinement (minimum 3 rounds)
+## SVA Properties — one pass
 
-SVA property extraction must iterate at least 3 times to strengthen assertion quality.
-Each round builds upon the previous:
+Write the properties once. Cover safety (no overflow, no deadlock), protocol handshakes, reset and boundary behavior, `cover` for reachability, and bounded liveness (`##[1:N]`). Keep assume on inputs and assert on outputs. Name requirements you could not express. Do not schedule a second extraction.
 
-- **Round 1 (Draft)**: Extract initial properties from RTL and uarch spec. Focus on safety (no overflow, no deadlock) and protocol (handshake) properties.
-- **Round 2 (Strengthen)**: Review Round 1 properties for completeness. Add missing edge cases: reset behavior, boundary conditions, back-to-back transactions, error paths. Add `cover` properties to verify reachability. Check for vacuous assertions.
-- **Round 3 (Harden)**: Cross-check against spec requirements. Add liveness properties (`##[1:N]` bounded eventually). Verify assume/assert balance (not over-constrained). Add cross-module interface properties if applicable.
-- **Additional rounds**: Continue if coverage of spec requirements < 100% or if new RTL paths are discovered.
-
-Each round produces a review note at `.rat/scratch/phase-5/sva-iteration-r{N}.md`.
+Save the note at `.rat/scratch/phase-5/sva-iteration-{module}.md`.
 
 ## Escalation & Stop Conditions
 

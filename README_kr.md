@@ -1,14 +1,16 @@
 > **English version**: [README.md](./README.md)
 
+> Fable 5.x와 Opus 5.5 이후 모델은 한 턴에서 이미 오래 추론합니다. 이 플러그인은 리뷰를 한 번 하고, 남은 항목을 적고, 멈춥니다. 측정이 없으면 모델의 confidence가 게이트입니다. 스펙이 한 가지로 읽히거나 아키텍처가 하나로 정해지면 통과하고, 확신을 올리려고 반복하지 않습니다. 낮으면 한 번 묻습니다. lint, 시뮬레이션, formal, coverage, synthesis, 모델 비교는 측정 결과로 판단합니다. 프롬프트는 목표, 제약, 근거, 완료 조건만 말합니다. effort는 세션 기본값을 유지합니다.
+
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 99 specialized AI agents + 97 skills automate the 6-Phase pipeline:
+> 99 specialized AI agents + 91 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-99개 전문 AI 에이전트 + 97개 스킬 + 27개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+99개 전문 AI 에이전트 + 91개 스킬 + 27개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
 
@@ -202,18 +204,18 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:domain-consult           # 도메인 전문가 상담
 ```
 
-### 스킬 카테고리 (97개)
+### 스킬 카테고리 (91개)
 
 | 카테고리 | 수량 | 설명 |
 |----------|------|------|
-| **Action Entry Points** | 56 | 사용자 호출 가능 slash 커맨드: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, utility (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
+| **Action Entry Points** | 50 | 사용자 호출 가능 slash 커맨드: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, utility (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
 | **Policy** | 32 | 에이전트가 참조하는 규칙/기준 (`*-policy`, 비사용자 호출) |
 | **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC |
 | **Tool Profile** | 4 | 시뮬레이터/린터/합성기/CDC 도구 설정 |
 | **Internal** | 1 | 라우팅 SSOT (`rtl-orchestrate`) |
-| **합계** | **97** | |
+| **합계** | **91** | |
 
-에셋(템플릿/스크립트/레퍼런스/예제)은 97개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
+에셋(템플릿/스크립트/레퍼런스/예제)은 91개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
 
 ## 프로젝트 산출물 구조
 
@@ -247,7 +249,7 @@ rtl-agent-team/
 ├── agents/                     # 99개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 97개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 91개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -302,8 +304,9 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 | 오케스트레이터 | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator 외 26개 (팀/서브페이즈 변형) |
 
 모델 사용 원칙:
-- 추론이 많이 필요한 설계/검증/디버깅은 `opus` 사용
-- `sonnet`은 문서 생성 또는 도구 결과 요약/포맷팅 용도로만 사용
+- `fable` — orchestration, 판단, 아키텍처, 마이크로아키텍처
+- `opus` — 설계, 검증, 확인
+- `sonnet` — 도구 실행과 리포트 파싱 (`eda-runner`, `dc-report-parser`, `synthesis-reporter`, `ipxact-generator`)
 
 ### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
 
@@ -451,7 +454,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
 ├── agents/                              # rtl-agent-team 에이전트 (99개)
-├── skills/                              # rtl-agent-team 스킬 (97개, 27개 레퍼런스 문서 포함)
+├── skills/                              # rtl-agent-team 스킬 (91개, 27개 레퍼런스 문서 포함)
 └── domain-packages/                     # 도메인 지식 패키지
     ├── video-codec/                     # H.264/H.265 코덱 지식
     └── video-processing/                # 색공간, 노이즈 제거, HDR/ISP

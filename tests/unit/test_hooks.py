@@ -2896,7 +2896,6 @@ class TestSkillCompletionGate:
     @pytest.mark.parametrize("skill,state_name", [
         ("rat-auto-design", "rat-auto-design-state.json"),
         ("rat-p1p3-spec-uarch", "rat-p1p3-spec-uarch-state.json"),
-        ("rat-p1p3-spec-uarch-team", "rat-p1p3-spec-uarch-state.json"),
         ("rat-p4p5-impl-verify", "rat-p4p5-impl-verify-state.json"),
     ])
     @pytest.mark.parametrize("decision", sorted(PIPELINE_DECISIONS))
@@ -3311,7 +3310,7 @@ class TestPhaseStateBootstrap:
         """Switching phase rewrites compliance-state AND drops the prior phase's
         compliance-report.json (no cross-phase auto-satisfy of compliance-pass)."""
         _setup_marker(tmp_project)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p2-arch-team"})
+        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:p2-arch-design"})
         report = tmp_project / ".rat" / "state" / "compliance-report.json"
         report.write_text('{"phase":"p2-arch-design","summary":{"verdict":"PASS"}}')
         # Move to a P3 skill.
@@ -4657,13 +4656,9 @@ class TestSpawnContextStructuralContracts:
 
     EXPECTED_SKILL_PHASES = {
         "p1-spec-research": 1,
-        "rtl-p1-research-team": 1,
         "p2-arch-design": 2,
-        "rtl-p2-arch-team": 2,
         "rtl-p3-uarch-design": 3,
-        "rtl-p3-uarch-team": 3,
         "rtl-p4-implement": 4,
-        "rtl-p4-implement-team": 4,
         "rtl-p4-block-parallel": 4,
         "rtl-p4-rapid-impl": 4,
         "rtl-p4s-bugfix": 4,
@@ -4671,7 +4666,6 @@ class TestSpawnContextStructuralContracts:
         "rtl-p4s-refactor": 4,
         "rtl-review-refactor": 4,
         "rtl-p5-verify": 5,
-        "rtl-p5-verify-team": 5,
         "rtl-p5a-functional-closure": 5,
         "rtl-p5b-silicon-validation": 5,
         "rtl-p5s-func-verify": 5,
@@ -4686,7 +4680,6 @@ class TestSpawnContextStructuralContracts:
         "rtl-p7-exploration": 7,
         "rat-auto-design": 1,
         "rat-p1p3-spec-uarch": 1,
-        "rat-p1p3-spec-uarch-team": 1,
         "rat-dse": 1,
         "rat-p4p5-impl-verify": 4,
         # PPA optimization (post-verify; phase 8 represents post-P5/pre-P6 slot)
@@ -4745,13 +4738,13 @@ class TestSpawnContextStructuralContracts:
         "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
         "dse-orchestrator": "rat-dse",
         "review-refactor-orchestrator": "rtl-review-refactor",
-        # Team orchestrators → team skills (1:1)
-        "p1-research-team-orchestrator": "rtl-p1-research-team",
-        "p2-arch-team-orchestrator": "rtl-p2-arch-team",
-        "p3-uarch-team-orchestrator": "rtl-p3-uarch-team",
-        "p4-implement-team-orchestrator": "rtl-p4-implement-team",
-        "p5-verify-team-orchestrator": "rtl-p5-verify-team",
-        "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team",
+        # Team orchestrators map to the merged phase skill
+        "p1-research-team-orchestrator": "p1-spec-research",
+        "p2-arch-team-orchestrator": "p2-arch-design",
+        "p3-uarch-team-orchestrator": "rtl-p3-uarch-design",
+        "p4-implement-team-orchestrator": "rtl-p4-implement",
+        "p5-verify-team-orchestrator": "rtl-p5-verify",
+        "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch",
         # PPA optimization (post-verify)
         "ppa-optimizer-dc-orchestrator": "rtl-ppa-optimize-dc",
         "ppa-optimizer-dc": "rtl-ppa-optimize-dc",
@@ -5065,7 +5058,7 @@ class TestMappingSyncParity:
         skills = set()
         for line in block.splitlines():
             line = line.strip()
-            # Match branch heads like: p2-arch-design|rtl-p2-arch-team)
+            # Match branch heads like: p2-arch-design)
             branch = re.match(r'^([a-z0-9|_-]+)\)', line)
             if branch:
                 for skill in branch.group(1).split("|"):

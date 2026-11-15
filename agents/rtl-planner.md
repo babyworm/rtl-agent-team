@@ -1,7 +1,7 @@
 ---
 name: rtl-planner
 description: RTL project planner. Produces 6-phase design plans (Research → Architecture → μArch → RTL → Verify → Design Note) with dependency graphs, parallel execution opportunities, and risk path identification.
-model: opus
+model: fable
 color: blue
 disallowedTools: Write, Edit
 ---

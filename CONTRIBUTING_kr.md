@@ -101,7 +101,7 @@ color: blue
 |------|------|------|
 | `name` | 필수 | 파일명과 동일 (`.md` 제외), kebab-case |
 | `description` | 필수 | 한 문장 설명. Claude가 에이전트 선택 시 이 텍스트를 읽음 |
-| `model` | 필수 | `opus` (복잡한 분석), `sonnet` (표준 작업), `haiku` (단순 조회) |
+| `model` | 필수 | `fable` (orchestration, 판단, 아키텍처, 마이크로아키텍처), `opus` (설계, 검증, 확인), `sonnet` (도구 실행 또는 리포트 파싱). `effort:`는 두지 않는다 |
 | `color` | 선택 | UI 표시색 |
 | `disallowedTools` | 선택 | 금지할 도구 (예: `Write, Edit` — 읽기 전용 에이전트) |
 

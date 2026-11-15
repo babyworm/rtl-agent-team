@@ -39,27 +39,24 @@ the aggregate JSON. `coverage-analyst` owns percentage extraction and target enf
 
 ## Coverage-Driven Verification (CDV) Feedback Loop
 
-When merged coverage falls below targets after regression, run a structured 3-round loop:
+When merged coverage is below target, run one fill, then report what remains:
 
 ```
-Round N: coverage-analyst → CDTG feedback table (gap analysis)
-         test-plan-writer  → systematic test plan (ECP/BVA for config-dependent gaps)
-         testbench-dev    → directed UVM sequences per gap row + test plan
-         eda-runner       → regression with new tests → re-merge coverage
-Round N+1: coverage-analyst re-analyzes → new guidance for remaining gaps
+coverage-analyst → CDTG feedback table
+test-plan-writer  → test plan (ECP/BVA for config-dependent gaps)
+testbench-dev    → directed UVM sequences for those rows
+eda-runner       → one regression, then re-merge coverage
 ```
 
-1. `coverage-analyst` identifies uncovered bins, states, branches. Produces CDTG feedback table:
+1. `coverage-analyst` identifies uncovered bins, states, and branches:
    ```
    | Gap ID | Uncovered Bin | REQ | Constraint | Sequence | Expected |
    ```
-2. `test-plan-writer` applies ECP/BVA methodology for config-dependent gaps (parameter combinations)
-3. `testbench-dev` writes directed UVM sequences per gap row using the systematic test plan
-4. Re-run regression with new tests → re-merge → re-analyze
-5. Maximum 3 iterations. Convergence detection: 2 consecutive rounds with < 0.5% improvement
-6. On convergence: apply Coverage Exclusion Protocol per `rtl-p5s-coverage-policy`
-   (classify remaining bins as STIMULUS_GAP/STRUCTURAL_DEAD/INFRA_CODE, generate exclusion artifacts)
-7. If post-exclusion targets still not met after 3 rounds → escalate to user
+2. `test-plan-writer` applies ECP/BVA for config-dependent gaps.
+3. `testbench-dev` writes one directed sequence per row.
+4. Re-run the regression once and re-merge.
+5. Classify the bins that remain (STIMULUS_GAP / STRUCTURAL_DEAD / INFRA_CODE) per `rtl-p5s-coverage-policy`.
+6. If a target is still missed, report it. A further fill runs only when the user asks.
 
 ## UVM Stimulus-to-DUT Connectivity Verification
 

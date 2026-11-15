@@ -150,6 +150,14 @@ intent, and hurt reuse. If an external (non-argument) dependency is genuinely un
 document it in a MANDATORY header comment at the top of the function/task:
 `// External deps (read): cfg_mode, base_addr`
 
+### 6.3 Shared operators, kept busy
+Meet the required throughput, then use less area. Share an arithmetic operator across
+operations that do not need it in the same cycle, and schedule it so the operator takes
+new work as soon as it is free. An idle operator is area that should have been shared,
+or a schedule that should have kept it busy. Do not miss the throughput target to save
+area, and do not add operators once the target is met. A μArch schedule that already
+fixes the operator count is binding; implement that schedule.
+
 ## 7. Storage Selection and SRAM Wrappers
 
 ### Storage Selection by Size
@@ -212,4 +220,5 @@ Good/bad pattern pairs (naming, ports, declaration order): `examples/good-vs-bad
 - [ ] Storage >256 bits uses `sram_sp`/`sram_tp`/`sram_dp` wrapper from `rtl/common/` (not inline array)
 - [ ] TP (single-clock R+W) vs DP (dual-clock R+W) selected correctly per clock domain
 - [ ] SRAM instances named `u_mem_{purpose}`
+- [ ] Required throughput is met. Operators not needed in the same cycle are shared and stay busy while input is available
 </Final_Checklist>

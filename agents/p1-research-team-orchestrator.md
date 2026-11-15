@@ -1,7 +1,7 @@
 ---
 name: p1-research-team-orchestrator
-model: opus
-description: "Phase 1 research team coordination teammate. Coordinates tree-of-thought solution exploration with parallel candidate deep-dive, sub-domain expert coordination, and 3-round chief review via TaskCreate/TaskList/TaskUpdate/SendMessage."
+model: fable
+description: "Phase 1 research team coordination teammate. Coordinates tree-of-thought solution exploration, parallel candidate deep-dive, sub-domain experts, and one chief review via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [p1-spec-research-policy]
 ---
 
@@ -57,16 +57,10 @@ T6c: Transform/quant requirements (CONDITIONAL: vcodec-transform-quant-expert if
 T6d: Filter/recon requirements (CONDITIONAL: vcodec-filter-recon-expert if video-codec domain, blockedBy: T5)
 T6e: Signal processing requirements (CONDITIONAL: video-processing-expert if video-codec domain, blockedBy: T5)
 T6f: Requirements + timing merge (spec-analyst, blockedBy: T5) — produces iron-requirements.json (settled REQs) + open-requirements.json (deferred research, optional), io_definition.json, timing_constraints.json
-T7:  Review R1 (rtl-architect; + domain chief if available, blockedBy: ALL T6* + T5b + T5c)
-T8:  Revision R1 (DYNAMIC — created only if T7 finds issues, blockedBy: T7)
-T9:  Review R2 (blockedBy: T8 or T7 if no issues)
-T10: Revision R2 (DYNAMIC — created only if T9 finds issues, blockedBy: T9)
-T11: Review R3 (MANDATORY, blockedBy: T10 or T9 if no issues)
-T12: Final verification + artifacts (spec-analyst, blockedBy: T11)
+T7:  Chief review, once (rtl-architect; + domain chief if available, blockedBy: ALL T6* + T5b + T5c)
+T12: Final verification + artifacts (spec-analyst, blockedBy: T7)
 T12b: Independent spec feature census (spec-analyst clean context, blockedBy: T12)
 T12c: Feature coverage diff (rtl-architect, blockedBy: T12b)
-T13a: Adversarial reinterpretation challenge (spec-analyst clean context, blockedBy: T12c)
-T13b: Re-analyze with clarifications + coverage re-bind (spec-analyst, blockedBy: T13a + Step 3.6 user resolution)
 ```
 
 # Workflow
@@ -211,22 +205,16 @@ while not all_tasks_complete:
         TaskUpdate(taskId=t6f, addBlockedBy=[t5])
 
         # T7 blocked by ALL T6* + T5b + T5c
-        t7 = TaskCreate(subject="T7: Review R1",
-                        description="Review Round 1: Review combined outputs from all experts. Evaluate: data flow completeness, cross-block dependencies, performance constraints, fixed-point constraints, cross-block issues. Save to reviews/phase-1-research/research-review-r1.md using Write tool.")
+        t7 = TaskCreate(subject="T7: Chief review",
+                        description="Review the combined outputs once. Check data flow, cross-block dependencies, performance numbers, and fixed-point constraints. Name the open items. Do not request another review. Save to reviews/phase-1-research/research-review.md using Write tool.")
         TaskUpdate(taskId=t7, addBlockedBy=[all_t6_ids + t5b + t5c])
         created_groups.add("T6")
 
-    # === Dynamic review rounds (T7→T8→T9→T10→T11) ===
-    # Each round guarded: if "T8" not in created_groups and task_completed(t7): ...
-    # After T7 (review R1): if findings, create T8 revision tasks
-    # After T9 (review R2): if findings, create T10 revision tasks
-    # T11 (review R3) is MANDATORY even if converged
-
-    # === T12 creation (after T11 completes) ===
-    if "T12" not in created_groups and task_completed(t11):
+    # One review. Do not create T8-T11. T12 starts when T7 is done.
+    if "T12" not in created_groups and task_completed(t7):
         t12 = TaskCreate(subject="T12: Final verification + artifacts",
                          description="Generate and verify Phase 1 artifacts: FIRST, generate docs/phase-1-research/domain-analysis.md sourcing from expert outputs (T6a-e) and the T5b selected approach — include: candidate survey summary, comparison tables, cross-block dependencies, and per-block timing targets. Use Write tool to save. THEN self-verify all Phase 1 artifacts: 1. Count spec features vs (iron-requirements.json ∪ open-requirements.json) items — every spec feature must be classified as iron or open. 2. Verify iron-requirements.json every entry has `acceptance_criteria` array (non-empty). 3. Verify open-requirements.json every entry has `research_needed` description. 4. Verify io_definition.json port naming convention. 5. Verify timing_constraints.json exists with per-block timing targets. 6. Verify domain-analysis.md has cross-block dependencies and per-block timing targets. 7. Validate all JSON files well-formed.")
-        TaskUpdate(taskId=t12, addBlockedBy=[t11])
+        TaskUpdate(taskId=t12, addBlockedBy=[t7])
         created_groups.add("T12")
 
     # === T12b/T12c: Spec Feature Completeness Audit (per p1-spec-research-policy) ===
@@ -240,14 +228,6 @@ while not all_tasks_complete:
                           description="rtl-architect: map every FEAT-* in docs/phase-1-research/spec-feature-inventory.json to REQ/OPEN ids in iron-requirements.json ∪ open-requirements.json. Per-feature status: EXTRACTED | EXCLUDED_BY_SCOPE (ADR exists) | MISSING. Write docs/phase-1-research/feature-coverage.md with per-feature table + totals. If missing > 0, report the MISSING list to the orchestrator for user escalation per policy Gap Escalation.")
         TaskUpdate(taskId=t12c, addBlockedBy=[t12b])
         created_groups.add("T12b")
-
-    # === T13a: Adversarial Reinterpretation (policy Steps 7.6-7.9 parity) ===
-    if "T13" not in created_groups and task_completed(t12c):
-        Bash("mkdir -p .rat/scratch/stability/phase-1 && cp docs/phase-1-research/iron-requirements.json .rat/scratch/stability/phase-1/output-v1.json")
-        t13a = TaskCreate(subject="T13a: Adversarial reinterpretation challenge",
-                          description="ADVERSARIAL REINTERPRETATION MODE — spawn spec-analyst via Task() with a clean context. Challenge iron-requirements.json per p1-spec-research-policy adversarial protocol. Emit BOTH challenge types: REINTERPRETATION (alternative reading of an extracted item) AND OMISSION (spec feature/section with zero REQ mapping — cross-check docs/phase-1-research/spec-feature-inventory.json; original_interpretation=NOT_EXTRACTED, severity HIGH). Reference items by source.section (NOT requirement ID). Save to .rat/scratch/stability/phase-1/challenge-report.json per the challenge-report schema. Max 30 challenges.")
-        TaskUpdate(taskId=t13a, addBlockedBy=[t12c])
-        created_groups.add("T13")
 
     # === Write-restricted agent handling ===
     # Check .rat/scratch/phase-1/ for completed scratch files
@@ -274,7 +254,7 @@ Write("docs/phase-1-research/interconnect-survey.md", content)
 The orchestrator uses AskUserQuestion directly (subagent tool access permits this).
 This happens at:
 - T5: Candidate selection from comparison matrix
-- Review rounds: If chief review escalates unresolved issues
+- The chief review names open items: ask the user. Do not open another review.
 - T12c: MISSING features in feature-coverage.md → Gap Escalation per policy
   (approved → EXCLUDED_BY_SCOPE + ADR; not approved → add MUST_IMPLEMENT REQ-F-* to iron, re-run diff)
 
@@ -294,41 +274,13 @@ t_ambiguity = TaskCreate(subject="Ambiguity assessment",
 TaskUpdate(taskId=t_ambiguity, addBlockedBy=[t12])
 
 # 3. Gate criteria:
-#    - ambiguity_score ≤ 0.3 → PASS
-#    - ambiguity_score 0.3–0.5 → CONDITIONAL PASS (log warnings)
-#    - ambiguity_score > 0.5 → FAIL (AskUserQuestion to resolve top-3 ambiguous items, then re-score)
-```
-
-## Step 3.6: Challenge Resolution (coordinator — AskUserQuestion)
-
-After T13a completes, per p1-spec-research-policy: present HIGH challenges individually
-via AskUserQuestion, MEDIUM batched (summary if >10), LOW auto-documented. User may mark
-NOT_GENUINE. Update challenge-report.json with resolution status; accumulate clarifications.
-
-## Step 3.7: Re-run with Clarifications + Coverage Re-bind
-
-```python
-t13b = TaskCreate(subject="T13b: Re-analyze with clarifications",
-                  description="Re-run spec-analyst with the original spec + accumulated clarifications from Step 3.6. Produce ALL 4 canonical artifacts (iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json) + self-validation. THEN re-run the feature-coverage diff (rtl-architect) against the REGENERATED iron ∪ open requirements and refresh docs/phase-1-research/feature-coverage.md — the audited coverage must bind to the FINAL artifacts. If missing > 0, report for Gap Escalation. ALSO refresh docs/phase-1-research/ambiguity-assessment.md: re-score the 3 axes (Goal 40% / Constraint 30% / AC 30%) against the regenerated requirements — the Step 3.8 dual gate and Step 4 item 11 use this refreshed score, not the Step 3.5 one.")
-TaskUpdate(taskId=t13b, addBlockedBy=[t13a])
-```
-
-## Step 3.8: Adversarial Gate Check
-
-Per policy Gate Metric: gate_pass = (all HIGH resolved) AND (resolution_ratio >= 0.8).
-On FAIL: loop back to Step 3.6 (max 1 re-loop), then escalate to user.
-Dual Gate Arbitration (per policy) uses the ambiguity score REFRESHED by T13b
-(re-scored on the final artifacts), never the pre-adversarial Step 3.5 score.
-
-```
-Read(".rat/scratch/stability/phase-1/challenge-report.json")
-Bash("python3 {plugin_root}/scripts/stability_check.py .rat/scratch/stability/phase-1/output-v1.json docs/phase-1-research/iron-requirements.json -o reviews/phase-1-research/stability-report.md")
+#    - score ≤ 0.3, or the spec has one reading → high confidence, pass. Do not re-score.
+#    - above 0.3 → name the unclear axes and ask the user once. Their answer is the decision.
 ```
 
 ## Step 4: Phase 1 Gate
 
-After T12 (final verification + artifacts) AND the ambiguity gate (Step 3.5) AND the
-adversarial gate (Steps 3.6-3.8) complete:
+After T12 (final verification + artifacts) AND the confidence check (Step 3.5):
 1. Verify `docs/phase-1-research/iron-requirements.json` exists and is valid JSON (REQUIRED — settled requirements). `docs/phase-1-research/open-requirements.json` is OPTIONAL (absent is OK if Phase 1 had no deferred research items)
 2. Verify `docs/phase-1-research/io_definition.json` exists with i_/o_/io_ port prefixes
 3. Verify `docs/phase-1-research/timing_constraints.json` exists with per-block timing targets
@@ -339,28 +291,18 @@ adversarial gate (Steps 3.6-3.8) complete:
 8. Verify `docs/phase-1-research/solution-tree.json` exists
 9. Verify `reviews/phase-1-research/research-review.md` exists (consolidated)
 10. Count spec features vs REQ items — flag suspected omissions
-11. Verify `docs/phase-1-research/ambiguity-assessment.md` exists with ambiguity_score ≤ 0.5,
-   RE-SCORED by T13b against the final artifacts (satisfies `ambiguity-pass`)
-12. **Per-round artifacts** (enforces 3-round review protocol per p1-spec-research-policy):
-   - `reviews/phase-1-research/research-review-r1.md` — Round 1 findings with [severity] tags
-   - `reviews/phase-1-research/research-review-r2.md` — Round 2 rebuttal + convergence assessment
-   - `reviews/phase-1-research/research-review-r3.md` — Round 3 mandatory final quality pass
-   FAIL if any missing.
-13. **Rebuttal evidence** in R2: verify R2 artifact contains accept/reject entries with rationale
-   for each R1 finding (not just a "converged" statement). FAIL if rebuttal section absent.
-14. Verify `docs/phase-1-research/spec-feature-inventory.json` exists (independent census, T12b)
-15. Verify `docs/phase-1-research/feature-coverage.md` exists with zero MISSING features
+11. Verify `docs/phase-1-research/ambiguity-assessment.md` exists. High confidence passes.
+    Low confidence is the one question from Step 3.5 and the user's answer (satisfies `ambiguity-pass`).
+    Do not require a second score.
+12. `reviews/phase-1-research/research-review.md` names the open items. Do not require r1/r2/r3 files.
+13. Verify `docs/phase-1-research/spec-feature-inventory.json` exists (independent census, T12b)
+14. Verify `docs/phase-1-research/feature-coverage.md` exists with zero MISSING features
    (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR) — satisfies `feature-coverage-audited`.
-   FAIL if missing > 0 without user-approved exclusion. Must reflect a re-diff after
-   T13b regenerated the requirements (coverage binds to the FINAL artifact state).
-16. Verify `.rat/scratch/stability/phase-1/challenge-report.json` has all HIGH challenges
-   resolved and resolution_ratio ≥ 0.8 (Step 3.8 adversarial gate)
-17. Verify `reviews/phase-1-research/stability-report.md` exists
+   A feature the user did not approve omitting is named and asked once. Do not regenerate the requirements to clear it.
 
 ## Step 5: Codex Cross-Review (MANDATORY — after gate PASS)
 
-Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
-fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+Ask Codex once, as an independent second reviewer. Report disagreements. Do not open another exchange unless the user asks.
 
 ```
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
@@ -368,7 +310,7 @@ Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
      Phase intent: Spec analysis, requirements extraction, domain research, algorithm candidate evaluation.
      Input artifacts: user-provided spec documents.
      Output artifacts: docs/phase-1-research/ (iron-requirements.json, open-requirements.json [optional], io_definition.json, timing_constraints.json, domain-analysis.md, candidate-comparison.md, selected-approach.md, literature-survey.md, solution-tree.json, spec-feature-inventory.json, feature-coverage.md).
-     Review verdicts: reviews/phase-1-research/ (research-review-r1.md, research-review-r2.md, research-review-r3.md, research-review.md).
+     Review verdict: reviews/phase-1-research/research-review.md.
      Focus: requirement completeness (verify feature-coverage.md census diff shows zero MISSING), spec accuracy, candidate evaluation rigor, missing constraints.")
 
 # Explicit verdict check — read report and verify consensus
@@ -379,6 +321,6 @@ Read(".rat/cross-review/phase-1/cross-review-report.md")
 # Error Handling
 
 - **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).
-- **Chief review divergence**: After Round 3, if still not converged, escalate to user via AskUserQuestion.
+- **Open items after the one review**: ask the user. Do not schedule another review.
 - **Constraint violation**: If coordinator accidentally calls TeamCreate/Agent(team_name=...), the call will fail. Continue with TaskCreate/SendMessage-based coordination.
 - **Dynamic task count**: If solution tree has >20 candidates, group into clusters for deep-dive.

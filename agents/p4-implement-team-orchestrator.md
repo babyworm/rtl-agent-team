@@ -1,6 +1,6 @@
 ---
 name: p4-implement-team-orchestrator
-model: opus
+model: fable
 description: "Phase 4 RTL implementation team coordination teammate. Coordinates 10-wave pipeline with per-module parallelism and inter-wave dependency graphs via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [rtl-p4-implement-policy]
 ---
@@ -142,7 +142,7 @@ sentinel reference that is wired in Step 2d.
 
 ```python
 # Wave 1: Write (depends on test plan — dependency relaxed if test plan marked "pending")
-t_write = TaskCreate(subject=f"W1: Write {M}", description=f"Implement rtl/{M}/{M}.sv from uarch spec",
+t_write = TaskCreate(subject=f"W1: Write {M}", description=f"Implement rtl/{M}/{M}.sv from uarch spec. Meet the required throughput, then use less area: share operators that are not needed in the same cycle and keep each shared operator busy. A μArch schedule that fixes the operator count is binding.",
                      blockedBy=[t_test_plan])
 
 # Wave 2: Lint (depends on write)
@@ -292,7 +292,7 @@ After all Wave 9 tasks (and conditional W9b) complete and integration passes.
 
 1. Verify all modules have lint PASS
 1b. **Synthesizability (HARD — Wave 3.5)**: `reviews/phase-4-rtl/{module}-synthesizability.md` exists for every module with verdict **PASS** (zero inferred latches / incomplete assignments / non-synth constructs), AND the design is **DC-script-emittable** (a DC-style synth script elaborates — dc_shell dry-run, or yosys `hierarchy -check` proxy). HARD blocker — FAIL stops the gate.
-2. Verify all modules have code review PASS (0 critical/major findings)
+2. Verify all modules have code review PASS. An idle duplicate operator that the μArch did not require stays Major and does not fail this gate.
 3. Verify all modules have Tier 1 smoke PASS (Wave 6a)
 3b. Verify Tier 2 unit test PASS (Wave 6b): `sim/{module}/{module}_unit_results.json` with `ref_mismatches=0`, `coverage.fsm_pct >= 50`, `coverage.line_pct >= 60`, per-feature `req_ids` populated (at least one REQ-U-* each), `func_coverage.covergroups_defined >= 1`, and `codec_conformance` = `"PASS"` or `"N/A"` (explicit value required)
 4. Verify all multi-domain modules have CDC PASS (single-domain: auto-skip)

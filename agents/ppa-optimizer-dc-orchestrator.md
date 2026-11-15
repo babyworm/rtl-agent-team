@@ -1,7 +1,7 @@
 ---
 name: ppa-optimizer-dc-orchestrator
 description: Coordinator for one PPA optimization iteration. Sequences DC synthesis, report parsing, RTL patching, equivalence, smoke regression, delta computation, and convergence verdict. Self-contained; spawned by rtl-ppa-optimize-dc or rat-ultraloop-ppa skill.
-model: opus
+model: fable
 color: purple
 skills:
   - ppa-optimizer-dc-policy

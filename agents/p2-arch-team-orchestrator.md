@@ -1,7 +1,7 @@
 ---
 name: p2-arch-team-orchestrator
-model: opus
-description: "Phase 2 architecture team coordination teammate. Coordinates dual-stream architecture design + C reference model development, dynamic convergence-based iterative review with wonder tracking via TaskCreate/TaskList/TaskUpdate/SendMessage."
+model: fable
+description: "Phase 2 architecture team coordination teammate. Coordinates dual-stream architecture design and the C reference model, then one architecture review, via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [p2-arch-design-policy]
 ---
 
@@ -46,27 +46,14 @@ T2:    Selection + AskUserQuestion (coordinator, blockedBy: ALL T1*)
 T3:    Architecture design (arch-designer, blockedBy: T2) ──┐ parallel
 T4:    RefC model development (ref-model-dev, blockedBy: T2) ┘ streams
 T5:    Bandwidth integration (arch-designer, blockedBy: T3 + T4)
-T6a:   Review R1 — spec compliance (rtl-architect, blockedBy: T5)
-T6b:   Review R1 — memory/perf (vcodec-architecture-expert, blockedBy: T5)
-T6c:   Review R1 — model consistency (ref-model-dev, blockedBy: T5)
-T6d:   Review R1 — ref model quality gate (ref-model-reviewer, blockedBy: T5, CONDITIONAL: only when ref model newly created/substantially revised)
-T7:    Aggregate R1 (rtl-architect, blockedBy: ALL T6*)
-T7b:   Rebuttal R1 (arch-designer, blockedBy: T7) — accept/reject each finding with rationale
-T8a-M: Tree exploration per issue (DYNAMIC, blockedBy: T7b, only for accepted findings)
-T9:    Apply resolutions (arch-designer, blockedBy: ALL T8*)
-T10a:  Review R2 — spec compliance (rtl-architect, blockedBy: T9)
-T10b:  Review R2 — memory/perf (vcodec-architecture-expert, blockedBy: T9)
-T10c:  Review R2 — model consistency (ref-model-dev, blockedBy: T9)
-T10d:  Review R2 — ref model quality (ref-model-reviewer, blockedBy: T9, CONDITIONAL: only if T6d was created)
-T11:   Aggregate R2 (rtl-architect, blockedBy: ALL T10*)
-T11b:  Rebuttal R2 (arch-designer, blockedBy: T11) — accept/reject each finding with rationale
-T12a:  Review R3 — spec (rtl-architect, blockedBy: T11b, MANDATORY)
-T12b:  Review R3 — memory (vcodec-architecture-expert, blockedBy: T11b, MANDATORY)
-T12c:  Review R3 — model (ref-model-dev, blockedBy: T11b, MANDATORY)
-T12d:  Review R3 — ref model quality (ref-model-reviewer, blockedBy: T11b, CONDITIONAL: only if T6d was created)
-T13:   Final consolidation (rtl-architect, blockedBy: ALL T12*)
+T6a:   Review once — spec compliance (rtl-architect, blockedBy: T5)
+T6b:   Review once — memory/perf (vcodec-architecture-expert, blockedBy: T5)
+T6c:   Review once — model consistency (ref-model-dev, blockedBy: T5)
+T6d:   Review once — ref model quality (ref-model-reviewer, blockedBy: T5, CONDITIONAL: ref model new or >30% changed)
+T7:    Aggregate the one review (rtl-architect, blockedBy: ALL T6*). Accept/reject each finding. Save architecture-review.md
+T13:   Final consolidation (rtl-architect, blockedBy: T7)
 T13i:  Iron/Open artifact production (coordinator Write — REQ-A-* from resolved OPEN-1-*, Step 3.7, blockedBy: T13)
-T13o:  Open resolution + ambiguity gate (coordinator — OPEN-1-* resolved, ambiguity ≤ 0.5, Step 3.8, blockedBy: T13i)
+T13o:  Open resolution + ambiguity gate (coordinator — OPEN-1-* resolved, high confidence or one user choice, Step 3.8, blockedBy: T13i)
 T14:   Compliance check vs P1 iron (compliance-checker, spawned by orchestrator Step 3.9 after T13i/T13o)
 ```
 
@@ -137,8 +124,8 @@ for i, candidate in enumerate(candidates):
 
 Create T2 (selection) blocked by all T1 tasks:
 ```python
-t2 = TaskCreate(subject="T2: Candidate selection + AskUserQuestion",
-                description="Build per-block comparison matrix from all HW evaluations. Select best candidates. Present to user via AskUserQuestion. Save evaluation matrix to docs/phase-2-architecture/hw-candidate-review.md with per-area candidates, comparison metrics (gate count, critical path, SRAM, BW, throughput, memory latency impact), selected candidate rationale, and user decision record. NOTE: coordinator handles AskUserQuestion directly.")
+t2 = TaskCreate(subject="T2: Candidate selection",
+                description="Build per-block comparison matrix from all HW evaluations. Record the candidate that fits. Name another only when it still fits, and ask once in that case. Do not invent a second candidate. Save evaluation matrix to docs/phase-2-architecture/hw-candidate-review.md with per-area candidates, comparison metrics (gate count, critical path, SRAM, BW, throughput, memory latency impact), and selected candidate rationale. AskUserQuestion only when more than one candidate still fits.")
 TaskUpdate(taskId=t2, addBlockedBy=[all_t1_ids])
 ```
 
@@ -148,74 +135,22 @@ Create dual-stream tasks (T3, T4) and subsequent review graph.
 
 Determine whether to activate ref-model-reviewer tasks by checking:
 - T4 (RefC model development) produces new or substantially changed `refc/**/*.c` files
-- If ref model is newly created OR >30% of lines changed from prior version:
-  1. Create T6d/T10d/T12d conditional review tasks
-  2. ref-model-reviewer evaluates: algorithm fidelity, numerical precision, undefined behavior/build warning risk
-- If ref model is unchanged: skip T6d/T10d/T12d tasks entirely
+- If ref model is newly created OR >30% of lines changed from prior version: create T6d
+- If ref model is unchanged: skip T6d
 
-## Step 3: Monitor Loop + Dynamic Task Creation (Dynamic Convergence)
+## Step 3: Monitor Loop
 
-### Dynamic Round Creation
-
-Instead of pre-creating fixed R1/R2/R3 tasks, use convergence-based loop:
-
-**Parameters**: min_rounds=2, max_rounds=5
-
-1. Create Round 1 tasks (always)
-2. After Round 1 completion + wonder step, evaluate convergence criteria
-3. If not converged AND round < max_rounds: create Round N+1 tasks
-4. If converged OR round >= max_rounds: proceed to artifact finalization
-
-Use SendMessage to notify workers: "Round {N} complete. Convergence: {status}. {Next action}."
-
-### Convergence Criteria
-
-After each round >= min_rounds, check:
-- `finding_delta < 0.1`: < 10% new findings compared to previous round
-- `all_critical_resolved`: All Critical/High findings addressed
-- `wonder_stability`: No new High-risk assumptions in wonder log
-All three must be true for convergence.
+Create each task group once. The review is T6a–d and T7. Do not create a second review.
 
 ```python
-round_num = 0
-converged = False
+task_list = TaskList()
 
-while not converged and round_num < max_rounds:
-    round_num += 1
-    task_list = TaskList()
-
-    # === After T2 (selection): create T3 + T4 parallel streams ===
-    # T3: arch-design writes architecture.md (via scratch directory). MUST propose an
-    #     architectural resolution for each OPEN-1-* item from Phase 1 open-requirements.json
-    #     (resolution rationale, rejected alternatives, upstream-compliance assessment) — the
-    #     coordinator later converts these into REQ-A-* iron entries in Step 3.7.
-    # T4: refmodel writes refc/ code directly
-
-    # === After T5 (bandwidth integration): create review round N ===
-    # Create reviewer tasks for current round (T6a-c pattern)
-    # Create aggregation task (T7 pattern)
-
-    # === After aggregation: Wonder Step ===
-    # TaskCreate: "Wonder — Round {round_num}: Identify unvalidated assumptions about
-    #   bandwidth, interface protocols, timing. Record in wonder-log.md"
-
-    # === After aggregation: rebuttal + dynamic tree exploration ===
-    # Rebuttal: arch-designer accepts/rejects each finding with rationale
-    # For each ACCEPTED issue, spawn exploration task
-    # Apply best resolutions
-
-    # === Convergence check (if round_num >= min_rounds) ===
-    # Count new findings vs previous round
-    # Check critical resolution status
-    # Check wonder log stability
-    # if all criteria met: converged = True
-
-    # === Write-restricted agent handling ===
-    # Check .rat/scratch/phase-2/ for completed scratch files
-    # Copy to final location
-
-# If not converged after max_rounds: escalate to user via AskUserQuestion
-# SendMessage to leader: "Review complete. Rounds: {round_num}. Converged: {converged}."
+# After T2: create T3 + T4. T3 proposes a resolution for each OPEN-1-* item.
+# T4 writes refc/. The coordinator later writes REQ-A-* in Step 3.7.
+# After T5: create T6a-c (and T6d only if refc/ is new or >30% changed), then T7.
+# T7 saves reviews/phase-2-architecture/architecture-review.md and names assumptions
+# in docs/phase-2-architecture/wonder-log.md. Then create T13, blocked by T7.
+# Open items go to the user. Do not create T8-T12.
 ```
 
 ### Write-Restricted Agent Handling
@@ -235,7 +170,7 @@ Write("docs/phase-2-architecture/architecture.md", content)
 The orchestrator uses AskUserQuestion directly (subagent tool access permits this).
 This happens at:
 - T2: Present HW evaluation comparison matrix, ask user to select candidates
-- Review escalation: If R3 doesn't converge, present findings to user
+- The one review names open items: ask the user. Do not open another review.
 
 ## Step 3.7: Iron/Open Artifact Production (T13i — coordinator responsibility, matches non-team orchestrator)
 
@@ -271,7 +206,7 @@ Read("docs/phase-2-architecture/iron-requirements.json")
 
 # Ambiguity Gate (Phase 2): every new REQ-A-* must pass the reproducibility check
 # "Would re-evaluating this architecture reach the same conclusion?"
-# Apply ambiguity scoring per p2-arch-design-policy. Score ≤ 0.5 required for iron.
+# Confidence: one fitting architecture choice is iron. More than one still fitting: ask once. Do not re-score.
 #   (satisfies the `ambiguity-pass` completion criterion)
 ```
 
@@ -306,26 +241,22 @@ After T13 (final consolidation) completes:
 5c. Verify `docs/phase-2-architecture/iron-requirements.json` exists and is valid JSON
     (REQ-A-* decisions from resolved OPEN-1-* — Step 3.7 / T13i).
 5d. Verify every OPEN-1-* from `docs/phase-1-research/open-requirements.json` (if present) maps to a
-    REQ-A-* with `resolved_from` + `resolution_rationale` + `rejected_alternatives` (Step 3.8) —
+    REQ-A-* with `resolved_from` + `resolution_rationale`. `rejected_alternatives` only when another candidate was plausible (Step 3.8) —
     satisfies the `open-resolved` completion criterion.
-5e. Verify all new REQ-A-* pass the Phase 2 ambiguity gate (score ≤ 0.5) — satisfies the
+5e. Verify each REQ-A-* is high confidence, or the user chose (`ambiguity-pass`) — satisfies the
     `ambiguity-pass` completion criterion.
 6. Generate `docs/phase-2-architecture/phase-2-summary.md`
-7. **Per-round artifacts** (enforces dynamic convergence review protocol per p2-arch-design-policy):
-   - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
-   - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal
-   - Additional round artifacts if convergence required more rounds (up to r5)
-   FAIL if fewer than 2 round artifacts exist.
-8. `docs/phase-2-architecture/wonder-log.md` exists with all High-risk assumptions resolved
-9. **Rebuttal evidence** in each round: verify each round artifact contains a rebuttal section
-   with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
-10. Verify `.rat/state/compliance-report.json` verdict=PASS (Step 3.9 / T14 compliance check
+7. `reviews/phase-2-architecture/architecture-review.md` records accept or reject, with a reason, for each finding. Do not require r1/r2 files.
+8. `docs/phase-2-architecture/wonder-log.md` names high-risk assumptions.
+9. Verify `.rat/state/compliance-report.json` verdict=PASS (Step 3.9 / T14 compliance check
    vs P1 iron) — satisfies the `compliance-pass` completion criterion.
 
 On PASS: generate ADRs:
 ```
 Bash("mkdir -p docs/decisions")
-Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
+Task(subagent_type="rtl-agent-team:arch-designer", model="fable",
      prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
@@ -349,6 +280,6 @@ Read(".rat/cross-review/phase-2/cross-review-report.md")
 # Error Handling
 
 - **Worker crash**: Re-assign in-progress task via TaskCreate (skill manages worker lifecycle).
-- **Review divergence**: After Round 3, if not converged, escalate to user via AskUserQuestion.
+- **Open items after the one review**: ask the user. Do not schedule another review.
 - **Constraint violation**: If coordinator accidentally calls TeamCreate/Agent(team_name=...), the call will fail. Continue with TaskCreate/SendMessage-based coordination.
 - **RefC build failure**: Re-assign T4 with error details, iterate until refc/ compiles.

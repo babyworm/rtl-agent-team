@@ -16,16 +16,11 @@ user-invocable: false
 
 Raw coverage is always reported alongside post-exclusion numbers for transparency.
 
-## Coverpoint Iterative Refinement (minimum 3 rounds)
+## One Coverage Pass
 
-Coverage coverpoint extraction and test generation must iterate at least 3 times:
+Identify uncovered lines, branches, and FSM states. Prioritize gaps. Write directed tests for the high-value gaps, run them once, and report the numbers. Name bins that remain. Do not schedule another pass. A further pass runs only when the user asks.
 
-- **Round 1 (Initial Analysis)**: Identify all uncovered lines, branches, FSM states/transitions. Prioritize gaps (HIGH/MED/LOW). Generate first batch of directed tests for HIGH gaps.
-- **Round 2 (Deepen)**: Re-analyze coverage after Round 1 tests. Identify newly reachable but still uncovered paths. Add cross-coverage points (e.g., cmd × size, state × error). Target MED gaps. Check for unreachable code (waiver candidates).
-- **Round 3 (Close)**: Final coverage push. Add corner-case stimulus for remaining gaps. Verify coverage targets met (line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%). Document waived bins with justification.
-- **Additional rounds**: Continue until coverage targets are met or all remaining gaps are justified as waived.
-
-Each round produces a progress note at `.rat/scratch/phase-5/coverage-iteration-r{N}.md`.
+Save the note at `.rat/scratch/phase-5/coverage-iteration.md`.
 
 ## Escalation & Stop Conditions
 
@@ -66,17 +61,16 @@ per row. Each test:
 2. Follows the **Sequence** as a cycle-accurate stimulus plan
 3. Asserts the **Expected Behavior** as a pass/fail check
 
-### Convergence Loop
+### One Fill
 
 ```
-Round N: coverage-analyst → Directed Test Guidance table
-         test-plan-writer  → systematic test plan (ECP/BVA for config-dependent gaps)
-         testbench-dev    → test_coverage_fill_rN.py (one test per guidance row + plan)
-         eda-runner       → regression with new tests → updated coverage
-Round N+1: coverage-analyst re-analyzes → new guidance for remaining gaps
+coverage-analyst → Directed Test Guidance table
+test-plan-writer  → test plan (ECP/BVA for config-dependent gaps)
+testbench-dev    → test_coverage_fill.py (one test per guidance row)
+eda-runner       → one regression with the new tests
 ```
 
-This iterates until coverage targets are met or all remaining gaps are justified as waived.
+Then report remaining bins. Classify them. Do not start another fill unless the user asks.
 
 ## Systematic Parameter Space Analysis (Config-Dependent Gaps)
 
@@ -105,9 +99,9 @@ consumes alongside the Directed Test Guidance table.
 
 ## Coverage Exclusion Protocol
 
-When coverage-driven regression converges without meeting targets:
+When the one directed pass still misses a target:
 
-1. **Convergence detection**: 2 consecutive iterations with < 0.5% improvement → converged
+1. **After that pass**: classify every remaining uncovered bin. Do not wait for a second pass.
 2. **Uncovered bin analysis**: Classify each uncovered bin as:
    - STIMULUS_GAP: Reachable but not exercised → add directed test
    - STRUCTURAL_DEAD: Unreachable code (parameter guard, unimplemented feature) → exclude with waiver
@@ -179,9 +173,7 @@ Track convergence independently for each coverage metric:
 | Branch | Yes | Conditional paths may need config-specific tests |
 | Functional | Yes | Depends on covergroup design quality |
 
-A metric is converged when 2 consecutive rounds show < 0.5% improvement FOR THAT METRIC.
-Overall convergence requires ALL metrics either meeting target or individually converged.
-This prevents aggregate convergence masking a single lagging metric.
+Report each metric on its own. A metric that misses its target is named. Do not run another pass to make the number move.
 
 ## Toggle Coverage Interpretation
 

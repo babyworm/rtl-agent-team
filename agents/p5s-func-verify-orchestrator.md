@@ -1,6 +1,6 @@
 ---
 name: p5s-func-verify-orchestrator
-model: opus
+model: fable
 description: "Tier 3 functional verification orchestrator. Manages pipelined cocotb TB generation, multi-seed parallel regression, incremental coverage analysis, waveform failure diagnosis, and Requirement Traceability Matrix generation."
 skills: [rtl-p5s-func-verify-policy]
 ---

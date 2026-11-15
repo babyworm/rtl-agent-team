@@ -100,14 +100,14 @@ Three sub-gates in order — executable procedure owned by p3-uarch-orchestrator
 - **G4a Compilation**: BFM compiles without errors (default LT blocking transport; AT — Approximately Timed — on explicit request only)
 - **G4b Functional correctness**: BFM per-block output matches Phase 2 refc via shared test vectors — data correctness (bitexact or within documented tolerance), not structural checks. If an external golden C model is provided (JM/HM, vendor): both refc and BFM must match it; else refc is golden. Compiles-but-wrong-output → FAIL (false confidence). On mismatch: run refc self-test first to localize root cause (refc bug vs BFM bug)
 - **G4c I/O log existence**: per-block timestamped logs (cycle, address, data, control signals) for every block; log count must match uArch block count; logs are the golden reference for Phase 4-5 RTL unit verification
-- **Pass rule**: all three gates must PASS. Any FAIL → iterate uarch-designer ↔ bfm-dev ↔ ref-model-dev (max 2 iterations before escalation)
+- **Pass rule**: all three gates must PASS. G4a, G4b, and G4c are measurements. The measured result is the judgment. Confidence does not override a compile error, a mismatch, or a missing log. Any FAIL → iterate uarch-designer ↔ bfm-dev ↔ ref-model-dev (max 2 iterations before escalation)
 
 ## Conditional Expert Delegation (Phase 3)
 
 - **Invoke rtl-planner** when execution risk is the blocker rather than local RTL details:
   - Module/interface dependency chain is unclear for 5+ blocks
   - BFM and μArch revisions bounce for 2+ cycles with no convergence
-  - Critical path or parallelization order is uncertain before Round 2 review
+  - Critical path or parallelization order is the blocker
 - **Expected rtl-planner output**: explicit task dependency graph, critical path, and
   parallel work groups that the orchestrator can apply to Step 3/5 sequencing.
 
@@ -133,23 +133,19 @@ Three sub-gates in order — executable procedure owned by p3-uarch-orchestrator
 - Parameters: `UPPER_SNAKE_CASE` (e.g., `DATA_WIDTH`)
 - Use `logic` only (no `reg`/`wire`)
 
-## Review Protocol (dynamic convergence, 5 parallel reviewers)
+## Review
 
-Dynamic convergence rounds (min 2, max 5 — see Review Convergence Criteria), coordinated by rtl-architect:
-- **4 mandatory + 1 conditional parallel reviewers each round**:
+One review, coordinated by rtl-architect. A further pass runs only when the user asks.
+- **Reviewers, in parallel, once**:
   1. rtl-architect: feature preservation, block boundary, interface, protocol consistency
   2. timing-advisor: critical paths at target frequency, pipeline balance, clock domain feasibility
   3. (conditional) domain architecture expert: algorithm/memory/interface optimization
      — invoke when `domain-packages/{domain}/` exists (e.g., vcodec-architecture-expert for video codec).
-     When no domain expert available, rtl-architect covers algorithm consistency in its scope.
+     When no domain expert is available, rtl-architect covers algorithm consistency.
   4. ref-model-dev: model consistency (behavior, data widths, fixed-point, I/O log alignment)
   5. bfm-dev: BFM simulation results, I/O logging correctness, protocol behavior
-
-- Round 1-2: review → rebuttal (designer accepts/rejects each finding with rationale) → tree exploration for accepted issues → targeted revision (rejections recorded in per-round artifact)
-- Last round (converged or max reached): cross-module interface audit, clock domain map consistency,
-  memory conflict analysis, model consistency matrix, BFM final pass, μArch code review
-- Convergence check after round >= min_rounds: finding_delta < 0.1, all critical resolved, wonder stable
-- After max_rounds if not converged → escalate to user via AskUserQuestion
+- The same review covers cross-module interfaces, the clock-domain map, memory conflicts, and the BFM result.
+- Record accept or reject, with a reason, in `uarch-review.md`. Name open items. Do not open another review.
 - Conditional reviewers:
   - clock-architect: multi-clock/generated-clock/gating risk present
   - rtl-planner: schedule/dependency risk dominates convergence delays
@@ -174,30 +170,9 @@ Save to `reviews/phase-3-uarch/feature-preservation.md`:
 PASS | FAIL: [reason]
 ```
 
-## Wonder Log (Required)
+## Assumptions
 
-Each review round MUST produce a wonder-log entry:
-- File: `docs/phase-3-uarch/wonder-log.md`
-- Format: Markdown table with columns: Round, Assumption, Domain, Risk(H/M/L), Resolution
-- Purpose: Track unvalidated assumptions across rounds
-- Exit gate: All High-risk assumptions must be resolved or explicitly accepted before phase completion
-
-## Review Convergence Criteria
-
-Review rounds use dynamic convergence instead of fixed 3 rounds:
-
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| min_rounds | 2 | Minimum for meaningful review |
-| max_rounds | 5 | Prevent infinite loops |
-| finding_delta_threshold | 0.1 | < 10% new findings = stable |
-| critical_resolution | ALL | All Critical/High must be resolved |
-| wonder_stability | true | No new High-risk assumptions |
-
-**Early exit** (round 2): When findings converge quickly (simple designs)
-**Extended review** (rounds 4-5): For complex designs with emergent issues
-
-Convergence signals: stability (finding_delta < threshold), stagnation (same findings repeated across rounds), oscillation (findings toggling resolved↔reopened).
+The review records unvalidated assumptions in `docs/phase-3-uarch/wonder-log.md`. Name high-risk items. Do not open another review to clear them.
 
 ## Escalation & Stop Conditions
 
@@ -226,7 +201,7 @@ Convergence signals: stability (finding_delta < threshold), stagnation (same fin
 - [ ] BFM Validation Requirements satisfied (G4a/G4b/G4c all PASS)
 - [ ] Zero-Opens Invariant holds
 - [ ] Open Resolution Protocol completed (all OPEN-2-* resolved)
-- [ ] Ambiguity Gate passed (score ≤ 0.5 for all new REQ-U-*)
+- [ ] Each REQ-U-* is high confidence, or the user chose among the named alternatives (`ambiguity-pass`)
 - [ ] Compliance Check verdict = PASS
 
 **Checklist-only gate details:**
@@ -236,10 +211,10 @@ Convergence signals: stability (finding_delta < threshold), stagnation (same fin
 - [ ] No deadlocks or protocol violations in BFM simulation
 
 **Review:**
-- [ ] Dynamic convergence review completed (min 2 rounds, or gaps escalated and approved)
+- [ ] One μArch review completed, or the open items were reported to the user
 - [ ] Cross-module interfaces reviewed; μArch ↔ ref model consistency verified
 - [ ] rtl-architect verdict PASS; timing-advisor no blockers; domain expert approved (when applicable)
-- [ ] Per-round artifacts reviews/phase-3-uarch/uarch-review-r{N}.md, each with rebuttal section (accept/reject + rationale); minimum r1+r2, r3-r5 if convergence required more rounds
+- [ ] `reviews/phase-3-uarch/uarch-review.md` saved, with accept/reject and a reason for each finding
 
 ## Open Resolution Protocol
 
@@ -255,7 +230,7 @@ For each OPEN-2-* item, the μArch team must:
    - `upstream_compliance`: verification that new REQ-U-* does not violate P1+P2 iron
    - `violation_policy`: `"agent_retry"` (authority=3)
    - `acceptance_criteria`: measurable criteria for the μArch decision
-4. Verify: ALL OPEN-2-* items must be resolved before Phase 3 exit
+4. A high-confidence choice is recorded and the item is resolved. A low-confidence item is asked once. Do not analyze again to manufacture a winner.
 
 ## iron-requirements.json Schema — acceptance_criteria
 
@@ -300,9 +275,7 @@ Rules:
 
 ### Zero-Opens Invariant
 
-Phase 3 MUST NOT produce an open-requirements.json. All research topics must be resolved here.
-If unresolved items remain at Phase 3 exit → EXIT GATE FAIL.
-P4 (Implementation) requires all requirements to be iron — no open items may remain.
+Phase 3 records each remaining choice. High confidence resolves it. Low confidence asks once, and that answer resolves it. Do not fail the phase in order to run another analysis. P4 reads iron requirements. An item the user has answered is iron.
 
 ## Compliance Check Procedure
 
@@ -323,11 +296,9 @@ Same as Phase 2, but challenges may target P1 or P2 iron requirements.
 Challenge report must identify which upstream authority is being challenged.
 PPA estimates required with mandatory fields: frequency_mhz, area_gate_count, pixel_rate_mpps, achievable_fps.
 
-## Ambiguity Gate (Phase 3)
+## Confidence (Phase 3)
 
-Apply ambiguity scoring to all new REQ-U-* decisions:
-- "Would re-analyzing this micro-architecture produce the same design?"
-- Score ≤ 0.5 required before REQ-U-* becomes iron
+A REQ-U-* is iron when confidence is high: one micro-architecture fits the evidence and the others do not. Record that confidence. Do not score again to become more sure. A choice where more than one design still fits stays open: name them and ask once. The user's answer is the decision. This check satisfies `ambiguity-pass`. The choice itself has no measurement. BFM versus refC (G4b), compilation (G4a), and I/O logs (G4c) are measurements: the measured result is the judgment, and confidence does not override it.
 
 **Artifacts saved:**
 - [ ] reviews/phase-3-uarch/feature-preservation.md
@@ -338,7 +309,7 @@ Apply ambiguity scoring to all new REQ-U-* decisions:
 - [ ] docs/phase-3-uarch/phase-3-summary.md
 - [ ] docs/phase-3-uarch/req-uarch-traceability.md (100% REQ coverage)
 - [ ] docs/decisions/ADR-*.md generated (3-5 key μArch decisions)
-- [ ] `docs/phase-3-uarch/wonder-log.md` (Wonder Log requirements met; High-risk assumptions resolved or explicitly accepted)
+- [ ] `docs/phase-3-uarch/wonder-log.md` names the unvalidated assumptions
 - [ ] `docs/phase-3-uarch/upstream-feedback-report.md` generated (P1/P2 gap analysis)
 - [ ] `docs/phase-3-uarch/requirement-delta.md` generated (REQ implementability scan)
 - [ ] `docs/phase-3-uarch/iron-requirements.json` exists with REQ-U-* entries and resolved_from tracking

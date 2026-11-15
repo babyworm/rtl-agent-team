@@ -217,17 +217,17 @@ class TestSkillCompletionCriteriaNewEntries:
         assert "ambiguity-pass" in criteria[skill]
         assert "zero-remaining-opens" in criteria[skill]
 
-    @pytest.mark.parametrize("skill", ["rtl-p2-arch-team", "rtl-p3-uarch-team"])
+    @pytest.mark.parametrize("skill", ["p2-arch-design", "rtl-p3-uarch-design"])
     def test_p2_p3_team_has_open_resolved(self, criteria, skill):
-        """Team variants have open-resolved but NOT compliance-pass (orchestrators not yet updated)."""
+        """Merged phase skills keep open-resolved and ambiguity-pass."""
         assert "open-resolved" in criteria[skill]
         assert "ambiguity-pass" in criteria[skill]
 
-    @pytest.mark.parametrize("skill", ["rtl-p3-uarch-team"])
+    @pytest.mark.parametrize("skill", ["rtl-p3-uarch-design"])
     def test_p3_team_has_zero_remaining_opens(self, criteria, skill):
         assert "zero-remaining-opens" in criteria[skill]
 
-    @pytest.mark.parametrize("skill", ["p1-spec-research", "rtl-p1-research-team"])
+    @pytest.mark.parametrize("skill", ["p1-spec-research"])
     def test_p1_base_and_team_have_feature_coverage_audited(self, criteria, skill):
         """v0.12.0: P1 solo + team completion criteria require the feature census
         audit (feature-coverage-audited), alongside the existing P1 tokens."""

@@ -239,6 +239,66 @@ class TestAgentDefinitions:
                 missing.append(f.name)
         assert missing == [], f"Agents missing 'model:' in frontmatter: {missing}"
 
+    def test_model_follows_the_work(self, agent_files):
+        """fable: orchestration, judgment, architecture, microarchitecture.
+        opus: design, verification, checking.
+        sonnet: running a tool or parsing its report.
+        A spawn model= matches that agent's frontmatter.
+        """
+        fable_named = {
+            "arch-designer",
+            "rtl-architect",
+            "clock-architect",
+            "vcodec-architecture-expert",
+            "uarch-designer",
+            "spec-analyst",
+            "goal-clarifier",
+            "rtl-planner",
+        }
+        sonnet = {
+            "eda-runner",
+            "dc-report-parser",
+            "synthesis-reporter",
+            "ipxact-generator",
+        }
+        wrong = []
+        front = {}
+        for f in agent_files:
+            name = f.stem
+            parts = f.read_text().split("---", 2)
+            fm = parts[1]
+            model = next(
+                line.split(":", 1)[1].strip()
+                for line in fm.splitlines()
+                if line.startswith("model:")
+            )
+            front[name] = model
+            if name.endswith("-orchestrator") or name.endswith("-coordinator") or name in fable_named:
+                expect = "fable"
+            elif name in sonnet:
+                expect = "sonnet"
+            else:
+                expect = "opus"
+            if model != expect:
+                wrong.append(f"{name}: {model} != {expect}")
+        assert wrong == [], wrong
+
+        import re
+        drift = []
+        for f in agent_files:
+            text = f.read_text()
+            for match in re.finditer(
+                r'subagent_type="rtl-agent-team:([a-z0-9-]+)"'
+                r'(?:[^"\n]*\bmodel="(sonnet|opus|fable)"'
+                r'|\s*,\s*\n\s*model="(sonnet|opus|fable)")',
+                text,
+            ):
+                target = match.group(1)
+                pinned = match.group(2) or match.group(3)
+                if front.get(target) != pinned:
+                    drift.append(f"{f.name}: {target} pinned {pinned}")
+        assert drift == [], drift
+
     def test_all_agents_have_description(self, agent_files):
         missing = []
         for f in agent_files:
@@ -500,9 +560,8 @@ class TestCrossReferences:
             ("rat-dse", "dse-orchestrator", "rat-dse-policy"),
             ("rat-p1p3-spec-uarch", "spec-to-uarch-orchestrator", "rat-p1p3-spec-uarch-policy"),
             ("rat-p4p5-impl-verify", "uarch-to-verify-orchestrator", "rat-p4p5-impl-verify-policy"),
-            # P1-P5 team mode orchestrators (v0.6.0) — use Agent(team_name=...) not Task()
-            # Tested separately below in team-specific delegation check
-            # rat-p1p3-spec-uarch-team uses Skill() phase sequencing, not Task() delegation
+            # Team mode of a merged phase skill uses Agent(team_name=...), tested below.
+            # rat-p1p3-spec-uarch team mode uses Skill() phase sequencing
             # (tested in test_pipeline_skill_phase_sequencing below)
         ]
 
@@ -538,10 +597,10 @@ class TestCrossReferences:
     def test_pipeline_skill_phase_sequencing(self):
         """Pipeline skills that sequence phases via Skill() instead of Task() delegation."""
         pipeline_skills = {
-            "rat-p1p3-spec-uarch-team": [
-                "rtl-p1-research-team",
-                "rtl-p2-arch-team",
-                "rtl-p3-uarch-team",
+            "rat-p1p3-spec-uarch": [
+                "p1-spec-research",
+                "p2-arch-design",
+                "rtl-p3-uarch-design",
             ],
         }
         for skill_name, phase_skills in pipeline_skills.items():
@@ -663,7 +722,8 @@ class TestCrossReferences:
             "codex-cross-reviewer must include re-validation step after fixes"
         )
 
-        # 5b. Step 2b has timeout protection; Step 4b reuses Step 2b procedure
+        # 5b. The one Codex pass keeps Step 2b's timeout protection.
+        # There is no Step 4b follow-up. A second exchange runs only when the user asks.
         timeout_count = agent_content.count("timeout 1200")
         assert timeout_count >= 3, (
             f"codex-cross-reviewer Step 2b must have timeout 1200 in Mode A, fallback, and Mode B "
@@ -672,9 +732,11 @@ class TestCrossReferences:
         assert "Falling back to Mode B" in agent_content, (
             "codex-cross-reviewer Step 2b must have Mode B fallback"
         )
-        # Step 4b must reference Step 2b procedure (DRY)
-        assert "reuse Step 2b" in agent_content or "same" in agent_content.split("4b")[1][:200].lower(), (
-            "codex-cross-reviewer Step 4b must reference Step 2b procedure"
+        assert "Do not run Codex again" in agent_content, (
+            "codex-cross-reviewer stops after one Codex pass"
+        )
+        assert "Step 4b" not in agent_content, (
+            "codex-cross-reviewer must not keep a follow-up round"
         )
 
         # 5c. Completion marker uses ${N} substitution, not literal N
@@ -1068,7 +1130,7 @@ class TestCoverageDrivenVerification:
         """P4 skills must have ac-coverage-advisory in completion criteria."""
         scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
         pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
-        p4_skills = ["rtl-p4-implement", "rtl-p4-implement-team", "rtl-p4s-unit-test",
+        p4_skills = ["rtl-p4-implement", "rtl-p4s-unit-test",
                       "rtl-p4-block-parallel"]
         for skill in p4_skills:
             if skill in scc:
@@ -1082,7 +1144,7 @@ class TestCoverageDrivenVerification:
         """P5 skills must have ac-coverage-check in completion criteria."""
         scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
         pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
-        p5_skills = ["rtl-p5-verify", "rtl-p5-verify-team", "rtl-p5s-func-verify"]
+        p5_skills = ["rtl-p5-verify", "rtl-p5s-func-verify"]
         for skill in p5_skills:
             if skill in scc:
                 assert "ac-coverage-check" in scc[skill], \

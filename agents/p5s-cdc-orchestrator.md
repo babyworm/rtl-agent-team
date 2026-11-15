@@ -1,6 +1,6 @@
 ---
 name: p5s-cdc-orchestrator
-model: opus
+model: fable
 description: "CDC verification orchestrator. Manages clock domain identification, cross-domain path analysis, synchronizer verification, SDC constraint generation, and optional commercial CDC tool integration."
 skills: [rtl-p5s-cdc-policy]
 ---

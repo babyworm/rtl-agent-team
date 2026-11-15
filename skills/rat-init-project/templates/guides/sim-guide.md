@@ -14,7 +14,7 @@
 - On FAIL: fix via `rtl-p4s-bugfix`, re-verify at the failing tier
 - Tier 3 provides multi-seed regression via `rtl-p5s-func-verify`
 - Coverage targets (Tier 3): line >= 90%, toggle >= 80%, FSM >= 70%
-- **SVA/Coverpoint 3+ iteration rule**: Min 3 rounds of refinement (Draft → Strengthen → Harden)
+- **SVA/Coverpoint**: write the properties once, then judge from the measured result (proof, counterexample, or coverage). Confidence does not pass a failing measurement. Name what is still open. A further pass runs only when the user asks.
 
 ## TB File Naming
 

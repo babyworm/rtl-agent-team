@@ -4,7 +4,9 @@
 # Required tools:
 #   pandoc          - sudo apt install pandoc
 #   xelatex         - sudo apt install texlive-xetex texlive-fonts-recommended
-# Optional tools:
+# Published figures are already PNG next to their SVG.
+# Optional: d2 and mmdc only render a leftover fence. Do not add one.
+#   rsvg-convert or magick — convert the authored SVG to PNG before pandoc
 #   d2              - curl -fsSL https://d2lang.com/install.sh | sh -s --
 #   mmdc            - npm install -g @mermaid-js/mermaid-cli
 

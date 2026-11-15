@@ -16,6 +16,10 @@
 
 {{PORTS_TABLE}}
 
+## Registers
+
+<!-- LLM_FILL: registers from the RTL. _None._ if there are none. Each register: name, offset, access, reset, bit-field PNG (MSB on the left), and Field | Bits | Access | Reset | Description. Every field, including reserved, states the read and the write effect. -->
+
 ## Clock Domains
 
 {{CLOCK_DOMAINS_TABLE}}

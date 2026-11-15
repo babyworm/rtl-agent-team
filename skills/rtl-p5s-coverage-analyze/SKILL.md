@@ -23,7 +23,7 @@ Analyze simulation coverage data to identify uncovered lines, branches, and FSM 
 </Do_Not_Use_When>
 
 <Why_This_Exists>
-Raw coverage reports are verbose and hard to prioritize. `coverage-analyst` identifies which uncovered areas are high-value vs unreachable, and `testbench-dev` writes targeted tests for the high-value gaps. This makes coverage closure systematic rather than relying on ad-hoc test addition. The iterative 3-round loop ensures convergence is tracked across test additions.
+Raw coverage reports are verbose and hard to prioritize. `coverage-analyst` identifies which uncovered areas are high-value vs unreachable, and `testbench-dev` writes targeted tests for the high-value gaps. This makes coverage closure systematic rather than relying on ad-hoc test addition. One pass writes the directed tests and reports the bins that remain.
 </Why_This_Exists>
 
 ## Prerequisites
@@ -49,7 +49,7 @@ If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p
 
 <Execution>
 1. Read `references/coverage-conventions.md` for coverage targets, report structure, and exclusion approval rules.
-2. Spawn `p5s-coverage-orchestrator` (see Tool_Usage) to run 3-round iterative analysis: parse the coverage report (deterministic extraction via `scripts/parse_coverage.py` — supports lcov `.info` and Verilator `coverage.dat`; `v_user` points count as the fsm metric), identify and prioritize gaps, generate directed tests, re-run simulation, and track convergence.
+2. Spawn `p5s-coverage-orchestrator` (see Tool_Usage) for one pass: parse the coverage report (deterministic extraction via `scripts/parse_coverage.py` — supports lcov `.info` and Verilator `coverage.dat`; `v_user` points count as the fsm metric), name the gaps, generate directed tests, re-run simulation once, and report what remains.
 3. The orchestrator writes `reviews/phase-5-verify/{module}-coverage-report.md` using `templates/coverage-gap-report.md` as scaffold, populating high-value and unreachable gap tables.
 4. The orchestrator writes `sim/coverage/test_coverage_fill.py` with one test function per targeted gap.
 5. Any coverage exclusion bins (unreachable items) must go through the `rtl-coverage-exclusion-gate.sh` approval flow — do not apply exclusions silently.
@@ -65,7 +65,7 @@ Task(subagent_type="rtl-agent-team:p5s-coverage-orchestrator",
      prompt="Execute coverage gap analysis. User input: $ARGUMENTS")
 ```
 
-Do not perform analysis work directly — the orchestrator manages 3-round iterative coverage analysis, directed test generation, and coverage convergence tracking.
+Do not perform analysis work directly — the orchestrator runs one coverage pass, writes the directed tests, and reports the bins that remain.
 </Tool_Usage>
 
 <Examples>

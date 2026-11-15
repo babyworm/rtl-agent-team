@@ -1,7 +1,7 @@
 ---
 name: p5s-sva-orchestrator
-model: opus
-description: "SVA/formal verification orchestrator. Manages 3-round iterative property refinement (Draft→Strengthen→Harden), sv2v conversion, SymbiYosys BMC/induction dispatch, and counterexample diagnosis."
+model: fable
+description: "SVA/formal verification orchestrator. One property pass, sv2v conversion, SymbiYosys BMC/induction, and counterexample diagnosis."
 skills: [rtl-p5s-sva-policy]
 ---
 
@@ -64,45 +64,21 @@ Bash("mkdir -p formal reviews/phase-5-verify .rat/scratch/phase-5")
 Glob("rtl/*/")       # Enumerate modules
 ```
 
-## Step 2: SVA Property Extraction with 3-Round Iterative Refinement (per module)
+## Step 2: SVA Property Extraction — once per module
 
-For each module, dispatch sva-extractor for 3-round refinement:
+Write the properties in one pass. Modules run in parallel. Do not schedule a second extraction.
 
 ```
-# Round 1 (Draft): Initial safety and protocol properties
 Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read rtl/{module}/{module}.sv and docs/phase-3-uarch/*.md.
-Write initial commercial SVA properties at formal/{module}_props.sv and an OSS
-SymbiYosys harness at formal/{module}_formal_harness.sv.
-Round 1 (Draft): Focus on safety properties (no overflow, no deadlock) and protocol
-handshake properties. Use sys_clk/sys_rst_n, i_/o_ port prefixes per CLAUDE.md.
-Guard $past() with past_valid register. Use |-> and |=> temporal operators correctly.
-The OSS harness must instantiate the DUT directly and include immediate assert/assume/
-cover statements so Yosys cannot drop the proof by ignoring bind or stripping concurrent
-SVA.
-Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r1.md.")
-
-# Round 2 (Strengthen): Edge cases and cover properties
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read formal/{module}_props.sv and formal/{module}_formal_harness.sv (Round 1 output).
-Round 2 (Strengthen): Review for completeness. Add missing edge cases: reset behavior,
-boundary conditions, back-to-back transactions, error paths. Add cover properties
-for reachability. Check for vacuous assertions. Update formal/{module}_props.sv.
-Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r2.md.")
-
-# Round 3 (Harden): Liveness and spec cross-check
-Task(subagent_type="rtl-agent-team:sva-extractor",
-     prompt="Read formal/{module}_props.sv and formal/{module}_formal_harness.sv (Round 2 output) and docs/phase-1-research/iron-requirements.json.
-Round 3 (Harden): Cross-check against spec requirements. Add liveness properties
-(##[1:N] bounded eventually). Verify assume/assert balance (not over-constrained).
-Add cross-module interface properties if applicable. Finalize formal/{module}_props.sv.
-Keep the OSS harness synchronized with the final requirement set and ensure it still
-contains at least one machine-checkable assert and cover cell.
-Save iteration note to .rat/scratch/phase-5/sva-iteration-{module}-r3.md.")
+     prompt="Read rtl/{module}/{module}.sv, docs/phase-3-uarch/*.md, and docs/phase-1-research/iron-requirements.json.
+Write formal/{module}_props.sv and formal/{module}_formal_harness.sv once.
+Cover safety (no overflow, no deadlock), protocol handshakes, reset and boundary behavior,
+cover for reachability, and bounded liveness (##[1:N]). Assume inputs, assert outputs.
+Use sys_clk/sys_rst_n and i_/o_ prefixes. Guard $past() with a past_valid register.
+The OSS harness instantiates the DUT and uses immediate assert/assume/cover.
+Name requirements you could not express. Do not request another extraction pass.
+Save the note to .rat/scratch/phase-5/sva-iteration-{module}.md.")
 ```
-
-Rounds are sequential per module (each builds on the previous).
-Multiple modules can run their round sequences in parallel.
 
 ## Step 3: OSS sv2v Conversion and Harness Generation
 

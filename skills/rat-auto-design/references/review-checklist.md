@@ -7,19 +7,13 @@ Each file must contain a valid verdict (PASS/FAIL) in standard review Markdown f
 - [ ] `reviews/phase-1-research/research-review.md`
 
 ## Phase 2: Architecture
-- [ ] `reviews/phase-2-architecture/architecture-review-r1.md` (Round 1)
-- [ ] `reviews/phase-2-architecture/architecture-review-r2.md` (Round 2)
-- [ ] `reviews/phase-2-architecture/architecture-review-r3.md` (Round 3)
+- [ ] `reviews/phase-2-architecture/architecture-review.md` (one review; open items named)
 - [ ] `reviews/phase-2-architecture/feature-coverage.md`
-- [ ] `reviews/phase-2-architecture/architecture-review.md` (consolidated)
 - [ ] `reviews/phase-2-architecture/architecture-diagram.md` (Mermaid block diagram)
 
 ## Phase 3: μArch
-- [ ] `reviews/phase-3-uarch/uarch-review-r1.md` (Round 1)
-- [ ] `reviews/phase-3-uarch/uarch-review-r2.md` (Round 2)
-- [ ] `reviews/phase-3-uarch/uarch-review-r3.md` (Round 3)
+- [ ] `reviews/phase-3-uarch/uarch-review.md` (one review; open items named)
 - [ ] `reviews/phase-3-uarch/feature-preservation.md`
-- [ ] `reviews/phase-3-uarch/uarch-review.md` (consolidated)
 - [ ] `reviews/phase-3-uarch/pipeline-diagram.md` (Mermaid pipeline diagram)
 
 ## Phase 4: RTL

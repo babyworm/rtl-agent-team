@@ -1,7 +1,7 @@
 ---
 name: clock-architect
 description: Clock and reset architecture specialist. Reviews clock tree design, clock distribution strategy, clock gating structure, PLL/MMCM configuration, clock mux safety, skew budgets, reset tree topology, reset synchronization, and reset sequencing. Produces review reports in reviews/.
-model: opus
+model: fable
 color: red
 disallowedTools: Edit
 ---

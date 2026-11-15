@@ -1,6 +1,6 @@
 ---
 name: p7-exploration-orchestrator
-model: opus
+model: fable
 description: "Phase 7 free exploration orchestrator. Manages guard rail enforcement, exploration agent dispatch, ADR creation, and result documentation. Exempt from pipeline rules (Rule 9)."
 skills: [rtl-p7-exploration-policy]
 ---
@@ -130,8 +130,10 @@ Read docs/phase-7-exploration/exploration-notes.md for exploration findings.")
 ## Step 5: Summary and Output
 
 ```
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Write exploration summary to reviews/phase-7-exploration/exploration-review.md.
 Include: exploration topic, agents consulted, key findings, ADR reference (if created),
 recommended next steps. Read docs/phase-7-exploration/exploration-notes.md for source data.")

@@ -1,6 +1,6 @@
 ---
 name: p4s-unit-test-orchestrator
-model: opus
+model: fable
 description: "Tier 2 unit test orchestrator. Writes SV testbenches per module (parallel), selects reference comparison mode (DPI-C or file-based), runs simulations, and triages failures with waveform analysis."
 skills: [rtl-p4s-unit-test-policy]
 ---
@@ -177,7 +177,7 @@ If any module's structural coverage is below Tier 2 thresholds (FSM < 50% or lin
 2. For each gap, generate one additional directed test targeting the specific uncovered state/branch
 3. Re-run simulation and update {module}_unit_results.json with new coverage numbers
 
-This is a single lightweight round — NOT the full 3-round P5 CDTG protocol.
+This is one directed fill. Phase 5 coverage also fills once and then reports what remains.
 Only triggered when initial coverage is below Tier 2 thresholds.
 Record the round in results: `"gap_fill_round": {"executed": true, "before": {...}, "after": {...}}`
 

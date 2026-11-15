@@ -1,6 +1,6 @@
 ---
 name: rtl-document
-description: "Generate Markdown docs for an RTL module (port/param/FSM tables, synth summary) — 'document this module', 'port table', 'refresh RTL docs'."
+description: "Generate Markdown docs for an RTL module (ports, registers, FSM, ARM figures) — 'document this module', 'port table', 'refresh RTL docs'."
 user-invocable: true
 argument-hint: "[module-name | --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
@@ -39,8 +39,8 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 |------|------|
 | `templates/module-doc-template.md` | Main Markdown skeleton (Overview/Params/Ports/Clocks/Instances/Diagram). |
 | `templates/port-table-snippet.md` | Port-table format with `i_/o_/io_` prefix, `{domain}_clk`/`{domain}_rst_n`, kind column. |
-| `templates/fsm-section-snippet.md` | FSM table plus Mermaid `stateDiagram-v2` skeleton. |
-| `templates/block-diagram-snippet.d2` | D2 block diagram for sub-instance hierarchy. |
+| `templates/fsm-section-snippet.md` | FSM table plus a PNG figure link. The SVG is drawn beside it. |
+| `references/figures/ctrl-bitfield.svg` | ARM bit-field bar format sample. Insert the PNG. |
 | `scripts/extract_module_doc.py` | Verible-based deterministic extractor — emits JSON for ports/params/instances/FSM/conventions. |
 | `scripts/render_doc.py` | JSON + template → `docs/rtl/{module}.md` with `<!-- LLM_FILL: ... -->` markers. |
 | `references/doc-conventions.md` | Naming rules, table format, diagram-tool choice, anti-patterns. |
@@ -57,13 +57,14 @@ If the prerequisite is missing: WARNING — recommend running `/rtl-agent-team:r
 
 <Execution>
 1. Run `python3 {plugin_root}/skills/rtl-document/scripts/extract_module_doc.py --rtl rtl/{module}/{module}.sv [--syn-report syn/synth_report.txt] --out /tmp/{module}.json` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`). If exit code 2 (verible missing), fall back to manual extraction via `rtl-explorer` (see Tool_Usage).
-2. Run `python3 {plugin_root}/skills/rtl-document/scripts/render_doc.py --json /tmp/{module}.json --template-dir {plugin_root}/skills/rtl-document/templates/ --out docs/rtl/{module}.md`. The script composes `module-doc-template.md` with the optional snippets — `port-table-snippet.md` when ports exist, `fsm-section-snippet.md` when `fsm_candidates` is non-empty, `block-diagram-snippet.d2` when there are two or more instances.
-3. Read `references/doc-conventions.md` once for naming/format/diagram rules.
+2. Run `python3 {plugin_root}/skills/rtl-document/scripts/render_doc.py --json /tmp/{module}.json --template-dir {plugin_root}/skills/rtl-document/templates/ --out docs/rtl/{module}.md`. The script composes `module-doc-template.md` with `fsm-section-snippet.md` when `fsm_candidates` is non-empty, and a block-diagram PNG link when there are two or more instances.
+3. Read `references/doc-conventions.md` once for naming, figures, length, and registers.
 4. Open at least one matching `examples/*.md` for tone reference — pick the example whose complexity (small / multi-domain / FSM-heavy) is closest to the target module.
 5. Replace every `<!-- LLM_FILL: ... -->` marker in `docs/rtl/{module}.md`. Apply to all such markers in the file — do not stop after the first.
-6. Report the generated file path to the user.
+6. Draw each figure as SVG in ARM Developer's Guide style. If a diagram-design skill is available, use it to draw the SVG. Otherwise draw the SVG. Convert it to the PNG the markdown already links. Keep the SVG beside the PNG. Do not leave a D2 or Mermaid fence.
+7. Report the generated file path to the user.
 
-Apply steps 1-6 to every requested module. When `--all` is passed, fan out using one task per module in parallel.
+Apply steps 1-7 to every requested module. When `--all` is passed, fan out using one task per module in parallel.
 </Execution>
 
 <Tool_Usage>
@@ -84,19 +85,19 @@ Task(subagent_type="rtl-agent-team:synthesis-reporter",
 <example index="1">
 <scenario>Small datapath module, no FSM, single clock domain.</scenario>
 <reference>examples/simple_fifo.md</reference>
-<expected_output>Port table only; FSM and D2 sections omitted by render_doc.py because the JSON has empty fsm_candidates and one instance or fewer.</expected_output>
+<expected_output>Port table and a Registers section. FSM and the block-diagram PNG are omitted because the JSON has empty fsm_candidates and one instance or fewer.</expected_output>
 </example>
 
 <example index="2">
 <scenario>AXI-Stream bridge with two clock domains.</scenario>
 <reference>examples/axi_stream_bridge.md</reference>
-<expected_output>Ports grouped by AXI / APB; Clock Domains table lists both `sys` and `pixel`; D2 block diagram shows the async-FIFO bridge.</expected_output>
+<expected_output>Ports grouped by AXI / APB; Clock Domains table lists both `sys` and `pixel`; the block diagram is an ARM SVG inserted as PNG.</expected_output>
 </example>
 
 <example index="3">
 <scenario>FSM-heavy codec module with multiple sub-instances.</scenario>
 <reference>examples/cabac_encoder_excerpt.md</reference>
-<expected_output>FSM table with Mermaid `stateDiagram-v2`; D2 block diagram for the sub-instance tree; functional description references the relevant standard section.</expected_output>
+<expected_output>FSM table and sub-instance tree, each an ARM SVG inserted as PNG. Functional description references the relevant standard section. Every register field is decided and explained.</expected_output>
 </example>
 </Examples>
 
@@ -118,6 +119,8 @@ Task(subagent_type="rtl-agent-team:synthesis-reporter",
 - [ ] Parameters use `UPPER_SNAKE_CASE`.
 - [ ] Instance table uses `u_` prefix.
 - [ ] All `<!-- LLM_FILL: ... -->` markers replaced.
+- [ ] Each figure is an ARM SVG inserted as PNG. No D2 or Mermaid fence remains.
+- [ ] Every register field has bits, access, reset, and its read and write effect. No register: the section says `_None._`.
 - [ ] RTL source not modified.
 - [ ] Synthesis Summary included when `syn/synth_report.txt` exists.
 - [ ] Convention violations flagged at the top of the doc when any were found.

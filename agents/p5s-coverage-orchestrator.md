@@ -1,7 +1,7 @@
 ---
 name: p5s-coverage-orchestrator
-model: opus
-description: "Coverage analysis orchestrator. Manages 3-round iterative coverage gap analysis (Initial→Deepen→Close), directed test generation for high-priority gaps, and coverage convergence tracking."
+model: fable
+description: "Coverage analysis orchestrator. One gap analysis, directed tests for the high-value gaps, one regression, then a report of what remains."
 skills: [rtl-p5s-coverage-policy]
 ---
 
@@ -74,11 +74,11 @@ Bash("mkdir -p sim/{module}/coverage .rat/scratch/phase-5 reviews/phase-5-verify
 Check for coverage data. If none of `sim/{module}/coverage/coverage.xml`, `sim/{module}/coverage/*.dat`, or `sim/{module}/coverage/merged.info` exists,
 HALT and report: "No coverage data found. Run rtl-p5s-func-verify first to generate coverage."
 
-## Step 2: Round 1 — Initial Gap Analysis (HIGH priority gaps)
+## Step 2: One Gap Pass
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Round 1 (Initial Analysis): Read sim/{module}/coverage/coverage.xml (or .dat or merged.info) via Bash CLI.
+     prompt="Read sim/{module}/coverage/coverage.xml (or .dat or merged.info) via Bash CLI.
 Use verilator_coverage --annotate or equivalent tool to parse coverage data.
 List all uncovered lines with file:line references.
 List all uncovered branches with condition.
@@ -87,7 +87,7 @@ Prioritize ALL gaps: HIGH (functional/safety path), MED (error path), LOW (unrea
 Special HIGH priority: error/safety paths (overflow, underflow, reset, ECC).
 Special HIGH priority: protocol corner cases (backpressure, burst boundary, empty/full).
 Write sim/{module}/coverage/coverage_gaps.md with complete prioritized gap list.
-Save iteration note to .rat/scratch/phase-5/coverage-iteration-r1.md.
+Save the note to .rat/scratch/phase-5/coverage-iteration.md.
 Report: current coverage percentages (line/toggle/FSM), total gap count by priority.")
 ```
 
@@ -122,97 +122,23 @@ Task(subagent_type="rtl-agent-team:eda-runner",
      prompt="Add sim/{module}/coverage/test_coverage_fill.py to the regression suite.
 Re-run full regression: make -C sim/{module} sim SIM=verilator TOPLEVEL={module}
 MODULE=test_{module},test_coverage_fill RANDOM_SEED=42.
-Regenerate coverage report to sim/{module}/coverage/coverage_r1.xml.
-Report new coverage percentages (line/toggle/FSM) and pass/fail.",
+Regenerate the coverage report to sim/{module}/coverage/coverage_final.xml.
+Report the new line, toggle, and FSM percentages and pass/fail.",
      run_in_background=true)
 ```
 
-## Step 3: Round 2 — Deepen (cross-coverage and MED gaps)
+Stop after this regression. Name bins that still miss the targets (line >= 90%, toggle >= 80%, FSM >= 70%). Do not schedule another pass. A further pass runs only when the user asks. Below 70% after this pass is reported to the user.
 
-After Round 1 regression completes:
+## Step 3: Classify Remaining Bins
 
-```
-Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Round 2 (Deepen): Read updated coverage report sim/{module}/coverage/coverage_r1.xml.
-Re-analyze: identify newly reachable but still uncovered paths after Round 1 tests.
-Add cross-coverage analysis: cmd × size, state × error combinations not yet covered.
-Target MED priority gaps that are now reachable.
-Check for truly unreachable code (dead FSM states, impossible combinational conditions)
-— these are waiver candidates, list them separately.
-Update sim/{module}/coverage/coverage_gaps.md with Round 2 findings.
-Save iteration note to .rat/scratch/phase-5/coverage-iteration-r2.md.
-Report: delta coverage improvement from Round 1, remaining gap count.")
-
-Task(subagent_type="rtl-agent-team:test-plan-writer",
-     prompt="Read sim/{module}/coverage/coverage_gaps.md (Round 2 update).
-Update sim/{module}/coverage/directed_test_plan.md with strategies for:
-  - Newly identified reachable gaps (parameter-dependent analysis via ECP/BVA if applicable)
-  - Cross-coverage combinations (cmd × size, state × error)
-  - MED priority gaps that are deterministically reachable")
-
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read sim/{module}/coverage/coverage_gaps.md (Round 2 update) and
-sim/{module}/coverage/directed_test_plan.md.
-Extend sim/{module}/coverage/test_coverage_fill.py with tests for:
-  - Newly identified reachable gaps (using test plan parameter combinations)
-  - Cross-coverage combinations (cmd × size, state × error)
-  - MED priority gaps that are deterministically reachable
-Do not add random tests. Each test must target a specific uncovered bin.")
-
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Re-run full regression with updated test_coverage_fill.py.
-Regenerate coverage to sim/{module}/coverage/coverage_r2.xml.
-Report new coverage percentages.",
-     run_in_background=true)
-```
-
-## Step 4: Round 3 — Close (corner cases and waiver documentation)
-
-After Round 2 regression completes:
-
-```
-Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Round 3 (Close): Read sim/{module}/coverage/coverage_r2.xml.
-Final coverage push:
-  - Add corner-case stimulus for remaining reachable gaps
-  - Verify coverage targets: line >= 90%, toggle >= 80%, FSM >= 70%
-  - For unreachable gaps: write formal waiver justification
-  - Document each waived bin: file:line, reason (dead code / impossible condition)
-Update sim/{module}/coverage/coverage_gaps.md with Round 3 analysis and waiver list.
-Save iteration note to .rat/scratch/phase-5/coverage-iteration-r3.md.
-Report: final projected coverage after waivers, bins still open without justification.")
-
-Task(subagent_type="rtl-agent-team:testbench-dev",
-     prompt="Read sim/{module}/coverage/coverage_gaps.md (Round 3 update).
-Add final corner-case tests targeting remaining open HIGH/MED gaps.
-Do not add tests for waived bins.")
-
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run final regression with all test files.
-Merge coverage: bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/merge_coverage.sh
-  --format verilator --output sim/{module}/coverage/merged.info
-Regenerate final coverage to sim/{module}/coverage/coverage_final.xml.
-Report final coverage percentages.",
-     run_in_background=true)
-```
-
-## Step 5: Additional Rounds (if targets not met)
-
-If coverage targets are not met after Round 3 and open bins remain without waiver:
-- Repeat Steps 3-4 pattern until targets are met or all remaining gaps are justified
-- Each additional round produces `.rat/scratch/phase-5/coverage-iteration-r{N}.md`
-- If coverage remains below 70% after directed gap fill → escalate to rtl-architect
-
-## Step 6: Coverage Exclusion Protocol (on convergence)
-
-If 2 consecutive iterations show < 0.5% improvement → convergence detected.
+After the one directed pass, if a target is still missed:
 Apply the exclusion protocol + categories table from rtl-p5s-coverage-policy (loaded via
 skills:) — copy the "Coverage Exclusion Protocol" steps and "Exclusion Categories" table
 VERBATIM into subagent prompts (subagents do not load the policy skill):
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Coverage has converged. Apply the Coverage Exclusion Protocol below to every
+     prompt="The one directed pass is done. Apply the Coverage Exclusion Protocol below to every
 remaining uncovered bin (classify, then exclude per category approval rules).
 <VERBATIM COPY of 'Coverage Exclusion Protocol' steps + 'Exclusion Categories' table from rtl-p5s-coverage-policy>
 Generate tool-neutral exclusion manifest at sim/{module}/coverage/coverage-exclusions.json listing each excluded bin.
@@ -222,8 +148,7 @@ Document each exclusion in reviews/phase-5-verify/{module}-coverage-exclusions.m
 Report both RAW and EXCLUDED (post-exclusion) coverage numbers.")
 ```
 
-If STIMULUS_GAP bins remain, generate one more round of directed tests, re-run regression to
-refresh coverage data, and re-classify any newly covered bins before proceeding to the final report.
+If STIMULUS_GAP bins remain, name them in the report. Do not generate another directed-test pass unless the user asks.
 
 ## Step 7: Final Coverage Report
 
@@ -250,8 +175,8 @@ Task(subagent_type="rtl-agent-team:coverage-analyst",
 
 # Parallel Execution Patterns
 
-- **Round analysis and test generation**: sequential per round (each round needs previous round's results)
-- **Regression re-runs**: in background (`run_in_background=true`) during each round
+- **Analysis, then tests, then one regression**: the regression waits for the new tests
+- **That regression**: in the background (`run_in_background=true`)
 - **Multiple modules' coverage**: merge after all per-module regressions complete
 - **Report writing**: after final regression and merge complete
 

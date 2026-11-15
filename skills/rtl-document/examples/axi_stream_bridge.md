@@ -43,12 +43,11 @@ Asynchronous bridge from APB-controlled `sys` domain to an AXI4-Stream egress on
 
 ## Block Diagram
 
-```d2
-# axi_stream_bridge sub-instances
-  u_ingress_fifo: async_fifo
-  u_egress_fifo: async_fifo
+![Figure 1-1. axi_stream_bridge block diagram.](figures/axi_stream_bridge-block.png)
 
-```
+## Registers
+
+_None._ The APB address port is present. This excerpt defines no register.
 
 ## Design Notes
 

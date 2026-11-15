@@ -238,12 +238,15 @@ Check if `~/.claude/CLAUDE.md` already contains `<markdown_diagram_rule>` tag.
 
 | Diagram Type | Tool | Use For |
 |-------------|------|---------|
-| **Block diagram** | **D2** | Architecture, module hierarchy, HW block decomposition |
-| **Flow / Interaction** | **Mermaid** | Pipeline stages, FSM, data/control flow, sequence diagrams |
-| **ASCII flow diagram** | **Prohibited** | Do NOT use ASCII art — use D2 or Mermaid |
+| **Block diagram** | **D2** | Architecture and μArch working notes |
+| **Flow / Interaction** | **Mermaid** | FSM and flow in architecture and μArch working notes |
+| **Reader-facing figure** | **SVG, inserted as PNG** | Design notes and `docs/rtl`. ARM Developer's Guide style. |
+| **ASCII flow diagram** | **Prohibited** | Do not use ASCII art |
 
 D2: architecture diagrams (`.d2` code blocks), per-module internal structure.
 Mermaid: FSM (`stateDiagram-v2`), data flow (`flowchart`), sequences (`sequenceDiagram`).
+
+Reader-facing documents (a design note, `docs/rtl`) author each figure as SVG in ARM Developer's Guide style and insert the PNG. D2 and Mermaid above are for architecture and μArch working notes.
 </markdown_diagram_rule>
 ```
 

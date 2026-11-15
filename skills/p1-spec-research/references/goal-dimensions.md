@@ -68,14 +68,13 @@ The clarifier MUST NOT invent answers. When the user has no answer:
 - **Don't expand scope.** If the user says "encrypt only", do not ask "and
   also decrypt?".
 
-Leave low scores as low. The hard cap (12 rounds) closes the loop with
-remaining ambiguity recorded as `STATUS: ambiguity=N%` in goal.md, and
-`spec-analyst` will produce more OPEN-1-NNN items in response.
+Leave low scores as low. Score once. At most one question. Record the
+remaining ambiguity as `STATUS: ambiguity=N%` in goal.md. A dimension that
+is still vague becomes an OPEN item. Do not open another round to raise the score.
 
 ## Exit semantics
 
 | Ambiguity | Outcome |
 |-----------|---------|
-| ≤ 20%     | Exit immediately. `goal.md` is solid input for spec-analyst. |
-| 21-50%    | Soft cap (8 rounds) reached → ask user "lock and proceed, or continue?". |
-| > 50% after 12 rounds | Hard cap. Write goal.md with whatever exists; spec-analyst will produce many OPEN items. |
+| ≤ 20%     | High confidence. Write `goal.md` and stop. Do not ask. |
+| > 20%     | Low confidence. Ask once about the least clear dimension, record the answer, write `goal.md`, and stop. |

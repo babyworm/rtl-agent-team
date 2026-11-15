@@ -134,12 +134,12 @@ Team mode uses Claude Code native teams for true parallel execution with multipl
 
 | Command | Description |
 |---------|-------------|
-| `/rtl-agent-team:rtl-p1-research-team` | P1 with 4 parallel workers |
-| `/rtl-agent-team:rtl-p2-arch-team` | P2 with 3 parallel workers |
-| `/rtl-agent-team:rtl-p3-uarch-team` | P3 with 3 parallel workers |
-| `/rtl-agent-team:rtl-p4-implement-team` | P4 with 4 parallel workers (10-wave pipeline) |
-| `/rtl-agent-team:rtl-p5-verify-team` | P5 with 4 parallel workers (9-category) |
-| `/rtl-agent-team:rat-p1p3-spec-uarch-team` | P1→P3 pipeline using teams |
+| `/rtl-agent-team:p1-spec-research team` | P1 with 4 parallel workers |
+| `/rtl-agent-team:p2-arch-design team` | P2 with 3 parallel workers |
+| `/rtl-agent-team:rtl-p3-uarch-design team` | P3 with 3 parallel workers |
+| `/rtl-agent-team:rtl-p4-implement team` | P4 with 4 parallel workers (10-wave pipeline) |
+| `/rtl-agent-team:rtl-p5-verify team` | P5 with 4 parallel workers (9-category) |
+| `/rtl-agent-team:rat-p1p3-spec-uarch team` | P1→P3 pipeline using teams |
 
 **How team mode works:**
 1. The skill creates a team with a coordinator + N workers
@@ -302,7 +302,7 @@ your-project/
 - **RTL changes trigger verification gates** — the Stop hook enforces lint → TB → sim
 - **Phase 6 cascade** — if you modify RTL after P6, design review must be re-run
 - **Verification is mandatory** — you cannot skip functional verification after RTL changes (lint alone is insufficient)
-- **Team mode for speed** — append `-team` to phase commands for parallel execution
+- **Team mode for speed** — pass `team` on a phase command for parallel execution
 
 ---
 

@@ -21,20 +21,16 @@ If a change is needed, control returns to the upper phase for approval.
 3. Timing/Performance — Throughput, latency targets met
 4. Area/Power (lowest)
 
-### Cascading Quality
-Higher abstraction levels demand MORE iterative refinement because their quality
-cascades to ALL downstream phases. A defect at the architecture level costs orders
-of magnitude more to fix at RTL than if caught during architecture review.
+### Light review
+One review against the evidence. Name the open items and stop. A further round runs only when the user asks.
 
-Graduated iteration by abstraction level:
-  Phase 1 (Research): 3 mandatory rounds (chief-coordinated)
-  Phase 2 (Architecture): dynamic convergence review (min 2, max 5 rounds per p2-arch-design-policy) — memory, performance, ref model consistency
-  Phase 3 (μArch): dynamic convergence review (min 2, max 5 rounds per rtl-p3-uarch-policy) — performance, interface, memory optimization
-  Phase 4 (RTL): Wave-based lint+sim (implementation-level)
-  Phase 5 (Verify): Sub-phase parallel (terminal verification)
+  Phase 1 (Research): one chief review
+  Phase 2 (Architecture): one review — memory, performance, ref model
+  Phase 3 (μArch): one review — performance, interface, memory
+  Phase 4 (RTL): implement, lint, and one functional check
+  Phase 5 (Verify): check the requirements once
 
-Iteration count can be increased beyond 3 if convergence is not achieved.
-Principle: **refine thoroughly at the top, execute efficiently at the bottom.**
+Do not schedule a second pass to chase convergence. With no measurement, the model's confidence is the gate: the spec has one reading, or one architecture choice fits. Record it. Do not iterate to raise it. Low confidence is named and asked once. Lint, simulation, formal, coverage, synthesis, CDC, and model comparison are judged from the measured result. Confidence does not override a measurement. Prompts state the goal, the constraints, the evidence, and the done condition. Leave effort at the session default.
 
 ### Document-as-Memory
 Design artifacts (docs/, reviews/) serve as persistent memory across phases and agents.
@@ -59,11 +55,11 @@ Quality Gate verdicts: `PASS` or `FAIL + findings[]`
 
 ### Gate Retry Policy
 - On Artifact Gate failure: retry the failed phase once, then escalate to user
-- On Quality Gate failure: pass findings back to the phase's worker agent for correction,
-  then re-run Quality Gate. Maximum 2 retry cycles per gate
+- On Quality Gate failure: if the gate is a judgment with no measurement, high confidence passes and low confidence asks the user once. Do not re-run that gate to become more sure. If the gate is a measurement — lint, simulation, formal, coverage, synthesis, CDC, or a model comparison — the measured result stands. Confidence does not pass a failing measurement. The ladder below applies to that failure.
 - On upper-spec violation: IMMEDIATE STOP (see Escalation)
 
 ### Escalation Ladder (Per-Gate 2x)
+Do not spend this ladder to raise confidence in a spec or an architecture choice. High confidence passes that judgment. The ladder applies when a measurement failed and the artifact is still wrong.
 Every active gate uses a per-gate retry budget `N` (`retry_limit` in state):
 - **Primary range**: attempts `1..N` with normal strategy
 - **Fallback range**: attempts `N+1..2N` with immediate strategy switch
@@ -123,13 +119,13 @@ This policy defines only the artifact/verdict contract the orchestrator checks.
 
 | Gate | Artifact Gate (must exist) | Verdict File(s) | Verdict | Quality Gate |
 |------|---------------------------|-----------------|---------|--------------|
-| 1→2 | `docs/phase-1-research/`: iron-requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md (open-requirements.json optional — absent if P1 had no open items) | `reviews/phase-1-research/research-review.md` + per-round `research-review-r1..r3.md` (mandatory) | verdict=PASS (3-round chief review converged, or gaps escalated and user-approved; all requirements clear, consistent, implementable) | quality gates per p1-spec-research-policy |
-| 2→3 | `docs/phase-2-architecture/architecture.md` (with D2 block diagram) + iron-requirements.json (P2, REQ-A-*) + `refc/*/*.c` | `reviews/phase-2-architecture/architecture-review.md` + `feature-coverage.md` + per-round `architecture-review-r{N}.md` (min 2) | verdict=PASS AND 100% REQ coverage AND review converged | quality gates per p2-arch-design-policy |
-| 3→4 | `docs/phase-3-uarch/*.md` + iron-requirements.json (P3, REQ-U-*) + `bfm/` directory | `reviews/phase-3-uarch/uarch-review.md` + `feature-preservation.md` + per-round `uarch-review-r{N}.md` (min 2) | verdict=PASS AND 100% feature preservation AND review converged | quality gates per rtl-p3-uarch-policy |
+| 1→2 | `docs/phase-1-research/`: iron-requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md (open-requirements.json optional — absent if P1 had no open items) | `reviews/phase-1-research/research-review.md` | verdict=PASS (one chief review, open items named; requirements clear, consistent, implementable) | quality gates per p1-spec-research-policy |
+| 2→3 | `docs/phase-2-architecture/architecture.md` (with D2 block diagram) + iron-requirements.json (P2, REQ-A-*) + `refc/*/*.c` | `reviews/phase-2-architecture/architecture-review.md` + `feature-coverage.md` | verdict=PASS AND 100% REQ coverage | quality gates per p2-arch-design-policy |
+| 3→4 | `docs/phase-3-uarch/*.md` + iron-requirements.json (P3, REQ-U-*) + `bfm/` directory | `reviews/phase-3-uarch/uarch-review.md` + `feature-preservation.md` | verdict=PASS AND 100% feature preservation | quality gates per rtl-p3-uarch-policy |
 | 4→5 | `rtl/*/*.sv` (all lint-clean) + `sim/*/tb_*.sv` + `sim/*/*_results.txt` (all PASS) + basic integration smoke PASS + Stream B artifacts (see Stream B Rules) | `reviews/phase-4-rtl/functional-completeness.md` + `design-review.md` + `lint-report.md` | verdict=PASS on all three (100% functional coverage, lint 0 errors) | quality gates per rtl-p4-implement-policy |
 | 5 completion | all verification sub-phases (5a-5e) PASS | `reviews/phase-5-verify/requirement-traceability.md` + `e2e-traceability.md` + `final-compliance.md` | verdict=PASS (every requirement implemented, verified, passing) | quality gates per rtl-p5-verify-policy |
 | 5→6 | — (artifact-only gate) | `reviews/phase-5-verify/final-compliance.md` | verdict=PASS | — |
-| 6 completion | `reviews/phase-6-review/design-note.md` (complete document) + `improvements.md` (recommendations produced) | `reviews/phase-6-review/code-review.md` + `design-review.md` | verdict=PASS on both; on FAIL iterate review → fix cycle (max 2 rounds) | quality gates per rtl-p6-design-review-policy |
+| 6 completion | `reviews/phase-6-review/design-note.md` (complete document) + `improvements.md` (recommendations produced) | `reviews/phase-6-review/code-review.md` + `design-review.md` | verdict=PASS on both; on FAIL name the inconsistencies once and report what remains | quality gates per rtl-p6-design-review-policy |
 
 **Phase 1 gate additions** (owned by this policy): compliance-checker verifies iron
 requirements have no internal contradictions; arch-designer confirms implementation
@@ -143,13 +139,9 @@ Quality Gate Results, Open Items, Document References)
 
 **ADR Recording** (Phase 2→3 and 3→4 gates): 3-5 key decisions → `docs/decisions/ADR-{NNN}.md`
 
-**Phase 2 Iterative Review**: reviewer roster, round semantics, rebuttal protocol, and
-convergence criteria are owned by p2-arch-design-policy (dynamic convergence: min 2, max 5
-rounds; domain experts conditional on domain-package presence).
+**Phase 2 review**: one pass. Roster and rebuttal rules are owned by p2-arch-design-policy.
 
-**Phase 3 Iterative Review**: reviewer roster (incl. BFM reviewer), round semantics,
-rebuttal protocol, and convergence criteria are owned by rtl-p3-uarch-policy (dynamic
-convergence: min 2, max 5 rounds; domain experts conditional on domain-package presence).
+**Phase 3 review**: one pass. Roster and rebuttal rules are owned by rtl-p3-uarch-policy.
 
 ## Stream B Rules (Phase 4)
 

@@ -8,33 +8,16 @@ user-invocable: false
 
 ## Core Principles
 
-- **AskUserQuestion-First**: Resolve every ambiguity, design choice, or scope decision via
-  AskUserQuestion BEFORE proceeding. Never assume — a wrong assumption cascades to all later phases.
-- **Structured Interview (before spec parsing)**: Interview the user first — one question per
-  message covering goal, scope, constraints, priority trade-offs, verification strategy, and
-  dependencies (full interview protocol owned by the goal-clarifier agent). Record answers in
-  `docs/phase-1-research/design-intent.md`; resolve ambiguous spec language with the user's
-  stated intent, never agent assumptions.
-- **Approach Comparison for Open Items**: When the spec allows multiple implementation paths,
-  present a per-OPEN comparison table (Approach | Pros | Cons | Area Est. | Latency Est. |
-  Recommendation) and let the user select via AskUserQuestion. Record choice + rationale in
-  open-requirements.json `resolution_rationale`.
-- **Incremental Requirement Approval**: Seek approval in stages — interface/IO → functional
-  (per block) → performance → open items — so users correct misinterpretations before they
-  propagate. Finalize iron-requirements.json only after all stages are approved.
+- **Confidence**: Phase 1 has no EDA measurement, so the model's confidence is the gate. High confidence means low ambiguity: the spec has one reading, or one approach fits the evidence and the others do not. Record that confidence with the decision. Do not iterate to raise it. Low confidence is named and asked once; the user's answer is the decision.
 - **Domain-Consult-First**: Invoke domain-consult for algorithms, standards, coding tools, and
   HW trade-offs — never research in isolation. Experts provide knowledge; spec-analyst captures
   it as structured artifacts.
-- **Propose, Do Not Decide**: Present algorithm/tool candidates with trade-offs; the user makes
-  final selections. Architecture-level decisions (pipeline, partitioning, memory hierarchy)
-  belong to Phase 2 — Phase 1 surveys and recommends.
-- **Exhaustive Tree Exploration**: Spawn maximum parallel agents to explore every feasible
-  solution path before committing. Skip ONLY if the user specifies exact algorithm +
-  architecture (even then, explore at least 2 variants for validation).
+- **One choice when it is clear**: When one algorithm or tool fits and the others do not, record it. When more than one still fits, name them and ask once. Architecture-level decisions (pipeline, partitioning, memory hierarchy) belong to Phase 2.
+- **No forced exploration**: If the user named the algorithm and the architecture, or one candidate already fits, record that choice. Do not spawn a solution tree to manufacture alternatives.
 
 ## Spec Refinement Criteria
 
-AskUserQuestion MUST cover these areas (skip items already provided by user):
+Ask once, and only for an area that is still ambiguous (skip items already provided by the user):
 - Target codec, profile, level (e.g., H.264 High Profile Level 4.1)
 - Target resolution and framerate (e.g., 1080p@60fps, 4K@30fps)
 - Encoder, decoder, or both
@@ -43,28 +26,18 @@ AskUserQuestion MUST cover these areas (skip items already provided by user):
 - Feature scope restrictions (e.g., "TQ only", "intra-only")
 - Priority trade-off preference (throughput vs area vs power vs quality)
 
-## 3-Round Chief Review Protocol
+## Chief Review
 
-Mandatory 3 rounds, coordinated by rtl-architect (domain-agnostic default).
-If a domain chief exists (e.g., vcodec-chief-standard-expert for video-codec domain),
-invoke both rtl-architect AND domain chief for domain-specific validation:
-- **Round 1**: Cross-block data flow completeness, dependencies, performance constraints,
-  fixed-point constraints, cross-block issues, [AMBIGUITY]/[CONFLICT] status
-  Save: `reviews/phase-1-research/research-review-r1.md`
-- **Round 2**: Convergence assessment. Rebuttal: spec-analyst accepts/rejects each Round 1 finding with rationale. Even if converged, proceed to Round 3
-  Save: `reviews/phase-1-research/research-review-r2.md`
-- **Round 3**: Mandatory final quality pass. Remaining gaps → escalate via AskUserQuestion
-  Save: `reviews/phase-1-research/research-review-r3.md`
+One review, coordinated by rtl-architect. If a domain chief exists (for example vcodec-chief-standard-expert), both review once. Check:
 
-Review criteria per round:
-1. Data flow: inputs/outputs defined at every block boundary
-2. Dependencies: which block produces/consumes what data
-3. Performance: throughput, latency, bandwidth as specific numbers
-4. Fixed-point: bit widths, rounding modes per block
-5. Cross-block issues: RDOQ↔Entropy dependency, ME↔MC pipeline, etc.
-6. Ambiguities: all resolved or promoted to [ARCHITECTURE_DECISION]
+1. Data flow: inputs and outputs at every block boundary
+2. Dependencies: which block produces and consumes each value
+3. Performance: throughput, latency, and bandwidth as numbers
+4. Fixed-point: bit widths and rounding modes per block
+5. Cross-block issues
+6. Ambiguities: resolved, or promoted to an architecture decision
 
-User may override round count: "set iterations to N" → N rounds (minimum 1).
+Save `reviews/phase-1-research/research-review.md`. Name the open items and stop. A second pass runs only when the user asks, and is saved as `research-review-r2.md`. Do not schedule that pass.
 
 ## Iron/Open Requirement Taxonomy
 
@@ -79,10 +52,9 @@ This policy owns only the classification and verification rules below.
 
 ### Classification Rules
 
-- Functional/performance requirements with clear, measurable acceptance_criteria → **iron**
-- Architecture/implementation choices needing further investigation → **open**
-- Items with ambiguity score > 0.5 → CANNOT become iron until clarified
-- A requirement cannot become iron until its ambiguity score passes (reproducibility check)
+- A requirement with one reading and measurable acceptance_criteria → **iron**. That is high confidence.
+- A choice where more than one implementation still fits → **open**. Name it and ask once.
+- Do not withhold iron status in order to run another scoring pass.
 
 ## Iron/Open Classification Verification
 
@@ -91,8 +63,8 @@ After iron/open files are produced, verify:
 **FAIL conditions** (must fix before exit):
 - acceptance_criteria contains vague terms ("should support", "adequate", "sufficient")
 - open item missing evaluation_criteria
-- open item has candidates.length ≤ 1
 - iron item missing violation_policy
+- One candidate is not a failure. It is high confidence when that candidate fits and the others do not.
 
 **WARN conditions** (log and proceed):
 - iron ratio < 30% (most items pushed to open — weakens Phase 1 value)
@@ -181,93 +153,19 @@ comes from an independent census + mechanical diff:
 
 - Spec document not found → report to user, halt
 - Conflicting requirements between experts → flag conflict in domain-analysis.md, ask user
-- Chief not converged after 3 rounds → escalate remaining gaps to user with specific questions
+- Open items remain after the one review → report them to the user with specific questions
 - Sub-domain expert returns [DOMAIN_UNCERTAINTY] → AskUserQuestion before proceeding
 
-## Ambiguity Score Protocol
+## Confidence
 
-Every Phase 1 completion MUST include an ambiguity assessment:
+Record one ambiguity assessment in `docs/phase-1-research/ambiguity-assessment.md`. This file satisfies `ambiguity-pass`.
 
-1. spec-analyst produces `Ambiguity_Assessment` with per-axis scores
-2. Ambiguity Gate enforced by both orchestrators:
-   - p1-research-orchestrator: Step 7.5
-   - p1-research-team-orchestrator: Step 3.5
-3. Score is recorded in `docs/phase-1-research/ambiguity-assessment.md`
-4. Phase 2 entry reads this score — if > 0.3, phase 2 reviewers prioritize clarifying those axes
+Axes, weighted once: Goal 40%, Constraint 30%, Acceptance criteria 30%. Higher means more ambiguous.
 
-This is inspired by Ouroboros's AmbiguityScorer pattern:
-- Goal Ambiguity (40%): Is the design objective ambiguous? (0.0=clear, 1.0=ambiguous)
-- Constraint Ambiguity (30%): Are timing/area/power/protocol constraints missing? (0.0=explicit, 1.0=missing)
-- AC Ambiguity (30%): Are acceptance criteria untestable? (0.0=testable, 1.0=untestable)
+- Score ≤ 0.3, or the spec has one reading: high confidence. Pass. Do not ask and do not re-score.
+- Score above 0.3: low confidence. Name the unclear axes and ask the user once. Their answer is the decision. Do not re-score and do not start another interpretation pass.
 
-Scoring: ambiguity_score = weighted_average(goal, constraint, ac) — higher = worse
-- ≤ 0.3: PASS — proceed to Phase 2
-- 0.3–0.5: CONDITIONAL PASS — log warnings, Phase 2 reviewers focus on flagged axes
-- \> 0.5: BLOCK — resolve top ambiguities via AskUserQuestion before proceeding
-
-## Adversarial Interpretation Gate (Steps 7.6-7.9)
-
-After ambiguity gate (Step 7.5a) and iron/open verification (Step 7.5b) pass,
-run adversarial reinterpretation to surface ambiguities the initial analysis missed.
-
-### Protocol (summary — Task-level orchestration owned by p1-research-orchestrator Steps 7.6-7.9)
-
-1. **7.6 Challenge**: adversarial spec-analyst (clean context) challenges iron-requirements.json
-   by `source.section` (not REQ ID); types: `REINTERPRETATION` (alternative reading) and
-   `OMISSION` (zero-REQ spec feature vs spec-feature-inventory.json →
-   original_interpretation="NOT_EXTRACTED", severity HIGH). Output
-   `.rat/scratch/stability/phase-1/challenge-report.json`
-   (schema: `skills/p1-spec-research/templates/challenge-report-schema.json`; max 30 per pass).
-2. **7.7 User resolution**: HIGH individually via AskUserQuestion; MEDIUM batched if >10;
-   LOW auto-documented. User may mark challenges NOT_GENUINE.
-3. **7.8 Re-run**: spec-analyst re-analyzes with accumulated clarifications → all 4 canonical
-   artifacts (iron/open requirements, io_definition, timing_constraints) + self-validation.
-4. **7.9 Gate check**: compute Gate Metric below + save `reviews/phase-1-research/stability-report.md`.
-
-### Gate Metric
-
-```
-genuine = (HIGH + MEDIUM challenges) - NOT_GENUINE
-resolved = RESOLVED + DOCUMENTED
-resolution_ratio = resolved / genuine   (if genuine == 0: pass)
-gate_pass = (all HIGH resolved) AND (resolution_ratio ≥ 0.8)
-```
-
-Gate failure: list unresolved HIGH challenges, loop back to Step 7.7 (max 1 re-loop).
-After 2nd failure: escalate to user with full divergence report.
-
-### Dual Gate Arbitration (Ambiguity Score + Adversarial Gate)
-
-| Ambiguity Score | Adversarial Gate | Decision |
-|-----------------|-----------------|----------|
-| PASS (≤0.3) | PASS | Proceed |
-| PASS (≤0.3) | FAIL | **BLOCK** |
-| CONDITIONAL (0.3-0.5) | PASS | Proceed with WARNING |
-| CONDITIONAL (0.3-0.5) | FAIL | **BLOCK** |
-| BLOCK (>0.5) | PASS | **BLOCK** |
-| BLOCK (>0.5) | FAIL | **BLOCK** |
-
-Rule: Either gate can block; neither can unblock the other.
-
-### Severity Classification
-
-| Severity | Criterion | Example |
-|----------|-----------|---------|
-| HIGH | Missing item (OMISSION) | Spec defines 10 encoding modes, only 5 extracted |
-| HIGH | Different RTL behavior | Signed vs unsigned arithmetic |
-| HIGH | Different interface | 32-bit vs 64-bit datapath |
-| MEDIUM | Different parameterization | Fixed depth vs configurable |
-| MEDIUM | Different timing | 3-stage vs 4-stage pipeline |
-| LOW | Cosmetic only | Block naming differences |
-
-Boundary rule: alternative interpretation would cause different RTL module → HIGH.
-Same module but different parameters → MEDIUM. Same module, same parameters → LOW.
-
-### Pathological Patterns
-
-- Zero challenges on >15 requirements → re-run with stronger adversarial framing
-- >50% items at HIGH severity → spec fundamentally under-specified, escalate
-- Challenge budget exceeded (>30) → rank by severity, return top 30
+A second reading that is already visible is named in that same question. Do not spawn an adversarial re-analysis to go looking for one.
 
 ## Final Checklist
 
@@ -286,23 +184,17 @@ Same module but different parameters → MEDIUM. Same module, same parameters �
 - [ ] `docs/phase-1-research/spec-feature-inventory.json` produced by independent census (clean context, no generated Phase 1 requirement artifact access)
 - [ ] `docs/phase-1-research/feature-coverage.md` saved with zero MISSING features (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR)
 - [ ] `reviews/phase-1-research/research-review.md` saved (consolidated)
-- [ ] Per-round review artifacts saved: research-review-r1.md, r2.md, r3.md
+- [ ] `reviews/phase-1-research/research-review.md` saved
 - [ ] `docs/phase-1-research/solution-tree.json` exists (structured JSON)
 - [ ] `docs/phase-1-research/candidate-comparison.md` exists
 - [ ] `docs/phase-1-research/selected-approach.md` exists
 - [ ] `docs/phase-1-research/literature-survey.md` exists
-- [ ] Tree exploration used maximum parallel agents (8-20 leaf + cross-cutting)
-- [ ] domain-consult invoked at least once
-- [ ] Algorithm/tool candidates presented with trade-offs (NOT pre-selected)
-- [ ] AskUserQuestion used at every ambiguity point (no unresolved assumptions)
-- [ ] `docs/phase-1-research/ambiguity-assessment.md` saved with per-axis scores and overall ambiguity_score
-- [ ] Ambiguity Gate passed (score ≤ 0.3 for PASS, 0.3–0.5 for CONDITIONAL PASS)
-- [ ] Adversarial reinterpretation completed (Step 7.6)
-- [ ] All HIGH challenges resolved or escalated
-- [ ] resolution_ratio ≥ 0.8 (adversarial gate PASS)
-- [ ] `reviews/phase-1-research/stability-report.md` saved
+- [ ] domain-consult invoked when the algorithm or standard is not already settled
+- [ ] A clear algorithm or tool choice is recorded. Alternatives are asked once only when more than one still fits
+- [ ] `docs/phase-1-research/ambiguity-assessment.md` saved once, with per-axis scores and overall ambiguity_score
+- [ ] Confidence is high, or the user answered the one question about the remaining ambiguity (`ambiguity-pass`)
 - [ ] Every iron requirement has measurable acceptance_criteria (no vague terms)
 - [ ] Every iron requirement has `"violation_policy": "user_escalation"`
-- [ ] Every open item has ≥ 2 candidates and evaluation_criteria
+- [ ] Every open item names what is still ambiguous and its evaluation_criteria
 - [ ] File-level target_phase specified in open-requirements.json
 - [ ] Iron/open classification verification passed (no FAIL conditions)

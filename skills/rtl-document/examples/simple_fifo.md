@@ -38,6 +38,10 @@ Synchronous FIFO with `DATA_WIDTH`-bit data path and `DEPTH` entries, providing 
 - WNS: **0.210 ns**
 - TNS: **-3.400 ns**
 
+## Registers
+
+_None._
+
 ## Design Notes
 
 TNS of −3.400 ns with 2 violating paths indicates the memory array read path may be timing-critical at the default `DEPTH`=16 / `DATA_WIDTH`=32 configuration; verify timing constraints match the target frequency before tapeout.

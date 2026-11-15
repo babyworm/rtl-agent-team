@@ -1,7 +1,7 @@
 ---
 name: uarch-designer
-description: Microarchitecture designer for FSMs, pipelines, datapaths, and register maps (Opus)
-model: opus
+description: Microarchitecture designer for FSMs, pipelines, datapaths, and register maps
+model: fable
 color: magenta
 disallowedTools: Write, Edit
 ---
@@ -93,6 +93,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - SRAM wrapper ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (SP standard)
       (prefetch buffer, double buffering, decoupled access-execute, or accepted stall with justification).
     - Total per-stage latency = compute_cycles + memory_access_latency (with or without hiding).
+    - Share an arithmetic operator across operations that do not need it in the same cycle, and schedule it so the operator takes new work as soon as it is free. Record that operator count. Do not leave a copy idle, and do not drop below the required throughput to save area.
     - **Throughput invariant** (MANDATORY for all pipeline decisions):
       `net_throughput = processing_rate_per_cycle × target_clock_freq ≥ required_throughput`
       When adding pipeline stages to shorten critical path, you MUST verify that the net throughput

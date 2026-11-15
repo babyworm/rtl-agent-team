@@ -1,20 +1,16 @@
-
-
 > **한국어 문서**: [README_kr.md](./README_kr.md)
 
-> Please note that, this plugin is not good for fable5.x and opus5.5 or above with more than high effort reasoning level.
-> Since, from Claude 5.x series use "long-term reasoning", time consuming for the "iterative checking" in this plugin.
-> Maintainer try to update model, reasoning level, and descirptions on the plugin for recent models. 
+> Fable 5.x and Opus 5.5 and later already reason for a long time on each turn. This plugin reviews once, names what is still open, and stops. Where no measurement exists, the model's confidence is the gate: one spec reading, or one architecture choice, passes. It does not iterate to become more sure. Low confidence is named and asked once. Lint, simulation, formal, coverage, synthesis, and model comparison are judged from the measured result. Prompts state the goal, the constraints, the evidence, and the done condition. Effort stays at the session default. 
 
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 99 specialized AI agents + 97 skills automate the 6-Phase pipeline:
+> 99 specialized AI agents + 91 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 99 specialized AI agents + 97 skills + 27 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 99 specialized AI agents + 91 skills + 27 reference documents.
 
 ![](./rat_logo.jpg)
 
@@ -209,18 +205,18 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 /rtl-agent-team:domain-consult           # Domain expert consultation
 ```
 
-### Skill categories (97 skills)
+### Skill categories (91 skills)
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| **Action Entry Points** | 56 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
+| **Action Entry Points** | 50 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
 | **Policy** | 32 | Rules/criteria referenced by agents (`*-policy`, non-user-invocable) |
 | **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC |
 | **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations |
 | **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
-| **Total** | **97** | |
+| **Total** | **91** | |
 
-Assets (Templates, Scripts, References, Examples) are distributed across the 97 skills — see each skill directory for its bundled assets.
+Assets (Templates, Scripts, References, Examples) are distributed across the 91 skills — see each skill directory for its bundled assets.
 
 ## Project Artifact Structure
 
@@ -254,7 +250,7 @@ rtl-agent-team/
 ├── agents/                     # 99 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 97 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 91 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -309,8 +305,9 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 | Orchestrators | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator, and 26 more (team/sub-phase variants) |
 
 Model policy:
-- Use `opus` for reasoning-heavy analysis, architecture decisions, and debugging.
-- Use `sonnet` only for documentation generation or tool-result summarization/formatting.
+- `fable` — orchestration, judgment, architecture, and microarchitecture.
+- `opus` — design, verification, and checking.
+- `sonnet` — running a tool or parsing its report (`eda-runner`, `dc-report-parser`, `synthesis-reporter`, `ipxact-generator`).
 
 ### 6-Phase Pipeline (+Phase 7 Optional Exploration)
 
@@ -458,7 +455,7 @@ rtl-agent-team/                          # Marketplace root
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
 ├── agents/                              # rtl-agent-team agents (99)
-├── skills/                              # rtl-agent-team skills (97, with 27 reference docs)
+├── skills/                              # rtl-agent-team skills (91, with 27 reference docs)
 └── domain-packages/                     # Domain knowledge packages
     ├── video-codec/                     # H.264/H.265 codec knowledge
     └── video-processing/                # Color, denoise, HDR/ISP

@@ -50,10 +50,10 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "microarchitecture", "μArch", "uarch", "pipeline design" | `/rtl-agent-team:rtl-p3-uarch-design` | Action Skill |
 | **--- Pipeline Composition ---** | | |
 | "DSE", "design space exploration", "algorithm study", "architecture comparison", "iterative exploration" | `/rtl-agent-team:rat-dse` | Action Skill |
-| "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:rtl-p1-research-team` | Action Skill |
-| "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:rtl-p2-arch-team` | Action Skill |
-| "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-team` | Action Skill |
-| "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rat-p1p3-spec-uarch-team` | Action Skill |
+| "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:p1-spec-research` team mode | Action Skill |
+| "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:p2-arch-design` team mode | Action Skill |
+| "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-design` team mode | Action Skill |
+| "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rat-p1p3-spec-uarch` team mode | Action Skill |
 | "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rat-p1p3-spec-uarch` | Action Skill |
 | "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
 | "RD eval", "BD-PSNR", "BD-rate", "codec quality", "algorithm quality evaluation" | `/rtl-agent-team:codec-rd-eval` | Action Skill |
@@ -67,7 +67,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "rapid rtl", "P4 rapid", "sanity integration", "fast implementation loop" | `/rtl-agent-team:rtl-p4-rapid-impl` | Action Skill |
 | "bug fix", "RTL fix", "RTL bug", "functional error" | `/rtl-agent-team:rtl-p4s-bugfix` | Action Skill |
 | "RTL coding", "module implementation", "SV writing" | `/rtl-agent-team:rtl-p4-implement` | Action Skill |
-| "Phase 4 team", "implement team", "parallel implement" | `/rtl-agent-team:rtl-p4-implement-team` | Action Skill |
+| "Phase 4 team", "implement team", "parallel implement" | `/rtl-agent-team:rtl-p4-implement` team mode | Action Skill |
 | "block parallel", "worktree parallel", "6-block", "block-parallel Phase 4" | `/rtl-agent-team:rtl-p4-block-parallel` | Action Skill |
 | "refactoring", "RTL refactoring", "code cleanup" (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` | Action Skill |
 | "SV unit test", "unit test" (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` | Action Skill |
@@ -80,7 +80,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "functional closure", "P5A", "deep functional verification", "hierarchical functional closure" | `/rtl-agent-team:rtl-p5a-functional-closure` | Action Skill |
 | "silicon validation", "P5B", "signoff readiness", "timing signoff", "post-functional signoff" | `/rtl-agent-team:rtl-p5b-silicon-validation` | Action Skill |
 | "Phase 5", "verification pipeline", "extensive verification" | `/rtl-agent-team:rtl-p5-verify` | Action Skill |
-| "Phase 5 team", "verify team", "parallel verify" | `/rtl-agent-team:rtl-p5-verify-team` | Action Skill |
+| "Phase 5 team", "verify team", "parallel verify" | `/rtl-agent-team:rtl-p5-verify` team mode | Action Skill |
 | "simulation", "functional verification", "testbench", "cocotb" | `/rtl-agent-team:rtl-p5s-func-verify` | Action Skill |
 | "UVM", "UVM verification", "sequence", "agent" (UVM context) | `/rtl-agent-team:rtl-p5s-uvm-verify` | Action Skill |
 | "performance verification", "throughput", "latency measurement" | `/rtl-agent-team:rtl-p5s-perf-verify` | Action Skill |
@@ -109,22 +109,20 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 
 ### Action Skill → Orchestrator Agent Mapping (internal)
 
-Action Skills are user-facing. Each action delegates to one orchestrator agent, which loads one policy skill.
+Action Skills are user-facing. Each action delegates to one orchestrator agent, which loads one policy skill. Team mode of a merged phase skill dispatches that phase's team orchestrator.
 
 | Action Skill | Orchestrator Agent | Policy Skill |
 |--------------|--------------------|-------------|
 | `rat-auto-design` | `autopilot-orchestrator` | `rat-auto-design-policy` |
-| `p1-spec-research` | `p1-research-orchestrator` | `p1-spec-research-policy` |
-| `p2-arch-design` | `p2-arch-orchestrator` | `p2-arch-design-policy` |
-| `rtl-p3-uarch-design` | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
-| `rtl-p4-implement` | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
-| `rtl-p4-implement-team` | `p4-implement-team-orchestrator` | `rtl-p4-implement-policy` |
+| `p1-spec-research` | `p1-research-orchestrator` (team mode: `p1-research-team-orchestrator`) | `p1-spec-research-policy` |
+| `p2-arch-design` | `p2-arch-orchestrator` (team mode: `p2-arch-team-orchestrator`) | `p2-arch-design-policy` |
+| `rtl-p3-uarch-design` | `p3-uarch-orchestrator` (team mode: `p3-uarch-team-orchestrator`) | `rtl-p3-uarch-policy` |
+| `rtl-p4-implement` | `p4-implement-orchestrator` (team mode: `p4-implement-team-orchestrator`) | `rtl-p4-implement-policy` |
 | `rtl-p4-rapid-impl` | `p4-rtl-sanity-orchestrator` | `rtl-p4-rapid-impl-policy` |
 | `rtl-p4s-bugfix` | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
 | `rtl-p4s-refactor` | `p4s-refactor-orchestrator` | `rtl-p4s-refactor-policy` |
 | `rtl-p4s-unit-test` | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
-| `rtl-p5-verify` | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
-| `rtl-p5-verify-team` | `p5-verify-team-orchestrator` | `rtl-p5-verify-policy` |
+| `rtl-p5-verify` | `p5-verify-orchestrator` (team mode: `p5-verify-team-orchestrator`) | `rtl-p5-verify-policy` |
 | `rtl-p5a-functional-closure` | `p5a-functional-closure-orchestrator` | `rtl-p5a-functional-closure-policy` |
 | `rtl-p5b-silicon-validation` | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | `rtl-p5s-func-verify` | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
@@ -140,11 +138,7 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-review-refactor` | `review-refactor-orchestrator` | `code-review-policy`, `refactor-classification-policy`, `verification-recheck-policy` |
 | `codex-cross-review` | `codex-cross-reviewer` | — (self-contained) |
 | `rat-dse` | `dse-orchestrator` | `rat-dse-policy` |
-| `rtl-p1-research-team` | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
-| `rtl-p2-arch-team` | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
-| `rtl-p3-uarch-team` | `p3-uarch-team-orchestrator` | `rtl-p3-uarch-policy` |
-| `rat-p1p3-spec-uarch` | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
-| `rat-p1p3-spec-uarch-team` | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
+| `rat-p1p3-spec-uarch` | `spec-to-uarch-orchestrator` (team mode sequences the phase skills; a failed TeamCreate stays in that phase's sequential section) | `rat-p1p3-spec-uarch-policy` |
 | `rat-p4p5-impl-verify` | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
 | `rtl-p4-block-parallel` | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
 | `rat-ultraloop` | — (skill-driven, dispatches `ultraloop-reviewer` for review cycles) | — |
@@ -331,19 +325,20 @@ Requirements(Spec) → Architecture → μArch → RTL → Verification
 3. Timing/Performance
 4. Area/Power
 
-### Cascading Quality
-Higher abstraction levels require MORE iterative refinement.
+### Light review
+One review against the evidence. Name the open items and stop. A further round runs only when the user asks.
 
-| Phase | Mandatory Review Iterations |
-|-------|---------------------------|
-| Phase 1: Research | 3 mandatory rounds (chief-coordinated) |
-| Phase 2: Architecture | Dynamic convergence (min 2, max 5 rounds; memory, performance, ref model) |
-| Phase 3: μArch | Dynamic convergence (min 2, max 5 rounds; performance, interface, memory) |
-| Phase 4: RTL | 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) |
-| Phase 5: Verify | Sub-phase parallel |
+| Phase | Review |
+|-------|--------|
+| Phase 1: Research | One chief review of the requirements |
+| Phase 2: Architecture | One review (memory, performance, ref model) |
+| Phase 3: μArch | One review (performance, interface, memory) |
+| Phase 4: RTL | Implement, lint, and one functional check |
+| Phase 5: Verify | Check the requirements once |
 
-Phase 2-3 converge when finding_delta < 0.1 and all critical issues are resolved.
-Time is NOT a constraint at upper levels. Spend extra review rounds perfecting architecture and μArch.
+Do not schedule a second pass to chase convergence. Critical findings are reported to the user. Prompts state the goal, the constraints, the evidence, and the done condition. Exact commands stay only for tool calls and for steps whose order must not change. Leave effort at the session default.
+
+Two kinds of decision. Where no EDA or other measurement exists, the model's confidence is the gate. High confidence means low ambiguity: the spec has one reading, or one architecture choice fits and the others do not. Record it. Do not iterate to raise it. Low confidence is named and asked once; the user's answer is the decision. Where a measurement exists — lint, simulation, formal, coverage, synthesis, CDC, or a model comparison — the measured result is the judgment. The model's confidence does not override it.
 
 ### Asymmetric Phase Gate Design
 Exit gates are strict, entry gates are flexible.
@@ -591,10 +586,10 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | BFM, bus functional model, SystemC | `/rtl-agent-team:bfm-develop` |
 | microarchitecture, uarch | `/rtl-agent-team:rtl-p3-uarch-design` |
 | DSE, design space exploration | `/rtl-agent-team:rat-dse` |
-| Phase 1 team, research team, parallel research | `/rtl-agent-team:rtl-p1-research-team` |
-| Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:rtl-p2-arch-team` |
-| Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-team` |
-| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rat-p1p3-spec-uarch-team` |
+| Phase 1 team, research team, parallel research | `/rtl-agent-team:p1-spec-research` team mode |
+| Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:p2-arch-design` team mode |
+| Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-design` team mode |
+| spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rat-p1p3-spec-uarch` team mode |
 | spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rat-p1p3-spec-uarch` |
 | uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rat-p4p5-impl-verify` |
 | RD eval, BD-PSNR, codec quality | `/rtl-agent-team:codec-rd-eval` |
@@ -602,7 +597,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | rapid rtl, P4 rapid, sanity integration, fast implementation loop | `/rtl-agent-team:rtl-p4-rapid-impl` |
 | bug fix, RTL fix, RTL bug | `/rtl-agent-team:rtl-p4s-bugfix` |
 | RTL coding, module implementation | `/rtl-agent-team:rtl-p4-implement` |
-| Phase 4 team, implement team, parallel implement | `/rtl-agent-team:rtl-p4-implement-team` |
+| Phase 4 team, implement team, parallel implement | `/rtl-agent-team:rtl-p4-implement` team mode |
 | block parallel, worktree parallel, 6-block | `/rtl-agent-team:rtl-p4-block-parallel` |
 | refactoring (RTL context) | `/rtl-agent-team:rtl-p4s-refactor` |
 | unit test (RTL context) | `/rtl-agent-team:rtl-p4s-unit-test` |
@@ -614,7 +609,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | functional closure, P5A, deep functional verification, hierarchical functional closure | `/rtl-agent-team:rtl-p5a-functional-closure` |
 | silicon validation, P5B, signoff readiness, timing signoff, post-functional signoff | `/rtl-agent-team:rtl-p5b-silicon-validation` |
 | Phase 5, verification pipeline | `/rtl-agent-team:rtl-p5-verify` |
-| Phase 5 team, verify team, parallel verify | `/rtl-agent-team:rtl-p5-verify-team` |
+| Phase 5 team, verify team, parallel verify | `/rtl-agent-team:rtl-p5-verify` team mode |
 | simulation, testbench, cocotb | `/rtl-agent-team:rtl-p5s-func-verify` |
 | UVM verification, sequence, agent | `/rtl-agent-team:rtl-p5s-uvm-verify` |
 | performance verification, throughput | `/rtl-agent-team:rtl-p5s-perf-verify` |
@@ -644,7 +639,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 
 ## Core Design Principles
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
-- **Cascading Quality**: Higher abstraction = more review iterations. P1: 3 mandatory rounds; P2-P3: dynamic convergence (min 2, max 5). Fix defects at the top, not the bottom.
+- **Light review**: One review against the evidence, then stop and name the open items. A further round only when the user asks. With no measurement, the model's confidence is the gate: one spec reading, or one architecture choice, passes. Do not iterate to raise it. Low confidence is asked once. Lint, simulation, formal, coverage, synthesis, CDC, and model comparison are judged from the measured result. Confidence does not override a measurement. Prompts state the goal, the constraints, the evidence, and the done condition. Do not add step-by-step scaffolding for judgment work. Leave effort at the session default.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
 - **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
 - **Cross-Phase Artifact Functional Consistency**: Verification artifacts (P2 refC, P3 BFM, P4 unit tests, P5 TBs) must be functionally validated against upstream references via output comparison — not just file existence + compilation. BFM that compiles but produces wrong output → FAIL.

@@ -19,6 +19,12 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     You do not make architectural decisions — if the spec is ambiguous you flag the ambiguity
     and request clarification rather than inventing your own interpretation.
 
+    Meet the required throughput, then use less area. Share an arithmetic operator across
+    operations that do not need it in the same cycle, and schedule it so the operator takes
+    new work as soon as it is free. Do not miss the throughput target to save area, and do
+    not add operators once the target is met. A μArch schedule that already fixes the
+    operator count is binding.
+
     Your output is always synthesizable, lint-clean SystemVerilog. One module per file.
     You run the project linter after every file you write.
 
@@ -58,10 +64,16 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - All case statements include a default branch
     - No latches: all signals assigned in always_comb are assigned in every branch
     - No forward references: all signals/types/localparams declared before first use (IEEE 1800 §12.5)
+    - Required throughput is met. Operators that are not needed in the same cycle are shared,
+      and each shared operator stays busy while input is available.
   </Success_Criteria>
 
   <Constraints>
     - Do not invent microarchitecture. Implement exactly what docs/phase-3-uarch/*.md specifies.
+      Where that spec does not fix the operator count, share operators that are not used in
+      the same cycle and keep each shared operator busy while input is available. Where it
+      fixes the count and the schedule, implement that schedule. Do not drop below the
+      required throughput to save area.
     - If the uarch spec is missing information needed to write RTL, stop and report the gap.
     - Do not use `wire` inside always blocks. Use logic for all signals.
     - Do not use `reg` keyword (SystemVerilog, not Verilog).

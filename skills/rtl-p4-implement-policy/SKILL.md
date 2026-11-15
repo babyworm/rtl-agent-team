@@ -21,7 +21,7 @@ Wave 3.5: Synth Gate  — synthesizability-gate per lint-clean module, parallel 
          zero inferred latches / incomplete assignments / non-synth constructs, AND
          DC-script-emittable; max 2 fix rounds, then rtl-architect escalation)
 Wave 4:  Code Review  — rtl-critic per lint-clean module, parallel
-Wave 5:  Bugfix       — ONLY REVIEW_FAIL modules, max 3 review→fix iterations
+Wave 5:  Bugfix       — ONLY REVIEW_FAIL modules, apply the accepted fixes once
 Wave 6a: Tier 1 Smoke — testbench-dev + eda-runner per module, parallel
 Wave 6b: Tier 2 Unit  — Ref model comparison, REQ-U-* tracing, FSM >= 50%, line >= 60%, covergroups >= 1, codec conformance PASS/N/A
 Wave 7:  Module CDC   — cdc-checker per multi-domain module, parallel
@@ -74,6 +74,10 @@ All RTL produced in Phase 4 MUST follow:
 - Parameters: `UPPER_SNAKE_CASE`, localparam: `L_` prefix, types: `snake_case_t`
 - ANSI port style, one module per file
 
+## Datapath
+
+Meet the required throughput, then use less area. Share an arithmetic operator across uses that do not overlap in a cycle, and keep that operator busy while input is available. A μArch schedule that already fixes the operator count is binding. Do not add operators once the target is met, and do not miss the target to save area.
+
 ## Memory Wrapper Rules
 
 Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use the standardized
@@ -121,8 +125,11 @@ Per-module review by rtl-critic:
 5. **Coding style**: naming conventions, parameterization, comments
 6. **Logical correctness**: off-by-one, sign extension, width mismatches
 7. **Power**: unnecessary toggling, missing clock gating opportunities
+8. **Datapath cost**: operators that can be shared without losing throughput are shared, and a shared operator is not left idle while input is waiting
 
-Classification: REVIEW_PASS (0 critical/major findings) or REVIEW_FAIL.
+Classification: REVIEW_PASS or REVIEW_FAIL.
+REVIEW_FAIL is a SPEC VIOLATION, another critical finding, or a major finding other than an idle duplicate operator.
+An idle duplicate operator that the μArch did not require stays Major. It does not by itself fail a spec-faithful design.
 
 ## Structural Verification in Code Review (Wave 4)
 
@@ -139,11 +146,9 @@ Structural findings are classified:
 
 REVIEW_PASS requires zero CRITICAL structural findings.
 
-## Code Review Iteration Protocol (Wave 5)
+## Code Review (Wave 4–5)
 
-- Round 1: Full review (all focus areas)
-- Round 2: Targeted re-review (only previously failed focus areas)
-- Round 3: Final check (must pass or escalate)
+One review covers the focus areas. Apply the accepted fixes once, then re-check only those items. If they still fail, report them. Do not open another review.
 
 ## CDC Check Scope (Phase 4 vs Phase 5)
 
@@ -215,7 +220,7 @@ When no structured AC: existing req_ids gate applies unchanged.
 ## Escalation & Stop Conditions
 
 - Module still has lint errors after 3 fix rounds → escalate to rtl-architect for design review
-- Module fails code review after 3 review→fix iterations → escalate to rtl-architect for structural redesign
+- A review that still fails after the one fix → report it to the user
 - uarch spec is ambiguous for a module → pause that module, flag to user, continue others
 - Unit test fails after 3 debug→fix→re-sim iterations → escalate to waveform-analyzer + rtl-architect
 - CDC FAIL after 2 fix rounds → escalate to cdc-reviewer for synchronization strategy
@@ -244,9 +249,9 @@ ALL of the following must be true before Phase 5:
 
 **Code Review:**
 - [ ] All modules reviewed by rtl-critic (Wave 4)
-- [ ] All modules REVIEW_PASS (0 critical/major findings)
+- [ ] All modules REVIEW_PASS. An idle duplicate operator (Major) does not fail this gate.
 - [ ] Per-module review reports at `.rat/scratch/phase-4/`
-- [ ] No module blocked after 3 review→fix iterations
+- [ ] Open review findings are named. A further fix runs only when the user asks
 
 **Test Plan:**
 - [ ] sim/{module}/{module}_test_plan.md exists for every module (Wave 0 Step 0b)

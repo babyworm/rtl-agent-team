@@ -16,15 +16,15 @@ _SCTX_LIB_DIR="${SCRIPT_DIR:-.}/lib"
 sctx_skill_to_phase() {
   case "$1" in
     # BEGIN GENERATED PHASE_MAP
-    p1-spec-research|rtl-p1-research-team) echo 1 ;;
-    p2-arch-design|rtl-p2-arch-team)       echo 2 ;;
-    rtl-p3-uarch-design|rtl-p3-uarch-team) echo 3 ;;
-    rtl-p4-implement|rtl-p4-implement-team|rtl-p4-block-parallel|rtl-p4s-bugfix|rtl-p4s-unit-test|rtl-p4s-refactor|rtl-p4-rapid-impl|rtl-review-refactor) echo 4 ;;
-    rtl-p5-verify|rtl-p5-verify-team|rtl-p5s-func-verify|rtl-p5s-integration-test|rtl-p5a-functional-closure|rtl-p5b-silicon-validation) echo 5 ;;
+    p1-spec-research) echo 1 ;;
+    p2-arch-design)       echo 2 ;;
+    rtl-p3-uarch-design) echo 3 ;;
+    rtl-p4-implement|rtl-p4-block-parallel|rtl-p4s-bugfix|rtl-p4s-unit-test|rtl-p4s-refactor|rtl-p4-rapid-impl|rtl-review-refactor) echo 4 ;;
+    rtl-p5-verify|rtl-p5s-func-verify|rtl-p5s-integration-test|rtl-p5a-functional-closure|rtl-p5b-silicon-validation) echo 5 ;;
     rtl-p5s-sva-check|rtl-p5s-cdc-verify|rtl-p5s-protocol-verify|rtl-p5s-perf-verify|rtl-p5s-coverage-analyze|rtl-p5s-uvm-verify) echo 5 ;;
     rtl-p6-design-review) echo 6 ;;
     rtl-p7-exploration) echo 7 ;;
-    rat-auto-design|rat-p1p3-spec-uarch|rat-p1p3-spec-uarch-team|rat-dse) echo 1 ;;
+    rat-auto-design|rat-p1p3-spec-uarch|rat-dse) echo 1 ;;
     rat-p4p5-impl-verify) echo 4 ;;
     rtl-ppa-optimize-dc|rat-ultraloop-ppa) echo 8 ;;
     # END GENERATED PHASE_MAP

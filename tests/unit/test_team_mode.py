@@ -176,7 +176,7 @@ class TestP4TaskDependencyGraph:
         synthesizability-pass completion token (registry parity enforced)."""
         scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
         pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
-        for skill in ("rtl-p4-implement", "rtl-p4-implement-team"):
+        for skill in ("rtl-p4-implement",):
             assert "synthesizability-pass" in scc[skill], (
                 f"{skill} missing synthesizability-pass in skill-completion-criteria.json"
             )
@@ -263,7 +263,7 @@ class TestTeamOrchestratorStructure:
         assert len(parts) >= 3
         fm = parts[1]
         assert "name: p5-verify-team-orchestrator" in fm
-        assert "model: opus" in fm
+        assert "model: fable" in fm
         assert "skills:" in fm
 
     def test_p5_verify_team_orchestrator_has_coordination_teammate_role(self):
@@ -281,16 +281,16 @@ class TestTeamOrchestratorStructure:
         assert "blockedBy" in content or "blocked by" in content.lower()
 
     def test_p5_verify_team_skill_exists(self):
-        skill = SKILLS_DIR / "rtl-p5-verify-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rtl-p5-verify" / "SKILL.md"
         assert skill.exists()
 
     def test_p5_verify_team_skill_is_user_invocable(self):
-        skill = SKILLS_DIR / "rtl-p5-verify-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rtl-p5-verify" / "SKILL.md"
         content = skill.read_text()
         assert "user-invocable: true" in content
 
     def test_p5_verify_team_skill_delegates_to_orchestrator(self):
-        skill = SKILLS_DIR / "rtl-p5-verify-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rtl-p5-verify" / "SKILL.md"
         content = skill.read_text()
         assert 'rtl-agent-team:p5-verify-team-orchestrator' in content
 
@@ -348,7 +348,7 @@ class TestTeamOrchestratorStructure:
         assert len(parts) >= 3
         fm = parts[1]
         assert "name: p4-implement-team-orchestrator" in fm
-        assert "model: opus" in fm
+        assert "model: fable" in fm
         assert "skills:" in fm
 
     def test_p4_implement_team_orchestrator_has_coordination_teammate_role(self):
@@ -368,16 +368,16 @@ class TestTeamOrchestratorStructure:
         assert "blockedBy" in content
 
     def test_p4_implement_team_skill_exists(self):
-        skill = SKILLS_DIR / "rtl-p4-implement-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rtl-p4-implement" / "SKILL.md"
         assert skill.exists()
 
     def test_p4_implement_team_skill_is_user_invocable(self):
-        skill = SKILLS_DIR / "rtl-p4-implement-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rtl-p4-implement" / "SKILL.md"
         content = skill.read_text()
         assert "user-invocable: true" in content
 
     def test_p4_implement_team_skill_delegates_to_orchestrator(self):
-        skill = SKILLS_DIR / "rtl-p4-implement-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rtl-p4-implement" / "SKILL.md"
         content = skill.read_text()
         assert "rtl-agent-team:p4-implement-team-orchestrator" in content
 
@@ -730,9 +730,9 @@ class TestP1P3TeamOrchestratorStructure:
     """Validate P1-P3 team orchestrator and skill structural integrity."""
 
     TEAM_ORCHESTRATORS = [
-        ("p1-research-team-orchestrator", "p1-research-team"),
-        ("p2-arch-team-orchestrator", "p2-arch-team"),
-        ("p3-uarch-team-orchestrator", "p3-uarch-team"),
+        ("p1-research-team-orchestrator", "p1-spec-research"),
+        ("p2-arch-team-orchestrator", "p2-arch-design"),
+        ("p3-uarch-team-orchestrator", "rtl-p3-uarch-design"),
     ]
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
@@ -749,7 +749,7 @@ class TestP1P3TeamOrchestratorStructure:
         assert len(parts) >= 3
         fm = parts[1]
         assert f"name: {agent_name}" in fm
-        assert "model: opus" in fm
+        assert "model: fable" in fm
         assert "skills:" in fm
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
@@ -769,18 +769,18 @@ class TestP1P3TeamOrchestratorStructure:
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_skill_exists(self, agent_name, skill_name):
-        skill = SKILLS_DIR / f"rtl-{skill_name}" / "SKILL.md"
-        assert skill.exists(), f"Missing team skill: rtl-{skill_name}"
+        skill = SKILLS_DIR / skill_name / "SKILL.md"
+        assert skill.exists(), f"Missing team skill: {skill_name}"
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_skill_is_user_invocable(self, agent_name, skill_name):
-        skill = SKILLS_DIR / f"rtl-{skill_name}" / "SKILL.md"
+        skill = SKILLS_DIR / skill_name / "SKILL.md"
         content = skill.read_text()
         assert "user-invocable: true" in content
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_skill_delegates_to_orchestrator(self, agent_name, skill_name):
-        skill = SKILLS_DIR / f"rtl-{skill_name}" / "SKILL.md"
+        skill = SKILLS_DIR / skill_name / "SKILL.md"
         content = skill.read_text()
         assert f"rtl-agent-team:{agent_name}" in content
 
@@ -799,7 +799,7 @@ class TestSpecToUarchTeamStructure:
         parts = content.split("---", 2)
         fm = parts[1]
         assert "name: spec-to-uarch-team-orchestrator" in fm
-        assert "model: opus" in fm
+        assert "model: fable" in fm
 
     def test_orchestrator_does_not_create_team(self):
         """Pipeline orchestrator should NOT use TeamCreate (it delegates to phase teams)."""
@@ -815,21 +815,21 @@ class TestSpecToUarchTeamStructure:
         assert "p3-uarch-team-orchestrator" in content
 
     def test_skill_exists(self):
-        skill = SKILLS_DIR / "rat-p1p3-spec-uarch-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
         assert skill.exists()
 
     def test_skill_is_user_invocable(self):
-        skill = SKILLS_DIR / "rat-p1p3-spec-uarch-team" / "SKILL.md"
+        skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
         content = skill.read_text()
         assert "user-invocable: true" in content
 
     def test_skill_sequences_phase_team_skills(self):
-        """Pipeline skill should invoke phase team skills via Skill() calls."""
-        skill = SKILLS_DIR / "rat-p1p3-spec-uarch-team" / "SKILL.md"
+        """Pipeline skill team mode invokes the phase skills with team in the arguments."""
+        skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
         content = skill.read_text()
-        assert "rtl-p1-research-team" in content
-        assert "rtl-p2-arch-team" in content
-        assert "rtl-p3-uarch-team" in content
+        assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")' in content
+        assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 artifacts complete")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 artifacts complete")' in content
 
 
 # ── P1-P3 Agent Worker Protocol ─────────────────────────────────────────────
@@ -892,11 +892,11 @@ class TestAutopilotP1P3TeamAwareness:
         """In team mode, autopilot skill invokes phase team skills."""
         skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
         content = skill.read_text()
-        assert "rtl-p1-research-team" in content
-        assert "rtl-p2-arch-team" in content
-        assert "rtl-p3-uarch-team" in content
-        assert "rtl-p4-implement-team" in content
-        assert "rtl-p5-verify-team" in content
+        assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")' in content
+        assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p4-implement", args="team Phase 3 complete")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p5-verify", args="team Phase 4 complete")' in content
 
     def test_autopilot_orchestrator_references_p1_team_orchestrator(self):
         """Autopilot orchestrator (sequential mode) still references team orchestrators."""
@@ -919,11 +919,11 @@ class TestTeamSkillContract:
     """Validate that team skills contain team lifecycle primitives (Skill as Leader)."""
 
     TEAM_SKILLS = [
-        "rtl-p1-research-team",
-        "rtl-p2-arch-team",
-        "rtl-p3-uarch-team",
-        "rtl-p4-implement-team",
-        "rtl-p5-verify-team",
+        "p1-spec-research",
+        "p2-arch-design",
+        "rtl-p3-uarch-design",
+        "rtl-p4-implement",
+        "rtl-p5-verify",
     ]
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
@@ -1028,15 +1028,26 @@ class TestTeamSkillContract:
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
     def test_team_skill_no_task_orchestrator(self, skill_name):
-        """Skills must NOT spawn orchestrator via Task() (old pattern)."""
+        """Team mode spawns the coordinator via Agent(), not Task().
+
+        The sequential section of the same skill still uses Task().
+        """
         skill = SKILLS_DIR / skill_name / "SKILL.md"
         content = skill.read_text()
         import re
-        # Exclude commented lines
-        task_orch = re.findall(
-            r'^(?!\s*#).*Task\([^)]*orchestrator', content, re.MULTILINE)
-        assert task_orch == [], \
-            f"{skill_name} still uses Task() for orchestrator (should use Agent(team_name=...))"
+        sequential, _, team = content.partition("## Team mode")
+        assert team, f"{skill_name} missing ## Team mode"
+        seq_task = re.findall(
+            r'^(?!\s*#).*Task\([^)]*orchestrator', sequential, re.MULTILINE)
+        assert seq_task, (
+            f"{skill_name} sequential section must spawn its orchestrator via Task()"
+        )
+        team_task = re.findall(
+            r'^(?!\s*#).*Task\([^)]*orchestrator', team, re.MULTILINE)
+        assert team_task == [], (
+            f"{skill_name} team mode still uses Task() for the orchestrator "
+            "(should use Agent(team_name=...))"
+        )
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
     def test_team_skill_worker_count_within_limit(self, skill_name):

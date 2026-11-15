@@ -45,16 +45,15 @@ def _clock_table(domains: list[str]) -> str:
     return "\n".join(rows)
 
 
-def _fsm_section(fsm_candidates: list[dict], template_dir: Path) -> str:
+def _fsm_section(fsm_candidates: list[dict], template_dir: Path, module_name: str) -> str:
     if not fsm_candidates:
         return ""
     tmpl = _read(template_dir / "fsm-section-snippet.md")
     fsm = fsm_candidates[0]
     rows = [f"| {s} | _enum_ | <!-- LLM_FILL: FSM state semantics --> | <!-- LLM_FILL: transitions --> |"
             for s in fsm["states"]]
-    transitions = "\n".join(f"  {s}" for s in fsm["states"])
     return tmpl.replace("{{FSM_ROWS}}", "\n".join(rows)) \
-               .replace("{{FSM_TRANSITIONS}}", transitions)
+               .replace("{{MODULE_NAME}}", module_name)
 
 
 def _instances_section(instances: list[dict]) -> str:
@@ -68,14 +67,16 @@ def _instances_section(instances: list[dict]) -> str:
     return "\n".join(rows)
 
 
-def _block_diagram(instances: list[dict], module_name: str, template_dir: Path) -> str:
+def _block_diagram(instances: list[dict], module_name: str) -> str:
     if len(instances) < 2:
         return ""
-    tmpl = _read(template_dir / "block-diagram-snippet.d2")
-    nodes = "\n".join(f"  {i['name']}: {i['module']}" for i in instances)
-    body = tmpl.replace("{{MODULE_NAME}}", module_name) \
-               .replace("{{INSTANCE_NODES}}", nodes)
-    return f"## Block Diagram\n\n```d2\n{body}\n```"
+    names = ", ".join(i["name"] for i in instances)
+    return (
+        "## Block Diagram\n\n"
+        f"![Figure 1-1. {module_name} block diagram.](figures/{module_name}-block.png)\n\n"
+        f"<!-- LLM_FILL: ARM SVG at figures/{module_name}-block.svg, then the PNG above. "
+        f"Instances: {names}. -->"
+    )
 
 
 def _synth_summary(s: dict | None) -> str:
@@ -121,9 +122,9 @@ def main() -> int:
         .replace("{{PARAMETERS_TABLE}}", _params_table(data.get("parameters", [])))
         .replace("{{PORTS_TABLE}}", _ports_table(data.get("ports", [])))
         .replace("{{CLOCK_DOMAINS_TABLE}}", _clock_table(data.get("clock_domains", [])))
-        .replace("{{FSM_SECTION}}", _fsm_section(data.get("fsm_candidates", []), template_dir))
+        .replace("{{FSM_SECTION}}", _fsm_section(data.get("fsm_candidates", []), template_dir, data["module_name"]))
         .replace("{{INSTANCES_SECTION}}", _instances_section(data.get("instances", [])))
-        .replace("{{BLOCK_DIAGRAM_SECTION}}", _block_diagram(data.get("instances", []), data["module_name"], template_dir))
+        .replace("{{BLOCK_DIAGRAM_SECTION}}", _block_diagram(data.get("instances", []), data["module_name"]))
         .replace("{{SYNTH_SUMMARY_SECTION}}", _synth_summary(data.get("synth_summary")))
     )
 

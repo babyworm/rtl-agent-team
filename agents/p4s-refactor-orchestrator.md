@@ -1,6 +1,6 @@
 ---
 name: p4s-refactor-orchestrator
-model: opus
+model: fable
 description: "RTL refactoring orchestrator. Manages the analyze→refactor→lint→equivalence cycle for structural RTL improvements without behavioral change."
 skills: [rtl-p4s-refactor-policy]
 ---

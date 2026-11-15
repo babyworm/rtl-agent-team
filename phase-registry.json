@@ -15,20 +15,6 @@
       "open_requirements": "docs/phase-1-research/open-requirements.json",
       "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|compliance-pass|ambiguity-pass"
     },
-    "rtl-p1-research-team": {
-      "phase": 1,
-      "primary": false,
-      "iron_upstream": [],
-      "open_requirements": "",
-      "completion_criteria": "spec-analysis-complete|review-rounds-done|artifacts-written|iron-open-classified|ambiguity-pass|feature-coverage-audited"
-    },
-    "rtl-p2-arch-team": {
-      "phase": 2,
-      "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json"],
-      "open_requirements": "docs/phase-1-research/open-requirements.json",
-      "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|compliance-pass|ambiguity-pass"
-    },
     "rtl-p3-uarch-design": {
       "phase": 3,
       "primary": true,
@@ -36,21 +22,7 @@
       "open_requirements": "docs/phase-2-architecture/open-requirements.json",
       "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|compliance-pass|ambiguity-pass"
     },
-    "rtl-p3-uarch-team": {
-      "phase": 3,
-      "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json"],
-      "open_requirements": "docs/phase-2-architecture/open-requirements.json",
-      "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|compliance-pass|ambiguity-pass"
-    },
     "rtl-p4-implement": {
-      "phase": 4,
-      "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
-      "open_requirements": "",
-      "completion_criteria": "rtl-written|lint-pass|synthesizability-pass|unit-test-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance|ac-coverage-advisory"
-    },
-    "rtl-p4-implement-team": {
       "phase": 4,
       "primary": true,
       "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
@@ -107,14 +79,6 @@
       "completion_criteria": "phase-gate-passed|artifacts-written"
     },
     "rtl-p5-verify": {
-      "phase": 5,
-      "phase_group": "a",
-      "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
-      "open_requirements": "",
-      "completion_criteria": "verification-pass|coverage-met|artifacts-written|ac-coverage-check"
-    },
-    "rtl-p5-verify-team": {
       "phase": 5,
       "phase_group": "a",
       "primary": true,
@@ -230,13 +194,6 @@
       "open_requirements": "",
       "completion_criteria": "phase-gate-passed|artifacts-written"
     },
-    "rat-p1p3-spec-uarch-team": {
-      "phase": 1,
-      "primary": false,
-      "iron_upstream": [],
-      "open_requirements": "",
-      "completion_criteria": "phase-gate-passed|artifacts-written"
-    },
     "rat-dse": {
       "phase": 1,
       "primary": false,
@@ -301,12 +258,12 @@
     "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
     "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
     "dse-orchestrator": "rat-dse",
-    "p1-research-team-orchestrator": "rtl-p1-research-team",
-    "p2-arch-team-orchestrator": "rtl-p2-arch-team",
-    "p3-uarch-team-orchestrator": "rtl-p3-uarch-team",
-    "p4-implement-team-orchestrator": "rtl-p4-implement-team",
-    "p5-verify-team-orchestrator": "rtl-p5-verify-team",
-    "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch-team",
+    "p1-research-team-orchestrator": "p1-spec-research",
+    "p2-arch-team-orchestrator": "p2-arch-design",
+    "p3-uarch-team-orchestrator": "rtl-p3-uarch-design",
+    "p4-implement-team-orchestrator": "rtl-p4-implement",
+    "p5-verify-team-orchestrator": "rtl-p5-verify",
+    "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch",
     "ppa-optimizer-dc-orchestrator": "rtl-ppa-optimize-dc",
     "ppa-optimizer-dc": "rtl-ppa-optimize-dc",
     "dc-report-parser": "rtl-ppa-optimize-dc"

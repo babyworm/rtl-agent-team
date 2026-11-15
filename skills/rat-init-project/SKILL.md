@@ -138,9 +138,10 @@ This skill ensures the project workspace is ready before design work begins.
    # Diagram Policy
    | Diagram Type | Tool | Use For |
    |-------------|------|---------|
-   | **Block diagram** | **D2** | Architecture, module hierarchy, HW block decomposition |
-   | **Flow / Interaction** | **Mermaid** | Pipeline stages, FSM, data/control flow, sequence diagrams |
-   | **ASCII flow diagram** | **Prohibited** | Do NOT use ASCII art — use D2 or Mermaid |
+   | **Block diagram** | **D2** | Architecture and μArch working notes |
+   | **Flow / Interaction** | **Mermaid** | FSM and flow in architecture and μArch working notes |
+   | **Reader-facing figure** | **SVG, inserted as PNG** | Design notes and `docs/rtl`. ARM Developer's Guide style. |
+   | **ASCII flow diagram** | **Prohibited** | Do not use ASCII art |
    ```
 
 2d. **Deploy guides** (copy CLAUDE.md to each directory if not already present):

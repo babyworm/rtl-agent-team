@@ -1,6 +1,6 @@
 ---
 name: p5-verify-team-orchestrator
-model: opus
+model: fable
 description: "Phase 5 verification team coordination teammate. Coordinates parallel verification across 9 categories with dependency graphs and module graduation gates via TaskCreate/TaskList/TaskUpdate/SendMessage."
 skills: [rtl-p5-verify-policy]
 ---

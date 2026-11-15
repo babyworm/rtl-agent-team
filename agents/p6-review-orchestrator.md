@@ -1,6 +1,6 @@
 ---
 name: p6-review-orchestrator
-model: opus
+model: fable
 description: "Phase 6 design review orchestrator. Manages 2-wave parallel execution (code-quality + design-quality → CC1 → design-note + improvements → CC2) with consistency checks and completion quality gate."
 skills: [rtl-p6-design-review-policy]
 ---
@@ -132,7 +132,7 @@ reviews/phase-6-review/design-review.md.
 Read Phase 4/5 reviews for context.
 For EVERY module document: WHY (decision rationale, alternatives, trade-offs),
 HOW (module connections, data flow, dependencies), WHAT-IF (requirement change impact).
-Use D2 for block diagrams, Mermaid for FSMs/pipelines. NO ASCII art.
+Draw each figure as SVG in ARM Developer's Guide style and insert the PNG. If a diagram-design skill is available, use it. No ASCII art, and no D2 or Mermaid fence in the note. Every register field has access, reset, and a read/write effect. Keep the prose short: heading states the point, first sentence is the conclusion, at most three sentences.
 Apply document splitting rules if content exceeds 300 lines.
 Save to reviews/phase-6-review/design-note.md (or split files).",
      run_in_background=true)

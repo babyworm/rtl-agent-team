@@ -1,6 +1,6 @@
 ---
 name: p5a-functional-closure-orchestrator
-model: opus
+model: fable
 description: "Phase 5A functional closure orchestrator. Executes deep hierarchy-level functional verification, coverage closure, and requirement traceability gates."
 skills: [rtl-p5a-functional-closure-policy]
 ---

@@ -61,20 +61,19 @@ Requirements(Spec) → Architecture → μArch → RTL → Verification
 
 **Phase Gate checks**: Feature Coverage Checklist, interface change tracking, user approval for deviations.
 
-### Cascading Quality Principle
+### Light Review
 
-Higher abstraction = MORE iterative refinement. A defect at architecture costs orders of magnitude more at RTL.
+One review against the evidence, then stop and name the open items. A further pass runs only when the user asks. With no measurement, the model's confidence is the gate: the spec has one reading, or one architecture choice fits. Do not iterate to raise confidence. Low confidence is named and asked once. Lint, simulation, formal, coverage, synthesis, and model comparison are judged from the measured result. Confidence does not override a measurement.
 
-| Phase | Mandatory Review Iterations |
-|-------|-----------------------------|
-| Phase 1: Research | 3 mandatory rounds (chief-coordinated) |
-| Phase 2: Architecture | Dynamic convergence (min 2, max 5 rounds; memory, performance, ref model) |
-| Phase 3: μArch | Dynamic convergence (min 2, max 5 rounds; performance, interface, memory) |
-| Phase 4: RTL | 10-Wave pipeline (write→lint→review→fix→test→CDC→protocol→refactor→gate) |
-| Phase 5: Verify | Sub-phase parallel |
+| Phase | Review |
+|-------|--------|
+| Phase 1: Research | One chief review of the requirements |
+| Phase 2: Architecture | One review (memory, performance, reference model) |
+| Phase 3: μArch | One review (performance, interface, memory) |
+| Phase 4: RTL | Implement, lint, one functional check |
+| Phase 5: Verify | Check the requirements once |
 
-Phase 1 uses 3 mandatory rounds; Phases 2-3 converge dynamically (min 2, max 5 rounds — convergence when finding_delta < 0.1 and all critical issues resolved).
-**Principle**: refine thoroughly at the top, execute efficiently at the bottom.
+Prompts state the goal, the constraints, the evidence, and the done condition.
 
 ### Document-as-Memory Principle
 
@@ -132,16 +131,22 @@ Video-processing package key files:
 | `format-conversion-recipes.md` | all `vproc-*` experts | Phase 2-4 |
 | `fourcc-cheatsheet.md` | all `vproc-*` experts | Phase 1-3 |
 
-## Diagram Syntax Reference
+## Reader-facing figures
 
-**D2 block diagrams:**
-````
-```d2
-top_module -> sub_a: data [32]
-top_module -> sub_b: ctrl
-```
-````
+A design note and `docs/rtl` author each figure as SVG and insert the PNG.
 
-**Tool install**: D2: `curl -fsSL https://d2lang.com/install.sh | sh -s --` or `brew install d2`. Mermaid: `npm install -g @mermaid-js/mermaid-cli`
+If a diagram-design skill is available, use it to draw the SVG. Otherwise draw the SVG.
+
+ARM Developer's Guide style: white background, thin black strokes, left-to-right data flow, nested rectangles, signal names on the wires.
+
+`![Figure N-M. One-line caption.](figures/name.png)`
+
+Keep the SVG beside the PNG. Convert with `rsvg-convert -o figures/name.png figures/name.svg` or `magick figures/name.svg figures/name.png`. If neither exists, or the conversion fails, say so and keep the SVG. Do not paste SVG source into the markdown.
+
+A register is a bit-field bar. MSB is on the left. Bit numbers sit above the cells. One box per field. Reserved is light gray. Every field has bits, access, reset, and what a read returns and a write does. Choose a missing access or reset, say that the choice was made in the doc, and explain the effect. Do not invent a field.
+
+Prose: the heading states the point. The first sentence is the conclusion. At most three sentences. One idea per section.
+
+Architecture and μArch working notes still use D2 for a block diagram and Mermaid for an FSM or a flow.
 
 <!-- rat-version: 0.7.7 -->

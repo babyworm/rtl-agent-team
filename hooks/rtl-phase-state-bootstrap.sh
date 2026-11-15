@@ -113,15 +113,15 @@ if [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/
     _cs_open=""
     case "$SHORT_NAME" in
       # BEGIN GENERATED PHASE_MAP
-      p2-arch-design|rtl-p2-arch-team)
+      p2-arch-design)
         _cs_upstream='["docs/phase-1-research/iron-requirements.json"]'
         _cs_open="docs/phase-1-research/open-requirements.json"
         ;;
-      rtl-p3-uarch-design|rtl-p3-uarch-team)
+      rtl-p3-uarch-design)
         _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json"]'
         _cs_open="docs/phase-2-architecture/open-requirements.json"
         ;;
-      rtl-p4-implement|rtl-p4-implement-team|rtl-p4-rapid-impl|rtl-p4-block-parallel|rat-p4p5-impl-verify|rtl-p5-verify|rtl-p5-verify-team|rtl-p5a-functional-closure|rtl-p5b-silicon-validation|rtl-p6-design-review)
+      rtl-p4-implement|rtl-p4-rapid-impl|rtl-p4-block-parallel|rat-p4p5-impl-verify|rtl-p5-verify|rtl-p5a-functional-closure|rtl-p5b-silicon-validation|rtl-p6-design-review)
         _cs_upstream='["docs/phase-1-research/iron-requirements.json","docs/phase-2-architecture/iron-requirements.json","docs/phase-3-uarch/iron-requirements.json"]'
         _cs_open=""
         ;;

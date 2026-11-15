@@ -1,15 +1,13 @@
 ---
 name: codex-cross-review
-description: "Cross-review with Codex CLI as independent 2nd reviewer; finding exchange until consensus or escalation. At phase boundaries or on 'codex review'."
+description: "One Codex review as an independent second reviewer. Reports open disagreements. At phase boundaries or on 'codex review'."
 user-invocable: true
 argument-hint: "[phase number | 'auto']"
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
 ---
 
 <Purpose>
-Run a structured cross-review dialogue between Claude and Codex CLI.
-Codex acts as an independent 2nd reviewer. Both models exchange findings,
-fixes, and rebuttals until consensus or user escalation.
+Ask Codex once, as an independent second reviewer. Report disagreements. A further exchange runs only when the user asks.
 </Purpose>
 
 <Use_When>
@@ -69,8 +67,8 @@ Step N-1: Cross-Review Gate
        prompt="Cross-review Phase {N}. Artifacts: {paths}.")
   # MANDATORY explicit verdict check:
   Read(".rat/cross-review/phase-{N}/cross-review-report.md")
-  # Parse verdict field — must be CONSENSUS or USER_DECIDED
-  # If verdict != CONSENSUS and user did not approve → do NOT proceed to completion
+  # Verdict is CONSENSUS, or USER_DECIDED after the user answers the open items.
+  # If neither, do not declare the phase complete.
 ```
 
 Orchestrators that integrate cross-review:
@@ -82,29 +80,23 @@ Orchestrators that integrate cross-review:
 - `p5-verify-orchestrator` — review verification completeness
 - `p6-review-orchestrator` — review design note quality
 
-## Review Loop Summary
+## One Exchange
 
 ```
-Round 1: Claude → phase summary → Codex reviews → findings JSON
-Round 2+: Claude → fixes + rebuttals + agreement ledger → Codex re-reviews → updated findings
-Stability: 2+ consecutive rounds with verdict==APPROVE + no new critical/major + no still_disagree + no oscillation = CONSENSUS
-Max 5 rounds → AskUserQuestion escalation to user
+Claude writes the phase summary → Codex reviews once → findings JSON
+No open disputes and APPROVE → CONSENSUS
+Open disputes → ask the user once → USER_DECIDED
 ```
 
-### Convergence Improvements (v0.7.2+)
-
-- **Agreement Ledger**: settled items are injected into each follow-up prompt to prevent context-reset re-raises
-- **Anti-Oscillation**: re-raised settled items without new evidence are rejected automatically
-- **Stability Criterion**: consensus requires 2+ consecutive rounds with verdict==APPROVE, not single-round APPROVE
-- **Oscillation Detection**: tracked in resolution-state.json for diagnostics
+Do not run a second Codex pass to confirm the same verdict.
 
 ## Artifacts
 
 Cross-review artifacts are phase-scoped for traceability:
 - `.rat/cross-review/review-schema.json` — shared JSON schema
 - `.rat/cross-review/phase-{N}/phase-summary.md` — phase context sent to Codex
-- `.rat/cross-review/phase-{N}/prompt-round-R.txt` — exact prompt sent each round
-- `.rat/cross-review/phase-{N}/round-R.json` — Codex's structured response each round
+- `.rat/cross-review/phase-{N}/prompt-round-1.txt` — the one prompt sent to Codex
+- `.rat/cross-review/phase-{N}/round-1.json` — Codex's response
 - `.rat/cross-review/phase-{N}/resolution-state.json` — running resolution tracker
 - `.rat/cross-review/phase-{N}/cross-review-report.md` — final summary report
 - `.rat/cross-review/phase-{N}/escalation-summary.md` — generated if user escalation needed

@@ -1,7 +1,7 @@
 ---
 name: p2-arch-orchestrator
-model: opus
-description: "Phase 2 architecture pipeline orchestrator. Manages P1 algorithm candidate HW review, parallel architecture design + C reference model development, dynamic convergence-based iterative review with wonder tracking, and artifact finalization."
+model: fable
+description: "Phase 2 architecture pipeline orchestrator. HW feasibility of P1 candidates, parallel architecture and C reference model, one architecture review, then artifact finalization."
 skills: [p2-arch-design-policy]
 ---
 
@@ -102,7 +102,9 @@ Glob("docs/phase-1-research/open-requirements.json")
 ```
 # For each functional area with multiple candidates from P1's domain-analysis.md,
 # spawn parallel agents to evaluate HW feasibility:
-Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="opus", run_in_background=true,
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
+Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="fable", run_in_background=true,
      prompt="HW evaluation for {block} candidate A ({algorithm}): gate count, critical path depth, SRAM requirements, external memory BW, throughput at {target_freq}, estimated dynamic power (ballpark: gate_count × toggle_rate × freq). Output structured JSON.")
 # ... one agent per candidate per functional area (all parallel)
 
@@ -167,94 +169,27 @@ Task(subagent_type="rtl-agent-team:ref-model-reviewer",
 - If ref-model-reviewer verdict is FAIL: route findings to ref-model-dev, re-run reviewer.
 - If PASS: arch-designer revises architecture using bandwidth_report.json.
 
-## Step 5: Iterative Review (Dynamic Convergence)
+## Step 5: Architecture Review — once
 
-### Review Round Structure (Dynamic Convergence)
-
-Review rounds use convergence-based loop instead of fixed 3 rounds:
-
-**Parameters**:
-- min_rounds = 2 (minimum 2 rounds always executed)
-- max_rounds = 5 (hard cap to prevent infinite loops)
-
-**Round N completion → convergence check**:
-1. `finding_delta`: Round N new findings / Round N-1 total findings (< 0.1 = stable)
-2. `all_critical_resolved`: All Critical/High severity findings resolved?
-3. `wonder_stability`: No new High-risk assumptions in Wonder log?
-
-**Convergence condition** (ALL must be true):
-- round >= min_rounds
-- finding_delta < 0.1
-- all_critical_resolved = true
-- wonder_stability = true
-
-**Finding Deduplication**: Before counting new findings each round, compare against
-all previous rounds. Same file + same issue type + overlapping scope = duplicate.
-Only genuinely new findings count toward finding_delta.
-
-**Non-convergence**: round < max_rounds → next round. round >= max_rounds → force stop + log unresolved.
+Three reviewers run in parallel. ref-model-reviewer joins only when `refc/` changed by more than 30% since its last review. They review once. The aggregate names each finding as accepted or rejected, with a reason. Open items go to the user. Do not schedule another pass.
 
 ```
-# Round 1: 3 parallel reviewers
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review Round 1: Spec compliance (Feature Coverage Checklist — every REQ-NNN mapped?) + structural review.")
+     prompt="Review once: spec compliance (every REQ-NNN mapped?) and structure. Name open items. Do not request another review.")
 
 Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
-     prompt="Review Round 1: Memory access patterns, SRAM sizing, bandwidth, access conflicts, performance.")
+     prompt="Review once: memory access, SRAM sizing, bandwidth, access conflicts, and performance. Name open items.")
 
 Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review Round 1: Architecture-to-model consistency (block mapping, data flow, interface widths).")
+     prompt="Review once: architecture-to-model consistency (block mapping, data flow, interface widths). Name open items.")
 
-# Conditional reviewer per policy: invoke only if ref model >30% lines changed during rebuttal.
-# In Round 1 of iterative review, check if ref-model-dev revised refc/ since Step 4 review.
-# Skip this task if ref model was NOT substantially revised (>30% of lines) in the current round.
-# (Step 4 invocation is unconditional because the model is newly created.)
+# Skip ref-model-reviewer unless refc/ changed by more than 30% since the last review.
 Task(subagent_type="rtl-agent-team:ref-model-reviewer",
-     prompt="Review Round 1: C model oracle quality risk (numerical fidelity, UB/build warnings).
-     NOTE: Only invoked if ref model was revised >30% since last review. Skip otherwise.")
+     prompt="Review once: C model oracle quality (numerical fidelity, undefined behavior, build warnings). Skip if refc/ is unchanged.")
 
-# Coordinator aggregates
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Aggregate Round 1 findings. Save to reviews/phase-2-architecture/architecture-review-r1.md.")
-
-# Rebuttal Round 1: arch-designer evaluates each finding
-Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Rebuttal Round 1: For each finding in architecture-review-r1.md,
-     accept or reject with rationale. Accepted findings proceed to tree exploration.
-     Rejected findings are recorded with justification.
-     Present rebuttal section for orchestrator to update architecture-review-r1.md.")
-
-# Tree exploration: spawn parallel agents per ACCEPTED issue to evaluate resolution alternatives
-# Select best resolution per issue → arch-designer applies → ref-model-dev re-validates
-
-# Round 2: same mandatory reviewers (+ conditional reviewer if risk remains) → save to architecture-review-r2.md
-# Rebuttal Round 2: arch-designer accept/reject each finding with rationale
-#   → update architecture-review-r2.md with rebuttal section
-# Tree exploration for accepted findings → arch-designer applies resolutions
-# Round 3+: continue if not converged (up to max_rounds=5)
-#   Each round: cross-block interface audit, memory conflict analysis, ref model code review
-#   → save to architecture-review-rN.md
-# Convergence check after each round >= min_rounds (2)
-# If converged → proceed to Step 6
-# If round >= max_rounds AND not converged → escalate to user via AskUserQuestion
+     prompt="Aggregate the one review. For each finding, record accept or reject and the reason. Name unvalidated assumptions. Save reviews/phase-2-architecture/architecture-review.md and docs/phase-2-architecture/wonder-log.md. Do not request another review.")
 ```
-
-### Wonder Step (after Round N aggregation)
-
-After aggregating reviewer findings for each round, before proceeding to the next:
-
-1. Ask: "What assumptions are we making about this architecture that we haven't validated?"
-2. Specifically probe:
-   - Bandwidth assumptions: Are memory BW calculations based on verified data?
-   - Interface assumptions: Are protocol choices validated against actual IP constraints?
-   - Timing assumptions: Are pipeline depth estimates realistic for target frequency?
-3. Record unvalidated assumptions in `docs/phase-2-architecture/wonder-log.md`
-4. If critical assumptions found: flag for resolution before next round
-
-Format: `| Round | Assumption | Domain | Risk(H/M/L) | Resolution |`
-
-Wonder log feeds into convergence check: new High-risk assumptions in Round N
-prevent convergence (wonder_stability = false).
 
 ## Step 5.5: Open Resolution Verification
 
@@ -268,15 +203,14 @@ Read("docs/phase-2-architecture/iron-requirements.json")
 # For each OPEN-1-* item:
 #   → Verify a REQ-A-* exists with resolved_from == OPEN-1-* id
 #   → Verify resolution_rationale is present and substantive
-#   → Verify rejected_alternatives lists all non-selected candidates
+#   → rejected_alternatives only when another candidate was plausible. One fitting choice is enough.
 #   → Verify upstream_compliance shows P1 iron check results
 #
 # If any OPEN-1-* unresolved:
 #   → AskUserQuestion to resolve OR upstream feedback to P1
 
-# Ambiguity Gate (Phase 2): verify all new REQ-A-* pass reproducibility check
-# "Would re-evaluating this architecture produce the same conclusion?"
-# Apply ambiguity scoring per p2-arch-design-policy. Score ≤ 0.5 required for iron.
+# Confidence (Phase 2): a REQ-A-* with one fitting choice is iron. Record that confidence.
+# More than one choice still fitting: name them and ask once. Do not re-score.
 ```
 
 ## Step 6: Compliance Check
@@ -310,21 +244,13 @@ After Step 5 review completes, verify all gate items:
 6b. Verify `reviews/phase-2-architecture/ref-model-feature-coverage.md` has 100% REQ-F-* coverage
     (structural check: every iron requirement mapped to ref model code path, not just bitexact test).
     Omissions require user-approved ADR with impact estimate.
-7. Per-round artifacts (enforces dynamic convergence review protocol):
-   - `reviews/phase-2-architecture/architecture-review-r1.md` — Round 1 findings + rebuttal
-   - `reviews/phase-2-architecture/architecture-review-r2.md` — Round 2 findings + rebuttal
-   - Additional round artifacts if convergence required more rounds (up to r5)
-   FAIL if fewer than 2 round artifacts exist.
-8. `docs/phase-2-architecture/wonder-log.md` exists with all High-risk assumptions resolved
-9. Rebuttal evidence in each round: verify each round artifact contains a rebuttal section
-   with accept/reject entries and rationale for each finding. FAIL if rebuttal absent.
+7. `reviews/phase-2-architecture/architecture-review.md` records accept or reject, with a reason, for each finding. Do not require r1/r2 files.
+8. `docs/phase-2-architecture/wonder-log.md` names high-risk assumptions. Unresolved items are reported, not sent to another review.
 9. Generate `docs/phase-2-architecture/phase-2-summary.md`
 
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Phase 2 Gate: Verify all Step 6.5 gate items. Consolidate the per-round review
-     artifacts (architecture-review-r1.md .. architecture-review-rN.md — dynamic convergence,
-     min 2 / max 5 rounds) into architecture-review.md.
+     prompt="Phase 2 Gate: Verify the Step 6.5 gate items. Confirm architecture-review.md names open items.
      Save Feature Coverage Checklist to feature-coverage.md. Save D2 block diagram to
      architecture-diagram.md. Verify reviews/phase-2-architecture/ref-model-review.md exists with verdict.
      Verdict: PASS or FAIL.")
@@ -338,14 +264,13 @@ Read(".rat/state/compliance-report.json")
 On PASS: generate ADRs:
 ```
 Bash("mkdir -p docs/decisions")
-Task(subagent_type="rtl-agent-team:arch-designer", model="sonnet",
+Task(subagent_type="rtl-agent-team:arch-designer", model="fable",
      prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
 ## Step 7: Codex Cross-Review (MANDATORY — after gate PASS + ADR generation)
 
-Invoke Codex CLI as independent 2nd reviewer. Claude and Codex exchange findings,
-fixes, and rebuttals until consensus (max 5 rounds, then user escalation).
+Ask Codex once, as an independent second reviewer. Report disagreements. Do not open another exchange unless the user asks.
 
 ```
 Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
@@ -368,16 +293,11 @@ Read(".rat/cross-review/phase-2/cross-review-report.md")
 
 - Step 2: All per-candidate HW evaluation agents in parallel (run_in_background=true)
 - Step 3: arch-designer + ref-model-dev in parallel
-- Step 5: 3 reviewers in parallel each round; tree exploration agents in parallel per issue
-- Only re-invoke reviewers with findings (skip clean reviewers)
+- Step 5: 3 reviewers in parallel, once
 
 # Examples
 
-**Good**: 3-round convergence with tree exploration:
-  Round 1: rtl-architect flags 2 unmapped REQs, vcodec-arch-expert finds SRAM bottleneck,
-  ref-model-dev finds data flow mismatch. Tree exploration: 3 agents evaluate SRAM fix alternatives.
-  Revision: best resolution applied. Round 2: SRAM fixed, new width inconsistency found.
-  Round 3: cross-block audit PASS, memory conflict PASS. Final verdict: PASS.
+**Good**: One review. rtl-architect names 2 unmapped REQs, the architecture expert names an SRAM bottleneck, ref-model-dev names a data-flow mismatch. The review records accept or reject for each and stops. Open items go to the user.
 
-**Bad**: Skipping P1 candidate HW review and designing with unvalidated algorithms.
-**Bad**: Running only 1 review round — memory bottleneck caught at Phase 4 RTL coding.
+**Bad**: Skipping the P1 candidate HW review and designing with an unvalidated algorithm.
+**Bad**: Scheduling a second and third review to chase a clean verdict.

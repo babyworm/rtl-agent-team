@@ -10,12 +10,12 @@ user-invocable: false
 
 | Aspect | Standard (p1 + p2 + p3 sequential) | rat-dse |
 |--------|------------------------------------------|---------|
-| Algorithm study | Select best, justify | Explore N candidates, quantitative comparison |
-| Architecture | Single architecture from requirements | Multiple candidates, trade-off matrix, user selects |
-| μArch + BFM | Single-pass μArch design | Iterative μArch with self-critique and re-exploration |
+| Algorithm study | Select best, justify | Record the approach that fits. Name another only when it still fits |
+| Architecture | Single architecture from requirements | Record the one that fits. Name another only when it still fits |
+| μArch + BFM | Single-pass μArch design | μArch plus BFM, then one self-critique |
 | Ref C model | Build from scratch | Accept functional model as input, transform to architectural model |
 | Fixed-point | Identify precision requirements | Simulate effects, precision vs area trade-off curves |
-| Iteration | One-shot per phase | Self-critique → re-run → user review → trial comparison |
+| Iteration | One-shot per phase | Self-critique, then a new trial only when the user asks |
 | Output | Ready for Phase 4 | Pre-implementation package with DSE rationale, ready for Phase 4 |
 
 ## Design Priority Order
@@ -32,7 +32,7 @@ phases can reference DSE rationale without repeating exploration.
 
 ### Algorithm Comparison Matrix (per functional block)
 
-For each major functional block, enumerate 2-4 algorithmic approaches:
+For each major functional block, record the approach that fits. Enumerate alternatives only when more than one still fits:
 
 | Metric | Candidate A | Candidate B | Candidate C |
 |--------|-------------|-------------|-------------|
@@ -55,7 +55,7 @@ For each major functional block, enumerate 2-4 algorithmic approaches:
 
 ### Architecture Candidate Format
 
-For each candidate (2-3 required):
+For the chosen architecture, and for any alternative that still fits:
 - Block diagram (D2)
 - Estimated area breakdown (LUT/FF for FPGA, gate count for ASIC)
 - Throughput/latency estimate
@@ -66,9 +66,10 @@ Output: `docs/phase-2-architecture/architecture-candidates.md`
 
 ## User Decision Points
 
-Two mandatory AskUserQuestion interactions:
-1. **Algorithm selection**: After algorithm exploration, present candidates with quantitative matrix
-2. **Architecture selection**: After architecture candidate exploration, present trade-off matrix
+Ask only when confidence is low, meaning more than one algorithm or architecture still fits:
+1. **Algorithm selection**: name the candidates that still fit and ask once
+2. **Architecture selection**: name the candidates that still fit and ask once
+A single fitting choice is recorded. Do not ask, and do not invent a second candidate, to satisfy a count.
 
 Decisions recorded as ADRs:
 - `docs/decisions/ADR-001-algorithm-selection.md`
@@ -102,14 +103,14 @@ Output: refc/*.c (restructured), refc/include/*.h. C11, no clock/reset, DPI-C co
 
 ### Dual-Layer Phase Gates
 Phase 1→2, Phase 2→3, and Phase 3 completion require BOTH Artifact Gate + Quality Gate.
-Quality Gate verdicts: `PASS` or `FAIL + findings[]`. Max 2 retries per gate.
+Quality Gate verdicts: `PASS` or `FAIL + findings[]`. Report a FAIL. Another attempt runs only when the user asks.
 
 ### Scratchpad Convention
 `.rat/scratch/phase-{N}/round-{R}-{agent}.md`
 On gate PASS: consolidate to reviews/, clean scratch.
 
 ### Termination
-After Phase 3 Quality Gate PASS + self-critique re-run, present results to user.
+After Phase 3 Quality Gate PASS and the self-critique is recorded, present results to user.
 Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user review.
 
 ## Phase Gate Definitions
@@ -118,7 +119,7 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 **Artifact Gate**: iron-requirements.json + open-requirements.json + io_definition.json + timing_constraints.json + domain-analysis.md exist
 **Quality Gate**:
 - Iron/open requirements complete and consistent
-- Ambiguity score ≤ 0.5 for all iron requirements
+- Confidence is high, or the user answered the one question about the remaining ambiguity
 - Algorithm comparison matrices complete with quantitative data
 - Algorithm selection ADR recorded with user's decision
 - Save: `reviews/phase-1-research/research-review.md`
@@ -129,7 +130,7 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 ### Phase 2→3 (Architecture DSE → μArch + BFM)
 **Artifact Gate**: architecture.md + architecture-candidates.md + refc/*.c + iron-requirements.json (P2, REQ-A-*) exist
 **Quality Gate**:
-- 3-round iterative review converged (or user-approved)
+- One architecture review recorded, or the user accepted the open items
 - Feature Coverage: 100% REQ (REQ-F-*, REQ-P-*, REQ-A-*) mapped to architecture blocks
   - Save: `reviews/phase-2-architecture/feature-coverage.md`
 - All OPEN-1-* resolved with rationale in iron-requirements.json (REQ-A-*)
@@ -149,8 +150,8 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 - Algorithm candidates cannot be differentiated → ask user for priority (area vs throughput vs quality)
 - Architecture candidates too similar → ask user for dominant constraint
 - Functional C model too complex to transform → report, suggest manual restructuring guidance
-- Phase 1 Quality Gate fails after 2 retries → ask user to clarify spec
-- Phase 2 Quality Gate fails after 2 retries → ask user for architecture direction
+- Phase 1 quality gate fails → ask the user to clarify the spec
+- Phase 2 quality gate fails → ask the user for the architecture direction
 - Ref model transformation breaks bitexact equivalence → report divergence, ask user to verify original
 
 ## Coding Convention Summary
@@ -167,7 +168,7 @@ Do NOT proceed to Phase 4. DSE produces a pre-implementation package for user re
 ### Phase 3 Completion (μArch + BFM → Self-Critique)
 **Artifact Gate**: docs/phase-3-uarch/*.md + bfm/src/*.cpp (or bfm/src/*.c) + iron-requirements.json (P3) exist
 **Quality Gate**:
-- μArch review converged (min 2 rounds)
+- One μArch review recorded, or the user accepted the open items
 - BFM compiles and simulates, outputs match ref C model
 - REQ→μArch traceability 100% coverage
 - Clock domain map and protocol assignments complete
@@ -192,12 +193,10 @@ BEFORE presenting results to the user:
 
 2. **Output**: `reviews/dse-self-critique.md` with findings rated HIGH/MEDIUM/LOW
 
-3. **Re-run**: Run Phase 1→3 again incorporating all critique findings
-   - HIGH findings: must be addressed (fix spec, revise architecture, redesign μArch)
-   - MEDIUM findings: should be addressed
-   - LOW findings: note for user, no action required
-
-4. **Result**: Second pass produces refined pre-implementation package
+3. **Stop**: Report the critique. Do not start another Phase 1→3 pass unless the user asks.
+   - HIGH findings are named with the evidence
+   - MEDIUM and LOW findings are named
+   - The user decides whether a new trial is worth running
 
 ## Trial Comparison Protocol
 
@@ -237,7 +236,7 @@ After Trial N completes, compare against the current best trial:
 ### Iteration Loop
 ```
 repeat:
-  AskUserQuestion("결과가 만족스러운가? (yes/no)")
+  AskUserQuestion("Are these DSE results acceptable? (yes/no)")
   if yes → done (pre-implementation package ready for Phase 4)
   if no  → collect user feedback
          → create new trial (worktree)
@@ -252,8 +251,8 @@ repeat:
 - [ ] Phase 1: domain-analysis.md contains algorithm comparison matrices (not just selection)
 - [ ] Phase 1: Algorithm selection ADR recorded with user's decision
 - [ ] Phase 1: research-review.md PASS, phase-1-summary.md generated
-- [ ] Phase 1: Ambiguity score ≤ 0.5
-- [ ] Phase 2: architecture-candidates.md contains 2+ candidates with quantitative comparison
+- [ ] Phase 1: confidence is high, or the user answered the one ambiguity question
+- [ ] Phase 2: the chosen architecture is recorded. Alternatives appear only when more than one still fits
 - [ ] Phase 2: Architecture selection ADR recorded with user's decision
 - [ ] Phase 2: architecture.md exists (refined from selected candidate)
 - [ ] Phase 2: iron-requirements.json (REQ-A-*) with resolved_from tracking
@@ -269,7 +268,7 @@ repeat:
 - [ ] Phase 3: Compliance check against P1+P2 iron: PASS
 - [ ] Phase 3: Zero remaining open items
 - [ ] Self-critique: reviews/dse-self-critique.md produced
-- [ ] Self-critique: Phase 1→3 re-run with critique findings incorporated
+- [ ] Self-critique recorded. A second Phase 1→3 pass runs only when the user asks
 - [ ] User satisfaction check performed
 - [ ] If multiple trials: comparison table presented, better trial selected
 - [ ] Scratch directories cleaned

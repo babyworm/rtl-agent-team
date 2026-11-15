@@ -24,7 +24,7 @@ TeamCreate, coordinator + worker spawning, task monitoring, and cleanup.
 <Do_Not_Use_When>
 - Phase 2 interfaces not yet defined (run rtl-p2-arch-design first)
 - Phase 3 uArch specs not complete (run rtl-p3-uarch-design first)
-- Non-codec design without 6-block structure (use rtl-p4-implement-team instead)
+- Non-codec design without 6-block structure (use rtl-p4-implement team mode instead)
 - Single module only (use rtl-p4-implement for simpler flow)
 - Only need a single module bug fix (use rtl-p4s-bugfix)
 </Do_Not_Use_When>

@@ -38,14 +38,7 @@ H.264/H.265 CABAC encoder front-end: accepts bin-by-bin input with context index
 | ST_ENCODE | _enum_ | Active encoding: feeds `i_bin` and `i_ctx_idx` into the range coder and updates the context model. | ST_FLUSH on terminate condition; stays on next `i_valid` |
 | ST_FLUSH | _enum_ | Drains the range coder internal state, emitting remaining bytes via `o_byte`/`o_byte_valid`. | ST_IDLE when flush complete |
 
-```mermaid
-stateDiagram-v2
-  [*] --> ST_IDLE
-  ST_IDLE --> ST_ENCODE : i_valid
-  ST_ENCODE --> ST_ENCODE : i_valid
-  ST_ENCODE --> ST_FLUSH : terminate
-  ST_FLUSH --> ST_IDLE : flush_done
-```
+![Figure 1-2. cabac_encoder FSM.](figures/cabac_encoder-fsm.png)
 
 ## Sub-Module Instances
 
@@ -57,13 +50,11 @@ stateDiagram-v2
 
 ## Block Diagram
 
-```d2
-# cabac_encoder_excerpt sub-instances
-  u_range_coder: range_coder
-  u_context_memory: context_memory
-  u_bypass_encoder: bypass_encoder
+![Figure 1-1. cabac_encoder block diagram.](figures/cabac_encoder-block.png)
 
-```
+## Registers
+
+_None._
 
 ## Design Notes
 

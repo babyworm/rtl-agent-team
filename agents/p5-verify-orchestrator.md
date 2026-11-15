@@ -1,6 +1,6 @@
 ---
 name: p5-verify-orchestrator
-model: opus
+model: fable
 description: "Phase 5 verification orchestrator. Manages three-stage (module→top→final) parallel verification pipeline with 9 verification categories, module graduation gates, feedback loops, and compliance review."
 skills: [rtl-p5-verify-policy]
 ---
@@ -123,7 +123,7 @@ Task(subagent_type="rtl-agent-team:lint-checker",
 **V2: SVA Completion + Formal Verification** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-sva-orchestrator",
-     prompt="Run SVA/formal verification pipeline for module {module}. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. 3-round iterative refinement (Draft→Strengthen→Harden). Scripts handle sv2v conversion internally (Layer 2). SymbiYosys BMC+induction. Report proved/failed/timeout per property. IMPORTANT: namespace all outputs by module — iteration notes to sva-iteration-{module}-r{N}.md, formal results to formal/formal_verify_{module}.json.",
+     prompt="Run SVA/formal verification for module {module} once. Use Stream B skeletons from docs/phase-4-rtl/stream-b-sva-skeletons.md if available. One property pass covers safety, protocol, edges, and bounded liveness. Scripts handle sv2v conversion internally (Layer 2). SymbiYosys BMC+induction. Report proved/failed/timeout per property. Namespace outputs by module: note to sva-iteration-{module}.md, results to formal/formal_verify_{module}.json. Do not schedule a second extraction.",
      run_in_background=true)
 ```
 
@@ -224,7 +224,7 @@ Task(subagent_type="rtl-agent-team:regression-analyzer",
 **V6: Coverage Analysis** (per module, via sub-orchestrator)
 ```
 Task(subagent_type="rtl-agent-team:p5s-coverage-orchestrator",
-     prompt="Run coverage analysis pipeline for module {module}. 3-round iterative gap closure (Initial→Deepen→Close) with directed test generation. Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70% (post-exclusion). Apply Coverage Exclusion Protocol on convergence. Write coverage report with raw and post-exclusion numbers plus exclusion record.",
+     prompt="Run one coverage pass for module {module}. Write directed tests for the high-value gaps, run them once, and report bins that remain. Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70% (post-exclusion). Classify leftovers with the Coverage Exclusion Protocol. Write the report with raw and post-exclusion numbers. Do not schedule another pass.",
      run_in_background=true)
 ```
 
@@ -367,8 +367,10 @@ Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="READ-ONLY final spec compliance review. Read docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/iron-requirements.json (if available), docs/phase-1-research/io_definition.json, docs/phase-2-architecture/architecture.md, rtl/*/*.sv, ALL Phase 5 review results, AND reviews/phase-5-verify/traceability-audit.md. Verify RTL implements ALL spec requirements AND traceability audit verdict is PASS. Write reviews/phase-5-verify/final-compliance.md with verdict PASS/FAIL.")
 
 # 3.4 Phase 5 Summary
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Generate compressed Phase 5 summary. Read all Phase 5 artifacts. Write docs/phase-5-verify/phase-5-summary.md (max 200 lines). Include: verification results per module, coverage metrics, performance vs spec, synthesis estimates, outstanding issues.")
 ```
 

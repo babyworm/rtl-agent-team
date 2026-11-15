@@ -155,7 +155,7 @@ generate_agent_skill_map() {
     _agent_line "$agent" "$skill"
   done
 
-  echo "  # Team orchestrators → team skills (1:1 mapping)"
+  echo "  # Team orchestrators → merged phase skills"
   jq -r '.agents | to_entries[] | select(.key | test("-team-")) | "\(.key) \(.value)"' "$REGISTRY" | while read -r agent skill; do
     _agent_line "$agent" "$skill"
   done
@@ -195,7 +195,10 @@ replace_between_markers() {
     return 1
   fi
 
-  awk -v begin="$begin" -v end="$end" -v content="$new_content" '
+  # BSD awk rejects a newline inside an -v value. Pass the block
+  # through the environment, which keeps the newlines.
+  content="$new_content" awk -v begin="$begin" -v end="$end" '
+    BEGIN { content = ENVIRON["content"] }
     $0 ~ begin { print; printf "%s\n", content; skip=1; next }
     skip && $0 ~ end { skip=0 }
     !skip { print }

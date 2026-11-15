@@ -109,7 +109,7 @@ fi
 # the P1-P3 and P4-P5 pipeline states have no other reader. A state file untouched for
 # RAT_STOP_STALE_SECONDS is an abandoned run, as in stop-gate.sh.
 case "$SKILL_NAME" in
-  rat-auto-design|rat-p1p3-spec-uarch|rat-p1p3-spec-uarch-team|rat-p4p5-impl-verify)
+  rat-auto-design|rat-p1p3-spec-uarch|rat-p4p5-impl-verify)
     PIPELINE_STATE="$STATE_DIR/${SKILL_NAME%-team}-state.json"
     PIPELINE_MTIME=$(get_mtime_epoch "$PIPELINE_STATE")
     if [ -n "$PIPELINE_MTIME" ] &&

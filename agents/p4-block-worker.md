@@ -137,6 +137,7 @@ Task(
            f"- Expert guide: {expert_guide}\n"
            f"- Interface package: {worktree_path}/rtl/pkg/codec_if_pkg.sv (READ-ONLY)\n"
            f"- Output to: {worktree_path}/rtl/{block}/\n"
+           f"Meet the required throughput, then use less area: share operators that are not needed in the same cycle and keep each shared operator busy. A μArch schedule that fixes the operator count is binding.\n"
            f"Follow coding conventions from .claude/rules/rtl-coding-conventions.md.\n"
            f"DO NOT modify rtl/pkg/ or rtl/intf/ (frozen)."
 )

@@ -1,6 +1,6 @@
 ---
 name: uarch-to-verify-orchestrator
-model: opus
+model: fable
 description: "Phase 4→5 pipeline orchestrator. Manages RTL implementation (dual-stream) and verification (5 sub-phases) with prerequisite checks, dual-layer phase gates, Phase 5→4 feedback loops, and resumability. Stops before Phase 6."
 skills: [rat-p4p5-impl-verify-policy]
 ---
@@ -202,7 +202,9 @@ with list of specific missing files.
 
 On PASS: generate Phase 4 summary:
 ```
-Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
+Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
      prompt="Read all Phase 4 artifacts. Generate docs/phase-4-rtl/phase-4-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.
 
@@ -327,7 +329,7 @@ After successful fix: record lesson in `docs/lessons-learned.md`.
 
 On Phase 5 gate PASS: generate Phase 5 summary:
 ```
-Task(subagent_type="rtl-agent-team:rtl-architect", model="sonnet",
+Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
      prompt="Read all Phase 5 artifacts. Generate docs/phase-5-verify/phase-5-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```

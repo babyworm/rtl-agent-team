@@ -1,6 +1,6 @@
 ---
 name: autopilot-orchestrator
-model: opus
+model: fable
 description: "Full RTL design pipeline orchestrator. Manages 6-phase flow with dual-layer phase gates, parallel agent execution, feedback loops, and resumability. Spawns specialist agents for each phase and enforces quality gates between phases."
 skills: [rat-auto-design-policy]
 ---
@@ -151,16 +151,18 @@ Task(subagent_type="rtl-agent-team:p1-research-team-orchestrator",
 
 # If execution_mode == "sequential":
 Task(subagent_type="rtl-agent-team:p1-research-orchestrator",
-     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md. Run the full 3-round chief-coordinated review with domain expert consultation. Save review to reviews/phase-1-research/.")
+     prompt="Execute Phase 1 research pipeline. Analyze spec at specs/ and produce iron-requirements.json, open-requirements.json, io_definition.json, timing_constraints.json, domain-analysis.md. Run one chief review with domain expert consultation. Name open items and stop. Save the review to reviews/phase-1-research/research-review.md.")
 ```
 
-The orchestrator (team or legacy) handles tree exploration, domain-consult, 3-round chief review,
+The orchestrator (team or legacy) handles tree exploration, domain-consult, one chief review,
 sub-domain expert parallel agents, and quality gate enforcement per `p1-spec-research-policy`.
 
 On PASS: generate Phase 1 summary:
 ```
+If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
+
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Read all Phase 1 artifacts and generate docs/phase-1-research/phase-1-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 
@@ -206,11 +208,11 @@ verdict: PASS or FAIL + findings[]")
 On PASS: generate Phase 2 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Read all Phase 2 artifacts and generate docs/phase-2-architecture/phase-2-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
 Task(subagent_type="rtl-agent-team:arch-designer",
-     model="sonnet",
+     model="fable",
      prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
 ```
 
@@ -251,11 +253,11 @@ Task(subagent_type="rtl-agent-team:p3-uarch-orchestrator",
 On PASS: generate Phase 3 summary + ADRs:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Read all Phase 3 artifacts and generate docs/phase-3-uarch/phase-3-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 
 Task(subagent_type="rtl-agent-team:uarch-designer",
-     model="sonnet",
+     model="fable",
      prompt="Identify 3-5 key μArch decisions made during Phase 3. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to architecture.md sections and Phase 2 ADRs.")
 ```
 
@@ -302,7 +304,7 @@ lint checks, unit TB creation, and per-module iteration per `rtl-p4-implement-po
 On PASS: generate Phase 4 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Read all Phase 4 artifacts and generate docs/phase-4-rtl/phase-4-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.
 
 IMPORTANT — filesystem verification before writing status:
@@ -344,7 +346,7 @@ Both paths produce `reviews/phase-5-verify/final-compliance.md` with verdict=PAS
 On Phase 5 gate PASS: generate Phase 5 summary:
 ```
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="sonnet",
+     model="fable",
      prompt="Read all Phase 5 artifacts and generate docs/phase-5-verify/phase-5-summary.md. Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
 

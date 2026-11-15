@@ -1,6 +1,6 @@
 ---
 name: p5s-perf-orchestrator
-model: opus
+model: fable
 description: "Performance verification orchestrator. Manages RTL performance simulation, BFM baseline comparison, throughput/latency/stall measurement, and deviation flagging (>10% threshold)."
 skills: [rtl-p5s-perf-policy]
 ---

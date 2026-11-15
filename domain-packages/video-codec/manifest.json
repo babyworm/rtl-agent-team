@@ -577,7 +577,7 @@
       "primary_domain_agents": ["vcodec-syntax-entropy-expert", "vcodec-intra-pred-expert", "vcodec-me-expert", "vcodec-mc-expert", "vcodec-transform-quant-expert", "vcodec-filter-recon-expert"],
       "support_domain_agents": ["video-processing-expert", "vcodec-chief-standard-expert"],
       "rtl_agents": ["spec-analyst"],
-      "workflow": "6 sub-domain experts provide algorithm definitions in parallel -> vcodec-chief-standard-expert reviews cross-block consistency (3 mandatory rounds) -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
+      "workflow": "6 sub-domain experts provide algorithm definitions in parallel -> vcodec-chief-standard-expert reviews cross-block consistency once and names open items -> video-processing-expert provides performance requirements -> spec-analyst consolidates into requirements.json"
     },
     "phase_2_architecture": {
       "primary_domain_agents": ["vcodec-architecture-expert", "video-processing-expert"],
