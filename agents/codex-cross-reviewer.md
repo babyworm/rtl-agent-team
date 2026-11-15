@@ -28,9 +28,23 @@ Your job is to:
 ```bash
 cat ~/.codex/config.toml
 ```
-Extract and report to the user:
-- `model` — which OpenAI model is configured
-- `model_reasoning_effort` — reasoning effort level
+Read `model_reasoning_effort` and use that effort. Do not pass `-c` to change it.
+
+This agent is `model: opus`. A Codex CLI call does not use the Claude alias and does not use the `model` value in `config.toml`. Choose the Codex family from the Claude tier of the work:
+
+| Claude tier | Codex family |
+|---|---|
+| fable | astra |
+| opus | sol |
+| sonnet | terra |
+
+If the task names `fable`, `opus`, or `sonnet`, use that row. Otherwise use `sol`.
+
+Codex rejects the bare family name (`-m sol` fails model selection). Before each `codex exec`, resolve the highest-priority slug from `codex debug models` whose slug ends with `-<family>`, and pass that slug with `-m`.
+
+Report:
+- Codex family and the resolved slug
+- Reasoning effort: the config value
 
 ### 0b. Verify Codex CLI
 ```bash
@@ -194,14 +208,20 @@ Use verdict:
 
 ### 2b. Execute Codex Review
 
+Resolve the slug in the same shell as each `codex exec`. Default `FAMILY=sol` (this agent is opus). Use `astra` or `terra` when the task named that tier. Do not pass the bare family name.
+
 **Mode A — tmux available (real-time visibility for user):**
 ```bash
 # Run codex in a horizontal split pane with 1200s hard timeout
 # User watches progress in real-time; output captured to file
+FAMILY=sol
+CODEX_MODEL=$(codex debug models | python3 -c 'import json,sys; raw=sys.stdin.read(); data=json.loads(raw[raw.find("{"):]); family=sys.argv[1]; cands=sorted([m for m in data["models"] if str(m.get("slug","")).endswith("-"+family)], key=lambda m: m.get("priority", 999)); print(cands[0]["slug"] if cands else "")' "$FAMILY")
+if [ -z "$CODEX_MODEL" ]; then echo "No Codex catalog slug for family ${FAMILY}" >&2; exit 1; fi
 ROUND_OUT="$(pwd)/.rat/cross-review/phase-${N}/round-1.json"
 ROUND_LOG="$(pwd)/.rat/cross-review/phase-${N}/round-1-log.txt"
 PROMPT_FILE="$(pwd)/.rat/cross-review/phase-${N}/prompt-round-1.txt"
 tmux split-window -v "timeout 1200 codex exec \
+  -m ${CODEX_MODEL} \
   -s read-only \
   --output-schema $(pwd)/.rat/cross-review/review-schema.json \
   -o ${ROUND_OUT} \
@@ -223,7 +243,11 @@ done
 if [ ! -f "${ROUND_OUT}" ]; then
   echo "WARN: tmux codex exec timed out or failed. Falling back to Mode B."
   # Fallback: run directly in Bash
+  FAMILY=sol
+  CODEX_MODEL=$(codex debug models | python3 -c 'import json,sys; raw=sys.stdin.read(); data=json.loads(raw[raw.find("{"):]); family=sys.argv[1]; cands=sorted([m for m in data["models"] if str(m.get("slug","")).endswith("-"+family)], key=lambda m: m.get("priority", 999)); print(cands[0]["slug"] if cands else "")' "$FAMILY")
+  if [ -z "$CODEX_MODEL" ]; then echo "No Codex catalog slug for family ${FAMILY}" >&2; exit 1; fi
   timeout 1200 codex exec \
+    -m "$CODEX_MODEL" \
     -s read-only \
     --output-schema .rat/cross-review/review-schema.json \
     -o .rat/cross-review/phase-${N}/round-1.json \
@@ -233,7 +257,11 @@ fi
 
 **Mode B — no tmux (Bash execution with round summaries):**
 ```bash
+FAMILY=sol
+CODEX_MODEL=$(codex debug models | python3 -c 'import json,sys; raw=sys.stdin.read(); data=json.loads(raw[raw.find("{"):]); family=sys.argv[1]; cands=sorted([m for m in data["models"] if str(m.get("slug","")).endswith("-"+family)], key=lambda m: m.get("priority", 999)); print(cands[0]["slug"] if cands else "")' "$FAMILY")
+if [ -z "$CODEX_MODEL" ]; then echo "No Codex catalog slug for family ${FAMILY}" >&2; exit 1; fi
 timeout 1200 codex exec \
+  -m "$CODEX_MODEL" \
   -s read-only \
   --output-schema .rat/cross-review/review-schema.json \
   -o .rat/cross-review/phase-${N}/round-1.json \
@@ -347,7 +375,7 @@ Generate `.rat/cross-review/phase-{N}/cross-review-report.md`:
 # Cross-Review Report — Phase N
 
 ## Configuration
-- Codex Model: [from config.toml]
+- Codex Model: resolved slug for family sol (opus → sol), or the row the task named
 - Reasoning Effort: [from config.toml]
 - Passes: 1
 - Verdict: [CONSENSUS | USER_DECIDED]
@@ -382,7 +410,7 @@ One APPROVE with no open disputes is CONSENSUS. Open disputes go to the user. Do
 3. **Codex reads files directly** — do not embed full file contents in prompts; list paths and let Codex use `-s read-only` to access them
 4. **Preserve review artifacts** — all prompts, responses, and state files stay in `.rat/cross-review/phase-{N}/` for traceability
 5. **No modifications during Codex's turn** — do not edit files while waiting for Codex response
-6. **Respect Codex config** — always read `~/.codex/config.toml` to use the user's configured model and effort; never override with `-m` or `-c` flags
+6. **Codex model map** — family from the Claude tier: `fable` → `astra`, `opus` → `sol`, `sonnet` → `terra`. This agent is `opus`, so the default family is `sol`. Codex rejects the bare family name. Pass `-m` with the highest-priority `codex debug models` slug that ends with `-<family>`. Read `model_reasoning_effort` from `~/.codex/config.toml` and do not override it with `-c`
 7. **Prompt size discipline** — keep prompts under 4KB. Reference file paths instead of embedding content. For large artifact lists, write a manifest file and reference it. This prevents shell ARG_MAX limits and token truncation at both producer (Codex output) and consumer (Claude input) boundaries
 8. **File-first data exchange** — large results go to files (`-o`), LLM-to-LLM transfer uses compact summaries/pointers only. Read results selectively with `jq` or `grep` rather than loading entire JSON into conversation context
 

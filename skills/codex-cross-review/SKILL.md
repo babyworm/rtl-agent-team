@@ -30,12 +30,21 @@ Ask Codex once, as an independent second reviewer. Report disagreements. A furth
 
 ## Configuration
 
-The skill reads `~/.codex/config.toml` for model and effort settings.
-Users configure their preferred model and reasoning effort there — the skill never overrides these.
+Read `model_reasoning_effort` from `~/.codex/config.toml` and use that effort. Do not pass `-c` to change it.
 
-Display the current config to the user at the start of every invocation:
+A Codex CLI call maps the Claude tier of the work to a Codex family:
+
+| Claude tier | Codex family |
+|---|---|
+| fable | astra |
+| opus | sol |
+| sonnet | terra |
+
+`codex-cross-reviewer` is `model: opus`, so the family is `sol` unless the task names another tier. Do not use the `model` value in `config.toml`. Codex rejects the bare family name. Pass `-m` with the highest-priority slug from `codex debug models` whose slug ends with `-<family>`.
+
+Display this at the start of every invocation:
 ```
-Codex Config: model={model}, reasoning_effort={effort}
+Codex family: sol (opus → sol). Slug: {resolved slug}. Reasoning effort: {effort from config.toml}
 ```
 
 ## Execution

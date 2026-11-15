@@ -738,6 +738,44 @@ class TestCrossReferences:
         assert "Step 4b" not in agent_content, (
             "codex-cross-reviewer must not keep a follow-up round"
         )
+        exec_blocks = agent_content.split("timeout 1200 codex exec")
+        assert len(exec_blocks) - 1 >= 3, (
+            "codex-cross-reviewer must have three codex exec sites"
+        )
+        for block in exec_blocks[1:4]:
+            command_lines = []
+            for line in block.splitlines():
+                command_lines.append(line)
+                if not line.rstrip().endswith("\\"):
+                    break
+            window = "\n".join(command_lines)
+            assert "-m " in window, "each codex exec must pass -m"
+            assert "-c " not in window, "codex exec must not override effort with -c"
+            assert "-m sol" not in window and "-m astra" not in window and "-m terra" not in window, (
+                "codex exec must not pass the bare family name"
+            )
+            assert "CODEX_MODEL" in window, "codex exec must pass the resolved slug"
+        assert agent_content.count("FAMILY=sol") >= 3, (
+            "each exec site must default the Codex family to sol"
+        )
+        assert 'endswith("-"+family)' in agent_content, (
+            "the slug resolver must select the family suffix"
+        )
+        assert "fable" in agent_content and "astra" in agent_content, (
+            "codex-cross-reviewer must map fable to astra"
+        )
+        assert "sonnet" in agent_content and "terra" in agent_content, (
+            "codex-cross-reviewer must map sonnet to terra"
+        )
+        assert "never override" not in agent_content, (
+            "codex-cross-reviewer must pass the mapped Codex model"
+        )
+        assert "astra" in skill_content and "sol" in skill_content and "terra" in skill_content, (
+            "codex-cross-review must state the Codex model map"
+        )
+        assert "bare family name" in skill_content, (
+            "codex-cross-review must not tell the caller to pass the bare family name"
+        )
 
         # 5c. Completion marker uses ${N} substitution, not literal N
         assert "cross-review-phase-${N}-done" in agent_content, (
