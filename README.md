@@ -1,5 +1,9 @@
 > **한국어 문서**: [README_kr.md](./README_kr.md)
 
+> Please note that, this plugin is not good for fable5.x and opus5.5 or above with more than high effort reasoning level.
+> Since, from Claude 5.x series use "long-term reasoning", time consuming for the "iterative checking" in this plugin.
+> Maintainer try to update model, reasoning level, and descirptions on the plugin for recent models. 
+
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
@@ -19,7 +23,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 | Plugin | Description | Version |
 |--------|-------------|---------|
 | **rtl-agent-team** | 99-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
-| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.1.4 |
+| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.2.0 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
 
