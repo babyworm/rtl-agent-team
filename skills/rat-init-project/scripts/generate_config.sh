@@ -17,6 +17,12 @@ if (( BASH_VERSINFO[0] < 4 )); then
   exit 2
 fi
 
+CONFIG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$CONFIG_SCRIPT_DIR/../../../hooks/lib/python-util.sh"
+RAT_PYTHON=$(rat_select_python)
+export RAT_PYTHON
+ENV_CONFIG="${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/env-config.json"
+
 PROJECT_ROOT="${1:-.}"
 PROJECT_NAME="${2:-$(basename "$(cd "$PROJECT_ROOT" && pwd)")}"
 CONFIG="$PROJECT_ROOT/rat_config.json"
@@ -54,7 +60,7 @@ fi
 json_get_path() {
   local file="$1"
   shift
-  python3 - "$file" "$@" <<'PY'
+  "$RAT_PYTHON" - "$file" "$@" <<'PY'
 import json
 import sys
 
@@ -72,13 +78,13 @@ PY
 }
 
 json_quote() {
-  python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
+  "$RAT_PYTHON" -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
 }
 
 # Check if a tool is available, optionally sourcing env first or using explicit path
 # Args: tool_name env_source_cmd explicit_path
 tool_detect() {
-  local tool="$1" env_cmd="${2:-}" explicit_path="${3:-}"
+  local tool="$1" env_cmd="${2:-}" explicit_path="${3:-}" env_shell="${4:-bash}"
 
   # Try explicit path first
   if [[ -n "$explicit_path" && -f "$explicit_path" && -x "$explicit_path" ]]; then
@@ -89,8 +95,12 @@ tool_detect() {
   # Try with env_source
   if [[ -n "$env_cmd" ]]; then
     local found
-    found=$(bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' \
-      _ "$env_cmd" "$tool" 2>/dev/null) || true
+    if [[ "$env_shell" == tcsh || "$env_shell" == csh ]]; then
+      found=$("$env_shell" -f -c 'eval "$argv[1]" >& /dev/null; if ($status != 0) exit $status; which $argv[2]:q' "$env_cmd" "$tool" 2>/dev/null) || true
+    else
+      found=$(bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' \
+        _ "$env_cmd" "$tool" 2>/dev/null) || true
+    fi
     if [[ -n "$found" ]]; then
       echo "$found"
       return 0
@@ -130,30 +140,35 @@ ALL_TOOLS=(
   "equivalence lec        lec"
   "cdc         svlens     svlens"
   "cdc         sg_shell   sg_shell"
-  "cdc         vc_cdc     vc_cdc"
-  "cdc         questa_cdc questa_cdc"
+  "cdc         vc_cdc     vc_static_shell"
+  "cdc         questa_cdc qverify"
   "debug       verdi      verdi"
   "debug       simvision  simvision"
   "coverage    urg        urg"
   "coverage    imc        imc"
   "coverage    vcover     vcover"
+  "sta         pt_shell   pt_shell"
+  "power       pwr_shell  pwr_shell"
+  "power       joules     joules"
+  "power       voltus     voltus"
+  "power       powerpro   powerpro"
 )
 
 # ─── Load existing user fields ─────────────────────────────────────────────
 declare -A SAVED_ENV=()
 declare -A SAVED_PATH=()
-
-if [[ -f "$CONFIG" ]]; then
+declare -A SAVED_SHELL=()
+for input_config in "$ENV_CONFIG" "$CONFIG"; do
+  [[ -f "$input_config" ]] || continue
   for entry in "${ALL_TOOLS[@]}"; do
     read -r cat key _bin <<< "$entry"
     index="$cat/$key"
-    env_val=$(json_get_path "$CONFIG" tools "$cat" "$key" env_source)
-    path_val=$(json_get_path "$CONFIG" tools "$cat" "$key" path)
-    [[ -z "$env_val" ]] || SAVED_ENV[$index]="$env_val"
-    [[ -z "$path_val" || "$path_val" == "(built-in)" ]] || SAVED_PATH[$index]="$path_val"
+    [[ -n "$(json_get_path "$input_config" tools "$cat" "$key")" ]] || continue
+    SAVED_ENV[$index]=$(json_get_path "$input_config" tools "$cat" "$key" env_source)
+    SAVED_PATH[$index]=$(json_get_path "$input_config" tools "$cat" "$key" path)
+    SAVED_SHELL[$index]=$(json_get_path "$input_config" tools "$cat" "$key" env_shell)
   done
-  echo "Loaded existing config (preserving user fields)"
-fi
+done
 
 # Preserve other user-edited sections
 if [[ -f "$CONFIG" ]]; then
@@ -196,7 +211,7 @@ for entry in "${ALL_TOOLS[@]}"; do
   exp_path="${SAVED_PATH[$cat/$key]:-}"
 
   found_path=""
-  if found_path=$(tool_detect "$bin" "$env_src" "$exp_path"); then
+  if found_path=$(tool_detect "$bin" "$env_src" "$exp_path" "${SAVED_SHELL[$cat/$key]:-bash}"); then
     DET_STATUS[$cat/$key]=true
     DET_PATH[$cat/$key]="$found_path"
   else
@@ -243,9 +258,9 @@ pick_pref() {
 
 PREF_SIM=$(pick_pref simulators vcs xrun vsim verilator iverilog)
 PREF_SYN=$(pick_pref synthesis dc_shell genus yosys)
-PREF_LINT=$(pick_pref lint sg_shell slang verilator verible)
+PREF_LINT=$(pick_pref lint slang verilator verible sg_shell)
 PREF_FORMAL=$(pick_pref formal jg vcf sby)
-PREF_CDC=$(pick_pref cdc sg_shell vc_cdc questa_cdc svlens)
+PREF_CDC=$(pick_pref cdc vc_cdc questa_cdc svlens sg_shell)
 if [[ -z "$PREF_CDC" ]]; then PREF_CDC="structural"; fi
 PREF_EQUIV=$(pick_pref equivalence fm_shell lec)
 
@@ -284,15 +299,20 @@ if [[ -n "$LIBERTY_FILE" && "$LIBERTY_FILE" != /* ]]; then
 fi
 if [[ -n "$LIBERTY_FILE" && -f "$LIBERTY_FILE" ]]; then
   NAND2_PAT="${NAND2_PATTERN:-NAND2X1}"
-  EXTRACTED=$(awk -v pat="$NAND2_PAT" '
-    $0 ~ "cell[[:space:]]*\\("pat"\\)" { found=1 }
-    found && /area[[:space:]]*:/ {
-      gsub(/[^0-9.]/, "", $NF)
-      print $NF
-      exit
-    }
-    found && /^\s*\}/ { found=0 }
-  ' "$LIBERTY_FILE")
+  EXTRACTED=$("$RAT_PYTHON" - "$LIBERTY_FILE" "$NAND2_PAT" <<'PYAREA'
+import re,sys
+text=open(sys.argv[1]).read()
+text=re.sub(r'/\*.*?\*/|//[^\n]*','',text,flags=re.S)
+pattern=re.compile(r'cell\s*\(\s*"?([^"()]+?)"?\s*\)\s*\{')
+for match in pattern.finditer(text):
+    if not re.fullmatch(sys.argv[2],match[1].strip()): continue
+    depth=1; end=match.end()
+    while end<len(text) and depth:
+        depth+=(text[end]=='{')-(text[end]=='}');end+=1
+    area=re.search(r'\barea\s*:\s*([0-9]+(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?)\s*;',text[match.end():end])
+    if area: print(float(area[1]));break
+PYAREA
+)
 
   if [[ -n "$EXTRACTED" ]]; then
     NAND2_AREA="$EXTRACTED"
@@ -346,7 +366,9 @@ $(tool_json cdc questa_cdc)
     },
 $(category_json equivalence fm_shell lec),
 $(category_json debug verdi simvision),
-$(category_json coverage urg imc vcover)
+$(category_json coverage urg imc vcover),
+$(category_json sta pt_shell),
+$(category_json power pwr_shell joules voltus powerpro)
   },
   "preferences": {
     "_comment": "Preferred tool per category. Auto-set to first detected (commercial priority). User-overridable.",
@@ -379,7 +401,7 @@ $(category_json coverage urg imc vcover)
 }
 OUTER_EOF
 
-python3 - "$GENERATED_CONFIG" "$EXISTING_CONFIG" <<'PY'
+"$RAT_PYTHON" - "$GENERATED_CONFIG" "$EXISTING_CONFIG" "$ENV_CONFIG" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -387,9 +409,9 @@ from pathlib import Path
 
 def preserve_user_fields(generated, existing, path=()):
     for key, existing_value in existing.items():
-        if path and path[0] == "tools" and key in {"detected", "path"}:
+        if path and path[0] == "tools" and key in {"detected", "path"} and not preserve_remote_tools:
             continue
-        if path == ("technology",) and key == "nand2_area_um2":
+        if path == ("technology",) and key == "nand2_area_um2" and existing_value is None:
             continue
         generated_value = generated.get(key)
         if isinstance(generated_value, dict) and isinstance(existing_value, dict):
@@ -402,9 +424,31 @@ generated_path = Path(sys.argv[1])
 with generated_path.open(encoding="utf-8") as generated_file:
     config = json.load(generated_file)
 
+auto_preferences = {key: value for key, value in config["preferences"].items() if not key.startswith("_")}
+preserve_remote_tools = False
+site_path = Path(sys.argv[3])
+if site_path.is_file():
+    site = json.loads(site_path.read_text())
+    preserve_user_fields(config, {"tools": site.get("tools", {})})
+existing = {}
 if sys.argv[2]:
-    with Path(sys.argv[2]).open(encoding="utf-8") as existing_file:
-        preserve_user_fields(config, json.load(existing_file))
+    existing = json.loads(Path(sys.argv[2]).read_text())
+    preserve_remote_tools = existing.get("execution", {}).get("backend") in ("ssh", "lsf")
+    preserve_user_fields(config, existing)
+previous_auto = existing.get("preferences", {}).get("_auto", {})
+for key, value in auto_preferences.items():
+    if key in previous_auto and existing.get("preferences", {}).get(key) == previous_auto[key]:
+        config["preferences"][key] = value
+config["preferences"]["_auto"] = auto_preferences
+config.setdefault("execution", {"backend": "local", "timeout_seconds": 1800, "stall_seconds": 0})
+config["execution"].setdefault("python", sys.executable)
+config["technology"].setdefault("db", "")
+config["technology"].setdefault("saif", "")
+prior_detection = existing.get("detection", {})
+if preserve_remote_tools and prior_detection.get("host") == existing.get("execution", {}).get("host") and prior_detection.get("scope") == "remote_path_probe":
+    config["detection"] = prior_detection
+else:
+    config["detection"] = {"scope": "local", "remote_tools_probed": False}
 
 generated_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 PY
@@ -416,6 +460,7 @@ PREF_FORMAL=$(json_get_path "$GENERATED_CONFIG" preferences formal)
 PREF_CDC=$(json_get_path "$GENERATED_CONFIG" preferences cdc)
 PREF_EQUIV=$(json_get_path "$GENERATED_CONFIG" preferences equivalence)
 LIBERTY=$(json_get_path "$GENERATED_CONFIG" technology liberty)
+TECH_DB=$(json_get_path "$GENERATED_CONFIG" technology db)
 SEEDS=$(json_get_path "$GENERATED_CONFIG" coverage seeds)
 
 MK_SIM=$(normalize_for_make "$PREF_SIM")
@@ -434,7 +479,7 @@ validate_make_token() {
 }
 
 normalize_seeds() {
-  python3 - "$1" <<'PY'
+  "$RAT_PYTHON" - "$1" <<'PY'
 import re
 import sys
 
@@ -464,6 +509,7 @@ validate_make_token "preferences.cdc" "$MK_CDC"
 validate_make_token "preferences.equivalence" "$MK_EQUIV"
 SEEDS_MK=$(normalize_seeds "$SEEDS")
 LIBERTY_MK=$(escape_make_path "technology.liberty" "$LIBERTY")
+TECH_DB_MK=$(escape_make_path "technology.db" "$TECH_DB")
 SDC_FILE_MK=$(escape_make_path "SDC_FILE" "${SDC_FILE:-syn/constraints/design.sdc}")
 
 echo "Preferences: sim=$PREF_SIM syn=$PREF_SYN lint=$PREF_LINT formal=$PREF_FORMAL cdc=$PREF_CDC equiv=${PREF_EQUIV:-(yosys)}"
@@ -486,14 +532,32 @@ echo "Make targets: sim=$MK_SIM syn=$MK_SYN lint=$MK_LINT formal=$MK_FORMAL cdc=
   echo ""
   echo "# Technology"
   [[ -n "$LIBERTY_MK" ]] && echo "LIBERTY      ?= ${LIBERTY_MK}"
+  [[ -z "$TECH_DB_MK" ]] || echo "TECH_DB      ?= ${TECH_DB_MK}"
   echo "SDC_FILE     ?= ${SDC_FILE_MK}"
   echo ""
   echo "# Regression"
   [[ -n "$SEEDS_MK" ]] && echo "SEEDS        ?= ${SEEDS_MK}"
 } > "$GENERATED_CONFIG_MK"
+"$RAT_PYTHON" - "$GENERATED_CONFIG" "$GENERATED_CONFIG_MK" <<'PYTOOLS'
+import json,re,sys
+config=json.load(open(sys.argv[1]))
+with open(sys.argv[2],'a') as out:
+    seen=set()
+    for group in config.get('tools',{}).values():
+        if not isinstance(group,dict):continue
+        for name,entry in group.items():
+            if not isinstance(entry,dict) or not entry.get('path') or entry.get('path')=='(built-in)':continue
+            key=re.sub('[^A-Z0-9_]','_',name.upper())
+            if key in seen:continue
+            value=entry['path']
+            if re.search(r'[\n\r$#;|&<>`\\]',value):raise ValueError('unsafe executable path for config.mk: '+name)
+            out.write(key+' ?= '+value.replace(' ','\\ ')+'\n')
+            out.write('export '+key+'\n');seen.add(key)
+PYTOOLS
+
 
 preserve_mode() {
-  python3 - "$1" "$2" <<'PY'
+  "$RAT_PYTHON" - "$1" "$2" <<'PY'
 import os
 import stat
 import sys

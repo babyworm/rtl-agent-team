@@ -129,13 +129,14 @@ compliance_preprocess() {
   else
     # Compliance FAIL — inject authority-specific dynamic prompt
     _CGU_CR_AUTH=$(jsonu_get_file_path_num "$_CGU_CR_REPORT" "summary.max_violation_authority")
-    _CGU_CR_INFEASIBLE=$(jsonu_get_file_path_string "$_CGU_CR_REPORT" "summary.infeasibility_detected")
+    _CGU_CR_INFEASIBLE=$(jsonu_get_file_path_bool "$_CGU_CR_REPORT" "summary.infeasibility_detected")
+    [ -n "$_CGU_CR_INFEASIBLE" ] || _CGU_CR_INFEASIBLE=$(jsonu_get_file_path_string "$_CGU_CR_REPORT" "summary.infeasibility_detected")
     [ -z "$_CGU_CR_AUTH" ] && _CGU_CR_AUTH=3
     # Compute authority-specific budgets
     case "$_CGU_CR_AUTH" in
-      1) _CGU_CR_TAG="[CRITICAL — UPSTREAM REQUIREMENT VIOLATION]"; _CGU_CR_MAX_P=3; _CGU_CR_MAX_F=2 ;;
-      2) _CGU_CR_TAG="[WARNING — HIGH]"; _CGU_CR_MAX_P=4; _CGU_CR_MAX_F=3 ;;
-      *) _CGU_CR_TAG="[WARNING]"; _CGU_CR_MAX_P=5; _CGU_CR_MAX_F=5 ;;
+      1) _CGU_CR_TAG="[CRITICAL — UPSTREAM REQUIREMENT VIOLATION]"; _CGU_CR_MAX_P=2; _CGU_CR_MAX_F=0 ;;
+      2) _CGU_CR_TAG="[WARNING — HIGH]"; _CGU_CR_MAX_P=2; _CGU_CR_MAX_F=0 ;;
+      *) _CGU_CR_TAG="[WARNING]"; _CGU_CR_MAX_P=2; _CGU_CR_MAX_F=0 ;;
     esac
     _CGU_DYN_MSG="$_CGU_CR_TAG Compliance violation (authority=$_CGU_CR_AUTH). Fix violated requirements before proceeding. Re-read upstream iron-requirements.json."
     # Write authority, budgets, and dynamic prompt via sed
@@ -151,7 +152,7 @@ compliance_preprocess() {
       # Read current iteration to enforce "after Primary exhaustion" rule
       _CGU_CR_ITER=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "iteration")
       _CGU_CR_ITER=${_CGU_CR_ITER:-1}
-      if [ "$_CGU_CR_INFEASIBLE" = "true" ] && [ "$_CGU_CR_ITER" -gt "$_CGU_CR_MAX_P" ]; then
+      if [ "$_CGU_CR_INFEASIBLE" = "true" ]; then
         printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "upstream_challenge"/\n' >> "$_CGU_CR_SED"
       elif [ "$_CGU_CR_INFEASIBLE" != "true" ]; then
         # Clear stale upstream_challenge if infeasibility is no longer detected

@@ -53,7 +53,7 @@ def _run(validator_body, env):
     """Run the validator with a given environment."""
     res = subprocess.run(
         ["sh", "-c", validator_body],
-        env={**os.environ, **env},
+        env={**os.environ, **env, "PPA_DB": env.get("PPA_LIBERTY", "")},
         capture_output=True, text=True, timeout=5,
     )
     return res.returncode, res.stdout.strip(), res.stderr.strip()

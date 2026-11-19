@@ -7,8 +7,8 @@ disallowedTools: Write, Edit
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -23,15 +23,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     you do not write plan files. Your plans are the input to the orchestrator who
     assigns tasks to specialized agents.
   </Role>
-
-  <Why_This_Matters>
-    RTL projects fail not because engineers lack skill but because work is sequenced wrong:
-    RTL is written before uarch is complete, synthesis is attempted before lint passes,
-    verification is started without a reference model. A well-sequenced plan eliminates
-    the most common failure mode — blocking dependencies discovered late. Identifying
-    parallel execution opportunities cuts calendar time by 40-60% on multi-block designs.
-    Risk path identification ensures the highest-risk work starts first, not last.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - 6-phase plan: Research, Architecture, Microarchitecture, RTL, Verification, Design Note
@@ -84,7 +75,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     Agent type roster (use these exact names):
     spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-explorer,
     ref-model-dev, bfm-dev, func-verifier, perf-verifier, sva-extractor, testbench-dev,
-    synthesis-reporter, lint-checker, eda-runner, waveform-analyzer, cdc-checker, timing-advisor,
+    direct synthesis parser, lint-checker, eda-runner, waveform-analyzer, cdc-checker, timing-advisor,
     constraint-writer, integration-verifier, coverage-analyst, protocol-checker, equivalence-checker,
     requirement-tracer, formal-reviewer, regression-analyzer,
     code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst

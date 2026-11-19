@@ -83,7 +83,7 @@ Bash("mkdir -p docs/phase-2-architecture reviews/phase-2-architecture .rat/scrat
 # Step 4: No initial tasks from skill — coordinator creates T1a-N after reading P1 artifacts
 
 # Step 5: Spawn coordinator as teammate (orchestrator)
-Agent(team_name="p2-arch", subagent_type="rtl-agent-team:p2-arch-team-orchestrator",
+Agent(team_name="p2-arch", subagent_type="rtl-agent-team:p2-arch-orchestrator",
       name="coordinator", description="P2 architecture coordination",
       prompt="You are the Phase 2 architecture coordinator in team 'p2-arch'. "
              "Manage the task graph using TaskCreate/TaskList/TaskUpdate. "

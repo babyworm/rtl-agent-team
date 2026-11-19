@@ -32,6 +32,21 @@ claude --plugin-dir "$(pwd)"
 - **버그 리포트**: [Bug Report 템플릿](.github/ISSUE_TEMPLATE/bug_report.md) 사용
 - **기능 제안**: [Feature Request 템플릿](.github/ISSUE_TEMPLATE/feature_request.md) 사용
 
+### 규칙을 적용하는 위치
+
+같은 문제가 반복되면 포테이토 피라미드의 순서대로 해결합니다.
+
+1. **코드와 API.** 판정 책임을 한곳에 두고 호출부에 구조화된 결과를 반환합니다.
+2. **정적 검사.** 생성한 단계 매핑과 프롬프트 조각, 템플릿 버전을 CI에서 검사합니다.
+3. **실행 검증.** 실패를 재현하는 테스트를 작성합니다. 프로세스 동작이 중요하면 실행 증거와 실제 시뮬레이터를 사용합니다. 명시된 불변 조건은 설계와 도구가 지원하는 범위에서 형식 검증합니다.
+4. **프롬프트.** 프로젝트 제약과 수용 기준, 미해결 선택지를 기록합니다.
+5. **사람 검토.** 결과에 영향을 주는 모호성을 해소하고 예외를 승인합니다.
+
+시뮬레이션 판정 회귀는 `RAT_EXTENDED_CONTRACTS=1 python -m pytest tests/unit/test_verdict_properties.py`로 재현합니다.
+실행 스크립트나 테스트벤치를 바꿨다면 Verilator가 있는 환경에서 `python evals/runtime/check_verilator_templates.py`를 실행합니다.
+CI는 PR, 버전 태그, 수동 실행에서 두 검사를 수행하며 합성 테스트 로그와 판정 결과를 보관합니다.
+생성 파일이 원본과 어긋나면 생성기를 실행해 복구 패치를 첨부합니다. 실제 사이트 데이터는 저장소와 CI 산출물 밖에 보관합니다.
+
 ### Pull Request 제출
 
 1. Fork 후 feature 브랜치에서 작업

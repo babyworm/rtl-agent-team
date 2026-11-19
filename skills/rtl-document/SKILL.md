@@ -76,8 +76,7 @@ Task(subagent_type="rtl-agent-team:rtl-explorer",
 
 Synthesis summary:
 ```
-Task(subagent_type="rtl-agent-team:synthesis-reporter",
-     prompt="Summarize syn/synth_report.txt and syn/timing_report.txt for the docs/rtl/{module}.md synthesis section.")
+"${RAT_PYTHON:-python3}" {plugin_root}/scripts/parse_synthesis.py --root <project> --tool <selected-tool> --log <synthesis-log>
 ```
 </Tool_Usage>
 

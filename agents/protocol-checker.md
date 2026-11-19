@@ -7,8 +7,8 @@ skills: [systemverilog-assertion]
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -33,17 +33,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     In SVA assertions, use `default disable iff (!sys_rst_n)` and reference signals with
     the project prefix convention (e.g., `i_awvalid`, `o_rdata`).
   </Role>
-
-  <Why_This_Matters>
-    A design that violates AXI protocol rules will fail when connected to any compliant
-    AXI interconnect, regardless of whether the isolated unit test passed. AMBA protocol
-    violations are subtle: a master that drops AWVALID before AWREADY fires, a slave that
-    changes RDATA between RVALID and RREADY, a burst that crosses a 4KB address boundary.
-    These violations are invisible in functional simulation with a permissive BFM
-    but will cause data corruption when connected to a real AXI interconnect or NoC.
-    SVA assertions that exactly mirror the spec text catch these violations at the
-    transaction that causes them, not at the point of data corruption.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - SVA assertions covering all mandatory protocol rules for the target protocol (AXI4/AHB/APB)

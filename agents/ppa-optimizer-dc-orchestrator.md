@@ -3,14 +3,11 @@ name: ppa-optimizer-dc-orchestrator
 description: Coordinator for one PPA optimization iteration. Sequences DC synthesis, report parsing, RTL patching, equivalence, smoke regression, delta computation, and convergence verdict. Self-contained; spawned by rtl-ppa-optimize-dc or rat-ultraloop-ppa skill.
 model: fable
 color: purple
-skills:
-  - ppa-optimizer-dc-policy
-  - syn-tool-profiles
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -59,7 +56,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     # Validate PPA_LIBERTY and PPA_SDC paths — reject shell AND Tcl metachars, must be existing regular files.
     # Note: Tcl evaluates [...] as command substitution inside double-quoted strings, so [ ] \ must also
     # be rejected even after shell quoting (Codex R2 H1).
-    for _var in PPA_LIBERTY PPA_SDC; do
+    for _var in PPA_DB PPA_SDC; do
         _val=$(eval "printf '%s' \"\${$_var:-}\"")
         if [ -z "${_val}" ]; then
             continue   # unset is OK; orchestrator checks specifics later
@@ -79,7 +76,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Step_0_Context_Bootstrap>
 
   <Preconditions>
-    - `dc_shell` OR `genus` available in PATH
+    - Configured `dc_shell` available through the runner; this optimization fragment uses DC commands.
+    - `technology.db` points to an existing target .db library. No unmapped optimization is accepted.
     - `requirements.json["ppa_targets"]` populated
     - Git working tree clean under `allowed_edit_scope`
     - `syn/scripts/run_syn.sh` exists (deployed by rat-init-project)
@@ -87,6 +85,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
   <Single_Iteration_Protocol>
     ### Step 1: DC synthesis (current RTL)
+
+    Resolve PPA_DB from technology.db; require the configured existing .db library
+    before writing the wrapper. Preserve the Tcl-safe path validation above.
 
     `run_syn.sh` supports `--script <tcl>` for a full custom Tcl (bypassing
     auto-generation). The orchestrator composes a thin wrapper Tcl that does
@@ -101,8 +102,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     cat > syn/scr/dc-ppa-wrapper.tcl <<TCL
     set top ${PPA_TOP}
     set_app_var search_path "syn/scr \$search_path"
-    set_app_var link_library "* ${PPA_LIBERTY}"
-    set_app_var target_library "${PPA_LIBERTY}"
+    set_app_var link_library [list * "${PPA_DB}"]
+    set_app_var target_library [list "${PPA_DB}"]
 
     define_design_lib WORK -path syn/work
     analyze  -format sverilog -library WORK -f sverilog \
@@ -121,10 +122,10 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     TCL
 
     syn/scripts/run_syn.sh \
-        --tool ${PPA_TOOL:-dc_shell} \
+        --tool dc_shell \
         --top ${PPA_TOP} \
         -f rtl/filelist_${PPA_TOP}.f \
-        --liberty "${PPA_LIBERTY}" \
+        --db "${PPA_DB}" \
         --script syn/scr/dc-ppa-wrapper.tcl
     ```
     Expected: `syn/rpt/{area,timing,power,qor,clock_gating,vt}.rpt` written.
@@ -132,9 +133,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
     ### Step 2: Parse reports → ppa-report.json
     ```
-    Task(subagent_type="rtl-agent-team:dc-report-parser",
-         description=f"Parse DC reports for iteration {N}",
-         prompt="Invoke parse_dc_reports.py on syn/rpt/ with PPA_ITER={N}, PPA_TOP={top}, PPA_TOOL={tool}.")
+    PPA_ITER={N} PPA_TOP={top} PPA_TOOL={tool} "${RAT_PYTHON:-python3}" {plugin_root}/skills/rtl-ppa-optimize-dc/scripts/parse_dc_reports.py syn/rpt/ syn/ppa-report.json
     ```
     Copy `syn/ppa-report.json` → `docs/ppa-opt/iter-{N}/ppa-report.json`.
 
@@ -339,3 +338,289 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - [ ] convergence.csv appended
   </Final_Checklist>
 </Agent_Prompt>
+
+<!-- RAT_POLICIES_BEGIN: generated by scripts/sync_agent_policies.py -->
+# PPA Optimizer (DC-based) — Policy Reference
+
+This is a **policy skill**: it defines rules and reference material consumed by
+the `ppa-optimizer-dc` agent and the `ppa-optimizer-dc-orchestrator`. It is not
+user-invocable.
+
+## Optimization Philosophy
+
+**Timing-first.** EDA tools (DC `compile_ultra -retime -gate_clock`) already
+perform exhaustive optimization search; LLM RTL patches add value only where
+tools cannot reach: missed clock gating opportunities, ill-shaped critical
+paths solvable via pipelining, operand isolation on idle arithmetic blocks.
+**Escalate to the user early when improvement stalls.**
+
+## Default Weights
+
+```
+timing = 0.7
+power  = 0.2
+area   = 0.1
+```
+
+Loaded from `requirements.json["ppa_targets"]["weights"]`. Sum is normalized to
+1.0 at runtime; a sum <= 0 is treated as a hard configuration error.
+
+## Default Convergence Thresholds
+
+```
+delta_pct          = 2.0    # normal convergence Δ band
+streak_required    = 3      # consecutive iterations with |Δ|<delta_pct
+early_plateau_pct  = 1.0    # early-plateau Δ band (iter 1-2)
+max_cycles         = 4      # hard stop unless user overrides
+```
+
+All overridable via `requirements.json["ppa_targets"]["convergence"]`.
+
+## Three-Tier Termination
+
+| Tier | Condition | Action |
+|------|-----------|--------|
+| Early plateau | At iter 1 or 2, every observed `|Δ_weighted|` < `early_plateau_pct` | Halt, emit `reviews/ppa-opt/early-plateau-escalation.md`, report to user |
+| Normal convergence | Streak of `streak_required` iterations with `|Δ_weighted|` < `delta_pct` OR all targets met | Run full Phase 5 regression, emit `.rat/state/ppa-opt-done` |
+| Max cycles | `iter == max_cycles` | Record best-so-far, escalate to user |
+
+**State cleanup (all tiers).** Every terminal tier — plus the rollback halts
+(equivalence / smoke / timing FAIL) — removes `.rat/state/ppa-loop-state.json`
+so the project exits `ppa-loop` mode and `hooks/rtl-edit-tracker.sh` resumes
+normal verify-gate staleness tracking. This removal is performed by the
+skill/wrapper layer (`rtl-ppa-optimize-dc`, `rat-ultraloop-ppa`) and, on
+rollback, defensively by the orchestrator's Rollback Cleanup Protocol.
+
+**`ppa-opt-done` ownership.** `.rat/state/ppa-opt-done` is emitted ONLY by the
+auto-loop wrapper (`rat-ultraloop-ppa`) after the mandatory final full Phase 5
+regression on normal convergence. The one-shot `rtl-ppa-optimize-dc` does NOT
+emit `ppa-opt-done` (it writes only the Rule 5 `rtl-verify-done` marker). This
+keeps a terminated loop's state unambiguous: `ppa-loop-state.json` absent =
+loop finished; `ppa-opt-done` present = true convergence declared (triggers the
+Phase 6 cascade re-review).
+
+## Timing-First Heuristic (rule priority)
+
+```
+Rule 1 (HIGHEST · aggressive):  Timing closure
+    - WNS < 0 → critical-path pipelining, retiming, logic restructuring
+    - Logic levels > 12 @ 100 MHz → register rebalancing
+    - REJECT any patch worsening WNS by more than 20 ps
+
+Rule 2 (MAIN · safe):  Clock gating coverage
+    - Identify ungated register banks (always_ff without enable)
+    - Add enable conditions DC could not auto-infer
+    - Goal: gating_efficiency_pct  80% → 90%+
+
+Rule 3 (SECONDARY · timing-neutral):  Operand isolation
+    - Target: multiplier / divider with idle cycles > 50%
+    - Accepted only when timing slack unchanged
+
+Rule 4 (SECONDARY · timing-neutral):  Resource sharing
+    - Target: duplicate operator instances
+    - Accepted only when timing slack unchanged
+```
+
+### Reject Set
+
+- Any patch worsening WNS by more than 20 ps
+- Any patch creating inferred latches
+- Any patch touching `frozen_scope`
+
+## Scope Semantics
+
+```
+allowed_edit_scope:
+  rtl/{target_module}/**/*.sv
+
+frozen_scope:
+  rtl/common/**
+  rtl/pkg/**
+  rtl/intf/**
+```
+
+Every iteration runs `validate_patch_scope.py` on the generated `patch.diff`.
+Violation → rollback (scoped `git checkout -- 'rtl/<target>/'`) + halt.
+
+## Rollback Protocol
+
+All of these trigger rollback + halt:
+
+- Patch touches `frozen_scope`
+- Equivalence check FAIL
+- Smoke regression FAIL
+- Timing regression > 20 ps (Δ_wns < −0.02 ns)
+
+Rollback is implemented as `git checkout -- 'rtl/<target>/' && git clean -fd -- 'rtl/<target>/'`
+to confine reversion to `allowed_edit_scope`. Iteration artifacts under
+`docs/ppa-opt/iter-{N}/` are preserved for forensics. Prior to
+the loop starting, the skill asserts a clean working tree.
+
+## DC Tcl Fragment
+
+See `{plugin_root}/skills/ppa-optimizer-dc-policy/templates/dc-compile-ppa.tcl`
+(`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`).
+The PPA orchestrator composes a thin wrapper Tcl that performs DC
+setup/analyze/elaborate/link, `source`s this fragment (with `{plugin_root}`
+expanded to the absolute path, since `dc_shell` runs in the user project CWD),
+then runs it via `run_syn.sh --tool dc_shell --script <wrapper.tcl>` (the
+`--script` path bypasses run_syn.sh auto-generation). Wiring:
+`agents/ppa-optimizer-dc-orchestrator.md`.
+
+## PPA Brief Scaffold
+
+When `requirements.json` is missing `ppa_targets`, the skill writes back the
+content of `{plugin_root}/skills/ppa-optimizer-dc-policy/templates/ppa-brief-scaffold.json`
+(`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`)
+and halts with user prompt.
+
+## Early-Plateau Escalation Report Template
+
+```markdown
+# reviews/ppa-opt/early-plateau-escalation.md
+
+## Verdict: EARLY_PLATEAU
+
+{if data_points < 2}
+> **Caution:** Only {N} iteration delta point(s) observed before plateau detection.
+> Single-point plateau detection indicates the loop halted conservatively; consider
+> forcing one additional iteration via `requirements.json["ppa_targets"]["convergence"]["max_cycles"]`
+> before relying on this conclusion.
+{endif}
+
+EDA tool auto-optimization appears saturated; RTL-level patches yielded
+< {early_plateau_pct}% weighted improvement over the observed iterations.
+
+## Iteration history
+
+| iter | wns_ns | power_mw | area_um2 | weighted_Δ |
+|------|--------|----------|----------|------------|
+| ...  | ...    | ...      | ...      | ...        |
+
+## Current bottleneck (from latest ppa-report.json)
+
+- Critical path: {from} → {to} (slack {slack_ns} ns, {logic_levels} logic levels)
+- Power hotspot: {group} {pct}%, clock network {clock_pct}%
+- Clock gating efficiency: {gating_efficiency_pct}%
+
+## Recommended user actions
+
+1. Review μArch (pipeline depth, algorithm variant)
+2. Relax spec targets (clock / power budget)
+3. Evaluate technology changes (stdcell library, Vt mix)
+4. Force continuation via:
+   requirements.json["ppa_targets"]["convergence"]["max_cycles"] = N  (N > 4)
+```
+
+## Phase Integer Mapping
+
+The `ppa-opt` phase is identified in `phase-registry.json` by the string key
+`"ppa-opt"` with `"order": 5.5` (semantic: between P5 verify and P6 design-note).
+For POSIX shell compatibility, `sctx_skill_to_phase()` emits integer `8`.
+
+| Registry phase | Integer | Role |
+|----------------|---------|------|
+| `"ppa-opt"`    | 8       | Post-Verify PPA optimization |
+
+Rationale: the integer space 1–7 is reserved for canonical pipeline phases.
+Integer 8 is used for the optional post-verify stage. Any future phases beyond
+7 should follow this extension pattern and also declare `"integer_map": <N>`
+in the registry entry so the dual encoding stays discoverable.
+
+## References
+
+- Synopsys Design Compiler User Guide — `compile_ultra`, `set_clock_gating_style`
+- Synopsys Power Compiler User Guide — `set_power_opt`, `report_power -analysis_effort`
+- Weste & Harris, *CMOS VLSI Design* — clock gating methodology
+
+# Synthesis Tool Profiles
+
+## Common Contract
+- Prefer wrapper: `syn/scripts/run_syn.sh`
+- Synthesis is mandatory at block/top gate levels.
+- Normalize output into:
+  - `tool`, `status`, `area`, `timing_summary`, `log_path`, `replay_path`
+- Multicore: DC/Genus scripts request `--max-cores` (default 8) via
+  `set_host_options` / `set_db max_cpus_per_server`. Tools auto-limit to the
+  licensed/physical maximum, so over-requesting is safe (graceful degradation).
+- Memory wrappers: behavioral SRAM (`sram_sp/tp/dp`) keeps its 2-D array under
+  `synopsys translate_off`, so DC/Genus skip it. With no compiled macro linked,
+  `run_syn.sh` blackboxes the wrapper (`set_dont_touch` + `set_disable_timing`) and
+  WARNs. Select a process with `--mem-process` and link the macro with `--mem-lib`
+  for real timing/area. See the synth-memory-blackbox design spec.
+
+## Output Directory Structure (DC-standard)
+```
+syn/
+├── db/      — Binary databases (.ddc, .db, .genus_db)
+├── vnet/    — Gate-level netlists (.v, .json)
+├── svf/     — Setup Verification Flow (.svf, DC only)
+├── scr/     — Generated scripts (.tcl, .ys) + replay/
+├── rpt/     — Reports (area, timing, power, qor)
+├── log/     — Synthesis logs
+├── temp/    — Cache and temporary files
+└── work/    — Tool work directories
+```
+
+## Open-Source Baseline
+- `yosys`:
+  - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f`
+  - Optional lib mapping:
+    - `syn/scripts/run_syn.sh --tool yosys --top <top> -f rtl/filelist_top.f --liberty <lib>`
+
+## Commercial Profiles
+- `dc_shell`:
+  - `syn/scripts/run_syn.sh --tool dc_shell --top <top> -f rtl/filelist_top.f`
+  - Optional:
+    - `--liberty <tech.lib> --sdc <design.sdc> --script <dc.tcl> --max-cores <n>`
+    - Memory: `--mem-process <NAME> --mem-lib <macro.db> --mem-module <name> --mem-strict`
+  - Outputs: `.ddc` → `syn/db/`, netlist → `syn/vnet/`, `.svf` → `syn/svf/`, `.synopsys_dc.setup` → `syn/scr/`
+- `genus`:
+  - `syn/scripts/run_syn.sh --tool genus --top <top> -f rtl/filelist_top.f`
+  - Optional:
+    - `--liberty <tech.lib> --sdc <design.sdc> --script <genus.tcl> --max-cores <n>`
+    - Memory: `--mem-process <NAME> --mem-lib <macro.db> --mem-module <name> --mem-strict`
+  - Outputs: `.genus_db` → `syn/db/`, netlist → `syn/vnet/`
+- `vivado` (FPGA):
+  - `syn/scripts/run_syn.sh --tool vivado --top <top> --script <vivado.tcl>`
+  - `--script` is **mandatory**: part number, XDC and IP handling are
+    project-specific, so there is no generic non-project recipe to auto-generate.
+    The Tcl must carry its own `synth_design -top <top> -part <part>` flow.
+  - `-f`, `--liberty` and the `--mem-*` options do not apply — the Tcl owns source
+    and constraint loading.
+
+## Invocation Reference
+
+The exact binaries and batch switches the runner uses. These are the shapes each
+vendor documents; changing them silently breaks the stage.
+
+| Tool | Invocation | Why this shape |
+|------|------------|----------------|
+| `yosys` | `yosys -s <ys>` | — |
+| `dc_shell` | `dc_shell -64bit -f <tcl>` | Synopsys shells spell the switch `-64bit` |
+| `genus` | `genus -batch -files <tcl>` | Without `-batch` Genus keeps an interactive shell alive after sourcing. `-64` is an RTL-Compiler-era switch — Genus is 64-bit only and newer releases reject it |
+| `vivado` | `vivado -mode batch -source <tcl> -nojournal -nolog` | Batch mode exits when the script finishes; Tcl mode would return to a prompt. Suppressing the journal/log keeps parallel runs from colliding |
+
+## Tool Availability Tiers
+
+| Tier | Tools | Capabilities | sv2v Handling |
+|------|-------|-------------|---------------|
+| 1 (commercial) | dc_shell, genus | Full synthesis + timing + area + PPA | Not needed (native SV support) |
+| 2 (oss) | yosys | Latch detection, unmapped cells, basic area estimate | Script handles internally (Layer 2) |
+| 3 (none) | — | Synthesis skipped with WARNING | N/A |
+
+Use `get_synthesis_tier()` from `lib/tool-runner.sh` to determine tier at runtime.
+
+**sv2v Policy**: sv2v is a **Layer 2 concern** — `run_syn.sh` handles it internally for Yosys.
+Agent prompts and policy skills MUST NOT instruct manual sv2v execution.
+Canonical source stays SystemVerilog; tool adaptation is the script's responsibility.
+
+**`--skip-if-unavailable` flag**: When passed to `run_syn.sh`, tool absence or license failure
+produces WARNING + clean exit (exit 0) instead of hard failure. Use in optional synthesis contexts
+(Stream B smoke test, V8 estimation without commercial tools).
+
+## Gate Criteria
+- `FAIL`: tool fatal error, netlist generation failure, or unusable report
+- `PASS`: synthesis completes and required summary artifacts are generated
+- `SKIPPED`: tool not available and `--skip-if-unavailable` was set (non-blocking)
+<!-- RAT_POLICIES_END -->

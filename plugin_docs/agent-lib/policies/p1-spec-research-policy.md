@@ -1,0 +1,209 @@
+# Phase 1 Research Policy
+
+## Core Principles
+
+- **Confidence**: Phase 1 has no EDA measurement, so the model's confidence is the gate. High confidence means low ambiguity: the spec has one reading, or one approach fits the evidence and the others do not. Record that confidence with the decision. Do not iterate to raise it. Low confidence is named and asked once; the user's answer is the decision.
+- **Targeted domain consultation**: Consult an expert or a normative reference for
+  a specific unresolved question. Do not commission a general tutorial when the
+  requirements and relevant facts are already available.
+- **One choice when it is clear**: When one algorithm or tool fits and the others do not, record it. When more than one still fits, name them and ask once. Architecture-level decisions (pipeline, partitioning, memory hierarchy) belong to Phase 2.
+- **No forced exploration**: If the user named the algorithm and the architecture, or one candidate already fits, record that choice. Do not spawn a solution tree to manufacture alternatives.
+
+## Spec Refinement Criteria
+
+Ask once, and only for an area that is still ambiguous (skip items already provided by the user):
+- Target codec, profile, level (e.g., H.264 High Profile Level 4.1)
+- Target resolution and framerate (e.g., 1080p@60fps, 4K@30fps)
+- Encoder, decoder, or both
+- Interface protocol (AXI4, AXI4-Lite, APB, custom)
+- Clock frequency target and process node (ASIC vs FPGA)
+- Feature scope restrictions (e.g., "TQ only", "intra-only")
+- Priority trade-off preference (throughput vs area vs power vs quality)
+
+## Chief Review
+
+One review, coordinated by rtl-architect. If a domain chief exists (for example vcodec-chief-standard-expert), both review once. Check:
+
+1. Data flow: inputs and outputs at every block boundary
+2. Dependencies: which block produces and consumes each value
+3. Performance: throughput, latency, and bandwidth as numbers
+4. Fixed-point: bit widths and rounding modes per block
+5. Cross-block issues
+6. Ambiguities: resolved, or promoted to an architecture decision
+
+Save `reviews/phase-1-research/research-review.md`. Name the open items and stop. A second pass runs only when the user asks, and is saved as `research-review-r2.md`. Do not schedule that pass.
+
+## Iron/Open Requirement Taxonomy
+
+Phase 1 produces TWO requirement files as separate iron and open requirement artifacts:
+- `docs/phase-1-research/iron-requirements.json` — settled functional (REQ-F-NNN) and
+  performance (REQ-P-NNN) requirements, authority = 1, binding for ALL downstream phases.
+- `docs/phase-1-research/open-requirements.json` — research topics (OPEN-1-NNN) that
+  Phase 2 must investigate and resolve into architecture decisions.
+
+Per-item field schemas for both files are owned by the spec-analyst agent prompt.
+This policy owns only the classification and verification rules below.
+
+### Classification Rules
+
+- A requirement with one reading and measurable acceptance_criteria → **iron**. That is high confidence.
+- A choice where more than one implementation still fits → **open**. Name it and ask once.
+- Do not withhold iron status in order to run another scoring pass.
+
+## Iron/Open Classification Verification
+
+After iron/open files are produced, verify:
+
+**FAIL conditions** (must fix before exit):
+- acceptance_criteria contains vague terms ("should support", "adequate", "sufficient")
+- open item missing evaluation_criteria
+- iron item missing violation_policy
+- One candidate is not a failure. It is high confidence when that candidate fits and the others do not.
+
+**WARN conditions** (log and proceed):
+- iron ratio < 30% (most items pushed to open — weakens Phase 1 value)
+- open item related_iron is empty
+- CONDITIONAL PASS ambiguity axis linked to an iron-classified REQ
+
+## Port Naming Conventions (io_definition.json)
+
+- Inputs: `i_` prefix (e.g., `i_data`, `i_valid`) — NOT suffix `_i`
+- Outputs: `o_` prefix (e.g., `o_result`, `o_ready`) — NOT suffix `_o`
+- Bidirectional: `io_` prefix (e.g., `io_sda`)
+- Clocks: `clk` (single domain) or `{domain}_clk` (e.g., `sys_clk`) — NOT `clk_i`
+- Resets: `rst_n` (single domain) or `{domain}_rst_n` (e.g., `sys_rst_n`) — NOT `rst_ni`
+- Single clock domain defaults to `sys_clk` / `sys_rst_n`
+
+## Self-Verification Format
+
+Save to `reviews/phase-1-research/research-review.md`:
+```
+# Phase 1 Review: Research Completeness
+- Date: YYYY-MM-DD
+- Reviewer: spec-analyst
+- Upper Spec: specs/
+- Verdict: PASS | FAIL
+
+## Feature Coverage Checklist
+| Spec Section | Requirement ID | Status |
+
+## Findings
+### [severity] Finding-N: ...
+
+## Verdict
+PASS | FAIL: [reason]
+```
+
+## Spec Feature Completeness Audit (MANDATORY — Step 7.5c / team T12b-T12c)
+
+The extractor MUST NOT grade its own completeness: an extraction blind spot also biases
+the self-counted denominator (5-of-10 modes self-reports 5/5). The completeness verdict
+comes from an independent census + mechanical diff:
+
+1. **Independent feature census** (clean context): spawn spec-analyst in FEATURE CENSUS
+   MODE. It reads ONLY original spec sources (`specs/**`, `docs/phase-1-research/goal.md`,
+   domain knowledge files) and MUST NOT read iron-requirements.json, open-requirements.json,
+   or any prior Phase 1 analysis. Enumerate EVERY spec-defined item — expand mode/format
+   tables item-by-item (e.g., each intra prediction mode, encoding mode, color format,
+   block size is one entry). Write `docs/phase-1-research/spec-feature-inventory.json`:
+   ```json
+   { "features": [ { "feature_id": "FEAT-001", "name": "...", "kind": "mode|format|algorithm|capability|constraint",
+                     "source": { "document": "...", "section": "..." } } ] }
+   ```
+
+2. **Mechanical diff** (different agent): spawn rtl-architect to map every FEAT-* to
+   REQ/OPEN IDs in iron ∪ open requirements. Per-feature status:
+   - `EXTRACTED` — mapped to at least one REQ/OPEN id
+   - `EXCLUDED_BY_SCOPE` — user-approved exclusion, ADR reference recorded
+   - `MISSING` — no mapping and no approval
+
+3. **Gap escalation**: any MISSING feature → MUST ask user via AskUserQuestion:
+   - "Spec defines N features; requirements cover M. Omitting K features may reduce
+     [quality metric]. Approve omission?"
+   - Approved → status `EXCLUDED_BY_SCOPE` + ADR with rationale and impact estimate
+   - Not approved → add REQ-F-* to iron-requirements.json as MUST_IMPLEMENT, re-run diff
+
+4. **Documentation**: save `docs/phase-1-research/feature-coverage.md`:
+   ```
+   | Feature | Spec Source | REQ/OPEN IDs | Status |
+   |---------|-------------|--------------|--------|
+   | Intra mode DC | §8.3.1 | REQ-F-012 | EXTRACTED |
+   | Intra mode planar | §8.3.2 | — (ADR-007) | EXCLUDED_BY_SCOPE |
+   ```
+   plus totals: features / extracted / excluded_by_scope / missing.
+
+5. **Gate**: PASS iff missing == 0 (every feature EXTRACTED or EXCLUDED_BY_SCOPE).
+   FAIL blocks Phase 1 completion (`feature-coverage-audited` completion criterion).
+
+6. **Downstream contract**: `spec-feature-inventory.json` is the authoritative spec-item
+   denominator for later phases; `EXCLUDED_BY_SCOPE` records let downstream gates
+   distinguish user-approved scope reduction from silent extraction loss.
+
+7. **Reference model cross-check** (Phase 2+, when refC or an external golden exists):
+   compare the inventory against model implementation — "enum declared but function not
+   implemented" → COVERAGE_GAP warning.
+
+## Escalation & Stop Conditions
+
+- Spec document not found → report to user, halt
+- Conflicting requirements between experts → flag conflict in domain-analysis.md, ask user
+- Open items remain after the one review → report them to the user with specific questions
+- Sub-domain expert returns [DOMAIN_UNCERTAINTY] → AskUserQuestion before proceeding
+
+## Confidence
+
+Record one ambiguity assessment in `docs/phase-1-research/ambiguity-assessment.md`. This file satisfies `ambiguity-pass`.
+
+Record confidence and any material ambiguity across goals, constraints, and
+acceptance criteria. A material ambiguity has multiple readings that change
+behavior, interfaces, constraints, or the expected result of a check. Name the
+readings and the affected requirement. A weighted score is optional metadata and
+cannot hide a contradictory or unresolved requirement.
+
+High confidence with no material ambiguity passes. If a decision needs the user,
+ask once with the relevant alternatives and record the answer. Continue independent
+work while waiting. Do not re-score or start another interpretation pass. Unanswered
+items remain open and cannot silently become binding requirements.
+
+A second reading that is already visible is named in that same question. Do not spawn an adversarial re-analysis to go looking for one.
+
+## Final Checklist
+
+- [ ] `docs/phase-1-research/iron-requirements.json` exists and is valid JSON
+- [ ] `docs/phase-1-research/open-requirements.json` exists and is valid JSON
+- [ ] Every requirement has unique `"id": "REQ-NNN"` field
+- [ ] `docs/phase-1-research/io_definition.json` exists and is valid JSON
+- [ ] io_definition.json port names use `i_`/`o_`/`io_` prefix (NOT suffix)
+- [ ] io_definition.json clocks use `{domain}_clk`, resets use `{domain}_rst_n`
+- [ ] `docs/phase-1-research/timing_constraints.json` exists with per-block timing targets (rough estimates)
+- [ ] `docs/phase-1-research/domain-analysis.md` exists with cross-block dependency matrix and per-block timing targets
+- [ ] No unresolved requirement conflicts
+- [ ] Review coordinator (rtl-architect, or domain chief if available) declared Architecture-Ready (or gaps escalated)
+- [ ] Self-verification verdict produced (PASS or REVIEW_NEEDED)
+- [ ] Spec feature count vs iron-requirements.json + open-requirements.json count documented
+- [ ] `docs/phase-1-research/spec-feature-inventory.json` produced by independent census (clean context, no generated Phase 1 requirement artifact access)
+- [ ] `docs/phase-1-research/feature-coverage.md` saved with zero MISSING features (all EXTRACTED or EXCLUDED_BY_SCOPE with ADR)
+- [ ] `reviews/phase-1-research/research-review.md` saved (consolidated)
+- [ ] `reviews/phase-1-research/research-review.md` saved
+- [ ] `docs/phase-1-research/solution-tree.json` exists (structured JSON)
+- [ ] `docs/phase-1-research/candidate-comparison.md` exists
+- [ ] `docs/phase-1-research/selected-approach.md` exists
+- [ ] `docs/phase-1-research/literature-survey.md` exists
+- [ ] domain-consult invoked when the algorithm or standard is not already settled
+- [ ] A clear algorithm or tool choice is recorded. Alternatives are asked once only when more than one still fits
+- [ ] `docs/phase-1-research/ambiguity-assessment.md` saved once, with per-axis scores and overall ambiguity_score
+- [ ] Confidence is high, or the user answered the one question about the remaining ambiguity (`ambiguity-pass`)
+- [ ] Every iron requirement has measurable acceptance_criteria (no vague terms)
+- [ ] Every iron requirement has `"violation_policy": "user_escalation"`
+- [ ] Every open item names what is still ambiguous and its evaluation_criteria
+- [ ] File-level target_phase specified in open-requirements.json
+- [ ] Iron/open classification verification passed (no FAIL conditions)
+
+## Handoff evidence
+
+Write `docs/<phase-directory>/judgment.json` with `confidence` (`high` or `low`),
+`material_ambiguities` (each has `id`, `status`, and `resolution`), and `user_decision`
+when a user decision settles a low-confidence choice. An empty ambiguity array is
+valid after checking behavior, interfaces, constraints, and expected verification
+results. Do not invent open items to fill the array. Run the executable phase gate
+for artifact/schema checks. Confidence does not replace functional measurements.

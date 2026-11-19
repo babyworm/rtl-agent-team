@@ -33,6 +33,52 @@ _TOOL_RUNNER_CONTAINER=""
 _TOOL_RUNNER_STATE_FILE="$_TOOL_RUNNER_PROJECT_ROOT/.rat/state/docker-container.txt"
 _TOOL_RUNNER_PROJECT_LABEL="rtl-agent-team.project-root"
 
+_TOOL_RUNNER_PYTHON="${RAT_PYTHON:-python3}"
+_TOOL_RUNNER_LIBRARY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+_TOOL_RUNNER_RUNTIME="$_TOOL_RUNNER_LIBRARY_DIR/eda_runner.py"
+case "$_TOOL_RUNNER_LIBRARY_DIR" in
+  */skills/rat-init-project/templates/lib)
+    _TOOL_RUNNER_BUNDLED_ROOT="$(cd "$_TOOL_RUNNER_LIBRARY_DIR/../../../.." && pwd)"
+    [[ -f "$_TOOL_RUNNER_RUNTIME" ]] || _TOOL_RUNNER_RUNTIME="$_TOOL_RUNNER_BUNDLED_ROOT/scripts/eda_runner.py"
+    ;;
+esac
+
+_TOOL_RUNNER_PY_SELECT="$_TOOL_RUNNER_LIBRARY_DIR/python-util.sh"
+[[ -f "$_TOOL_RUNNER_PY_SELECT" ]] || _TOOL_RUNNER_PY_SELECT="${_TOOL_RUNNER_BUNDLED_ROOT:-}/hooks/lib/python-util.sh"
+if [[ -f "$_TOOL_RUNNER_PY_SELECT" ]]; then
+  source "$_TOOL_RUNNER_PY_SELECT"
+  _TOOL_RUNNER_PYTHON=$(rat_select_python) || return $?
+  export RAT_PYTHON="$_TOOL_RUNNER_PYTHON"
+fi
+
+rat_config_value() {
+  [[ -f "$_TOOL_RUNNER_RUNTIME" ]] || return 0
+  "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" get --root "$_TOOL_RUNNER_PROJECT_ROOT" --key "$1"
+}
+
+tool_available() {
+  if [[ -f "$_TOOL_RUNNER_RUNTIME" ]]; then
+    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" available --root "$_TOOL_RUNNER_PROJECT_ROOT" --tool "$1"
+  else
+    command -v "$1" >/dev/null 2>&1
+  fi
+}
+
+# Remote backends execute the whole wrapper before any local discovery or output
+# generation. The explicit guard prevents redispatch on the execution host.
+rat_dispatch_wrapper() {
+  [[ "${RAT_REMOTE_ACTIVE:-0}" = "1" || ! -f "$_TOOL_RUNNER_RUNTIME" ]] && return 0
+  local selected
+  selected=$("$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" backend --root "$_TOOL_RUNNER_PROJECT_ROOT") || return $?
+  case "$selected" in
+    ssh|lsf)
+      local wrapper="$1"; shift
+      "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" dispatch --root "$_TOOL_RUNNER_PROJECT_ROOT" --wrapper "$wrapper" -- "$@"
+      exit $?
+      ;;
+  esac
+}
+
 _tool_runner_container_name() {
   local project_name project_id
   project_name=$(basename "$_TOOL_RUNNER_PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
@@ -131,6 +177,11 @@ _tool_runner_ensure_container() {
 run_tool() {
   local tool="$1"
   shift
+
+  if [[ -f "$_TOOL_RUNNER_RUNTIME" ]]; then
+    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" run --root "$_TOOL_RUNNER_PROJECT_ROOT" -- "$tool" "$@"
+    return $?
+  fi
 
   # Try local first
   if command -v "$tool" >/dev/null 2>&1; then
@@ -260,4 +311,12 @@ get_formal_tier() {
   fi
 }
 
-# rat-version: 0.14.1
+# rat-version: 2.0.1
+
+
+rat_capture_path() {
+  local output status=0
+  output=$(run_tool "$@") || status=$?
+  if [[ "$status" -ne 0 ]]; then printf '%s\n' "$output" >&2; return "$status"; fi
+  printf '%s\n' "$output" | tail -n 1
+}

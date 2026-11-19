@@ -1,6 +1,7 @@
 """Contract tests for synthesis runner filelist and tool-option handling."""
 
 import os
+import json
 from pathlib import Path
 
 from tests.conftest import SKILLS_DIR, run_script
@@ -21,6 +22,10 @@ def _env(fake_bin: Path) -> dict[str, str]:
 
 
 def _write_filelist_project(project: Path) -> Path:
+    (project / "cells.db").write_text("fixture compiled standard-cell library\n")
+    (project / "cells.lib").write_text("library (fixture) {}\n")
+    (project / "rat_config.json").write_text(json.dumps({"technology": {
+        "db": str(project / "cells.db"), "liberty": str(project / "cells.lib")}}))
     (project / "rtl" / "include").mkdir(parents=True)
     (project / "rtl" / "common").mkdir(parents=True)
     (project / "rtl" / "common" / "helper.sv").write_text("module helper; endmodule\n")

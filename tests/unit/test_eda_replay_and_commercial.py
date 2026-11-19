@@ -57,7 +57,7 @@ class TestRunSimReplay:
         outdir = tmp_path / "sim_out"
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
-        _make_fake_tool(fake_bin, "xrun", "echo XRUN_FAKE \"$@\"")
+        _make_fake_tool(fake_bin, "xrun", 'echo XRUN_FAKE "$@"; while [ $# -gt 0 ]; do if [ "$1" = -xmlibdirname ]; then mkdir -p "$2"; : > "$2/build.db"; shift 2; else shift; fi; done; echo RAT_SIM_PASS')
 
         result = run_script(
             RUN_SIM,
@@ -65,7 +65,7 @@ class TestRunSimReplay:
             "xcelium",
             "--top",
             "dummy",
-            "--run-only",
+            str(sv),
             "--outdir",
             str(outdir),
             env={"PATH": f"{fake_bin}:{os.environ.get('PATH', '')}"},
@@ -86,7 +86,7 @@ class TestCommercialLintSynthCdcWrappers:
         outdir = tmp_path / "lint_out"
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
-        _make_fake_tool(fake_bin, "sg_shell", "echo SG_SHELL_FAKE \"$@\"")
+        _make_fake_tool(fake_bin, "sg_shell", "echo SG_SHELL_FAKE \"$@\"; echo RAT_TOOL_COMPLETE; echo Errors: 0")
 
         result = run_script(
             RUN_LINT,
@@ -117,7 +117,7 @@ class TestCommercialLintSynthCdcWrappers:
         _make_fake_tool(fake_bin, "dc_shell", "echo DC_FAKE \"$@\"")
 
         result = run_script(
-            RUN_SYN,
+            RUN_SYN, "--allow-unmapped",
             "--tool",
             "dc_shell",
             "--top",
@@ -149,7 +149,7 @@ class TestCommercialLintSynthCdcWrappers:
         _make_fake_tool(fake_bin, "dc_shell", "echo DC_FAKE \"$@\"")
 
         result = run_script(
-            RUN_SYN,
+            RUN_SYN, "--allow-unmapped",
             "--tool",
             "dc_shell",
             "--top",
@@ -179,7 +179,7 @@ class TestCommercialLintSynthCdcWrappers:
         _make_fake_tool(fake_bin, "dc_shell", "echo DC_FAKE \"$@\"")
 
         result = run_script(
-            RUN_SYN,
+            RUN_SYN, "--allow-unmapped",
             "--tool",
             "dc_shell",
             "--top",
@@ -207,7 +207,7 @@ class TestCommercialLintSynthCdcWrappers:
         _make_fake_tool(fake_bin, "genus", "echo GENUS_FAKE \"$@\"")
 
         result = run_script(
-            RUN_SYN,
+            RUN_SYN, "--allow-unmapped",
             "--tool",
             "genus",
             "--top",
@@ -254,7 +254,7 @@ class TestCommercialLintSynthCdcWrappers:
         outdir = tmp_path / "cdc_out"
         fake_bin = tmp_path / "bin"
         fake_bin.mkdir()
-        _make_fake_tool(fake_bin, "sg_shell", "echo SG_SHELL_CDC_FAKE \"$@\"")
+        _make_fake_tool(fake_bin, "sg_shell", "echo SG_SHELL_CDC_FAKE \"$@\"; echo RAT_TOOL_COMPLETE; echo Violations: 0")
 
         result = run_script(
             RUN_CDC,
@@ -331,7 +331,7 @@ def _gen_script(outdir, prefix):
 class TestMemoryBlackbox:
     def _run(self, flist, outdir, fake_bin, tool, *extra):
         return run_script(
-            RUN_SYN, "--tool", tool, "--top", "m", "-f", str(flist),
+            RUN_SYN, "--allow-unmapped", "--tool", tool, "--top", "m", "-f", str(flist),
             "--outdir", str(outdir), *extra,
             env={"PATH": f"{fake_bin}:{os.environ.get('PATH', '')}"}, timeout=20,
         )
@@ -489,7 +489,7 @@ class TestMemoryBlackbox:
         # --top is emitted into Tcl (`elaborate $TOP`); a non-identifier must be rejected.
         flist, outdir, fake_bin = _mem_fixture(tmp_path, "dc_shell")
         result = run_script(
-            RUN_SYN, "--tool", "dc_shell", "--top", "m[0]", "-f", str(flist),
+            RUN_SYN, "--allow-unmapped", "--tool", "dc_shell", "--top", "m[0]", "-f", str(flist),
             "--outdir", str(outdir),
             env={"PATH": f"{fake_bin}:{os.environ.get('PATH', '')}"}, timeout=20,
         )

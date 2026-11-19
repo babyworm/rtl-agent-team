@@ -40,6 +40,11 @@ lint/
 
 # Project config (auto-generated, machine-specific)
 config.mk
+/rat_config.json
+/env-config.json
+/sites/
+/site-profiles/
+/private-reports/
 
 # Legacy directories (pre-convention)
 ref_model/

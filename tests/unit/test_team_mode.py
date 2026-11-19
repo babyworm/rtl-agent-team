@@ -1,3 +1,4 @@
+from tests.contracts import read_contract
 """Tests for Claude Code native team integration.
 
 Validates:
@@ -30,7 +31,7 @@ class TestTeamConfigLifecycle:
 
     def test_team_config_template_valid_json(self):
         template = TEMPLATE_DIR / "team-config.json"
-        data = json.loads(template.read_text())
+        data = json.loads(read_contract(template))
         assert isinstance(data["team_mode"], bool)
         assert data["team_mode"] is False
         assert data["team_name"] == ""
@@ -52,7 +53,7 @@ class TestTeamConfigLifecycle:
         config_file = state_dir / "team-config.json"
         config_file.write_text(json.dumps(config, indent=2))
 
-        loaded = json.loads(config_file.read_text())
+        loaded = json.loads(read_contract(config_file))
         assert loaded["team_mode"] is True
         assert loaded["team_name"] == "p5-verify"
         assert loaded["leader_session_id"] == "session-abc-123"
@@ -174,8 +175,8 @@ class TestP4TaskDependencyGraph:
     def test_p4_completion_criteria_include_synthesizability(self):
         """Wave 3.5 is a HARD gate, so both full-P4 skills must carry the
         synthesizability-pass completion token (registry parity enforced)."""
-        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
-        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        scc = json.loads(read_contract(REPO_ROOT / "skill-completion-criteria.json"))
+        pr = json.loads(read_contract(REPO_ROOT / "phase-registry.json"))
         for skill in ("rtl-p4-implement",):
             assert "synthesizability-pass" in scc[skill], (
                 f"{skill} missing synthesizability-pass in skill-completion-criteria.json"
@@ -252,32 +253,32 @@ class TestTeamOrchestratorStructure:
     """Validate team orchestrator and worker preamble files."""
 
     def test_p5_verify_team_orchestrator_exists(self):
-        agent = AGENTS_DIR / "p5-verify-team-orchestrator.md"
+        agent = AGENTS_DIR / "p5-verify-orchestrator.md"
         assert agent.exists()
 
     def test_p5_verify_team_orchestrator_has_frontmatter(self):
-        agent = AGENTS_DIR / "p5-verify-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "p5-verify-orchestrator.md"
+        content = read_contract(agent)
         assert content.startswith("---")
         parts = content.split("---", 2)
         assert len(parts) >= 3
         fm = parts[1]
-        assert "name: p5-verify-team-orchestrator" in fm
+        assert "name: p5-verify-orchestrator" in fm
         assert "model: fable" in fm
         assert "skills:" in fm
 
     def test_p5_verify_team_orchestrator_has_coordination_teammate_role(self):
         """Orchestrator must have Coordination Teammate Role (Orchestrator as Teammate pattern)."""
-        agent = AGENTS_DIR / "p5-verify-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "p5-verify-orchestrator.md"
+        content = read_contract(agent)
         assert "Coordination Teammate Role" in content
         assert "FORBIDDEN" in content
         assert "TaskCreate" in content
         assert "TaskList" in content or "TaskUpdate" in content
 
     def test_p5_verify_team_orchestrator_references_dependency_graph(self):
-        agent = AGENTS_DIR / "p5-verify-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "p5-verify-orchestrator.md"
+        content = read_contract(agent)
         assert "blockedBy" in content or "blocked by" in content.lower()
 
     def test_p5_verify_team_skill_exists(self):
@@ -286,13 +287,13 @@ class TestTeamOrchestratorStructure:
 
     def test_p5_verify_team_skill_is_user_invocable(self):
         skill = SKILLS_DIR / "rtl-p5-verify" / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "user-invocable: true" in content
 
     def test_p5_verify_team_skill_delegates_to_orchestrator(self):
         skill = SKILLS_DIR / "rtl-p5-verify" / "SKILL.md"
-        content = skill.read_text()
-        assert 'rtl-agent-team:p5-verify-team-orchestrator' in content
+        content = read_contract(skill)
+        assert 'rtl-agent-team:p5-verify-orchestrator' in content
 
     def test_worker_preamble_exists(self):
         preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
@@ -300,7 +301,7 @@ class TestTeamOrchestratorStructure:
 
     def test_worker_preamble_has_lifecycle_sections(self):
         preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
-        content = preamble.read_text()
+        content = read_contract(preamble)
         assert "Initialization" in content
         assert "Task Claim" in content or "Task Execution" in content
         assert "Shutdown" in content
@@ -314,7 +315,7 @@ class TestTeamOrchestratorStructure:
     def test_worker_protocol_has_key_steps(self):
         """Protocol template must have INIT, CLAIM, EXECUTE, REPORT, SHUTDOWN."""
         protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
-        content = protocol.read_text()
+        content = read_contract(protocol)
         for step in ["INIT", "CLAIM", "EXECUTE", "REPORT", "SHUTDOWN"]:
             assert step in content, f"Protocol missing step: {step}"
 
@@ -329,7 +330,7 @@ class TestTeamOrchestratorStructure:
         for name in agents:
             agent_file = AGENTS_DIR / f"{name}.md"
             assert agent_file.exists(), f"Missing agent: {name}"
-            content = agent_file.read_text()
+            content = read_contract(agent_file)
             if "## Team Worker Protocol" not in content:
                 missing.append(name)
         assert missing == [], f"Agents missing Team Worker Protocol section: {missing}"
@@ -337,32 +338,32 @@ class TestTeamOrchestratorStructure:
     # --- P4 Team Orchestrator ---
 
     def test_p4_implement_team_orchestrator_exists(self):
-        agent = AGENTS_DIR / "p4-implement-team-orchestrator.md"
+        agent = AGENTS_DIR / "p4-implement-orchestrator.md"
         assert agent.exists()
 
     def test_p4_implement_team_orchestrator_has_frontmatter(self):
-        agent = AGENTS_DIR / "p4-implement-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "p4-implement-orchestrator.md"
+        content = read_contract(agent)
         assert content.startswith("---")
         parts = content.split("---", 2)
         assert len(parts) >= 3
         fm = parts[1]
-        assert "name: p4-implement-team-orchestrator" in fm
+        assert "name: p4-implement-orchestrator" in fm
         assert "model: fable" in fm
         assert "skills:" in fm
 
     def test_p4_implement_team_orchestrator_has_coordination_teammate_role(self):
         """Orchestrator must have Coordination Teammate Role (Orchestrator as Teammate pattern)."""
-        agent = AGENTS_DIR / "p4-implement-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "p4-implement-orchestrator.md"
+        content = read_contract(agent)
         assert "Coordination Teammate Role" in content
         assert "FORBIDDEN" in content
         assert "TaskCreate" in content
         assert "TaskList" in content or "TaskUpdate" in content
 
     def test_p4_implement_team_orchestrator_references_10_wave(self):
-        agent = AGENTS_DIR / "p4-implement-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "p4-implement-orchestrator.md"
+        content = read_contract(agent)
         assert "Wave 1" in content or "W1" in content
         assert "Wave 10" in content or "W10" in content
         assert "blockedBy" in content
@@ -373,13 +374,13 @@ class TestTeamOrchestratorStructure:
 
     def test_p4_implement_team_skill_is_user_invocable(self):
         skill = SKILLS_DIR / "rtl-p4-implement" / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "user-invocable: true" in content
 
     def test_p4_implement_team_skill_delegates_to_orchestrator(self):
         skill = SKILLS_DIR / "rtl-p4-implement" / "SKILL.md"
-        content = skill.read_text()
-        assert "rtl-agent-team:p4-implement-team-orchestrator" in content
+        content = read_contract(skill)
+        assert "rtl-agent-team:p4-implement-orchestrator" in content
 
 
 class TestAutopilotTeamAwareness:
@@ -387,17 +388,17 @@ class TestAutopilotTeamAwareness:
 
     def test_autopilot_references_p4_team_orchestrator(self):
         agent = AGENTS_DIR / "autopilot-orchestrator.md"
-        content = agent.read_text()
-        assert "p4-implement-team-orchestrator" in content
+        content = read_contract(agent)
+        assert "p4-implement-orchestrator" in content
 
     def test_autopilot_references_p5_team_orchestrator(self):
         agent = AGENTS_DIR / "autopilot-orchestrator.md"
-        content = agent.read_text()
-        assert "p5-verify-team-orchestrator" in content
+        content = read_contract(agent)
+        assert "p5-verify-orchestrator" in content
 
     def test_autopilot_checks_team_config(self):
         agent = AGENTS_DIR / "autopilot-orchestrator.md"
-        content = agent.read_text()
+        content = read_contract(agent)
         assert "team-config.json" in content
 
 
@@ -410,7 +411,7 @@ class TestTeamIntegrationInfrastructure:
 
     def test_team_fallback_covers_key_scenarios(self):
         fallback = AGENT_LIB_DIR / "team-fallback.md"
-        content = fallback.read_text()
+        content = read_contract(fallback)
         assert "TeamCreate Failure" in content
         assert "SendMessage Failure" in content
         assert "Worker Crash" in content
@@ -422,28 +423,28 @@ class TestTeamIntegrationInfrastructure:
         assert hook.exists()
 
     def test_team_progress_hook_registered_in_hooks_json(self):
-        hooks_data = json.loads((REPO_ROOT / "hooks" / "hooks.json").read_text())
+        hooks_data = json.loads(read_contract(REPO_ROOT / "hooks" / "hooks.json"))
         post_entries = hooks_data["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in post_entries]
         assert "TaskUpdate" in matchers
 
     def test_team_progress_hook_checks_team_config(self):
         hook = REPO_ROOT / "hooks" / "rtl-team-progress.sh"
-        content = hook.read_text()
+        content = read_contract(hook)
         assert "team-config.json" in content
 
     def test_plugin_version_bumped(self):
-        plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
+        plugin = json.loads(read_contract(REPO_ROOT / ".claude-plugin" / "plugin.json"))
         major, minor, patch = plugin["version"].split(".")
         assert int(minor) >= 6 or int(major) >= 1, "Version should be >= 0.6.0 for Orchestrator as Teammate"
 
     def test_claude_md_has_team_mode_section(self):
-        claude_md = (REPO_ROOT / "CLAUDE.md").read_text()
+        claude_md = read_contract(REPO_ROOT / "CLAUDE.md")
         assert "Native Team Mode" in claude_md
 
     def test_autopilot_skill_documents_team_mode(self):
         skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "--no-team" in content or "team mode" in content.lower()
 
 
@@ -730,9 +731,9 @@ class TestP1P3TeamOrchestratorStructure:
     """Validate P1-P3 team orchestrator and skill structural integrity."""
 
     TEAM_ORCHESTRATORS = [
-        ("p1-research-team-orchestrator", "p1-spec-research"),
-        ("p2-arch-team-orchestrator", "p2-arch-design"),
-        ("p3-uarch-team-orchestrator", "rtl-p3-uarch-design"),
+        ("p1-research-orchestrator", "p1-spec-research"),
+        ("p2-arch-orchestrator", "p2-arch-design"),
+        ("p3-uarch-orchestrator", "rtl-p3-uarch-design"),
     ]
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
@@ -743,7 +744,7 @@ class TestP1P3TeamOrchestratorStructure:
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_orchestrator_has_frontmatter(self, agent_name, skill_name):
         agent = AGENTS_DIR / f"{agent_name}.md"
-        content = agent.read_text()
+        content = read_contract(agent)
         assert content.startswith("---")
         parts = content.split("---", 2)
         assert len(parts) >= 3
@@ -756,7 +757,7 @@ class TestP1P3TeamOrchestratorStructure:
     def test_team_orchestrator_has_coordination_teammate_role(self, agent_name, skill_name):
         """Orchestrators must have Coordination Teammate Role section."""
         agent = AGENTS_DIR / f"{agent_name}.md"
-        content = agent.read_text()
+        content = read_contract(agent)
         assert "Coordination Teammate Role" in content
         assert "FORBIDDEN" in content
         assert "TaskCreate" in content
@@ -764,7 +765,7 @@ class TestP1P3TeamOrchestratorStructure:
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_orchestrator_references_dependency_graph(self, agent_name, skill_name):
         agent = AGENTS_DIR / f"{agent_name}.md"
-        content = agent.read_text()
+        content = read_contract(agent)
         assert "blockedBy" in content or "blocked by" in content.lower()
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
@@ -775,13 +776,13 @@ class TestP1P3TeamOrchestratorStructure:
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_skill_is_user_invocable(self, agent_name, skill_name):
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "user-invocable: true" in content
 
     @pytest.mark.parametrize("agent_name,skill_name", TEAM_ORCHESTRATORS)
     def test_team_skill_delegates_to_orchestrator(self, agent_name, skill_name):
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert f"rtl-agent-team:{agent_name}" in content
 
 
@@ -789,30 +790,27 @@ class TestSpecToUarchTeamStructure:
     """Validate spec-to-uarch-team orchestrator (pipeline, NOT a team)."""
 
     def test_orchestrator_exists(self):
-        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
+        agent = AGENTS_DIR / "spec-to-uarch-orchestrator.md"
         assert agent.exists()
 
     def test_orchestrator_has_frontmatter(self):
-        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
-        content = agent.read_text()
+        agent = AGENTS_DIR / "spec-to-uarch-orchestrator.md"
+        content = read_contract(agent)
         assert content.startswith("---")
         parts = content.split("---", 2)
         fm = parts[1]
-        assert "name: spec-to-uarch-team-orchestrator" in fm
+        assert "name: spec-to-uarch-orchestrator" in fm
         assert "model: fable" in fm
 
     def test_orchestrator_does_not_create_team(self):
-        """Pipeline orchestrator should NOT use TeamCreate (it delegates to phase teams)."""
-        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
-        content = agent.read_text()
-        assert "TeamCreate" not in content
+        content = read_contract(AGENTS_DIR / 'spec-to-uarch-orchestrator.md')
+        assert 'FORBIDDEN: TeamCreate' in content
+        assert 'main session' in content
 
     def test_orchestrator_delegates_to_phase_teams(self):
-        agent = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
-        content = agent.read_text()
-        assert "p1-research-team-orchestrator" in content
-        assert "p2-arch-team-orchestrator" in content
-        assert "p3-uarch-team-orchestrator" in content
+        content = read_contract(AGENTS_DIR / 'spec-to-uarch-orchestrator.md')
+        assert 'each phase through its Action Skill' in content
+        assert 'do not create nested teams' in content
 
     def test_skill_exists(self):
         skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
@@ -820,13 +818,13 @@ class TestSpecToUarchTeamStructure:
 
     def test_skill_is_user_invocable(self):
         skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "user-invocable: true" in content
 
     def test_skill_sequences_phase_team_skills(self):
         """Pipeline skill team mode invokes the phase skills with team in the arguments."""
         skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")' in content
         assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 artifacts complete")' in content
         assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 artifacts complete")' in content
@@ -852,7 +850,7 @@ class TestP1P3AgentsHaveProtocol:
         for name in self.P1_P3_AGENTS:
             agent_file = AGENTS_DIR / f"{name}.md"
             assert agent_file.exists(), f"Missing agent: {name}"
-            content = agent_file.read_text()
+            content = read_contract(agent_file)
             if "## Team Worker Protocol" not in content:
                 missing.append(name)
         assert missing == [], f"P1-P3 agents missing Team Worker Protocol: {missing}"
@@ -871,18 +869,16 @@ class TestWriteRestrictedProtocol:
         missing = []
         for name in self.WRITE_RESTRICTED:
             agent_file = AGENTS_DIR / f"{name}.md"
-            content = agent_file.read_text()
+            content = read_contract(agent_file)
             if "Write-restricted" not in content and "write-restricted" not in content:
                 missing.append(name)
         assert missing == [], f"Write-restricted agents missing SendMessage note: {missing}"
 
     def test_write_restricted_mentioned_in_orchestrators(self):
-        """Team orchestrators should document write-restricted agent handling."""
-        for orch in ["p1-research-team-orchestrator", "p2-arch-team-orchestrator",
-                      "p3-uarch-team-orchestrator"]:
-            content = (AGENTS_DIR / f"{orch}.md").read_text()
-            assert "Write-Restricted" in content or "write-restricted" in content.lower(), \
-                f"{orch} should document write-restricted agent handling"
+        for name in ('p1-research','p2-arch','p3-uarch','p4-implement','p5-verify'):
+            content = read_contract(AGENTS_DIR / (name + '-orchestrator.md'))
+            assert 'restricted writes' in content
+            assert '.rat/scratch/' in content
 
 
 class TestAutopilotP1P3TeamAwareness:
@@ -891,7 +887,7 @@ class TestAutopilotP1P3TeamAwareness:
     def test_autopilot_skill_sequences_team_skills(self):
         """In team mode, autopilot skill invokes phase team skills."""
         skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")' in content
         assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete")' in content
         assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete")' in content
@@ -900,16 +896,16 @@ class TestAutopilotP1P3TeamAwareness:
 
     def test_autopilot_orchestrator_references_p1_team_orchestrator(self):
         """Autopilot orchestrator (sequential mode) still references team orchestrators."""
-        content = (AGENTS_DIR / "autopilot-orchestrator.md").read_text()
-        assert "p1-research-team-orchestrator" in content
+        content = read_contract(AGENTS_DIR / "autopilot-orchestrator.md")
+        assert "p1-research-orchestrator" in content
 
     def test_autopilot_orchestrator_references_p2_team_orchestrator(self):
-        content = (AGENTS_DIR / "autopilot-orchestrator.md").read_text()
-        assert "p2-arch-team-orchestrator" in content
+        content = read_contract(AGENTS_DIR / "autopilot-orchestrator.md")
+        assert "p2-arch-orchestrator" in content
 
     def test_autopilot_orchestrator_references_p3_team_orchestrator(self):
-        content = (AGENTS_DIR / "autopilot-orchestrator.md").read_text()
-        assert "p3-uarch-team-orchestrator" in content
+        content = read_contract(AGENTS_DIR / "autopilot-orchestrator.md")
+        assert "p3-uarch-orchestrator" in content
 
 
 # ── Skill as Leader Contract Tests ─────────────────────────────────────────
@@ -930,28 +926,28 @@ class TestTeamSkillContract:
     def test_team_skill_has_team_create(self, skill_name):
         """Team skills must call TeamCreate (Skill as Leader pattern)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "TeamCreate" in content, f"{skill_name} missing TeamCreate"
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
     def test_team_skill_has_team_delete(self, skill_name):
         """Team skills must call TeamDelete for cleanup."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "TeamDelete" in content, f"{skill_name} missing TeamDelete"
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
     def test_team_skill_spawns_workers(self, skill_name):
         """Team skills must spawn workers via Agent(team_name=...)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "team_name=" in content, f"{skill_name} missing Agent(team_name=...)"
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
     def test_team_skill_has_expanded_allowed_tools(self, skill_name):
         """Team skills must have TeamCreate, TeamDelete, Agent in allowed-tools."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         # Extract frontmatter
         parts = content.split("---", 2)
         fm = parts[1] if len(parts) >= 3 else ""
@@ -963,14 +959,14 @@ class TestTeamSkillContract:
     def test_team_skill_writes_team_config(self, skill_name):
         """Team skills must write team-config.json."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "team-config.json" in content, f"{skill_name} missing team-config.json write"
 
     @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
     def test_team_skill_uses_subagent_type(self, skill_name):
         """Agent calls must use subagent_type= not agent_type= (official API)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         # Exclude 'subagent_type=' matches when checking for bare 'agent_type='
         import re
         bare_agent_type = re.findall(r'(?<!sub)agent_type=', content)
@@ -983,7 +979,7 @@ class TestTeamSkillContract:
     def test_team_skill_agent_has_description(self, skill_name):
         """Agent calls must include description= parameter (required by API)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         # Count uncommented Agent( calls and description= occurrences in Agent blocks
         import re
         # Multi-line Agent calls: count Agent( opening lines (uncommented)
@@ -998,7 +994,7 @@ class TestTeamSkillContract:
     def test_team_skill_task_create_uses_subject(self, skill_name):
         """TaskCreate must use subject= not title= (official API)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         if "TaskCreate(" in content:
             # Check no TaskCreate uses 'title='
             for line in content.split('\n'):
@@ -1010,7 +1006,7 @@ class TestTeamSkillContract:
     def test_team_skill_team_delete_no_params(self, skill_name):
         """TeamDelete() should have no parameters (uses current team context)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "TeamDelete()" in content, \
             f"{skill_name} TeamDelete should have no parameters"
 
@@ -1018,7 +1014,7 @@ class TestTeamSkillContract:
     def test_team_skill_spawns_coordinator_as_teammate(self, skill_name):
         """Coordinator must be spawned via Agent(team_name=...) not Task()."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         # Must have Agent() call with coordinator/orchestrator name and team_name
         import re
         coordinator_agent = re.findall(
@@ -1033,7 +1029,7 @@ class TestTeamSkillContract:
         The sequential section of the same skill still uses Task().
         """
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         import re
         sequential, _, team = content.partition("## Team mode")
         assert team, f"{skill_name} missing ## Team mode"
@@ -1053,7 +1049,7 @@ class TestTeamSkillContract:
     def test_team_skill_worker_count_within_limit(self, skill_name):
         """Team skills must have 4-6 Agent(team_name=...) calls (1 coordinator + 3-5 workers)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         import re
         # Count uncommented Agent(team_name=...) calls
         agent_calls = re.findall(
@@ -1066,7 +1062,7 @@ class TestTeamSkillContract:
         """v0.12.0: Step 7 leader teardown must be gated on the coordinator signal,
         not solely on a drained task graph (the old break-on-empty-TaskList path)."""
         skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill.read_text()
+        content = read_contract(skill)
         assert "coordinator_signaled_phase_complete" in content, (
             f"{skill_name} Step 7 must gate teardown on coordinator_signaled_phase_complete"
         )
@@ -1079,14 +1075,14 @@ class TestTeamSkillContract:
         ONLY after the phase gate / post-gate steps — never when the task graph
         merely drains ('when all tasks are done')."""
         orchestrators = [
-            "p1-research-team-orchestrator",
-            "p2-arch-team-orchestrator",
-            "p3-uarch-team-orchestrator",
-            "p4-implement-team-orchestrator",
-            "p5-verify-team-orchestrator",
+            "p1-research-orchestrator",
+            "p2-arch-orchestrator",
+            "p3-uarch-orchestrator",
+            "p4-implement-orchestrator",
+            "p5-verify-orchestrator",
         ]
         for name in orchestrators:
-            content = (AGENTS_DIR / f"{name}.md").read_text()
+            content = read_contract(AGENTS_DIR / f"{name}.md")
             assert "Signal completion" in content, (
                 f"{name} missing Signal completion bullet"
             )
@@ -1102,29 +1098,29 @@ class TestTeamOrchestratorTeammateContract:
     """Validate orchestrators have Coordination Teammate Role and CAN use SendMessage."""
 
     ALL_TEAM_ORCHESTRATORS = [
-        "p1-research-team-orchestrator",
-        "p2-arch-team-orchestrator",
-        "p3-uarch-team-orchestrator",
-        "p4-implement-team-orchestrator",
-        "p5-verify-team-orchestrator",
+        "p1-research-orchestrator",
+        "p2-arch-orchestrator",
+        "p3-uarch-orchestrator",
+        "p4-implement-orchestrator",
+        "p5-verify-orchestrator",
     ]
 
     @pytest.mark.parametrize("orch_name", ALL_TEAM_ORCHESTRATORS)
     def test_has_coordination_teammate_role_section(self, orch_name):
         """All team orchestrators must have Coordination Teammate Role section."""
-        content = (AGENTS_DIR / f"{orch_name}.md").read_text()
+        content = read_contract(AGENTS_DIR / f"{orch_name}.md")
         assert "Coordination Teammate Role" in content
 
     @pytest.mark.parametrize("orch_name", ALL_TEAM_ORCHESTRATORS)
     def test_lists_forbidden_operations(self, orch_name):
         """Coordination Teammate Role must list FORBIDDEN operations."""
-        content = (AGENTS_DIR / f"{orch_name}.md").read_text()
+        content = read_contract(AGENTS_DIR / f"{orch_name}.md")
         assert "FORBIDDEN" in content
 
     @pytest.mark.parametrize("orch_name", ALL_TEAM_ORCHESTRATORS)
     def test_sendmessage_not_in_forbidden(self, orch_name):
         """SendMessage must NOT be in FORBIDDEN list (coordinator needs it)."""
-        content = (AGENTS_DIR / f"{orch_name}.md").read_text()
+        content = read_contract(AGENTS_DIR / f"{orch_name}.md")
         # Extract the FORBIDDEN line
         for line in content.split('\n'):
             if 'FORBIDDEN' in line and '**' in line:
@@ -1135,7 +1131,7 @@ class TestTeamOrchestratorTeammateContract:
     @pytest.mark.parametrize("orch_name", ALL_TEAM_ORCHESTRATORS)
     def test_sendmessage_in_allowed(self, orch_name):
         """SendMessage must be in ALLOWED list."""
-        content = (AGENTS_DIR / f"{orch_name}.md").read_text()
+        content = read_contract(AGENTS_DIR / f"{orch_name}.md")
         for line in content.split('\n'):
             if 'ALLOWED' in line and '**' in line:
                 assert 'SendMessage' in line, \
@@ -1145,7 +1141,7 @@ class TestTeamOrchestratorTeammateContract:
     @pytest.mark.parametrize("orch_name", ALL_TEAM_ORCHESTRATORS)
     def test_uses_task_coordination(self, orch_name):
         """Orchestrators must use TaskCreate for coordination."""
-        content = (AGENTS_DIR / f"{orch_name}.md").read_text()
+        content = read_contract(AGENTS_DIR / f"{orch_name}.md")
         assert "TaskCreate" in content
 
 
@@ -1155,28 +1151,28 @@ class TestWorkerSubagentPattern:
     def test_preamble_documents_specialist_delegation(self):
         """Preamble must document Task() specialist delegation pattern."""
         preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
-        content = preamble.read_text()
+        content = read_contract(preamble)
         assert "Task(" in content or "specialist" in content.lower(), \
             "Preamble must document Task() specialist delegation"
 
     def test_preamble_sendmessage_to_coordinator(self):
         """Preamble must show SendMessage recipient as coordinator, not leader."""
         preamble = AGENT_LIB_DIR / "team-worker-preamble.md"
-        content = preamble.read_text()
+        content = read_contract(preamble)
         assert "coordinator" in content.lower(), \
             "Preamble must reference coordinator as SendMessage recipient"
 
     def test_protocol_report_step_targets_coordinator(self):
         """Protocol REPORT step must target coordinator."""
         protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
-        content = protocol.read_text()
+        content = read_contract(protocol)
         assert "coordinator" in content.lower(), \
             "Protocol must reference coordinator in REPORT step"
 
     def test_protocol_has_delegate_step(self):
         """Protocol must document specialist Task() delegation."""
         protocol = AGENT_LIB_DIR / "team-worker-protocol.md"
-        content = protocol.read_text()
+        content = read_contract(protocol)
         assert "DELEGATE" in content, \
             "Protocol must have DELEGATE step for Task() specialist spawning"
 
@@ -1187,7 +1183,7 @@ class TestWorkerSubagentPattern:
             agent_file = AGENTS_DIR / f"{name}.md"
             if not agent_file.exists():
                 continue
-            content = agent_file.read_text()
+            content = read_contract(agent_file)
             if "## Team Worker Protocol" not in content:
                 missing.append(name)
         assert missing == [], f"Agents missing Team Worker Protocol: {missing}"
@@ -1201,7 +1197,7 @@ class TestWorkerSubagentPattern:
         for — v0.14.1 shipped a script listing 4 agents the tests did not require
         and omitting 5 they did.
         """
-        script = (REPO_ROOT / "scripts" / "inject-worker-protocol.sh").read_text()
+        script = read_contract(REPO_ROOT / "scripts" / "inject-worker-protocol.sh")
         script_agents = set()
         for var in ("P4_P5_AGENTS", "P1_P3_AGENTS", "VPROC_AGENTS", "MISC_AGENTS"):
             m = re.search(rf'^{var}="([^"]*)"', script, re.M)

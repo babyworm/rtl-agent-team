@@ -24,9 +24,9 @@ paths:
 
 ## Gate Signals
 
-- Verification complete: `touch .rat/state/rtl-verify-done`
+- Verification complete: `scripts/run_sim.sh` records `.rat/state/verify-evidence.json` after a measured PASS
 - Non-functional change waiver: the user's decision; ask before creating `.rat/state/rtl-verify-waiver`.
 
 Hook enforcement: `PostToolUse:Edit/Write` tracks .sv modifications; `Stop` hook keeps Claude working until verification is done, then hands the decision to the user.
 
-<!-- rat-version: 0.7.7 -->
+<!-- rat-version: 2.0.0 -->

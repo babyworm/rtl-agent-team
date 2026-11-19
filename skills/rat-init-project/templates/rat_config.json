@@ -5,49 +5,218 @@
     "filelist": "rtl/filelist_top.f"
   },
   "tools": {
-    "_comment": "All known EDA tools. 'detected' is auto-filled by generate_config.sh. This config is consumed by LLM agents (runner scripts use CLI args). Edit 'path' or 'env_source' for tools requiring setup (module load, source setup.sh), then re-run generate_config.sh.",
+    "_comment": "Tool paths, env_source, env_shell and license_wait_args are consumed by the shared EDA runner. Detection describes only the probed host.",
     "simulators": {
-      "vcs":       { "detected": false, "path": "", "env_source": "" },
-      "xrun":      { "detected": false, "path": "", "env_source": "" },
-      "vsim":      { "detected": false, "path": "", "env_source": "" },
-      "verilator": { "detected": false, "path": "", "env_source": "" },
-      "iverilog":  { "detected": false, "path": "", "env_source": "" }
+      "vcs": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "xrun": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "vsim": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "verilator": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "iverilog": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "synthesis": {
-      "yosys":    { "detected": false, "path": "", "env_source": "" },
-      "dc_shell": { "detected": false, "path": "", "env_source": "" },
-      "genus":    { "detected": false, "path": "", "env_source": "" }
+      "yosys": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "dc_shell": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "genus": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "lint": {
-      "verilator": { "detected": false, "path": "", "env_source": "" },
-      "verible":   { "detected": false, "path": "", "env_source": "" },
-      "slang":     { "detected": false, "path": "", "env_source": "" },
-      "sg_shell":  { "detected": false, "path": "", "env_source": "" }
+      "verilator": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "verible": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "slang": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "sg_shell": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "formal": {
-      "sby":       { "detected": false, "path": "", "env_source": "" },
-      "jg":        { "detected": false, "path": "", "env_source": "" },
-      "vcf":       { "detected": false, "path": "", "env_source": "" }
+      "sby": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "jg": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "vcf": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "cdc": {
-      "structural": { "detected": true,  "path": "(built-in)", "env_source": "" },
-      "svlens":     { "detected": false, "path": "", "env_source": "" },
-      "sg_shell":   { "detected": false, "path": "", "env_source": "" },
-      "vc_cdc":     { "detected": false, "path": "", "env_source": "" },
-      "questa_cdc": { "detected": false, "path": "", "env_source": "" }
+      "structural": {
+        "detected": true,
+        "path": "(built-in)",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "svlens": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "sg_shell": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "vc_cdc": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "questa_cdc": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "equivalence": {
-      "fm_shell":  { "detected": false, "path": "", "env_source": "" },
-      "lec":       { "detected": false, "path": "", "env_source": "" }
+      "fm_shell": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "lec": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "debug": {
-      "verdi":      { "detected": false, "path": "", "env_source": "" },
-      "simvision":  { "detected": false, "path": "", "env_source": "" }
+      "verdi": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "simvision": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     },
     "coverage": {
-      "urg":    { "detected": false, "path": "", "env_source": "" },
-      "imc":    { "detected": false, "path": "", "env_source": "" },
-      "vcover": { "detected": false, "path": "", "env_source": "" }
+      "urg": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "imc": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "vcover": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
+    },
+    "sta": {
+      "pt_shell": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
+    },
+    "power": {
+      "pwr_shell": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "joules": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "voltus": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      },
+      "powerpro": {
+        "detected": false,
+        "path": "",
+        "env_source": "",
+        "env_shell": "bash"
+      }
     }
   },
   "preferences": {
@@ -57,17 +226,27 @@
     "lint": "",
     "formal": "",
     "cdc": "",
-    "equivalence": ""
+    "equivalence": "",
+    "sta": "",
+    "power": ""
   },
   "technology": {
     "target": "",
     "liberty": "",
     "sram_lib": "",
     "nand2_cell_pattern": "NAND2X1",
-    "nand2_area_um2": null
+    "nand2_area_um2": null,
+    "db": "",
+    "saif": ""
   },
   "coverage": {
-    "targets": { "line": 90, "toggle": 80, "fsm": 70, "branch": 80, "functional": 95 },
+    "targets": {
+      "line": 90,
+      "toggle": 80,
+      "fsm": 70,
+      "branch": 80,
+      "functional": 95
+    },
     "seeds": "42 123 456 789 1337",
     "max_fail_rate": 5
   },
@@ -78,5 +257,20 @@
     "spyglass_lint": "",
     "spyglass_cdc": "",
     "cdc": ""
+  },
+  "execution": {
+    "backend": "local",
+    "timeout_seconds": 1800,
+    "stall_seconds": 0,
+    "python": "python3",
+    "docker_image": "rtl-eda-tools",
+    "outputs": [
+      "syn",
+      "lint",
+      "sim"
+    ],
+    "host": "",
+    "workspace": "",
+    "ssh_options": []
   }
 }

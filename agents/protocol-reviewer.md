@@ -7,8 +7,8 @@ disallowedTools: Edit
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -31,20 +31,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Clock naming: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) — NOT `clk_i`
     - Reset naming: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`
   </Role>
-
-  <Why_This_Matters>
-    Bus protocol choices determine system-level performance, latency, and power. A design that
-    is AXI-compliant but uses single-outstanding transactions where the spec requires low-latency
-    streaming will fail performance requirements despite passing all protocol assertions.
-    Common architecture mistakes:
-    - AXI master with outstanding=1 when bandwidth requires pipelining
-    - Missing DECERR/SLVERR handling causing silent data corruption
-    - Narrow transfers where wide interface is available (wasted bandwidth)
-    - Write strobes not properly aligned causing partial word corruption
-    - AXI ordering model violations when ID reuse is not carefully managed
-    - 4KB boundary violations in burst calculations
-    These are design strategy errors, not protocol violations. They require expert review.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - Interface width and burst strategy matches throughput requirements

@@ -2,7 +2,7 @@
 # RTL Verify Stop Gate: keeps Claude working when RTL files were modified without verification.
 #
 # Tracking file: .rat/state/rtl-modified-files.txt (one path per line)
-# Verification evidence: .rat/state/rtl-verify-done (marker file)
+# Verification evidence: runner-written verify-evidence.json with fresh hashes
 # Waiver: .rat/state/rtl-verify-waiver (the user's decision)
 #
 # Unverified RTL blocks the stop so Claude keeps working, within the bounds of
@@ -106,8 +106,23 @@ if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
   emit_post_continue
 fi
 
-# If verification was done or waived, clean up and allow exit
-if [ -f "$VERIFY_DONE" ] || [ -f "$VERIFY_WAIVER" ]; then
+# A bare verify-done marker does not establish that a simulation ran. Check
+# runner evidence once; when no parser is available, keep verification pending.
+EVIDENCE_VERIFIED=false
+EVIDENCE_PENDING=""
+EVIDENCE_PYTHON="${RAT_PYTHON:-python3}"
+EVIDENCE_HELPER="$SCRIPT_DIR/../scripts/verify_evidence.py"
+if command -v "$EVIDENCE_PYTHON" >/dev/null 2>&1 && [ -f "$EVIDENCE_HELPER" ]; then
+  if "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" pending --root "$CWD" --track "$TRACK_FILE"; then
+    emit_post_continue
+  fi
+  EVIDENCE_PENDING=$("$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" unverified --root "$CWD" --track "$TRACK_FILE")
+  EVIDENCE_STATUS=$?
+  [ "$EVIDENCE_STATUS" -eq 0 ] && EVIDENCE_VERIFIED=true
+  [ "$EVIDENCE_STATUS" -le 1 ] || EVIDENCE_PENDING=""
+fi
+
+if [ "$EVIDENCE_VERIFIED" = "true" ] || [ -f "$VERIFY_WAIVER" ]; then
   # Clean up solo + all session-scoped tracking files
   rm -f "$STATE_DIR/rtl-modified-files.txt" "$VERIFY_DONE" "$VERIFY_WAIVER" "$AGGREGATED_TRACK" "$STATE_DIR/rtl-modified-files-fallback.txt"
   for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
@@ -122,6 +137,7 @@ fi
 PROJECT_ROOT=$(dirname "$RAT_DIR")
 TRACKED=$(RAT_TRACK_ROOT="$PROJECT_ROOT/" awk 'BEGIN { p = ENVIRON["RAT_TRACK_ROOT"] }
   NF { if (index($0, p) == 1) $0 = substr($0, length(p) + 1); sub(/^\.\//, ""); print }' "$TRACK_FILE" | sort -u)
+[ -z "$EVIDENCE_PENDING" ] || TRACKED="$EVIDENCE_PENDING"
 # A tracking file with blank lines only lists no files: allow exit.
 if [ -z "$TRACKED" ]; then
   rm -f "$AGGREGATED_TRACK"
@@ -133,11 +149,19 @@ FILES=$(printf '%s\n' "$TRACKED" | awk -v max=10 'NF { n++; if (n <= max) printf
 # Clean up temporary aggregated file
 rm -f "$AGGREGATED_TRACK"
 
-MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules (for example /rtl-agent-team:rtl-p5s-func-verify, or /rtl-agent-team:rtl-p4s-unit-test for unit tests). When the simulation passes, record it: touch $(shq "$VERIFY_DONE"). If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules through scripts/run_sim.sh (for example /rtl-agent-team:rtl-p5s-func-verify, or /rtl-agent-team:rtl-p4s-unit-test). A passing testbench emits RAT_SIM_PASS or a recognized test summary; the runner records fresh source and log hashes in $(shq "$STATE_DIR/verify-evidence.json"). A touched marker is insufficient. If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
 NOTICE="[RTL Verify Gate] ${COUNT} RTL files have no recorded verification: ${FILES}. The verify gate is not asking Claude to continue in this turn and will ask again on your next message. Run functional verification, or waive it if the change is non-functional: touch $(shq "$VERIFY_WAIVER")"
 # After its notice the gate does not block again in this chain. When another Stop hook keeps
 # the chain going and more RTL changes meanwhile, show the notice again with the new files.
-if stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED"; then
-  stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED" "$MSG" "$NOTICE" 0
+VERIFY_PROGRESS="$TRACKED"
+while IFS= read -r _vp_file; do
+  case "$_vp_file" in /*) ;; *) _vp_file="$PROJECT_ROOT/$_vp_file" ;; esac
+  [ ! -f "$_vp_file" ] || VERIFY_PROGRESS="$VERIFY_PROGRESS|$(cksum < "$_vp_file")"
+done <<EOF
+$TRACKED
+EOF
+if stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS"; then
+  stopu_clear verify "$STATE_DIR"
+  STOP_CHAIN=false
 fi
-stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$TRACKED" "$MSG" "$NOTICE"
+stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" "$NOTICE"

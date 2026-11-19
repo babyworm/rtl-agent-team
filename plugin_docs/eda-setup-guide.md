@@ -1,8 +1,10 @@
 # EDA Tool Setup Guide
 
 This guide covers how to configure EDA tools for use with the RTL Agent Team plugin.
-Open-source tools are auto-installed by `/rtl-agent-team:rat-setup`. Commercial tools require manual
-environment configuration via `rat_config.json`.
+`/rtl-agent-team:rat-setup` uses the user's target host, existing configuration and
+measured capability gaps to prepare local or remote tools. For commercial EDA,
+the LLM discovers the site and writes `rat_config.json`; users need not transcribe
+paths or author JSON. Installation follows the user's authorized scope.
 
 ## Tool Integration Architecture
 
@@ -12,7 +14,7 @@ environment configuration via `rat_config.json`.
               +-----------+---+-----------+
               |                           |
      Open-Source Tools            Commercial Tools
-     (auto-install)               (manual config)
+     (scoped install)             (site discovery)
               |                           |
         verilator, yosys,          VCS, DC, Xcelium,
         slang, cocotb, ...         Genus, SpyGlass, ...
@@ -33,7 +35,7 @@ environment configuration via `rat_config.json`.
 | Path | Tools | Setup | Configuration |
 |------|-------|-------|---------------|
 | **Auto-install** | Verilator, Verible, slang, svlens, cocotb, Yosys, SystemC, ... | `/rtl-agent-team:rat-setup` handles everything | Automatic |
-| **Commercial** | VCS, DC, Xcelium, Genus, SpyGlass, Questa, Formality, VC-CDC, Questa CDC, ... | User provides environment setup | `rat_config.json` → `env_source` field |
+| **Commercial** | VCS, DC, Xcelium, Genus, SpyGlass, Questa, Formality, VC-CDC, Questa CDC, ... | LLM discovers the named site and verifies selected tools | Named site profile → project `rat_config.json` |
 | **Docker fallback** | All open-source tools bundled | Build from the standalone plugin clone root | Transparent via `lib/tool-runner.sh` |
 
 ---
@@ -44,24 +46,44 @@ Run `/rtl-agent-team:rat-setup` and follow the interactive wizard. It detects mi
 offers installation choices (`local` / `global` / `docker` / `skip`), and verifies
 the result. No manual configuration needed.
 
-### Tier 1 "at-least-one" requirements
+### Phase-scoped readiness
 
-Two Tier 1 categories accept multiple alternatives — at least one must be installed:
-
-| Category | Accepted tools | Rationale |
-|----------|----------------|-----------|
-| **lint tool** | `verible-verilog-lint` AND/OR `slang` | verible handles style, slang catches IEEE 1800 semantic violations. Either alone satisfies the gate. |
-| **cdc tool** | `svlens` OR `sg_shell` OR `vc_cdc` OR `questa_cdc` | svlens is the open-source default (auto-installed by `/rtl-agent-team:rat-setup`). Any commercial CDC tool also satisfies the requirement. |
-
-Note: svlens supplements lint when verible/slang are missing — `svlens conn` catches
-width mismatch, dangling output, and undriven input. However, svlens does not replace
-style/semantic lint, so installing both a lint tool AND svlens is recommended.
-
-For details, see the [README — EDA Tools section](../README.md#eda-tools).
+Use `scripts/eda_runner.py capabilities --root <project> --phase p1|p2|p3|p4|p5a|p5b|all`.
+P1 requires no EDA tools; P2/P3 require a C/C++ build toolchain; P4/P5A require a
+suitable simulator and linter; P5B requires synthesis. Add `--bfm` for a SystemC/TLM
+model, `--multiclock` for CDC, and `--signoff` for PrimeTime and technology.db.
+Cocotb is required only for its selected verification path, not for commercial UVM.
+Remote readiness is unprobed until `--probe-remote` measures the execution host. Docker probes
+run inside the selected image. Executable presence does not establish a license
+or a passed silicon check.
 
 ---
 
 ## Commercial Tool Configuration
+
+### LLM-assisted SSH setup
+
+Tell `/rtl-agent-team:rat-setup` the intended SSH execution host. The LLM reuses an
+existing named profile or discovers the host, selects a
+remote Python >=3.9, checks the chosen tools, prepares project configuration and
+runs the smallest relevant real operation. Unknown site environment commands or
+technology choices remain open; known values are not asked again.
+
+Profiles live under `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`.
+Each project selects a site; no host is a plugin-wide default. Credentials and jump
+hosts remain in SSH configuration. Existing user paths, preferences, libraries,
+queues and output settings are preserved. A private workspace is proposed when
+none is supplied. Use `--dry-run` to inspect configuration without writing it.
+Keep real profiles, connection details and raw qualification reports outside the
+plugin repository. Only synthetic site fixtures belong in public docs/tests/evals.
+
+The installed helper is `scripts/eda_setup.py` (also deployed to project `lib/`).
+It provides `discover`, `probe --record`, and `configure`; the complete conditional
+workflow is in [the setup reference](../skills/rat-setup/references/remote-site-setup.md).
+`eda_runner.py capabilities --probe-remote` reports executable/framework readiness,
+with `license_checked: false`. A version probe does not prove license checkout.
+Failed probes are bound to their tool/environment configuration and prevent a
+known broken candidate from being selected automatically.
 
 Commercial EDA tools (Synopsys, Cadence, Siemens) are typically installed by IT
 or a CAD team and require environment setup (PATH, library paths, environment variables)
@@ -70,7 +92,7 @@ in `rat_config.json`.
 
 ### How `env_source` works
 
-Each tool entry in `rat_config.json` has three fields:
+Tool entries support path, env_source, env_shell, detected, and optional license_wait_args:
 
 ```json
 "vcs": {
@@ -86,8 +108,7 @@ Each tool entry in `rat_config.json` has three fields:
 | `path` | Absolute path to the tool binary | `generate_config.sh` (automatic) or user |
 | `env_source` | Shell command to set up the tool environment | **User** (manual) |
 
-`env_source` is trusted project input: the generator evaluates it with Bash on each
-run. Keep this field project-owned and never populate it from untrusted data.
+`env_source` is trusted project input: the generator and runner evaluate it in the configured bash/csh/tcsh environment. Keep this field project-owned and never populate it from untrusted data.
 
 When `generate_config.sh` runs, it:
 1. Reads `env_source` for each tool
@@ -480,3 +501,14 @@ refreshed: a usable explicit path override is retained, while a stale or unusabl
 path is replaced when detection finds the tool. Project `config.mk` is regenerated
 from the refreshed configuration. These managed updates apply whether invoked via
 `/rtl-agent-team:rat-init-project` or the plugin generator directly.
+
+## v2 execution and updates
+
+All wrappers consume tool paths, setup environments, preferences, and bounded
+timeouts through the shared runner. See [the execution contract](specs/2026-11-17-eda-runner-contract.md)
+for Docker/SSH/LSF, source-bound evidence and result precedence.
+
+Install updates explicitly using install_project_templates.sh --update --dry-run
+followed by --update when authorized. Existing managed files update only when
+unchanged; user edits and unrecognized legacy copies receive staged proposals.
+A bare rtl-verify-done or coverage-exclusion-approved marker is no evidence.

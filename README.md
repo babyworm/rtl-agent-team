@@ -5,14 +5,20 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 99 specialized AI agents + 91 skills automate the 6-Phase pipeline:
+> 91 specialized AI agents + 55 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 A Claude Code plugin for automated RTL design and verification.
 
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 99 specialized AI agents + 91 skills + 27 reference documents.
+Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 91 specialized AI agents + 55 skills + 27 reference documents.
 
 ![](./rat_logo.jpg)
+
+## try-2.0 development status
+
+This branch implements v2 with 55 skills and 91 agents. Policies are embedded in their consumers; sequential/team modes share an agent identity. See the [execution and evaluation record](plugin_docs/plans/2026-11-17-v2-execution.md). The package version still identifies the last published release.
+
+Readiness is phase-scoped. Fable/Opus live evaluation was unavailable due to the account usage limit. Commercial EDA and real SSH/LSF qualification require a configured site.
 
 ## Marketplace
 
@@ -20,7 +26,7 @@ This repository serves as the **RTL Agent Marketplace**, providing hardware desi
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **rtl-agent-team** | 99-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
+| **rtl-agent-team** | 91-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.2.0 |
 
 Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
@@ -39,7 +45,9 @@ Run each stage from its appropriate working directory: Stage A runs anywhere; St
 
 ### Stage A — Machine Setup (one-time, per machine)
 
-Installs the plugin, audits the EDA toolchain interactively, and optionally deploys global coding conventions.
+Installs the plugin and prepares the requested EDA capabilities. Tell the setup
+skill where tools run; it discovers paths, records a reusable site profile, and
+prepares project configuration. Ask only about unresolved site or design choices.
 
 ```bash
 # A1. Register the Marketplace (one-time)
@@ -49,22 +57,14 @@ Installs the plugin, audits the EDA toolchain interactively, and optionally depl
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (optional) SV LSP
 
-# A3. EDA toolchain audit (interactive interview — all steps are opt-in)
-#     - Q1 Required tools: python3, g++, make, verilator, cocotb, systemc
-#            + lint (verible AND/OR slang — at least one)
-#            + CDC (svlens OR sg_shell OR vc_cdc OR questa_cdc — at least one)
-#            — prompt to install missing ones (local/global/docker/skip)
-#     - Q2 Recommended/optional tools — user picks which to install:
-#            jq, yosys + sby, slang-server, iverilog, gtkwave
-#     - Q2b Commercial tool scan (vcs, xrun, dc_shell, sg_shell, vc_cdc, ...)
-#            — scan + collect env_source; not an install
-#     - Q2c Liberty file path for synthesis (optional)
-#     - Q3 Optional global deployment (yes/no) — deploys:
-#            ~/.claude/rules/rtl-coding-conventions.md
-#            ~/.claude/rules/rtl-verification-gate.md
-#            ~/.claude/CLAUDE.md diagram rule block (if tag missing)
+# A3. Check the requested phase and execution site
 /rtl-agent-team:rat-setup
 ```
+
+For remote tools, add "use SSH host <ssh-host>" to the request. Named profiles
+live under `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`; each project
+selects its own site. Setup distinguishes executable discovery, a working tool
+invocation, and licensed design evidence. See [SSH setup](plugin_docs/eda-setup-guide.md#llm-assisted-ssh-setup).
 
 > If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
 
@@ -151,7 +151,7 @@ project directory**. See [Quick Start](#quick-start) for the full stage map.
 
 - Route user intent to **Action Skills first** (for example, `/rtl-agent-team:rat-auto-design`, `/rtl-agent-team:rtl-p5-verify`).
 - Orchestrator agents are internal execution units and are spawned by Action Skills via `Task(...)`.
-- Policy skills are loaded by orchestrators via `skills: [*-policy]`.
+- Policy fragments are generated into their consuming agents by `scripts/sync_agent_policies.py`; convention skills remain preloaded.
 - `rtl-orchestrate` is an internal routing reference skill (`user-invocable: false`), not a user slash command.
 
 ### Full automation
@@ -205,18 +205,16 @@ If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the
 /rtl-agent-team:domain-consult           # Domain expert consultation
 ```
 
-### Skill categories (91 skills)
+### Skill categories (55 skills)
 
 | Category | Count | Description |
 |----------|-------|-------------|
 | **Action Entry Points** | 50 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
-| **Policy** | 32 | Rules/criteria referenced by agents (`*-policy`, non-user-invocable) |
 | **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC |
-| **Tool Profile** | 4 | Simulator/linter/synthesizer/CDC tool configurations |
 | **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
-| **Total** | **91** | |
+| **Total** | **55** | |
 
-Assets (Templates, Scripts, References, Examples) are distributed across the 91 skills — see each skill directory for its bundled assets.
+Assets (Templates, Scripts, References, Examples) are distributed across the 55 skills — see each skill directory for its bundled assets.
 
 ## Project Artifact Structure
 
@@ -247,10 +245,10 @@ rtl-agent-team/
 │   ├── plugin.json             # Plugin manifest (auto-discovery)
 │   └── marketplace.json        # Marketplace definition
 ├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 99 agents (design/verification/review/EDA/domain/orchestrators)
+├── agents/                     # 91 agents (design/verification/review/EDA/domain/orchestrators)
 ├── scripts/
 │   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 91 skills (SKILL.md + templates/ + examples/)
+├── skills/                     # 55 skills (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -290,7 +288,7 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 
 ## Agent Team
 
-### Agent Composition (99 agents: 97 Opus, 2 Sonnet)
+### Agent Composition (91 agents: 36 Fable, 53 Opus, 2 Sonnet)
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
@@ -368,16 +366,15 @@ The `eda-runner` agent executes local EDA CLI tools directly via Bash.
 
 | Tool | Purpose | Required |
 |------|---------|----------|
-| verilator | Simulation + Lint | Required |
-| verible | Style Lint + Formatting | Required (at least one of verible/slang) |
-| slang | IEEE 1800 semantic Lint | Required (at least one of verible/slang) |
-| svlens | CDC + structural analysis (conn/metrics) | Required (or one of sg_shell/vc_cdc/questa_cdc) |
+| verilator / iverilog / VCS / Xcelium / Questa | Simulation | One suitable simulator for P4/P5A |
+| verible / slang / Verilator / SpyGlass | Lint | One suitable linter for P4/P5A |
+| svlens / SpyGlass / VC CDC / Questa CDC | CDC | For multi-clock designs |
 | slang-server | SV Language Server (LSP) | Recommended |
-| cocotb (Python) | Functional verification | Required |
-| python3 | cocotb runtime | Required |
-| g++ | Reference model build | Required |
+| cocotb | Functional verification | For the cocotb path; commercial UVM does not require it |
+| Python >= 3.9 | Execution and evidence helpers | RAT_PYTHON |
+| C/C++ compiler | Reference/BFM build | P2/P3 |
 | make | Build system | Required |
-| systemc | SystemC/TLM-2.0 (ref model, BFM) | Required |
+| SystemC | TLM BFM | Only for requested SystemC/TLM BFMs |
 | iverilog | Fallback simulator | Optional (if verilator installed) |
 | yosys | Synthesis (Phase 5B+) | Optional |
 | sby (SymbiYosys) | Formal verification | Optional |
@@ -454,7 +451,7 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team plugin manifest
 │   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (99)
+├── agents/                              # rtl-agent-team agents (91)
 ├── skills/                              # rtl-agent-team skills (91, with 27 reference docs)
 └── domain-packages/                     # Domain knowledge packages
     ├── video-codec/                     # H.264/H.265 codec knowledge
@@ -478,3 +475,5 @@ claude --plugin-dir .
 ## License
 
 MIT
+
+Claude Code can label a working gate block `Stop hook error occurred`. Read its reason: RAT is reporting incomplete work. Repeated blocks without progress are bounded.

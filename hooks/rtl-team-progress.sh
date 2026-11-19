@@ -35,7 +35,7 @@ PROGRESS_FILE="$STATE_DIR/team-progress.json"
 if [ -f "$TEAM_CONFIG" ]; then
   _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
   if [ -n "$_TP_SESSION" ] && [ -n "$(jsonu_get_root_string "$INPUT" "agent_id")" ] && \
-     [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")" ]; then
+     [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$STATE_DIR/team-owner.json" "session_id")" ]; then
     touch -c "$TEAM_CONFIG"
   fi
 fi

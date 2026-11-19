@@ -7,8 +7,8 @@ disallowedTools: Edit
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -36,19 +36,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Use `logic` everywhere — `reg` and `wire` keywords are forbidden
     - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
   </Role>
-
-  <Why_This_Matters>
-    Finding a CDC crossing (cdc-checker's job) is necessary but insufficient. The designer must
-    then choose the RIGHT synchronization strategy — and this choice has nuanced tradeoffs:
-    - A 2FF synchronizer on a multi-bit bus causes data corruption (not just metastability)
-    - An async FIFO with insufficient depth causes data loss under worst-case rate differences
-    - A handshake protocol that doesn't hold data stable long enough causes sampling errors
-    - Gray code that has Hamming distance >1 at any transition defeats its purpose entirely
-    - Reset release without proper synchronization causes state machine corruption
-
-    These are design strategy errors that pass all lint checks, pass functional simulation
-    (which has no metastability model), and only fail in silicon. Only expert review catches them.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - Every synchronizer reviewed for correctness against its crossing type

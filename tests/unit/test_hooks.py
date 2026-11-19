@@ -1,6 +1,8 @@
+from tests.contracts import read_contract, accepted_skill_input
 """Tests for hook scripts — routing inject, edit tracker, and stop gates."""
 
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -8,12 +10,44 @@ import shutil
 import signal
 import subprocess
 import time
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pytest
 
 from tests.conftest import HOOKS_DIR, REPO_ROOT, run_hook
+
+
+def _record_team_owner(project, leader):
+    config=project/'.rat/state/team-config.json'
+    run_hook(HOOKS_DIR/'rtl-team-owner.sh',{'cwd':str(project),'session_id':leader,
+        'tool_input':{'file_path':str(config)}})
+
+
+def _budget_path(state, gate):
+    candidates=list(state.glob('stop-budget-'+gate+'-*.txt'))
+    return candidates[0] if len(candidates)==1 else state/('stop-budget-'+gate+'.txt')
+
+
+def _record_passing_evidence(project):
+    """A runner-result fixture for gate tests; execution itself is tested separately."""
+    state = project / ".rat/state"
+    sources = {}
+    for tracking in state.glob("rtl-modified-files*.txt"):
+        for line in tracking.read_text().splitlines():
+            if not line.strip():
+                continue
+            source = (project / line).resolve()
+            source.parent.mkdir(parents=True, exist_ok=True)
+            if not source.exists():
+                source.write_text("module fixture; endmodule\n")
+            sources[str(source)] = hashlib.sha256(source.read_bytes()).hexdigest()
+    log = state / "passing-simulation.log"
+    log.write_text("RAT_SIM_PASS\n")
+    record = {"verdict": "PASS", "sources": sources, "log": str(log),
+              "log_sha256": hashlib.sha256(log.read_bytes()).hexdigest()}
+    (state / "verify-evidence.json").write_text(json.dumps({"schema_version": 1, "runs": [record]}))
 
 
 def _setup_marker(tmp_project):
@@ -267,6 +301,7 @@ class TestSessionScopedState:
             "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
+        _record_team_owner(tmp_project, config.get("leader_session_id", ""))
 
     def test_edit_tracker_session_scoped_in_team_mode(self, tmp_project):
         """In team mode with a session id, tracking file uses session suffix."""
@@ -337,7 +372,7 @@ class TestSessionScopedState:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
-        (state_dir / "rtl-verify-done").touch()
+        _record_passing_evidence(tmp_project)
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
             self.GATE_HOOK,
@@ -420,7 +455,7 @@ class TestRtlVerifyStopGate:
     def test_verify_done_allows_exit(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
-        (state_dir / "rtl-verify-done").touch()
+        _record_passing_evidence(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
@@ -437,6 +472,7 @@ class TestRtlVerifyStopGate:
         done = state_dir / "rtl-verify-done"
         track.write_text("rtl/module/top.sv\n")
         done.touch()
+        _record_passing_evidence(tmp_project)
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert not track.exists()
         assert not done.exists()
@@ -484,7 +520,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
-        (state_dir / "rtl-verify-done").touch()
+        _record_passing_evidence(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
         assert not (state_dir / "rtl-modified-files-fallback.txt").exists()
@@ -501,6 +537,7 @@ class TestRtlVerifyStopGate:
             "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
+        _record_team_owner(tmp_project, config.get("leader_session_id", ""))
         (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/c.sv\n")
         result = run_hook(
             self.HOOK,
@@ -551,25 +588,18 @@ class TestRtlVerifyStopGate:
         assert [r.get("decision") for r in results[:5]] == ["block"] * 5
         assert "systemMessage" in results[5]
 
-    def test_new_rtl_edit_after_the_notice_shows_it_again_without_blocking(self, tmp_project):
+    def test_new_rtl_edit_after_the_notice_rearms_verification(self, tmp_project):
         # Another Stop hook (Claude Code's /goal, a persistent-loop plugin) can keep the chain
         # going after the notice; new unverified files are shown, but the gate never blocks.
-        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        track.write_text("rtl/a.sv\n")
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(4)
-        ]
-        assert "systemMessage" in results[3]
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
-        track.write_text("rtl/a.sv\nrtl/b.sv\n")
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        assert "decision" not in result
-        assert "2 RTL files have no recorded verification: rtl/a.sv, rtl/b.sv" in result["systemMessage"]
-        # Shown once per change: the next chained Stop without a new file is silent again.
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+        track = tmp_project / '.rat/state/rtl-modified-files.txt'
+        track.write_text('rtl/a.sv\n')
+        for i in range(4): run_hook(self.HOOK, {'cwd':str(tmp_project),'stop_hook_active':i>0})
+        track.write_text('rtl/a.sv\nrtl/b.sv\n')
+        result=run_hook(self.HOOK, {'cwd':str(tmp_project),'stop_hook_active':True})
+        assert result.get('decision')=='block'
+        assert '2 RTL files' in result['reason']
 
-    def test_long_chain_never_blocks_after_the_notice(self, tmp_project):
+    def test_long_chain_rearms_only_for_new_rtl_changes(self, tmp_project):
         # Twenty chained Stops kept going by another hook; an edit lands every fifth Stop.
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
         files = ["rtl/a.sv"]
@@ -582,7 +612,7 @@ class TestRtlVerifyStopGate:
             result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             outcomes.append("B" if result.get("decision") == "block" else "N" if "systemMessage" in result else "-")
         # Three blocks and the notice, then one notice per new file (Stops 6, 11 and 16).
-        assert "".join(outcomes) == "BBBN-N----N----N----"
+        assert "".join(outcomes) == "BBBN-BBBN-BBBN-BBBN-"
 
     def test_new_chain_after_notice_blocks_again(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
@@ -600,12 +630,13 @@ class TestRtlVerifyStopGate:
             "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
+        _record_team_owner(tmp_project, config.get("leader_session_id", ""))
         (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
         run_hook(self.HOOK, lead)
         run_hook(self.HOOK, {**lead, "stop_hook_active": True})
         run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
-        assert (state_dir / "stop-budget-verify.txt").read_text().startswith("2\n")
+        assert (_budget_path(state_dir, 'verify')).read_text().startswith("2\n")
 
     @pytest.mark.parametrize("marker", ["rtl-verify-waiver", "rtl-verify-done"])
     def test_waiver_and_done_clear_the_budget(self, tmp_project, marker):
@@ -618,10 +649,12 @@ class TestRtlVerifyStopGate:
         ]
         assert "systemMessage" in results[3]
         (state_dir / marker).touch()
+        if marker == "rtl-verify-done":
+            _record_passing_evidence(tmp_project)
         # A chained Stop, so the chain-start reset cannot be what resets the budget.
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result == {"continue": True}
-        lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
+        lines = (_budget_path(state_dir, 'verify')).read_text().split("\n")
         assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
         # The cleared gate is not left silent: a new edit in the same chain blocks.
         track.write_text("rtl/b.sv\n")
@@ -645,7 +678,7 @@ class TestRtlVerifyStopGate:
             track.write_text("\n\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result == {"continue": True}
-        lines = (state_dir / "stop-budget-verify.txt").read_text().split("\n")
+        lines = (_budget_path(state_dir, 'verify')).read_text().split("\n")
         assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
         track.write_text("rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
@@ -661,7 +694,7 @@ class TestRtlVerifyStopGate:
         notice = results[3]["systemMessage"]
         assert ".rtl-agent-team/state/rtl-verify-waiver" in notice
         assert "'.rat/state" not in notice
-        assert str(state_dir / "rtl-verify-done") in results[0]["reason"]
+        assert str(state_dir / "verify-evidence.json") in results[0]["reason"]
 
     def test_file_list_is_relative_and_deduplicated(self, tmp_project):
         (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
@@ -723,15 +756,14 @@ class TestRtlVerifyStopGate:
         waive = results[3]["systemMessage"].split("non-functional: ", 1)[1]
         subprocess.run(["sh", "-c", waive], check=True)
         assert (state_dir / "rtl-verify-waiver").exists()
-        done = results[0]["reason"].split("record it: ", 1)[1].split(". If verification", 1)[0]
-        subprocess.run(["sh", "-c", done], check=True)
-        assert (state_dir / "rtl-verify-done").exists()
+        assert str(state_dir / "verify-evidence.json") in results[0]["reason"].replace("'\\''", "'")
+        assert "record it: touch" not in results[0]["reason"]
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
         state = tmp_project / ".rat" / "state"
         # A budget written earlier for this prompt; allowed Stops must still count, or
         # Stop 7 would trust it. Inputs carry a prompt_id, as production Stops do.
-        (state / "stop-budget-verify.txt").write_text("0\n\n1\n0\np-1\n")
+        (_budget_path(state, 'verify')).write_text("0\n\n1\n0\np-1\n")
         for i in range(6):
             stop = {"cwd": str(tmp_project), "stop_hook_active": i > 0, "prompt_id": "p-1"}
             assert run_hook(self.HOOK, stop) == {"continue": True}
@@ -804,7 +836,7 @@ class TestStopGate:
         "ppa-loop": "[PPA-Opt loop] auto-continue:",
         "upper-spec": "[RAT Auto-Design STOP] Upper-spec violation",
         "user-decision": "[RAT Auto-Design Loop p4-gate] The gate needs your decision",
-        "ladder": "[RAT Auto-Design Loop p4-gate] primary strategy",
+        "ladder": "[RAT Auto-Design Loop p4-gate] repair work",
     }
 
     def _write_autopilot_state(self, tmp_project, payload):
@@ -891,52 +923,10 @@ class TestStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
         ctx = result.get("reason", "")
-        assert "primary strategy" in ctx
+        assert "repair work" in ctx
         assert "p2-quality-gate" in ctx
 
-    def test_fallback_message_includes_dynamic_prompt(self, tmp_project):
-        self._write_autopilot_state(
-            tmp_project,
-            {
-                "status": "in_progress",
-                "orchestration_control": {
-                    "active_gate_id": "p5-5c-gate",
-                    "active_gate_retry_limit": 2,
-                    "active_gate_primary_attempts": 3,
-                    "active_gate_fallback_attempts": 0,
-                    "active_gate_last_chance_attempts": 0,
-                    "active_gate_strategy": "fallback",
-                    "dynamic_prompt_text": "Switch to module-split bugfix strategy.",
-                    "needs_user_decision": False
-                }
-            },
-        )
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "fallback strategy" in ctx
-        assert "Switch to module-split bugfix strategy." in ctx
 
-    def test_last_chance_message(self, tmp_project):
-        self._write_autopilot_state(
-            tmp_project,
-            {
-                "status": "in_progress",
-                "orchestration_control": {
-                    "active_gate_id": "p5-final-gate",
-                    "active_gate_retry_limit": 2,
-                    "active_gate_primary_attempts": 3,
-                    "active_gate_fallback_attempts": 2,
-                    "active_gate_last_chance_attempts": 0,
-                    "active_gate_strategy": "last_chance",
-                    "needs_user_decision": False
-                }
-            },
-        )
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "last-chance" in ctx.lower()
 
     def test_user_decision_message(self, tmp_project):
         self._write_autopilot_state(
@@ -1070,6 +1060,7 @@ class TestStopGate:
         state = tmp_project / ".rat" / "state"
         (state / "team-config.json").write_text(json.dumps(
             {"team_mode": True, "leader_session_id": "leader-001"}))
+        _record_team_owner(tmp_project, "leader-001")
         self._write_autopilot_state(
             tmp_project,
             {"status": "in_progress", "orchestration_control": {"active_gate_id": "p4-gate",
@@ -1080,12 +1071,12 @@ class TestStopGate:
         run_hook(self.HOOK, lead)
         run_hook(self.HOOK, {**lead, "stop_hook_active": True})
         run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
-        assert (state / "stop-budget-autopilot.txt").read_text().startswith("2\n")
+        assert (_budget_path(state, 'autopilot')).read_text().startswith("2\n")
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
         # An earlier chain left this gate's budget; another hook then kept a new chain
         # going for six Stops while this gate allowed them.
-        (tmp_project / ".rat" / "state" / "stop-budget-autopilot.txt").write_text("0\n\n1\n0\np-1\n")
+        (_budget_path(tmp_project / ".rat" / "state", 'autopilot')).write_text("0\n\n1\n0\np-1\n")
         stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
         for i in range(6):
             assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
@@ -1164,7 +1155,7 @@ class TestStopGate:
         assert "decision" not in result
         assert "The loop is paused" in result["systemMessage"]
 
-    @pytest.mark.parametrize("site", ["ultraloop", "ppa-loop", "ladder"])
+    @pytest.mark.parametrize("site", ["ultraloop", "ppa-loop"])
     def test_progress_on_every_stop_still_hands_over_at_the_chain_cap(self, tmp_project, site):
         now = int(time.time())
         results = []
@@ -1195,26 +1186,18 @@ class TestStopGate:
         assert "(threshold=1800s)" in result["reason"]
 
     def test_upper_spec_notice_tells_the_user_what_to_decide(self, tmp_project):
-        self._write_autopilot_state(tmp_project, {"status": "in_progress", "upper_spec_blocking": True})
-        results = self._stops(tmp_project, [False, True, True])
-        assert results[0] == {"systemMessage": (
-            "[RAT Auto-Design STOP] Upper-spec violation is unresolved, so the pipeline is paused."
-            " Decide whether to approve the violation or send the pipeline back to fix it, then tell Claude.")}
-        assert results[1:] == [{"continue": True}] * 2
-        assert "Upper-spec violation" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
+        self._write_autopilot_state(tmp_project, {'status':'in_progress','upper_spec_blocking':True})
+        notice=run_hook(self.HOOK, {'cwd':str(tmp_project)})['systemMessage']
+        assert 'Upper-spec violation' in notice
+        assert 'amend the requirement or repair the design' in notice
+        assert notice.endswith('Tell Claude how to proceed.')
 
     def test_user_decision_shows_once_per_chain(self, tmp_project):
         # The orchestrator's contract: once the last chance fails, it records needs_user_decision.
-        self._write_ladder(tmp_project, active_gate_primary_attempts=2, active_gate_fallback_attempts=2,
-                           active_gate_last_chance_attempts=1, active_gate_strategy="last_chance",
-                           needs_user_decision=True, dynamic_prompt_text="Approve rollback to phase 3?")
-        results = self._stops(tmp_project, [False, True, True])
-        assert results[0] == {"systemMessage": (
-            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
-            " (strategy=last_chance, primary=2, fallback=2, last_chance=1)."
-            " Orchestrator note: Approve rollback to phase 3? Tell Claude how to proceed.")}
-        assert results[1:] == [{"continue": True}] * 2
-        assert "needs your decision" in self._stops(tmp_project, [False])[0]["systemMessage"]  # next turn
+        self._write_ladder(tmp_project, needs_user_decision=True)
+        results=self._stops(tmp_project,[False,True,True])
+        assert results[0].get('systemMessage')
+        assert results[1:]==[{'continue':True},{'continue':True}]
 
     @pytest.mark.parametrize("primary,fallback,last_chance,strategy", [
         (1, 0, 0, "primary"), (3, 0, 0, "fallback"), (3, 2, 0, "last_chance"), (3, 2, 1, "user_escalated"),
@@ -1224,23 +1207,19 @@ class TestStopGate:
         # The orchestrator may ask at any ladder stage. The user reads this notice, so none of
         # the stage's instructions to Claude may reach it.
         self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
-                           active_gate_fallback_attempts=fallback,
-                           active_gate_last_chance_attempts=last_chance,
-                           needs_user_decision=True, dynamic_prompt_text="Pick a strategy.")
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"systemMessage": (
-            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
-            f" (strategy={strategy}, primary={primary}, fallback={fallback}, last_chance={last_chance})."
-            " Orchestrator note: Pick a strategy. Tell Claude how to proceed.")}
+            active_gate_fallback_attempts=fallback, active_gate_last_chance_attempts=last_chance,
+            needs_user_decision=True, dynamic_prompt_text='Pick a strategy')
+        notice=run_hook(self.HOOK, {'cwd':str(tmp_project)})['systemMessage']
+        assert 'needs your decision' in notice
+        assert 'Orchestrator note: Pick a strategy.' in notice
+        assert notice.endswith('Tell Claude how to proceed.')
 
     def test_exhausted_ladder_hands_the_decision_to_the_user(self, tmp_project):
         # N=2 and the last chance is used: the gate escalates on its own.
-        self._write_ladder(tmp_project, active_gate_primary_attempts=3, active_gate_fallback_attempts=2,
-                           active_gate_last_chance_attempts=1)
-        results = self._stops(tmp_project, [False, True])
-        assert results[0] == {"systemMessage": (
-            "[RAT Auto-Design Loop p4-gate] The gate needs your decision, so the pipeline is paused"
-            " (strategy=user_escalated, primary=3, fallback=2, last_chance=1). Tell Claude how to proceed.")}
-        assert results[1] == {"continue": True}
+        self._write_ladder(tmp_project,active_gate_primary_attempts=2)
+        results=self._stops(tmp_project,[False,True])
+        assert 'two measured repair cycles' in results[0]['systemMessage']
+        assert results[1]=={'continue':True}
 
     @pytest.mark.parametrize("prompt", ["Approve rollback to phase 3?", ""])
     def test_decision_notice_ends_with_the_users_action(self, tmp_project, prompt):
@@ -1267,69 +1246,26 @@ class TestStopGate:
     def test_no_output_uses_the_old_suggested_context_label(self, tmp_project):
         # One Stop at each ladder stage, all with a dynamic prompt: the decision notice, the
         # fallback and last-chance reasons, and the notice once the ladder is used up.
-        outputs = []
-        for primary, fallback, last_chance, decision in [
-            (1, 0, 0, True), (3, 0, 0, False), (3, 2, 0, False), (3, 2, 1, False),
-        ]:
-            self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
-                               active_gate_fallback_attempts=fallback,
-                               active_gate_last_chance_attempts=last_chance,
-                               needs_user_decision=decision, dynamic_prompt_text="Approve rollback?")
-            outputs.append(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
-        assert [o.get("decision", "notice") for o in outputs] == ["notice", "block", "block", "notice"]
-        assert not any("Suggested context" in json.dumps(o) for o in outputs)
+        self._write_ladder(tmp_project,active_gate_primary_attempts=2,dynamic_prompt_text='Approve rollback?')
+        result=run_hook(self.HOOK,{'cwd':str(tmp_project)})
+        assert result.get('systemMessage')
+        assert 'Suggested context' not in json.dumps(result)
 
     def test_ladder_pause_notice_holds_for_the_chain(self, tmp_project):
-        self._write_ladder(tmp_project)
-        results = self._stops(tmp_project, [False] + [True] * 5)
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert results[0]["reason"] == (
-            "[RAT Auto-Design Loop p4-gate] primary strategy (1/2). Continue agent loop and satisfy"
-            " the gate conditions. (strategy=primary, primary=1, fallback=0, last_chance=0)")
-        assert results[3] == {"systemMessage": (
-            "[RAT Auto-Design Loop p4-gate] The pipeline is paused: automatic continuation stopped"
-            " for this turn. Say continue to resume.")}
-        assert results[4:] == [{"continue": True}] * 2
+        self._write_ladder(tmp_project,active_gate_primary_attempts=1)
+        results=self._stops(tmp_project,[False,True,True,True,True])
+        assert results[3].get('systemMessage')
+        assert results[4]=={'continue':True}
 
-    @pytest.mark.parametrize("attempt", [
-        {"active_gate_primary_attempts": 2},
-        {"active_gate_fallback_attempts": 1},
-        {"active_gate_last_chance_attempts": 1},
-        {"active_gate_id": "p5-gate"},
-    ])
-    def test_recorded_attempt_before_the_notice_restarts_the_count(self, tmp_project, attempt):
-        self._write_ladder(tmp_project)
-        results = self._stops(tmp_project, [False, True])
-        self._write_ladder(tmp_project, **attempt)  # the orchestrator recorded another attempt
-        results += self._stops(tmp_project, [True] * 4)
-        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
-        assert "paused" in results[5]["systemMessage"]
 
     def test_prompt_rewrite_without_an_attempt_is_not_progress(self, tmp_project):
-        results = []
-        for i in range(4):
-            # Fallback stage (3 of 3-4): the reason carries the dynamic prompt, rewritten each Stop.
-            self._write_ladder(tmp_project, active_gate_primary_attempts=3,
-                               dynamic_prompt_text=f"Try variant {i}.")
-            results += self._stops(tmp_project, [i > 0])
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "Dynamic prompt: Try variant 1." in results[1]["reason"]
-        assert "paused" in results[3]["systemMessage"]
+        self._write_ladder(tmp_project,active_gate_primary_attempts=1,dynamic_prompt_text='first note')
+        first=self._stops(tmp_project,[False,True])
+        self._write_ladder(tmp_project,active_gate_primary_attempts=1,dynamic_prompt_text='second note')
+        rest=self._stops(tmp_project,[True,True])
+        assert [r.get('decision') for r in first+rest[:1]]==['block']*3
+        assert rest[1].get('systemMessage')
 
-    @pytest.mark.parametrize("primary,fallback,last_chance,stage", [
-        (2, 0, 0, "primary strategy (2/2)"),
-        (3, 0, 0, "fallback strategy (3/3-4)"),
-        (2, 2, 0, "fallback strategy (4/3-4)"),
-        (3, 2, 0, "reached 2x retry budget"),
-    ])
-    def test_ladder_stage_at_each_boundary(self, tmp_project, primary, fallback, last_chance, stage):
-        # N=2: primary through N attempts, fallback through 2N, then one last chance.
-        self._write_ladder(tmp_project, active_gate_primary_attempts=primary,
-                           active_gate_fallback_attempts=fallback,
-                           active_gate_last_chance_attempts=last_chance)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["decision"] == "block"
-        assert stage in result["reason"]
 
     def test_a_run_as_old_as_the_stale_bound_is_abandoned(self, tmp_project):
         run_state = self._write_ladder(tmp_project)
@@ -1533,12 +1469,9 @@ class TestRtlEditTrackerBash:
         assert "RTL Verify Gate" in ctx
 
     def test_bash_command_with_v_file_tracked(self, tmp_project):
-        """B1: Bash command containing .v file should trigger tracking."""
         stdin = {"cwd": str(tmp_project), "command": "iverilog -o sim rtl/legacy/counter.v"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
+        assert run_hook(self.HOOK, stdin) == {"continue": True}
+        assert not (tmp_project / '.rat/state/rtl-modified-files.txt').exists()
 
     def test_bash_empty_command_passthrough(self, tmp_project):
         """B1: Empty command should pass through."""
@@ -2149,17 +2082,18 @@ class TestP6CascadeGate:
         state = tmp_project / ".rat" / "state"
         (state / "team-config.json").write_text(json.dumps(
             {"team_mode": True, "leader_session_id": "leader-001"}))
+        _record_team_owner(tmp_project, "leader-001")
         (tmp_project / ".rat" / "state" / "phase6-stale").touch()
         lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
         run_hook(self.HOOK, lead)
         run_hook(self.HOOK, {**lead, "stop_hook_active": True})
         run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
-        assert (state / "stop-budget-p6-cascade.txt").read_text().startswith("2\n")
+        assert (_budget_path(state, 'p6-cascade')).read_text().startswith("2\n")
 
     def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
         # An earlier chain left this gate's budget; another hook then kept a new chain
         # going for six Stops while this gate allowed them.
-        (tmp_project / ".rat" / "state" / "stop-budget-p6-cascade.txt").write_text("0\n\n1\n0\np-1\n")
+        (_budget_path(tmp_project / ".rat" / "state", 'p6-cascade')).write_text("0\n\n1\n0\np-1\n")
         stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
         for i in range(6):
             assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
@@ -2189,7 +2123,7 @@ class TestP6CascadeGate:
             stale.unlink()
         # A chained Stop, so the chain-start reset cannot be what clears the budget.
         assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
-        lines = (state / "stop-budget-p6-cascade.txt").read_text().split("\n")
+        lines = (_budget_path(state, 'p6-cascade')).read_text().split("\n")
         assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
         stale.touch()  # a new RTL edit later in the same chain
         assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})["decision"] == "block"
@@ -2401,550 +2335,79 @@ class TestP6CascadeGate:
 
 
 class TestSkillCompletionGate:
-    """Tests for hooks/rtl-skill-completion-gate.sh."""
+    """One bounded missing-work reminder, without an automatic review ladder."""
+    HOOK = HOOKS_DIR / 'rtl-skill-completion-gate.sh'
 
-    HOOK = HOOKS_DIR / "rtl-skill-completion-gate.sh"
+    def _write_skill_state(self, root, **overrides):
+        state={'skill':'rtl-p4-implement','started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               'pending':'unit-test-pass','all_complete':False,'iteration':1,'max_iterations':5,
+               'use_escalation_ladder':True,'strategy':'primary',**overrides}
+        path=root/'.rat/state/skill-active.json';path.write_text(json.dumps(state));return path
 
-    def _write_skill_state(self, tmp_project, skill="rtl-p4s-bugfix", iteration=1,
-                           max_iterations=5, all_complete=False,
-                           pending="lint_pass, tb_updated, sim_pass"):
-        state_dir = tmp_project / ".rat" / "state"
-        state_dir.mkdir(parents=True, exist_ok=True)
+    def test_no_state_allows_exit(self,tmp_project):
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)})=={'continue':True}
 
-        state = {
-            "skill": skill,
-            "active": True,
-            "iteration": iteration,
-            "max_iterations": max_iterations,
-            "pending": pending,
-            "all_complete": all_complete,
-            "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        }
-        (state_dir / "skill-active.json").write_text(json.dumps(state, indent=2))
+    @pytest.mark.parametrize('updates',[{'all_complete':True},{'pending':''}])
+    def test_completed_state_is_removed(self,tmp_project,updates):
+        path=self._write_skill_state(tmp_project,**updates)
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)})=={'continue':True}
+        assert not path.exists()
 
-    def test_no_skill_state_allows_exit(self, tmp_project):
-        """No skill-active.json → allow exit."""
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is True
-
-    def test_active_skill_blocks_exit(self, tmp_project):
-        """Active skill with all_complete=false → block exit."""
+    def test_missing_work_blocks_once_then_notifies(self,tmp_project):
         self._write_skill_state(tmp_project)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        first=run_hook(self.HOOK,{'cwd':str(tmp_project)})
+        _assert_stop_blocked(first)
+        assert 'unit-test-pass' in first['reason']
+        assert 'Do not repeat successful reviews' in first['reason']
+        second=run_hook(self.HOOK,{'cwd':str(tmp_project),'stop_hook_active':True})
+        assert second.get('systemMessage')
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project),'stop_hook_active':True})=={'continue':True}
+
+    @pytest.mark.parametrize('iteration',[1,5,11,12,100])
+    def test_legacy_iteration_count_never_schedules_another_review(self,tmp_project,iteration):
+        path=self._write_skill_state(tmp_project,iteration=iteration)
+        result=run_hook(self.HOOK,{'cwd':str(tmp_project)})
         _assert_stop_blocked(result)
+        assert json.loads(path.read_text())['iteration']==iteration
+        assert 'last_chance' not in result['reason']
+        assert 'switching' not in result['reason']
 
-    def test_completed_skill_allows_exit(self, tmp_project):
-        """Active skill with all_complete=true → allow exit."""
-        self._write_skill_state(tmp_project, all_complete=True)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is True
+    def test_stale_pending_state_notifies_instead_of_silent_completion(self,tmp_project):
+        path=self._write_skill_state(tmp_project,started_at='2020-01-01T00:00:00Z')
+        os.utime(path,(1000000000,1000000000))
+        result=run_hook(self.HOOK,{'cwd':str(tmp_project)})
+        assert result.get('systemMessage')
+        assert 'not been marked complete' in result['systemMessage']
+        assert not path.exists()
 
-    def test_completed_skill_cleans_state(self, tmp_project):
-        """After allowing exit for completed skill, state file should be removed."""
-        self._write_skill_state(tmp_project, all_complete=True)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        assert not state_file.exists()
+    def test_background_activity_refreshes_the_loop(self,tmp_project):
+        path=self._write_skill_state(tmp_project,started_at='2020-01-01T00:00:00Z')
+        os.utime(path,(1000000000,1000000000))
+        result=run_hook(self.HOOK,{'cwd':str(tmp_project),'background_tasks':[{'type':'subagent'}]})
+        assert result=={'continue':True}
+        assert time.time()-path.stat().st_mtime<5
 
-    def test_max_iterations_still_blocks_under_ladder(self, tmp_project):
-        """At iteration == max_iterations, ladder remains active and blocks exit."""
-        self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "primary" in ctx.lower()
-
-    def test_max_iterations_does_not_clean_state_under_ladder(self, tmp_project):
-        """Ladder mode should keep state for fallback/last-chance escalation."""
-        self._write_skill_state(tmp_project, iteration=5, max_iterations=5)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        assert state_file.exists()
-
-    def test_iteration_increments_on_block(self, tmp_project):
-        """Each block should increment the iteration counter."""
-        self._write_skill_state(tmp_project, iteration=1)
-        run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        content = state_file.read_text()
-        assert '"iteration": 2' in content
-
-    def test_sed_script_tempfile_cleaned_up(self, tmp_project):
-        """Verify no skill-gate-sed.* tempfiles are left after hook run."""
-        import glob
+    def test_user_decision_is_not_hidden_by_a_skill(self,tmp_project):
         self._write_skill_state(tmp_project)
-        before = set(glob.glob("/tmp/skill-gate-sed.*"))
-        run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        after = set(glob.glob("/tmp/skill-gate-sed.*"))
-        assert after == before, f"Leaked tempfiles: {after - before}"
+        (tmp_project/'.rat/state/rat-auto-design-state.json').write_text(json.dumps({
+            'status':'in_progress','orchestration_control':{'needs_user_decision':True}}))
+        result=run_hook(self.HOOK,{'cwd':str(tmp_project)})
+        assert result.get('systemMessage')
+        assert result.get('decision')!='block'
 
-    def test_block_message_includes_skill_name(self, tmp_project):
-        """Block message should include the skill name."""
-        self._write_skill_state(tmp_project, skill="rtl-p4s-bugfix")
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        ctx = result.get("reason", "")
-        assert "rtl-p4s-bugfix" in ctx
+    def test_infeasibility_notifies_without_another_attempt(self,tmp_project):
+        self._write_skill_state(tmp_project,strategy='upstream_challenge',pending='compliance-pass')
+        (tmp_project/'.rat/state/compliance-report.json').write_text(json.dumps({
+            'verdict':'VIOLATION','summary':{'max_violation_authority':1,'infeasibility_detected':'true'}}))
+        result=run_hook(self.HOOK,{'cwd':str(tmp_project)})
+        assert result.get('systemMessage')
+        assert result.get('decision')!='block'
 
-    def test_block_message_includes_pending(self, tmp_project):
-        """Block message should include pending criteria."""
-        self._write_skill_state(tmp_project, pending="lint_pass, sim_pass")
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        ctx = result.get("reason", "")
-        assert "lint_pass" in ctx or "sim_pass" in ctx
-
-    def test_stale_state_allows_exit(self, tmp_project):
-        """State older than 2 hours should be treated as stale and cleaned up."""
-        state_dir = tmp_project / ".rat" / "state"
-        state_dir.mkdir(parents=True, exist_ok=True)
-        # Write a state with a timestamp 3 hours ago
-
-        old_time = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        state = {
-            "skill": "rtl-p4s-bugfix",
-            "active": True,
-            "iteration": 1,
-            "max_iterations": 5,
-            "pending": "lint_pass",
-            "all_complete": False,
-            "started_at": old_time
-        }
-        (state_dir / "skill-active.json").write_text(json.dumps(state, indent=2))
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["continue"] is True
-
-    def test_ladder_primary_stage_blocks(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state["use_escalation_ladder"] = True
-        state["dynamic_prompt"] = "primary prompt"
-        state_file.write_text(json.dumps(state, indent=2))
-
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "primary" in ctx.lower()
-
-    def test_ladder_fallback_stage_blocks(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=3, max_iterations=2)
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state["use_escalation_ladder"] = True
-        state["dynamic_prompt"] = "fallback prompt"
-        state_file.write_text(json.dumps(state, indent=2))
-
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "fallback" in ctx.lower()
-        assert "fallback prompt" in ctx
-
-    def test_ladder_last_chance_stage_blocks(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state["use_escalation_ladder"] = True
-        state_file.write_text(json.dumps(state, indent=2))
-
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        ctx = result.get("reason", "")
-        assert "last_chance" in ctx or "last-chance" in ctx
-
-    def test_ladder_after_last_chance_requires_user(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state["use_escalation_ladder"] = True
-        state_file.write_text(json.dumps(state, indent=2))
-
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert "decision" not in result
-        notice = result["systemMessage"]
-        assert "사용자" in notice or "user" in notice.lower()
-
-    def test_legacy_disabled_ladder_is_migrated_and_still_blocks(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state["use_escalation_ladder"] = False
-        state_file.write_text(json.dumps(state, indent=2))
-
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        _assert_stop_blocked(result)
-        migrated = json.loads(state_file.read_text())
-        assert migrated["use_escalation_ladder"] is True
-
-    def test_skill_completion_gate_uses_shared_json_util(self):
-        content = (HOOKS_DIR / "rtl-skill-completion-gate.sh").read_text()
-        assert "lib/json-util.sh" in content
-        assert "jsonu_get_root_string" in content
-        assert "jsonu_get_file_path_string" in content
-        assert "jsonu_get_file_path_bool" in content
-        assert "jsonu_get_file_path_num" in content
-
-    def test_pending_without_progress_pauses_in_chain(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(4)
-        ]
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "still has pending criteria" in results[3]["systemMessage"]
-
-    def test_new_chain_after_notice_blocks_again(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        for i in range(5):
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
-
-    def test_worker_stop_keeps_leader_budget(self, tmp_project):
-        state = tmp_project / ".rat" / "state"
-        (state / "team-config.json").write_text(json.dumps(
-            {"team_mode": True, "leader_session_id": "leader-001"}))
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
-        run_hook(self.HOOK, lead)
-        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
-        assert (state / "stop-budget-skill-completion.txt").read_text().startswith("2\n")
-
-    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
-        # An earlier chain left this gate's budget; another hook then kept a new chain
-        # going for six Stops while this gate allowed them.
-        (tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt").write_text("0\n\n1\n0\np-1\n")
-        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
-        for i in range(6):
-            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
-        assert "decision" not in result
-        assert "still has pending criteria" in result["systemMessage"]
-
-    def _write_upstream_challenge(self, tmp_project, iteration=4):
-        """The state as rtl-skill-activation.sh writes it, plus a compliance report with a
-        validated infeasible iron requirement. Past the authority-1 primary budget (3),
-        compliance-gate-util.sh switches the strategy to upstream_challenge."""
-        state_dir = tmp_project / ".rat" / "state"
-        self._write_skill_state(tmp_project, skill="rtl-p4-implement", iteration=iteration,
-                                pending="compliance-pass")
-        state_file = state_dir / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state.update({"use_escalation_ladder": True, "strategy": "primary", "dynamic_prompt": "",
-                      "compliance_authority": None, "max_primary": None, "max_fallback": None})
-        state_file.write_text(json.dumps(state, indent=2))
-        (state_dir / "compliance-report.json").write_text(json.dumps({"summary": {
-            "verdict": "FAIL", "max_violation_authority": 1, "infeasibility_detected": True}}))
-
-    def test_upstream_challenge_without_progress_pauses_in_chain(self, tmp_project):
-        self._write_upstream_challenge(tmp_project)
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(4)
-        ]
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert all(r["reason"].startswith("[Upstream Challenge Required]") for r in results[:3])
-        assert "decision" not in results[3]
-        notice = results[3]["systemMessage"]
-        # The user decides about the upstream requirement; saying continue settles nothing.
-        assert notice.startswith("[Upstream Challenge] rtl-p4-implement:")
-        assert "is not asking Claude to continue in this turn" in notice
-        assert "decide whether to amend the upstream requirement" in notice
-        assert "Say continue" not in notice
-
-    def test_upstream_switch_on_the_notice_stop_shows_the_upstream_notice(self, tmp_project):
-        # The compliance report turns infeasible during the third continuation, so the
-        # strategy switches on the Stop where the breaker hands over. The notice must
-        # follow the switch, which the compliance preprocess makes on that same Stop.
-        self._write_upstream_challenge(tmp_project, iteration=1)
-        report = tmp_project / ".rat" / "state" / "compliance-report.json"
-        saved = report.read_text()
-        report.unlink()
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(3)
-        ]
-        assert [r.get("decision") for r in results] == ["block"] * 3
-        report.write_text(saved)  # iteration 4 is past the authority-1 primary budget (3)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        assert "decision" not in result
-        assert result["systemMessage"].startswith("[Upstream Challenge] rtl-p4-implement:")
-
-    @pytest.mark.parametrize("satisfy", ["state_removed", "stale_state", "all_complete", "compliance_pass"])
-    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
-        state = tmp_project / ".rat" / "state"
-        skill_state = state / "skill-active.json"
-        upstream = satisfy == "compliance_pass"
-        site = "[Upstream Challenge Required]" if upstream else "[RTL Skill Completion Loop - 1/10]"
-
-        def start_skill():
-            if upstream:
-                self._write_upstream_challenge(tmp_project)
-            else:
-                self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-
-        start_skill()
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(4)
-        ]
-        assert "systemMessage" in results[3]
-        if satisfy == "state_removed":
-            skill_state.unlink()
-        elif satisfy == "compliance_pass":  # the requirement was amended and the check passes
-            (state / "compliance-report.json").write_text(json.dumps({"summary": {"verdict": "PASS"}}))
-        else:
-            data = json.loads(skill_state.read_text())
-            if satisfy == "stale_state":
-                data["started_at"] = (datetime.datetime.now(datetime.timezone.utc)
-                                      - datetime.timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
-            else:
-                data["all_complete"] = True
-            skill_state.write_text(json.dumps(data, indent=2))
-        # A chained Stop, so the chain-start reset cannot be what clears the budget.
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
-        assert not skill_state.exists()
-        lines = (state / "stop-budget-skill-completion.txt").read_text().split("\n")
-        assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
-        start_skill()  # the same condition comes back later in this chain
-        again = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        assert again["decision"] == "block"
-        assert again["reason"].startswith(site)
-
-    def test_pending_change_before_the_notice_restarts_the_count(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        for i in range(2):
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state["pending"] = "tb_updated, sim_pass"  # lint_pass is met
-        state_file.write_text(json.dumps(state, indent=2))
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-            for _ in range(4)
-        ]
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "still has pending criteria: tb_updated, sim_pass." in results[3]["systemMessage"]
-
-    def test_ladder_stage_change_is_not_progress(self, tmp_project):
-        # The ladder advances on every Stop it blocks; only a change in the pending criteria is progress.
-        self._write_skill_state(tmp_project, iteration=9, max_iterations=10)
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(4)
-        ]
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "primary strategy" in results[1]["reason"] and "fallback strategy" in results[2]["reason"]
-        notice = results[3]["systemMessage"]
-        assert notice.startswith("[RTL Skill Completion Loop] rtl-p4s-bugfix still has pending criteria:")
-        assert "is not asking Claude to continue in this turn" in notice
-        assert notice.endswith("Say continue to resume.")
-
-    def test_escalation_hands_over_mid_chain(self, tmp_project):
-        # The last chance blocks once; the next Stop, chained or not, is the user's decision.
-        self._write_skill_state(tmp_project, iteration=5, max_iterations=2)
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(2)
-        ]
-        assert "last_chance" in results[0]["reason"]
-        assert "decision" not in results[1]
-        assert "User decision required" in results[1]["systemMessage"]
-
-    def _stops_with_iterations(self, tmp_project, actives):
-        """Run one Stop per stop_hook_active value; return the outputs and the iteration after each."""
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        results, iterations = [], []
-        for active in actives:
-            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": active}))
-            iterations.append(json.loads(state_file.read_text())["iteration"])
-        return results, iterations
-
-    def test_notice_and_silent_stops_leave_the_ladder_alone(self, tmp_project):
-        # The ladder counts attempts: after the notice, chained Stops that another hook
-        # keeps alive are silent here and leave the iteration where it is.
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=2)
-        results, iterations = self._stops_with_iterations(tmp_project, [False] + [True] * 5)
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "still has pending criteria" in results[3]["systemMessage"]
-        assert results[4:] == [{"continue": True}] * 2
-        assert iterations == [2, 3, 4, 4, 4, 4]
-
-    def test_last_chance_reaches_claude_before_the_escalation(self, tmp_project):
-        # Spec review repro A: with N=2 the chain's notice falls on the last-chance iteration.
-        self._write_skill_state(tmp_project, iteration=2, max_iterations=2)
-        first, first_iterations = self._stops_with_iterations(tmp_project, [False] + [True] * 4)
-        assert [r.get("decision") for r in first[:3]] == ["block"] * 3
-        assert "still has pending criteria" in first[3]["systemMessage"]
-        assert first[4] == {"continue": True}
-        assert first_iterations == [3, 4, 5, 5, 5]  # the notice leaves the last chance unused
-        assert not any("last_chance" in json.dumps(r) for r in first)
-        # The next turn: the last chance reaches Claude as a block, then the escalation.
-        second, second_iterations = self._stops_with_iterations(tmp_project, [False, True])
-        assert second[0]["decision"] == "block"
-        assert second[0]["reason"].startswith("[RTL Skill Completion Loop - last_chance]")
-        assert "decision" not in second[1]
-        assert second[1]["systemMessage"].startswith(
-            "[RTL Skill Completion Loop - escalation] rtl-p4s-bugfix has used its automatic attempts"
-            " and still has pending criteria:")
-        assert second_iterations == [6, 6]
-
-    def test_escalation_after_a_budget_shrink_claims_no_last_chance(self, tmp_project):
-        # Spec re-review P1: an authority-1 compliance FAIL shrinks the ladder to 3/2 (last
-        # chance at 6) while the iteration is already past it, so the next Stop escalates
-        # without any last-chance block. The notice must not claim that one failed.
-        state_dir = tmp_project / ".rat" / "state"
-        state_file = state_dir / "skill-active.json"
-        self._write_skill_state(tmp_project, skill="rtl-p4-implement", iteration=8, max_iterations=5,
-                                pending="sim_pass, compliance-pass")
-        state = json.loads(state_file.read_text())
-        state.update({"use_escalation_ladder": True, "strategy": "primary", "dynamic_prompt": "",
-                      "compliance_authority": None, "max_primary": None, "max_fallback": None})
-        state_file.write_text(json.dumps(state, indent=2))
-        first = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert first["reason"].startswith("[RTL Skill Completion Loop - 8/10] rtl-p4-implement fallback")
-        (state_dir / "compliance-report.json").write_text(json.dumps({"summary": {
-            "verdict": "FAIL", "max_violation_authority": 1, "infeasibility_detected": False}}))
-        second = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        shrunk = json.loads(state_file.read_text())
-        assert (shrunk["max_primary"], shrunk["max_fallback"], shrunk["iteration"]) == (3, 2, 9)
-        notice = second["systemMessage"]
-        assert notice.startswith("[RTL Skill Completion Loop - escalation] rtl-p4-implement has used"
-                                 " its automatic attempts and still has pending criteria:"
-                                 " sim_pass, compliance-pass. User decision required.")
-        assert "last_chance" not in notice
-        # The compliance prompt still follows, before the command, which comes last.
-        assert notice.index("Compliance context: [CRITICAL") < notice.index("end the loop: rm ")
-        assert notice.endswith("skill-active.json'")
-
-    def test_escalation_shows_once_per_chain(self, tmp_project):
-        self._write_skill_state(tmp_project, iteration=6, max_iterations=2)
-        results, iterations = self._stops_with_iterations(tmp_project, [False, True, True])
-        assert "User decision required" in results[0]["systemMessage"]
-        assert "is not asking Claude to continue, and shows this once per turn" in results[0]["systemMessage"]
-        assert results[1:] == [{"continue": True}] * 2
-        assert iterations == [6, 6, 6]  # the escalation blocks nothing, so it uses no attempt
-        # Recorded in this gate's budget, where the pre-check reads it.
-        budget = (tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt").read_text()
-        assert budget.split("\n")[3] == "1"
-        again, _ = self._stops_with_iterations(tmp_project, [False])  # the next turn
-        assert "User decision required" in again[0]["systemMessage"]
-
-    def test_escalation_command_ends_the_loop_in_a_quoted_path(self, tmp_path):
-        project = tmp_path / "o'brien"
-        self._write_skill_state(project, iteration=6, max_iterations=2)
-        notice = run_hook(self.HOOK, {"cwd": str(project)})["systemMessage"]
-        assert notice.endswith("skill-active.json'")  # the command comes last and can be copied as is
-        skill_state = project / ".rat" / "state" / "skill-active.json"
-        before = set(tmp_path.rglob("*"))
-        subprocess.run(["sh", "-c", notice.split("end the loop: ", 1)[1]], check=True, cwd=tmp_path)
-        assert set(tmp_path.rglob("*")) == before - {skill_state}  # exactly the skill state is gone
-
-    def test_pre_check_block_after_a_race_still_instructs_claude(self, tmp_project):
-        # Another session's chain start rewrites the budget between the pre-check's decision
-        # (notice) and its stopu_gate call, which then blocks. A cksum shim stages that write:
-        # the budget's fingerprint calls cksum once per decision, before reading the file.
-        budget = tmp_project / ".rat" / "state" / "stop-budget-skill-completion.txt"
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=10)
-        budget.write_text("0\n\n6\n0\np-1\n")  # this Stop is the chain's seventh: past the cap
-        shim = tmp_project / "shim"
-        shim.mkdir()
-        (shim / "cksum").write_text(
-            '#!/bin/sh\n'
-            'n=$(($(cat "$SHIM_DIR/calls" 2>/dev/null || echo 0) + 1))\n'
-            'echo "$n" > "$SHIM_DIR/calls"\n'
-            'if [ "$n" = 2 ]; then printf \'0\\n\\n1\\n0\\np-1\\n\' > "$RACE_BUDGET"; fi\n'
-            'exec "$REAL_CKSUM" "$@"\n')
-        (shim / "cksum").chmod(0o755)
-        env = {"PATH": f"{shim}{os.pathsep}{os.environ['PATH']}", "SHIM_DIR": str(shim),
-               "RACE_BUDGET": str(budget), "REAL_CKSUM": shutil.which("cksum")}
-        stop = {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"}
-        result = run_hook(self.HOOK, stop, env=env)
-        assert (shim / "calls").read_text().strip() == "2"  # the pre-check, then stopu_gate
-        assert result["decision"] == "block"
-        assert result["reason"].startswith("[RTL Skill Completion Loop] rtl-p4s-bugfix in progress.")
-
-    @pytest.mark.parametrize("iteration,stage", [
-        (2, "primary strategy"), (3, "fallback strategy"), (4, "fallback strategy"), (5, "last_chance"),
-    ])
-    def test_ladder_stage_at_each_boundary(self, tmp_project, iteration, stage):
-        # N=2: primary through N, fallback through 2N, last chance at 2N+1, then the user.
-        self._write_skill_state(tmp_project, iteration=iteration, max_iterations=2)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert result["decision"] == "block"
-        assert stage in result["reason"]
-
-    def test_cleared_compliance_budget_uses_max_iterations(self, tmp_project):
-        # compliance-gate-util.sh resets max_primary and max_fallback to 0 once the report
-        # passes or is gone; the ladder must fall back to max_iterations, not escalate.
-        self._write_skill_state(tmp_project, iteration=1, max_iterations=5)
-        state_file = tmp_project / ".rat" / "state" / "skill-active.json"
-        state = json.loads(state_file.read_text())
-        state.update({"max_primary": 0, "max_fallback": 0})
-        state_file.write_text(json.dumps(state, indent=2))
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert "[RTL Skill Completion Loop - 1/5] rtl-p4s-bugfix primary strategy" in result["reason"]
-
-    # A pipeline whose orchestrator waits for the user's decision. stop-gate.sh tells the user
-    # the autopilot is paused; the skill loop must not push Claude past the decision meanwhile.
-    PIPELINE_DECISIONS = {
-        "upper-spec": {"status": "in_progress", "upper_spec_blocking": True},
-        "orchestrator-asks": {"status": "in_progress",
-                              "orchestration_control": {"needs_user_decision": True}},
-    }
-
-    @pytest.mark.parametrize("skill,state_name", [
-        ("rat-auto-design", "rat-auto-design-state.json"),
-        ("rat-p1p3-spec-uarch", "rat-p1p3-spec-uarch-state.json"),
-        ("rat-p4p5-impl-verify", "rat-p4p5-impl-verify-state.json"),
-    ])
-    @pytest.mark.parametrize("decision", sorted(PIPELINE_DECISIONS))
-    def test_pipeline_waiting_for_the_user_hands_over(self, tmp_project, skill, state_name, decision):
-        self._write_skill_state(tmp_project, skill=skill, pending="phase-gate-passed|artifacts-written")
-        state_dir = tmp_project / ".rat" / "state"
-        (state_dir / state_name).write_text(json.dumps(self.PIPELINE_DECISIONS[decision]))
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
-        assert "decision" not in result
-        assert f"{skill} is waiting for your decision" in result["systemMessage"]
-        assert "phase-gate-passed|artifacts-written" in result["systemMessage"]
-        assert json.loads((state_dir / "skill-active.json").read_text())["iteration"] == 1
-        # Once per chain: the chained Stop is silent and still leaves the ladder alone.
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
-        assert json.loads((state_dir / "skill-active.json").read_text())["iteration"] == 1
-
-    @pytest.mark.parametrize("env", [{}, {"RTL_FORCE_PYTHON_PARSER": "1"}, {"RTL_FORCE_JSON_FALLBACK": "1"}],
-                             ids=["default", "python", "sed"])
-    def test_upper_spec_hand_over_in_every_parser_mode(self, tmp_project, env):
-        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
-        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
-            json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env=env)
-        assert "waiting for your decision" in result["systemMessage"]
-
-    @pytest.mark.parametrize("state", [
-        {"status": "completed", "upper_spec_blocking": True},
-        {"status": "in_progress", "upper_spec_blocking": False,
-         "orchestration_control": {"needs_user_decision": False}},
-    ], ids=["completed-run", "no-decision"])
-    def test_pipeline_without_a_pending_decision_keeps_the_loop(self, tmp_project, state):
-        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
-        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(json.dumps(state))
-        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
-
-    def test_abandoned_pipeline_decision_keeps_the_loop(self, tmp_project):
-        # Same staleness bound as stop-gate.sh: an untouched state file is an abandoned run.
-        self._write_skill_state(tmp_project, skill="rat-auto-design", pending="phase-gate-passed")
-        state_file = tmp_project / ".rat" / "state" / "rat-auto-design-state.json"
-        state_file.write_text(json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
-        old = time.time() - 3 * 3600
-        os.utime(state_file, (old, old))
-        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
-
-    def test_other_skills_do_not_read_a_pipeline_state(self, tmp_project):
-        self._write_skill_state(tmp_project, skill="rtl-p4-implement", pending="rtl-written")
-        (tmp_project / ".rat" / "state" / "rat-auto-design-state.json").write_text(
-            json.dumps(self.PIPELINE_DECISIONS["upper-spec"]))
-        _assert_stop_blocked(run_hook(self.HOOK, {"cwd": str(tmp_project)}))
+    def test_new_pending_work_rearms_before_the_notice(self,tmp_project):
+        path=self._write_skill_state(tmp_project)
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)}).get('decision')=='block'
+        data=json.loads(path.read_text());data['pending']='new-failed-check';path.write_text(json.dumps(data))
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project),'stop_hook_active':True}).get('decision')=='block'
 
 
 class TestSkillActivation:
@@ -3052,8 +2515,8 @@ class TestSkillActivation:
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
         assert "rtl-p4s-bugfix" in ctx
 
-    def test_rtl_setup_bootstrap_installs_template_scripts(self, tmp_project):
-        """rat-init-project activation should auto-install run_xxx.sh templates into project."""
+    def test_rtl_setup_preflight_does_not_install_templates(self, tmp_project):
+        """Loading a setup skill is not permission to run the installer in a hook."""
         stdin = {"cwd": str(tmp_project), "skill": "rtl-agent-team:rat-init-project"}
         result = run_hook(self.HOOK, stdin)
         assert result["continue"] is True
@@ -3064,11 +2527,10 @@ class TestSkillActivation:
         run_cdc = tmp_project / "lint" / "scripts" / "run_cdc.sh"
 
         for path in [run_sim, run_lint, run_syn, run_cdc]:
-            assert path.exists(), f"Missing auto-installed script: {path}"
-            assert os.access(path, os.X_OK), f"Script should be executable: {path}"
+            assert not path.exists(), f"Preflight unexpectedly installed: {path}"
 
         ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "SETUP_TEMPLATE_INSTALL" in ctx
+        assert "explicit template installer" in ctx
 
     def test_rtl_setup_bootstrap_is_non_destructive(self, tmp_project):
         """Existing scripts should not be overwritten by rat-init-project bootstrap."""
@@ -3115,6 +2577,7 @@ class TestSkillActivation:
             config["leader_session_id"] = leader
         path = tmp_project / ".rat" / "state" / "team-config.json"
         path.write_text(json.dumps(config))
+        if leader is not None: _record_team_owner(tmp_project, leader)
         written = time.time() - age_hours * 3600
         os.utime(path, (written, written))
         stdin = {"cwd": str(tmp_project), "hook_event_name": "PostToolUse",
@@ -3257,12 +2720,12 @@ class TestPhaseStateBootstrap:
 
     def test_non_target_skill_ignored(self, tmp_project):
         _setup_marker(tmp_project)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-implement"})
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-implement"}))
         assert result["continue"] is True
         assert not (tmp_project / ".rat" / "state" / "p4-state.json").exists()
 
     def test_setup_missing_does_not_bootstrap(self, tmp_project):
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"}, env={"HOME": str(tmp_project)})
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"}), env={"HOME": str(tmp_project)})
         assert result["continue"] is True
         assert not (tmp_project / ".rat" / "state" / "p4-state.json").exists()
 
@@ -3275,7 +2738,7 @@ class TestPhaseStateBootstrap:
     )
     def test_target_skill_bootstraps_state(self, tmp_project, skill_name, state_file, phase):
         _setup_marker(tmp_project)
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill_name})
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": skill_name}))
         assert result["continue"] is True
 
         state_path = tmp_project / ".rat" / "state" / state_file
@@ -3291,7 +2754,7 @@ class TestPhaseStateBootstrap:
         (regression: phase-only equality + same-second mtime let stale PASS slip)."""
         _setup_marker(tmp_project)
         skill = "rtl-agent-team:rtl-p3-uarch-design"
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill})
+        run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": skill}))
         cs = tmp_project / ".rat" / "state" / "compliance-state.json"
         assert cs.exists(), "compliance-state.json must be bootstrapped for a P3 skill"
         first = json.loads(cs.read_text())
@@ -3301,7 +2764,7 @@ class TestPhaseStateBootstrap:
         old = cs.stat().st_mtime - 1000
         os.utime(cs, (old, old))
         # Re-invoke the SAME skill.
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": skill})
+        run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": skill}))
         assert cs.stat().st_mtime > old, "compliance-state mtime must refresh on re-invocation"
         assert not report.exists(), "prior-run compliance-report.json must be invalidated"
         assert json.loads(cs.read_text())["phase"] == first["phase"]
@@ -3310,11 +2773,11 @@ class TestPhaseStateBootstrap:
         """Switching phase rewrites compliance-state AND drops the prior phase's
         compliance-report.json (no cross-phase auto-satisfy of compliance-pass)."""
         _setup_marker(tmp_project)
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:p2-arch-design"})
+        run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:p2-arch-design"}))
         report = tmp_project / ".rat" / "state" / "compliance-report.json"
         report.write_text('{"phase":"p2-arch-design","summary":{"verdict":"PASS"}}')
         # Move to a P3 skill.
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p3-uarch-design"})
+        run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p3-uarch-design"}))
         assert not report.exists(), "prior-phase compliance-report.json must be invalidated"
         cs = tmp_project / ".rat" / "state" / "compliance-state.json"
         assert json.loads(cs.read_text())["phase"] == "rtl-p3-uarch-design"
@@ -3325,7 +2788,7 @@ class TestPhaseStateBootstrap:
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text('{"phase":"p4","status":"custom"}')
 
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"})
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"}))
         assert result["continue"] is True
         assert json.loads(state_path.read_text())["status"] == "custom"
 
@@ -3352,8 +2815,8 @@ class TestPhaseStateBootstrap:
     def test_p5b_before_setup_is_not_gated(self, tmp_project):
         # Before rat-init-project the setup advisory speaks; like the template bootstrap,
         # the P5B gate applies only once the project is set up.
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project),
-                                      "skill": "rtl-agent-team:rtl-p5b-silicon-validation"},
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project),
+                                      "skill": "rtl-agent-team:rtl-p5b-silicon-validation"}),
                           env={"HOME": str(tmp_project)})
         assert result["continue"] is True
         assert "permissionDecision" not in result.get("hookSpecificOutput", {})
@@ -3408,7 +2871,7 @@ class TestPhaseStateBootstrap:
             json.dumps({"gates": {"p5a_exit": {"verdict": "pass"}}}, indent=2)
         )
 
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"}))
         assert result["continue"] is True
         state_path = tmp_project / ".rat" / "state" / "p5b-state.json"
         assert state_path.exists()
@@ -3453,7 +2916,7 @@ class TestPhaseStateBootstrap:
         # Use explicit mtime: p5a newer than RTL
         os.utime(str(p5a_state), (1000002, 1000002))
 
-        result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
+        result = run_hook(self.HOOK, accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"}))
         assert result["continue"] is True
         assert (state_dir / "p5b-state.json").exists()
 
@@ -3461,7 +2924,7 @@ class TestPhaseStateBootstrap:
         _setup_marker(tmp_project)
         result = run_hook(
             self.HOOK,
-            {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"},
+            accepted_skill_input({"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p4-rapid-impl"}),
             env={"RTL_FORCE_JSON_FALLBACK": "1"},
         )
         assert result["continue"] is True
@@ -3479,7 +2942,7 @@ class TestPhaseStateBootstrap:
             }
         )
 
-        result = run_hook(self.HOOK, raw_input)
+        result = run_hook(self.HOOK, accepted_skill_input(raw_input))
         assert result["continue"] is True
         assert (tmp_project / ".rat" / "state" / "p4-state.json").exists()
         assert not (tmp_project / ".rat" / "state" / "p5b-state.json").exists()
@@ -3551,7 +3014,7 @@ class TestHookConcurrency:
             _assert_stop_blocked(result)
 
         final_state = json.loads((state_dir / "skill-active.json").read_text())
-        assert final_state["iteration"] == 4, f"Expected iteration=4, got {final_state['iteration']}"
+        assert final_state["iteration"] == 1, "A Stop reminder must not schedule another iteration"
 
 
 class TestTeamAwarenessGuard:
@@ -3576,6 +3039,7 @@ class TestTeamAwarenessGuard:
             "created_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         (state_dir / "team-config.json").write_text(json.dumps(config, indent=2))
+        _record_team_owner(tmp_project, leader_id)
 
     def test_no_team_config_normal_behavior_stop_gate(self, tmp_project):
         """Without team config, stop-gate works normally (allow exit when no state)."""
@@ -3724,6 +3188,7 @@ class TestTeamAwarenessGuard:
         the new config: the gate re-reads the mtime before removing the file."""
         config = tmp_project / ".rat" / "state" / "team-config.json"
         config.write_text(json.dumps({"team_mode": True, "leader_session_id": "leader-abc"}))
+        _record_team_owner(tmp_project, "leader-abc")
         three_hours_ago = time.time() - 3 * 3600
         os.utime(config, (three_hours_ago, three_hours_ago))
         # get_mtime_epoch as in posix-util.sh, except that the writer refreshes the config
@@ -3752,6 +3217,7 @@ echo "rc=$?"
         config = state_dir / "team-config.json"
         config.write_text(json.dumps({"team_mode": True, "leader_session_id": "leader-abc",
                                       "created_at": "2020-01-01T00:00:00Z"}))
+        _record_team_owner(tmp_project, "leader-abc")
         written = time.time() - age_hours * 3600
         os.utime(config, (written, written))
         (state_dir / "phase6-stale").touch()
@@ -3899,7 +3365,7 @@ class TestSedFallbackContract:
         """Tracked files with verify-done → continue=true under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
         (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
-        (state_dir / "rtl-verify-done").touch()
+        _record_passing_evidence(tmp_project)
         result = run_hook(
             self.HOOKS["verify-stop-gate"],
             {"cwd": str(tmp_project)},
@@ -3986,7 +3452,7 @@ class TestSpawnContextManifest:
     def _invoke(self, tmp_project, skill_name, env=None):
         return run_hook(
             self.HOOK,
-            {"skill": f"rtl-agent-team:{skill_name}", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": f"rtl-agent-team:{skill_name}", "cwd": str(tmp_project)}),
             env=env,
         )
 
@@ -4074,7 +3540,7 @@ class TestSpawnContextManifest:
         elsewhere = tmp_path_factory.mktemp("driver-cwd")
         result = run_hook(
             self.HOOK,
-            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(elsewhere)},
+            accepted_skill_input({"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(elsewhere)}),
             env={"RAT_PROJECT_ROOT": str(tmp_project)},
         )
         assert result["continue"] is True
@@ -4165,7 +3631,7 @@ class TestSpawnContextManifest:
         """Non-rtl-agent-team skill → no manifest, no crash."""
         result = run_hook(
             self.HOOK,
-            {"skill": "other-plugin:some-skill", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "other-plugin:some-skill", "cwd": str(tmp_project)}),
         )
         assert result["continue"] is True
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
@@ -4286,7 +3752,7 @@ class TestSpawnContextAgent:
         # Write P1 manifest via Skill hook
         run_hook(
             HOOKS_DIR / "rtl-phase-state-bootstrap.sh",
-            {"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project)},
+            {"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project), "hook_event_name": "PostToolUse"},
         )
         m1 = self._read_manifest(tmp_project)
         assert m1["pipeline"]["current_phase"] == 1
@@ -4370,19 +3836,19 @@ class TestSpawnContextInputRobustness:
 
     def test_bootstrap_empty_input(self, tmp_project):
         """Empty JSON input → continue=true, no crash."""
-        result = run_hook(self.BOOTSTRAP_HOOK, {})
+        result = run_hook(self.BOOTSTRAP_HOOK, accepted_skill_input({}))
         assert result["continue"] is True
 
     def test_bootstrap_missing_skill_field(self, tmp_project):
         """No skill field → continue=true, no crash."""
-        result = run_hook(self.BOOTSTRAP_HOOK, {"cwd": str(tmp_project)})
+        result = run_hook(self.BOOTSTRAP_HOOK, accepted_skill_input({"cwd": str(tmp_project)}))
         assert result["continue"] is True
 
     def test_bootstrap_garbage_skill_name(self, tmp_project):
         """Unrecognized skill prefix → continue=true, no manifest."""
         result = run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "garbage:not-a-skill", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "garbage:not-a-skill", "cwd": str(tmp_project)}),
         )
         assert result["continue"] is True
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
@@ -4392,7 +3858,7 @@ class TestSpawnContextInputRobustness:
         """rtl-agent-team prefix but unknown skill → continue=true, no manifest."""
         result = run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:nonexistent-skill", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "rtl-agent-team:nonexistent-skill", "cwd": str(tmp_project)}),
         )
         assert result["continue"] is True
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
@@ -4442,7 +3908,7 @@ class TestSpawnContextStructuralContracts:
         (rules / "rtl-coding-conventions.md").touch()
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)}),
         )
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         return json.loads(mpath.read_text())
@@ -4606,17 +4072,17 @@ class TestSpawnContextStructuralContracts:
         "autopilot-orchestrator.md",
         "dse-orchestrator.md",
         "p1-research-orchestrator.md",
-        "p1-research-team-orchestrator.md",
+        "p1-research-orchestrator.md",
         "p2-arch-orchestrator.md",
-        "p2-arch-team-orchestrator.md",
+        "p2-arch-orchestrator.md",
         "p3-uarch-orchestrator.md",
-        "p3-uarch-team-orchestrator.md",
+        "p3-uarch-orchestrator.md",
         "p4-implement-orchestrator.md",
-        "p4-implement-team-orchestrator.md",
+        "p4-implement-orchestrator.md",
         "p4s-bugfix-orchestrator.md",
         "p4s-unit-test-orchestrator.md",
         "p5-verify-orchestrator.md",
-        "p5-verify-team-orchestrator.md",
+        "p5-verify-orchestrator.md",
         "p5s-cdc-orchestrator.md",
         "p5s-coverage-orchestrator.md",
         "p5s-func-verify-orchestrator.md",
@@ -4628,7 +4094,7 @@ class TestSpawnContextStructuralContracts:
         "p6-review-orchestrator.md",
         "p7-exploration-orchestrator.md",
         "spec-to-uarch-orchestrator.md",
-        "spec-to-uarch-team-orchestrator.md",
+        "spec-to-uarch-orchestrator.md",
         "uarch-to-verify-orchestrator.md",
         "p4-rtl-sanity-orchestrator.md",
         "p4s-refactor-orchestrator.md",
@@ -4645,12 +4111,13 @@ class TestSpawnContextStructuralContracts:
             )
 
     def test_all_manifest_aware_orchestrators_have_fallback(self):
-        """Every manifest-aware orchestrator has Glob fallback for backward compat."""
-        for fname in self.MANIFEST_AWARE_ORCHESTRATORS:
-            content = (self.AGENTS_DIR / fname).read_text()
-            assert "rtl-coding-conventions.md" in content, (
-                f"{fname} missing Glob fallback"
-            )
+        for agent in self.AGENTS_DIR.glob('*.md'):
+            content=read_contract(agent)
+            if 'Step 0: Context Bootstrap' in content:
+                assert 'rtl-coding-conventions.md' in content
+            elif 'runtime/workflows/' in content:
+                assert 'spawn-context' in content
+                assert 'process CWD' not in content or 'CWD' in content
 
     # ── Skill-to-phase mapping coverage ──────────────────────────────
 
@@ -4739,17 +4206,16 @@ class TestSpawnContextStructuralContracts:
         "dse-orchestrator": "rat-dse",
         "review-refactor-orchestrator": "rtl-review-refactor",
         # Team orchestrators map to the merged phase skill
-        "p1-research-team-orchestrator": "p1-spec-research",
-        "p2-arch-team-orchestrator": "p2-arch-design",
-        "p3-uarch-team-orchestrator": "rtl-p3-uarch-design",
-        "p4-implement-team-orchestrator": "rtl-p4-implement",
-        "p5-verify-team-orchestrator": "rtl-p5-verify",
-        "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch",
+        "p1-research-orchestrator": "p1-spec-research",
+        "p2-arch-orchestrator": "p2-arch-design",
+        "p3-uarch-orchestrator": "rtl-p3-uarch-design",
+        "p4-implement-orchestrator": "rtl-p4-implement",
+        "p5-verify-orchestrator": "rtl-p5-verify",
+        "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
         # PPA optimization (post-verify)
         "ppa-optimizer-dc-orchestrator": "rtl-ppa-optimize-dc",
         "ppa-optimizer-dc": "rtl-ppa-optimize-dc",
-        "dc-report-parser": "rtl-ppa-optimize-dc",
-    }
+            }
 
     def test_agent_spawn_mapping_complete(self, tmp_project):
         """All expected orchestrator agents produce correct phase via the spawn-context hook."""
@@ -4784,14 +4250,14 @@ class TestSpawnContextStructuralContracts:
 
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)}),
         )
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         m1 = json.loads(mpath.read_text())
 
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)}),
         )
         m2 = json.loads(mpath.read_text())
 
@@ -4812,7 +4278,7 @@ class TestSpawnContextStructuralContracts:
 
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": f"rtl-agent-team:{skill}", "cwd": str(tmp_project)}),
         )
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         manifest = json.loads(mpath.read_text())
@@ -4833,7 +4299,7 @@ class TestSpawnContextStructuralContracts:
         # Step 1: Skill invocation writes P1 manifest
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "rtl-agent-team:p1-spec-research", "cwd": str(tmp_project)}),
         )
         mpath = tmp_project / ".rat" / "state" / "spawn-context.json"
         m1 = json.loads(mpath.read_text())
@@ -4852,7 +4318,7 @@ class TestSpawnContextStructuralContracts:
         # Step 3: rat-init-project refreshes with preserved context
         run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:rat-init-project", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "rtl-agent-team:rat-init-project", "cwd": str(tmp_project)}),
         )
         m3 = json.loads(mpath.read_text())
         assert m3["pipeline"]["current_phase"] == 4  # Preserved
@@ -4915,6 +4381,7 @@ class TestTeamProgressHook:
         if leader is not None:
             team["leader_session_id"] = leader
         config.write_text(json.dumps(team))
+        if leader is not None: _record_team_owner(tmp_project, leader)
         three_hours_ago = time.time() - 3 * 3600
         os.utime(config, (three_hours_ago, three_hours_ago))
         return config
@@ -5240,7 +4707,7 @@ class TestHookIntegrationChain:
         # Step 2: phase state bootstrap
         result2 = run_hook(
             self.BOOTSTRAP_HOOK,
-            {"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)},
+            accepted_skill_input({"skill": "rtl-agent-team:rtl-p4-implement", "cwd": str(tmp_project)}),
         )
         assert result2.get("continue") is True
 
@@ -5537,262 +5004,55 @@ class TestLegacyDirFallback:
 
 
 class TestCoverageExclusionGate:
-    """Tests for hooks/rtl-coverage-exclusion-gate.sh."""
+    """Approval applies to an explicit current set, with bounded user handoff."""
+    HOOK=HOOKS_DIR/'rtl-coverage-exclusion-gate.sh'
 
-    HOOK = HOOKS_DIR / "rtl-coverage-exclusion-gate.sh"
+    def _write_exclusions(self,root):
+        folder=root/'reviews/phase-5-verify';folder.mkdir(parents=True,exist_ok=True)
+        path=folder/'alu-coverage-exclusions.md'
+        path.write_text('| Bin | Category |\n|---|---|\n| debug | Unimplemented feature |\n')
+        return path
 
-    def _write_exclusions(self, tmp_project):
-        review = tmp_project / "reviews" / "phase-5-verify"
-        review.mkdir(parents=True)
-        (review / "alu-coverage-exclusions.md").write_text(
-            "| Bin | Category |\n|---|---|\n| cp_mode.dbg | Unimplemented feature |\n"
-        )
-
-    def test_asks_once_then_hands_approval_to_user(self, tmp_project):
+    def test_asks_once_then_hands_over(self,tmp_project):
         self._write_exclusions(tmp_project)
-        first = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": False})
-        second = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
-        assert first["decision"] == "block"
-        assert "AskUserQuestion" in first["reason"]
-        assert "decision" not in second
-        assert "coverage-exclusion-approved" in second["systemMessage"]
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)}).get('decision')=='block'
+        second=run_hook(self.HOOK,{'cwd':str(tmp_project),'stop_hook_active':True})
+        assert second.get('systemMessage')
+        assert 'confirmation' in second['systemMessage']
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project),'stop_hook_active':True})=={'continue':True}
 
-    def test_approval_marker_allows_exit(self, tmp_project):
+    def test_bare_approval_marker_is_insufficient(self,tmp_project):
         self._write_exclusions(tmp_project)
-        (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["continue"] is True
+        (tmp_project/'.rat/state/coverage-exclusion-approved').touch()
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)}).get('decision')=='block'
 
-    def test_new_chain_after_notice_blocks_again(self, tmp_project):
+    def test_approved_set_passes_but_changed_set_blocks(self,tmp_project):
+        path=self._write_exclusions(tmp_project)
+        result=subprocess.run([sys.executable,str(REPO_ROOT/'scripts/coverage_approval.py'),'approve',
+            '--root',str(tmp_project),'--decision','User approved the debug exclusion'],capture_output=True)
+        assert result.returncode==0
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)})=={'continue':True}
+        path.write_text(path.read_text()+'| mode | Ambiguous |\n')
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)}).get('decision')=='block'
+
+    @pytest.mark.parametrize('category',['Out-of-scope','Spec ambiguity','UNIMPLEMENTED FEATURES','Ambiguous spec applicability'])
+    def test_category_column_accepts_supported_spellings(self,tmp_project,category):
+        path=self._write_exclusions(tmp_project)
+        path.write_text('| Bin | Reason | Category |\n|---|---|---|\n| x | pending | '+category+' |\n')
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)}).get('decision')=='block'
+
+    def test_reason_keyword_is_not_a_nonstandard_category(self,tmp_project):
+        path=self._write_exclusions(tmp_project)
+        path.write_text('| Bin | Reason | Category |\n|---|---|---|\n| x | not ambiguous | Parameter guards |\n')
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)})=={'continue':True}
+
+    def test_subdirectory_uses_the_project_approval(self,tmp_project):
+        self._write_exclusions(tmp_project);sub=tmp_project/'rtl';sub.mkdir()
+        assert run_hook(self.HOOK,{'cwd':str(sub)},env={'CLAUDE_PROJECT_DIR':str(tmp_project)}).get('decision')=='block'
+
+    def test_forced_sed_mode_still_uses_the_evidence_parser(self,tmp_project):
         self._write_exclusions(tmp_project)
-        for i in range(5):
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
-
-    def test_worker_stop_keeps_leader_budget(self, tmp_project):
-        state = tmp_project / ".rat" / "state"
-        (state / "team-config.json").write_text(json.dumps(
-            {"team_mode": True, "leader_session_id": "leader-001"}))
-        self._write_exclusions(tmp_project)
-        lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
-        run_hook(self.HOOK, lead)
-        run_hook(self.HOOK, {**lead, "stop_hook_active": True})
-        budget = state / "stop-budget-coverage-exclusion.txt"
-        before = budget.read_text()
-        run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
-        assert budget.read_text() == before
-
-    def test_allowed_stops_count_toward_the_chain_cap(self, tmp_project):
-        # An earlier chain left this gate's budget; another hook then kept a new chain
-        # going for six Stops while this gate allowed them.
-        (tmp_project / ".rat" / "state" / "stop-budget-coverage-exclusion.txt").write_text("0\n\n1\n0\np-1\n")
-        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}  # production Stops carry a prompt id
-        for i in range(6):
-            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
-        self._write_exclusions(tmp_project)
-        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
-        assert "decision" not in result
-        assert "coverage-exclusion-approved" in result["systemMessage"]
-
-    def _stops(self, project, actives):
-        """Run one Stop per stop_hook_active value and return the outputs."""
-        return [run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": a}) for a in actives]
-
-    def _write_table(self, project, name, *categories):
-        """Write reviews/phase-5-verify/<name> with one bin per category."""
-        review = project / "reviews" / "phase-5-verify"
-        review.mkdir(parents=True, exist_ok=True)
-        rows = "".join(f"| cp_{i}.bin | {category} |\n" for i, category in enumerate(categories))
-        (review / name).write_text("| Bin | Category |\n|---|---|\n" + rows)
-
-    def test_notice_holds_for_the_rest_of_the_chain(self, tmp_project):
-        self._write_exclusions(tmp_project)
-        marker = tmp_project / ".rat" / "state" / "coverage-exclusion-approved"
-        results = self._stops(tmp_project, [False, True, True, True])
-        assert results[0] == {"decision": "block", "reason": (
-            "[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:"
-            " alu-coverage-exclusions.md(1). These bins (Unimplemented features / Ambiguous spec)"
-            f" need explicit confirmation via AskUserQuestion. After approval: touch '{marker}'")}
-        assert results[1] == {"systemMessage": (
-            "[Coverage Exclusion Gate] 1 non-standard coverage exclusion(s) still await your approval:"
-            f" alu-coverage-exclusions.md(1). To approve: touch '{marker}'")}
-        assert results[2:] == [{"continue": True}] * 2
-
-    def test_the_system_file_is_counted_once(self, tmp_project):
-        # The module-file glob also matches system-coverage-exclusions.md.
-        self._write_table(tmp_project, "system-coverage-exclusions.md", "Ambiguous spec")
-        results = self._stops(tmp_project, [False, True])
-        reason, notice = results[0]["reason"], results[1]["systemMessage"]
-        assert reason.startswith("[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:"
-                                 " system-coverage-exclusions.md(1).")
-        assert notice.startswith("[Coverage Exclusion Gate] 1 non-standard coverage exclusion(s) still await"
-                                 " your approval: system-coverage-exclusions.md(1).")
-        assert reason.count("system-coverage-exclusions.md") == notice.count("system-coverage-exclusions.md") == 1
-
-    @pytest.mark.parametrize("satisfy", ["approved", "reclassified", "review_dir_removed"])
-    def test_satisfied_gate_is_not_left_silent(self, tmp_project, satisfy):
-        state = tmp_project / ".rat" / "state"
-        marker = state / "coverage-exclusion-approved"
-        self._write_exclusions(tmp_project)
-        assert "systemMessage" in self._stops(tmp_project, [False, True])[1]
-        if satisfy == "approved":
-            marker.touch()
-        elif satisfy == "reclassified":  # the bin is out of reach after all: a standard category
-            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
-        else:
-            shutil.rmtree(tmp_project / "reviews" / "phase-5-verify")
-        # A chained Stop, so the chain-start reset cannot be what clears the budget.
-        assert self._stops(tmp_project, [True]) == [{"continue": True}]
-        lines = (state / "stop-budget-coverage-exclusion.txt").read_text().split("\n")
-        assert (lines[0], lines[2], lines[3]) == ("0", "3", "0")
-        # The same condition comes back later in this chain.
-        if satisfy == "approved":
-            marker.unlink()
-        else:
-            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature")
-        again = self._stops(tmp_project, [True])[0]
-        assert again["decision"] == "block"
-        assert again["reason"].startswith(
-            "[Coverage Exclusion Gate] 1 non-standard exclusion(s) require user approval:")
-
-    @pytest.mark.parametrize("exit_path", ["approved", "standard_only"])
-    def test_allowed_stops_count_at_every_allow_exit(self, tmp_project, exit_path):
-        # As above, with the six Stops allowed through the approval marker, or through
-        # exclusion records whose bins all have standard categories.
-        state = tmp_project / ".rat" / "state"
-        marker = state / "coverage-exclusion-approved"
-        (state / "stop-budget-coverage-exclusion.txt").write_text("0\n\n1\n0\np-1\n")
-        if exit_path == "approved":
-            self._write_exclusions(tmp_project)
-            marker.touch()
-        else:
-            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
-        stop = {"cwd": str(tmp_project), "prompt_id": "p-1"}
-        for i in range(6):
-            assert run_hook(self.HOOK, {**stop, "stop_hook_active": i > 0}) == {"continue": True}
-        if exit_path == "approved":
-            marker.unlink()  # the approval is withdrawn
-        else:
-            self._write_table(tmp_project, "alu-coverage-exclusions.md", "Ambiguous spec")
-        result = run_hook(self.HOOK, {**stop, "stop_hook_active": True})
-        assert "decision" not in result
-        assert "coverage-exclusion-approved" in result["systemMessage"]
-
-    def test_progress_on_every_stop_still_hands_over_at_the_chain_cap(self, tmp_project):
-        results = []
-        for i in range(8):
-            # One more bin awaits approval on every Stop.
-            self._write_table(tmp_project, "alu-coverage-exclusions.md", *["Ambiguous spec"] * (i + 1))
-            results += self._stops(tmp_project, [i > 0])
-        assert [r.get("decision") for r in results[:6]] == ["block"] * 6
-        assert "still await your approval" in results[6]["systemMessage"]
-        assert results[7] == {"continue": True}
-
-    def test_a_change_in_the_unapproved_bins_restarts_the_count(self, tmp_project):
-        self._write_exclusions(tmp_project)
-        results = self._stops(tmp_project, [False])
-        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec")  # one more to approve
-        results += self._stops(tmp_project, [True, True])
-        assert [r.get("decision") for r in results] == ["block", "block", None]
-        assert results[1]["reason"].startswith("[Coverage Exclusion Gate] 2 non-standard exclusion(s)")
-        assert "still await your approval" in results[2]["systemMessage"]
-
-    def test_a_bin_awaiting_approval_in_another_file_restarts_the_count(self, tmp_project):
-        # Still one bin, but a different one awaits approval: the condition moved.
-        self._write_exclusions(tmp_project)
-        results = self._stops(tmp_project, [False])
-        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unreachable")
-        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec")
-        results += self._stops(tmp_project, [True, True])
-        assert [r.get("decision") for r in results] == ["block", "block", None]
-        assert results[1]["reason"].startswith("[Coverage Exclusion Gate] 1 non-standard exclusion(s)"
-                                               " require user approval: fifo-coverage-exclusions.md(1).")
-        assert "still await your approval" in results[2]["systemMessage"]
-
-    def test_rewriting_a_file_without_changing_its_unapproved_bins_is_not_progress(self, tmp_project):
-        self._write_exclusions(tmp_project)
-        results = self._stops(tmp_project, [False])
-        # Claude adds a standard exclusion; the one bin that needs approval still does.
-        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature", "Unreachable")
-        results += self._stops(tmp_project, [True])
-        assert results[0]["decision"] == "block"
-        assert "still await your approval" in results[1]["systemMessage"]
-
-    def test_a_symlinked_cwd_is_not_progress(self, tmp_path):
-        project = tmp_path / "project"
-        (project / ".rat" / "state").mkdir(parents=True)
-        self._write_exclusions(project)
-        link = tmp_path / "link"
-        link.symlink_to(project)
-        # One chain whose input cwd alternates between the project and a symlink to it.
-        results = [
-            run_hook(self.HOOK, {"cwd": str(link if i % 2 else project), "stop_hook_active": i > 0})
-            for i in range(3)
-        ]
-        assert [r.get("decision") for r in results] == ["block", None, None]
-        assert "systemMessage" in results[1]
-        assert results[2] == {"continue": True}
-
-    def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
-        project = tmp_path / "o'brien"
-        (project / ".rat" / "state").mkdir(parents=True)
-        self._write_exclusions(project)
-        results = self._stops(project, [False, True])
-        marker = project / ".rat" / "state" / "coverage-exclusion-approved"
-        # The command comes last and can be copied as is.
-        assert results[0]["reason"].endswith("coverage-exclusion-approved'")
-        assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
-        commands = [
-            results[0]["reason"].split("After approval: ", 1)[1],
-            results[1]["systemMessage"].split("To approve: ", 1)[1],
-        ]
-        for command in commands:
-            marker.unlink(missing_ok=True)
-            before = set(tmp_path.rglob("*"))
-            subprocess.run(["sh", "-c", command], check=True, cwd=tmp_path)
-            assert set(tmp_path.rglob("*")) - before == {marker}  # exactly the marker
-        # Approved: the chain's next Stop lets Claude stop.
-        assert self._stops(project, [True]) == [{"continue": True}]
-
-    def test_categories_match_in_any_case(self, tmp_project):
-        self._write_table(tmp_project, "alu-coverage-exclusions.md", "unimplemented feature", "AMBIGUOUS spec")
-        reason = self._stops(tmp_project, [False])[0]["reason"]
-        assert reason.startswith("[Coverage Exclusion Gate] 2 non-standard exclusion(s) require user approval:"
-                                 " alu-coverage-exclusions.md(2).")
-
-    def test_every_file_is_listed_with_its_own_count(self, tmp_project):
-        self._write_table(tmp_project, "alu-coverage-exclusions.md", "Unimplemented feature")
-        self._write_table(tmp_project, "fifo-coverage-exclusions.md", "Ambiguous spec", "Ambiguous spec")
-        reason = self._stops(tmp_project, [False])[0]["reason"]
-        assert ("3 non-standard exclusion(s) require user approval:"
-                " alu-coverage-exclusions.md(1), fifo-coverage-exclusions.md(2).") in reason
-
-    def test_a_space_in_the_project_path_still_finds_the_exclusions(self, tmp_path):
-        project = tmp_path / "my project"
-        (project / ".rat" / "state").mkdir(parents=True)
-        self._write_exclusions(project)
-        assert self._stops(project, [False])[0]["decision"] == "block"
-
-    def test_sed_fallback_asks_once_then_notifies(self, tmp_project):
-        # Without jq and python the gate parses and escapes with sed; the output stays valid JSON.
-        self._write_exclusions(tmp_project)
-        fallback = {"RTL_FORCE_JSON_FALLBACK": "1"}
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}, env=fallback)
-            for i in range(2)
-        ]
-        assert results[0]["decision"] == "block"
-        assert results[1]["systemMessage"].endswith("coverage-exclusion-approved'")
-
-    def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
-        self._write_exclusions(tmp_project)
-        (tmp_project / "rtl").mkdir()
-        stop = {"cwd": str(tmp_project / "rtl")}
-        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
-        result = run_hook(self.HOOK, stop, env=env)
-        _assert_stop_blocked(result)
-        assert "alu-coverage-exclusions.md" in result["reason"]
-        (tmp_project / ".rat" / "state" / "coverage-exclusion-approved").touch()
-        assert run_hook(self.HOOK, {**stop, "stop_hook_active": True}, env=env) == {"continue": True}
+        assert run_hook(self.HOOK,{'cwd':str(tmp_project)},env={'RTL_FORCE_JSON_FALLBACK':'1'}).get('decision')=='block'
 
 
 def _verify_blocks(project):

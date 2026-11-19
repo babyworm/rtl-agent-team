@@ -52,4 +52,4 @@ syn/
     └── design.sdc
 ```
 
-<!-- rat-version: 0.8.20 -->
+<!-- rat-version: 2.0.0 -->

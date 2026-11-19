@@ -7,8 +7,8 @@ jsonu_escape() {
   # Tiered: jq (full) → python (full) → sed+tr (best-effort fallback).
   if command -v jq >/dev/null 2>&1; then
     printf '%s' "$1" | jq -Rs '.' 2>/dev/null | sed 's/^"//; s/"$//' | tr -d '\n'
-  elif command -v python3 >/dev/null 2>&1; then
-    printf '%s' "$1" | python3 -c 'import json,sys; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end="")' 2>/dev/null
+  elif [ -n "${JSONU_PY_BIN:-}" ]; then
+    printf '%s' "$1" | "$JSONU_PY_BIN" -c 'import json,sys; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end="")' 2>/dev/null
   elif command -v python >/dev/null 2>&1; then
     printf '%s' "$1" | python -c 'import json,sys; s=sys.stdin.read(); sys.stdout.write(json.dumps(s)[1:-1])' 2>/dev/null
   else
@@ -16,35 +16,34 @@ jsonu_escape() {
   fi
 }
 
+jsonu_python() {
+  if [ -n "${RAT_PYTHON:-}" ]; then
+    "$RAT_PYTHON" -c 'import sys; sys.exit(sys.version_info < (3,9))' >/dev/null 2>&1 || return 1
+    printf '%s' "$RAT_PYTHON"
+    return 0
+  fi
+  for _JP_BIN in python3 python python3.14 python3.13 python3.12 python3.11 python3.10 python3.9; do
+    command -v "$_JP_BIN" >/dev/null 2>&1 || continue
+    "$_JP_BIN" -c 'import sys; sys.exit(sys.version_info < (3,9))' >/dev/null 2>&1 || continue
+    printf '%s' "$_JP_BIN"
+    return 0
+  done
+  return 1
+}
+
 jsonu_detect_parser() {
-  JSONU_PARSER_MODE="sed"
-  JSONU_PY_BIN=""
-
+  JSONU_PARSER_MODE='sed'
+  JSONU_PY_BIN=$(jsonu_python) || JSONU_PY_BIN=""
   if command -v jq >/dev/null 2>&1; then
-    JSONU_PARSER_MODE="jq"
-  elif command -v python3 >/dev/null 2>&1; then
-    JSONU_PARSER_MODE="python"
-    JSONU_PY_BIN="python3"
-  elif command -v python >/dev/null 2>&1; then
-    JSONU_PARSER_MODE="python"
-    JSONU_PY_BIN="python"
+    JSONU_PARSER_MODE=jq
+  elif [ -n "$JSONU_PY_BIN" ]; then
+    JSONU_PARSER_MODE=python
   fi
-
-  # Test/debug override: force legacy fallback parser path.
-  if [ "${RTL_FORCE_JSON_FALLBACK:-0}" = "1" ]; then
-    JSONU_PARSER_MODE="sed"
+  if [ "${RTL_FORCE_JSON_FALLBACK:-0}" = 1 ]; then
+    JSONU_PARSER_MODE='sed'
     JSONU_PY_BIN=""
-  fi
-
-  # Test/debug override: force python parser path (even when jq is available).
-  if [ "${RTL_FORCE_PYTHON_PARSER:-0}" = "1" ]; then
-    if command -v python3 >/dev/null 2>&1; then
-      JSONU_PARSER_MODE="python"
-      JSONU_PY_BIN="python3"
-    elif command -v python >/dev/null 2>&1; then
-      JSONU_PARSER_MODE="python"
-      JSONU_PY_BIN="python"
-    fi
+  elif [ "${RTL_FORCE_PYTHON_PARSER:-0}" = 1 ] && [ -n "$JSONU_PY_BIN" ]; then
+    JSONU_PARSER_MODE=python
   fi
 }
 
@@ -107,7 +106,39 @@ elif isinstance(payload.get(key), str):
   esac
 }
 
+# Batch Python-backed state reads. Values are escaped data, never evaluated as shell.
+jsonu_cache_file() {
+  JSONU_CACHE_FILE=""
+  [ "${JSONU_PARSER_MODE:-}" = python ] && [ -f "$1" ] || return 0
+  JSONU_CACHE_DATA=$("$JSONU_PY_BIN" - "$1" <<'PYCACHE'
+import json,sys
+try: data=json.load(open(sys.argv[1]))
+except (OSError,ValueError): data={}
+def flatten(node,path):
+    if isinstance(node,dict):
+        for key,value in node.items(): flatten(value,path+[key])
+    elif isinstance(node,(str,int,float,bool)):
+        kind='bool' if isinstance(node,bool) else 'string' if isinstance(node,str) else 'num'
+        if kind=='num' and (not isinstance(node,int)): return
+        value=('true' if node else 'false') if kind=='bool' else str(node)
+        value=value.replace('\\','\\\\').replace('\n','\\n').replace('\r','\\r').replace('\t','\\t')
+        print('.'.join(path)+'\t'+kind+'\t'+value)
+flatten(data,[])
+PYCACHE
+) || return 0
+  JSONU_CACHE_FILE="$1"
+}
+
+jsonu_cached_value() {
+  _JCV=$(printf '%s\n' "$JSONU_CACHE_DATA" | awk -F '\t' -v key="$1" -v kind="$2" '$1==key && $2==kind {sub(/^[^\t]*\t[^\t]*\t/,"");print;exit}')
+  printf '%b' "$_JCV"
+}
+
 jsonu_get_file_path_string() {
+  if [ "${JSONU_CACHE_FILE:-}" = "$1" ]; then
+    jsonu_cached_value "$2" string
+    return 0
+  fi
   JSONU_FILE="$1"
   JSONU_KEY_PATH="$2"
 
@@ -165,6 +196,10 @@ PY
 }
 
 jsonu_get_file_path_bool() {
+  if [ "${JSONU_CACHE_FILE:-}" = "$1" ]; then
+    jsonu_cached_value "$2" bool
+    return 0
+  fi
   JSONU_FILE="$1"
   JSONU_KEY_PATH="$2"
 
@@ -221,6 +256,10 @@ PY
 }
 
 jsonu_get_file_path_num() {
+  if [ "${JSONU_CACHE_FILE:-}" = "$1" ]; then
+    jsonu_cached_value "$2" num
+    return 0
+  fi
   JSONU_FILE="$1"
   JSONU_KEY_PATH="$2"
 

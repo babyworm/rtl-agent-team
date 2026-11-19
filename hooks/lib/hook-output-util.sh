@@ -15,8 +15,12 @@
 # Usage: emit_continue "message"   or   emit_continue ""
 emit_continue() {
   _EC_MSG="$1"
+  _EC_EVENT="PreToolUse"
+  case "${HOOK_EVENT:-}" in
+    UserPromptExpansion|PostToolUse) _EC_EVENT="$HOOK_EVENT" ;;
+  esac
   if [ -n "$_EC_MSG" ]; then
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}' "$(jsonu_escape "$_EC_MSG")"
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"%s"}}' "$_EC_EVENT" "$(jsonu_escape "$_EC_MSG")"
   else
     printf '{"continue":true}'
   fi
@@ -27,6 +31,10 @@ emit_continue() {
 # Usage: emit_block "reason message"
 emit_block() {
   _EB_MSG="$1"
+  if [ "${HOOK_EVENT:-}" = "UserPromptExpansion" ]; then
+    printf '{"decision":"block","reason":"%s"}' "$(jsonu_escape "$_EB_MSG")"
+    exit 0
+  fi
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}' "$(jsonu_escape "$_EB_MSG")"
   exit 0
 }
@@ -53,8 +61,10 @@ emit_stop_notice() {
 # Usage: emit_post_context "message"   (an empty message emits a plain continue)
 emit_post_context() {
   _EPC_MSG="$1"
+  _EPC_EVENT="PostToolUse"
+  [ "${HOOK_EVENT:-}" = "UserPromptExpansion" ] && _EPC_EVENT="UserPromptExpansion"
   if [ -n "$_EPC_MSG" ]; then
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' "$(jsonu_escape "$_EPC_MSG")"
+    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"%s"}}' "$_EPC_EVENT" "$(jsonu_escape "$_EPC_MSG")"
   else
     printf '{"continue":true}'
   fi

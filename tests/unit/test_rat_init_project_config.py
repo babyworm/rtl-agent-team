@@ -227,11 +227,11 @@ def test_rerun_ignores_executable_directory_as_saved_tool_path(tmp_path: Path):
     assert saved_tool["detected"] is True
 
 
-def test_rerun_recomputes_nand2_area_from_current_liberty(regenerated_config):
+def test_rerun_preserves_explicit_user_nand2_area(regenerated_config):
     config, _fake_yosys, _path_dc_shell = regenerated_config
 
-    # Then: the derived area reflects the current Liberty rather than the saved value.
-    assert config["technology"]["nand2_area_um2"] == 2.5
+    # An explicit user measurement takes precedence over an automatically derived value.
+    assert config["technology"]["nand2_area_um2"] == 1.75
 
 
 def test_rerun_preserves_mode_without_gnu_chmod_reference(tmp_path: Path):

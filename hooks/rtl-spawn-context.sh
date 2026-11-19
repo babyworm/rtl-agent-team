@@ -67,18 +67,9 @@ case "$SHORT_NAME" in
   dse-orchestrator)               SKILL_NAME="rat-dse" ;;
   ppa-optimizer-dc-orchestrator)  SKILL_NAME="rtl-ppa-optimize-dc" ;;
   ppa-optimizer-dc)               SKILL_NAME="rtl-ppa-optimize-dc" ;;
-  dc-report-parser)               SKILL_NAME="rtl-ppa-optimize-dc" ;;
   # Team orchestrators → merged phase skills
-  p1-research-team-orchestrator)  SKILL_NAME="p1-spec-research" ;;
-  p2-arch-team-orchestrator)      SKILL_NAME="p2-arch-design" ;;
-  p3-uarch-team-orchestrator)     SKILL_NAME="rtl-p3-uarch-design" ;;
-  p4-implement-team-orchestrator) SKILL_NAME="rtl-p4-implement" ;;
-  p5-verify-team-orchestrator)    SKILL_NAME="rtl-p5-verify" ;;
-  spec-to-uarch-team-orchestrator) SKILL_NAME="rat-p1p3-spec-uarch" ;;
   # END GENERATED PHASE_MAP
-  *)
-    emit_post_continue
-    ;;
+  *) SKILL_NAME="" ;;
 esac
 
 # Always write/overwrite manifest to ensure phase/skill context is current.

@@ -6,8 +6,8 @@ color: cyan
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -47,7 +47,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
       Branch on the answer.
 
     If the seed is rich (≥ 500 chars AND mentions clock freq + at least one of: area, power, coverage):
-      Score immediately. If ambiguity ≤ 20%, skip directly to Phase 4.
+      Assess material ambiguity immediately. If none remains, skip directly to Phase 4.
 
     ## Phase 3 — One score, then at most one question
 
@@ -56,9 +56,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     2. Compute ambiguity once:
        `python3 {plugin_root}/skills/p1-spec-research/scripts/score_ambiguity.py --functionality F --ppa P --scope S --verification V --round 1`
 
-    3. Ambiguity ≤ 20% is high confidence. Go to Phase 4. Do not ask.
+    3. With high confidence and no material ambiguity, go to Phase 4. A low average score cannot clear a contradictory requirement or a check with no expected result.
 
-    4. Above 20% is low confidence. Show the scoreboard. Ask one question about the lowest-scoring dimension, using a seed from `goal-dimensions.md` adapted with pre-scan evidence. Record the answer. Do not score again and do not ask another question. Go to Phase 4 with the remaining ambiguity named.
+    4. If a material ambiguity remains, ask one focused question about the decision that changes behavior, interfaces, constraints, or verification outcomes. Record the answer and the remaining open items. Continue independent work; do not treat an unanswered item as resolved or rescore to force a pass.
 
     ## Phase 4 — Write goal.md
 

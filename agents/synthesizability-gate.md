@@ -1,14 +1,14 @@
 ---
 name: synthesizability-gate
-description: "Hard synthesizability gate. Verifies RTL is synthesizable (NO inferred latches / incomplete assignments / non-synth constructs) AND that a DC-style synthesis script can be emitted and elaborates — even without running full synthesis. Tool preference: spyglass -> svlens -> yosys -> LLM code review. (Opus)"
+description: "Hard synthesizability gate. Verifies RTL is synthesizable (NO inferred latches / incomplete assignments / non-synth constructs) AND that a DC-style synthesis script can be emitted and elaborates — even without running full synthesis. Tool preference: spyglass -> svlens -> yosys -> LLM code review. "
 model: opus
 color: red
 disallowedTools: Edit
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -59,15 +59,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   clk/{domain}_clk and rst_n/{domain}_rst_n, logic only (no reg/wire), always_ff/always_comb,
   typedef enum FSM / typedef struct packed, u_ instance / gen_ generate prefixes.
 </Role>
-
-<Why_This_Matters>
-  A latch that simulates "correctly" (transparent at the right time) is a silicon hazard:
-  it breaks static timing analysis, wrecks DFT/scan, and is almost always an unintended
-  bug. Verilator passing + a unit test passing does NOT prove synthesizability. A design
-  that cannot be handed to Design Compiler — or that DC turns into latches/memories — is not
-  done, no matter how green the simulation is. This gate makes "it synthesizes" a
-  first-class, blocking requirement instead of a Phase-6 surprise.
-</Why_This_Matters>
 
 <Success_Criteria>
   - The best available synthesizability checker (spyglass > svlens > yosys > LLM) was run on

@@ -1,0 +1,70 @@
+# LLM-assisted site setup
+
+The user supplies the intended SSH execution host. Resolve existing project
+configuration and named site profiles first. Discover missing facts with the
+helper; do not ask the user to transcribe tool paths or author JSON. Keep SSH
+credentials, jump hosts and connection options in the user's SSH configuration.
+Never disable host-key checking or copy credentials into a profile.
+
+Use the current project as PROJECT_ROOT and the installed plugin as PLUGIN_ROOT.
+SITE_PROFILE is a named JSON file under the user's private plugin-data `sites/`
+directory, outside the plugin repository. Store raw probe/qualification reports
+in that private data directory too. Never copy real hostnames, connection settings
+or environment reports into plugin source, docs, examples, tests or evals.
+SSH_HOST comes from the user, not this reference.
+
+```bash
+"$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_setup.py" discover --host "$SSH_HOST" --output "$SITE_PROFILE"
+```
+
+Pass `--config "$PROJECT_ROOT/rat_config.json"` when it already exists so discovery
+uses its explicit tool paths and trusted environment setup. The helper selects
+remote Python >=3.9 even when `python3` is old, tolerates login banners, and records
+paths without pretending that licenses or runtime dependencies were checked.
+If a site needs environment modules or a setup script, inspect its documented
+setup or the relevant startup-file source statements. Put the selected trusted
+command in the candidate configuration and rediscover using `--config`. Do not
+dump full environment/startup files or scan unrelated filesystems.
+
+Choose the requested tools from the evidence and existing preferences. Probe a
+selected candidate only with its documented/site-verified arguments:
+
+```bash
+"$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_setup.py" probe --profile "$SITE_PROFILE" --tool simulators.xrun --record --output "$PROBE_RESULT" -- -version
+```
+
+This Xcelium example is conditional on selecting Xcelium. Other tools use their
+own verified arguments. Preserve failed diagnostics, including loader errors from
+a launcher that exits zero. `--record` stores the probe in the profile; automatic
+preference selection excludes that failed candidate. A successful version probe
+remains command evidence with `license_checked: false`.
+
+Prepare and apply the configuration within the user's authorized setup request:
+
+```bash
+"$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_setup.py" configure --profile "$SITE_PROFILE" --root "$PROJECT_ROOT" --dry-run
+"$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_setup.py" configure --profile "$SITE_PROFILE" --root "$PROJECT_ROOT"
+bash "$PLUGIN_ROOT/skills/rat-init-project/scripts/generate_config.sh" "$PROJECT_ROOT"
+"$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_runner.py" capabilities --root "$PROJECT_ROOT" --phase "$RAT_PHASE" --probe-remote
+```
+
+Use `--prefer simulator=xrun` (or another discovered suitable tool) for an intended
+preference change. Existing explicit paths, environment commands, output selections,
+technology values and preferences are preserved. A preserved override that differs
+from discovery is not marked detected; probe that exact configuration before using
+it. Conflicting existing site ownership needs a concrete decision before switching.
+
+`--workspace` selects a known absolute project directory on the remote host. When
+none is supplied, configure proposes a private per-project directory below the
+measured remote home; its local-root hash prevents two projects sharing a basename
+from overwriting each other. `--backend lsf` selects LSF with a verified scheduler/queue;
+preserve the selected LSF backend rather than assuming every SSH host uses LSF.
+
+Finish with the smallest authorized real operation for the requested capability,
+through the installed wrapper. For simulation, a tiny self-checking SV test proves
+compile/elaboration/run and license use; preserve its runner-written evidence.
+For synthesis/signoff, use the actual technology library and constraints. Keep
+missing libraries, unsupported tool versions, license failures and undefined
+requirements open. Setup smoke evidence is not verification of the user's design.
+Save the readiness scope and results, reuse them until an affected setting changes,
+and report the configured site, working tools and remaining issues concisely.

@@ -7,8 +7,8 @@ skills: [systemc]
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -43,20 +43,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Reset naming: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`
     - Instance prefix: `u_`, generate block prefix: `gen_`
   </Role>
-
-  <Why_This_Matters>
-    Performance bugs in RTL are invisible to functional verification. A block that produces correct
-    outputs but takes twice as many cycles wastes area in the final SoC. The BFM establishes the
-    cycle-accurate performance contract: latency, throughput, and pipeline utilization targets.
-    The perf-verifier agent uses your BFM output as the baseline. Without an accurate BFM, there
-    is no way to know whether the RTL meets its timing budget.
-
-    LT (blocking) transport is the default for fast functional validation and per-block I/O log
-    generation. When timing accuracy is explicitly required (e.g., pipeline utilization, OoO modeling),
-    AT (non-blocking) transport provides accurate pipelined behavior modeling. ARM AMBA protocol
-    extensions ensure the BFM accurately represents bus-level attributes (burst type, cache policy,
-    QoS) that affect real system performance.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - BFM compiles against SystemC 3.0+ and TLM-2.0 with zero warnings

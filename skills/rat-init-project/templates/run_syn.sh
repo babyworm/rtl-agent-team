@@ -21,25 +21,34 @@
 
 set -euo pipefail
 
-# Source Docker-aware tool runner (transparent fallback)
+# Shared execution runtime, including configured tool paths and remote dispatch.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+export RAT_PROJECT_ROOT="$PROJECT_ROOT"
+export RAT_TOOL_CATEGORY=synthesis
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_LIB_RUNNER="$(cd "$SCRIPT_DIR/../../lib" 2>/dev/null && pwd)/tool-runner.sh" 2>/dev/null || true
-if [[ -f "${_LIB_RUNNER:-}" ]]; then
-  source "$_LIB_RUNNER"
-else
-  run_tool() { "$@"; }
+_LIB_RUNNER="${RAT_RUNTIME_LIB:-}"
+for candidate in "$SCRIPT_DIR/lib/tool-runner.sh" "$SCRIPT_DIR/../../lib/tool-runner.sh" "$PROJECT_ROOT/lib/tool-runner.sh"; do
+  if [[ -z "$_LIB_RUNNER" && -f "$candidate" ]]; then _LIB_RUNNER="$candidate"; fi
+done
+if [[ ! -f "$_LIB_RUNNER" ]]; then
+  echo "ERROR: matching tool-runner.sh is missing; update the project templates." >&2
+  exit 2
 fi
+source "$_LIB_RUNNER"
+rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
 
 # RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
 # resolve against the project root even when invoked from a different CWD.
-PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
-TOOL="yosys"
+TOOL=""
 TOP=""
 FILELIST=""
 SYN_ROOT="syn"
 LIBERTY=""
+TARGET_DB=""
+ALLOW_UNMAPPED=0
 SDC_FILE=""
 SCRIPT_PATH=""
 FILES=()
@@ -70,6 +79,8 @@ Options:
   -f <filelist>     Source filelist (.f file)
   --syn-root <dir>  Synthesis root directory (default: syn)
   --liberty <file>  Liberty (.lib) file for technology mapping
+  --db <file>       Compiled (.db) standard-cell library for Design Compiler
+  --allow-unmapped  Explicit exploratory run without a target library; no mapped PPA claim
   --sdc <file>      SDC constraints file (default: syn/constraints/design.sdc)
   --max-cores <n>   Max CPU cores for multicore synthesis (default: 8).
                     DC/Genus auto-limit to the licensed/physical maximum.
@@ -107,6 +118,8 @@ while [[ $# -gt 0 ]]; do
     -f)          FILELIST="$2"; shift 2 ;;
     --syn-root|--outdir) SYN_ROOT="$2"; shift 2 ;;
     --liberty)   LIBERTY="$2"; shift 2 ;;
+    --db)        TARGET_DB="$2"; shift 2 ;;
+    --allow-unmapped) ALLOW_UNMAPPED=1; shift ;;
     --sdc)       SDC_FILE="$2"; shift 2 ;;
     --max-cores) MAX_CORES="$2"; shift 2 ;;
     --mem-process) if [[ -n "$2" ]]; then MEM_PROCESS+=("$2"); fi; shift 2 ;;
@@ -124,6 +137,17 @@ while [[ $# -gt 0 ]]; do
     *)           FILES+=("$1"); shift ;;
   esac
 done
+
+if [[ -z "$TOOL" || "$TOOL" == auto ]]; then
+  TOOL=$(rat_config_value preferences.synthesis)
+  TOOL="${TOOL:-yosys}"
+fi
+
+[[ -n "$LIBERTY" ]] || LIBERTY=$(rat_config_value technology.liberty)
+[[ -n "$TARGET_DB" ]] || TARGET_DB=$(rat_config_value technology.db)
+if [[ "$TOOL" == dc_shell || "$TOOL" == design_compiler ]]; then
+  [[ -z "$TARGET_DB" ]] || LIBERTY="$TARGET_DB"
+fi
 
 # --- Verbose: trace the wrapper itself -------------------------------------
 # Tool output already goes through `tee`; what --verbose adds is visibility
@@ -205,7 +229,7 @@ case "$TOOL" in
   *)        _tool_bin="$TOOL" ;;
 esac
 
-if ! command -v "$_tool_bin" >/dev/null 2>&1; then
+if ! tool_available "$_tool_bin"; then
   if [[ "$SKIP_IF_UNAVAILABLE" -eq 1 ]]; then
     echo "WARNING: Synthesis tool '$TOOL' not available — skipping synthesis." >&2
     echo '{"tool":"'"$TOOL"'","status":"SKIPPED","reason":"tool_not_available"}' > "${DIR_RPT}/syn_result.json" 2>/dev/null || true
@@ -517,6 +541,18 @@ EOF
 
 # ─── Tool-specific synthesis ───────────────────────────────────────────────
 EXIT_CODE=0
+
+case "$TOOL" in
+  dc_shell|genus)
+    if [[ "$ALLOW_UNMAPPED" -ne 1 ]]; then
+      [[ -n "$LIBERTY" && -f "$LIBERTY" ]] || { echo "ERROR: $TOOL needs a target library; set technology.db/technology.liberty or use --allow-unmapped for an exploratory run." >&2; exit 2; }
+      if [[ "$TOOL" == dc_shell && "$LIBERTY" != *.db ]]; then
+        echo "ERROR: Design Compiler needs a compiled .db target library (--db)." >&2; exit 2
+      fi
+    else
+      echo "WARNING: explicitly unmapped exploration; area/timing is not mapped PPA." >&2
+    fi ;;
+esac
 
 case "$TOOL" in
   # =========================================================================
@@ -910,6 +946,17 @@ case "$TOOL" in
     ;;
 esac
 
+MAPPING_STATUS=MAPPED
+[[ -n "$LIBERTY" ]] || MAPPING_STATUS=UNMAPPED
+"${RAT_PYTHON:-python3}" - "$DIR_RPT/syn_result.json" "$TOOL" "$TOP" "$EXIT_CODE" "$MAPPING_STATUS" "$LOG" <<'PYSYN'
+import json,sys
+path,tool,top,status,mapping,log=sys.argv[1:]
+with open(path,'w') as stream:
+    json.dump({'schema_version':1,'tool':tool,'top':top,'exit_code':int(status),
+               'status':'FAIL' if int(status) else 'COMPLETED',
+               'mapping':mapping,'log':log,'signoff':False},stream)
+PYSYN
+
 # ─── Summary ───────────────────────────────────────────────────────────────
 echo ""
 echo "=== Synthesis Summary ==="
@@ -932,4 +979,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 0.11.3
+# rat-version: 2.0.1

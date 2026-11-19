@@ -1,3 +1,4 @@
+from tests.contracts import read_contract
 """Contracts for the OSS SymbiYosys formal flow.
 
 These tests protect against the old false contract where full concurrent SVA
@@ -44,7 +45,7 @@ end""",
 
 
 def _read_all(paths: list[Path]) -> str:
-    return "\n".join(path.read_text() for path in paths)
+    return "\n".join(read_contract(path) for path in paths)
 
 
 def test_yosys_harness_elaborates_with_real_check_cells(tmp_path):
@@ -67,7 +68,7 @@ module demo_dut #(parameter DATA_WIDTH = 8) (
 endmodule
 """
     )
-    (tmp_path / "demo_dut_formal_harness.sv").write_text(_render(HARNESS_TEMPLATE.read_text()))
+    (tmp_path / "demo_dut_formal_harness.sv").write_text(_render(read_contract(HARNESS_TEMPLATE)))
 
     result = subprocess.run(
         [
@@ -91,8 +92,8 @@ endmodule
 
 
 def test_concurrent_sva_is_commercial_only_and_not_sv2v_input():
-    commercial_template = SVA_TEMPLATE.read_text()
-    harness_template = HARNESS_TEMPLATE.read_text()
+    commercial_template = read_contract(SVA_TEMPLATE)
+    harness_template = read_contract(HARNESS_TEMPLATE)
     flow_text = _read_all([SVA_SKILL / "SKILL.md", SVA_POLICY, ORCHESTRATOR, EXTRACTOR])
 
     assert "assert property" in commercial_template
@@ -105,7 +106,7 @@ def test_concurrent_sva_is_commercial_only_and_not_sv2v_input():
 
 
 def test_sby_template_uses_copied_basenames_explicit_tasks_and_property_gate():
-    sby = _render(SBY_TEMPLATE.read_text())
+    sby = _render(read_contract(SBY_TEMPLATE))
 
     assert "sby -f formal/demo_dut.sby bmc" in sby
     assert "sby -f formal/demo_dut.sby prove" in sby
@@ -136,4 +137,4 @@ def test_old_false_formal_claims_are_absent():
         assert phrase not in text
 
     assert "formal/formal_verify_{module}.json" in text
-    assert "synthesis signoff and module graduation remain blocked" in text
+    assert "Required synthesis cannot pass as" in text

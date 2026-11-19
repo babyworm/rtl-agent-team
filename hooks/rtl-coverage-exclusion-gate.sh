@@ -33,7 +33,6 @@ RAT_DIR=$(rat_project_dir "$CWD")
 CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 STATE_DIR="$RAT_DIR/state"
-APPROVAL_MARKER="$STATE_DIR/coverage-exclusion-approved"
 
 # Team mode: only leader checks
 if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
@@ -42,51 +41,24 @@ fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" coverage-exclusion)
 stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
 
-# If approval marker exists, pass immediately
-if [ -f "$APPROVAL_MARKER" ]; then
+HELPER="$SCRIPT_DIR/../scripts/coverage_approval.py"
+PYTHON=$(jsonu_python) || PYTHON=""
+if [ -z "$PYTHON" ]; then
+  MSG="[Coverage Exclusion Gate] Python >=3.9 is needed to validate exclusion approval fingerprints."
+  stopu_gate coverage-exclusion "$STATE_DIR" "$STOP_CHAIN" parser-unavailable "$MSG" "$MSG" 0
+fi
+RESULT=$("$PYTHON" "$HELPER" check --root "$CWD")
+STATUS=$?
+if [ "$STATUS" = 0 ]; then
   stopu_clear coverage-exclusion "$STATE_DIR"
   emit_post_continue
 fi
-
-# Check if any exclusion records exist; without any, nothing awaits approval.
-REVIEW_DIR="$CWD/reviews/phase-5-verify"
-if [ ! -d "$REVIEW_DIR" ]; then
-  stopu_clear coverage-exclusion "$STATE_DIR"
-  emit_post_continue
+if [ "$STATUS" != 1 ]; then
+  MSG="[Coverage Exclusion Gate] The exclusion records could not be parsed; approval is still pending."
+  stopu_gate coverage-exclusion "$STATE_DIR" "$STOP_CHAIN" parser-error "$MSG" "$MSG" 0
 fi
-
-# Scan for non-standard exclusion entries in module + system exclusion files. The glob
-# also matches system-coverage-exclusions.md, so every file is read once.
-# Non-standard patterns: "Unimplemented" or "Ambiguous" in exclusion category columns
-UNAPPROVED_COUNT=0
-UNAPPROVED_BINS=""
-
-for excl_file in "$REVIEW_DIR"/*-coverage-exclusions.md; do
-  [ -f "$excl_file" ] || continue
-  # Grep for non-standard category lines in markdown tables
-  # Pattern: table row containing "Unimplemented" or "Ambiguous" (case insensitive)
-  MATCHES=$(grep -i -E '\|[^|]*(Unimplemented|Ambiguous)[^|]*\|' "$excl_file" 2>/dev/null || true)
-  if [ -n "$MATCHES" ]; then
-    COUNT=$(printf '%s\n' "$MATCHES" | wc -l | tr -d ' ')
-    UNAPPROVED_COUNT=$((UNAPPROVED_COUNT + COUNT))
-    FILE_BASE=$(basename "$excl_file")
-    if [ -n "$UNAPPROVED_BINS" ]; then
-      UNAPPROVED_BINS="$UNAPPROVED_BINS, $FILE_BASE($COUNT)"
-    else
-      UNAPPROVED_BINS="$FILE_BASE($COUNT)"
-    fi
-  fi
-done
-
-# No non-standard exclusions found → pass
-if [ "$UNAPPROVED_COUNT" -eq 0 ]; then
-  stopu_clear coverage-exclusion "$STATE_DIR"
-  emit_post_continue
-fi
-
-# Non-standard exclusions without approval: block once per chain so Claude asks the
-# user, then hand the approval to the user.
-COV_PROGRESS="$UNAPPROVED_COUNT|$UNAPPROVED_BINS"
-COV_MSG="[Coverage Exclusion Gate] ${UNAPPROVED_COUNT} non-standard exclusion(s) require user approval: ${UNAPPROVED_BINS}. These bins (Unimplemented features / Ambiguous spec) need explicit confirmation via AskUserQuestion. After approval: touch $(shq "$APPROVAL_MARKER")"
-COV_NOTICE="[Coverage Exclusion Gate] ${UNAPPROVED_COUNT} non-standard coverage exclusion(s) still await your approval: ${UNAPPROVED_BINS}. To approve: touch $(shq "$APPROVAL_MARKER")"
-stopu_gate coverage-exclusion "$STATE_DIR" "$STOP_CHAIN" "$COV_PROGRESS" "$COV_MSG" "$COV_NOTICE" 1
+COUNT=$(printf '%s' "$RESULT" | "$PYTHON" -c 'import json,sys;print(json.load(sys.stdin)["count"])')
+FINGERPRINT=$(printf '%s' "$RESULT" | "$PYTHON" -c 'import json,sys;print(json.load(sys.stdin)["fingerprint"])')
+MSG="[Coverage Exclusion Gate] $COUNT non-standard exclusions await the user's confirmation. Ask once for the current exclusion set. After confirmation, record the answer with scripts/coverage_approval.py approve --root <project> --decision <user-answer>. A touched marker does not approve later changes."
+NOTICE="[Coverage Exclusion Gate] $COUNT non-standard exclusions still await your confirmation. The approval applies only to this exclusion set."
+stopu_gate coverage-exclusion "$STATE_DIR" "$STOP_CHAIN" "$FINGERPRINT" "$MSG" "$NOTICE" 1

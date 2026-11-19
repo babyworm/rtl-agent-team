@@ -76,7 +76,7 @@ Bash("mkdir -p reviews/phase-4-rtl docs/phase-4-rtl .rat/scratch/phase-4")
 # Step 4: No initial tasks from skill — coordinator creates per-module W1-W10 after reading uarch specs
 
 # Step 5: Spawn coordinator as teammate (orchestrator)
-Agent(team_name="p4-implement", subagent_type="rtl-agent-team:p4-implement-team-orchestrator",
+Agent(team_name="p4-implement", subagent_type="rtl-agent-team:p4-implement-orchestrator",
       name="coordinator", description="P4 implementation coordination",
       prompt="You are the Phase 4 RTL implementation coordinator in team 'p4-implement'. "
              "Manage the 10-wave task graph using TaskCreate/TaskList/TaskUpdate. "

@@ -99,6 +99,15 @@ esac
 # Stop's prompt_id, so a file written for another prompt is a missed chain start
 # too.
 # Usage: STOP_CHAIN=$(stopu_chain_active "$INPUT" [<state-dir> <gate-id>...])
+stopu_budget_file() {
+  _SBF_SESSION=$(jsonu_session_id "${INPUT:-}")
+  _SBF_SUFFIX=""
+  if [ -n "$_SBF_SESSION" ]; then
+    _SBF_SUFFIX="-$(printf '%s' "$_SBF_SESSION" | cksum | awk '{print $1}')"
+  fi
+  printf '%s/stop-budget-%s%s.txt' "$2" "$1" "$_SBF_SUFFIX"
+}
+
 stopu_chain_active() {
   if printf '%s' "$1" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
     _SCA_CHAIN=true
@@ -118,7 +127,7 @@ stopu_chain_active() {
     shift 2
     mkdir -p "$_SCA_DIR" 2>/dev/null
     for _SCA_ID in "$@"; do
-      _SCA_FILE="$_SCA_DIR/stop-budget-$_SCA_ID.txt"
+      _SCA_FILE=$(stopu_budget_file "$_SCA_ID" "$_SCA_DIR")
       if [ "$_SCA_CHAIN" = "false" ]; then
         _SCA_L1=0
         _SCA_L2=
@@ -232,7 +241,7 @@ stopu_gate() {
 # Usage: stopu_renotify <gate-id> <state-dir> "$STOP_CHAIN" <progress> && stopu_gate ... 0
 stopu_renotify() {
   [ "$3" = "true" ] || return 1
-  _SRN_FILE="$2/stop-budget-$1.txt"
+  _SRN_FILE=$(stopu_budget_file "$1" "$2")
   [ "$(sed -n '4p' "$_SRN_FILE" 2>/dev/null)" = "1" ] || return 1
   [ "$(sed -n '2p' "$_SRN_FILE")" != "$(stopu_fingerprint "$4")" ] || return 1
   { sed '4s/.*/0/' "$_SRN_FILE" > "$_SRN_FILE.tmp" && mv "$_SRN_FILE.tmp" "$_SRN_FILE"; } 2>/dev/null
@@ -255,7 +264,7 @@ stopu_decision() {
 # for stopu_gate to act on.
 # Usage: _stopu_decide <gate-id> <state-dir> "$STOP_CHAIN" <progress> [limit]
 _stopu_decide() {
-  _SG_FILE="$2/stop-budget-$1.txt"
+  _SG_FILE=$(stopu_budget_file "$1" "$2")
   _SG_FP=$(stopu_fingerprint "$4")
   _SG_LIMIT=${RAT_STOP_BLOCK_LIMIT:-3}
   case "$_SG_LIMIT" in ''|*[!0-9]*|??????*) _SG_LIMIT=3 ;; esac
@@ -306,9 +315,25 @@ stopu_count_line() {
 # stays, so the chain cap still counts the Stops before this one.
 # Usage: stopu_clear <gate-id> <state-dir>
 stopu_clear() {
-  _SC_FILE="$2/stop-budget-$1.txt"
+  _SC_FILE=$(stopu_budget_file "$1" "$2")
   [ -f "$_SC_FILE" ] || return 0
   _SC_TOTAL=$(stopu_count_line "$_SC_FILE" 3)
   _SC_PROMPT=$(sed -n '5p' "$_SC_FILE")
   { printf '0\n\n%s\n0\n%s\n' "$_SC_TOTAL" "$_SC_PROMPT" > "$_SC_FILE"; } 2>/dev/null
+}
+
+# Returns success when a live pipeline awaits a user decision or exhausted repairs.
+stopu_pipeline_waits() {
+  _SPW_FILE="$1"
+  [ -f "$_SPW_FILE" ] || return 1
+  jsonu_cache_file "$_SPW_FILE"
+  _SPW_MTIME=$(get_mtime_epoch "$_SPW_FILE")
+  [ -n "$_SPW_MTIME" ] || return 1
+  [ "$(posix_elapsed_seconds "$_SPW_MTIME")" -lt "${RAT_STOP_STALE_SECONDS:-7200}" ] || return 1
+  [ "$(jsonu_get_file_path_string "$_SPW_FILE" status)" != completed ] || return 1
+  [ "$(jsonu_get_file_path_bool "$_SPW_FILE" upper_spec_blocking)" = true ] && return 0
+  [ "$(jsonu_get_file_path_bool "$_SPW_FILE" orchestration_control.needs_user_decision)" = true ] && return 0
+  _SPW_PRIMARY=$(jsonu_get_file_path_num "$_SPW_FILE" orchestration_control.active_gate_primary_attempts)
+  _SPW_FALLBACK=$(jsonu_get_file_path_num "$_SPW_FILE" orchestration_control.active_gate_fallback_attempts)
+  [ "$(( ${_SPW_PRIMARY:-0} + ${_SPW_FALLBACK:-0} ))" -ge 2 ]
 }

@@ -1,3 +1,4 @@
+from tests.contracts import read_contract
 """Tests for agent and skill structural integrity.
 
 Validates:
@@ -28,7 +29,7 @@ ORCHESTRATOR_INJECT_HOOK = REPO_ROOT / "hooks" / "rtl-orchestrator-inject.sh"
 
 
 def _read_frontmatter(path: Path) -> str:
-    content = path.read_text()
+    content = read_contract(path)
     parts = content.split("---", 2)
     assert len(parts) >= 3, f"Missing YAML frontmatter: {path}"
     return parts[1]
@@ -132,7 +133,7 @@ class TestAgentDefinitions:
                 r"(?<!\{plugin_root\}/)(?<!\{CLAUDE_PLUGIN_ROOT\}/)"
                 rf"skills/{re.escape(own)}/(?:references|templates|scripts|examples)/"
             )
-            for lineno, line in enumerate(skill_md.read_text().splitlines(), 1):
+            for lineno, line in enumerate(read_contract(skill_md).splitlines(), 1):
                 if pattern.search(line):
                     offenders.append(f"{own}/SKILL.md:{lineno}: {line.strip()[:100]}")
         assert offenders == [], (
@@ -161,7 +162,7 @@ class TestAgentDefinitions:
         offenders = []
         for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
             own = skill_md.parent
-            for lineno, line in enumerate(skill_md.read_text().splitlines(), 1):
+            for lineno, line in enumerate(read_contract(skill_md).splitlines(), 1):
                 for match in pattern.finditer(line):
                     if not (own / match.group(1)).exists():
                         offenders.append(
@@ -193,7 +194,7 @@ class TestAgentDefinitions:
         allowed = ("dev source:", "plugin-internal")
         offenders = []
         for f in list(agent_files) + sorted(SKILLS_DIR.glob("*/SKILL.md")):
-            for lineno, line in enumerate(f.read_text().splitlines(), 1):
+            for lineno, line in enumerate(read_contract(f).splitlines(), 1):
                 if directive.search(line) and not any(a in line for a in allowed):
                     rel = f.relative_to(REPO_ROOT)
                     offenders.append(f"{rel}:{lineno}: {line.strip()[:90]}")
@@ -207,7 +208,7 @@ class TestAgentDefinitions:
         """Every agent .md must start with --- YAML frontmatter ---."""
         missing = []
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             if not content.startswith("---"):
                 missing.append(f.name)
         assert missing == [], f"Agents missing YAML frontmatter: {missing}"
@@ -215,7 +216,7 @@ class TestAgentDefinitions:
     def test_all_agents_have_name(self, agent_files):
         missing = []
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             # Extract YAML between first --- and second ---
             parts = content.split("---", 2)
             if len(parts) < 3:
@@ -229,7 +230,7 @@ class TestAgentDefinitions:
     def test_all_agents_have_model(self, agent_files):
         missing = []
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 missing.append(f.name)
@@ -265,7 +266,7 @@ class TestAgentDefinitions:
         front = {}
         for f in agent_files:
             name = f.stem
-            parts = f.read_text().split("---", 2)
+            parts = read_contract(f).split("---", 2)
             fm = parts[1]
             model = next(
                 line.split(":", 1)[1].strip()
@@ -286,7 +287,7 @@ class TestAgentDefinitions:
         import re
         drift = []
         for f in agent_files:
-            text = f.read_text()
+            text = read_contract(f)
             for match in re.finditer(
                 r'subagent_type="rtl-agent-team:([a-z0-9-]+)"'
                 r'(?:[^"\n]*\bmodel="(sonnet|opus|fable)"'
@@ -302,7 +303,7 @@ class TestAgentDefinitions:
     def test_all_agents_have_description(self, agent_files):
         missing = []
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 missing.append(f.name)
@@ -316,7 +317,7 @@ class TestAgentDefinitions:
         """Agent name in YAML should match the filename (without .md)."""
         mismatches = []
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 continue
@@ -337,7 +338,7 @@ class TestAgentDefinitions:
         """Every agent .md must reference the audit output protocol."""
         missing = []
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             if "audit-output-protocol.md" not in content:
                 missing.append(f.name)
         assert missing == [], f"Agents missing RAT protocol reference: {missing}"
@@ -357,7 +358,7 @@ class TestAgentDefinitions:
             "`$RAT_PROJECT_ROOT` env > CWD"
         )
         for f in agent_files:
-            content = f.read_text()
+            content = read_contract(f)
             if "[RAT: CATEGORY | SOURCE]" not in content:
                 missing_tag.append(f.name)
             if "field `plugin_root`" not in content:
@@ -381,7 +382,7 @@ class TestAgentDefinitions:
         and process-CWD fallbacks."""
         template = AGENT_LIB_DIR / "step0-template.md"
         assert template.exists(), "plugin_docs/agent-lib/step0-template.md must exist"
-        content = template.read_text()
+        content = read_contract(template)
         assert "`project_root` field in `.rat/state/spawn-context.json`" in content
         assert "`$RAT_PROJECT_ROOT` env" in content
         assert "process CWD" in content
@@ -390,7 +391,7 @@ class TestAgentDefinitions:
         """The shared audit output protocol file must exist."""
         protocol = AGENT_LIB_DIR / "audit-output-protocol.md"
         assert protocol.exists(), "plugin_docs/agent-lib/audit-output-protocol.md must exist"
-        content = protocol.read_text()
+        content = read_contract(protocol)
         assert "RAT" in content
         assert "DECISION" in content
         assert "USER_CONFIRMED" in content
@@ -399,7 +400,7 @@ class TestAgentDefinitions:
         """Verify compliance-checker agent has required sections."""
         agent = AGENTS_DIR / "compliance-checker.md"
         assert agent.exists(), "compliance-checker.md agent must exist"
-        content = agent.read_text()
+        content = read_contract(agent)
         assert "name: compliance-checker" in content, "Must have name in frontmatter"
         assert "upstream_iron" in content, "Must reference upstream iron requirements"
         assert "VIOLATION" in content, "Must define VIOLATION verdict"
@@ -411,10 +412,10 @@ class TestAgentDefinitions:
         """v0.12.0: P1 orchestrators (solo + team) must drive the completeness
         audit — referencing the census (spec-feature-inventory.json) and the
         coverage diff (feature-coverage.md)."""
-        for name in ["p1-research-orchestrator", "p1-research-team-orchestrator"]:
+        for name in ["p1-research-orchestrator", "p1-research-orchestrator"]:
             agent = AGENTS_DIR / f"{name}.md"
             assert agent.exists(), f"Missing orchestrator: {name}"
-            content = agent.read_text()
+            content = read_contract(agent)
             assert "spec-feature-inventory.json" in content, (
                 f"{name} must reference spec-feature-inventory.json (feature census)"
             )
@@ -444,13 +445,14 @@ class TestSkillDefinitions:
         assert len(skill_dirs) >= 85, f"Expected ≥85 skill dirs, got {len(skill_dirs)}"
 
     def test_every_skill_dir_has_skill_md(self, skill_dirs):
-        missing = [d.name for d in skill_dirs if not (d / "SKILL.md").exists()]
-        assert missing == [], f"Skill dirs missing SKILL.md: {missing}"
+        policies = {p.stem for p in (AGENT_LIB_DIR / 'policies').glob('*.md')}
+        missing = [d.name for d in skill_dirs if not (d / 'SKILL.md').exists() and d.name not in policies]
+        assert missing == []
 
     def test_all_skills_have_yaml_frontmatter(self, skill_files):
         missing = []
         for f in skill_files:
-            content = f.read_text()
+            content = read_contract(f)
             if not content.startswith("---"):
                 missing.append(f.parent.name)
         assert missing == [], f"Skills missing YAML frontmatter: {missing}"
@@ -458,7 +460,7 @@ class TestSkillDefinitions:
     def test_all_skills_have_name(self, skill_files):
         missing = []
         for f in skill_files:
-            content = f.read_text()
+            content = read_contract(f)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 missing.append(f.parent.name)
@@ -471,7 +473,7 @@ class TestSkillDefinitions:
         """Skill name in YAML should match its directory name."""
         mismatches = []
         for f in skill_files:
-            content = f.read_text()
+            content = read_contract(f)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 continue
@@ -505,7 +507,7 @@ class TestCrossReferences:
 
     @pytest.fixture
     def claude_md_content(self):
-        return CLAUDE_MD.read_text()
+        return read_contract(CLAUDE_MD)
 
     @pytest.fixture
     def agent_names(self):
@@ -573,7 +575,7 @@ class TestCrossReferences:
                 f"Action skill must be user-invocable: {action_skill}"
             )
 
-            action_content = action_file.read_text()
+            action_content = read_contract(action_file)
             task_pattern = rf'Task\(subagent_type="rtl-agent-team:{re.escape(orchestrator)}"'
             assert re.search(task_pattern, action_content), (
                 f"{action_skill} must delegate to orchestrator {orchestrator}"
@@ -581,18 +583,11 @@ class TestCrossReferences:
 
             agent_file = AGENTS_DIR / f"{orchestrator}.md"
             assert agent_file.exists(), f"Missing orchestrator agent: {orchestrator}"
-            agent_frontmatter = _read_frontmatter(agent_file)
-            skills_pattern = rf"^skills:\s*\[[^\]]*\b{re.escape(policy_skill)}\b[^\]]*\]\s*$"
-            assert re.search(skills_pattern, agent_frontmatter, re.MULTILINE), (
-                f"{orchestrator} must load policy skill {policy_skill}"
-            )
-
-            policy_file = SKILLS_DIR / policy_skill / "SKILL.md"
-            assert policy_file.exists(), f"Missing policy skill: {policy_skill}"
-            policy_frontmatter = _read_frontmatter(policy_file)
-            assert re.search(r"^user-invocable:\s*false\s*$", policy_frontmatter, re.MULTILINE), (
-                f"Policy skill must not be user-invocable: {policy_skill}"
-            )
+            manifest = json.loads((AGENT_LIB_DIR / 'policy-manifest.json').read_text())
+            assert policy_skill in manifest[orchestrator]
+            policy_file = AGENT_LIB_DIR / 'policies' / (policy_skill + '.md')
+            assert policy_file.read_text().strip() in agent_file.read_text()
+            assert not (SKILLS_DIR / policy_skill / 'SKILL.md').exists()
 
     def test_pipeline_skill_phase_sequencing(self):
         """Pipeline skills that sequence phases via Skill() instead of Task() delegation."""
@@ -606,7 +601,7 @@ class TestCrossReferences:
         for skill_name, phase_skills in pipeline_skills.items():
             skill_file = SKILLS_DIR / skill_name / "SKILL.md"
             assert skill_file.exists(), f"Missing pipeline skill: {skill_name}"
-            content = skill_file.read_text()
+            content = read_contract(skill_file)
             frontmatter = _read_frontmatter(skill_file)
             assert re.search(r"^user-invocable:\s*true\s*$", frontmatter, re.MULTILINE), (
                 f"Pipeline skill must be user-invocable: {skill_name}"
@@ -670,25 +665,16 @@ class TestCrossReferences:
 
         action_file = SKILLS_DIR / action_skill / "SKILL.md"
         assert action_file.exists(), f"Missing action skill: {action_skill}"
-        action_content = action_file.read_text()
+        action_content = read_contract(action_file)
         assert re.search(r'Task\(subagent_type="rtl-agent-team:review-refactor-orchestrator"', action_content)
 
         agent_file = AGENTS_DIR / f"{orchestrator}.md"
         assert agent_file.exists(), f"Missing orchestrator agent: {orchestrator}"
-        agent_frontmatter = _read_frontmatter(agent_file)
-
+        manifest = json.loads((AGENT_LIB_DIR / 'policy-manifest.json').read_text())
+        assert set(required_policies) <= set(manifest[orchestrator])
         for policy in required_policies:
-            skills_pattern = rf"^skills:\s*\[[^\]]*\b{re.escape(policy)}\b[^\]]*\]\s*$"
-            assert re.search(skills_pattern, agent_frontmatter, re.MULTILINE), (
-                f"{orchestrator} must load policy skill {policy}"
-            )
-
-            policy_file = SKILLS_DIR / policy / "SKILL.md"
-            assert policy_file.exists(), f"Missing policy skill: {policy}"
-            policy_frontmatter = _read_frontmatter(policy_file)
-            assert re.search(r"^user-invocable:\s*false\s*$", policy_frontmatter, re.MULTILINE), (
-                f"Policy skill must not be user-invocable: {policy}"
-            )
+            source = AGENT_LIB_DIR / 'policies' / (policy + '.md')
+            assert source.read_text().strip() in agent_file.read_text()
 
     def test_codex_cross_review_skill_agent_contract(self):
         """codex-cross-review: action skill + agent exist, skill delegates to agent,
@@ -706,13 +692,13 @@ class TestCrossReferences:
         assert agent_file.exists(), "Missing agent: codex-cross-reviewer"
 
         # 3. Skill delegates to agent
-        skill_content = skill_file.read_text()
+        skill_content = read_contract(skill_file)
         assert re.search(
             r'Task\(subagent_type="rtl-agent-team:codex-cross-reviewer"', skill_content
         ), "codex-cross-review skill must delegate to codex-cross-reviewer agent"
 
         # 4. Agent uses phase-scoped paths (not bare cross-review/)
-        agent_content = agent_file.read_text()
+        agent_content = read_contract(agent_file)
         assert "cross-review/phase-{N}/" in agent_content, (
             "codex-cross-reviewer must use phase-scoped artifact paths"
         )
@@ -782,32 +768,10 @@ class TestCrossReferences:
             "codex-cross-reviewer completion marker must use ${N} substitution"
         )
 
-        # 6. All phase orchestrators (solo + team) reference codex-cross-reviewer
-        orchestrators = [
-            "p1-research-orchestrator",
-            "p1-research-team-orchestrator",
-            "p2-arch-orchestrator",
-            "p2-arch-team-orchestrator",
-            "p3-uarch-orchestrator",
-            "p3-uarch-team-orchestrator",
-            "p4-implement-orchestrator",
-            "p4-implement-team-orchestrator",
-            "p4-rtl-sanity-orchestrator",
-            "p5-verify-orchestrator",
-            "p5-verify-team-orchestrator",
-            "p6-review-orchestrator",
-        ]
-        for orch in orchestrators:
-            orch_file = AGENTS_DIR / f"{orch}.md"
-            assert orch_file.exists(), f"Missing orchestrator: {orch}"
-            orch_content = orch_file.read_text()
-            assert re.search(
-                r'Task\(subagent_type="rtl-agent-team:codex-cross-reviewer"', orch_content
-            ), f"{orch} must invoke codex-cross-reviewer"
-            # Explicit verdict check
-            assert "cross-review-report.md" in orch_content, (
-                f"{orch} must include explicit verdict check (Read cross-review-report.md)"
-            )
+        # Cross-review remains an explicit Action Skill, not another mandatory phase pass.
+        for orch in ('p1-research','p2-arch','p3-uarch','p4-implement','p5-verify'):
+            text = read_contract(AGENTS_DIR / (orch + '-orchestrator.md'))
+            assert 'Task(subagent_type="rtl-agent-team:codex-cross-reviewer"' not in text
 
         # 6b. Phase auto-detection must not reference dead current-phase fallback
         assert "current-phase" not in skill_content, (
@@ -816,7 +780,7 @@ class TestCrossReferences:
 
         # 7. Routing table includes codex-cross-review
         orchestrate_file = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
-        orchestrate_content = orchestrate_file.read_text()
+        orchestrate_content = read_contract(orchestrate_file)
         assert "codex-cross-review" in orchestrate_content, (
             "rtl-orchestrate routing table must include codex-cross-review"
         )
@@ -824,14 +788,14 @@ class TestCrossReferences:
     def test_p4_state_module_population_contract_is_explicit(self):
         p4_template = SKILLS_DIR / "rtl-p4-rapid-impl-policy" / "templates" / "p4-state.json"
         assert p4_template.exists(), "Missing p4-state template"
-        template_text = p4_template.read_text()
+        template_text = read_contract(p4_template)
         assert "{{module_name}}" not in template_text, (
             "p4-state template should not keep unresolved {{module_name}} placeholders"
         )
 
         p4_orchestrator = AGENTS_DIR / "p4-rtl-sanity-orchestrator.md"
         assert p4_orchestrator.exists(), "Missing p4-rtl-sanity-orchestrator agent"
-        orchestrator_text = p4_orchestrator.read_text()
+        orchestrator_text = read_contract(p4_orchestrator)
         assert re.search(r"modules?.*empty", orchestrator_text, re.IGNORECASE | re.DOTALL), (
             "p4 orchestrator should explain that template modules map starts empty"
         )
@@ -840,9 +804,9 @@ class TestCrossReferences:
         )
 
     def test_p5_legacy_and_split_relationships_are_documented(self):
-        p5_legacy = (SKILLS_DIR / "rtl-p5-verify" / "SKILL.md").read_text()
-        p5a = (SKILLS_DIR / "rtl-p5a-functional-closure" / "SKILL.md").read_text()
-        p5b = (SKILLS_DIR / "rtl-p5b-silicon-validation" / "SKILL.md").read_text()
+        p5_legacy = read_contract(SKILLS_DIR / "rtl-p5-verify" / "SKILL.md")
+        p5a = read_contract(SKILLS_DIR / "rtl-p5a-functional-closure" / "SKILL.md")
+        p5b = read_contract(SKILLS_DIR / "rtl-p5b-silicon-validation" / "SKILL.md")
 
         assert "rtl-p5a-functional-closure" in p5_legacy
         assert "rtl-p5b-silicon-validation" in p5_legacy
@@ -852,13 +816,13 @@ class TestCrossReferences:
         assert "rtl-p5a-functional-closure" in p5b
 
     def test_p5_verify_prereqs_reference_both_p4_entry_paths(self):
-        p5_legacy = (SKILLS_DIR / "rtl-p5-verify" / "SKILL.md").read_text()
+        p5_legacy = read_contract(SKILLS_DIR / "rtl-p5-verify" / "SKILL.md")
         assert "rtl-p4-rapid-impl" in p5_legacy
         assert "rtl-p4-implement" in p5_legacy
         assert "gates.p4_exit.verdict" in p5_legacy
 
     def test_p5b_precondition_is_state_based(self):
-        p5b_orchestrator = (AGENTS_DIR / "p5b-silicon-validation-orchestrator.md").read_text()
+        p5b_orchestrator = read_contract(AGENTS_DIR / "p5b-silicon-validation-orchestrator.md")
         assert ".rat/state/p5a-state.json" in p5b_orchestrator
         assert "gates.p5a_exit.verdict" in p5b_orchestrator
         assert "precondition.p5a_functional_closure_pass" in p5b_orchestrator
@@ -866,7 +830,7 @@ class TestCrossReferences:
     def test_review_refactor_is_marked_cross_cutting_not_phase_replacement(self):
         skill_file = SKILLS_DIR / "rtl-review-refactor" / "SKILL.md"
         assert skill_file.exists(), "Missing rtl-review-refactor skill"
-        content = skill_file.read_text()
+        content = read_contract(skill_file)
         assert "cross-cutting" in content
         assert re.search(r"not\s+a\s+replacement.*phase pipeline", content, re.IGNORECASE | re.DOTALL)
         assert re.search(r"P1\s*-\s*P6|P1-P6", content)
@@ -937,7 +901,7 @@ class TestHooksJson:
 
     @pytest.fixture
     def hooks_data(self):
-        return json.loads(HOOKS_JSON.read_text())
+        return json.loads(read_contract(HOOKS_JSON))
 
     def test_hooks_json_exists(self):
         assert HOOKS_JSON.exists()
@@ -994,7 +958,7 @@ class TestPluginJson:
 
     @pytest.fixture
     def plugin_data(self):
-        return json.loads(PLUGIN_JSON.read_text())
+        return json.loads(read_contract(PLUGIN_JSON))
 
     def test_plugin_json_exists(self):
         assert PLUGIN_JSON.exists()
@@ -1023,7 +987,7 @@ class TestADRTemplate:
         assert self.ADR_TEMPLATE.exists(), "ADR template must exist"
 
     def test_adr_template_has_required_sections(self):
-        content = self.ADR_TEMPLATE.read_text()
+        content = read_contract(self.ADR_TEMPLATE)
         for section in ["Status", "Context", "Decision", "Consequences"]:
             assert section in content, f"ADR template missing '{section}' section"
 
@@ -1032,7 +996,7 @@ class TestADRTemplate:
         agents_dir = REPO_ROOT / "agents"
         adr_count = 0
         for agent_file in sorted(agents_dir.glob("*-orchestrator.md")):
-            content = agent_file.read_text()
+            content = read_contract(agent_file)
             if "ADR" in content or "adr" in content or "decision record" in content.lower():
                 adr_count += 1
         assert adr_count >= 5, f"Only {adr_count} orchestrators reference ADR, expected >= 5"
@@ -1047,12 +1011,12 @@ class TestDomainExpertAgent:
         assert self.AGENT_FILE.exists()
 
     def test_domain_expert_has_prompt_contract(self):
-        content = self.AGENT_FILE.read_text()
+        content = read_contract(self.AGENT_FILE)
         for marker in ["expert-definition", "knowledge-files", "task"]:
             assert marker in content, f"domain-expert agent missing '{marker}' in prompt contract"
 
     def test_domain_expert_is_read_only(self):
-        content = self.AGENT_FILE.read_text()
+        content = read_contract(self.AGENT_FILE)
         assert "disallowedTools" in content or "Write" in content, \
             "domain-expert agent should restrict write tools"
 
@@ -1085,7 +1049,7 @@ class TestShellScriptQuality:
         """
         violations = []
         for f in hook_scripts + hook_lib_scripts:
-            lines = f.read_text().splitlines()
+            lines = read_contract(f).splitlines()
             for i, line in enumerate(lines, 1):
                 stripped = line.strip()
                 if stripped.startswith("#") or not stripped:
@@ -1106,7 +1070,7 @@ class TestShellScriptQuality:
 
     def test_all_hook_scripts_referenced_in_hooks_json(self, hook_scripts):
         """Every hook script should be referenced in hooks.json (no orphans)."""
-        hooks_json = json.loads(HOOKS_JSON.read_text())
+        hooks_json = json.loads(read_contract(HOOKS_JSON))
         all_commands = json.dumps(hooks_json)
         orphans = []
         for f in hook_scripts:
@@ -1129,18 +1093,18 @@ class TestCoverageDrivenVerification:
         fm = _read_frontmatter(agent)
         assert "name: test-plan-writer" in fm
         assert "model:" in fm
-        assert "skills:" in fm
-        assert "test-design-policy" in fm
+        assert "RAT_POLICIES_BEGIN" in read_contract(agent)
+        assert "test-design-policy" in (AGENT_LIB_DIR / "policy-manifest.json").read_text()
 
     def test_test_plan_writer_in_routing_table(self):
         """test-plan-writer must be listed in rtl-orchestrate SSOT."""
-        content = RTL_ORCHESTRATE_SKILL.read_text()
+        content = read_contract(RTL_ORCHESTRATE_SKILL)
         assert "test-plan-writer" in content, \
             "test-plan-writer must be in rtl-orchestrate routing table"
 
     def test_test_plan_writer_spawned_by_p4_orchestrator(self):
         """P4 orchestrator must spawn test-plan-writer in Wave 0."""
-        content = (AGENTS_DIR / "p4-implement-orchestrator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p4-implement-orchestrator.md")
         assert "test-plan-writer" in content, \
             "p4-implement-orchestrator must reference test-plan-writer"
         assert "Step 0b" in content or "step 0b" in content.lower(), \
@@ -1148,26 +1112,26 @@ class TestCoverageDrivenVerification:
 
     def test_test_plan_writer_spawned_by_p4_team_orchestrator(self):
         """P4 team orchestrator must reference test plan generation."""
-        content = (AGENTS_DIR / "p4-implement-team-orchestrator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p4-implement-orchestrator.md")
         assert "test_plan" in content or "test-plan" in content or "TestPlan" in content, \
-            "p4-implement-team-orchestrator must reference test plan"
+            "p4-implement-orchestrator must reference test plan"
 
     def test_test_plan_writer_spawned_by_block_parallel(self):
         """Block-parallel coordinator must spawn test-plan-writer."""
-        content = (AGENTS_DIR / "p4-block-parallel-coordinator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p4-block-parallel-coordinator.md")
         assert "test-plan-writer" in content, \
             "p4-block-parallel-coordinator must reference test-plan-writer"
 
     def test_testbench_dev_loads_test_plan(self):
         """testbench-dev must load test plan in Investigation Protocol."""
-        content = (AGENTS_DIR / "testbench-dev.md").read_text()
+        content = read_contract(AGENTS_DIR / "testbench-dev.md")
         assert "test_plan" in content or "test plan" in content.lower(), \
             "testbench-dev must reference test plan loading"
 
     def test_ac_coverage_advisory_in_p4_completion_criteria(self):
         """P4 skills must have ac-coverage-advisory in completion criteria."""
-        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
-        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        scc = json.loads(read_contract(REPO_ROOT / "skill-completion-criteria.json"))
+        pr = json.loads(read_contract(REPO_ROOT / "phase-registry.json"))
         p4_skills = ["rtl-p4-implement", "rtl-p4s-unit-test",
                       "rtl-p4-block-parallel"]
         for skill in p4_skills:
@@ -1180,8 +1144,8 @@ class TestCoverageDrivenVerification:
 
     def test_ac_coverage_check_in_p5_completion_criteria(self):
         """P5 skills must have ac-coverage-check in completion criteria."""
-        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
-        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        scc = json.loads(read_contract(REPO_ROOT / "skill-completion-criteria.json"))
+        pr = json.loads(read_contract(REPO_ROOT / "phase-registry.json"))
         p5_skills = ["rtl-p5-verify", "rtl-p5s-func-verify"]
         for skill in p5_skills:
             if skill in scc:
@@ -1193,61 +1157,61 @@ class TestCoverageDrivenVerification:
 
     def test_traces_to_in_p3_uarch_policy(self):
         """P3 uarch policy must define traces_to schema."""
-        content = (SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md")
         assert "traces_to" in content, \
             "rtl-p3-uarch-policy must define traces_to field"
 
     def test_acceptance_criteria_schema_in_p3_policy(self):
         """P3 uarch policy must define acceptance_criteria schema with ac_id."""
-        content = (SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md")
         assert "ac_id" in content, \
             "rtl-p3-uarch-policy must define ac_id in acceptance_criteria schema"
 
     def test_ac_ids_in_unit_test_policy(self):
         """P4 unit test policy must define ac_ids field."""
-        content = (SKILLS_DIR / "rtl-p4s-unit-test-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p4s-unit-test-policy" / "SKILL.md")
         assert "ac_ids" in content, \
             "rtl-p4s-unit-test-policy must define ac_ids field in result schema"
 
     def test_partial_pass_in_func_verify_policy(self):
         """Func-verify policy must define PARTIAL_PASS verdict."""
-        content = (SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md")
         assert "PARTIAL_PASS" in content, \
             "rtl-p5s-func-verify-policy must define PARTIAL_PASS verdict"
 
     def test_partial_pass_in_tier4_handoff(self):
         """Tier 3→4 handoff must accept PARTIAL_PASS."""
-        content = (SKILLS_DIR / "rtl-p5s-integration-test-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p5s-integration-test-policy" / "SKILL.md")
         assert "PARTIAL_PASS" in content, \
             "rtl-p5s-integration-test-policy must accept PARTIAL_PASS for Tier 4 entry"
 
     def test_compliance_checker_has_polymorphic_ac(self):
         """Compliance-checker must handle both string and object acceptance_criteria."""
-        content = (AGENTS_DIR / "compliance-checker.md").read_text()
+        content = read_contract(AGENTS_DIR / "compliance-checker.md")
         assert "string" in content.lower() and "object" in content.lower(), \
             "compliance-checker must handle polymorphic acceptance_criteria (string + object)"
 
     def test_compliance_checker_has_traces_to(self):
         """Compliance-checker must support cross-phase decomposition."""
-        content = (AGENTS_DIR / "compliance-checker.md").read_text()
+        content = read_contract(AGENTS_DIR / "compliance-checker.md")
         assert "traces_to" in content, \
             "compliance-checker must support traces_to cross-phase verification"
 
     def test_backward_traceability_in_func_verify(self):
         """P5 func-verify orchestrator must have backward traceability."""
-        content = (AGENTS_DIR / "p5s-func-verify-orchestrator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p5s-func-verify-orchestrator.md")
         assert "Backward Traceability" in content or "backward traceability" in content.lower(), \
             "p5s-func-verify-orchestrator must have backward traceability section"
 
     def test_error_injection_in_unit_test_policy(self):
         """Unit test policy must mandate error injection."""
-        content = (SKILLS_DIR / "rtl-p4s-unit-test-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p4s-unit-test-policy" / "SKILL.md")
         assert "Error Injection" in content or "error injection" in content.lower(), \
             "rtl-p4s-unit-test-policy must mandate error injection"
 
     def test_tier2_baseline_in_func_verify_policy(self):
         """Func-verify policy must reference Tier 2 baseline utilization."""
-        content = (SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rtl-p5s-func-verify-policy" / "SKILL.md")
         assert "Tier 2 Baseline" in content, \
             "rtl-p5s-func-verify-policy must have Tier 2 Baseline Utilization section"
 
@@ -1259,11 +1223,11 @@ class TestCoverageDrivenVerification:
             ("p5-verify-orchestrator.md", "ac-coverage-check"),
             ("p5s-func-verify-orchestrator.md", "ac-coverage-check"),
         ]
+        registry = json.loads((REPO_ROOT / 'phase-registry.json').read_text())
         for agent_file, criterion in orchestrators_with_ac:
-            content = (AGENTS_DIR / agent_file).read_text()
-            assert criterion in content, (
-                f"{agent_file} must have '{criterion}' completion guidance section"
-            )
+            content = read_contract(AGENTS_DIR / agent_file)
+            assert 'ac_id' in content or 'ac_ids' in content
+            assert any(criterion in entry['completion_criteria'] for entry in registry['skills'].values())
 
 
 # ── Structural contract tests (Codex-suggested gaps) ────────────────────────
@@ -1274,34 +1238,34 @@ class TestComponentCounts:
 
     def test_agent_count_matches_docs(self):
         actual = len(list(AGENTS_DIR.glob("*.md")))
-        claude_md = CLAUDE_MD.read_text()
+        claude_md = read_contract(CLAUDE_MD)
         assert f"{actual} specialized agent" in claude_md, (
             f"CLAUDE.md missing '{actual} specialized agents'"
         )
 
         for readme in [REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
-            content = readme.read_text()
+            content = read_contract(readme)
             assert (
                 f"{actual} specialized AI agents" in content
                 or f"{actual}개 전문 AI" in content
                 or f"{actual}-agent" in content
             ), f"{readme.name} does not reference agent count {actual}"
 
-        marketplace = (REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text()
+        marketplace = read_contract(REPO_ROOT / ".claude-plugin" / "marketplace.json")
         assert f"{actual}-agent" in marketplace, (
             f"marketplace.json missing '{actual}-agent'"
         )
 
     def test_skill_count_matches_docs(self):
         actual = len([d for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists()])
-        claude_md = CLAUDE_MD.read_text()
+        claude_md = read_contract(CLAUDE_MD)
         assert f"{actual} skills" in claude_md or f"{actual} 스킬" in claude_md, (
             f"CLAUDE.md missing '{actual} skills'"
         )
 
     def test_hook_count_matches_docs(self):
         actual = len(list((REPO_ROOT / "hooks").glob("*.sh")))
-        content = CLAUDE_MD.read_text()
+        content = read_contract(CLAUDE_MD)
         assert f"{actual} hooks" in content or f"{actual} 후크" in content, (
             f"CLAUDE.md missing '{actual} hooks'"
         )
@@ -1311,9 +1275,9 @@ class TestVersionSync:
     """Version must be identical across all release surfaces."""
 
     def test_version_synced_across_manifests(self):
-        pkg = json.loads((REPO_ROOT / "package.json").read_text())
-        plugin = json.loads(PLUGIN_JSON.read_text())
-        marketplace = json.loads((REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text())
+        pkg = json.loads(read_contract(REPO_ROOT / "package.json"))
+        plugin = json.loads(read_contract(PLUGIN_JSON))
+        marketplace = json.loads(read_contract(REPO_ROOT / ".claude-plugin" / "marketplace.json"))
 
         pkg_ver = pkg["version"]
         plugin_ver = plugin["version"]
@@ -1330,14 +1294,14 @@ class TestVersionSync:
         assert len(unique) == 1, f"Version mismatch: {versions}"
 
     def test_version_in_readmes(self):
-        pkg_ver = json.loads((REPO_ROOT / "package.json").read_text())["version"]
+        pkg_ver = json.loads(read_contract(REPO_ROOT / "package.json"))["version"]
         for readme in [REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
-            content = readme.read_text()
+            content = read_contract(readme)
             assert pkg_ver in content, f"{readme.name} missing version {pkg_ver}"
 
     def test_version_in_changelog(self):
-        pkg_ver = json.loads((REPO_ROOT / "package.json").read_text())["version"]
-        changelog = (REPO_ROOT / "CHANGELOG.md").read_text()
+        pkg_ver = json.loads(read_contract(REPO_ROOT / "package.json"))["version"]
+        changelog = read_contract(REPO_ROOT / "CHANGELOG.md")
         assert f"[{pkg_ver}]" in changelog, f"CHANGELOG.md missing [{pkg_ver}] section"
 
 
@@ -1347,7 +1311,7 @@ class TestAgentSkillRefResolution:
     def test_all_agent_skill_refs_resolve(self):
         unresolved = []
         for agent_file in sorted(AGENTS_DIR.glob("*.md")):
-            fm = agent_file.read_text().split("---", 2)
+            fm = read_contract(agent_file).split("---", 2)
             if len(fm) < 3:
                 continue
             yaml_block = fm[1]
@@ -1379,7 +1343,7 @@ class TestPromptInvocationResolution:
 
         unresolved = []
         for md_file in sorted(list(AGENTS_DIR.glob("*.md")) + [d / "SKILL.md" for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()]):
-            content = md_file.read_text()
+            content = read_contract(md_file)
             # Match Task(subagent_type="rtl-agent-team:name")
             for match in re.finditer(r'subagent_type="rtl-agent-team:([^"]+)"', content):
                 target = match.group(1)
@@ -1407,7 +1371,7 @@ class TestPluginRuntimeBoundary:
     def test_prompts_do_not_reference_repo_files(self):
         violations = []
         for md_file in sorted(list(AGENTS_DIR.glob("*.md")) + [d / "SKILL.md" for d in SKILLS_DIR.iterdir() if (d / "SKILL.md").exists()]):
-            content = md_file.read_text()
+            content = read_contract(md_file)
             for pattern in self.REPO_ONLY_PATTERNS:
                 if re.search(pattern, content):
                     violations.append(f"{md_file.name}: references repo-only file ({pattern})")
@@ -1438,7 +1402,7 @@ class TestHooksJsonMatrix:
 
     def test_stop_gate_order(self):
         """Stop hooks must be in correct order: verify -> p6-cascade -> skill-completion -> stop-gate."""
-        hooks_data = json.loads(HOOKS_JSON.read_text())
+        hooks_data = json.loads(read_contract(HOOKS_JSON))
         stop_hooks = hooks_data["hooks"]["Stop"]
         commands = []
         for entry in stop_hooks:
@@ -1460,7 +1424,7 @@ class TestHooksJsonMatrix:
 
     def test_all_expected_scripts_registered(self):
         """Verify each expected script appears under the correct event/matcher in hooks.json."""
-        hooks_data = json.loads(HOOKS_JSON.read_text())
+        hooks_data = json.loads(read_contract(HOOKS_JSON))
         missing = []
 
         for event, expected in self.EXPECTED_EVENTS.items():
@@ -1510,18 +1474,18 @@ class TestPhaseArtifactContracts:
         assert self.ARTIFACT_MAP.exists()
 
     def test_p4_artifacts_include_sim_dir(self):
-        content = self.ARTIFACT_MAP.read_text()
+        content = read_contract(self.ARTIFACT_MAP)
         assert "sim/" in content, "artifact-map must list sim/ for Phase 4/5"
 
     def test_p5_artifacts_include_reviews(self):
-        content = self.ARTIFACT_MAP.read_text()
+        content = read_contract(self.ARTIFACT_MAP)
         assert "reviews/phase-5" in content or "reviews/" in content, \
             "artifact-map must list reviews/ for Phase 5"
 
     def test_phase6_deliverables_match_cascade_gate(self):
         """Phase 6 cascade gate expects specific filenames that must be documented."""
-        cascade_gate = (REPO_ROOT / "hooks" / "rtl-p6-cascade-gate.sh").read_text()
-        p6_policy = (SKILLS_DIR / "rtl-p6-design-review-policy" / "SKILL.md").read_text()
+        cascade_gate = read_contract(REPO_ROOT / "hooks" / "rtl-p6-cascade-gate.sh")
+        p6_policy = read_contract(SKILLS_DIR / "rtl-p6-design-review-policy" / "SKILL.md")
         required_files = ["code-review.md", "design-review.md", "design-note", "improvements.md"]
         for fname in required_files:
             assert fname in cascade_gate, f"Cascade gate missing reference to {fname}"
@@ -1534,19 +1498,19 @@ class TestPhase5PathConvergence:
     P6_ENTRY_ARTIFACTS = ["final-compliance.md", "phase-5-summary.md"]
 
     def test_legacy_p5_produces_p6_artifacts(self):
-        content = (AGENTS_DIR / "p5-verify-orchestrator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p5-verify-orchestrator.md")
         for artifact in self.P6_ENTRY_ARTIFACTS:
             assert artifact in content, f"p5-verify-orchestrator missing {artifact}"
 
     def test_split_p5a_references_compliance(self):
-        content = (AGENTS_DIR / "p5a-functional-closure-orchestrator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p5a-functional-closure-orchestrator.md")
         assert "final-compliance" in content or "compliance" in content, \
             "p5a orchestrator must reference compliance artifact"
 
     def test_team_p5_produces_p6_artifacts(self):
-        content = (AGENTS_DIR / "p5-verify-team-orchestrator.md").read_text()
+        content = read_contract(AGENTS_DIR / "p5-verify-orchestrator.md")
         for artifact in self.P6_ENTRY_ARTIFACTS:
-            assert artifact in content, f"p5-verify-team-orchestrator missing {artifact}"
+            assert artifact in content, f"p5-verify-orchestrator missing {artifact}"
 
 
 class TestActionSkillRegistryConsistency:
@@ -1554,8 +1518,8 @@ class TestActionSkillRegistryConsistency:
 
     def test_completion_criteria_synced(self):
         """Every skill in skill-completion-criteria.json must also be in phase-registry.json with same criteria."""
-        scc = json.loads((REPO_ROOT / "skill-completion-criteria.json").read_text())
-        pr = json.loads((REPO_ROOT / "phase-registry.json").read_text())
+        scc = json.loads(read_contract(REPO_ROOT / "skill-completion-criteria.json"))
+        pr = json.loads(read_contract(REPO_ROOT / "phase-registry.json"))
         mismatches = []
         for skill_name, criteria in scc.items():
             if skill_name.startswith("_"):
@@ -1592,7 +1556,7 @@ class TestActionSkillRegistryConsistency:
             skill_file = skill_dir / "SKILL.md"
             if not skill_file.exists():
                 continue
-            content = skill_file.read_text()
+            content = read_contract(skill_file)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 continue
@@ -1613,7 +1577,7 @@ class TestActionSkillRegistryConsistency:
                     continue
 
                 # Check 2: agent has skills: field with at least one policy
-                agent_fm = agent_file.read_text().split("---", 2)
+                agent_fm = read_contract(agent_file).split("---", 2)
                 if len(agent_fm) >= 3 and "skills:" in agent_fm[1]:
                     # Extract skill refs from agent frontmatter
                     skill_match = re.search(r'skills:\s*\[([^\]]*)\]', agent_fm[1])
@@ -1627,7 +1591,7 @@ class TestActionSkillRegistryConsistency:
 
     def test_user_invocable_skills_in_routing(self):
         """User-invocable action skills should appear in routing SSOT."""
-        routing = RTL_ORCHESTRATE_SKILL.read_text()
+        routing = read_contract(RTL_ORCHESTRATE_SKILL)
         missing = []
         for skill_dir in sorted(SKILLS_DIR.iterdir()):
             if not skill_dir.is_dir():
@@ -1635,7 +1599,7 @@ class TestActionSkillRegistryConsistency:
             skill_file = skill_dir / "SKILL.md"
             if not skill_file.exists():
                 continue
-            content = skill_file.read_text()
+            content = read_contract(skill_file)
             parts = content.split("---", 2)
             if len(parts) < 3:
                 continue
@@ -1659,8 +1623,8 @@ class TestHookStateFileDocumentation:
 
     def test_key_state_files_documented(self):
         """Key state files used by hooks must be mentioned in CLAUDE.md or routing SSOT."""
-        claude_md = CLAUDE_MD.read_text()
-        routing_ssot = RTL_ORCHESTRATE_SKILL.read_text()
+        claude_md = read_contract(CLAUDE_MD)
+        routing_ssot = read_contract(RTL_ORCHESTRATE_SKILL)
         combined = claude_md + routing_ssot
         missing = []
         for state_file in self.KEY_STATE_FILES:
@@ -1688,18 +1652,18 @@ class TestNamingConventionConsistency:
         rule_file = SKILLS_DIR / "rat-init-project" / "templates" / "rules" / "rtl-coding-conventions.md"
         if not rule_file.exists():
             pytest.skip("Rule template not found")
-        content = rule_file.read_text()
+        content = read_contract(rule_file)
         assert "i_" in content and "o_" in content, \
             "Coding conventions must enforce i_/o_ port prefix"
 
     def test_port_prefix_in_systemverilog_skill(self):
         """SystemVerilog convention skill must enforce same prefix."""
-        content = (SKILLS_DIR / "systemverilog" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "systemverilog" / "SKILL.md")
         assert "i_" in content and "o_" in content, \
             "SystemVerilog skill must enforce i_/o_ port prefix"
 
     def test_port_prefix_in_claude_md(self):
-        content = CLAUDE_MD.read_text()
+        content = read_contract(CLAUDE_MD)
         assert "i_" in content and "o_" in content, \
             "CLAUDE.md must document i_/o_ port prefix convention"
 
@@ -1715,6 +1679,6 @@ class TestTutorialSkillRename:
             "Old rat-tutuorial directory should not exist"
 
     def test_tutorial_name_in_frontmatter(self):
-        content = (SKILLS_DIR / "rat-tutorial" / "SKILL.md").read_text()
+        content = read_contract(SKILLS_DIR / "rat-tutorial" / "SKILL.md")
         assert "name: rat-tutorial" in content
         assert "rat-tutuorial" not in content

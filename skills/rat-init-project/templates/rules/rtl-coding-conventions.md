@@ -96,4 +96,4 @@ naming basics are also enforced by this rules file on .sv access.
 | `.sv` (UVM testbench) | Phase 5 (UVM) | `uvm` — naming, m_/u_ boundary, RTL port matching, anti-patterns |
 | `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `systemc` — naming, bit-exactness, AT-default BFM, build rules |
 
-<!-- rat-version: 0.11.4 -->
+<!-- rat-version: 2.0.0 -->

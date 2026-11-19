@@ -14,16 +14,45 @@
 
 set -euo pipefail
 
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+export RAT_PROJECT_ROOT="$PROJECT_ROOT"
+export RAT_TOOL_CATEGORY=simulators
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LIB_RUNNER="${RAT_RUNTIME_LIB:-}"
+for candidate in "$SCRIPT_DIR/../../rat-init-project/templates/lib/tool-runner.sh" "$PROJECT_ROOT/lib/tool-runner.sh"; do
+  if [[ -z "$_LIB_RUNNER" && -f "$candidate" ]]; then _LIB_RUNNER="$candidate"; fi
+done
+source "$_LIB_RUNNER"
+rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
+RAT_EVIDENCE_REQUIRED=0
+[[ -f "$PROJECT_ROOT/rat_config.json" || -d "$PROJECT_ROOT/.rat" ]] && RAT_EVIDENCE_REQUIRED=1
+
+
+EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:-$(dirname "$_LIB_RUNNER")}/verify_evidence.py"
+[[ -f "$EVIDENCE_HELPER" ]] || EVIDENCE_HELPER="$SCRIPT_DIR/../../../scripts/verify_evidence.py"
+REGRESSION_HELPER="$(dirname "$EVIDENCE_HELPER")/regression_evidence.py"
+CAMPAIGN_SNAPSHOT=""
+finish_campaign() {
+  local code=$?
+  trap - EXIT
+  if [[ -n "$CAMPAIGN_SNAPSHOT" ]]; then
+    local combined="$CAMPAIGN_OUTDIR/campaign.log"
+    find "$CAMPAIGN_OUTDIR" -type f -name '*.log' ! -name campaign.log -exec cat {} + > "$combined"
+    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" || code=$?
+  fi
+  exit "$code"
+}
+
 # Defaults
 SEEDS="${SEEDS:-1 42 123 1337 65536}"
-SIM="${SIM:-icarus}"
+SIM="${SIM:-}"
 MODE="${MODE:-local}"
 PARALLEL="${PARALLEL:-}"
 TB_DIR="${TB_DIR:-sim}"
 MODULE="${MODULE:-top}"
 RESULTS_DIR="${RESULTS_DIR:-sim/regression}"
 COVERAGE_DIR="${COVERAGE_DIR:-sim/coverage}"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)_$$"
 MAX_FAIL_RATE="${MAX_FAIL_RATE:-5}"  # Halt if failure rate exceeds this %
 USER_SET_PARALLEL=0
 
@@ -165,6 +194,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$SIM" || "$SIM" == auto ]]; then
+  SIM=$(rat_config_value preferences.simulator)
+  SIM="${SIM:-icarus}"
+fi
+case "$SIM" in iverilog) SIM=icarus ;; vsim) SIM=questa ;; xrun) SIM=xcelium ;; esac
+
 if [[ "$MODE" != "local" && "$MODE" != "aws-batch" ]]; then
   echo "ERROR: Unsupported mode: $MODE (supported: local, aws-batch)"
   exit 2
@@ -184,6 +219,7 @@ if ! [[ "$PARALLEL" =~ ^[0-9]+$ ]] || [[ "$PARALLEL" -lt 1 ]]; then
   exit 2
 fi
 
+RESULTS_DIR="$RESULTS_DIR/run_$TIMESTAMP"
 mkdir -p "$RESULTS_DIR" "$COVERAGE_DIR"
 
 if [[ "$MODE" == "aws-batch" ]]; then
@@ -245,18 +281,23 @@ run_seed() {
 
   echo "[seed=$seed] Starting..."
 
-  if make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" \
-       > "$log_file" 2>&1; then
+  local rc=0 observed
+  RAT_CONTEXT_TOOL="$SIM" run_tool make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" \
+       > "$log_file" 2>&1 || rc=$?
+  observed=$("$RAT_PYTHON" "$EVIDENCE_HELPER" classify --log "$log_file" --exit-code "$rc")
+  if [[ "$observed" == PASS ]]; then
     echo "[seed=$seed] PASS"
-    cat > "$result_file" <<EOF
+    cat > "$result_file.tmp" <<EOF
 {"seed": $seed, "module": "$MODULE", "status": "PASS", "runner": "local", "mode": "$MODE", "timestamp": "$TIMESTAMP"}
 EOF
+    mv "$result_file.tmp" "$result_file"
     return 0
   else
     echo "[seed=$seed] FAIL — see $log_file"
-    cat > "$result_file" <<EOF
+    cat > "$result_file.tmp" <<EOF
 {"seed": $seed, "module": "$MODULE", "status": "FAIL", "runner": "local", "mode": "$MODE", "timestamp": "$TIMESTAMP", "log": "$log_file"}
 EOF
+    mv "$result_file.tmp" "$result_file"
     # Capture waveform if available
     if ls "$TB_DIR"/*.vcd >/dev/null 2>&1; then
       cp "$TB_DIR"/*.vcd "$RESULTS_DIR/seed_${seed}_waveform.vcd" 2>/dev/null || true
@@ -264,6 +305,12 @@ EOF
     return 1
   fi
 }
+
+if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
+  CAMPAIGN_OUTDIR="$(cd "$RESULTS_DIR" && pwd)"
+  CAMPAIGN_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" rat_capture_path "$RAT_PYTHON" "$REGRESSION_HELPER" --root "$PROJECT_ROOT" --tb-dir "$TB_DIR" --outdir "$CAMPAIGN_OUTDIR" --tool "$SIM" --top "$MODULE" --runner-pid "$$")
+  trap finish_campaign EXIT
+fi
 
 # Run seeds (sequential or parallel)
 for seed in $SEEDS; do
@@ -314,7 +361,8 @@ fi
 
 COMPLETED=$((PASSED + FAILED))
 if [[ "$COMPLETED" -lt "$TOTAL" ]]; then
-  TOTAL="$COMPLETED"
+  FAILED=$((FAILED + TOTAL - COMPLETED))
+  echo "ERROR: One or more dispatched seeds produced no complete result" >&2
 fi
 
 PASS_RATE=$(calculate_pass_rate "$PASSED" "$TOTAL")

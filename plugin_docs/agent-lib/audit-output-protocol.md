@@ -1,6 +1,7 @@
 # Structured Output Annotations (Audit Protocol)
 
-Annotate key moments with RAT (Reasoning Audit Tag) markers for traceable decision records.
+Record decisions and observable results with RAT markers. Do not request or log
+internal reasoning; a short decision explanation and its source are sufficient.
 
 ## Tag Format
 
@@ -12,7 +13,6 @@ Annotate key moments with RAT (Reasoning Audit Tag) markers for traceable decisi
 
 | Category | Purpose | Source Label Required |
 |----------|---------|---------------------|
-| THOUGHT | Reasoning step, hypothesis, analysis | No |
 | DECISION | Choice made between alternatives | Yes (mandatory) |
 | INSIGHT | Non-obvious discovery or finding | No |
 | DELEGATE | Delegating work to another agent | No |
@@ -34,14 +34,13 @@ Annotate key moments with RAT (Reasoning Audit Tag) markers for traceable decisi
 [RAT: DECISION | AGENT_ASSUMED] 2-stage deblocking pipeline (1.3x throughput margin).
 [RAT: DELEGATE] Spawning power-analyzer for dynamic power estimation.
 [RAT: WARNING] CDC at DPB interface — no synchronizer detected.
-[RAT: THOUGHT] Evaluating async FIFO vs dual-clock SRAM for cross-domain transfer.
 [RAT: INSIGHT] Transform skip mode eliminates 40% of multiplications for QP>32.
 ```
 
 ## Usage Rules
 
-1. Every DECISION tag MUST include a source label
-2. AGENT_ASSUMED decisions MUST include brief justification
+1. Every DECISION tag includes a source label
+2. AGENT_ASSUMED decisions include a short explanation of the evidence and uncertainty
 3. DELEGATE tags should name the target agent
 4. WARNING tags should be specific and actionable
 5. Use tags at natural decision points — do not over-annotate routine operations

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install_project_templates.sh — bootstrap executable templates into project workspace
-# Usage: install_project_templates.sh [--update] [workspace]
+# Usage: install_project_templates.sh [--update] [--dry-run] [workspace]
 #
 # Non-destructive policy (default):
 # - Create missing directories
@@ -8,18 +8,26 @@
 # - Never overwrite user-modified scripts
 #
 # With --update:
-# - Overwrite destination if source has a newer rat-version marker
-# - Files without version markers are never overwritten
+# - Update only an unchanged managed copy with an older rat-version marker
+# - Stage unknown or modified copies under .rat/template-updates for review
 
 set -euo pipefail
 
 UPDATE_MODE=0
-if [[ "${1:-}" = "--update" ]]; then
-  UPDATE_MODE=1
+DRY_RUN=0
+WORKSPACE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --update) UPDATE_MODE=1 ;;
+    --dry-run) DRY_RUN=1 ;;
+    --help) echo "Usage: $0 [--update] [--dry-run] [workspace]"; exit 0 ;;
+    --*) echo "ERROR: unknown option: $1" >&2; exit 2 ;;
+    *) [[ -z "$WORKSPACE" ]] || { echo "ERROR: one workspace is required" >&2; exit 2; }; WORKSPACE="$1" ;;
+  esac
   shift
-fi
+done
 
-WORKSPACE="${1:-$(pwd)}"
+WORKSPACE="${WORKSPACE:-$(pwd)}"
 if [[ ! -d "$WORKSPACE" ]]; then
   echo "ERROR: workspace directory does not exist: $WORKSPACE" >&2
   exit 1
@@ -32,6 +40,24 @@ PLUGIN_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 CREATED=0
 SKIPPED=0
 UPDATED=0
+PENDING=0
+MANIFEST="$WORKSPACE/.rat/template-hashes.tsv"
+MANIFEST_ROWS=""
+
+_content_hash() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum < "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 < "$1" | awk '{print $1}'
+  else
+    echo "ERROR: sha256sum or shasum is required" >&2
+    return 1
+  fi
+}
+
+_record_hash() {
+  MANIFEST_ROWS+="$1"$'\t'"$2"$'\t'"$3"$'\n'
+}
 
 # Extract rat-version marker from a file. Returns empty if not found.
 _extract_rat_version() {
@@ -86,7 +112,11 @@ _validate_destination() {
       ;;
   esac
 
-  mkdir -p "$parent"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    mkdir -p "$parent"
+  elif [[ ! -d "$parent" ]]; then
+    return 0
+  fi
   resolved=$(cd "$parent" && pwd -P)
   case "$resolved/" in
     "$WORKSPACE/"*) ;;
@@ -111,34 +141,78 @@ install_script_if_missing() {
   local src="$1"
   local dst="$2"
   local mode="${3:-755}"
+  local relative="${dst#"$WORKSPACE/"}"
+  local src_ver src_hash dst_hash trusted_hash
 
+  [[ -f "$src" ]] || { echo "ERROR: missing template: $src" >&2; return 1; }
   _validate_destination "$dst"
+  src_ver=$(_extract_rat_version "$src")
+  src_hash=$(_content_hash "$src")
   if [[ -f "$dst" ]]; then
+    dst_hash=$(_content_hash "$dst")
+    trusted_hash=""
+    if [[ -f "$MANIFEST" ]]; then
+      trusted_hash=$(awk -F '\t' -v target="$relative" '$1 == target { print $2; exit }' "$MANIFEST")
+    fi
+    if [[ "$dst_hash" = "$src_hash" ]]; then
+      _record_hash "$relative" "$src_hash" "$src_ver"
+      SKIPPED=$((SKIPPED + 1))
+      return
+    fi
     if [[ "$UPDATE_MODE" -eq 1 ]]; then
-      local src_ver dst_ver
-      src_ver=$(_extract_rat_version "$src")
+      local dst_ver
       dst_ver=$(_extract_rat_version "$dst")
-      if [[ -n "$src_ver" && -n "$dst_ver" && "$src_ver" != "$dst_ver" ]] && \
+      if [[ -n "$trusted_hash" && "$dst_hash" = "$trusted_hash" && -n "$src_ver" && -n "$dst_ver" ]] && \
          _version_gt "$src_ver" "$dst_ver"; then
-        cp "$src" "$dst"
-        chmod "$mode" "$dst"
+        if [[ "$DRY_RUN" -eq 0 ]]; then
+          local staged
+          staged=$(mktemp "${dst}.XXXXXX")
+          cp "$src" "$staged"
+          chmod "$mode" "$staged"
+          mv "$staged" "$dst"
+        fi
+        _record_hash "$relative" "$src_hash" "$src_ver"
+        echo "UPDATE $relative"
         UPDATED=$((UPDATED + 1))
         return
       fi
+      if [[ -z "$dst_ver" || -z "$src_ver" ]] || _version_gt "$src_ver" "$dst_ver"; then
+        local candidate="$WORKSPACE/.rat/template-updates/$relative"
+        _validate_destination "$candidate"
+        if [[ "$DRY_RUN" -eq 0 ]]; then
+          cp "$src" "$candidate"
+          chmod "$mode" "$candidate"
+        fi
+        echo "REVIEW $relative (existing file preserved)"
+        PENDING=$((PENDING + 1))
+      fi
     fi
+    [[ -z "$trusted_hash" ]] || _record_hash "$relative" "$trusted_hash" "$(_extract_rat_version "$dst")"
     SKIPPED=$((SKIPPED + 1))
     return
   fi
 
-  cp "$src" "$dst"
-  chmod "$mode" "$dst"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    cp "$src" "$dst"
+    chmod "$mode" "$dst"
+  fi
+  _record_hash "$relative" "$src_hash" "$src_ver"
+  echo "CREATE $relative"
   CREATED=$((CREATED + 1))
 }
+
+_validate_destination "$MANIFEST"
 
 install_script_if_missing \
   "$PLUGIN_ROOT/scripts/run_sim.sh" \
   "$WORKSPACE/scripts/run_sim.sh" \
   755
+
+install_script_if_missing "$PLUGIN_ROOT/scripts/verify_evidence.py" "$WORKSPACE/lib/verify_evidence.py" 644
+install_script_if_missing "$PLUGIN_ROOT/scripts/eda_runner.py" "$WORKSPACE/lib/eda_runner.py" 644
+install_script_if_missing "$PLUGIN_ROOT/scripts/eda_setup.py" "$WORKSPACE/lib/eda_setup.py" 644
+install_script_if_missing "$PLUGIN_ROOT/scripts/regression_evidence.py" "$WORKSPACE/lib/regression_evidence.py" 644
+install_script_if_missing "$PLUGIN_ROOT/hooks/lib/python-util.sh" "$WORKSPACE/lib/python-util.sh" 644
 
 install_script_if_missing \
   "$PLUGIN_ROOT/skills/rat-init-project/templates/run_lint.sh" \
@@ -175,4 +249,21 @@ install_script_if_missing \
   "$WORKSPACE/sim/uvm/scripts/run_regression_uvm.sh" \
   755
 
-echo "SETUP_TEMPLATE_INSTALL created=$CREATED updated=$UPDATED skipped=$SKIPPED workspace=$WORKSPACE"
+install_script_if_missing "$PLUGIN_ROOT/skills/rat-init-project/templates/Makefile" "$WORKSPACE/Makefile" 644
+
+for rule in rtl-coding-conventions.md rtl-verification-gate.md; do
+  if [[ ! -f "$HOME/.claude/rules/$rule" ]]; then
+    install_script_if_missing "$PLUGIN_ROOT/skills/rat-init-project/templates/rules/$rule" "$WORKSPACE/.claude/rules/$rule" 644
+  fi
+done
+
+for dir in rtl sim syn docs reviews refc; do
+  install_script_if_missing "$PLUGIN_ROOT/skills/rat-init-project/templates/guides/${dir}-guide.md" "$WORKSPACE/$dir/CLAUDE.md" 644
+done
+
+if [[ "$DRY_RUN" -eq 0 ]]; then
+  MANIFEST_TMP=$(mktemp "${MANIFEST}.XXXXXX")
+  printf '%s' "$MANIFEST_ROWS" > "$MANIFEST_TMP"
+  mv "$MANIFEST_TMP" "$MANIFEST"
+fi
+echo "SETUP_TEMPLATE_INSTALL created=$CREATED updated=$UPDATED skipped=$SKIPPED pending=$PENDING dry_run=$DRY_RUN workspace=$WORKSPACE"

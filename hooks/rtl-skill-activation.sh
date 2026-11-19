@@ -16,6 +16,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 . "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
+. "$SCRIPT_DIR/lib/skill-event-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_root_string "$INPUT" "cwd")
@@ -25,7 +26,7 @@ HOOK_EVENT=$(jsonu_get_root_string "$INPUT" "hook_event_name")
 [ -z "$HOOK_EVENT" ] && HOOK_EVENT="PreToolUse"
 
 # Extract skill name from tool input
-SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
+SKILL_NAME=$(skillu_name "$INPUT")
 
 # Only handle rtl-agent-team skills
 case "$SKILL_NAME" in
@@ -67,23 +68,7 @@ if [ "$HOOK_EVENT" != "PostToolUse" ]; then
   # ---- PreToolUse: advisory context only ----
   SETUP_EXTRA_CONTEXT=""
   if [ "$SHORT_NAME" = "rat-init-project" ]; then
-    BOOTSTRAP_SCRIPT="$PLUGIN_ROOT/skills/rat-init-project/scripts/install_project_templates.sh"
-    if [ -x "$BOOTSTRAP_SCRIPT" ]; then
-      BOOTSTRAP_OUTPUT=$("$BOOTSTRAP_SCRIPT" "$CWD" 2>&1)
-      BOOTSTRAP_STATUS=$?
-      if [ "$BOOTSTRAP_STATUS" -eq 0 ]; then
-        BOOTSTRAP_SUMMARY=$(printf '%s\n' "$BOOTSTRAP_OUTPUT" | tail -n 1)
-        if [ -n "$BOOTSTRAP_SUMMARY" ]; then
-          SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] $BOOTSTRAP_SUMMARY"
-        else
-          SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template script installation completed."
-        fi
-      else
-        SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] template installation failed: $BOOTSTRAP_OUTPUT"
-      fi
-    else
-      SETUP_EXTRA_CONTEXT="[rat-init-project bootstrap] installer not found: $BOOTSTRAP_SCRIPT"
-    fi
+    SETUP_EXTRA_CONTEXT="[rat-init-project] Run the explicit template installer from the skill; hooks do not install project files."
   fi
 
   if ! is_setup_exempt && ! has_setup_marker; then
@@ -109,11 +94,12 @@ if [ "$HOOK_EVENT" != "PostToolUse" ]; then
   if [ -n "$PHASE_PREREQ_WARN" ]; then
     SETUP_EXTRA_CONTEXT="$SETUP_EXTRA_CONTEXT $PHASE_PREREQ_WARN"
   fi
-  emit_continue "$SETUP_EXTRA_CONTEXT"
+  [ "$HOOK_EVENT" != "UserPromptExpansion" ] && emit_continue "$SETUP_EXTRA_CONTEXT"
 fi
 
 # ---- PostToolUse: the Skill call ran; start its completion loop ----
 if ! is_setup_exempt && ! has_setup_marker; then
+  [ "$HOOK_EVENT" = "UserPromptExpansion" ] && emit_continue "[SETUP REQUIRED] Run /rtl-agent-team:rat-init-project before this skill."
   emit_post_continue
 fi
 STATE_DIR="$RAT_DIR/state"
@@ -133,7 +119,7 @@ if [ -f "$TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
       emit_post_continue
     fi
     SESSION_ID=$(jsonu_session_id "$INPUT")
-    LEADER_ID=$(jsonu_get_file_path_string "$TEAM_CONFIG" "leader_session_id")
+    LEADER_ID=$(jsonu_get_file_path_string "$STATE_DIR/team-owner.json" "session_id")
     case "$LEADER_ID" in
       ''|*'<'*|*'$'*) ;;  # unknown leader: the session manages its own loop (fail-closed)
       *)
@@ -215,4 +201,4 @@ if [ -f "$_AUDIT_LIB" ]; then
   fi
 fi
 
-emit_post_context "[RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. Stopping before every criterion is met returns the remaining criteria to you. When complete, set all_complete to true in ${SKILL_STATE}"
+emit_post_context "${SETUP_EXTRA_CONTEXT:-} [RTL Skill Completion Loop ACTIVATED] Skill ${SHORT_NAME} has started. Completion criteria: ${CRITERIA}. Stopping before every criterion is met returns the remaining criteria to you. When complete, set all_complete to true in ${SKILL_STATE}"

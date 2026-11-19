@@ -5,6 +5,30 @@ All notable changes to `rtl-agent-team` are documented in this file.
 The format is based on Keep a Changelog and follows the repository's released version history in git.
 Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so the changelog covers the released versions that exist in the repository plus current unreleased work.
 
+## Unreleased (try-2.0, 2026-11-17)
+
+- Replace compulsory review/strategy ladders with one evidence review and targeted
+  repairs; material ambiguity remains open regardless of confidence.
+- Add direct-command hook parity, accepted-call state writes, safe template
+  previews/updates, source/build/log-bound functional evidence and scoped approvals.
+- Unify EDA command execution, configured environments/paths, bounded timeouts and
+  local/Docker/SSH/LSF transport. Readiness follows requested phase capabilities.
+- Consolidate the runtime registry to 91 agents and 55 skills, generate policy
+  fragments into consumers, and replace report-only agents with parser scripts.
+- Add deterministic handoff gates and reproducible model/runtime evaluations.
+  Live Claude evaluation was quota-limited. Site qualification is scoped to each
+  user's private environment; identifying reports are excluded from this repository.
+  See plugin_docs/plans/2026-11-17-v2-execution.md.
+- Add LLM-assisted site discovery, reusable per-user profiles, safe project
+  configuration and scoped remote readiness. Handle old default Python, tcsh SSH
+  command parsing, and zero-exit loader failures without repeating passed probes.
+- Keep real site data outside the plugin repository. Reject in-repository site
+  JSON writes and exclude private state/profiles/reports from package contents;
+  repository fixtures use synthetic hosts and paths only.
+- Require the exact P5A exit verdict for P5B and an unambiguous final compliance
+  verdict at P6 entry. Add seeded verdict tests, generated-source checks, and real
+  Verilator template checks in PR and tag CI.
+
 ## [Unreleased]
 
 ### Changed

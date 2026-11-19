@@ -22,12 +22,56 @@
 # fails exactly as before. The `-d` test is set -u safe (it reads ${..:-}) and
 # set -e safe (a failing `if` condition does not trigger errexit).
 
+# State/audit trees never accept repository-supplied links as write targets.
+ratu_safe_tree() {
+  for _RST_PATH in "$1" "$1/state" "$1/audit"; do
+    if [ -L "$_RST_PATH" ]; then
+      printf '%s\n' "[RAT] refusing symlinked state path: $_RST_PATH" >&2
+      return 1
+    fi
+  done
+  for _RST_DIR in "$1/state" "$1/audit"; do
+    [ -d "$_RST_DIR" ] || continue
+    if [ -n "$(find "$_RST_DIR" -type l -print -quit 2>/dev/null)" ]; then
+      printf '%s\n' "[RAT] refusing symlinked state file under $_RST_DIR" >&2
+      return 1
+    fi
+  done
+}
+
+# Atomic replacement also refuses a linked target. Call with data on stdin.
+ratu_state_write() {
+  [ ! -L "$1" ] || return 1
+  _RSW_TMP=$(mktemp "${1}.XXXXXX") || return 1
+  if cat > "$_RSW_TMP" && mv -f "$_RSW_TMP" "$1"; then return 0; fi
+  rm -f "$_RSW_TMP"
+  return 1
+}
+
+ratu_normalize_path() {
+  awk -v base="$2" -v root="$3" -v value="$1" 'BEGIN {
+    sub(/^[A-Za-z_][A-Za-z0-9_]*=/,"",value)
+    if (substr(value,1,1)!="/") value=base "/" value
+    n=split(value,a,"/"); k=0
+    for(i=1;i<=n;i++) {
+      if(a[i]=="" || a[i]==".") continue
+      if(a[i]=="..") {if(k>0) k--; continue}
+      b[++k]=a[i]
+    }
+    out="";for(i=1;i<=k;i++) out=out "/" b[i]
+    if(index(out,root "/")==1) out=substr(out,length(root)+2)
+    print out
+  }'
+}
+
 # Print the marker directory (.rat, else legacy .rtl-agent-team) inside $1, or
 # return 1 when $1 has neither.
 _rat_marker_dir() {
   if [ -d "$1/.rat" ]; then
+    ratu_safe_tree "$1/.rat" || return 1
     printf '%s' "$1/.rat"
   elif [ -d "$1/.rtl-agent-team" ]; then
+    ratu_safe_tree "$1/.rtl-agent-team" || return 1
     printf '%s' "$1/.rtl-agent-team"
   else
     return 1

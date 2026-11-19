@@ -78,7 +78,7 @@ TaskCreate(subject="T2: BFM Development",
            description="Bus Functional Model development from architecture spec")
 
 # Step 5: Spawn coordinator as teammate (orchestrator)
-Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:p3-uarch-team-orchestrator",
+Agent(team_name="p3-uarch", subagent_type="rtl-agent-team:p3-uarch-orchestrator",
       name="coordinator", description="P3 uArch coordination",
       prompt="You are the Phase 3 uArch coordinator in team 'p3-uarch'. "
              "Manage the task graph using TaskCreate/TaskList/TaskUpdate. "

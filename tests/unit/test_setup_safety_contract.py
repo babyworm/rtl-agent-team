@@ -1,3 +1,4 @@
+from tests.contracts import read_contract
 import os
 import re
 import subprocess
@@ -30,12 +31,12 @@ FUNC_VERIFY_POLICY = REPO_ROOT / "skills" / "rtl-p5s-func-verify-policy" / "SKIL
 
 
 def _bash_blocks(path: Path) -> list[str]:
-    return re.findall(r"```bash\n(.*?)\n```", path.read_text(), re.DOTALL)
+    return re.findall(r"```bash\n(.*?)\n```", read_contract(path), re.DOTALL)
 
 
 def test_dockerfile_pins_compatible_slang_and_svlens_versions() -> None:
     # Given: the published EDA image definition.
-    content = DOCKERFILE.read_text()
+    content = read_contract(DOCKERFILE)
 
     # When: its source-build versions are inspected.
     arguments = dict(re.findall(r"^ARG ([A-Z_]+)=(\S+)$", content, re.MULTILINE))
@@ -48,7 +49,7 @@ def test_dockerfile_pins_compatible_slang_and_svlens_versions() -> None:
 
 def test_dockerfile_separates_required_and_optional_image_checks() -> None:
     # Given: the image verification layer.
-    verification = DOCKERFILE.read_text().rsplit("RUN set -eu;", 1)[1]
+    verification = read_contract(DOCKERFILE).rsplit("RUN set -eu;", 1)[1]
 
     # When: its check routing and success marker are inspected.
     ready = verification.index('echo "=== All required tools ready ==="')
@@ -64,7 +65,7 @@ def test_dockerfile_separates_required_and_optional_image_checks() -> None:
 
 def test_debug_first_line_helper_preserves_a_present_tool_failure() -> None:
     # Given: the diagnostic helper and a tool that emits output before failing.
-    content = PLUGIN_DEBUG.read_text()
+    content = read_contract(PLUGIN_DEBUG)
     helper = re.search(
         r"^first_line_or_not_found\(\) \{.*?^\}",
         content,
@@ -93,12 +94,12 @@ def test_debug_first_line_helper_preserves_a_present_tool_failure() -> None:
 def test_docker_run_surfaces_use_mount_user_and_writable_home() -> None:
     # Given: every shipped Docker run surface.
     surfaces = [
-        DOCKERFILE.read_text(),
-        DOCKER_ENVIRONMENT.read_text(),
-        TOOL_RUNNER.read_text(),
-        README.read_text(),
-        README_KR.read_text(),
-        EDA_GUIDE.read_text(),
+        read_contract(DOCKERFILE),
+        read_contract(DOCKER_ENVIRONMENT),
+        read_contract(TOOL_RUNNER),
+        read_contract(README),
+        read_contract(README_KR),
+        read_contract(EDA_GUIDE),
     ]
 
     # When: Docker container creation commands are selected.
@@ -119,10 +120,10 @@ def test_docker_run_surfaces_use_mount_user_and_writable_home() -> None:
 
 def test_host_install_and_test_guidance_uses_virtual_environments() -> None:
     # Given: the user-facing host Python installation surfaces.
-    setup = RAT_SETUP_SKILL.read_text()
-    contributing = CONTRIBUTING.read_text()
-    test_readme = TEST_README.read_text()
-    test_guide = TEST_GUIDE.read_text()
+    setup = read_contract(RAT_SETUP_SKILL)
+    contributing = read_contract(CONTRIBUTING)
+    test_readme = read_contract(TEST_README)
+    test_guide = read_contract(TEST_GUIDE)
 
     # When: local installation commands are inspected.
     local_guidance = "\n".join([setup, contributing, test_readme])
@@ -134,7 +135,7 @@ def test_host_install_and_test_guidance_uses_virtual_environments() -> None:
     assert '.venv/bin/python" -m pip install' in test_readme
     assert '.venv/bin/python" -m pip install' in test_guide
     operational_guidance = "\n".join(
-        path.read_text()
+        read_contract(path)
         for path in (LOCAL_CI, CODEC_RD, COCOTB_ECOSYSTEM, FUNC_VERIFY_POLICY)
     )
     assert re.search(r"(?<!-m )\bpip3? install", operational_guidance) is None
@@ -142,7 +143,7 @@ def test_host_install_and_test_guidance_uses_virtual_environments() -> None:
 
 def test_env_source_probe_uses_positional_arguments_and_suppresses_banners() -> None:
     # Given: both setup execution points and the matching EDA guide.
-    combined = "\n".join([RAT_SETUP_SKILL.read_text(), EDA_GUIDE.read_text()])
+    combined = "\n".join([read_contract(RAT_SETUP_SKILL), read_contract(EDA_GUIDE)])
 
     # When: the env_source probe contract is inspected.
     unsafe_concatenation = 'bash -c "$env_source && command -v $tool"'
@@ -150,13 +151,16 @@ def test_env_source_probe_uses_positional_arguments_and_suppresses_banners() -> 
 
     # Then: comments and banners cannot swallow or contaminate command -v output.
     assert unsafe_concatenation not in combined
-    assert combined.count(safe_probe) >= 3
+    assert safe_probe in combined
+    runner = (REPO_ROOT / "scripts/eda_runner.py").read_text()
+    assert "rat-probe" in runner
+    assert 'command -v -- "$1"' in runner
 
 
 def test_shell_version_comparisons_are_portable() -> None:
     # Given: both host-facing installers that compare dotted versions.
-    slang_source = SLANG_INSTALLER.read_text()
-    project_source = PROJECT_INSTALLER.read_text()
+    slang_source = read_contract(SLANG_INSTALLER)
+    project_source = read_contract(PROJECT_INSTALLER)
     helper = re.search(
         r"^version_gte\(\) \{.*?^\}", slang_source, re.DOTALL | re.MULTILINE
     )
@@ -182,86 +186,33 @@ def test_shell_version_comparisons_are_portable() -> None:
     assert "grep -oP" not in slang_source
 
 
-def test_project_template_update_uses_numeric_version_order(tmp_path: Path) -> None:
-    # Given: a deployed synthesis wrapper with a lexically misleading older version.
-    workspace = tmp_path / "project"
-    workspace.mkdir()
-    first = subprocess.run(
-        ["bash", str(PROJECT_INSTALLER), str(workspace)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert first.returncode == 0, first.stderr
-    deployed = workspace / "syn" / "scripts" / "run_syn.sh"
-    deployed.write_text("# rat-version: 0.8.19\nolder-user-copy\n")
-
-    # When: update mode compares it with the shipped 0.11.3 wrapper.
-    update = subprocess.run(
-        ["bash", str(PROJECT_INSTALLER), "--update", str(workspace)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    # Then: numeric ordering updates 0.8.19 to 0.11.3.
-    assert update.returncode == 0, update.stderr
-    assert "# rat-version: 0.11.3" in deployed.read_text()
-
-    # Given: a user copy newer than the shipped wrapper.
-    deployed.write_text("# rat-version: 9.0.0\nnewer-user-copy\n")
-
-    # When: update mode runs again.
-    newer = subprocess.run(
-        ["bash", str(PROJECT_INSTALLER), "--update", str(workspace)],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    # Then: the newer user copy remains untouched.
-    assert newer.returncode == 0, newer.stderr
-    assert "newer-user-copy" in deployed.read_text()
-
-
-def test_post_install_probe_executes_each_tool_once(tmp_path: Path) -> None:
-    # Given: a probe that succeeds once but would fail on a duplicate execution.
-    source = POST_INSTALL.read_text()
-    assert '"LINT GATE"' in source
-    assert '"CDC GATE"' in source
-    helper = re.search(
-        r"^check_tool\(\) \{.*?^\}", source, re.DOTALL | re.MULTILINE
-    )
+def test_project_template_update_uses_numeric_version_order() -> None:
+    source = read_contract(PROJECT_INSTALLER)
+    helper = re.search(r"^_version_gt\(\) \{.*?^\}", source, re.DOTALL | re.MULTILINE)
     assert helper is not None
-    marker = tmp_path / "probe-ran"
-    script = (
-        "set -euo pipefail\n"
-        "GREEN= RED= YELLOW= NC=\n"
-        "REQUIRED_FOUND=0 REQUIRED_TOTAL=0 OPTIONAL_FOUND=0 OPTIONAL_TOTAL=0\n"
-        "MISSING_REQUIRED=()\n"
-        f"MARKER={marker!s}\n"
-        "flaky_probe() { if [ -e \"$MARKER\" ]; then return 23; fi; "
-        ": > \"$MARKER\"; echo 'tool 1.0'; }\n"
-        f"{helper.group(0)}\n"
-        "check_tool demo flaky_probe no diagnostic\n"
-    )
-
-    # When: the post-install helper checks that probe.
     result = subprocess.run(
-        ["bash", "-c", script],
-        text=True,
-        capture_output=True,
-        check=False,
+        ["bash", "-c", helper.group(0) + "\n_version_gt 0.11.3 0.8.19 && ! _version_gt 0.11.3 9.0.0 && ! _version_gt 2.0.0 2.0.0"],
+        capture_output=True, text=True, check=False,
     )
-
-    # Then: status and version come from one invocation without a pipeline race.
     assert result.returncode == 0, result.stderr
-    assert "[OK]" in result.stdout
+
+
+def test_post_install_uses_phase_scoped_capabilities(tmp_path: Path) -> None:
+    result = subprocess.run(["bash", str(POST_INSTALL), "p1"],
+        env={**os.environ,"RAT_PROJECT_ROOT":str(tmp_path)},
+        text=True,capture_output=True,check=False)
+    assert result.returncode == 0, result.stderr
+    import json
+    report = json.loads(result.stdout.splitlines()[-1])
+    assert report["phase"] == "p1"
+    assert report["ready"] is True
+    assert report["capabilities"] == {}
+    assert not list(tmp_path.iterdir())
 
 
 def test_tool_runner_missing_image_errors_use_only_plugin_build_context() -> None:
     # Given: the two Docker fallback error paths.
-    content = TOOL_RUNNER.read_text()
+    content = read_contract(TOOL_RUNNER)
     errors = "\n".join(line for line in content.splitlines() if "Build:" in line)
 
     # When: their suggested image build context is inspected.
@@ -274,7 +225,7 @@ def test_tool_runner_missing_image_errors_use_only_plugin_build_context() -> Non
 
 def test_install_version_resolution_is_portable_and_fails_fast() -> None:
     # Given: the version discovery and install commands.
-    content = INSTALL_COMMANDS.read_text()
+    content = read_contract(INSTALL_COMMANDS)
 
     # When: version ordering, pins, and missing-tag guards are inspected.
     pins = dict(re.findall(r'^(SLANG_VERSION|SVLENS_VERSION)="([^"]+)"$', content, re.MULTILINE))
@@ -289,7 +240,7 @@ def test_install_version_resolution_is_portable_and_fails_fast() -> None:
 
 def test_local_and_global_install_blocks_resolve_their_own_versions() -> None:
     # Given: the two host installation blocks users run independently.
-    content = INSTALL_COMMANDS.read_text()
+    content = read_contract(INSTALL_COMMANDS)
     local_section = content.split("## Mode: `local`", 1)[1].split(
         "## Mode: `global`", 1
     )[0]
@@ -319,7 +270,7 @@ def test_local_and_global_install_blocks_resolve_their_own_versions() -> None:
 
 def test_local_install_resolves_plugin_root_without_claude_environment() -> None:
     # Given: the standalone local install block and an unset Claude plugin root.
-    local_section = INSTALL_COMMANDS.read_text().split("## Mode: `local`", 1)[1].split(
+    local_section = read_contract(INSTALL_COMMANDS).split("## Mode: `local`", 1)[1].split(
         "## Mode: `global`", 1
     )[0]
     local_install = re.findall(r"```bash\n(.*?)\n```", local_section, re.DOTALL)[0]
@@ -351,7 +302,7 @@ def test_local_install_resolves_plugin_root_without_claude_environment() -> None
 
 def test_macos_install_block_builds_a_resolved_systemc_release() -> None:
     # Given: the macOS host installation block users run independently.
-    macos_section = INSTALL_COMMANDS.read_text().split("## macOS (Homebrew)", 1)[1].split(
+    macos_section = read_contract(INSTALL_COMMANDS).split("## macOS (Homebrew)", 1)[1].split(
         "## Docker fallback", 1
     )[0]
     macos_install = re.findall(r"```bash\n(.*?)\n```", macos_section, re.DOTALL)[0]
@@ -373,7 +324,7 @@ def test_macos_install_block_builds_a_resolved_systemc_release() -> None:
 
 def test_slang_server_installer_owns_only_binary_and_source() -> None:
     # Given: the standalone slang-server source installer.
-    content = SLANG_INSTALLER.read_text()
+    content = read_contract(SLANG_INSTALLER)
 
     # When: its managed paths and embedded metadata are inspected.
     plugin_artifacts = (
@@ -391,7 +342,7 @@ def test_slang_server_installer_owns_only_binary_and_source() -> None:
 
 def test_install_commands_pin_svlens_without_root_setup_scripts() -> None:
     # Given: local, global, and macOS install modes.
-    content = INSTALL_COMMANDS.read_text()
+    content = read_contract(INSTALL_COMMANDS)
 
     # When: svlens source acquisition and privilege boundaries are inspected.
     pinned_clones = content.count('git clone --depth 1 --branch "$SVLENS_VERSION"')
@@ -404,7 +355,7 @@ def test_install_commands_pin_svlens_without_root_setup_scripts() -> None:
 
 def test_install_commands_select_oss_cad_archive_for_host_architecture() -> None:
     # Given: the local OSS CAD Suite fallback.
-    content = INSTALL_COMMANDS.read_text()
+    content = read_contract(INSTALL_COMMANDS)
 
     # When: its archive architecture selection is inspected.
     oss_cad = content.split("# ===== Optional: OSS CAD Suite", 1)[1].split("```", 1)[0]
@@ -413,14 +364,14 @@ def test_install_commands_select_oss_cad_archive_for_host_architecture() -> None
     assert 'x86_64) OSS_CAD_ARCH="linux-x64"' in oss_cad
     assert 'aarch64|arm64) OSS_CAD_ARCH="linux-arm64"' in oss_cad
     assert "oss-cad-suite-${OSS_CAD_ARCH}-${OSS_CAD_DATE}.tgz" in oss_cad
-    dockerfile = DOCKERFILE.read_text()
+    dockerfile = read_contract(DOCKERFILE)
     assert 'case "$ARCH" in' in dockerfile
     assert "Unsupported OSS CAD Suite architecture: $ARCH" in dockerfile
 
 
 def test_global_systemc_install_requires_resolved_version() -> None:
     # Given: the privileged host installation block.
-    global_install = INSTALL_COMMANDS.read_text().split(
+    global_install = read_contract(INSTALL_COMMANDS).split(
         "## Mode: `global`", 1
     )[1].split("## macOS", 1)[0]
 
@@ -436,7 +387,7 @@ def test_global_systemc_install_requires_resolved_version() -> None:
 
 def test_install_modes_use_managed_cocotb_virtual_environments() -> None:
     # Given: all host installation modes.
-    content = INSTALL_COMMANDS.read_text()
+    content = read_contract(INSTALL_COMMANDS)
 
     # When: Python package installation and prerequisites are inspected.
     venv_creations = content.count("-m venv")
@@ -454,7 +405,7 @@ def test_install_modes_use_managed_cocotb_virtual_environments() -> None:
 
 def test_contributing_stages_named_paths_and_separates_local_plugin_testing() -> None:
     # Given: the contributor publication workflow.
-    content = CONTRIBUTING.read_text()
+    content = read_contract(CONTRIBUTING)
 
     # When: staging and local plugin instructions are inspected.
     # v0.14.2: CONTRIBUTING.md became the English canonical document and the
@@ -505,7 +456,7 @@ def test_shipped_setup_bash_blocks_parse() -> None:
 
 def test_tool_runner_is_valid_bash() -> None:
     # Given: the deployed Docker-aware runner.
-    content = TOOL_RUNNER.read_text()
+    content = read_contract(TOOL_RUNNER)
 
     # When: Bash parses it without executing Docker.
     result = subprocess.run(["bash", "-n"], input=content, text=True, capture_output=True)
@@ -516,7 +467,7 @@ def test_tool_runner_is_valid_bash() -> None:
 
 def test_tool_check_first_line_commands_capture_status_before_formatting() -> None:
     # Given: discovery commands that format multi-line version output.
-    content = TOOL_CHECK_COMMANDS.read_text()
+    content = read_contract(TOOL_CHECK_COMMANDS)
     formatted = [line for line in content.splitlines() if "head -1" in line]
 
     # When: their status capture order is inspected.

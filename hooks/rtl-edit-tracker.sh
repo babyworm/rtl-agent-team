@@ -54,7 +54,7 @@ _check_p6_stale() {
 #   function returns 1 (out-of-scope) so the verify gate stays active —
 #   safer to over-track than to silently skip a real RTL change.
 _rat_in_ppa_scope() {
-  _ppa_file="$1"
+  _ppa_file=$(ratu_normalize_path "$1" "$SESSION_CWD" "$CWD")
   _ppa_state="$RAT_DIR/state/ppa-loop-state.json"
   [ ! -f "$_ppa_state" ] && return 1
   _ppa_mode=$(jsonu_get_file_path_string "$_ppa_state" "mode")
@@ -135,6 +135,8 @@ _track_and_invalidate() {
     rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
     printf '%s\n' "$_TI_FILES" | while IFS= read -r _ti_f; do
       [ -z "$_ti_f" ] && continue
+      _ti_f=$(ratu_normalize_path "$_ti_f" "$SESSION_CWD" "$CWD")
+      case "$_ti_f" in .claude/worktrees/*) continue ;; esac
       if ! grep -qxF "$_ti_f" "$TRACK_FILE" 2>/dev/null; then
         printf '%s\n' "$_ti_f" >> "$TRACK_FILE"
       fi
@@ -146,11 +148,10 @@ _track_and_invalidate() {
   fi
 }
 
-# Compute count and P6 stale message. Sets globals: COUNT, P6_MSG, SAFE_STATE_DIR
+# Compute count and P6 stale message. Sets globals: COUNT, P6_MSG
 _prepare_gate_output() {
-  COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | wc -l | tr -d ' ')
+  COUNT=$(cat "$TRACK_FILE" "$STATE_DIR/rtl-modified-files-fallback.txt" 2>/dev/null | sort -u | wc -l | tr -d ' ')
   P6_MSG=$(_check_p6_stale "$CWD" "$STATE_DIR")
-  SAFE_STATE_DIR=$(jsonu_escape "$STATE_DIR")
 }
 
 # --- End shared helpers ---
@@ -205,6 +206,16 @@ if [ -z "$FILE_PATH" ]; then
       cat|head|tail|less|more|grep|egrep|fgrep|rg|wc|file|stat|ls|diff|cmp|strings|hexdump|od|readlink|md5sum|sha256sum|sha1sum|cksum)
         emit_post_continue
         ;;
+      git)
+        case "$LINT_CHECK_CMD" in
+          "git diff "*|"git add "*|"git status"*|"git show "*) emit_post_continue ;;
+        esac ;;
+      sed)
+        case "$LINT_CHECK_CMD" in "sed -n "*) emit_post_continue ;; esac ;;
+      make)
+        case "$LINT_CHECK_CMD" in "make sim "*|"make sim"|"make test "*) emit_post_continue ;; esac ;;
+      iverilog|vvp|vcs|xrun|vsim|vlog|run_sim.sh)
+        emit_post_continue ;;
     esac
     # Token-aware lint-only exemption: only when first command IS a lint tool.
     case "$FIRST_CMD_BASE" in
@@ -233,6 +244,12 @@ if [ -z "$FILE_PATH" ]; then
   if [ -z "$BASH_RTL_FILES" ]; then
     emit_post_continue
   fi
+  BASH_RTL_FILES=$(printf '%s\n' "$BASH_RTL_FILES" | while IFS= read -r _raw; do
+    _normalized=$(ratu_normalize_path "$_raw" "$SESSION_CWD" "$CWD")
+    case "$_normalized" in .claude/worktrees/*) continue ;; /*) ;; *) _normalized="$CWD/$_normalized" ;; esac
+    printf '%s\n' "$_normalized"
+  done)
+  [ -n "$BASH_RTL_FILES" ] || emit_post_continue
   _setup_tracking
   # PPA-loop scope check: skip accumulation only for files inside allowed_edit_scope.
   _PPA_SKIP=true
@@ -243,20 +260,15 @@ if [ -z "$FILE_PATH" ]; then
     fi
   done
   if [ "$_PPA_SKIP" = "true" ]; then
+    _check_p6_stale "$CWD" "$STATE_DIR" >/dev/null
     # PostToolUse hook — emit a PostToolUse envelope (emit_continue hardcodes a
     # PreToolUse hookEventName, which fails PostToolUse schema validation and is
     # silently dropped).
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"ppa-loop scope edit — skipping rtl-edit staleness"}}'
-    exit 0
+    emit_post_context "PPA scope edit: run the required equivalence and smoke checks; Phase 6 documents are stale."
   fi
-  # Record each path absolute, as an Edit reports it: a relative path names a file in the
-  # session's directory, which a `cd` may have moved below the project root.
-  BASH_RTL_FILES=$(printf '%s\n' "$BASH_RTL_FILES" | RAT_SESSION_CWD="${SESSION_CWD%/}" awk '
-    substr($0, 1, 1) != "/" { sub(/^(\.\/)+/, ""); $0 = ENVIRON["RAT_SESSION_CWD"] "/" $0 }
-    { print }')
   _track_and_invalidate "$BASH_RTL_FILES"
   _prepare_gate_output
-  printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] Bash command references RTL files (%s unverified). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. When done: touch %s/rtl-verify-done%s"}}' "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
+  emit_post_context "[RTL Verify Gate] Bash command references RTL files ($COUNT unverified). Run functional simulation for changed RTL; scripts/run_sim.sh records content-bound evidence after PASS. $P6_MSG"
   exit 0
 fi
 
@@ -264,7 +276,10 @@ fi
 case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     _setup_tracking
+    FILE_PATH=$(ratu_normalize_path "$FILE_PATH" "$SESSION_CWD" "$CWD")
+    case "$FILE_PATH" in .claude/worktrees/*) emit_post_continue ;; /*) ;; *) FILE_PATH="$CWD/$FILE_PATH" ;; esac
     if _rat_in_ppa_scope "$FILE_PATH"; then
+      _check_p6_stale "$CWD" "$STATE_DIR" >/dev/null
       # PostToolUse hook — emit a PostToolUse envelope (emit_continue hardcodes a
       # PreToolUse hookEventName, which fails PostToolUse schema validation and is
       # silently dropped).
@@ -273,8 +288,7 @@ case "$FILE_PATH" in
     fi
     _track_and_invalidate "$FILE_PATH"
     _prepare_gate_output
-    SAFE_BASENAME=$(jsonu_escape "$(basename "$FILE_PATH")")
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[RTL Verify Gate] %s modified (%s unverified RTL files). After RTL modification you MUST: (1) create/update TB, (2) run cocotb/verilator functional simulation. Lint alone cannot guarantee functional correctness. When done: touch %s/rtl-verify-done%s"}}' "$SAFE_BASENAME" "$COUNT" "$SAFE_STATE_DIR" "$P6_MSG"
+    emit_post_context "[RTL Verify Gate] $(basename "$FILE_PATH") modified ($COUNT unverified RTL files). Run functional simulation for changed RTL; lint alone does not verify behavior. scripts/run_sim.sh records content-bound evidence after PASS. $P6_MSG"
     ;;
   */sim/*.py)
     # Testbench Python file modified — invalidate previous verification results

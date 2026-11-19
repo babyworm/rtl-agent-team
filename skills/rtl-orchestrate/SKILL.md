@@ -111,18 +111,18 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 
 Action Skills are user-facing. Each action delegates to one orchestrator agent, which loads one policy skill. Team mode of a merged phase skill dispatches that phase's team orchestrator.
 
-| Action Skill | Orchestrator Agent | Policy Skill |
+| Action Skill | Orchestrator Agent | Embedded policy fragment |
 |--------------|--------------------|-------------|
 | `rat-auto-design` | `autopilot-orchestrator` | `rat-auto-design-policy` |
-| `p1-spec-research` | `p1-research-orchestrator` (team mode: `p1-research-team-orchestrator`) | `p1-spec-research-policy` |
-| `p2-arch-design` | `p2-arch-orchestrator` (team mode: `p2-arch-team-orchestrator`) | `p2-arch-design-policy` |
-| `rtl-p3-uarch-design` | `p3-uarch-orchestrator` (team mode: `p3-uarch-team-orchestrator`) | `rtl-p3-uarch-policy` |
-| `rtl-p4-implement` | `p4-implement-orchestrator` (team mode: `p4-implement-team-orchestrator`) | `rtl-p4-implement-policy` |
+| `p1-spec-research` | `p1-research-orchestrator` (team mode: `p1-research-orchestrator`) | `p1-spec-research-policy` |
+| `p2-arch-design` | `p2-arch-orchestrator` (team mode: `p2-arch-orchestrator`) | `p2-arch-design-policy` |
+| `rtl-p3-uarch-design` | `p3-uarch-orchestrator` (team mode: `p3-uarch-orchestrator`) | `rtl-p3-uarch-policy` |
+| `rtl-p4-implement` | `p4-implement-orchestrator` (team mode: `p4-implement-orchestrator`) | `rtl-p4-implement-policy` |
 | `rtl-p4-rapid-impl` | `p4-rtl-sanity-orchestrator` | `rtl-p4-rapid-impl-policy` |
 | `rtl-p4s-bugfix` | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
 | `rtl-p4s-refactor` | `p4s-refactor-orchestrator` | `rtl-p4s-refactor-policy` |
 | `rtl-p4s-unit-test` | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
-| `rtl-p5-verify` | `p5-verify-orchestrator` (team mode: `p5-verify-team-orchestrator`) | `rtl-p5-verify-policy` |
+| `rtl-p5-verify` | `p5-verify-orchestrator` (team mode: `p5-verify-orchestrator`) | `rtl-p5-verify-policy` |
 | `rtl-p5a-functional-closure` | `p5a-functional-closure-orchestrator` | `rtl-p5a-functional-closure-policy` |
 | `rtl-p5b-silicon-validation` | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | `rtl-p5s-func-verify` | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
@@ -143,9 +143,9 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rtl-p4-block-parallel` | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
 | `rat-ultraloop` | — (skill-driven, dispatches `ultraloop-reviewer` for review cycles) | — |
 
-**Cross-cutting policy skills** (referenced by specialist agents, not tied to a single orchestrator):
+**Cross-cutting policy fragments** (referenced by specialist agents, not tied to a single orchestrator):
 
-| Policy Skill | Referenced By | Purpose |
+| Embedded policy fragment | Referenced By | Purpose |
 |-------------|---------------|---------|
 | `test-design-policy` | `testbench-dev`, `test-plan-writer` | Systematic test case design methodology (ECP, BVA, state transition, decision table) |
 
@@ -212,22 +212,22 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Improvement analysis | `improvement-analyst` | Opus |
 
 ### Orchestrator Agents (pipeline coordinators)
-| Pipeline | Agent | Policy Skill |
+| Pipeline | Agent | Embedded policy fragment |
 |----------|-------|-------------|
 | Full pipeline (P1→P6) | `autopilot-orchestrator` | `rat-auto-design-policy` |
 | Phase 1: Research | `p1-research-orchestrator` | `p1-spec-research-policy` |
 | Phase 2: Architecture | `p2-arch-orchestrator` | `p2-arch-design-policy` |
 | Phase 3: μArch | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
 | Phase 4: RTL Implementation | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
-| Phase 1: Research (Team) | `p1-research-team-orchestrator` | `p1-spec-research-policy` |
-| Phase 2: Architecture (Team) | `p2-arch-team-orchestrator` | `p2-arch-design-policy` |
-| Phase 3: μArch (Team) | `p3-uarch-team-orchestrator` | `rtl-p3-uarch-policy` |
-| Phase 4: RTL Implementation (Team) | `p4-implement-team-orchestrator` | `rtl-p4-implement-policy` |
+| Phase 1: Research (Team) | `p1-research-orchestrator` | `p1-spec-research-policy` |
+| Phase 2: Architecture (Team) | `p2-arch-orchestrator` | `p2-arch-design-policy` |
+| Phase 3: μArch (Team) | `p3-uarch-orchestrator` | `rtl-p3-uarch-policy` |
+| Phase 4: RTL Implementation (Team) | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
 | Phase 4: Rapid RTL + Sanity | `p4-rtl-sanity-orchestrator` | `rtl-p4-rapid-impl-policy` |
 | Phase 4: Bug Fix | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
 | Phase 4: Unit Test | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
 | Phase 5: Verification | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
-| Phase 5: Verification (Team) | `p5-verify-team-orchestrator` | `rtl-p5-verify-policy` |
+| Phase 5: Verification (Team) | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
 | Phase 5A: Functional Closure | `p5a-functional-closure-orchestrator` | `rtl-p5a-functional-closure-policy` |
 | Phase 5B: Silicon Validation | `p5b-silicon-validation-orchestrator` | `rtl-silicon-validation-policy` |
 | Phase 5: Func Verify | `p5s-func-verify-orchestrator` | `rtl-p5s-func-verify-policy` |
@@ -242,7 +242,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | LLM Review + Refactor | `review-refactor-orchestrator` | `code-review-policy` + `refactor-classification-policy` + `verification-recheck-policy` |
 | DSE | `dse-orchestrator` | `rat-dse-policy` |
 | Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
-| Spec→μArch (P1-3 Team) | `spec-to-uarch-team-orchestrator` | `rat-p1p3-spec-uarch-policy` |
+| Spec→μArch (P1-3 Team) | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
 | μArch→Verify (P4-5) | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
 | Phase 4: Block-Parallel | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
 | Phase 4: Block Worker | `p4-block-worker` | `rtl-p4-implement-policy` |
@@ -252,7 +252,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Task Type | Agent | Model |
 |----------|-------|-------|
 | EDA tool execution | `eda-runner` | Opus |
-| Synthesis metrics | `synthesis-reporter` | Opus |
+| Synthesis metrics | `scripts/parse_synthesis.py` | — (deterministic script) |
 | Lint checking | `lint-checker` | Opus |
 | SDC constraint generation | `constraint-writer` | Opus |
 | Timing analysis (STA) | `timing-advisor` | Opus |
@@ -430,7 +430,7 @@ This rule applies to ALL tasks that modify `.sv/.svh/.v/.vh` files.
 **Correct flow:** RTL modify → lint pass → TB create/update → simulation PASS → "done"
 
 **Gate signals:**
-- Verification done: `touch .rat/state/rtl-verify-done`
+- Verification done: `scripts/run_sim.sh` records `.rat/state/verify-evidence.json` after a measured PASS
 - Waiver (non-functional changes): the user's decision. Ask before creating `.rat/state/rtl-verify-waiver`.
 - Both files are in the project root's `.rat/state/` (the root is the directory that holds `.rat/`), not in a subdirectory the session cd'd into.
 
@@ -506,10 +506,10 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules and pipeline rules |
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track RTL file modifications |
 | `rtl-skill-activation.sh` | PreToolUse:Skill, PostToolUse:Skill | Setup and phase advisory before the call; completion-loop state (criteria, same-skill counter reset) once the call ran |
-| `stop-gate.sh` | Stop | Autopilot escalation ladder enforcement + dynamic prompt injection |
+| `stop-gate.sh` | Stop | Missing-work continuation; user decisions precede loops |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade enforcement + document mtime verification |
-| `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
+| `rtl-skill-completion-gate.sh` | Stop | Bounded completion reminder; no automatic review ladder |
 | `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval enforcement (non-standard bins require user confirmation) |
 
 Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → `rtl-skill-completion-gate` → `rtl-coverage-exclusion-gate` → `stop-gate`.
@@ -519,7 +519,7 @@ Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → 
 
 Hook-enforced (quality gates):
 - `.rat/state/rat-auto-design-state.json` — Full pipeline progress (stop-gate)
-- `.rat/state/rat-auto-design-state.json::orchestration_control` — Active gate counters/strategy (`N→2N→last-chance`) and dynamic prompt payload
+- `.rat/state/rat-auto-design-state.json::orchestration_control` — Recorded failed repair count (max 2) and pending user decisions
 - `.rat/state/rtl-verify-done` — RTL verification completion gate (rtl-verify-stop-gate)
 - `.rat/state/rtl-verify-waiver` — Verification waiver (rtl-verify-stop-gate)
 - `.rat/state/skill-active.json` — Skill completion loop state (rtl-skill-activation, rtl-skill-completion-gate)
@@ -537,7 +537,7 @@ Agent-managed (orchestrator resumability):
 
 Templates:
 - `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/autopilot-state.json` (or `skills/rat-auto-design/templates/autopilot-state.json` in repo context) — v3.0 state schema with `orchestration_control`
-- `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/escalation-prompts.json` (or `skills/rat-auto-design/templates/escalation-prompts.json` in repo context) — fallback prompt templates for ladder transitions
+- `${CLAUDE_PLUGIN_ROOT}/skills/rat-auto-design/templates/escalation-prompts.json` (or `skills/rat-auto-design/templates/escalation-prompts.json` in repo context) — legacy templates; automatic strategy escalation is disabled
 
 ---
 
@@ -640,6 +640,7 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 ## Core Design Principles
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
 - **Light review**: One review against the evidence, then stop and name the open items. A further round only when the user asks. With no measurement, the model's confidence is the gate: one spec reading, or one architecture choice, passes. Do not iterate to raise it. Low confidence is asked once. Lint, simulation, formal, coverage, synthesis, CDC, and model comparison are judged from the measured result. Confidence does not override a measurement. Prompts state the goal, the constraints, the evidence, and the done condition. Do not add step-by-step scaffolding for judgment work. Leave effort at the session default.
+- **Judgment and ambiguity**: Record confidence and the evidence for a decision. Check whether different readings change behavior, interfaces, constraints, or a verification expected result. An unresolved material ambiguity stays open, regardless of an average score. Ask once when a user decision is needed and continue independent work. Keep project contracts and task-specific source facts; do not teach general RTL knowledge or force a fixed exploration method.
 - **Document-as-Memory**: Design artifacts serve as persistent memory across phases. Each phase reads upstream docs, writes downstream. Enables resumability.
 - **Asymmetric Phase Gate**: Exit gates enforce artifact existence (strict). Entry gates scan and warn but proceed with available artifacts (flexible). Feedback loops capped at 2 iterations before user escalation.
 - **Cross-Phase Artifact Functional Consistency**: Verification artifacts (P2 refC, P3 BFM, P4 unit tests, P5 TBs) must be functionally validated against upstream references via output comparison — not just file existence + compilation. BFM that compiles but produces wrong output → FAIL.
@@ -648,8 +649,8 @@ Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and l
 Port prefix `i_`/`o_`/`io_` (NOT suffix; clk/rst exempt). Clock `clk`/`{domain}_clk`, reset `rst_n`/`{domain}_rst_n` (active-low async). snake_case only (no CamelCase); params ALL_CAPS, localparam `L_` prefix. Full rules auto-load from `.claude/rules/rtl-coding-conventions.md` on .sv access (deployed by rat-init-project).
 
 ## Mandatory Verification After RTL Changes
-RTL modify → lint (`verilator --lint-only -Wall`) → TB create/update → simulation PASS → done
-Gate: `touch .rat/state/rtl-verify-done` after a passing simulation. A waiver for non-functional changes (`.rat/state/rtl-verify-waiver`) is the user's decision; ask first. Both are in the project root's `.rat/state/`, not in a subdirectory the session cd'd into.
+RTL modify → configured lint → TB create/update → simulation PASS → done
+Gate: `scripts/run_sim.sh` records `.rat/state/verify-evidence.json`; completion requires a measured PASS bound to the current inputs and logs. A waiver for non-functional changes (`.rat/state/rtl-verify-waiver`) is the user's decision; ask first. Both are in the project root's `.rat/state/`, not in a subdirectory the session cd'd into.
 
 ## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)

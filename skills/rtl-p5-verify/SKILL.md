@@ -84,7 +84,7 @@ Bash("mkdir -p docs/phase-5-verify reviews/phase-5-verify sim/coverage formal li
 # Step 4: No initial tasks from skill — coordinator creates per-module V1-V9 after discovering modules
 
 # Step 5: Spawn coordinator as teammate (orchestrator)
-Agent(team_name="p5-verify", subagent_type="rtl-agent-team:p5-verify-team-orchestrator",
+Agent(team_name="p5-verify", subagent_type="rtl-agent-team:p5-verify-orchestrator",
       name="coordinator", description="P5 verification coordination",
       prompt="You are the Phase 5 verification coordinator in team 'p5-verify'. "
              "Manage the 9-category task graph using TaskCreate/TaskList/TaskUpdate. "
@@ -120,7 +120,7 @@ Agent(team_name="p5-verify", subagent_type="rtl-agent-team:eda-runner",
              "Phase artifacts: reviews/phase-5-verify/. "
              "Specialty: performance (V7), synthesis estimation (V8). "
              "For specialist work, spawn: Task(subagent_type='rtl-agent-team:<specialist>', prompt='...'). "
-             "Examples: perf-verifier for V7, synthesis-reporter for V8. "
+             "Examples: perf-verifier for V7, direct synthesis parser for V8. "
              "Follow the Team Worker Protocol section of your agent definition.")
 Agent(team_name="p5-verify", subagent_type="rtl-agent-team:rtl-critic",
       name="review-worker", description="P5 code review and compliance",

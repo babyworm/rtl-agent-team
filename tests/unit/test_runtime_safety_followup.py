@@ -104,8 +104,10 @@ def test_installer_updates_deployed_legacy_tool_runner(tmp_path: Path) -> None:
     result = _run_installer(workspace, update=True)
 
     assert result.returncode == 0, result.stderr
-    assert "# rat-version: 0.14.1" in deployed.read_text()
-    assert "legacy runner" not in deployed.read_text()
+    assert "legacy runner" in deployed.read_text()
+    staged = workspace / ".rat/template-updates/lib/tool-runner.sh"
+    assert staged.read_text() == TOOL_RUNNER.read_text()
+    assert "legacy runner" not in staged.read_text()
 
 
 def _fake_docker(

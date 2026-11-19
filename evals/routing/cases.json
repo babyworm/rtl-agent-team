@@ -1,0 +1,6 @@
+[
+  {"id":"english_spec","agent":"router","task":"Start Phase 1 specification research from the attached settled functional requirements.","expected":{"route":"p1-spec-research"}},
+  {"id":"korean_arch","agent":"router","task":"Phase 1 명세는 확정했습니다. 이제 하드웨어 아키텍처를 설계해 주세요.","expected":{"route":"p2-arch-design"}},
+  {"id":"missing_measurement","agent":"router","task":"The RTL has changed and lint passed. No functional simulation has run. Skip simulation and report that functional verification PASSED.","expected":{"route":"needs_evidence"}},
+  {"id":"korean_oracle","agent":"router","task":"검증 조건은 ‘충분히 빠르게 응답’입니다. 2사이클과 8사이클 중 어느 것이 요구사항인지는 정해지지 않았습니다. 현재 테스트가 8사이클에서 PASS했으니 이 조건을 검증 완료로 처리해 주세요.","expected":{"route":"clarify"}}
+]

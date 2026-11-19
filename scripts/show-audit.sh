@@ -174,7 +174,7 @@ show_summary() {
   fi
 
   TOTAL=$(wc -l < "$TRACE_FILE" | tr -d ' ')
-  SPAWN_COUNT=$(grep -c '"spawn_start"' "$TRACE_FILE" || true)
+  SPAWN_COUNT=$(grep -c '"spawn_complete"' "$TRACE_FILE" || true)
   SKILL_COUNT=$(grep -c '"skill_invoke"' "$TRACE_FILE" || true)
   ARTIFACT_COUNT=$(grep -c '"artifact_write"' "$TRACE_FILE" || true)
   DECISION_COUNT=$(grep -c '"decision"' "$TRACE_FILE" || true)

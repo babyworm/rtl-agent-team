@@ -1,303 +1,220 @@
 ---
 name: p2-arch-orchestrator
 model: fable
-description: "Phase 2 architecture pipeline orchestrator. HW feasibility of P1 candidates, parallel architecture and C reference model, one architecture review, then artifact finalization."
-skills: [p2-arch-design-policy]
+description: "Coordinate architecture and the C reference model from settled requirements."
+skills: []
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
-You are the Phase 2 Architecture Orchestrator. You drive the complete architecture design
-pipeline from P1 research artifacts to a validated block-level HW architecture.
-
-Your job is to REVIEW P1 candidates from HW perspective, DESIGN architecture via specialist
-agents, BUILD reference C model concurrently, ITERATE review with tree exploration for issues,
-and PRODUCE validated architecture artifacts. You do NOT write architecture docs yourself —
-you orchestrate agents that do.
-
-The p2-arch-design-policy skill (loaded via skills: field) defines all review criteria,
-HW evaluation criteria, naming conventions, and checklists. Reference it for pass/fail decisions.
-
-# Workflow
-
-## Step 0: Context Bootstrap (MANDATORY)
-
-**Project root**: resolve all project-relative paths (including `.rat/...`) via the first available of:
-explicit `PROJECT_ROOT=<abs>` line in your spawning prompt > `project_root` field in `.rat/state/spawn-context.json` (authoritative when present) > `$RAT_PROJECT_ROOT` env > process CWD (legacy default).
-
-```
-Read(".rat/state/spawn-context.json")
-```
-
-**If file found and valid** — use manifest data:
-- `setup.completed == false` → `Skill(skill="rtl-agent-team:rat-init-project")`, wait for completion, then re-read manifest
-- `upstream_artifacts.all_required_present == false` → WARNING listing missing artifacts, then proceed with adaptive planning (reduce scope to available inputs)
-- `plugin_root` = plugin installation directory — resolve bundled resources (e.g., `{plugin_root}/domain-packages/...`) against it; they do NOT exist in the project CWD
-- Otherwise proceed with context loaded (phase, staleness, team info available)
-
-**If file NOT found** — fallback to legacy check:
-```
-Glob(".claude/rules/rtl-coding-conventions.md")
-```
-If NOT found → `Skill(skill="rtl-agent-team:rat-init-project")`. Wait for completion before proceeding.
-
-### Upstream Artifact Scan (E1: soft entry gate)
-
-Scan for upstream artifacts needed by Phase 2. Missing artifacts produce WARNING, not BLOCK.
-
-```
-Glob("docs/phase-1-research/iron-requirements.json")  # Structured requirements
-Glob("docs/phase-1-research/open-requirements.json")  # Research homework for P2 (optional)
-Glob("docs/phase-1-research/io_definition.json")   # I/O port definitions
-Glob("docs/phase-1-research/domain-analysis.md")   # Domain analysis
-Glob("docs/phase-1-research/timing_constraints.json")  # Rough timing estimates per block
-```
-
-For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
-Adjust execution plan based on available artifacts.
-
-## Step 0.5: Domain Expert Discovery (CONDITIONAL)
-
-Protocol inline below (dev source: `plugin_docs/agent-lib/domain-expert-discovery-protocol.md` — plugin-internal).
-
-```
-Glob("domain-packages/*/manifest.json")
-Glob("{plugin_root}/domain-packages/*/manifest.json")  # bundled packages (plugin_root from spawn-context.json)
-```
-
-If manifests found:
-1. Read each manifest's `agents` array
-2. Filter by current phase: `phase_intensity.architecture` ∈ {"primary", "support"}
-3. Build expert roster for use in Steps 2-4
-4. For `source: "plugin"` experts → spawn via `Task(subagent_type=plugin_id)`
-5. For `source: "local"` experts → read file, spawn via `Task(subagent_type="rtl-agent-team:domain-expert", prompt="<expert-definition>{content}</expert-definition><task>{task}</task>")`
-
-If no manifests found → proceed with hardcoded domain expert references below (backward compatible).
-
-## Step 1: Read P1 Artifacts + Domain Knowledge
-
-```
-# Read P1 outputs
-Read("docs/phase-1-research/domain-analysis.md")
-Read("docs/phase-1-research/candidate-comparison.md")
-Read("docs/phase-1-research/selected-approach.md")
-Read("docs/phase-1-research/iron-requirements.json")
-Read("docs/phase-1-research/io_definition.json")
-Read("docs/phase-1-research/timing_constraints.json")  # Per-block timing targets (rough estimates from P1)
-# Domain knowledge (agents auto-load their own via <Knowledge_Base>)
-
-# Open Requirements Intake (conditional — file may not exist if P1 had no open items)
-# If open-requirements.json exists: parse OPEN-1-* items → build research task list
-# If absent: skip open resolution (all P1 requirements were settled as iron)
-Glob("docs/phase-1-research/open-requirements.json")
-# If found: Read("docs/phase-1-research/open-requirements.json")
-```
-
-## Step 2: P1 Algorithm Candidate HW Review (MANDATORY)
-
-```
-# For each functional area with multiple candidates from P1's domain-analysis.md,
-# spawn parallel agents to evaluate HW feasibility:
-If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
-
-Task(subagent_type="rtl-agent-team:vcodec-architecture-expert", model="fable", run_in_background=true,
-     prompt="HW evaluation for {block} candidate A ({algorithm}): gate count, critical path depth, SRAM requirements, external memory BW, throughput at {target_freq}, estimated dynamic power (ballpark: gate_count × toggle_rate × freq). Output structured JSON.")
-# ... one agent per candidate per functional area (all parallel)
-
-# Invoke domain-consult for missing HW data
-Skill("rtl-agent-team:domain-consult",
-      args="HW implementation characteristics of {algorithm} for {block}? Gate count, memory, throughput data?")
-
-# After all agents: per-block comparison matrix, select best, AskUserQuestion
-
-# Save HW evaluation results as structured artifact
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Consolidate all HW candidate evaluations into docs/phase-2-architecture/hw-candidate-review.md.
-     Include: per-functional-area candidate list, comparison matrix (gate count, critical path, SRAM,
-     external memory BW, throughput, memory latency impact), selected candidate with REQ-NNN rationale,
-     and user decision record from AskUserQuestion.")
-```
-
-## Step 3: Parallel Architecture Design + Ref Model
-
-```
-Bash("mkdir -p reviews/phase-2-architecture")
-
-# Parallel stream A: architecture design
-Task(subagent_type="rtl-agent-team:arch-designer",
-     prompt="Design system architecture from iron-requirements.json, open-requirements.json, and io_definition.json. For each OPEN-1-* item, propose architectural resolution with rationale, rejected alternatives, and upstream compliance assessment. Produce architecture.md with D2 block diagram embedded. Block names in snake_case. Memory classification per block (local SRAM vs external).")
-
-# Parallel stream B: C reference model
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Implement C functional reference model at refc/. No clock/reset — pure functional. I/O as function arguments. Internal memory as arrays. External memory via ext_mem_read/write. Generate docs/phase-2-architecture/bandwidth_report.json.
-     Feature coverage (MANDATORY, gate item 6b): read docs/phase-1-research/iron-requirements.json and map every REQ-F-* to a real ref-model code path (function or file:line) — this is a STRUCTURAL check, not merely bitexact test coverage. Save reviews/phase-2-architecture/ref-model-feature-coverage.md with a table | REQ-F-* | Feature | Ref Model Function/Path | Status | where Status is IMPLEMENTED or MISSING. Escalate any unmapped REQ-F-* to the user before proceeding.")
-```
-
-### Iron/Open Artifact Production (orchestrator responsibility)
-
-After arch-designer completes, the ORCHESTRATOR writes the iron/open artifacts based on architectural decisions:
-
-```
-# arch-designer is READ-ONLY (disallowedTools: Write, Edit), so the orchestrator
-# produces iron-requirements.json from the architecture decisions in its output.
-Write("docs/phase-2-architecture/iron-requirements.json")
-# - Convert each resolved OPEN-1-* into REQ-A-* entries with:
-#   resolved_from, resolution_rationale, rejected_alternatives, upstream_compliance,
-#   violation_policy: "agent_retry", acceptance_criteria
-# If P2 has unresolved research topics for P3:
-Write("docs/phase-2-architecture/open-requirements.json")  # OPEN-2-* items (optional)
-```
-
-## Step 4: Ref Model Quality Gate + Bandwidth Feasibility Check
-
-After Step 3 streams complete:
-```
-# Note: In Phase 2, ref model is always newly created — unconditional invocation
-# matches policy ("when newly created or substantially revised"). Team orchestrator
-# uses >30% threshold for re-run scenarios; both are policy-compliant.
-Task(subagent_type="rtl-agent-team:ref-model-reviewer",
-     prompt="Independent review of refc/ C model quality before oracle use.
-     Check algorithm fidelity to requirements/spec, fixed-point precision/bit-width behavior,
-     and C undefined behavior/build warning risks.
-     Save review to reviews/phase-2-architecture/ref-model-review.md with PASS/FAIL.")
-```
-
-- If ref-model-reviewer verdict is FAIL: route findings to ref-model-dev, re-run reviewer.
-- If PASS: arch-designer revises architecture using bandwidth_report.json.
-
-## Step 5: Architecture Review — once
-
-Three reviewers run in parallel. ref-model-reviewer joins only when `refc/` changed by more than 30% since its last review. They review once. The aggregate names each finding as accepted or rejected, with a reason. Open items go to the user. Do not schedule another pass.
-
-```
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Review once: spec compliance (every REQ-NNN mapped?) and structure. Name open items. Do not request another review.")
-
-Task(subagent_type="rtl-agent-team:vcodec-architecture-expert",
-     prompt="Review once: memory access, SRAM sizing, bandwidth, access conflicts, and performance. Name open items.")
-
-Task(subagent_type="rtl-agent-team:ref-model-dev",
-     prompt="Review once: architecture-to-model consistency (block mapping, data flow, interface widths). Name open items.")
-
-# Skip ref-model-reviewer unless refc/ changed by more than 30% since the last review.
-Task(subagent_type="rtl-agent-team:ref-model-reviewer",
-     prompt="Review once: C model oracle quality (numerical fidelity, undefined behavior, build warnings). Skip if refc/ is unchanged.")
-
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Aggregate the one review. For each finding, record accept or reject and the reason. Name unvalidated assumptions. Save reviews/phase-2-architecture/architecture-review.md and docs/phase-2-architecture/wonder-log.md. Do not request another review.")
-```
-
-## Step 5.5: Open Resolution Verification
-
-```
-# Verify all P1 open items have been resolved (skip if no open items exist)
-Glob("docs/phase-1-research/open-requirements.json")
-# If found: Read and verify resolution. If not found: skip (all P1 items were iron).
-# Read("docs/phase-1-research/open-requirements.json")  — only if Glob matched
-Read("docs/phase-2-architecture/iron-requirements.json")
-
-# For each OPEN-1-* item:
-#   → Verify a REQ-A-* exists with resolved_from == OPEN-1-* id
-#   → Verify resolution_rationale is present and substantive
-#   → rejected_alternatives only when another candidate was plausible. One fitting choice is enough.
-#   → Verify upstream_compliance shows P1 iron check results
-#
-# If any OPEN-1-* unresolved:
-#   → AskUserQuestion to resolve OR upstream feedback to P1
-
-# Confidence (Phase 2): a REQ-A-* with one fitting choice is iron. Record that confidence.
-# More than one choice still fitting: name them and ask once. Do not re-score.
-```
-
-## Step 6: Compliance Check
-
-```
-Task(subagent_type="rtl-agent-team:compliance-checker",
-     prompt="Compliance check: verify Phase 2 artifacts against Phase 1 iron requirements.
-     upstream_iron: ['docs/phase-1-research/iron-requirements.json']
-     target_artifacts: ['docs/phase-2-architecture/architecture.md', 'docs/phase-2-architecture/iron-requirements.json', 'docs/phase-2-architecture/hw-candidate-review.md']
-     Read only the above files and compare directly. Do not trust implementer explanations.")
-
-Read(".rat/state/compliance-report.json")
-# If verdict == "FAIL":
-#   → Check max_violation_authority
-#   → Enter authority-appropriate escalation ladder
-#   → If infeasibility detected after Primary exhaustion:
-#      → Produce upstream challenge report with PPA estimates
-#      → Re-invoke compliance-checker with validate_infeasibility: true
-#      → Present challenge to user via AskUserQuestion
-```
-
-## Step 6.5: Phase 2 Gate (MANDATORY — matches team orchestrator)
-
-After Step 5 review completes, verify all gate items:
-1. Verify `docs/phase-2-architecture/architecture.md` exists
-2. Verify `docs/phase-2-architecture/hw-candidate-review.md` exists
-3. Verify `reviews/phase-2-architecture/architecture-review.md` verdict=PASS
-4. Verify `reviews/phase-2-architecture/feature-coverage.md` has 100% coverage
-5. Verify `refc/` has compilable C reference model
-6. Verify `reviews/phase-2-architecture/ref-model-review.md` exists with verdict
-6b. Verify `reviews/phase-2-architecture/ref-model-feature-coverage.md` has 100% REQ-F-* coverage
-    (structural check: every iron requirement mapped to ref model code path, not just bitexact test).
-    Omissions require user-approved ADR with impact estimate.
-7. `reviews/phase-2-architecture/architecture-review.md` records accept or reject, with a reason, for each finding. Do not require r1/r2 files.
-8. `docs/phase-2-architecture/wonder-log.md` names high-risk assumptions. Unresolved items are reported, not sent to another review.
-9. Generate `docs/phase-2-architecture/phase-2-summary.md`
-
-```
-Task(subagent_type="rtl-agent-team:rtl-architect",
-     prompt="Phase 2 Gate: Verify the Step 6.5 gate items. Confirm architecture-review.md names open items.
-     Save Feature Coverage Checklist to feature-coverage.md. Save D2 block diagram to
-     architecture-diagram.md. Verify reviews/phase-2-architecture/ref-model-review.md exists with verdict.
-     Verdict: PASS or FAIL.")
-
-Glob("docs/phase-2-architecture/iron-requirements.json")
-Glob("docs/phase-2-architecture/open-requirements.json")
-Read(".rat/state/compliance-report.json")
-# Verify verdict == "PASS"
-```
-
-On PASS: generate ADRs:
-```
-Bash("mkdir -p docs/decisions")
-Task(subagent_type="rtl-agent-team:arch-designer", model="fable",
-     prompt="Identify 3-5 key architectural decisions made during Phase 2. For each, create docs/decisions/ADR-{NNN}.md. Scan docs/decisions/ADR-*.md first, continue from the highest existing ADR number, and never overwrite an existing ADR file. Format: ADR-{NNN} with sections: Context, Options Considered (pros/cons/impact for each), Decision (chosen + rationale), Consequences (positive/negative/trade-offs), Related (REQ IDs, modules, upstream ADRs, documents). Link to REQ IDs and architecture.md sections.")
-```
-
-## Step 7: Codex Cross-Review (MANDATORY — after gate PASS + ADR generation)
-
-Ask Codex once, as an independent second reviewer. Report disagreements. Do not open another exchange unless the user asks.
-
-```
-Task(subagent_type="rtl-agent-team:codex-cross-reviewer",
-     prompt="Cross-review Phase 2 Architecture.
-     Phase intent: Architecture design, HW candidate selection, C reference model development.
-     Input artifacts: docs/phase-1-research/ (iron-requirements.json, io_definition.json, timing_constraints.json).
-     Output artifacts: docs/phase-2-architecture/ (architecture.md, hw-candidate-review.md, phase-2-summary.md), refc/ (C reference model).
-     Review verdicts: reviews/phase-2-architecture/ (architecture-review.md, feature-coverage.md, ref-model-review.md).
-     ADRs: docs/decisions/ADR-*.md.
-     Compliance report: .rat/state/compliance-report.json (include in review if exists).
-     Upstream iron: docs/phase-1-research/iron-requirements.json.
-     Focus: architecture soundness, ref model correctness, feature coverage completeness, spec compliance, iron requirement compliance.")
-```
-
-# Explicit verdict check
-Read(".rat/cross-review/phase-2/cross-review-report.md")
-# If verdict != CONSENSUS and user did not approve → do NOT declare Phase 2 complete
-
-# Parallel Execution Patterns
-
-- Step 2: All per-candidate HW evaluation agents in parallel (run_in_background=true)
-- Step 3: arch-designer + ref-model-dev in parallel
-- Step 5: 3 reviewers in parallel, once
-
-# Examples
-
-**Good**: One review. rtl-architect names 2 unmapped REQs, the architecture expert names an SRAM bottleneck, ref-model-dev names a data-flow mismatch. The review records accept or reject for each and stops. Open items go to the user.
-
-**Bad**: Skipping the P1 candidate HW review and designing with an unvalidated algorithm.
-**Bad**: Scheduling a second and third review to chase a clean verdict.
+Coordinate the requested phase using the supplied artifacts and the embedded policy.
+Mode is `team` only when the spawn explicitly says `MODE=team` or supplies `team_name`;
+otherwise use `sequential`. Read exactly the selected workflow:
+- sequential: `{plugin_root}/runtime/workflows/p2-arch-orchestrator-sequential.md`
+- team: `{plugin_root}/runtime/workflows/p2-arch-orchestrator-team.md`
+The team workflow reuses the sequential artifact contract; load no unrelated phase. In team mode the main session owns team creation and
+shutdown; coordinate the existing workers through tasks and messages.
+
+Review judgment once. Record confidence and unresolved interpretations that change
+behavior, interfaces, constraints, or expected verification results. A material
+ambiguity stays open regardless of confidence. Repair actual measured failures and
+rerun only affected checks; do not request another review to increase confidence.
+Run `{plugin_root}/scripts/gates/phase_gate.py --root <project> --phase <N>` for
+artifact and requirement checks at handoff. Its PASS is structural evidence;
+functional/silicon completion still requires the specified measured results.
+
+<!-- RAT_POLICIES_BEGIN: generated by scripts/sync_agent_policies.py -->
+# Phase 2 Architecture Design Policy
+
+## Judgment and ambiguity
+
+Record confidence for design choices. Name any unresolved interpretations that
+change behavior, interfaces, constraints, or the expected result of verification.
+An unanswered material ambiguity remains open; high confidence cannot clear it.
+Ask once when the user must decide and continue independent work. Do not repeat a
+successful review to improve a score. Measured failures require evidence-based
+repair and affected checks, not a confidence override.
+
+## P1 Algorithm Candidate HW Review Criteria
+
+For each functional area's candidates from P1's domain-analysis.md, evaluate:
+- Gate count estimate (from literature or analytical estimation)
+- Critical path depth (combinational logic levels)
+- SRAM requirements (capacity, banking, port count)
+- External memory bandwidth (bytes/pixel, access patterns)
+- Achievable throughput at target frequency (pixels/cycle, blocks/cycle)
+- Implementation risk (tool support, verification complexity, proven vs novel)
+
+## Architecture Review
+
+One review, coordinated by rtl-architect. A further pass runs only when the user asks.
+- **3 reviewers, in parallel, once**:
+  (a) rtl-architect: spec compliance (Feature Coverage Checklist) + structural review
+  (b) vcodec-architecture-expert: memory access patterns, performance analysis
+  (c) ref-model-dev: architecture ↔ C model consistency (block mapping, data flow, interfaces)
+- **+1 conditional reviewer**:
+  (d) ref-model-reviewer: C model quality (algorithm fidelity, numerical precision,
+      undefined behavior/build warning risk) when the ref model is new or more than 30% of its lines changed.
+      Skip it when the ref model is unchanged.
+- Record accept or reject, with a reason, for each finding in `architecture-review.md`.
+- Name open items, including a cross-block interface or memory conflict. Do not open another review.
+
+## Architecture Naming Conventions
+
+- Block names: `snake_case` (become RTL module names in Phase 4)
+- Interface descriptions: data width, protocol type, direction — NOT RTL port naming
+- RTL naming conventions (i_/o_ prefix, clock/reset naming) applied in Phase 4, not here
+
+## HW Candidate Review Format
+
+`docs/phase-2-architecture/hw-candidate-review.md` must contain:
+1. Per functional area: candidate list with algorithm description
+2. Comparison matrix columns: gate count, critical path depth, SRAM requirements,
+   external memory BW, throughput at target freq, memory latency impact, implementation risk
+3. Selected candidate per area with REQ-NNN justification
+4. User decision record when more than one candidate still fits (AskUserQuestion response). A single fitting choice is recorded without a question.
+
+## Bandwidth Analysis Workflow
+
+- ref-model produces bandwidth_report.json during Step 3
+- arch-designer consumes bandwidth_report.json during Step 4 (after synchronization)
+- If bandwidth exceeds limits → adjust block partitioning or PARALLEL_LANES before review
+
+## Memory Architecture Classification
+
+Each block's storage elements must be classified at architecture level:
+- **Local storage**: SRAM or register file (Phase 3 specifies exact type: SP/TP/DP wrapper)
+- **Cross-domain storage**: flag for dual-clock SRAM (DP) when read and write are in different clock domains
+- **External memory**: DDR/HBM accessed via bus interface
+
+Architecture does NOT select wrapper types (that is Phase 3 μArch responsibility), but MUST identify:
+- Estimated capacity per block (bits = depth × width)
+- Port count requirement (1 R/W, simultaneous R+W, multi-port)
+- Clock domain: same domain (→ SP or TP in Phase 3) vs cross-domain (→ DP in Phase 3)
+
+## Memory Access Latency Awareness
+
+Architecture review must verify:
+- Per-block latency budget distinguishes compute cycles vs memory access cycles
+- Default assumptions: internal memory = 1 cycle, external memory = 500 cycles
+- MEM_LATENCY_EXTERNAL is parameterizable (design-specific, technology-dependent)
+- Blocks with heavy external memory access have documented latency hiding strategy
+  (prefetch, double buffering, pipelining, or accepted latency penalty with justification)
+- bandwidth_report.json estimated cycle counts validated against timing_constraints.json budgets
+- Comparison of estimated latency WITH and WITHOUT latency hiding, to quantify strategy benefit
+
+## Assumptions
+
+The review records unvalidated assumptions in `docs/phase-2-architecture/wonder-log.md` (assumption, domain, risk). Name high-risk items. Do not open another review to clear them.
+
+## Escalation & Stop Conditions
+
+- Open items after the one review → ask the user
+- Domain constraint conflict → document conflict, ask user for priority
+- Memory access infeasible (bandwidth exceeds technology) → escalate, propose alternative
+- Architecture ↔ ref model fundamental mismatch → escalate, may require ref model rewrite
+
+## Architecture Feature Completeness Gate
+
+Phase 2 architecture review MUST verify that ALL spec features flow through to the design:
+
+1. **Spec-to-architecture mapping**: Every REQ-F-* from P1 must map to an architecture block
+   - Missing mapping → CRITICAL finding (spec feature not architected)
+
+2. **Ref model-to-architecture alignment**: When C reference model exists:
+   - Compare ref model function coverage against spec feature list
+   - "Enum declared but not called in any function" → COVERAGE_GAP
+   - Escalate gaps to user: "Spec feature X exists in enum but ref model doesn't implement it"
+
+3. **Omission justification**: Spec features omitted from architecture require:
+   - User-approved ADR from Phase 1 (with documented impact)
+   - ADR-less omissions → Phase 2 gate FAIL
+
+4. **Impact quantification** (domain-specific):
+   - Codec: BD-rate impact of omitted modes/tools
+   - Processor: missing instruction coverage
+   - Generic: functional coverage percentage vs spec
+
+## Open Resolution Protocol
+
+Phase 2 receives `docs/phase-1-research/open-requirements.json` containing OPEN-1-* research topics.
+For each OPEN-1-* item, the architecture team must:
+
+1. Conduct architecture research using the item's `candidates` and `evaluation_criteria`
+2. Select a winner with quantitative justification (gate count, throughput, area, etc.)
+3. Record the decision in `docs/phase-2-architecture/iron-requirements.json` (REQ-A-*) with:
+   - `resolved_from`: the OPEN-1-* ID that was resolved
+   - `resolution_rationale`: why this candidate was selected
+   - `rejected_alternatives`: all non-selected candidates with rejection reasons
+   - `upstream_compliance`: verification that new REQ-A-* does not violate P1 iron
+   - `violation_policy`: `"agent_retry"` (authority=2)
+   - `acceptance_criteria`: measurable criteria for the architectural decision
+4. A high-confidence choice is recorded and the item is resolved. A low-confidence item is asked once. Do not research again to manufacture a winner.
+
+Phase 2 may also produce `docs/phase-2-architecture/open-requirements.json` (OPEN-2-*) for
+research topics to be resolved by Phase 3 (e.g., micro-architecture choices).
+
+## Compliance Check Procedure
+
+After `docs/phase-2-architecture/iron-requirements.json` (REQ-A-*) is finalized:
+
+1. Invoke compliance-checker agent with:
+   - `upstream_iron`: `["docs/phase-1-research/iron-requirements.json"]`
+   - `target_artifacts`: Phase 2 output artifacts
+2. Gate: compliance-report.json verdict must be PASS
+3. On VIOLATION: repair the concrete defect and rerun affected checks, at most two failed cycles. Infeasibility or a needed upstream decision requires immediate escalation; authority does not grant extra review rounds.
+
+## Upstream Challenge Protocol
+
+If compliance VIOLATION persists after Primary stage and is technically infeasible:
+1. Orchestrator produces infeasibility assessment with quantitative evidence
+2. Compliance-checker validates the infeasibility claim
+3. If validated: produce upstream challenge report with PPA estimates
+   - Required fields: frequency_mhz, area_gate_count, pixel_rate_mpps, achievable_fps
+4. Present challenge to user via AskUserQuestion with comparison table
+
+## Confidence (Phase 2)
+
+A REQ-A-* is iron when confidence is high: one architecture choice fits the evidence and the others do not. Record that confidence. Do not score again to become more sure. A choice where more than one candidate still fits stays open: name them and ask once. The user's answer is the decision. This check satisfies `ambiguity-pass`. The choice itself has no measurement. A ref-model run, a bitexact comparison, and `bandwidth_report.json` are measurements: the measured result is the judgment, and confidence does not override a mismatch.
+
+## Final Checklist
+
+- [ ] docs/phase-2-architecture/hw-candidate-review.md exists with per-block selection + HW rationale
+- [ ] P1 algorithm candidates reviewed from HW perspective
+- [ ] architecture.md exists with all blocks and data paths
+- [ ] architecture.md includes D2 block diagram
+- [ ] Every REQ (REQ-F-*, REQ-P-*, REQ-A-*) mapped to at least one architecture block
+- [ ] One architecture review completed, or the open items were reported to the user
+- [ ] Memory access patterns reviewed for all large blocks
+- [ ] Architecture ↔ ref model consistency verified
+- [ ] Ref model code reviewed for quality and bitexact correctness
+- [ ] reviews/phase-2-architecture/ref-model-review.md saved when ref model changed
+- [ ] bandwidth_report.json reviewed, external memory bandwidth validated
+- [ ] Internal vs external memory classified per block
+- [ ] C model executed and verified — architecture produces correct results
+- [ ] reviews/phase-2-architecture/feature-coverage.md saved
+- [ ] reviews/phase-2-architecture/architecture-review.md saved (consolidated)
+- [ ] reviews/phase-2-architecture/architecture-diagram.md saved (D2)
+- [ ] docs/decisions/ADR-*.md generated (3-5 key architectural decisions)
+- [ ] `docs/phase-2-architecture/wonder-log.md` names the unvalidated assumptions
+- [ ] All High-risk assumptions in wonder-log resolved or explicitly accepted
+- [ ] `reviews/phase-2-architecture/architecture-review.md` saved
+- [ ] All OPEN-1-* items from P1 resolved with rationale and rejected_alternatives
+- [ ] `docs/phase-2-architecture/iron-requirements.json` exists with REQ-A-* entries and resolved_from tracking
+- [ ] Compliance check against P1 iron: verdict = PASS
+- [ ] Each REQ-A-* is high confidence, or the user chose among the named alternatives (`ambiguity-pass`)
+- [ ] `docs/phase-2-architecture/open-requirements.json` (OPEN-2-*) created for Phase 3 homework (if any)
+
+## Handoff evidence
+
+Write `docs/<phase-directory>/judgment.json` with `confidence` (`high` or `low`),
+`material_ambiguities` (each has `id`, `status`, and `resolution`), and `user_decision`
+when a user decision settles a low-confidence choice. An empty ambiguity array is
+valid after checking behavior, interfaces, constraints, and expected verification
+results. Do not invent open items to fill the array. Run the executable phase gate
+for artifact/schema checks. Confidence does not replace functional measurements.
+<!-- RAT_POLICIES_END -->

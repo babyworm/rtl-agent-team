@@ -11,19 +11,26 @@
 
 set -euo pipefail
 
-# Source Docker-aware tool runner (transparent fallback)
+# Shared execution runtime, including configured tool paths and remote dispatch.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+export RAT_PROJECT_ROOT="$PROJECT_ROOT"
+export RAT_TOOL_CATEGORY=equivalence
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_LIB_RUNNER="$(cd "$SCRIPT_DIR/../../lib" 2>/dev/null && pwd)/tool-runner.sh" 2>/dev/null || true
-if [[ -f "${_LIB_RUNNER:-}" ]]; then
-  source "$_LIB_RUNNER"
-else
-  run_tool() { "$@"; }
+_LIB_RUNNER="${RAT_RUNTIME_LIB:-}"
+for candidate in "$SCRIPT_DIR/lib/tool-runner.sh" "$SCRIPT_DIR/../../lib/tool-runner.sh" "$PROJECT_ROOT/lib/tool-runner.sh"; do
+  if [[ -z "$_LIB_RUNNER" && -f "$candidate" ]]; then _LIB_RUNNER="$candidate"; fi
+done
+if [[ ! -f "$_LIB_RUNNER" ]]; then
+  echo "ERROR: matching tool-runner.sh is missing; update the project templates." >&2
+  exit 2
 fi
+source "$_LIB_RUNNER"
+rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
 
 # RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
 # and default output dirs resolve against the project root even when invoked
 # from a different CWD. Unset ⇒ cd "$(pwd)" is a no-op (behavior unchanged).
-PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+
 cd "$PROJECT_ROOT"
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
@@ -344,4 +351,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 0.8.14
+# rat-version: 2.0.1

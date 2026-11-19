@@ -1,3 +1,4 @@
+from tests.contracts import read_contract
 import re
 from pathlib import Path
 
@@ -43,7 +44,7 @@ def test_active_non_ppa_consumers_use_phase_one_requirement_artifacts() -> None:
         ):
             continue
 
-        lines = path.read_text().splitlines()
+        lines = read_contract(path).splitlines()
         for line_number, line in enumerate(lines, start=1):
             for match in LEGACY_REQUIREMENTS.finditer(line):
                 canonical_fallback = (

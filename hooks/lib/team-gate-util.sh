@@ -54,7 +54,11 @@ teamu_should_skip_gate() {
 
   # Fail-closed: an empty or placeholder leader, or an unknown session, enforces
   # the gate for every session.
-  TEAMU_LEADER=$(jsonu_get_file_path_string "$TEAMU_CONFIG" "leader_session_id")
+  TEAMU_OWNER="$TEAMU_STATE_DIR/team-owner.json"
+  [ -f "$TEAMU_OWNER" ] || return 1
+  TEAMU_FINGERPRINT=$(cksum < "$TEAMU_CONFIG" | awk '{print $1 ":" $2}')
+  [ "$(jsonu_get_file_path_string "$TEAMU_OWNER" fingerprint)" = "$TEAMU_FINGERPRINT" ] || return 1
+  TEAMU_LEADER=$(jsonu_get_file_path_string "$TEAMU_OWNER" session_id)
   case "$TEAMU_LEADER" in ''|*'<'*|*'$'*) return 1 ;; esac
   TEAMU_SESSION=$(jsonu_session_id "${2:-}")
   [ -n "$TEAMU_SESSION" ] || return 1

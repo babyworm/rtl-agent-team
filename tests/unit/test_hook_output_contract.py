@@ -191,7 +191,12 @@ def test_stop_gate_yields_to_a_background_agent_right_after_the_chain_count(name
     # between the count and the yield can spend the budget.
     code = [re.sub(r"\s+#.*", "", line).strip() for _, line in _code_lines(name) if line.strip()]
     chain = next(n for n, line in enumerate(code) if line.startswith("STOP_CHAIN=$(stopu_chain_active"))
-    assert code[chain + 1] == 'stopu_background_agent_pending "$INPUT" && emit_post_continue'
+    if name == 'rtl-skill-completion-gate.sh':
+        assert code[chain + 1] == 'if stopu_background_agent_pending "$INPUT"; then'
+        assert 'touch "$SKILL_STATE"' in code[chain + 2]
+        assert code[chain + 3] == 'emit_post_continue'
+    else:
+        assert code[chain + 1] == 'stopu_background_agent_pending "$INPUT" && emit_post_continue'
     assert sum("stopu_background_agent_pending" in line for line in code) == 1
 
 

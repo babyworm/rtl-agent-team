@@ -30,19 +30,11 @@ artifacts for Phase 2.
 Team mode when `$ARGUMENTS` contains the word `team`, or the user asked for a team, parallel workers, or `rtl-p1-research-team`. Otherwise sequential.
 
 <Phase_Workflow>
-Sequential mode runs as two stages inside the same Task() invocation:
-
-- **Phase 0 (goal-clarifier)**: when `$ARGUMENTS` is a sparse seed, the
-  orchestrator first dispatches `goal-clarifier` for an ambiguity-scored
-  interview across 4 RTL dimensions (Functionality / PPA Target / Scope /
-  Verification). Phase 0 writes `docs/phase-1-research/goal.md`.
-- **Phase 1 (spec-analyst + research)**: spec-analyst consumes `goal.md`
-  (plus any user-supplied spec document) and produces the iron/open
-  requirements set as before.
-
-When `$ARGUMENTS` points to an existing `.md`/`.txt`/`.rst` spec or is
-already a rich seed (≥ 500 chars with PPA/coverage signals), Phase 0
-is skipped automatically.
+Use the supplied specification or seed directly when its intended behavior is
+settled. Invoke goal-clarifier only for material unanswered questions about behavior,
+interfaces, constraints, or expected verification results. Length and keywords do
+not determine whether a spec is complete. Produce iron/open requirements and ask
+one focused question when an actual user decision is missing.
 </Phase_Workflow>
 
 <Assets>
@@ -104,7 +96,7 @@ t4c = TaskCreate(subject="T4c: Power Analysis",
 TaskUpdate(taskId=t4c, addBlockedBy=[t2])
 
 # Step 5: Spawn coordinator as teammate (orchestrator)
-Agent(team_name="p1-research", subagent_type="rtl-agent-team:p1-research-team-orchestrator",
+Agent(team_name="p1-research", subagent_type="rtl-agent-team:p1-research-orchestrator",
       name="coordinator", description="P1 research coordination",
       prompt="You are the Phase 1 research coordinator in team 'p1-research'. "
              "Manage the task graph using TaskCreate/TaskList/TaskUpdate. "

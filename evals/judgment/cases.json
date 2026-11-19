@@ -1,0 +1,50 @@
+[
+  {
+    "id": "settled_spec",
+    "agent": "p1-research-orchestrator",
+    "task": "The user selected a combinational unsigned adder. REQ-F-001: 8-bit i_a and i_b produce a 9-bit o_sum equal to their unsigned mathematical sum, including carry. There is no clock or reset. Every input pair is legal. Exhaustive output comparison is the acceptance test. The supplied artifact set contains this settled requirement, its interface definition, its acceptance criterion, a single selected approach, and a completed phase review with no finding. Assess whether a further interpretation, candidate search, or review is needed. Do not invent additional requirements.",
+    "expected": {
+      "decision": "proceed",
+      "confidence": "high",
+      "open_ids": [],
+      "additional_review_rounds": 0,
+      "verification_rerun_required": false
+    }
+  },
+  {
+    "id": "ambiguity_beats_average",
+    "agent": "spec-analyst",
+    "task": "An earlier assessment reported confidence=high and averaged ambiguity=0.1. REQ-F-001 says the 8-bit output must retain the carry of adding two unsigned 8-bit inputs. Its acceptance criterion elsewhere says overflow wraps modulo 256. No user decision resolves this conflict. All other requirements are explicit. Decide whether REQ-F-001 is settled. A numeric average cannot supply a missing user decision.",
+    "expected": {
+      "decision": "clarify",
+      "open_ids": [
+        "REQ-F-001"
+      ],
+      "additional_review_rounds": 0
+    }
+  },
+  {
+    "id": "measured_failure",
+    "agent": "p3-uarch-orchestrator",
+    "task": "The specification and microarchitecture have one reading. The model reports high confidence, and G4a compilation passed. G4b reference comparison failed: vector 17 expected 9 but the BFM produced 8. The discrepancy is a local implementation defect within the settled spec, and its repair is authorized. No user preference or architectural decision is needed. One review has already identified the defect. Decide what happens next; distinguish repairing and rerunning the affected comparison from scheduling another design-review round.",
+    "expected": {
+      "decision": "repair",
+      "confidence": "high",
+      "open_ids": [],
+      "additional_review_rounds": 0,
+      "verification_rerun_required": true
+    }
+  },
+  {
+    "id": "verification_oracle_ambiguity",
+    "agent": "p5-verify-orchestrator",
+    "task": "The chosen verification item AC-007 says 'output should arrive fast enough'. Two interpretations remain: within 2 cycles or within 8 cycles. No timing requirement or user decision selects either. The current test accepts 8 cycles and reports PASS; the model is confident the implementation is good. Other acceptance criteria are settled. Decide whether AC-007 is ready for a verification verdict. Do not add tests until their expected result is defined, and do not repeat a review to manufacture a threshold.",
+    "expected": {
+      "decision": "clarify",
+      "open_ids": [
+        "AC-007"
+      ],
+      "additional_review_rounds": 0
+    }
+  }
+]

@@ -6,8 +6,8 @@ color: cyan
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -38,19 +38,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Phase 4 RTL:            Review — compliance spot-check on conversion arithmetic
     - Phase 5 Verification:   Support — define test vectors for color accuracy verification
   </Role>
-
-  <Why_This_Matters>
-    Color conversion errors are insidious: a wrong coefficient causes a systematic color shift
-    across every pixel, but the image still "looks okay" in casual inspection. A rounding error
-    in chroma upsampling creates aliasing visible only at high magnification. Using BT.601
-    coefficients when BT.709 is required creates a subtle but standards-non-compliant color shift.
-
-    Bit-depth conversion done incorrectly (e.g., simple zero-padding instead of proper rounding
-    and dithering) creates visible banding in gradients. Bayer demosaicing with wrong interpolation
-    produces false colors at edges.
-
-    These are silicon-level defects that cannot be patched in firmware.
-  </Why_This_Matters>
 
   <Domain_Knowledge>
     1. Color Space Conversion Matrices

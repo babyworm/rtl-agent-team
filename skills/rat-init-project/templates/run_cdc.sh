@@ -16,20 +16,27 @@
 
 set -euo pipefail
 
-# Source Docker-aware tool runner (transparent fallback)
+# Shared execution runtime, including configured tool paths and remote dispatch.
+PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+export RAT_PROJECT_ROOT="$PROJECT_ROOT"
+export RAT_TOOL_CATEGORY=cdc
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_LIB_RUNNER="$(cd "$SCRIPT_DIR/../../lib" 2>/dev/null && pwd)/tool-runner.sh" 2>/dev/null || true
-if [[ -f "${_LIB_RUNNER:-}" ]]; then
-  source "$_LIB_RUNNER"
-else
-  run_tool() { "$@"; }
+_LIB_RUNNER="${RAT_RUNTIME_LIB:-}"
+for candidate in "$SCRIPT_DIR/lib/tool-runner.sh" "$SCRIPT_DIR/../../lib/tool-runner.sh" "$PROJECT_ROOT/lib/tool-runner.sh"; do
+  if [[ -z "$_LIB_RUNNER" && -f "$candidate" ]]; then _LIB_RUNNER="$candidate"; fi
+done
+if [[ ! -f "$_LIB_RUNNER" ]]; then
+  echo "ERROR: matching tool-runner.sh is missing; update the project templates." >&2
+  exit 2
 fi
+source "$_LIB_RUNNER"
+rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
 
 # RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
 # resolve against the project root even when invoked from a different CWD.
-PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
 
-TOOL="structural"
+
+TOOL=""
 TOP=""
 FILELIST=""
 OUTDIR="lint/cdc"
@@ -85,6 +92,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$TOOL" || "$TOOL" == auto ]]; then
+  TOOL=$(rat_config_value preferences.cdc)
+  TOOL="${TOOL:-structural}"
+fi
+
 # --- Verbose: trace the wrapper itself -------------------------------------
 # Tool output already goes through `tee`; what --verbose adds is visibility
 # into what this wrapper does (path resolution, file discovery, env setup).
@@ -121,15 +133,22 @@ EOF
 }
 
 SRC_FILES=()
-if [[ -n "$FILELIST" ]]; then
-  while IFS= read -r line; do
-    line=$(echo "$line" | sed 's|//.*||' | xargs)
-    [[ -z "$line" ]] && continue
-    [[ "$line" == +* ]] && continue
-    SRC_FILES+=("$line")
-  done < "$FILELIST"
+INPUT_INCLUDE_DIRS=()
+INPUT_DEFINES=()
+INPUT_ARGS=(inputs --root "$PROJECT_ROOT")
+[[ -z "$FILELIST" ]] || INPUT_ARGS+=(--filelist "$FILELIST")
+if [[ ${#FILES[@]} -gt 0 ]]; then
+  for input_source in "${FILES[@]}"; do INPUT_ARGS+=(--source "$input_source"); done
 fi
-[[ ${#FILES[@]} -gt 0 ]] && SRC_FILES+=("${FILES[@]}")
+_INPUT_HELPER="$(dirname "${_TOOL_RUNNER_RUNTIME}")/verify_evidence.py"
+INPUT_RECORDS=$("${_TOOL_RUNNER_PYTHON}" "$_INPUT_HELPER" "${INPUT_ARGS[@]}")
+while IFS=$'\t' read -r input_kind input_value; do
+  case "$input_kind" in
+    sources) SRC_FILES+=("$input_value") ;;
+    includes) INPUT_INCLUDE_DIRS+=("$input_value") ;;
+    defines) INPUT_DEFINES+=("$input_value") ;;
+  esac
+done <<< "$INPUT_RECORDS"
 
 if [[ ${#SRC_FILES[@]} -eq 0 ]]; then
   echo "ERROR: No source files specified. Use -f <filelist> or pass .sv files directly." >&2
@@ -249,13 +268,26 @@ case "$TOOL" in
     if [[ ! -f "$CDC_TCL" ]]; then
       {
         echo "# Auto-generated SpyGlass CDC script (sg_shell batch mode)"
+        echo 'if {[catch {'
         echo "new_project spyglass_cdc -projectwdir \"$SPYGLASS_PROJDIR\" -force"
+        echo "set_option enableSV12 yes"
         for src in "${SRC_FILES[@]}"; do
-          case "$src" in
-            *.sv|*.svh) echo "read_file -type systemverilog \"$src\"" ;;
-            *)          echo "read_file -type verilog \"$src\"" ;;
-          esac
+          echo "read_file -type verilog \"$src\""
         done
+        if [[ ${#INPUT_INCLUDE_DIRS[@]} -gt 0 ]]; then
+          validate_shell_safe "filelist include directory" "${INPUT_INCLUDE_DIRS[@]}"
+          printf 'set_option incdir [list'
+          printf ' "%s"' "${INPUT_INCLUDE_DIRS[@]}"
+          printf ']\n'
+        fi
+        if [[ ${#INPUT_DEFINES[@]} -gt 0 ]]; then
+          for definition in "${INPUT_DEFINES[@]}"; do
+            [[ "$definition" =~ ^[A-Za-z0-9_./=:+,\'-]+$ ]] || { echo "ERROR: unsupported Tcl define: $definition" >&2; exit 1; }
+          done
+          printf 'set_option define {'
+          printf ' %s' "${INPUT_DEFINES[@]}"
+          printf ' }\n'
+        fi
         [[ -n "$TOP" ]] && echo "set_option top \"$TOP\""
         echo "current_goal cdc/cdc_setup_check"
         echo "run_goal"
@@ -263,7 +295,9 @@ case "$TOOL" in
         echo "run_goal"
         echo "save_project"
         echo "close_project"
-        echo "exit"
+        echo '} RAT_ERROR]} { puts stderr "RAT_TOOL_ERROR: $RAT_ERROR"; exit 1 }'
+        echo 'puts "RAT_TOOL_COMPLETE"'
+        echo 'exit 0'
       } > "$CDC_TCL"
     fi
 
@@ -275,8 +309,10 @@ case "$TOOL" in
     echo "TCL: $CDC_TCL"
     echo "CMD: $CMD"
     write_replay "$CMD"
-    run_tool sg_shell -tcl "$CDC_TCL" 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool sg_shell -tcl "$CDC_TCL" </dev/null 2>&1 | tee "$REPORT" || EXIT_CODE=$?
+    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" verdict --root "$PROJECT_ROOT" --purpose goals --tool spyglass --log "$REPORT" --exit-code "$EXIT_CODE"
+    EXIT_CODE=$?
     ;;
 
   vc_cdc)
@@ -338,4 +374,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 0.7.7
+# rat-version: 2.0.1

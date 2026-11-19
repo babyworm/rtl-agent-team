@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# rat-version: 2.0.3
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
@@ -10,9 +11,28 @@ set -euo pipefail
 # RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
 # resolve against the project root even when invoked from a different CWD.
 PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
+export RAT_PROJECT_ROOT="$PROJECT_ROOT"
+SCRIPT_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORIGINAL_ARGS=("$@")
+RUNNER_PYTHON="${RAT_PYTHON:-python3}"
+RUNNER_HELPER="${RAT_RUNTIME_HELPERS:+$RAT_RUNTIME_HELPERS/eda_runner.py}"
+for candidate in "$SCRIPT_HOME/eda_runner.py" "$SCRIPT_HOME/../lib/eda_runner.py" "$SCRIPT_HOME/../../lib/eda_runner.py" "$PROJECT_ROOT/lib/eda_runner.py"; do
+  [[ -f "$RUNNER_HELPER" ]] || RUNNER_HELPER="$candidate"
+done
+export RAT_TOOL_CATEGORY=simulators
+_PY_SELECTOR="$PROJECT_ROOT/lib/python-util.sh"
+for candidate in "$SCRIPT_HOME/../hooks/lib/python-util.sh" "$SCRIPT_HOME/../lib/python-util.sh" "$SCRIPT_HOME/../../lib/python-util.sh"; do
+  [[ -f "$_PY_SELECTOR" ]] || _PY_SELECTOR="$candidate"
+done
+if [[ -f "$_PY_SELECTOR" ]]; then
+  source "$_PY_SELECTOR"
+  RUNNER_PYTHON=$(rat_select_python)
+  export RAT_PYTHON="$RUNNER_PYTHON"
+fi
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
-SIM="iverilog"
+SIM="${SIM:-}"
 TOP=""
 FILELIST=""
 OUTDIR="sim/build"
@@ -101,6 +121,22 @@ while [[ $# -gt 0 ]]; do
     *)            SV_FILES+=("$1"); shift ;;
   esac
 done
+
+if [[ -z "$SIM" || "$SIM" == auto ]]; then
+  SIM=$("$RUNNER_PYTHON" "$RUNNER_HELPER" get --root "$PROJECT_ROOT" --key preferences.simulator)
+  SIM="${SIM:-iverilog}"
+fi
+case "$SIM" in icarus) SIM=iverilog ;; vsim) SIM=questa ;; esac
+
+if [[ -f "$RUNNER_HELPER" && "${RAT_REMOTE_ACTIVE:-0}" != "1" ]]; then
+  SELECTED_BACKEND=$("$RUNNER_PYTHON" "$RUNNER_HELPER" backend --root "$PROJECT_ROOT")
+  case "$SELECTED_BACKEND" in
+    ssh|lsf)
+      "$RUNNER_PYTHON" "$RUNNER_HELPER" dispatch --root "$PROJECT_ROOT" --wrapper "${BASH_SOURCE[0]}" -- "${ORIGINAL_ARGS[@]}"
+      exit $?
+      ;;
+  esac
+fi
 
 # Alias normalization
 if [[ "$SIM" == "xcelium" ]]; then
@@ -192,7 +228,9 @@ run_cmd() {
   # timeout, defines, params, source files, filelist entries, outdir, dpi lib)
   # is validated against shell metacharacters at setup (validate_shell_safe);
   # --tool-args/--sim-args are trusted invoker pass-through by contract.
-  eval "$cmd"
+  # A separate shell preserves a tool's actual failure code through the log pipe;
+  # eval in an errexit pipeline can collapse it to 1 on some Bash versions.
+  "$RUNNER_PYTHON" "$RUNNER_HELPER" run --root "$PROJECT_ROOT" --shell-command "$cmd" 2>&1 | tee -a "${SIM_LOG_PREFIX}_${phase}.log"
 }
 
 finalize_replay() {
@@ -272,6 +310,10 @@ read_filelist() {
         # is interpolated into the eval'd compile command string.
         validate_shell_safe "filelist +incdir+ path" "$dir"
         result+=" -I${dir}"
+      elif [[ "$line" == +define+* ]]; then
+        local define="${line#+define+}"
+        validate_shell_safe "filelist define" "$define"
+        result+=" -D${define}"
       elif [[ "$line" == -* || "$line" == +* ]]; then
         # Skip other directives not supported by iverilog
         log "Skipping unsupported directive for iverilog: $line"
@@ -361,9 +403,18 @@ if [[ ${#PARAMS[@]} -gt 0 ]]; then
   PARAM_FLAGS=$(build_params "$SIM")
 fi
 
+EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:+$RAT_RUNTIME_HELPERS/verify_evidence.py}"
+for candidate in "$SCRIPT_HOME/verify_evidence.py" "$SCRIPT_HOME/../lib/verify_evidence.py" "$SCRIPT_HOME/../../lib/verify_evidence.py" "$PROJECT_ROOT/lib/verify_evidence.py"; do
+  [[ -f "$EVIDENCE_HELPER" ]] || EVIDENCE_HELPER="$candidate"
+done
+ORIGINAL_FILELIST="$FILELIST"
 FILELIST_FLAGS=""
 if [[ -n "$FILELIST" ]]; then
-  FILELIST_FLAGS=$(read_filelist "$SIM" "$FILELIST")
+  normalized="$OUTDIR/.rat-inputs.f"
+  metadata_status=0
+  RAT_CONTEXT_TOOL="$SIM" "$RUNNER_PYTHON" "$RUNNER_HELPER" run --root "$PROJECT_ROOT" -- "$RUNNER_PYTHON" "$EVIDENCE_HELPER" inputs --root "$PROJECT_ROOT" --filelist "$FILELIST" --write-filelist "$normalized" > "$OUTDIR/.rat-inputs.tsv" || metadata_status=$?
+  if [[ "$metadata_status" -ne 0 ]]; then cat "$OUTDIR/.rat-inputs.tsv" >&2; exit "$metadata_status"; fi
+  FILELIST_FLAGS=$(read_filelist "$SIM" "$normalized")
 fi
 
 FILES="${SV_FILES[*]:-}"
@@ -373,7 +424,54 @@ PLUSARGS=$(build_plusargs "$SIM")
 cd "$OUTDIR"
 RUN_CWD="$(pwd)"
 init_replay
-trap 'finalize_replay' EXIT
+SIM_LOG_PREFIX="${OUTDIR}/rat_${SIM}_${TOP}_${RUN_STAMP}_$$"
+EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:+$RAT_RUNTIME_HELPERS/verify_evidence.py}"
+for candidate in "$SCRIPT_HOME/verify_evidence.py" "$SCRIPT_HOME/../lib/verify_evidence.py" "$SCRIPT_HOME/../../lib/verify_evidence.py" "$PROJECT_ROOT/lib/verify_evidence.py"; do
+  [[ -f "$EVIDENCE_HELPER" ]] || EVIDENCE_HELPER="$candidate"
+done
+if [[ ! -f "$EVIDENCE_HELPER" ]]; then
+  echo "ERROR: verify_evidence.py is missing; update project templates." >&2
+  exit 1
+fi
+EVIDENCE_PYTHON="${RAT_PYTHON:-python3}"
+if ! "$EVIDENCE_PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 9))'; then
+  echo "ERROR: simulation evidence requires Python >= 3.9; set RAT_PYTHON." >&2
+  exit 1
+fi
+EVIDENCE_ARGS=(begin --root "$PROJECT_ROOT" --outdir "$OUTDIR" --tool "$SIM" --top "$TOP" --runner-pid "$$" --context "$SIM|$TOP|${DEFINES[*]:-}|${PARAMS[*]:-}|$TRACE|$DPI_LIB|$TOOL_ARGS")
+[[ -z "$ORIGINAL_FILELIST" ]] || EVIDENCE_ARGS+=(--filelist "$ORIGINAL_FILELIST")
+[[ -z "$DPI_LIB" ]] || EVIDENCE_ARGS+=(--dependency "$DPI_LIB")
+[[ ! -f "$PROJECT_ROOT/rat_config.json" ]] || EVIDENCE_ARGS+=(--dependency "$PROJECT_ROOT/rat_config.json")
+if [[ ${#SV_FILES[@]} -gt 0 ]]; then
+  for source_file in "${SV_FILES[@]}"; do EVIDENCE_ARGS+=(--source "$source_file"); done
+fi
+[[ $RUN_ONLY -eq 0 ]] || EVIDENCE_ARGS+=(--run-only)
+[[ $COMPILE_ONLY -eq 0 ]] || EVIDENCE_ARGS+=(--compile-only)
+case "$SIM" in
+  iverilog|vcs) EVIDENCE_ARGS+=(--artifact "$OUTDIR/$TOP") ;;
+  verilator) EVIDENCE_ARGS+=(--artifact "$OUTDIR/vlt/$TOP") ;;
+  xrun) EVIDENCE_ARGS+=(--artifact "$OUTDIR/xlib") ;;
+  questa) EVIDENCE_ARGS+=(--artifact "$OUTDIR/work") ;;
+esac
+capture_metadata_path() {
+  local output status=0
+  output=$("$@") || status=$?
+  if [[ "$status" -ne 0 ]]; then printf '%s\n' "$output" >&2; return "$status"; fi
+  printf '%s\n' "$output" | tail -n 1
+}
+EVIDENCE_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" capture_metadata_path "$RUNNER_PYTHON" "$RUNNER_HELPER" run --root "$PROJECT_ROOT" -- "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" "${EVIDENCE_ARGS[@]}")
+finish_simulation() {
+  local status=$?
+  trap - EXIT
+  local evidence_log="${SIM_LOG_PREFIX}_evidence.log"
+  cat "${SIM_LOG_PREFIX}_compile.log" "${SIM_LOG_PREFIX}_run.log" > "$evidence_log" 2>/dev/null || true
+  local finish_args=(finish --snapshot "$EVIDENCE_SNAPSHOT" --exit-code "$status" --log "$evidence_log")
+  if [[ $COMPILE_ONLY -eq 0 ]]; then finish_args+=(--runtime-log "${SIM_LOG_PREFIX}_run.log"); else finish_args+=(--compile-only); fi
+  "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" "${finish_args[@]}" || status=$?
+  finalize_replay || true
+  exit "$status"
+}
+trap finish_simulation EXIT
 echo "[run_sim] Working directory: $(pwd)"
 
 # ─── Per-Simulator Compile + Run ────────────────────────────────────────────
@@ -402,7 +500,7 @@ run_iverilog() {
 }
 
 compile_verilator() {
-  local cmd="verilator --binary -j0 --timing -sv"
+  local cmd="verilator --binary -j 0 --timing -sv"
   cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
   if [[ $TRACE -eq 1 ]]; then
     cmd+=" --trace-fst"

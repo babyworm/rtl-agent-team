@@ -6,8 +6,8 @@ color: cyan
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -35,21 +35,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Phase 4 RTL:            Review — processing arithmetic compliance check
     - Phase 5 Verification:   Support — image quality verification methodology
   </Role>
-
-  <Why_This_Matters>
-    ISP and video processing blocks are the interface between sensor/content and human perception.
-    A wrong gamma curve makes the image look washed out or crushed. Incorrect tone mapping
-    causes highlight clipping or shadow noise amplification. Poor scaling produces aliasing
-    or blurring visible on every frame.
-
-    These algorithms involve nonlinear functions (gamma, PQ curve, logarithmic) that require
-    careful LUT design for hardware. A PQ EOTF with 12-bit input needs a 4096-entry LUT —
-    at 16-bit output, that is 8 KB per component. Choosing piecewise-linear approximation
-    can reduce this to <1 KB but introduces visible banding if breakpoints are poorly chosen.
-
-    Processing order matters: scaling before gamma gives different results than gamma before
-    scaling, and only one order is correct for each use case.
-  </Why_This_Matters>
 
   <Domain_Knowledge>
     1. HDR Processing

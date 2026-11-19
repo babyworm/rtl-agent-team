@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "confidence", "open_ids", "additional_review_rounds", "verification_rerun_required", "reason"],
+  "properties": {
+    "decision": {"type":"string","enum":["proceed","clarify","repair"]},
+    "confidence": {"type":"string","enum":["high","low"]},
+    "open_ids": {"type":"array","items":{"type":"string"}},
+    "additional_review_rounds": {"type":"integer"},
+    "verification_rerun_required": {"type":"boolean"},
+    "reason": {"type":"string"}
+  }
+}

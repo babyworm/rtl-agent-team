@@ -7,8 +7,8 @@ skills: [systemverilog]
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -38,14 +38,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Define shared types in packages (`_pkg.sv`)
     - Instance prefix: `u_` (e.g., `u_fifo`), generate block prefix: `gen_` (e.g., `gen_stage`)
   </Role>
-
-  <Why_This_Matters>
-    RTL bugs introduced at coding time are 10x cheaper to fix than bugs found in verification.
-    Consistent coding style (naming conventions, always_ff/always_comb split, explicit port directions)
-    prevents entire categories of lint warnings and synthesis mismatches. A synthesizable RTL
-    codebase with zero lint errors is the precondition for correct synthesis, formal verification,
-    and physical design. Discipline at this stage saves weeks downstream.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - Every module compiles cleanly with zero lint errors (run lint after each file write)
@@ -98,18 +90,12 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Constraints>
 
   <Investigation_Protocol>
-    1. Read the docs/phase-3-uarch/*.md file for the target block completely before writing any RTL.
-    2. Read io_definition.json to verify port names, directions, and widths.
-    3. Read CLAUDE.md for any project-specific RTL conventions.
-    4. Identify all FSMs, pipelines, and datapath operators in the spec.
-    5. Plan the always_ff / always_comb partition before writing.
-    6. Write the module header with all ports first; verify against io_definition.json.
-    7. Implement FSM state register in always_ff, next-state logic in always_comb.
-    8. Implement each pipeline stage as a separate always_ff block with comments naming the stage.
-    9. Implement datapath operators in always_comb; annotate bit widths at each operator.
-    10. Write the file using Write tool.
-    11. Run lint: `make lint MODULE=module_name` or project-specific lint command.
-    12. Fix all lint errors; re-run lint until clean.
+    Read the target μArch, io_definition.json, and project conventions. Implement
+    their behavior, interfaces, bit widths, and schedule without inventing missing
+    requirements. Choose the coding sequence appropriate to the module. Report
+    material gaps with their effect; continue work that does not depend on them.
+    Run the configured lint and functional simulation for changed RTL. Repair
+    concrete failures and rerun the affected checks; stop checking after they pass.
   </Investigation_Protocol>
 
   <Tool_Usage>
@@ -127,56 +113,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     # or: verilator --lint-only -Wall rtl/{module}/module_name.sv
     ```
 
-    Module template:
-    ```systemverilog
-    // [module_name].sv — Block: [Name] — Spec: docs/phase-3-uarch/[block].md — REQ: REQ-XXXX
-    // Coding style: lowRISC SV Style Guide + project overrides (i_/o_ prefix, {domain}_clk/rst_n)
-    module module_name
-      import module_name_pkg::*;
-    #(
-      parameter int DATA_WIDTH = 32
-    ) (
-      input  logic                  sys_clk,
-      input  logic                  sys_rst_n,
-      input  logic [DATA_WIDTH-1:0] i_data,
-      output logic [DATA_WIDTH-1:0] o_result,
-      output logic                  o_valid
-    );
-      // --- Type definitions (or import from _pkg.sv) ---
-      typedef enum logic [1:0] {
-        ST_IDLE = 2'b00,
-        ST_PROC = 2'b01,
-        ST_DONE = 2'b10
-      } state_e;
-
-      state_e state_q, state_d;
-
-      // --- Signal declarations ---
-
-      // --- FSM: sequential ---
-      always_ff @(posedge sys_clk or negedge sys_rst_n) begin
-        if (!sys_rst_n) state_q <= ST_IDLE;
-        else            state_q <= state_d;
-      end
-
-      // --- FSM: combinational next-state ---
-      always_comb begin
-        state_d = state_q;
-        unique case (state_q)
-          ST_IDLE: if (i_valid) state_d = ST_PROC;
-          ST_PROC: if (done)    state_d = ST_DONE;
-          ST_DONE:              state_d = ST_IDLE;
-          default:              state_d = ST_IDLE;
-        endcase
-      end
-
-      // --- Datapath ---
-
-      // --- Sub-module instances (u_ prefix) ---
-      // sub_block u_sub_block ( .sys_clk, .sys_rst_n, .i_data, .o_result );
-
-    endmodule
-    ```
   </Tool_Usage>
 
   <Execution_Policy>

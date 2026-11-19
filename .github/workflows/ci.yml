@@ -1,5 +1,7 @@
 name: CI
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -22,18 +24,16 @@ jobs:
       - run: shellcheck -s sh hooks/lib/*.sh
 
   validate-plugin:
-    # Deterministic plugin sanity checks. LLM-based reviews
-    # (plugin-dev:plugin-validator, plugin-dev:skill-reviewer) stay manual /
-    # release-time because they incur LLM cost; the checks below catch the
-    # regressions those agents would also flag (JSON schema, version drift,
-    # hook output shape, SSOT sync). No untrusted GitHub event inputs are
-    # consumed by the run: blocks below.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+
+      - name: Verify template revisions
+        run: |
+          python3 scripts/template_catalog.py
 
       - name: Validate JSON manifests parse cleanly
         run: |
@@ -88,15 +88,53 @@ jobs:
           print(f"marker-present envelope OK ({len(ctx)} chars of additionalContext)")
           PY
 
-      - name: Verify sync drift (SKILL.md SSOT to hook generated block)
-        # Catches the case where someone edits skills/rtl-orchestrate/SKILL.md
-        # but forgets `sh scripts/sync_orchestrator_inject.sh`. Re-running the
-        # sync should produce no diff if the hook is up to date.
+      - name: Verify generated files and prepare a patch for drift
+        id: generated-files
         run: |
+          python3 scripts/sync_agent_policies.py
+          bash scripts/generate-phase-maps.sh --write
           sh scripts/sync_orchestrator_inject.sh
-          if ! git diff --exit-code -- hooks/rtl-orchestrator-inject.sh; then
-            echo "ERROR: hooks/rtl-orchestrator-inject.sh is stale relative to skills/rtl-orchestrate/SKILL.md."
-            echo "Fix: sh scripts/sync_orchestrator_inject.sh && commit the result."
+          git diff --no-ext-diff -- agents/ hooks/ > "$RUNNER_TEMP/generated-files.patch"
+          if [ -s "$RUNNER_TEMP/generated-files.patch" ]; then
+            echo '::error::Generated files differ from their sources. See the generated-files-patch artifact.'
             exit 1
           fi
-          echo "Hook is in sync with SKILL.md SSOT"
+      - name: Keep the generated-files patch
+        if: ${{ failure() && steps.generated-files.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated-files-patch
+          path: ${{ runner.temp }}/generated-files.patch
+          if-no-files-found: ignore
+
+  runtime-contracts:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Exercise simulation verdicts with generated logs
+        run: |
+          python -m pip install pytest
+          RAT_EXTENDED_CONTRACTS=1 python -m pytest tests/unit/test_verdict_properties.py
+      - name: Run shipped testbench templates with Verilator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y verilator
+          verilator --version
+          ulimit -c 0
+          python evals/runtime/check_verilator_templates.py --workdir "$RUNNER_TEMP/rat-template-contracts"
+      - name: Keep results and logs from the synthetic simulation
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: template-contract-results
+          path: |
+            ${{ runner.temp }}/rat-template-contracts/results.json
+            ${{ runner.temp }}/rat-template-contracts/unit/*.log
+            ${{ runner.temp }}/rat-template-contracts/integration/*.log

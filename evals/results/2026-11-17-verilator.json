@@ -1,0 +1,66 @@
+[
+  {
+    "template": "unit",
+    "case": "pass",
+    "exit_code": 0,
+    "verdict": "PASS",
+    "expected": "PASS",
+    "passed": true
+  },
+  {
+    "template": "unit",
+    "case": "mismatch",
+    "exit_code": 134,
+    "verdict": "FAIL",
+    "expected": "FAIL",
+    "passed": true
+  },
+  {
+    "template": "unit",
+    "case": "zero_checks",
+    "exit_code": 134,
+    "verdict": "FAIL",
+    "expected": "FAIL",
+    "passed": true
+  },
+  {
+    "template": "unit",
+    "case": "timeout",
+    "exit_code": 134,
+    "verdict": "TIMEOUT",
+    "expected": "TIMEOUT",
+    "passed": true
+  },
+  {
+    "template": "integration",
+    "case": "pass",
+    "exit_code": 0,
+    "verdict": "PASS",
+    "expected": "PASS",
+    "passed": true
+  },
+  {
+    "template": "integration",
+    "case": "mismatch",
+    "exit_code": 134,
+    "verdict": "FAIL",
+    "expected": "FAIL",
+    "passed": true
+  },
+  {
+    "template": "integration",
+    "case": "zero_checks",
+    "exit_code": 134,
+    "verdict": "FAIL",
+    "expected": "FAIL",
+    "passed": true
+  },
+  {
+    "template": "integration",
+    "case": "timeout",
+    "exit_code": 134,
+    "verdict": "TIMEOUT",
+    "expected": "TIMEOUT",
+    "passed": true
+  }
+]

@@ -67,4 +67,4 @@ PASS | FAIL: [Reason]
 
 One review. The report names each finding, whether it was accepted, and what is still open. A further pass runs only when the user asks.
 
-<!-- rat-version: 0.7.7 -->
+<!-- rat-version: 2.0.0 -->

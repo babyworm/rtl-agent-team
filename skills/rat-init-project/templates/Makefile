@@ -1,3 +1,7 @@
+# Shared runner functions require Bash.
+SHELL := /bin/bash
+.SHELLFLAGS := -e -o pipefail -c
+# rat-version: 2.0.0
 # =============================================================================
 # RTL Build System
 # =============================================================================
@@ -25,6 +29,7 @@
 TOP         ?=
 FILELIST    ?= rtl/filelist_top.f
 BUILD_DIR   ?= build
+TECH_DB     ?=
 LIBERTY     ?=
 SDC_FILE    ?= syn/constraints/design.sdc
 SBY_FILE    ?= formal/$(TOP).sby
@@ -190,8 +195,9 @@ syn_dc:
 	$(call _validate_path_var,SYN_SCRIPT)
 	$(call _validate_path_var,FILELIST)
 	$(call _validate_optional_path_var,LIBERTY)
+	$(call _validate_optional_path_var,TECH_DB)
 	$(call _validate_optional_path_var,SDC_FILE)
-	"$(SYN_SCRIPT)" --tool dc_shell --top "$(TOP)" -f "$(FILELIST)" $(if $(LIBERTY),--liberty "$(LIBERTY)") $(if $(SDC_FILE),--sdc "$(SDC_FILE)")
+	"$(SYN_SCRIPT)" --tool dc_shell --top "$(TOP)" -f "$(FILELIST)" $(if $(TECH_DB),--db "$(TECH_DB)",$(if $(LIBERTY),--liberty "$(LIBERTY)")) $(if $(SDC_FILE),--sdc "$(SDC_FILE)")
 
 syn_genus:
 	$(call _require_top)

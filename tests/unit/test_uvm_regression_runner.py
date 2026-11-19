@@ -66,6 +66,7 @@ if [[ "${FAKE_UVM_ERROR:-0}" == "1" ]]; then
   echo 'UVM_ERROR @ 100: reporter [FAKE] injected error'
   uvm_errors=1
 fi
+echo RAT_SIM_PASS
 printf 'UVM_WARNING :    0\nUVM_ERROR :    %s\nUVM_FATAL :    0\n' "$uvm_errors"
 exit 0
 ''')
@@ -105,6 +106,7 @@ if "-R" in args and "-covworkdir" in args:
     coverage_dir = Path(args[args.index("-covworkdir") + 1])
     coverage_dir.mkdir(parents=True, exist_ok=True)
     (coverage_dir / "raw.ucd").write_text("fake coverage\\n")
+    print("RAT_SIM_PASS")
 """,
     )
     _write_executable(bin_dir / "imc", "#!/usr/bin/env bash\nexit 0\n")

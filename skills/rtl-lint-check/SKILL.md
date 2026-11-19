@@ -1,144 +1,30 @@
 ---
 name: rtl-lint-check
-description: "Lint RTL with Verilator, Verible, and slang; report-only quick check for 'run lint', pre-commit, or phase-gate verification (no fixing)."
+description: "Run the configured RTL linter and report findings. Use for 'run lint', pre-commit checks, or phase verification. No automatic fixes."
 user-invocable: true
 ---
 
-<Purpose>
-Run three complementary lint tools on target RTL files via Bash CLI:
-- **Verilator** (synthesizability + semantic): catches LATCH, BLKANDNBLK, WIDTH, MULTIDRIVEN
-- **Verible** (style/syntax): catches formatting, naming, structure issues
-- **slang** (semantic/IEEE 1800 compliance): catches type errors, port mismatches, `always_ff` multi-driver violations
+Lint the requested RTL scope with `preferences.lint` from rat_config.json, unless
+the user selects a tool. Use one suitable configured linter; an extra engine is
+useful only for a concrete unresolved diagnostic or an explicit multi-tool request.
+Do not install or require three engines to repeat a successful check.
 
-RTL files (`rtl/`) are linted with slang `-Weverything` for maximum strictness — this catches
-IEEE 1800 §9.2.2.4 violations (e.g., `always_ff` + `initial` on same signal) that only VCS
-enforces at compile time. TB files (`sim/`) use `--allow-dup-initial-drivers` for flexibility.
+Use the deployed wrapper, or its bundled source when the project has no copy:
 
-Report all violations with file, line, rule, and severity.
-See `references/verilator-warnings.md` for detailed Verilator warning categories and waiver format.
-</Purpose>
-
-<Use_When>
-- Verifying lint status of any RTL file before commit or phase gate
-- Quick sanity check during development
-- Generating lint report for review
-</Use_When>
-
-<Do_Not_Use_When>
-- Lint fixing is also needed (use rtl-p4-implement or rtl-p4s-refactor which include fix cycles)
-- Full verification suite needed (use rtl-p5s-func-verify or rtl-p4s-unit-test)
-</Do_Not_Use_When>
-
-<Why_This_Exists>
-Three complementary lint tools catch different issue classes:
-- **Verilator** is the most widely-used open-source linter; it catches synthesizability issues (latches, blocking/non-blocking mix, width mismatches) that style linters miss entirely.
-- **Verible** catches style and formatting issues; **slang** catches IEEE 1800 semantic issues.
-Running all three gives comprehensive coverage: synthesizability + style + semantics.
-</Why_This_Exists>
-
-<Coding_Convention_Requirements>
-Lint checks MUST enforce the project coding conventions (CLAUDE.md):
-- Port prefix: `i_` (input), `o_` (output), `io_` (bidirectional) — NOT suffix `_i`, `_o`
-- Clock: `clk` (single domain) or `{domain}_clk` (multiple domains, e.g., `sys_clk`) — NOT `clk_i`
-- Reset: `rst_n` (single domain) or `{domain}_rst_n` (multiple domains, e.g., `sys_rst_n`) — NOT `rst_ni`
-- `logic` only — `reg`/`wire` usage flagged as violation
-- Declaration order (IEEE 1800 §12.5): all `logic`/`typedef`/`localparam` must appear before `assign`/`always` blocks — forward references flagged as violation
-- Instance prefix: `u_` — missing prefix flagged
-- Generate prefix: `gen_` — missing prefix flagged
-Note: Verible and slang may not catch all convention violations natively.
-lint-checker MUST perform a supplementary grep-based check for naming conventions.
-</Coding_Convention_Requirements>
-
-<Execution_Policy>
-- lint-checker runs all three tools in parallel on the target file(s) via Bash CLI
-- Prefer replayable wrapper: `lint/scripts/run_lint.sh` (creates `lint/lint/replay/run_lint_*_latest.sh`)
-- Additionally checks naming conventions not caught by standard tools
-- Results merged and de-duplicated
-- Zero-error gate: skill reports PASS or FAIL with full violation list
-</Execution_Policy>
-
-<Steps>
-1. Identify target files (single file, directory, or glob)
-2. Run **Verilator** via Bash CLI (synthesizability lint):
-   ```bash
-   verilator --lint-only -Wall -Wpedantic -sv {files}
-   ```
-   - Critical warnings (MUST fix): BLKANDNBLK, LATCH, CASEINCOMPLETE, MULTIDRIVEN
-   - Major warnings: WIDTH, UNDRIVEN, SYNCASYNCNET, UNSIGNED, CMPCONST
-   - See `references/verilator-warnings.md` for full category list
-3. Run **Verible** via Bash CLI (style lint):
-   ```bash
-   verible-verilog-lint --rules_config .verible_lint.cfg {files}
-   ```
-4. Run **slang** via Bash CLI (semantic lint):
-   ```bash
-   # RTL (maximum strictness — catches VCS ICPD errors):
-   slang -Weverything {rtl_files}
-   # TB (relaxed — allows initial + always_ff on same signal):
-   slang --allow-dup-initial-drivers {tb_files}
-   ```
-   The `run_lint.sh` wrapper auto-detects RTL vs TB based on file paths.
-4.5. If commercial lint signoff is requested, run SpyGlass lint:
-   ```bash
-   lint/scripts/run_lint.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/lint
-   ```
-
-5. Run supplementary convention checks via Bash CLI:
-   - Use `{plugin_root}/skills/rtl-lint-check/scripts/check_conventions.sh {files}` (`{plugin_root}` = plugin root resolved from `.rat/state/spawn-context.json`) for automated convention checking
-   - Or manually grep for: `reg`/`wire` declarations, port suffixes `_i`/`_o`, `clk_i`/`rst_ni`, missing `u_`/`gen_` prefixes, declarations after logic blocks (forward reference risk)
-6. Merge all results; report violations grouped by file then by severity
-7. Return PASS (zero violations) or FAIL (violation count + list)
-   - Use `templates/lint-report.md` as the report format template
-   - If waiver file `.verilator.vlt` exists, apply waivers before final verdict (see `templates/verilator-waiver.vlt` for waiver format)
-</Steps>
-
-<Tool_Usage>
+```bash
+lint/scripts/run_lint.sh --tool auto --top {top} -f {filelist} --outdir lint/{scope}
 ```
-Task(subagent_type="rtl-agent-team:lint-checker",
-     prompt="Run Verilator, Verible, and slang lint on rtl/ via Bash CLI. Verilator: --lint-only -Wall -Wpedantic -sv. Verible: --rules_config .verible_lint.cfg. slang: -Weverything for RTL and --allow-dup-initial-drivers for TB. Also check naming conventions: i_/o_ port prefixes, {domain}_clk/{domain}_rst_n, logic not reg/wire, u_ instance prefix. Report all violations grouped by file and severity (Critical/Major/Minor). Return PASS or FAIL summary.")
-```
-</Tool_Usage>
 
-<Examples>
-<Good>
-lint-checker runs all three tools via Bash CLI, finds 3 Verible style violations, 1 slang unused-variable warning,
-and 2 convention violations (port `data_i` should be `i_data`, `clk` should be `sys_clk` in multi-domain context);
-returns FAIL with exact line numbers and rule names.
-</Good>
-<Bad>
-Running only one lint tool and claiming "lint clean" — misses semantic issues caught only by slang.
-Not checking naming conventions — allows `clk_i`, `data_o` to pass lint despite project rules.
-</Bad>
-</Examples>
+The wrapper consumes configured executable/environment/backend settings and handles
+filelist includes/defines. SpyGlass requires a recognized goal result, not only a
+zero exit. Tool absence, an unknown goal format, or a timeout is not PASS.
 
-<Escalation_And_Stop_Conditions>
-- Verible not installed → halt and run `/rtl-agent-team:rat-setup` (official binary releases: https://github.com/chipsalliance/verible/releases)
-- slang not installed → halt and run `/rtl-agent-team:rat-setup` (official binary/source instructions: https://sv-lang.com/user-manual.html#getting-the-binary)
-- Lint rules config file missing → use default rules, note this in report
-- Convention violations found → report alongside tool violations, same severity
-</Escalation_And_Stop_Conditions>
+Report tool, checked scope, exit/verdict, log path, and findings with file/line/rule/
+severity. Group shared root causes without hiding individual affected locations.
+Distinguish a style/syntax scan from semantic elaboration. Use lint-checker when
+cross-file diagnosis is needed. This action reports findings; fixing belongs to the
+implementation or bugfix action and requires affected functional verification.
 
-<Final_Checklist>
-- [ ] All three lint tools ran: Verilator, Verible, and slang via Bash CLI
-- [ ] Verilator critical warnings (LATCH, BLKANDNBLK) treated as hard errors
-- [ ] Naming convention checks ran (port prefix, clock, reset, logic, instance prefix)
-- [ ] Results merged, de-duplicated, and reported by severity
-- [ ] PASS/FAIL clearly stated
-- [ ] Violation list includes file:line:rule:tool for each issue
-</Final_Checklist>
-
-<Advanced>
-Project lint config: .verible_lint.cfg in repo root. Override rules only with user approval.
-slang --lint-only treats warnings as errors in CI mode.
-Convention check script: `{plugin_root}/skills/rtl-lint-check/scripts/check_conventions.sh` — ready for CI integration.
-See `examples/lint-output-example.txt` for sample merged lint output across all tools.
-
-Verilator waiver file (`.verilator.vlt`) for intentional suppressions:
-```
-`verilator_config
-lint_off -rule UNUSED -file "rtl/reserved/reserved.sv" -lines 10-15
-lint_off -rule WIDTH -file "rtl/datapath/datapath.sv" -match "Operator *"
-```
-Generate waiver template: `verilator --lint-only -Wall --waiver-output verilator.vlt rtl/*/*.sv`
-See `references/verilator-warnings.md` for complete warning reference.
-</Advanced>
+For a relevant Verilator diagnostic or waiver syntax, read
+`references/verilator-warnings.md`. Preserve project naming rules and existing
+explicit waivers; do not silence a failure merely to obtain PASS.

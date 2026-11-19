@@ -18,8 +18,8 @@ def test_review_followup_contract(tmp_path: Path) -> None:
     )
     assert clean.returncode == 0, clean.stdout + clean.stderr
     assert (
-        "Step 0 sync complete: consumer files scanned: 33, changed: 0, "
-        "unchanged: 33, skipped: 0."
+        "Step 0 sync complete: consumer files scanned: 21, changed: 0, "
+        "unchanged: 21, skipped: 0."
     ) in clean.stdout
 
     fixture_root = tmp_path / "sync-fixture"
@@ -54,7 +54,8 @@ def test_review_followup_contract(tmp_path: Path) -> None:
     sva_agent = (REPO_ROOT / "agents" / "p5s-sva-orchestrator.md").read_text()
     sva_policy = (
         REPO_ROOT / "skills" / "rtl-p5s-sva-policy" / "SKILL.md"
-    ).read_text()
+    )
+    sva_policy = (REPO_ROOT / "plugin_docs/agent-lib/policies/rtl-p5s-sva-policy.md").read_text()
     workflow = (
         REPO_ROOT / "plugin_docs" / "specs" / "workflow-ultracode-compat.md"
     ).read_text()

@@ -214,7 +214,7 @@ class TestInjectionRejected:
         supported linkage (-LDFLAGS, VCS precedent) and the relative path must
         be absolutized before the script cds into OUTDIR."""
         fake_bin = tmp_path / "bin"
-        _make_fake_tool(fake_bin, "verilator", 'echo VLT_FAKE "$@"')
+        _make_fake_tool(fake_bin, "verilator", 'echo VLT_FAKE "$@"; mkdir -p vlt; : > vlt/tb')
         sv = tmp_path / "tb.sv"
         sv.write_text("module tb; endmodule\n")
         (tmp_path / "ref.so").write_text("")
@@ -240,7 +240,7 @@ class TestInjectionRejected:
         fake_bin = tmp_path / "bin"
         _make_fake_tool(fake_bin, "yosys", 'echo YOSYS_FAKE "$@"')
         result = run_script(
-            RUN_SYN, "--tool", "yosys", "--top", "m", "-f", str(flist),
+            RUN_SYN, "--allow-unmapped", "--tool", "yosys", "--top", "m", "-f", str(flist),
             "--syn-root", "syn\nwrite_verilog pwned.v",
             env=_env_with(fake_bin), cwd=str(tmp_path), timeout=20,
         )
@@ -260,7 +260,7 @@ class TestInjectionRejected:
         fake_bin = tmp_path / "bin"
         _make_fake_tool(fake_bin, "yosys", 'echo YOSYS_FAKE "$@"')
         result = run_script(
-            RUN_SYN, "--tool", "yosys", "--top", "m", "-f", str(flist),
+            RUN_SYN, "--allow-unmapped", "--tool", "yosys", "--top", "m", "-f", str(flist),
             "--syn-root", "syn`touch pwned`",
             env=_env_with(fake_bin), cwd=str(tmp_path), timeout=20,
         )
@@ -278,7 +278,7 @@ class TestInjectionRejected:
         fake_bin = tmp_path / "bin"
         _make_fake_tool(fake_bin, "dc_shell", 'echo DC_FAKE "$@"')
         result = run_script(
-            RUN_SYN, "--tool", "dc_shell", "--top", "m", "-f", str(flist),
+            RUN_SYN, "--allow-unmapped", "--tool", "dc_shell", "--top", "m", "-f", str(flist),
             "--outdir", str(tmp_path / "syn_out"),
             "--script", "/tmp/evil$(touch pwned).tcl",
             env=_env_with(fake_bin), cwd=str(tmp_path), timeout=20,
@@ -517,7 +517,7 @@ class TestRatProjectRootOverride:
         fake_bin = tmp_path / "bin"
         _make_fake_tool(fake_bin, "dc_shell", 'echo DC_FAKE "$@"')
         result = run_script(
-            RUN_SYN, "--tool", "dc_shell", "--top", "m",
+            RUN_SYN, "--allow-unmapped", "--tool", "dc_shell", "--top", "m",
             "-f", "f.f", "--outdir", "syn_out",
             env=_env_with(fake_bin, RAT_PROJECT_ROOT=str(proj)),
             cwd=str(other), timeout=20,
@@ -583,7 +583,7 @@ class TestRatProjectRootOverride:
             'cov=\"\"\\n'
             'while [ $# -gt 0 ]; do if [ \"$1\" = \"-cm_dir\" ]; then cov=\"$2\"; shift 2; else shift; fi; done\\n'
             '[ -n \"$cov\" ] && mkdir -p \"$cov\"\\n'
-            'echo SIMV_FAKE\\n\' > "$out"; '
+            'echo RAT_SIM_PASS\\n\' > "$out"; '
             'chmod +x "$out"; fi',
         )
         _make_fake_tool(

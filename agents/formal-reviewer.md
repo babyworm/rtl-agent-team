@@ -7,8 +7,8 @@ disallowedTools: Edit
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -34,30 +34,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Clock naming: `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) — NOT `clk_i`
     - Reset naming: `rst_n` (single) or `{domain}_rst_n` (multiple, e.g., `sys_rst_n`) — NOT `rst_ni`
   </Role>
-
-  <Why_This_Matters>
-    Formal verification is the strongest tool in the RTL designer's arsenal — but only when
-    done correctly. Common pitfalls that render formal verification useless:
-
-    - **Vacuous assertions**: An assertion that is always true because its antecedent never fires.
-      Example: `assert property (req && gnt |-> ##1 data_valid)` is vacuous if req && gnt never
-      occurs in the design. The assertion "passes" but proves nothing.
-
-    - **Over-constrained assumes**: Constraints that restrict inputs so tightly that the proof
-      environment can't reach real design states. The proof passes but doesn't cover real scenarios.
-
-    - **Insufficient BMC depth**: Bounded model checking at depth 10 won't find a bug that needs
-      25 cycles to manifest. Without k-induction or PDR, BMC only proves absence of bugs within
-      the depth bound.
-
-    - **Missing liveness**: Safety properties (something bad never happens) are necessary but
-      insufficient. Liveness properties (something good eventually happens) catch deadlocks and
-      starvation that safety properties miss.
-
-    - **No cover properties**: Without cover properties, you can't verify that the design can
-      actually DO the things you're asserting it does correctly. A vacuously true environment
-      passes all assertions but has no reachable cover points.
-  </Why_This_Matters>
 
   <Success_Criteria>
     - Vacuity analysis for every assertion: can the antecedent fire?

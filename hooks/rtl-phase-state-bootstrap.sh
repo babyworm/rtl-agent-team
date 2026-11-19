@@ -1,5 +1,5 @@
 #!/bin/sh
-# RTL Phase State Bootstrap Hook: PreToolUse:Skill
+# Skill preflight and accepted-call state bootstrap.
 # Initializes phase state files for new P4/P5A/P5B action skills.
 
 INPUT=$(cat)
@@ -9,8 +9,11 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
+. "$SCRIPT_DIR/lib/skill-event-util.sh"
 
 jsonu_detect_parser
+HOOK_EVENT=$(jsonu_get_root_string "$INPUT" "hook_event_name")
+[ -n "$HOOK_EVENT" ] || HOOK_EVENT="PreToolUse"
 
 CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
@@ -19,7 +22,7 @@ RAT_DIR=$(rat_project_dir "$CWD")
 CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
-SKILL_NAME=$(jsonu_get_input_string "$INPUT" "skill")
+SKILL_NAME=$(skillu_name "$INPUT")
 case "$SKILL_NAME" in
   rtl-agent-team:*)
     SHORT_NAME="${SKILL_NAME#rtl-agent-team:}"
@@ -38,7 +41,7 @@ fi
 # (compliance state and report, spawn-context manifest), so a call it denies
 # leaves them as they were. Like the template bootstrap, it applies only once
 # the project is set up.
-if [ "$SHORT_NAME" = "rtl-p5b-silicon-validation" ] &&
+if [ "$HOOK_EVENT" != "PostToolUse" ] && [ "$SHORT_NAME" = "rtl-p5b-silicon-validation" ] &&
    { [ -f "$CWD/.claude/rules/rtl-coding-conventions.md" ] || [ -f "$HOME/.claude/rules/rtl-coding-conventions.md" ]; }; then
   P5A_STATE="$RAT_DIR/state/p5a-state.json"
   if [ ! -f "$P5A_STATE" ]; then
@@ -49,14 +52,17 @@ if [ "$SHORT_NAME" = "rtl-p5b-silicon-validation" ] &&
     emit_block "$MSG"
   fi
 
-  # Try nested path (jq/python). sed fallback: grep for "verdict":"pass" pattern.
-  P5A_VERDICT=$(jsonu_get_file_path_string "$P5A_STATE" "gates.p5a_exit.verdict")
-  if [ -z "$P5A_VERDICT" ] && [ -f "$P5A_STATE" ]; then
-    P5A_VERDICT=$(sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$P5A_STATE" | tail -n 1)
-  fi
-  if [ "$P5A_VERDICT" != "pass" ]; then
-    [ -z "$P5A_VERDICT" ] && P5A_VERDICT="unknown"
-    MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict=$P5A_VERDICT. P5B needs a P5A PASS: ask the user how to proceed."
+  # Keep the verdict as JSON so a multiline string cannot be reduced to its first line.
+  P5A_VERDICT=""
+  case "$JSONU_PARSER_MODE" in
+    jq) P5A_VERDICT=$(jq -cs 'if length == 1 then .[0].gates.p5a_exit.verdict else null end' "$P5A_STATE" 2>/dev/null) ;;
+    python) P5A_VERDICT=$("$JSONU_PY_BIN" -c 'import json, sys; print(json.dumps(json.load(open(sys.argv[1]))["gates"]["p5a_exit"]["verdict"]))' "$P5A_STATE" 2>/dev/null) ;;
+  esac
+  if [ "$P5A_VERDICT" != '"pass"' ]; then
+    MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict must be the JSON string \"pass\". P5B needs a P5A PASS."
+    if [ "$P5A_VERDICT" = '"fail"' ]; then
+      MSG="[P5B Gate BLOCKED] P5A handoff insufficient: gates.p5a_exit.verdict=fail. P5B needs a P5A PASS: ask the user how to proceed."
+    fi
     if [ -n "$SETUP_HINT" ]; then
       MSG="$MSG $SETUP_HINT"
     fi
@@ -96,6 +102,10 @@ _P5B_TRACK_EOF
     fi
   fi
 fi
+
+# Loading a Skill can still be denied after PreToolUse. Do not switch the phase,
+# discard its prior report, or deploy state until the Skill call has succeeded.
+[ "$HOOK_EVENT" != "PreToolUse" ] || emit_continue "$SETUP_HINT"
 
 # Compliance state bootstrap — iron requirement paths per phase
 # Overwrite if phase changed (prevents stale upstream paths from prior phase)

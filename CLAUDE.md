@@ -8,13 +8,20 @@ MUST be written in **English**. English is more token-efficient than Korean, and
 read by the LLM — not by humans — token efficiency takes priority.
 User-facing conversation may use Korean, but plugin prompt content must remain English-only.
 
+## Private site data
+
+Keep real SSH aliases/hosts, usernames, tool/library paths, environment setup and
+raw site reports outside this plugin repository in the user's private data directory.
+Never copy them into documentation, examples, tests or evaluation results. Use
+synthetic `.invalid` hosts and invented paths in reusable fixtures.
+
 ## IMPORTANT — Project Identity
 
 **This is a Claude Code plugin project.**
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 99 specialized agents, 91 skills, 14 hooks,
+When installed as a plugin, it provides 91 specialized agents, 55 skills, 17 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -72,7 +79,7 @@ window efficient. Three sources are always-on and are the ones to budget:
 
 | Always-on source | Size | Contract |
 |---|---:|---|
-| Agent frontmatter (`name` + `description` × 99) | ~21.7 KB | none yet — largest, least governed |
+| Agent frontmatter (`name` + `description` × 91) | ~21.7 KB | none yet — largest, least governed |
 | Skill frontmatter (`name` + `description` × 91) | ~13.3 KB | action skills ≤160 chars; internal/policy skills carry minimal one-liners |
 | SessionStart hook injection (Layer 1) | ~8.5 KB | RAT-marked projects only |
 
@@ -115,14 +122,14 @@ This plugin follows a **Skill → Agent → Policy** architecture.
 Action Skill (user entry point, /slash-command)
     ↓ Task(subagent_type="...")
 Agent (autonomous executor, NOT user-invocable)
-    ↓ skills: [policy-name]
-Policy Skill (knowledge/rules reference)
+    ↓ generated policy fragments
+Embedded contract (dev source: plugin_docs/agent-lib/policies/)
 ```
 
 **Why this layering matters:**
 - **Agents cannot be directly invoked by users** — `/agent-name` is not possible; Action Skills must spawn them via `Task()`
 - **Action Skill is the entry point** — the only interface connecting users to agents (validates phase prerequisites)
-- **Knowledge flows Agent → Policy Skill** — agents reference policies, not the other way around
+- **Policies are embedded in consumers** — the policy manifest and sync script own those contracts
 - **Hooks check setup** — `rtl-skill-activation.sh` validates setup prerequisites; skills validate only phase prerequisites
 
 | Component | Location | Role | User-invocable |
@@ -130,7 +137,7 @@ Policy Skill (knowledge/rules reference)
 | **Action Skill** | `skills/*/SKILL.md` | User entry point + phase prerequisite gate | Yes (`/plugin:name`) |
 | **Orchestrator Agent** | `agents/*-orchestrator.md` | Autonomous decision/execution, spawns sub-agents | No (Task-spawned only) |
 | **Specialist Agent** | `agents/*.md` | Single specialized task execution | No (Task-spawned only) |
-| **Policy Skill** | `skills/*-policy/SKILL.md` | Rules/criteria provider (referenced by agents via `skills:`) | No |
+| **Policy Fragment** | `plugin_docs/agent-lib/policies/*.md` | Generated into consumers, absent from skill discovery | No |
 
 **Defense layers**: Hook(setup check) → Skill(phase soft advisory) → Agent Step 0(setup+phase, guards against direct Task() spawn)
 
@@ -147,7 +154,7 @@ When modifying this plugin:
 7. **POSIX shell compatibility** — Hook scripts (`hooks/*.sh`) are invoked with `sh`, not `bash`. Use `[` not `[[`. Scripts in `scripts/` may use `bash` when specified via shebang
 8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-init-project` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
-10. **Escalation ladder consistency** — Autopilot and skill completion loops use per-gate `N→2N→last-chance→user escalation` semantics; keep hooks, policies, and templates in sync
+10. **Executable contracts** — Fix recurring mechanical failures in code and add a reproducer to CI. Use prompts for decisions that require interpreting requirements or evidence. Rerun checks in the affected scope.
 11. **Model policy** — `fable` for orchestration, judgment, architecture, and microarchitecture. `opus` for design, verification, and checking. `sonnet` for running a tool or parsing its report. A spawn `model=` uses the same rule as that agent's frontmatter. Do not set agent `effort:`. The session default applies. Do not raise effort to force another review pass. A Codex CLI call keeps the Claude `model:` and selects the Codex family `fable` → `astra`, `opus` → `sol`, `sonnet` → `terra`. Pass `-m` with the highest-priority catalog slug for that family. The bare family name is rejected. Effort still comes from `~/.codex/config.toml`.
 12. **CI before push (CRITICAL)** — Always run `pytest tests/unit/ -x -q` locally before pushing to `main`. Shell scripts under `set -eo pipefail` are especially fragile — a single unguarded `grep` no-match can silently crash a script. CI failures on `main` block all contributors
 13. **Plugin docs location** — Plugin development documents (specs, plans, design docs) go in `plugin_docs/`, never in `docs/`. `docs/` is gitignored — it is reserved for user project artifacts deployed by `rat-init-project`. If `git add -f` is needed, the file is in the wrong location
@@ -175,10 +182,10 @@ When modifying this plugin:
 rtl-agent-team/                          # Plugin root
 ├── .claude-plugin/plugin.json           # Plugin manifest
 ├── CLAUDE.md                            # THIS FILE — plugin dev reference (NOT loaded by users)
-├── agents/                              # 99 specialized agent definitions (.md), FLAT — no subdirs
+├── agents/                              # 91 specialized agent definitions (.md), FLAT — no subdirs
 │                                        #   (agents/ is scanned RECURSIVELY: any nested .md
 │                                        #    becomes a phantom agent — see rule 16 below)
-├── skills/                              # 91 skills: 50 action entry-points + 32 policies + 4 tool profiles + 4 conventions + 1 internal
+├── skills/                              # 55 skills: 50 action entry-points + 4 conventions + 1 internal; policy fragments are generated into agents
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
 │   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project
@@ -239,7 +246,7 @@ This routing is delivered via two mechanisms:
 Routing contract:
 - User intent routes to **Action Skills first**.
 - Orchestrator agents are spawned by Action Skills via `Task()`.
-- Policy skills are loaded by orchestrators via `skills: [*-policy]`.
+- Policy fragments are generated into their consuming agents by `scripts/sync_agent_policies.py`; convention skills remain preloaded.
 
 When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md`, then run:
 - `sh scripts/sync_orchestrator_inject.sh`
@@ -339,7 +346,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `stop-gate.sh` | Stop | Autopilot gate ladder enforcement (`N→2N→last-chance→user escalation`) + dynamic prompt injection |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
-| `rtl-skill-completion-gate.sh` | Stop | Skill completion escalation ladder enforcement (`N→2N→last-chance→user escalation`) |
+| `rtl-skill-completion-gate.sh` | Stop | Bounded completion reminder; no automatic review ladder |
 | `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval (non-standard bins require user confirmation) |
 | `rtl-spawn-context.sh` | PreToolUse:Agent | Spawn context manifest for agent spawns |
 | `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode; an in-process teammate's TaskUpdate refreshes team-config.json (team heartbeat) |
@@ -381,11 +388,11 @@ Skill (main session = leader)
 | `skills/rtl-p4-implement/SKILL.md` | Team mode: 10-wave pipeline (coordinator + 4 workers) |
 | `skills/rtl-p5-verify/SKILL.md` | Team mode: 9-category verification (coordinator + 4 workers) |
 | `skills/rat-p1p3-spec-uarch/SKILL.md` | Team mode: sequences P1→P2→P3 with `team` in the arguments |
-| `agents/p1-research-team-orchestrator.md` | Coordination teammate: task graph + SendMessage |
-| `agents/p2-arch-team-orchestrator.md` | Coordination teammate: dual-stream tasks |
-| `agents/p3-uarch-team-orchestrator.md` | Coordination teammate: uArch + BFM tasks |
-| `agents/p4-implement-team-orchestrator.md` | Coordination teammate: 10-wave tasks |
-| `agents/p5-verify-team-orchestrator.md` | Coordination teammate: verification tasks |
+| `agents/p1-research-orchestrator.md` | Coordination teammate: task graph + SendMessage |
+| `agents/p2-arch-orchestrator.md` | Coordination teammate: dual-stream tasks |
+| `agents/p3-uarch-orchestrator.md` | Coordination teammate: uArch + BFM tasks |
+| `agents/p4-implement-orchestrator.md` | Coordination teammate: 10-wave tasks |
+| `agents/p5-verify-orchestrator.md` | Coordination teammate: verification tasks |
 | `plugin_docs/agent-lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
 | `plugin_docs/agent-lib/team-worker-protocol.md` | Worker communication and coordination protocol |
 | `plugin_docs/agent-lib/team-fallback.md` | Graceful degradation patterns (Orchestrator as Teammate) |

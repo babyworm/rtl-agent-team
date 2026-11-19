@@ -32,6 +32,28 @@ claude --plugin-dir "$(pwd)"
 - **Bug reports**: use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md)
 - **Feature proposals**: use the [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md)
 
+### Where to enforce a rule
+
+Use the Potato Pyramid in this order when fixing a recurring failure:
+
+1. **Code and APIs.** Give each verdict one owner and give callers a structured result.
+2. **Static checks.** Check generated phase maps, prompt fragments and template revisions in CI.
+3. **Executable verification.** Reproduce the failure in a test. Use the runner's
+   evidence and a real simulator where process behavior matters. Use formal checks
+   for explicit invariants within the supported tool and design scope.
+4. **Prompts.** Record project constraints, acceptance criteria and unresolved choices.
+5. **Human review.** Resolve material ambiguity and approve exceptions.
+
+For simulation verdict regressions, run
+`RAT_EXTENDED_CONTRACTS=1 python -m pytest tests/unit/test_verdict_properties.py`.
+The seed and generated case allow exact reproduction. For wrapper or testbench
+changes, run `python evals/runtime/check_verilator_templates.py` with Verilator
+on `PATH`. CI runs both checks for pull requests, version tags and manual runs.
+It preserves synthetic simulator logs and verdicts in the run artifact. Use the
+failing case to scope a fix. If generated files drift, CI runs the existing
+generators and attaches their patch to the failure. Keep private site data outside
+repository and CI artifacts.
+
 ### Opening a pull request
 
 1. Fork and work on a feature branch

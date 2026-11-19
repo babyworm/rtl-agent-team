@@ -1,8 +1,7 @@
 #!/bin/sh
 # Stop Gate: keeps Claude working while rat-auto-design runs, and auto-continues an
 # ultraloop or a PPA-Opt loop within its time window.
-# Supports escalation ladder:
-#   primary attempts (<=N) -> fallback strategy (N+1..2N) -> last chance (2N+1) -> user escalation.
+# Measured repairs are bounded; no automatic fallback review ladder.
 # A user decision (the orchestrator asks for one, the ladder is used up, or an upper-spec
 # violation is unresolved) lets Claude stop and shows the user a notice once per chain.
 #
@@ -54,6 +53,26 @@ _allow_stop() {
   stopu_clear autopilot "$RAT_DIR/state"
   emit_post_continue
 }
+
+if stopu_pipeline_waits "$STATE_FILE"; then
+  DECISION_GATE=$(jsonu_get_file_path_string "$STATE_FILE" orchestration_control.active_gate_id)
+  DECISION_GATE=${DECISION_GATE:-phase-gate}
+  if [ "$(jsonu_get_file_path_bool "$STATE_FILE" upper_spec_blocking)" = true ]; then
+    DECISION_PROGRESS=upper-spec
+    DECISION_MESSAGE="[RAT Auto-Design STOP] Upper-spec violation is unresolved, so the pipeline awaits the user's decision. Decide whether to amend the requirement or repair the design."
+  else
+    DECISION_PROGRESS="user-decision|$DECISION_GATE"
+    DECISION_MESSAGE="[RAT Auto-Design Loop $DECISION_GATE] The gate needs your decision, or has exhausted two measured repair cycles."
+  fi
+  DECISION_NOTE=$(jsonu_get_file_path_string "$STATE_FILE" orchestration_control.dynamic_prompt_text)
+  if [ -n "$DECISION_NOTE" ]; then
+    case "$DECISION_NOTE" in *[.?!]) ;; *) DECISION_NOTE="$DECISION_NOTE." ;; esac
+    DECISION_MESSAGE="$DECISION_MESSAGE Orchestrator note: $DECISION_NOTE"
+  fi
+  DECISION_MESSAGE="$DECISION_MESSAGE Tell Claude how to proceed."
+  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "$DECISION_PROGRESS" "$DECISION_MESSAGE" "$DECISION_MESSAGE" 0
+fi
+
 
 # Ultraloop auto-continue: if ultraloop is active and within its time window, keep going
 ULTRALOOP_STATE="$RAT_DIR/state/ultraloop-state.json"
@@ -140,51 +159,8 @@ LAST_CHANCE_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_cont
 
 NEEDS_USER_DECISION=$(jsonu_get_file_path_bool "$STATE_FILE" "orchestration_control.needs_user_decision")
 [ -z "$NEEDS_USER_DECISION" ] && NEEDS_USER_DECISION=false
-DYNAMIC_PROMPT_TEXT=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.dynamic_prompt_text")
-STRATEGY=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.active_gate_strategy")
 
-TOTAL_PHASE_ATTEMPTS=$((PRIMARY_ATTEMPTS + FALLBACK_ATTEMPTS))
-FALLBACK_START=$((RETRY_LIMIT + 1))
-FALLBACK_END=$((RETRY_LIMIT * 2))
-
-if [ "$TOTAL_PHASE_ATTEMPTS" -le "$RETRY_LIMIT" ]; then
-  [ -z "$STRATEGY" ] && STRATEGY="primary"
-  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] primary strategy (${TOTAL_PHASE_ATTEMPTS}/${RETRY_LIMIT}). Continue agent loop and satisfy the gate conditions."
-elif [ "$TOTAL_PHASE_ATTEMPTS" -le "$FALLBACK_END" ]; then
-  [ -z "$STRATEGY" ] && STRATEGY="fallback"
-  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] fallback strategy (${TOTAL_PHASE_ATTEMPTS}/${FALLBACK_START}-${FALLBACK_END}). Split failure scope and switch agent composition."
-  if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
-    MSG="${MSG} Dynamic prompt: ${DYNAMIC_PROMPT_TEXT}"
-  fi
-elif [ "$LAST_CHANCE_ATTEMPTS" -lt 1 ]; then
-  [ -z "$STRATEGY" ] && STRATEGY="last_chance"
-  MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] reached 2x retry budget. Execute one last-chance alternative strategy now."
-  if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
-    MSG="${MSG} Dynamic prompt: ${DYNAMIC_PROMPT_TEXT}"
-  fi
-else
-  # The ladder is used up: the user decides (the decision notice below).
-  NEEDS_USER_DECISION=true
-  [ -z "$STRATEGY" ] && STRATEGY="user_escalated"
-fi
-
-MSG="${MSG} (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})"
-# A user decision is the next step: let Claude stop and show the escalation to the
-# user, once per chain (limit 0). The user reads this notice, and the orchestrator may
-# ask at any ladder stage, so the notice carries none of that stage's instructions to Claude.
-if [ "$NEEDS_USER_DECISION" = "true" ]; then
-  DECISION_NOTICE="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] The gate needs your decision, so the pipeline is paused (strategy=${STRATEGY}, primary=${PRIMARY_ATTEMPTS}, fallback=${FALLBACK_ATTEMPTS}, last_chance=${LAST_CHANCE_ATTEMPTS})."
-  if [ -n "$DYNAMIC_PROMPT_TEXT" ]; then
-    # End the orchestrator's note as a sentence, so it cannot run into the user's action.
-    case "$DYNAMIC_PROMPT_TEXT" in
-      *[.?!]) DECISION_NOTE=$DYNAMIC_PROMPT_TEXT ;;
-      *) DECISION_NOTE="${DYNAMIC_PROMPT_TEXT}." ;;
-    esac
-    DECISION_NOTICE="${DECISION_NOTICE} Orchestrator note: ${DECISION_NOTE}"
-  fi
-  DECISION_NOTICE="${DECISION_NOTICE} Tell Claude how to proceed."
-  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "user-decision|$ACTIVE_GATE_ID" "$DECISION_NOTICE" "$DECISION_NOTICE" 0
-fi
+MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] repair work (primary=${PRIMARY_ATTEMPTS}, limit=2). Complete the missing artifact or repair the recorded measured failure, then rerun affected checks. Preserve successful reviews; do not iterate to raise confidence."
 # Progress means the orchestrator recorded another gate attempt.
 stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" \
   "$ACTIVE_GATE_ID|$PRIMARY_ATTEMPTS|$FALLBACK_ATTEMPTS|$LAST_CHANCE_ATTEMPTS" \

@@ -53,9 +53,11 @@ module integration_tb_{{TOP_NAME}};
 
   // ─── Timeout ───────────────────────────────────────────────────────────
   initial begin
-    repeat (L_TIMEOUT) @(posedge {{DOMAIN}}_clk);
-    $display("ERROR: Integration test timeout");
-    $finish(1);
+    int timeout_cycles;
+    if (!$value$plusargs("timeout=%d", timeout_cycles)) timeout_cycles = L_TIMEOUT;
+    if (timeout_cycles <= 0) $fatal(1, "RAT_TIMEOUT: timeout must be positive");
+    repeat (timeout_cycles) @(posedge {{DOMAIN}}_clk);
+    $fatal(1, "RAT_TIMEOUT: Integration test timeout");
   end
 
   // ─── Test Infrastructure ───────────────────────────────────────────────
@@ -115,12 +117,11 @@ module integration_tb_{{TOP_NAME}};
 
     // ── Summary ──────────────────────────────────────────────────────
     $display("=== Results: %0d passed, %0d failed ===", pass_count, fail_count);
-    if (fail_count == 0) begin
-      $display("ALL INTEGRATION TESTS PASSED");
+    if (fail_count == 0 && pass_count > 0) begin
+      $display("RAT_SIM_PASS: ALL INTEGRATION TESTS PASSED");
       $finish(0);
     end else begin
-      $display("INTEGRATION TESTS FAILED");
-      $finish(1);
+      $fatal(1, "INTEGRATION TESTS FAILED or no checks executed");
     end
   end
 

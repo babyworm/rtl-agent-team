@@ -1,0 +1,8 @@
+{
+  "type":"object","additionalProperties":false,
+  "properties":{
+    "route":{"type":"string","description":"Next permissible Action Skill name, or needs_evidence for an absent required measurement, or clarify for an unresolved required behavior."},
+    "reason":{"type":"string"}
+  },
+  "required":["route","reason"]
+}

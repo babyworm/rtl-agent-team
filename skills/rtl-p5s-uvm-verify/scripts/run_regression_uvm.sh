@@ -16,10 +16,37 @@ set -euo pipefail
 # RAT_PROJECT_ROOT (optional env) overrides the working root so relative paths
 # resolve against the project root even when invoked from a different CWD.
 PROJECT_ROOT="${RAT_PROJECT_ROOT:-$(pwd)}"
+export RAT_PROJECT_ROOT="$PROJECT_ROOT"
+export RAT_TOOL_CATEGORY=simulators
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LIB_RUNNER="${RAT_RUNTIME_LIB:-}"
+for candidate in "$SCRIPT_DIR/../../rat-init-project/templates/lib/tool-runner.sh" "$PROJECT_ROOT/lib/tool-runner.sh"; do
+  if [[ -z "$_LIB_RUNNER" && -f "$candidate" ]]; then _LIB_RUNNER="$candidate"; fi
+done
+source "$_LIB_RUNNER"
+rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
+RAT_EVIDENCE_REQUIRED=0
+[[ -f "$PROJECT_ROOT/rat_config.json" || -d "$PROJECT_ROOT/.rat" ]] && RAT_EVIDENCE_REQUIRED=1
+
+
+EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:-$(dirname "$_LIB_RUNNER")}/verify_evidence.py"
+[[ -f "$EVIDENCE_HELPER" ]] || EVIDENCE_HELPER="$SCRIPT_DIR/../../../scripts/verify_evidence.py"
+REGRESSION_HELPER="$(dirname "$EVIDENCE_HELPER")/regression_evidence.py"
+CAMPAIGN_SNAPSHOT=""
+finish_campaign() {
+  local code=$?
+  trap - EXIT
+  if [[ -n "$CAMPAIGN_SNAPSHOT" ]]; then
+    local combined="$CAMPAIGN_OUTDIR/campaign.log"
+    find "$CAMPAIGN_OUTDIR" -type f -name '*.log' ! -name campaign.log -exec cat {} + > "$combined"
+    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" || code=$?
+  fi
+  exit "$code"
+}
 
 # ─── Defaults ───────────────────────────────────────────────────────────────
 SEEDS="${SEEDS:-42 123 456 789 1337}"
-SIM="${SIM:-vcs}"
+SIM="${SIM:-}"
 PARALLEL="${PARALLEL:-}"
 TEST="${TEST:-}"
 MODULE="${MODULE:-top}"
@@ -73,6 +100,12 @@ while [[ $# -gt 0 ]]; do
     *)               echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+if [[ -z "$SIM" || "$SIM" == auto ]]; then
+  SIM=$(rat_config_value preferences.simulator)
+  SIM="${SIM:-vcs}"
+fi
+case "$SIM" in vsim) SIM=questa ;; xcelium) SIM=xrun ;; esac
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 require_uint() {
@@ -151,13 +184,13 @@ case "$SIM" in
   *)      echo "ERROR: Unsupported simulator: $SIM (use vcs|xrun|questa)" >&2; exit 1 ;;
 esac
 
-if ! command -v "$SIM_BIN" >/dev/null 2>&1; then
+if ! tool_available "$SIM_BIN"; then
   echo "ERROR: Simulator '$SIM_BIN' not found in PATH" >&2
   exit 1
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "ERROR: python3 is required to write and validate regression JSON" >&2
+if ! command -v "$RAT_PYTHON" >/dev/null 2>&1; then
+  echo "ERROR: "$RAT_PYTHON" is required to write and validate regression JSON" >&2
   exit 1
 fi
 
@@ -208,7 +241,7 @@ compile_uvm() {
 
   case "$SIM" in
     vcs)
-      if ! (cd "$PROJECT_ROOT" && vcs -full64 -sverilog -ntb_opts uvm-1.2 \
+      if ! (cd "$PROJECT_ROOT" && run_tool vcs -full64 -sverilog -ntb_opts uvm-1.2 \
         -cm line+cond+fsm+tgl+branch \
         -timescale=1ns/1ps \
         "${SV_ARGS[@]}" \
@@ -220,7 +253,7 @@ compile_uvm() {
       RUN_BIN="$RUN_DIR/simv"
       ;;
     xrun)
-      if ! (cd "$PROJECT_ROOT" && xrun -sv -uvm -compile \
+      if ! (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -compile \
         -coverage all \
         -timescale 1ns/1ps \
         "${SV_ARGS[@]}" \
@@ -229,7 +262,7 @@ compile_uvm() {
         echo "ERROR: UVM compilation failed. See $compile_log" >&2
         return 1
       fi
-      if ! (cd "$PROJECT_ROOT" && xrun -sv -uvm -elaborate \
+      if ! (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -elaborate \
         -coverage all \
         -timescale 1ns/1ps \
         "${SV_ARGS[@]}" \
@@ -241,8 +274,8 @@ compile_uvm() {
       fi
       ;;
     questa)
-      vlib "$RUN_DIR/work" 2>/dev/null || true
-      if ! (cd "$PROJECT_ROOT" && vlog -sv -work "$RUN_DIR/work" \
+      run_tool vlib "$RUN_DIR/work" 2>/dev/null || true
+      if ! (cd "$PROJECT_ROOT" && run_tool vlog -sv -work "$RUN_DIR/work" \
         +cover=bcestf \
         +incdir+"$TB_DIR" \
         "${SV_ARGS[@]}") \
@@ -292,7 +325,7 @@ run_seed() {
 
   case "$SIM" in
     vcs)
-      "$RUN_BIN" \
+      RAT_CONTEXT_TOOL="$SIM" run_tool "$RUN_BIN" \
         +UVM_TESTNAME="$TEST" \
         +ntb_random_seed="$seed" \
         -cm line+cond+fsm+tgl+branch \
@@ -301,7 +334,7 @@ run_seed() {
         > "$log" 2>&1 || rc=$?
       ;;
     xrun)
-      xrun -R \
+      run_tool xrun -R \
         +UVM_TESTNAME="$TEST" \
         -seed "$seed" \
         -coverage all \
@@ -312,7 +345,7 @@ run_seed() {
         > "$log" 2>&1 || rc=$?
       ;;
     questa)
-      vsim -c -work "$RUN_DIR/work" \
+      run_tool vsim -c -work "$RUN_DIR/work" \
         -coverage \
         +UVM_TESTNAME="$TEST" \
         -sv_seed "$seed" \
@@ -321,6 +354,13 @@ run_seed() {
         > "$log" 2>&1 || rc=$?
       ;;
   esac
+
+  local observed
+  observed=$("$RAT_PYTHON" "$EVIDENCE_HELPER" classify --log "$log" --exit-code "$rc")
+  if [[ "$observed" != PASS ]]; then
+    status="$observed"
+    failure_reason="no_functional_pass:$observed"
+  fi
 
   # Write per-seed result JSON
   local uvm_errors=0 uvm_warnings=0 uvm_fatals=0
@@ -347,7 +387,7 @@ run_seed() {
     fi
   fi
 
-  if ! python3 - "$result_json" "$seed" "$TEST" "$SIM" "$status" "$rc" \
+  if ! "$RAT_PYTHON" - "$result_json" "$seed" "$TEST" "$SIM" "$status" "$rc" \
     "$uvm_errors" "$uvm_warnings" "$uvm_fatals" "$log" "$seed_dir" "$coverage_present" \
     "$failure_reason" <<'PY'
 import json
@@ -473,7 +513,7 @@ harvest_results() {
     PROCESSED_RESULT_FILES="${PROCESSED_RESULT_FILES}|${result_file}|"
 
     local parsed status fseed
-    if ! parsed=$(python3 - "$result_file" <<'PY'
+    if ! parsed=$("$RAT_PYTHON" - "$result_file" <<'PY'
 import json
 import sys
 
@@ -535,6 +575,21 @@ echo " Seeds: $SEEDS"
 echo " Parallel: $PARALLEL"
 echo " Max fail rate: ${MAX_FAIL_RATE}%"
 echo "========================================"
+
+if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
+  CAMPAIGN_OUTDIR="$RUN_DIR"
+  args=(begin --root "$PROJECT_ROOT" --outdir "$RUN_DIR" --tool "$SIM" --top "$TB_TOP" --runner-pid "$$" --context "uvm:$TEST")
+  [[ ! -f "$PROJECT_ROOT/rat_config.json" ]] || args+=(--dependency "$PROJECT_ROOT/rat_config.json")
+  for input in "${SV_ARGS[@]}"; do
+    [[ "$input" == -f ]] && continue
+    if [[ "$input" == "$FILELIST" ]]; then args+=(--filelist "$input"); else args+=(--source "$input"); fi
+  done
+  args+=(--include-dir "$TB_DIR")
+  # Standard UVM headers are site inputs and must be locatable for hashing.
+  [[ -z "${UVM_HOME:-}" ]] || args+=(--include-dir "$UVM_HOME/src")
+  CAMPAIGN_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" rat_capture_path "$RAT_PYTHON" "$EVIDENCE_HELPER" "${args[@]}")
+  trap finish_campaign EXIT
+fi
 
 compile_uvm
 
@@ -602,7 +657,7 @@ if [[ "$FAILED" -ne 0 || "$INFRASTRUCTURE_FAILED" -ne 0 || "$COVERAGE_STATUS" !=
   VERDICT="FAIL"
 fi
 
-python3 - "$REPORT" "$MODULE" "$SIM" "$TEST" "$TIMESTAMP" "$TOTAL" \
+"$RAT_PYTHON" - "$REPORT" "$MODULE" "$SIM" "$TEST" "$TIMESTAMP" "$TOTAL" \
   "$PASSED" "$FAILED" "$STOP_DISPATCH" "$COVERAGE_STATUS" \
   "$INFRASTRUCTURE_FAILED" "$COVERAGE_DIR" "$RUN_DIR" "$VERDICT" \
   "$FAILED_SEEDS" <<'PY'
@@ -660,4 +715,4 @@ echo "========================================"
 [[ "$VERDICT" == "PASS" ]] && exit 0
 exit 1
 
-# rat-version: 0.8.14
+# rat-version: 2.0.2

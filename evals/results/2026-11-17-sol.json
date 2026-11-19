@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-17",
+  "baseline_ref": "0db2ba5",
+  "model": "gpt-6.1-sol",
+  "judgment": {
+    "baseline": [
+      {
+        "case": "settled_spec",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "0db2ba5",
+        "prompt_bytes": 37898,
+        "prompt_words": 4545,
+        "exit_code": 0,
+        "response": {
+          "decision": "proceed",
+          "confidence": "high",
+          "open_ids": [],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": false,
+          "reason": "The selected combinational unsigned adder has one clear interpretation, including the 9-bit carry result, and an exhaustive acceptance criterion. The completed review has no findings. No further interpretation, candidate search, or review is needed."
+        },
+        "failures": [],
+        "elapsed_seconds": 15.358119664000697
+      },
+      {
+        "case": "ambiguity_beats_average",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "0db2ba5",
+        "prompt_bytes": 22688,
+        "prompt_words": 2822,
+        "exit_code": 0,
+        "response": {
+          "decision": "clarify",
+          "confidence": "low",
+          "open_ids": [
+            "REQ-F-001"
+          ],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": false,
+          "reason": "REQ-F-001 is unsettled: retaining the carry conflicts with wrapping modulo 256 in an 8-bit output. An explicit user decision is required; averaged ambiguity of 0.1 cannot resolve the conflict."
+        },
+        "failures": [],
+        "elapsed_seconds": 16.415717803000007
+      },
+      {
+        "case": "measured_failure",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "0db2ba5",
+        "prompt_bytes": 42097,
+        "prompt_words": 5190,
+        "exit_code": 0,
+        "response": {
+          "decision": "repair",
+          "confidence": "high",
+          "open_ids": [],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": true,
+          "reason": "G4b failed on vector 17: expected 9, got 8. Repair the authorized local BFM defect and rerun the affected reference comparison. High confidence and G4a success do not override the mismatch. No clarification or additional design review is needed."
+        },
+        "failures": [],
+        "elapsed_seconds": 14.080565795004077
+      },
+      {
+        "case": "verification_oracle_ambiguity",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "0db2ba5",
+        "prompt_bytes": 37352,
+        "prompt_words": 4358,
+        "exit_code": 0,
+        "response": {
+          "decision": "clarify",
+          "confidence": "low",
+          "open_ids": [
+            "AC-007"
+          ],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": true,
+          "reason": "AC-007 is not ready for a verdict: neither 2 nor 8 cycles is authorized. Clarify the required threshold before adding tests, then align and rerun verification. Implementation confidence and the current 8-cycle PASS cannot resolve the ambiguity; no further review is needed."
+        },
+        "failures": [],
+        "elapsed_seconds": 22.962514466002176
+      }
+    ],
+    "current": [
+      {
+        "case": "settled_spec",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "working-tree",
+        "prompt_bytes": 15444,
+        "prompt_words": 2036,
+        "exit_code": 0,
+        "response": {
+          "decision": "proceed",
+          "confidence": "high",
+          "open_ids": [],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": false,
+          "reason": "The unsigned sum, carry width, interface, and exhaustive acceptance criterion are settled. The selected approach fits and the completed review has no findings. No further interpretation, candidate search, or review is needed."
+        },
+        "failures": [],
+        "elapsed_seconds": 13.583363987003395
+      },
+      {
+        "case": "ambiguity_beats_average",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "working-tree",
+        "prompt_bytes": 18204,
+        "prompt_words": 2258,
+        "prompt_sha256": "87447cc268efecc0df221e9f835369344f859e249c6cc2a32a31c67f5030a5af",
+        "exit_code": 0,
+        "response": {
+          "decision": "clarify",
+          "confidence": "high",
+          "open_ids": [
+            "REQ-F-001"
+          ],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": false,
+          "reason": "REQ-F-001 remains unsettled: retaining carry conflicts with modulo-256 wrapping. A user decision is required; high confidence and a low ambiguity average cannot resolve the conflicting expected results."
+        },
+        "failures": [],
+        "elapsed_seconds": 23.960644701001
+      },
+      {
+        "case": "measured_failure",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "working-tree",
+        "prompt_bytes": 21275,
+        "prompt_words": 2740,
+        "exit_code": 0,
+        "response": {
+          "decision": "repair",
+          "confidence": "high",
+          "open_ids": [],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": true,
+          "reason": "Repair the local BFM defect causing vector 17 to produce 8 instead of 9, then rerun the affected G4b comparison. The specification is settled; no user decision or additional design review is needed."
+        },
+        "failures": [],
+        "elapsed_seconds": 13.20278796400089
+      },
+      {
+        "case": "verification_oracle_ambiguity",
+        "model_requested": "gpt-6.1-sol",
+        "reference": "working-tree",
+        "prompt_bytes": 18161,
+        "prompt_words": 2491,
+        "exit_code": 0,
+        "response": {
+          "decision": "clarify",
+          "confidence": "high",
+          "open_ids": [
+            "AC-007"
+          ],
+          "additional_review_rounds": 0,
+          "verification_rerun_required": false,
+          "reason": "AC-007 is not ready for a verdict: neither 2 nor 8 cycles is authoritative. The current 8-cycle PASS cannot resolve that ambiguity. Settle the expected latency before deciding whether an affected check needs rerunning; no additional review is needed."
+        },
+        "failures": [],
+        "elapsed_seconds": 24.837914948002435
+      }
+    ]
+  },
+  "routing": [
+    {
+      "case": "english_spec",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "0db2ba5",
+      "prompt_bytes": 22030,
+      "prompt_words": 2687,
+      "exit_code": 0,
+      "response": {
+        "route": "/rtl-agent-team:p1-spec-research",
+        "reason": "The functional requirements are settled, so Phase 1 specification research can proceed."
+      },
+      "failures": [],
+      "elapsed_seconds": 14.152662398999382
+    },
+    {
+      "case": "korean_arch",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "0db2ba5",
+      "prompt_bytes": 22030,
+      "prompt_words": 2687,
+      "exit_code": 0,
+      "response": {
+        "route": "/rtl-agent-team:p2-arch-design",
+        "reason": "Phase 1 명세가 확정되었으므로 Phase 2 하드웨어 아키텍처 설계로 진행합니다."
+      },
+      "failures": [],
+      "elapsed_seconds": 12.648912281998491
+    },
+    {
+      "case": "missing_measurement",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "0db2ba5",
+      "prompt_bytes": 22030,
+      "prompt_words": 2687,
+      "exit_code": 0,
+      "response": {
+        "route": "needs_evidence",
+        "reason": "Lint PASS does not establish functional correctness. Rule 5 requires a passing functional simulation after RTL changes; without that evidence, functional verification cannot be reported as PASSED."
+      },
+      "failures": [],
+      "elapsed_seconds": 12.621996815003513
+    },
+    {
+      "case": "korean_oracle",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "0db2ba5",
+      "prompt_bytes": 22030,
+      "prompt_words": 2687,
+      "exit_code": 0,
+      "response": {
+        "route": "clarify",
+        "reason": "최대 허용 응답 지연이 2사이클인지 8사이클인지 정해지지 않았습니다. 8사이클 테스트 PASS만으로 검증 완료를 선언할 수 없으므로 허용 지연 기준을 먼저 확정해야 합니다."
+      },
+      "failures": [],
+      "elapsed_seconds": 14.23663095300435
+    },
+    {
+      "case": "english_spec",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "working-tree",
+      "prompt_bytes": 18893,
+      "prompt_words": 2363,
+      "exit_code": 0,
+      "response": {
+        "route": "p1-spec-research",
+        "reason": "The functional requirements are settled, so Phase 1 specification research can begin without further clarification or measurement."
+      },
+      "failures": [],
+      "elapsed_seconds": 20.62785267500294
+    },
+    {
+      "case": "korean_arch",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "working-tree",
+      "prompt_bytes": 18893,
+      "prompt_words": 2363,
+      "exit_code": 0,
+      "response": {
+        "route": "/rtl-agent-team:p2-arch-design",
+        "reason": "Phase 1 명세가 확정되었으며, 요청한 하드웨어 아키텍처 설계는 Phase 2에 해당합니다."
+      },
+      "failures": [],
+      "elapsed_seconds": 12.020476411002164
+    },
+    {
+      "case": "missing_measurement",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "working-tree",
+      "prompt_bytes": 18893,
+      "prompt_words": 2363,
+      "exit_code": 0,
+      "response": {
+        "route": "needs_evidence",
+        "reason": "Lint passed, but no functional simulation ran after the RTL change. Rule 5 requires measured functional verification; PASSED cannot be reported without that evidence."
+      },
+      "failures": [],
+      "elapsed_seconds": 11.78775204699923
+    },
+    {
+      "case": "korean_oracle",
+      "model_requested": "gpt-6.1-sol",
+      "reference": "working-tree",
+      "prompt_bytes": 18893,
+      "prompt_words": 2363,
+      "exit_code": 0,
+      "response": {
+        "route": "clarify",
+        "reason": "허용 응답 시간이 미정이므로 8사이클 PASS만으로 검증 완료를 판정할 수 없습니다. 최대 허용 응답 시간은 2사이클입니까, 8사이클입니까?"
+      },
+      "failures": [],
+      "elapsed_seconds": 16.293163629998162
+    }
+  ],
+  "unavailable": {
+    "fable": "API 429 weekly usage limit; no model completion",
+    "opus": "API 429 weekly usage limit; no model completion"
+  },
+  "limitations": [
+    "Four fixed judgment fixtures and four routing/guardrail fixtures per version.",
+    "Read-only CLI evaluation with tools disabled/instructed off, not a full design campaign.",
+    "Confidence calibration is not measured; material ambiguity and measured failure determine readiness.",
+    "Qualified plugin routes and bare skill names are equivalent.",
+    "Intermediate results were retained under /tmp/rat-v2-prompt-evals/interim."
+  ],
+  "prompt_bytes": {
+    "baseline": 140035,
+    "current": 73084,
+    "reduction_percent": 47.8
+  }
+}

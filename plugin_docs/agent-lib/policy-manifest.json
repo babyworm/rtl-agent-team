@@ -1,0 +1,111 @@
+{
+  "p4s-refactor-orchestrator": [
+    "rtl-p4s-refactor-policy"
+  ],
+  "p4-block-worker": [
+    "rtl-p4-implement-policy"
+  ],
+  "p2-arch-orchestrator": [
+    "p2-arch-design-policy"
+  ],
+  "spec-to-uarch-orchestrator": [
+    "rat-p1p3-spec-uarch-policy"
+  ],
+  "lint-checker": [
+    "lint-tool-profiles"
+  ],
+  "p1-research-orchestrator": [
+    "p1-spec-research-policy"
+  ],
+  "p4s-bugfix-orchestrator": [
+    "rtl-p4s-bugfix-policy"
+  ],
+  "ppa-optimizer-dc-orchestrator": [
+    "ppa-optimizer-dc-policy",
+    "syn-tool-profiles"
+  ],
+  "eda-runner": [
+    "sim-tool-profiles"
+  ],
+  "p7-exploration-orchestrator": [
+    "rtl-p7-exploration-policy"
+  ],
+  "p5s-protocol-orchestrator": [
+    "rtl-p5s-protocol-policy"
+  ],
+  "p5-verify-orchestrator": [
+    "rtl-p5-verify-policy"
+  ],
+  "testbench-dev": [
+    "test-design-policy"
+  ],
+  "p4s-unit-test-orchestrator": [
+    "rtl-p4s-unit-test-policy"
+  ],
+  "p5s-cdc-orchestrator": [
+    "rtl-p5s-cdc-policy"
+  ],
+  "p4-implement-orchestrator": [
+    "rtl-p4-implement-policy"
+  ],
+  "autopilot-orchestrator": [
+    "rat-auto-design-policy"
+  ],
+  "p6-review-orchestrator": [
+    "rtl-p6-design-review-policy"
+  ],
+  "p5a-functional-closure-orchestrator": [
+    "rtl-p5a-functional-closure-policy"
+  ],
+  "p4-rtl-sanity-orchestrator": [
+    "rtl-p4-rapid-impl-policy"
+  ],
+  "cdc-checker": [
+    "cdc-tool-profiles"
+  ],
+  "review-refactor-orchestrator": [
+    "code-review-policy",
+    "refactor-classification-policy",
+    "verification-recheck-policy"
+  ],
+  "p5s-sva-orchestrator": [
+    "rtl-p5s-sva-policy"
+  ],
+  "p3-uarch-orchestrator": [
+    "rtl-p3-uarch-policy"
+  ],
+  "p5b-silicon-validation-orchestrator": [
+    "rtl-silicon-validation-policy"
+  ],
+  "p5s-integration-orchestrator": [
+    "rtl-p5s-integration-test-policy"
+  ],
+  "p5s-uvm-orchestrator": [
+    "rtl-p5s-uvm-policy"
+  ],
+  "p5s-perf-orchestrator": [
+    "rtl-p5s-perf-policy"
+  ],
+  "test-plan-writer": [
+    "test-design-policy"
+  ],
+  "p5s-coverage-orchestrator": [
+    "rtl-p5s-coverage-policy"
+  ],
+  "ppa-optimizer-dc": [
+    "ppa-optimizer-dc-policy"
+  ],
+  "p5s-func-verify-orchestrator": [
+    "rtl-p5s-func-verify-policy"
+  ],
+  "uarch-to-verify-orchestrator": [
+    "rat-p4p5-impl-verify-policy"
+  ],
+  "p4-block-parallel-coordinator": [
+    "rtl-block-interface-policy",
+    "rtl-block-contract-test-policy"
+  ],
+  "dse-orchestrator": [
+    "rat-dse-policy"
+  ]
+}

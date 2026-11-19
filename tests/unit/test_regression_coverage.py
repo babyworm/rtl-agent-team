@@ -169,7 +169,7 @@ class TestRunRegression:
         sim_dir.mkdir(parents=True)
         (sim_dir / "Makefile").write_text(
             "sim:\n"
-            "\t@echo \"RANDOM_SEED=$(RANDOM_SEED)\"\n"
+            "\t@echo \"RAT_SIM_PASS RANDOM_SEED=$(RANDOM_SEED)\"\n"
             "\t@echo \"SIM_BUILD=$(SIM_BUILD)\"\n"
             "\t@test -n \"$(SIM_BUILD)\"\n"
             "\t@mkdir -p \"$(SIM_BUILD)\"\n"
@@ -186,7 +186,7 @@ class TestRunRegression:
         )
         assert result.returncode == 0
 
-        regression_dir = sim_dir / "regression"
+        regression_dir = next((sim_dir / "regression").glob("run_*"))
         seed_log = (regression_dir / "seed_7.log").read_text()
         assert "RANDOM_SEED=7" in seed_log
         assert "SIM_BUILD=" in seed_log
@@ -211,7 +211,7 @@ class TestRunRegression:
             "sim:\n"
             "\t@if [ \"$(RANDOM_SEED)\" = \"1\" ]; then echo \"forced fail\"; exit 1; fi\n"
             "\t@sleep 5\n"
-            "\t@echo \"pass $(RANDOM_SEED)\"\n"
+            "\t@echo \"RAT_SIM_PASS $(RANDOM_SEED)\"\n"
         )
 
         result = run_script(
@@ -233,7 +233,7 @@ class TestRunRegression:
         (sim_dir / "Makefile").write_text(
             "sim:\n"
             "\t@sleep 0.1\n"
-            "\t@echo \"seed $(RANDOM_SEED) pass\"\n"
+            "\t@echo \"RAT_SIM_PASS seed $(RANDOM_SEED)\"\n"
         )
 
         result = run_script(
@@ -308,3 +308,19 @@ class TestMergeCoverage:
             timeout=10,
         )
         assert "Merging lcov" in result.stdout
+
+
+def test_parallel_result_publication_is_atomic(tmp_path):
+    import os
+    import shutil
+    import shlex
+    sim=tmp_path/'sim';sim.mkdir()
+    (sim/'Makefile').write_text('sim:\n\t@echo RAT_SIM_PASS\n')
+    binary=tmp_path/'bin';binary.mkdir()
+    slow_cat=binary/'cat'
+    slow_cat.write_text('#!/bin/sh\nsleep 0.3\nexec '+shlex.quote(shutil.which('cat'))+' "$@"\n')
+    slow_cat.chmod(0o755)
+    result=run_script(RUN_REGRESSION,'--seeds','1 2 3','--parallel','3','--tb-dir','sim',
+        cwd=str(tmp_path),env={'PATH':str(binary)+os.pathsep+os.environ['PATH']},timeout=20)
+    assert result.returncode==0,result.stdout+result.stderr
+    assert 'Seeds: 3 | Passed: 3 | Failed: 0' in result.stdout

@@ -5,14 +5,20 @@
 # RTL Agent Team
 
 > A Claude Code plugin for automated RTL design and verification.
-> 99 specialized AI agents + 91 skills automate the 6-Phase pipeline:
+> 91 specialized AI agents + 55 skills automate the 6-Phase pipeline:
 > Research → Architecture → μArch → RTL → Verify → Design Note.
 
 RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
-99개 전문 AI 에이전트 + 91개 스킬 + 27개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+91개 전문 AI 에이전트 + 55개 스킬 + 27개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
 
 ![](./rat_logo.jpg)
+
+## try-2.0 개발 상태
+
+스킬 55개와 에이전트 91개를 사용하는 v2 구현입니다. 정책은 에이전트에 포함하며, 순차·팀 모드는 같은 에이전트를 사용합니다. 공식 가이드 검토, 모델 평가와 외부 환경 검증 범위는 [작업 기록](plugin_docs/plans/2026-11-17-v2-execution.md)에 정리했습니다.
+
+도구 준비 여부는 Phase별로 확인합니다. 계정 사용 한도 때문에 Fable·Opus 실측은 수행하지 못했으며, 상용 EDA와 실제 SSH/LSF 검증에는 사이트 환경이 필요합니다.
 
 ## Marketplace
 
@@ -20,7 +26,7 @@ RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
 
 | 플러그인 | 설명 | 버전 |
 |---------|------|------|
-| **rtl-agent-team** | 99-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
+| **rtl-agent-team** | 91-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
 | **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.2.0 |
 
 Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
@@ -39,7 +45,9 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 
 ### Stage A — 머신 설정 (머신당 1회)
 
-플러그인을 설치하고, EDA 툴체인을 대화형으로 점검하며, 선택 시 전역 코딩 규칙을 배포합니다.
+플러그인을 설치하고 요청한 작업에 필요한 EDA 기능을 준비합니다. 실행 호스트를 알려주면
+LLM이 도구 경로를 조사하고 재사용할 사이트 프로필과 프로젝트 설정을 작성합니다.
+사용자에게는 아직 결정하지 않은 환경·설계 항목만 확인합니다.
 
 ```bash
 # A1. Marketplace 등록 (1회)
@@ -49,22 +57,14 @@ Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전�
 /plugin install rtl-agent-team
 /plugin install systemverilog-lsp   # (선택) SV LSP
 
-# A3. EDA 툴체인 점검 (대화형 인터뷰 — 모든 단계는 opt-in)
-#     - Q1 필수 도구: python3, g++, make, verilator, cocotb, systemc
-#            + lint (verible AND/OR slang — 최소 1개)
-#            + CDC (svlens OR sg_shell OR vc_cdc OR questa_cdc — 최소 1개)
-#            — 누락 시 설치 여부 선택 (local/global/docker/skip)
-#     - Q2 추천/선택 도구 — 사용자가 설치 항목 선택:
-#            jq, yosys + sby, slang-server, iverilog, gtkwave
-#     - Q2b 상용 도구 스캔 (vcs, xrun, dc_shell, sg_shell, vc_cdc, ...)
-#            — 감지 + env_source 수집 (설치 아님)
-#     - Q2c 합성용 Liberty 파일 경로 (선택)
-#     - Q3 선택 전역 배포 (yes/no) — 다음을 배포:
-#            ~/.claude/rules/rtl-coding-conventions.md
-#            ~/.claude/rules/rtl-verification-gate.md
-#            ~/.claude/CLAUDE.md diagram rule block (태그 없을 시)
+# A3. 요청한 Phase와 실행 환경을 확인합니다.
 /rtl-agent-team:rat-setup
 ```
+
+원격 도구를 사용한다면 “SSH 호스트 <호스트 이름>에서 실행해줘”라고 함께 요청합니다.
+사이트 프로필은 `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`에 저장하며,
+프로젝트마다 사용할 사이트를 선택합니다. 도구 경로 발견, 실행 성공, 라이선스를 사용하는
+실제 설계 검증 결과를 구분합니다. [SSH 설정 안내](plugin_docs/eda-setup-guide.md#llm-assisted-ssh-setup)를 참고하세요.
 
 > `systemverilog-lsp`가 설치되어 있지만 `slang-server`가 없으면, 서브플러그인이 `SessionStart`에서 이를 점검하고 `local`(`~/.local/bin`, 권장), `global`, `skip` 중 하나를 고르도록 안내합니다.
 
@@ -150,7 +150,7 @@ claude --plugin-dir .
 
 - 사용자 요청은 **Action Skill 우선**으로 라우팅합니다 (예: `/rtl-agent-team:rat-auto-design`, `/rtl-agent-team:rtl-p5-verify`).
 - Orchestrator Agent는 사용자 직접 호출 대상이 아니며, Action Skill이 `Task(...)`로 내부 스폰합니다.
-- Policy Skill은 Orchestrator의 `skills: [*-policy]`를 통해 로드됩니다.
+- 내부 정책은 sync 스크립트로 해당 에이전트에 포함됩니다. 스킬 목록에는 등록하지 않습니다.
 - `rtl-orchestrate`는 내부 라우팅 참조 스킬(`user-invocable: false`)이며 사용자 slash-command가 아닙니다.
 
 ### 전체 자동화
@@ -204,18 +204,16 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 /rtl-agent-team:domain-consult           # 도메인 전문가 상담
 ```
 
-### 스킬 카테고리 (91개)
+### 스킬 카테고리 (55개)
 
 | 카테고리 | 수량 | 설명 |
 |----------|------|------|
 | **Action Entry Points** | 50 | 사용자 호출 가능 slash 커맨드: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, utility (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
-| **Policy** | 32 | 에이전트가 참조하는 규칙/기준 (`*-policy`, 비사용자 호출) |
 | **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC |
-| **Tool Profile** | 4 | 시뮬레이터/린터/합성기/CDC 도구 설정 |
 | **Internal** | 1 | 라우팅 SSOT (`rtl-orchestrate`) |
-| **합계** | **91** | |
+| **합계** | **55** | |
 
-에셋(템플릿/스크립트/레퍼런스/예제)은 91개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
+에셋(템플릿/스크립트/레퍼런스/예제)은 55개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
 
 ## 프로젝트 산출물 구조
 
@@ -246,10 +244,10 @@ rtl-agent-team/
 │   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
 │   └── marketplace.json        # 마켓플레이스 정의
 ├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 99개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
+├── agents/                     # 91개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
 ├── scripts/
 │   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 91개 스킬 (SKILL.md + templates/ + examples/)
+├── skills/                     # 55개 스킬 (SKILL.md + templates/ + examples/)
 │   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
 │   ├── rat-init-project/
 │   │   ├── scripts/
@@ -289,7 +287,7 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 
 ## 에이전트 팀
 
-### 에이전트 구성 (99개: Opus 97개, Sonnet 2개)
+### 에이전트 구성 (91개: Fable 36개, Opus 53개, Sonnet 2개)
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
@@ -367,16 +365,15 @@ Design Compiler 합성 → JSON 리포트 → RTL patch → equivalence+smoke �
 
 | 도구 | 용도 | 필수 여부 |
 |------|------|----------|
-| verilator | 시뮬레이션 + Lint | 필수 |
-| verible | 스타일 Lint + 포매팅 | 필수 (verible/slang 중 최소 1개) |
-| slang | IEEE 1800 시맨틱 Lint | 필수 (verible/slang 중 최소 1개) |
-| svlens | CDC + 구조 분석 (conn/metrics) | 필수 (또는 sg_shell/vc_cdc/questa_cdc 중 1개) |
+| verilator / iverilog / VCS / Xcelium / Questa | Simulation | P4/P5A에서 적합한 시뮬레이터 1개를 선택합니다. |
+| verible / slang / Verilator / SpyGlass | Lint | P4/P5A에서 1개를 선택합니다. |
+| svlens / SpyGlass / VC CDC / Questa CDC | CDC | 클록 도메인이 여러 개인 설계에 필요합니다. |
 | slang-server | SV Language Server (LSP) | 권장 |
-| cocotb (Python) | 기능 검증 | 필수 |
-| python3 | cocotb 런타임 | 필수 |
-| g++ | 레퍼런스 모델 빌드 | 필수 |
+| cocotb | Functional verification | cocotb 검증 경로에 필요합니다. 상용 UVM 경로에는 필요하지 않습니다. |
+| Python >= 3.9 | Execution and evidence helpers | RAT_PYTHON |
+| C/C++ compiler | Reference/BFM build | P2/P3 |
 | make | 빌드 시스템 | 필수 |
-| systemc | SystemC/TLM-2.0 (ref model, BFM) | 필수 |
+| SystemC | TLM BFM | SystemC/TLM BFM을 요청한 경우에 필요합니다. |
 | iverilog | 대안 시뮬레이터 | 선택 (verilator 설치 시) |
 | yosys | 합성 (Phase 5B+) | 선택 |
 | sby (SymbiYosys) | Formal 검증 | 선택 |
@@ -453,8 +450,8 @@ rtl-agent-team/                          # Marketplace root
 ├── .claude-plugin/
 │   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
 │   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (99개)
-├── skills/                              # rtl-agent-team 스킬 (91개, 27개 레퍼런스 문서 포함)
+├── agents/                              # rtl-agent-team 에이전트 (91개)
+├── skills/                              # rtl-agent-team 스킬 (55개, 27개 레퍼런스 문서 포함)
 └── domain-packages/                     # 도메인 지식 패키지
     ├── video-codec/                     # H.264/H.265 코덱 지식
     └── video-processing/                # 색공간, 노이즈 제거, HDR/ISP
@@ -478,3 +475,5 @@ claude --plugin-dir .
 ## 라이선스
 
 MIT
+
+Claude Code에서 `Stop hook error occurred`가 표시되면 RAT가 미완료 조건을 반환한 것일 수 있습니다. 함께 표시된 사유를 확인합니다. 동일 조건의 반복 차단에는 한도가 있습니다.

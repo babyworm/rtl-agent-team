@@ -85,7 +85,7 @@ cat >> "$SUMMARY_FILE" << STATS
 | Metric | Count |
 |--------|-------|
 | Total events | $TOTAL |
-| Agent spawns | $(grep -c '"spawn_start"' "$TRACE_FILE" || true) |
+| Agent spawns | $(grep -c '"spawn_complete"' "$TRACE_FILE" || true) |
 | Skill invocations | $(grep -c '"skill_invoke"' "$TRACE_FILE" || true) |
 | Artifacts written | $(grep -c '"artifact_write"' "$TRACE_FILE" || true) |
 | Decisions | $(grep -c '"decision"' "$TRACE_FILE" || true) |

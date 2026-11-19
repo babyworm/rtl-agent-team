@@ -56,8 +56,7 @@ module repro_tb;
   // ─── Timeout (fail_cycle + margin) ─────────────────────────────────────
   initial begin
     repeat (L_FAIL_CYCLE + L_MARGIN) @(posedge {{DOMAIN}}_clk);
-    $display("ERROR: Timeout — bug did NOT reproduce within %0d cycles", L_FAIL_CYCLE + L_MARGIN);
-    $finish(1);
+    $fatal(1, "RAT_TIMEOUT: bug did NOT reproduce within %0d cycles", L_FAIL_CYCLE + L_MARGIN);
   end
 
   // ─── Reset + Minimal Stimulus ──────────────────────────────────────────
@@ -88,7 +87,7 @@ module repro_tb;
     // end
 
     $display("Bug NOT reproduced — stimulus may need adjustment");
-    $finish(1);
+    $fatal(1, "Bug reproduction did not complete");
   end
 
 endmodule

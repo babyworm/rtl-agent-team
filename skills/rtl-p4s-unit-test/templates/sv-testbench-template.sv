@@ -64,9 +64,11 @@ module tb_{{MODULE_NAME}};
 
   // ─── Timeout Watchdog ──────────────────────────────────────────────────
   initial begin
-    repeat (L_TIMEOUT) @(posedge {{DOMAIN}}_clk);
-    $display("ERROR: Simulation timeout after %0d cycles", L_TIMEOUT);
-    $finish(1);
+    int timeout_cycles;
+    if (!$value$plusargs("timeout=%d", timeout_cycles)) timeout_cycles = L_TIMEOUT;
+    if (timeout_cycles <= 0) $fatal(1, "RAT_TIMEOUT: timeout must be positive");
+    repeat (timeout_cycles) @(posedge {{DOMAIN}}_clk);
+    $fatal(1, "RAT_TIMEOUT: Simulation timeout after %0d cycles", timeout_cycles);
   end
 
   // ─── Test Infrastructure ───────────────────────────────────────────────
@@ -144,12 +146,11 @@ module tb_{{MODULE_NAME}};
     // ─── Summary ─────────────────────────────────────────────────────────
     $display("=== Results: %0d/%0d passed ===", pass_count, test_count);
 
-    if (fail_count == 0) begin
-      $display("ALL TESTS PASSED");
+    if (fail_count == 0 && test_count > 0) begin
+      $display("RAT_SIM_PASS: ALL TESTS PASSED");
       $finish(0);
     end else begin
-      $display("TESTS FAILED: %0d failures", fail_count);
-      $finish(1);
+      $fatal(1, "TESTS FAILED: %0d failures across %0d checks", fail_count, test_count);
     end
   end
 

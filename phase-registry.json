@@ -11,28 +11,41 @@
     "p2-arch-design": {
       "phase": 2,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json"
+      ],
       "open_requirements": "docs/phase-1-research/open-requirements.json",
       "completion_criteria": "arch-review-complete|ref-model-built|artifacts-written|open-resolved|compliance-pass|ambiguity-pass"
     },
     "rtl-p3-uarch-design": {
       "phase": 3,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json"
+      ],
       "open_requirements": "docs/phase-2-architecture/open-requirements.json",
       "completion_criteria": "uarch-review-complete|artifacts-written|open-resolved|zero-remaining-opens|compliance-pass|ambiguity-pass"
     },
     "rtl-p4-implement": {
       "phase": 4,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "rtl-written|lint-pass|synthesizability-pass|unit-test-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance|ac-coverage-advisory"
     },
     "rtl-p4-block-parallel": {
       "phase": 4,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "rtl-written|lint-pass|unit-test-pass|contract-test-pass|all-blocks-merged|ac-coverage-advisory"
     },
@@ -46,7 +59,9 @@
     "rtl-p4s-unit-test": {
       "phase": 4,
       "primary": false,
-      "iron_upstream": ["docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "test-written|simulation-pass|ref-mismatches-zero|coverage-met|req-ids-traced|func-coverage-exists|codec-conformance|ac-coverage-advisory"
     },
@@ -60,7 +75,11 @@
     "rtl-p4-rapid-impl": {
       "phase": 4,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "rtl-written|lint-pass|sanity-pass"
     },
@@ -74,7 +93,11 @@
     "rat-p4p5-impl-verify": {
       "phase": 4,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "phase-gate-passed|artifacts-written"
     },
@@ -82,7 +105,11 @@
       "phase": 5,
       "phase_group": "a",
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "verification-pass|coverage-met|artifacts-written|ac-coverage-check"
     },
@@ -106,7 +133,11 @@
       "phase": 5,
       "phase_group": "a",
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "functional-closure-pass|artifacts-written"
     },
@@ -114,7 +145,11 @@
       "phase": 5,
       "phase_group": "a",
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "synthesis-pass|signoff-check|artifacts-written"
     },
@@ -169,7 +204,11 @@
     "rtl-p6-design-review": {
       "phase": 6,
       "primary": true,
-      "iron_upstream": ["docs/phase-1-research/iron-requirements.json", "docs/phase-2-architecture/iron-requirements.json", "docs/phase-3-uarch/iron-requirements.json"],
+      "iron_upstream": [
+        "docs/phase-1-research/iron-requirements.json",
+        "docs/phase-2-architecture/iron-requirements.json",
+        "docs/phase-3-uarch/iron-requirements.json"
+      ],
       "open_requirements": "",
       "completion_criteria": "design-note-written|consistency-check-pass"
     },
@@ -258,103 +297,249 @@
     "spec-to-uarch-orchestrator": "rat-p1p3-spec-uarch",
     "uarch-to-verify-orchestrator": "rat-p4p5-impl-verify",
     "dse-orchestrator": "rat-dse",
-    "p1-research-team-orchestrator": "p1-spec-research",
-    "p2-arch-team-orchestrator": "p2-arch-design",
-    "p3-uarch-team-orchestrator": "rtl-p3-uarch-design",
-    "p4-implement-team-orchestrator": "rtl-p4-implement",
-    "p5-verify-team-orchestrator": "rtl-p5-verify",
-    "spec-to-uarch-team-orchestrator": "rat-p1p3-spec-uarch",
     "ppa-optimizer-dc-orchestrator": "rtl-ppa-optimize-dc",
-    "ppa-optimizer-dc": "rtl-ppa-optimize-dc",
-    "dc-report-parser": "rtl-ppa-optimize-dc"
+    "ppa-optimizer-dc": "rtl-ppa-optimize-dc"
   },
   "phases": {
     "1": {
       "required": [
-        {"path": "specs", "role": "spec-documents"}
+        {
+          "path": "specs",
+          "role": "spec-documents"
+        }
       ],
       "optional": []
     },
     "2": {
       "required": [
-        {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
-        {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"},
-        {"path": "docs/phase-1-research/domain-analysis.md", "role": "p1-domain-analysis"},
-        {"path": "docs/phase-1-research/timing_constraints.json", "role": "p1-timing-constraints"},
-        {"path": "docs/phase-1-research/feature-coverage.md", "role": "p1-feature-coverage"}
+        {
+          "path": "docs/phase-1-research/iron-requirements.json",
+          "role": "p1-iron-requirements"
+        },
+        {
+          "path": "docs/phase-1-research/io_definition.json",
+          "role": "p1-io-definition"
+        },
+        {
+          "path": "docs/phase-1-research/domain-analysis.md",
+          "role": "p1-domain-analysis"
+        },
+        {
+          "path": "docs/phase-1-research/timing_constraints.json",
+          "role": "p1-timing-constraints"
+        },
+        {
+          "path": "docs/phase-1-research/feature-coverage.md",
+          "role": "p1-feature-coverage"
+        }
       ],
       "optional": [
-        {"path": "docs/phase-1-research/open-requirements.json", "role": "p1-open-requirements"},
-        {"path": "docs/phase-1-research/spec-feature-inventory.json", "role": "p1-spec-feature-inventory"}
+        {
+          "path": "docs/phase-1-research/open-requirements.json",
+          "role": "p1-open-requirements"
+        },
+        {
+          "path": "docs/phase-1-research/spec-feature-inventory.json",
+          "role": "p1-spec-feature-inventory"
+        }
       ]
     },
     "3": {
       "required": [
-        {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"},
-        {"path": "docs/phase-2-architecture/iron-requirements.json", "role": "p2-iron-requirements"},
-        {"path": "refc", "role": "p2-ref-model"}
+        {
+          "path": "docs/phase-2-architecture/architecture.md",
+          "role": "p2-architecture"
+        },
+        {
+          "path": "docs/phase-2-architecture/iron-requirements.json",
+          "role": "p2-iron-requirements"
+        },
+        {
+          "path": "refc",
+          "role": "p2-ref-model"
+        }
       ],
       "optional": [
-        {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
-        {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"},
-        {"path": "docs/phase-2-architecture/bandwidth_report.json", "role": "p2-bandwidth"}
+        {
+          "path": "docs/phase-1-research/iron-requirements.json",
+          "role": "p1-iron-requirements"
+        },
+        {
+          "path": "docs/phase-1-research/io_definition.json",
+          "role": "p1-io-definition"
+        },
+        {
+          "path": "docs/phase-2-architecture/bandwidth_report.json",
+          "role": "p2-bandwidth"
+        }
       ]
     },
     "4": {
       "required": [
-        {"path": "docs/phase-3-uarch", "role": "p3-uarch-specs"},
-        {"path": "docs/phase-3-uarch/iron-requirements.json", "role": "p3-iron-requirements"},
-        {"path": "docs/phase-1-research/io_definition.json", "role": "p1-io-definition"}
+        {
+          "path": "docs/phase-3-uarch",
+          "role": "p3-uarch-specs"
+        },
+        {
+          "path": "docs/phase-3-uarch/iron-requirements.json",
+          "role": "p3-iron-requirements"
+        },
+        {
+          "path": "docs/phase-1-research/io_definition.json",
+          "role": "p1-io-definition"
+        }
       ],
       "optional": [
-        {"path": "bfm", "role": "p3-bfm-model"},
-        {"path": "docs/phase-3-uarch/clock-domain-map.md", "role": "p3-clock-domain-map"},
-        {"path": "docs/phase-3-uarch/protocol-assignments.md", "role": "p3-protocol-assignments"},
-        {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"},
-        {"path": "refc/**/*.c", "role": "p4-refc-reference"}
+        {
+          "path": "bfm",
+          "role": "p3-bfm-model"
+        },
+        {
+          "path": "docs/phase-3-uarch/clock-domain-map.md",
+          "role": "p3-clock-domain-map"
+        },
+        {
+          "path": "docs/phase-3-uarch/protocol-assignments.md",
+          "role": "p3-protocol-assignments"
+        },
+        {
+          "path": "docs/phase-2-architecture/architecture.md",
+          "role": "p2-architecture"
+        },
+        {
+          "path": "refc/**/*.c",
+          "role": "p4-refc-reference"
+        }
       ]
     },
     "5": {
       "required": [
-        {"path": "docs/phase-1-research/iron-requirements.json", "role": "p1-iron-requirements"},
-        {"path": "rtl", "role": "p4-rtl-sources"},
-        {"path": "docs/phase-4-rtl", "role": "p4-rtl-docs"},
-        {"path": "sim/**/*_unit_results.json", "role": "p4-tier2-unit-test-results"},
-        {"path": "docs/phase-4-rtl/stream-b-sva-skeletons.md", "role": "p4-stream-b-sva"},
-        {"path": "docs/phase-4-rtl/stream-b-cdc-preliminary.md", "role": "p4-stream-b-cdc"},
-        {"path": "docs/phase-4-rtl/stream-b-tb-skeletons.md", "role": "p4-stream-b-tb"}
+        {
+          "path": "docs/phase-1-research/iron-requirements.json",
+          "role": "p1-iron-requirements"
+        },
+        {
+          "path": "rtl",
+          "role": "p4-rtl-sources"
+        },
+        {
+          "path": "docs/phase-4-rtl",
+          "role": "p4-rtl-docs"
+        },
+        {
+          "path": "sim/**/*_unit_results.json",
+          "role": "p4-tier2-unit-test-results"
+        },
+        {
+          "path": "docs/phase-4-rtl/stream-b-sva-skeletons.md",
+          "role": "p4-stream-b-sva"
+        },
+        {
+          "path": "docs/phase-4-rtl/stream-b-cdc-preliminary.md",
+          "role": "p4-stream-b-cdc"
+        },
+        {
+          "path": "docs/phase-4-rtl/stream-b-tb-skeletons.md",
+          "role": "p4-stream-b-tb"
+        }
       ],
       "optional": [
-        {"path": "docs/phase-4-rtl/module-descriptions.md", "role": "p4-module-descriptions"}
+        {
+          "path": "docs/phase-4-rtl/module-descriptions.md",
+          "role": "p4-module-descriptions"
+        }
       ]
     },
     "6": {
       "required": [
-        {"path": "reviews/phase-5-verify/final-compliance.md", "role": "p5-compliance"}
+        {
+          "path": "reviews/phase-5-verify/final-compliance.md",
+          "role": "p5-compliance"
+        }
       ],
       "optional": [
-        {"path": "docs/phase-4-rtl/module-descriptions.md", "role": "p4-module-descriptions"}
+        {
+          "path": "docs/phase-4-rtl/module-descriptions.md",
+          "role": "p4-module-descriptions"
+        }
       ]
     },
     "7": {
       "required": [],
       "optional": [
-        {"path": "reviews/phase-6-review/improvements.md", "role": "p6-improvements"},
-        {"path": "docs/phase-2-architecture/architecture.md", "role": "p2-architecture"}
+        {
+          "path": "reviews/phase-6-review/improvements.md",
+          "role": "p6-improvements"
+        },
+        {
+          "path": "docs/phase-2-architecture/architecture.md",
+          "role": "p2-architecture"
+        }
       ]
     },
     "ppa-opt": {
       "order": 5.5,
       "integer_map": 8,
       "name": "Post-Verify PPA Optimization",
-      "skills": ["rtl-ppa-optimize-dc", "rat-ultraloop-ppa"],
-      "upstream": ["phase-5-verify"],
-      "downstream": ["phase-6-design-note"],
+      "skills": [
+        "rtl-ppa-optimize-dc",
+        "rat-ultraloop-ppa"
+      ],
+      "upstream": [
+        "phase-5-verify"
+      ],
+      "downstream": [
+        "phase-6-design-note"
+      ],
       "required": [],
       "optional": [
-        {"path": "reviews/phase-5-verify/final-compliance.md", "role": "p5-compliance"},
-        {"path": "docs/ppa-opt", "role": "ppa-iteration-artifacts"}
+        {
+          "path": "reviews/phase-5-verify/final-compliance.md",
+          "role": "p5-compliance"
+        },
+        {
+          "path": "docs/ppa-opt",
+          "role": "ppa-iteration-artifacts"
+        }
       ]
     }
+  },
+  "handoff_artifacts": {
+    "1": [
+      "docs/phase-1-research/iron-requirements.json",
+      "docs/phase-1-research/open-requirements.json",
+      "docs/phase-1-research/io_definition.json",
+      "docs/phase-1-research/feature-coverage.md",
+      "reviews/phase-1-research/research-review.md"
+    ],
+    "2": [
+      "docs/phase-2-architecture/architecture.md",
+      "docs/phase-2-architecture/iron-requirements.json",
+      "docs/phase-2-architecture/open-requirements.json",
+      "refc/*",
+      "reviews/phase-2-architecture/architecture-review.md"
+    ],
+    "3": [
+      "docs/phase-3-uarch/*.md",
+      "docs/phase-3-uarch/iron-requirements.json",
+      "docs/phase-3-uarch/open-requirements.json",
+      "bfm/*"
+    ],
+    "4": [
+      "rtl/**/*.sv",
+      "sim/**/*_unit_results.json",
+      "docs/phase-4-rtl/stream-b-sva-skeletons.md",
+      "docs/phase-4-rtl/stream-b-cdc-preliminary.md",
+      "docs/phase-4-rtl/stream-b-tb-skeletons.md"
+    ],
+    "5": [
+      "reviews/phase-5-verify/final-compliance.md"
+    ],
+    "6": [
+      "reviews/phase-6-review/code-review.md",
+      "reviews/phase-6-review/design-review.md",
+      "reviews/phase-6-review/improvements.md",
+      "reviews/phase-6-review/design-note*.md"
+    ]
   }
 }

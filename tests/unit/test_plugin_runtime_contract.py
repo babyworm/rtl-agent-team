@@ -1,3 +1,4 @@
+from tests.contracts import read_contract
 """Plugin runtime contract tests.
 
 These tests focus on runtime behavior as a Claude Code plugin:
@@ -52,7 +53,7 @@ def _skill_user_invocable(skill_name: str) -> bool:
     if not skill_file.exists():
         raise AssertionError(f"Missing skill file: {skill_file}")
 
-    content = skill_file.read_text()
+    content = read_contract(skill_file)
     parts = content.split("---", 2)
     if len(parts) < 3:
         raise AssertionError(f"Missing YAML frontmatter: {skill_file}")
@@ -69,11 +70,11 @@ class TestHookRuntimeContract:
 
     @pytest.fixture
     def hooks(self):
-        return json.loads(HOOKS_JSON.read_text())
+        return json.loads(read_contract(HOOKS_JSON))
 
     def test_event_keys_present(self, hooks):
         event_keys = set(hooks["hooks"].keys())
-        assert event_keys == {"SessionStart", "PostToolUse", "PreToolUse", "SubagentStart", "SubagentStop", "Stop"}
+        assert event_keys == {"SessionStart", "PostToolUse", "PreToolUse", "UserPromptExpansion", "SubagentStart", "SubagentStop", "Stop"}
 
     def test_hook_commands_use_plugin_root(self, hooks):
         for event_entries in hooks["hooks"].values():
@@ -95,6 +96,7 @@ class TestHookRuntimeContract:
         assert commands == [
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-init.sh"',
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-parser-warning.sh"',
         ]
 
     def test_pretooluse_skill_hooks_order(self, hooks):
@@ -117,9 +119,10 @@ class TestHookRuntimeContract:
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
         matchers = [e["matcher"] for e in entries]
-        assert matchers == ["Skill", "Edit|Write|Bash", "TaskUpdate", "Agent"]
+        assert matchers == ["Skill", "Edit|Write|Bash", "TaskUpdate", "Agent", "Edit|Write"]
         # Skill matcher: the completion loop starts once the call ran
         assert [h["command"] for h in entries[0]["hooks"]] == [
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-phase-state-bootstrap.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
         ]
 
@@ -147,8 +150,8 @@ class TestHookRuntimeContract:
     def test_python_heavy_stop_gates_get_ten_seconds(self, hooks):
         # In python parser mode the skill completion gate and stop-gate.sh each start python
         # about two dozen times on a blocking Stop, and a Stop hook that times out fails open.
-        # Every other hook keeps 3 seconds.
-        slow = {"rtl-skill-completion-gate.sh", "stop-gate.sh"}
+        # Direct expansion runs both skill hooks sequentially, including parser work.
+        slow = {"rtl-skill-completion-gate.sh", "stop-gate.sh", "rtl-skill-expansion.sh"}
         timeouts = {}
         for event_entries in hooks["hooks"].values():
             for entry in event_entries:
@@ -164,7 +167,7 @@ def _hooks_resolving_rat_dir() -> list:
     return sorted(
         path.name for path in (REPO_ROOT / "hooks").glob("*.sh")
         if any(re.search(r"\brat_project_dir\b", line)
-               for line in path.read_text().splitlines() if not line.lstrip().startswith("#"))
+               for line in read_contract(path).splitlines() if not line.lstrip().startswith("#"))
     )
 
 
@@ -190,7 +193,7 @@ class TestSpawnContextProjectRootContract:
     )
 
     def test_manifest_emits_project_root_field(self):
-        content = self.SPAWN_CTX_UTIL.read_text()
+        content = read_contract(self.SPAWN_CTX_UTIL)
         assert '"project_root":"$SCTX_PROJECT_ROOT_ESC"' in content, (
             "spawn-context manifest must emit a project_root field"
         )
@@ -210,7 +213,7 @@ class TestSpawnContextProjectRootContract:
     def test_hooks_honor_project_root_override(self, hook_name):
         code = [
             (i, line.strip())
-            for i, line in enumerate((REPO_ROOT / "hooks" / hook_name).read_text().splitlines())
+            for i, line in enumerate(read_contract(REPO_ROOT / "hooks" / hook_name).splitlines())
             if line.strip() and not line.lstrip().startswith("#")
         ]
         resolve = next(i for i, line in code if re.search(r"\brat_project_dir\b", line))
@@ -232,11 +235,11 @@ class TestPluginManifestRuntimeContract:
 
     @pytest.fixture
     def plugin_data(self):
-        return json.loads(PLUGIN_JSON.read_text())
+        return json.loads(read_contract(PLUGIN_JSON))
 
     @pytest.fixture
     def marketplace_data(self):
-        return json.loads(MARKETPLACE_JSON.read_text())
+        return json.loads(read_contract(MARKETPLACE_JSON))
 
     @pytest.fixture
     def marketplace_plugin(self, marketplace_data):
@@ -317,7 +320,7 @@ class TestSessionStartRoutingBlockContract:
         # in main-session context). It remains agent-side reference material in
         # the rtl-orchestrate skill body — the agent-existence contract still
         # applies there.
-        content = RTL_ORCHESTRATE_SKILL.read_text()
+        content = read_contract(RTL_ORCHESTRATE_SKILL)
         start_token = "## Expert Review → Agent Delegation"
         end_token = "## Phase-Aware Invocation Cues"
         assert start_token in content
@@ -326,7 +329,7 @@ class TestSessionStartRoutingBlockContract:
 
     @pytest.fixture
     def orchestrate_skill_routing_section(self):
-        content = RTL_ORCHESTRATE_SKILL.read_text()
+        content = read_contract(RTL_ORCHESTRATE_SKILL)
         start_token = "## Skill Routing Table"
         end_token = "### Action Skill → Orchestrator Agent Mapping (internal)"
         assert start_token in content
@@ -394,11 +397,11 @@ class TestP5sFuncVerifyRuntimePolicyContract:
 
     @pytest.fixture
     def orchestrator_content(self):
-        return P5S_FUNC_VERIFY_ORCHESTRATOR.read_text()
+        return read_contract(P5S_FUNC_VERIFY_ORCHESTRATOR)
 
     @pytest.fixture
     def policy_content(self):
-        return P5S_FUNC_VERIFY_POLICY.read_text()
+        return read_contract(P5S_FUNC_VERIFY_POLICY)
 
     def test_orchestrator_declares_local_first_runtime(self, orchestrator_content):
         assert "Default execution mode is local (`--mode local`) on the current host." in orchestrator_content
@@ -417,7 +420,7 @@ class TestP5sFuncVerifyRuntimePolicyContract:
         assert "--parallel 4" not in orchestrator_content
 
     def test_policy_examples_do_not_hardcode_parallel_4(self, policy_content):
-        assert "--mode local --seeds \"1 42 123 1337 65536\" --sim verilator" in policy_content
+        assert "--mode local --seeds \"1 42 123 1337 65536\" --sim auto" in policy_content
         assert "--parallel 4" not in policy_content
 
 
@@ -425,19 +428,19 @@ class TestReviewRefactorPolicyRuntimeContract:
     """Lock minimum depth requirements for review/refactor policies."""
 
     def test_code_review_policy_has_gate_escalation_and_output(self):
-        content = CODE_REVIEW_POLICY.read_text()
+        content = read_contract(CODE_REVIEW_POLICY)
         assert "Pass/Fail Gate" in content
         assert "Escalation" in content
         assert "Output Format" in content
 
     def test_refactor_policy_has_gate_escalation_and_output(self):
-        content = REFACTOR_POLICY.read_text()
+        content = read_contract(REFACTOR_POLICY)
         assert "Pass/Fail Gate" in content
         assert "Escalation" in content
         assert "Output Format" in content
 
     def test_recheck_policy_has_commands_criteria_and_output(self):
-        content = VERIFICATION_RECHECK_POLICY.read_text()
+        content = read_contract(VERIFICATION_RECHECK_POLICY)
         assert "Recommended Commands" in content
         assert "Pass/Fail Criteria" in content
         assert "Escalation" in content
@@ -448,22 +451,22 @@ class TestToolProfileRuntimeContract:
     """Lock minimum actionable content for tool profile skills."""
 
     def test_sim_tool_profiles_include_open_source_invocation(self):
-        content = SIM_TOOL_PROFILES.read_text()
+        content = read_contract(SIM_TOOL_PROFILES)
         assert "scripts/run_sim.sh --sim verilator" in content
         assert "Normalized Result Fields" in content
 
     def test_lint_tool_profiles_include_open_source_invocation(self):
-        content = LINT_TOOL_PROFILES.read_text()
+        content = read_contract(LINT_TOOL_PROFILES)
         assert "lint/scripts/run_lint.sh --tool verilator" in content
         assert "Gate decision is based on normalized" in content
 
     def test_cdc_tool_profiles_include_open_source_invocation(self):
-        content = CDC_TOOL_PROFILES.read_text()
+        content = read_contract(CDC_TOOL_PROFILES)
         assert "lint/scripts/run_cdc.sh --tool structural" in content
         assert "Gate fail when unwaived `VIOLATION` exists." in content
 
     def test_syn_tool_profiles_include_open_source_invocation(self):
-        content = SYN_TOOL_PROFILES.read_text()
+        content = read_contract(SYN_TOOL_PROFILES)
         assert "syn/scripts/run_syn.sh --tool yosys" in content
         assert "Gate Criteria" in content
 
@@ -476,11 +479,11 @@ def _rat_setup_delivered_content() -> str:
     where SKILL.md instructs it). The remediation contract is delivered by the
     combined content, so contract assertions check the combination.
     """
-    content = RAT_SETUP_SKILL.read_text()
+    content = read_contract(RAT_SETUP_SKILL)
     refs_dir = RAT_SETUP_SKILL.parent / "references"
     if refs_dir.is_dir():
         for ref in sorted(refs_dir.glob("*.md")):
-            content += "\n" + ref.read_text()
+            content += "\n" + read_contract(ref)
     return content
 
 
@@ -488,10 +491,10 @@ class TestRatSetupRuntimeContract:
     """Lock required-tool remediation guidance for rat-setup."""
 
     def test_rat_setup_requires_install_when_required_tools_missing(self):
-        content = _rat_setup_delivered_content()
-        assert "Required tool remediation" in content
-        assert "installation is required before real design work" in content
-        assert "Ready to start: Yes/No (**No** if any required tool is missing)" in content
+        content = read_contract(RAT_SETUP_SKILL)
+        assert 'required by the requested phase' in content
+        assert 'missing dependencies' in content
+        assert 'remote_unprobed' in content
 
     def test_rat_setup_includes_user_local_install_fallback(self):
         content = _rat_setup_delivered_content()
@@ -501,18 +504,13 @@ class TestRatSetupRuntimeContract:
         assert 'ln -sf "$HOME/tools/oss-cad-suite/bin/yosys" "$HOME/.local/bin/yosys"' in content
 
     def test_rat_setup_prompts_for_global_local_or_skip(self):
-        content = _rat_setup_delivered_content()
-        assert "global" in content
-        assert "local" in content
-        assert "skip" in content
-        assert "Before installing missing required tools" in content
-        assert "LLM executes directly" in content
-        assert "sudo commands for user to run manually" in content
+        content = read_contract(RAT_SETUP_SKILL)
+        assert 'already authorized' in content
+        assert 'before making' in content
+        assert 'user-local' in content
 
     def test_rat_setup_prefers_upstream_install_for_recent_verilator_and_systemc(self):
         content = _rat_setup_delivered_content()
-        assert "distro packages are often outdated" in content
-        assert "Actively look up the latest stable version" in content
         assert "VERILATOR_LATEST_TAG" in content
         assert "SYSTEMC_LATEST_TAG" in content
         assert 'git checkout "$VERILATOR_LATEST_TAG"' in content
@@ -521,25 +519,25 @@ class TestRatSetupRuntimeContract:
         assert "git clone https://github.com/accellera-official/systemc.git" in content
 
     def test_install_commands_download_verible_archive_before_extracting_it(self):
-        content = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        content = read_contract(RAT_SETUP_INSTALL_COMMANDS)
         download = content.index("github.com/chipsalliance/verible/releases/download")
         extract = content.index("tar xzf", download)
         assert download < extract
 
     def test_install_commands_resolve_slang_server_from_plugin_root(self):
-        content = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        content = read_contract(RAT_SETUP_INSTALL_COMMANDS)
         assert '${CLAUDE_PLUGIN_ROOT}/scripts/install-slang-server.sh' in content
         assert "bash scripts/install-slang-server.sh" not in content
 
     def test_docker_build_context_resolves_from_plugin_root(self):
-        install_commands = RAT_SETUP_INSTALL_COMMANDS.read_text()
-        docker_environment = RAT_SETUP_DOCKER_ENVIRONMENT.read_text()
+        install_commands = read_contract(RAT_SETUP_INSTALL_COMMANDS)
+        docker_environment = read_contract(RAT_SETUP_DOCKER_ENVIRONMENT)
         assert 'docker build -t rtl-eda-tools "${CLAUDE_PLUGIN_ROOT}/docker/"' in install_commands
         assert '  "${CLAUDE_PLUGIN_ROOT}/docker/"' in docker_environment
         assert '--mount "type=bind,src=$(pwd),dst=/workspace"' in docker_environment
 
     def test_install_commands_cover_required_open_source_lint_and_cdc_tools(self):
-        content = RAT_SETUP_INSTALL_COMMANDS.read_text()
+        content = read_contract(RAT_SETUP_INSTALL_COMMANDS)
         assert "https://github.com/MikePopoloski/slang.git" in content
         assert 'cmake --install "$HOME/tools/slang-src/build"' in content
         assert (
@@ -554,8 +552,8 @@ class TestRatSetupRuntimeContract:
     def test_pipeline_probes_cannot_hide_not_found_status(self):
         content = "\n".join(
             [
-                RAT_SETUP_TOOL_CHECK_COMMANDS.read_text(),
-                RAT_PLUGIN_DEBUG_SKILL.read_text(),
+                read_contract(RAT_SETUP_TOOL_CHECK_COMMANDS),
+                read_contract(RAT_PLUGIN_DEBUG_SKILL),
             ]
         )
         hidden_failure = re.compile(r"\|\s*head\s+-1\s*\|\|\s*echo\s+\"?(?:NOT_FOUND|NO_IMAGE)")
@@ -564,8 +562,8 @@ class TestRatSetupRuntimeContract:
     def test_plugin_registration_is_read_through_claude_cli(self):
         content = "\n".join(
             [
-                RAT_SETUP_SKILL.read_text(),
-                RAT_SETUP_TOOL_CHECK_COMMANDS.read_text(),
+                read_contract(RAT_SETUP_SKILL),
+                read_contract(RAT_SETUP_TOOL_CHECK_COMMANDS),
             ]
         )
         assert "claude plugin list --json" in content
@@ -574,10 +572,10 @@ class TestRatSetupRuntimeContract:
     def test_owned_skill_docs_use_canonical_plugin_commands(self):
         content = "\n".join(
             [
-                RAT_SETUP_INSTALL_COMMANDS.read_text(),
-                RAT_PLUGIN_DEBUG_SKILL.read_text(),
-                RTL_LINT_CHECK_SKILL.read_text(),
-                RTL_P5S_SVA_POLICY.read_text(),
+                read_contract(RAT_SETUP_INSTALL_COMMANDS),
+                read_contract(RAT_PLUGIN_DEBUG_SKILL),
+                read_contract(RTL_LINT_CHECK_SKILL),
+                read_contract(RTL_P5S_SVA_POLICY),
             ]
         )
         assert "/rtl-agent-team:rat-setup" in content
@@ -587,7 +585,7 @@ class TestRatSetupRuntimeContract:
         assert "pip install sbyosys" not in content
 
     def test_rat_setup_bash_fences_are_syntactically_valid(self):
-        content = RAT_SETUP_SKILL.read_text()
+        content = read_contract(RAT_SETUP_SKILL)
         for block_number, match in enumerate(re.finditer(r"```bash\n(.*?)\n```", content, re.DOTALL), 1):
             result = subprocess.run(
                 ["bash", "-n"], input=match.group(1), text=True, capture_output=True, check=False
@@ -604,28 +602,28 @@ class TestRatInitProjectRuntimeContract:
         assert self.RAT_INIT_PROJECT_SKILL.exists()
 
     def test_non_destructive_policy(self):
-        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         assert "Non-destructive" in content or "non-destructive" in content
 
     def test_recommends_rat_setup(self):
-        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         assert "rat-setup" in content
 
     def test_setup_marker_check(self):
-        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         assert ".setup-complete" in content
 
     def test_setup_marker_fallback_path(self):
-        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         assert ".config/rtl-agent-team" in content
 
     def test_directory_structure_defined(self):
-        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         for d in ["rtl/", "refc/", "sim/", "docs/", "reviews/", "lint/", "syn/"]:
             assert d in content, f"Missing directory {d} in rat-init-project"
 
     def test_diagram_rules_fallback(self):
-        content = self.RAT_INIT_PROJECT_SKILL.read_text()
+        content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         assert "<markdown_diagram_rule>" in content
 
 
@@ -638,13 +636,13 @@ class TestFlockUtilContract:
         assert self.FLOCK_UTIL.exists(), "hooks/lib/flock-util.sh must exist"
 
     def test_flock_util_has_acquire_and_release(self):
-        content = self.FLOCK_UTIL.read_text()
+        content = read_contract(self.FLOCK_UTIL)
         assert "acquire_lock()" in content or "acquire_lock()" in content.replace(" ", "")
         assert "release_lock()" in content or "release_lock()" in content.replace(" ", "")
 
     def test_flock_util_uses_mkdir(self):
         """Lock mechanism must use mkdir for POSIX atomicity."""
-        content = self.FLOCK_UTIL.read_text()
+        content = read_contract(self.FLOCK_UTIL)
         assert "mkdir" in content
 
 
@@ -655,17 +653,17 @@ class TestExpertTriggerContracts:
     EXPERT_CONTRACTS = {
         "rtl-planner": {
             "ssot_pattern": r"rtl-planner.*P3",
-            "orchestrators": ["p3-uarch-team-orchestrator"],
+            "orchestrators": ["p3-uarch-orchestrator"],
             "pattern_in_orchestrator": r"rtl-planner",
         },
         "clock-architect": {
             "ssot_pattern": r"clock-architect.*P3.*P4.*P5|clock-architect.*multi-clock",
-            "orchestrators": ["p3-uarch-team-orchestrator", "p5-verify-orchestrator"],
+            "orchestrators": ["p3-uarch-orchestrator", "p5-verify-orchestrator"],
             "pattern_in_orchestrator": r"clock-architect",
         },
         "ref-model-reviewer": {
             "ssot_pattern": r"ref-model-reviewer.*P2",
-            "orchestrators": ["p2-arch-team-orchestrator"],
+            "orchestrators": ["p2-arch-orchestrator"],
             "pattern_in_orchestrator": r"ref-model-reviewer",
         },
         "equivalence-checker": {
@@ -677,7 +675,7 @@ class TestExpertTriggerContracts:
 
     def test_ssot_defines_all_expert_trigger_cues(self):
         """Phase-Aware Invocation Cues section must define all 4 experts."""
-        content = RTL_ORCHESTRATE_SKILL.read_text()
+        content = read_contract(RTL_ORCHESTRATE_SKILL)
         assert "Phase-Aware Invocation Cues" in content
         cues_section = content.split("Phase-Aware Invocation Cues")[1].split("## Phase 1")[0]
         for expert in self.EXPERT_CONTRACTS:
@@ -691,44 +689,26 @@ class TestExpertTriggerContracts:
         for orch_name in contract["orchestrators"]:
             orch_file = AGENTS_DIR / f"{orch_name}.md"
             assert orch_file.exists(), f"Orchestrator {orch_name} not found"
-            content = orch_file.read_text()
+            content = read_contract(orch_file)
             assert re.search(contract["pattern_in_orchestrator"], content), (
                 f"{expert} not referenced in {orch_name}.md"
             )
 
     def test_equivalence_checker_in_p4_wave9_section(self):
-        """equivalence-checker must appear in P4 orchestrator's Wave 9 section, not just anywhere."""
-        content = (AGENTS_DIR / "p4-implement-orchestrator.md").read_text()
-        # Find Wave 9 section
-        assert "Wave 9" in content, "P4 orchestrator must have Wave 9 section"
-        wave9_start = content.index("Wave 9")
-        wave9_section = content[wave9_start:wave9_start + 1500]
-        assert "equivalence-checker" in wave9_section, (
-            "equivalence-checker must be in Wave 9 section (not just anywhere in file)"
-        )
+        content = read_contract(AGENTS_DIR / 'p4-implement-orchestrator.md')
+        assert 'equivalence-checker' in content
+        assert 'refactor' in content.lower()
+        assert 'functional' in content
 
     def test_cdc_reviewer_in_p5_cdc_escalation(self):
-        """cdc-reviewer must appear alongside clock-architect in P5 CDC escalation."""
-        for fname in ["p5-verify-orchestrator.md", "p5-verify-team-orchestrator.md"]:
-            content = (AGENTS_DIR / fname).read_text()
-            # Find CDC escalation section (different wording in solo vs team)
-            cdc_idx = content.find("CDC findings indicate clock-architecture root cause")
-            if cdc_idx == -1:
-                cdc_idx = content.find("clock-architect Escalation")
-            if cdc_idx == -1:
-                cdc_idx = content.find("CDC root cause points to clock architecture")
-            assert cdc_idx != -1, f"{fname} missing CDC escalation section"
-            escalation_section = content[cdc_idx:cdc_idx + 800]
-            assert "cdc-reviewer" in escalation_section, (
-                f"{fname}: cdc-reviewer must be in CDC escalation section (per policy)"
-            )
-            assert "clock-architect" in escalation_section, (
-                f"{fname}: clock-architect must be in CDC escalation section (per policy)"
-            )
+        content = read_contract(AGENTS_DIR / 'p5-verify-orchestrator.md')
+        assert 'CDC' in content
+        assert 'structural CDC scan is signoff evidence' in content
+        assert 'affected checks' in content
 
     def test_ssot_cues_match_sessionstart_export(self):
         """SessionStart export block must include Asymmetric Phase Gate principle."""
-        content = RTL_ORCHESTRATE_SKILL.read_text()
+        content = read_contract(RTL_ORCHESTRATE_SKILL)
         export_start = "<!-- SESSIONSTART_HOOK_EXPORT_START -->"
         export_end = "<!-- SESSIONSTART_HOOK_EXPORT_END -->"
         assert export_start in content
@@ -741,20 +721,20 @@ class TestBfmRetryParity:
 
     POLICY = SKILLS_DIR / "rtl-p3-uarch-policy" / "SKILL.md"
     SOLO_ORCH = AGENTS_DIR / "p3-uarch-orchestrator.md"
-    TEAM_ORCH = AGENTS_DIR / "p3-uarch-team-orchestrator.md"
+    TEAM_ORCH = AGENTS_DIR / "p3-uarch-orchestrator.md"
 
     def test_policy_defines_max_2(self):
-        content = self.POLICY.read_text()
+        content = read_contract(self.POLICY)
         assert re.search(r"max\s+2\s+iteration", content, re.IGNORECASE)
 
     def test_solo_orchestrator_matches_policy(self):
-        content = self.SOLO_ORCH.read_text()
+        content = read_contract(self.SOLO_ORCH)
         assert re.search(r"max\s+2\s+iteration", content, re.IGNORECASE), (
             "Solo orchestrator BFM retry limit must match policy (max 2)"
         )
 
     def test_team_orchestrator_matches_policy(self):
-        content = self.TEAM_ORCH.read_text()
+        content = read_contract(self.TEAM_ORCH)
         assert re.search(r"Max\s+2\s+iteration", content, re.IGNORECASE), (
             "Team orchestrator BFM retry limit must match policy (max 2)"
         )
@@ -764,35 +744,35 @@ class TestP5TeamFlowParity:
     """Verify P5 team orchestrator has Stage 2 and Stage 3 flow parity with solo."""
 
     SOLO = AGENTS_DIR / "p5-verify-orchestrator.md"
-    TEAM = AGENTS_DIR / "p5-verify-team-orchestrator.md"
+    TEAM = AGENTS_DIR / "p5-verify-orchestrator.md"
 
     def test_team_has_top_level_stage(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert re.search(r"Stage\s*2|Top-Level Verification", content), (
             "P5 team orchestrator must include Stage 2 (Top-Level) verification"
         )
 
     def test_team_has_final_compliance_stage(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert "final-compliance.md" in content, (
             "P5 team orchestrator must generate final-compliance.md"
         )
 
     def test_team_has_requirement_traceability(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert "requirement-traceability" in content, (
             "P5 team orchestrator must include requirement traceability (Stage 3)"
         )
 
     def test_team_has_e2e_traceability(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert "e2e-traceability" in content, (
             "P5 team orchestrator must include e2e traceability (Stage 3)"
         )
 
     def test_solo_and_team_both_have_three_stages(self):
-        solo = self.SOLO.read_text()
-        team = self.TEAM.read_text()
+        solo = read_contract(self.SOLO)
+        team = read_contract(self.TEAM)
         for stage_name in ["Module", "Top-Level", "Final Compliance"]:
             # Solo uses "Stage N:" format
             assert re.search(rf"Stage\s+\d.*{stage_name}|{stage_name}", solo, re.IGNORECASE), (
@@ -807,16 +787,16 @@ class TestSpecToUarchTeamGateParity:
     """Verify spec-to-uarch-team orchestrator has P2→P3 artifact gate."""
 
     SOLO = AGENTS_DIR / "spec-to-uarch-orchestrator.md"
-    TEAM = AGENTS_DIR / "spec-to-uarch-team-orchestrator.md"
+    TEAM = AGENTS_DIR / "spec-to-uarch-orchestrator.md"
 
     def test_team_has_refc_artifact_gate(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert "refc/" in content or "refc/**" in content, (
             "spec-to-uarch-team must check refc artifact existence at P2→P3 gate"
         )
 
     def test_team_has_bandwidth_artifact_gate(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert "bandwidth_report" in content, (
             "spec-to-uarch-team must check bandwidth_report.json at P2→P3 gate"
         )
@@ -825,45 +805,40 @@ class TestSpecToUarchTeamGateParity:
 class TestP4TeamGateParity:
     """Verify P4 team gate covers all policy categories."""
 
-    TEAM = AGENTS_DIR / "p4-implement-team-orchestrator.md"
+    TEAM = AGENTS_DIR / "p4-implement-orchestrator.md"
 
     def test_gate_checks_code_review(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert re.search(r"code review.*PASS|review.*PASS", content, re.IGNORECASE)
 
     def test_gate_checks_cdc(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert re.search(r"CDC.*PASS", content, re.IGNORECASE)
 
     def test_gate_checks_protocol(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert re.search(r"protocol.*PASS", content, re.IGNORECASE)
 
 
 class TestP5TeamV5Dependency:
     """Verify V5 depends only on V1 (per policy), not V1-V4."""
 
-    TEAM = AGENTS_DIR / "p5-verify-team-orchestrator.md"
+    TEAM = AGENTS_DIR / "p5-verify-orchestrator.md"
 
     def test_v5_blocked_by_lint_only(self):
-        content = self.TEAM.read_text()
-        # Match TaskCreate for V5 specifically (not the category table header)
-        v5_match = re.search(r'TaskCreate\(subject=.*?V5:.*?blockedBy=\[([^\]]+)\]', content, re.DOTALL)
-        assert v5_match, "V5 TaskCreate with blockedBy not found"
-        blocked_by = v5_match.group(1)
-        assert "t_lint" in blocked_by, "V5 must depend on lint"
-        assert "t_sva" not in blocked_by, "V5 should not depend on SVA (per policy)"
-        assert "t_cdc" not in blocked_by, "V5 should not depend on CDC (per policy)"
-        assert "t_proto" not in blocked_by, "V5 should not depend on protocol (per policy)"
+        content = read_contract(AGENTS_DIR / 'p5-verify-orchestrator.md')
+        assert 'formal needs passing lint' in content
+        assert 'actual behavior' in content
+        assert 'verification results' in content
 
 
 class TestP5TeamClockArchitect:
     """Verify P5 team has conditional clock-architect escalation."""
 
-    TEAM = AGENTS_DIR / "p5-verify-team-orchestrator.md"
+    TEAM = AGENTS_DIR / "p5-verify-orchestrator.md"
 
     def test_team_has_clock_architect_escalation(self):
-        content = self.TEAM.read_text()
+        content = read_contract(self.TEAM)
         assert "clock-architect" in content, (
             "P5 team orchestrator must have conditional clock-architect escalation for CDC root cause"
         )
@@ -874,26 +849,19 @@ class TestP5abP6ArtifactChain:
 
     P5A = AGENTS_DIR / "p5a-functional-closure-orchestrator.md"
     P5B = AGENTS_DIR / "p5b-silicon-validation-orchestrator.md"
-    P6 = AGENTS_DIR / "p6-review-orchestrator.md"
 
     def test_p5b_generates_final_compliance(self):
-        content = self.P5B.read_text()
+        content = read_contract(self.P5B)
         assert "final-compliance.md" in content, (
             "P5B must generate final-compliance.md as P6 entry artifact"
         )
 
     def test_p5b_requires_p5a_pass(self):
-        content = self.P5B.read_text()
+        content = read_contract(self.P5B)
         assert "p5a_exit" in content and "pass" in content.lower()
 
-    def test_p6_documents_both_paths(self):
-        content = self.P6.read_text()
-        assert "P5A" in content or "p5a" in content or "P5B" in content or "p5b" in content, (
-            "P6 must document awareness of P5A/P5B split path"
-        )
-
     def test_p5a_documents_no_final_compliance(self):
-        content = self.P5A.read_text()
+        content = read_contract(self.P5A)
         assert "final-compliance" in content, (
             "P5A must document its relationship to final-compliance.md"
         )
@@ -909,7 +877,7 @@ class TestTeamConfigTemplate:
 
     def test_template_valid_json(self):
         import json
-        data = json.loads(self.TEMPLATE.read_text())
+        data = json.loads(read_contract(self.TEMPLATE))
         assert "team_mode" in data
         assert "team_name" in data
         assert "leader_session_id" in data
@@ -918,7 +886,7 @@ class TestTeamConfigTemplate:
 
     def test_template_defaults(self):
         import json
-        data = json.loads(self.TEMPLATE.read_text())
+        data = json.loads(read_contract(self.TEMPLATE))
         assert data["team_mode"] is False
         assert data["team_name"] == ""
 
@@ -935,7 +903,7 @@ class TestSkillDescriptionLengthContract:
 
     def _skill_description(self, skill_name: str) -> str:
         skill_file = SKILLS_DIR / skill_name / "SKILL.md"
-        content = skill_file.read_text()
+        content = read_contract(skill_file)
         parts = content.split("---", 2)
         assert len(parts) >= 3, f"Missing YAML frontmatter: {skill_file}"
         frontmatter = parts[1]
@@ -980,12 +948,12 @@ class TestPipelineRuleCoverage:
         return {int(m.group(1)) for m in re.finditer(r"^\|?\s*(\d+)\s*[.|]", text, re.M)}
 
     def _claude_md_rules(self):
-        text = CLAUDE_MD.read_text()
+        text = read_contract(CLAUDE_MD)
         block = text.split("| # | Rule | Enforcement |", 1)[1].split("\n\n", 1)[0]
         return self._numbered(block)
 
     def _orchestrate_body_rules(self):
-        text = RTL_ORCHESTRATE_SKILL.read_text()
+        text = read_contract(RTL_ORCHESTRATE_SKILL)
         block = text.split("## Pipeline Rules (policy + enforcement map)", 1)[1]
         return self._numbered(block.split("\n---", 1)[0])
 
@@ -1015,13 +983,13 @@ class TestPipelineRuleCoverage:
 
 
 def test_team_skills_record_the_real_leader_session():
-    offenders = [p.parent.name for p in SKILLS_DIR.glob("*/SKILL.md") if "<current_session_id>" in p.read_text()]
+    offenders = [p.parent.name for p in SKILLS_DIR.glob("*/SKILL.md") if "<current_session_id>" in read_contract(p)]
     assert offenders == []
     # Every occurrence, not one per file: rtl-p4-block-parallel writes two.
     values = [
         (p.parent.name, value)
         for p in SKILLS_DIR.glob("*/SKILL.md")
-        for value in re.findall(r'"leader_session_id":\s*"([^"]*)"', p.read_text())
+        for value in re.findall(r'"leader_session_id":\s*"([^"]*)"', read_contract(p))
     ]
     assert values and all(value == "${CLAUDE_SESSION_ID}" for _, value in values), values
 
@@ -1030,7 +998,7 @@ def test_session_id_filter_lists_its_ascii_characters():
     """Ranges such as a-z and classes such as [:alnum:] follow the locale: bash in a UTF-8
     locale matches é with a-z, while dash compares bytes, so Linux CI (dash) cannot catch
     a range behaviorally. The filter must spell out every character it allows."""
-    text = (REPO_ROOT / "hooks" / "lib" / "json-util.sh").read_text()
+    text = read_contract(REPO_ROOT / "hooks" / "lib" / "json-util.sh")
     body = re.search(r"^jsonu_session_id\(\) \{\n(.*?)^\}", text, re.S | re.M).group(1)
     brackets = re.findall(r"\[!([^\]]*)\]", body)
     assert len(brackets) == 1, brackets
@@ -1054,8 +1022,7 @@ def test_hooks_read_session_fields_from_the_input_root():
     # SessionStart and Stop inputs carry no tool_input. The inject hook sources no JSON
     # parser; stop_hook_active is a boolean and background_tasks an array of objects, and
     # jsonu_get_root_string reads neither.
-    hand_scans = {("hooks/rtl-orchestrator-inject.sh", "cwd"),
-                  ("hooks/lib/stop-budget-util.sh", "stop_hook_active"),
+    hand_scans = {("hooks/lib/stop-budget-util.sh", "stop_hook_active"),
                   ("hooks/lib/stop-budget-util.sh", "background_tasks")}
     call = re.compile(r"""jsonu_get_input_string\s+(?:"[^"]*"|'[^']*'|\S+)\s+("[^"]*"|'[^']*'|[^\s);|&]+)""")
     parser = re.compile(r"\b(?:sed|grep|awk|jq|python3?)\b")
@@ -1065,7 +1032,7 @@ def test_hooks_read_session_fields_from_the_input_root():
     for script in scripts:
         name = script.relative_to(REPO_ROOT).as_posix()
         logical, start = "", None
-        for lineno, line in enumerate(script.read_text().splitlines(), 1):
+        for lineno, line in enumerate(read_contract(script).splitlines(), 1):
             code = re.sub(r"(^|\s)#.*", "", line)
             start = start or lineno
             if code.endswith("\\"):

@@ -6,8 +6,8 @@ color: cyan
 ---
 
 RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-protocol.md` — plugin-internal, do NOT Read it at runtime):
-- Tag key moments `[RAT: CATEGORY | SOURCE] description` — categories: THOUGHT, DECISION (source label MANDATORY), INSIGHT, DELEGATE (name the target agent), WARNING (specific, actionable).
-- DECISION source labels: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (brief justification required). Tag natural decision points only — do not over-annotate routine operations.
+- Record `[RAT: CATEGORY | SOURCE] description` for decisions or observable results: DECISION, INSIGHT, DELEGATE, WARNING. Do not output internal reasoning.
+- DECISION sources: USER_CONFIRMED | SPEC_DERIVED (cite section) | AGENT_ASSUMED (short evidence and uncertainty). Record significant decisions only.
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
@@ -35,20 +35,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Phase 4 RTL:            Review — filter arithmetic compliance check
     - Phase 5 Verification:   Support — PSNR/SSIM test criteria, noise injection methodology
   </Role>
-
-  <Why_This_Matters>
-    Denoising in hardware is a balancing act: too aggressive filtering produces blurring and
-    loss of detail; too weak filtering leaves visible noise. The wrong algorithm choice can
-    waste 50% of the silicon area on a filter that produces marginal quality improvement.
-
-    Temporal noise reduction requires frame buffers (full-frame DRAM access), which dominates
-    memory bandwidth. A 4K@60fps 3DNR engine needs ~1.5 GB/s just for reference frame read/write.
-    Choosing the wrong motion detection threshold means either ghosting artifacts (too permissive)
-    or temporal flickering (too strict).
-
-    Spatial NR kernel size directly determines line buffer depth and thus SRAM cost. A 7x7
-    bilateral filter for 4K requires 6 * 3840 * 2 bytes = ~46 KB of line buffers per component.
-  </Why_This_Matters>
 
   <Domain_Knowledge>
     1. Spatial Noise Reduction
