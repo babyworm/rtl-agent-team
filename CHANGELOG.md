@@ -7,6 +7,43 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre12] - 2026-11-21
+
+- `execution.results` selects where remote results land: `experiment` (default, only
+  `experiment/<id>/`), `merge` (usual project paths, other local files kept) or `sync` (as
+  merge, and stale files in fetched output folders removed). merge and sync need a Git work
+  tree and never overwrite or delete a sent file. rat-setup, rat-init-project and rat-doctor
+  show or change the mode.
+- The EDA context hint tells sessions and subagents to read a remote run's outputs under
+  `experiment/<id>/` at their usual relative paths and to reuse one ID for steps that share
+  outputs, so P4/P5 steps find remote results without per-skill path changes.
+
+## [2.0.0-pre11] - 2026-11-21
+
+- `eda_runner.py clean --root <project> --experiment <id> | --all [--local]` removes experiment
+  folders on the execution host, and the local `experiment/<id>/` with `--local`. Remote folders
+  stay until the user asks for cleanup so that results can still be pulled; running experiments
+  are kept.
+
+## [2.0.0-pre10] - 2026-11-21
+
+- Remote transport sends inputs, not outputs: in a Git work tree, the Git-visible files, the
+  files the filelists resolve, and `execution.inputs` patterns for ignored files a run needs.
+  Before, the whole root was mirrored, build outputs included, for every new experiment ID.
+- Remote results land only in `experiment/<id>/`; a run without `RAT_EXPERIMENT_ID` gets a
+  generated ID. Before, such a run fetched `sim/` back over the project and could undo local
+  edits. Waveforms and compiled databases stay on the host; `eda_runner.py fetch` pulls a
+  named one into the same experiment folder. Project-supplied input patterns and fetch paths
+  must stay inside the project.
+
+## [2.0.0-pre09] - 2026-11-21
+
+- Security: `rat-doctor --live` accepted the host, `ssh_options` and `technology.db` from a
+  project's `rat_config.json` unchecked. A cloned project could run local commands through
+  ssh options or remote commands through the library path. It now accepts only a plain SSH
+  alias or user@host, ends ssh options before the host, ignores `ssh_options`, and sends the
+  remote check through the same base64 `sh -c` wrapper as dispatch.
+
 ## [2.0.0-pre08] - 2026-11-21
 
 - `rat-doctor` replaces `rat-plugin-debug`: `scripts/rat_doctor.py` checks plugin-level

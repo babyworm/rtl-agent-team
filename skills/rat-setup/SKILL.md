@@ -85,6 +85,11 @@ library. Preserve explicit nand2_area_um2; derive it only when unset.
 
 For Python packages, use a dedicated RAT_EDA_VENV rather than system pip; the exact installation commands are in `references/install-commands.md`.
 
+For a remote site, `execution.results` decides where results come back:
+`experiment` (default, only `experiment/<id>/`), `merge` (usual project paths,
+sources kept) or `sync` (as merge, and stale fetched files removed). Set it in the
+project `rat_config.json` only when the user picks merge or sync.
+
 Machine defaults live at `${CLAUDE_PLUGIN_DATA}/env-config.json`. Bash commands see
 this plugin data folder as `$RAT_DATA_DIR`; never store settings elsewhere.
 The project overrides them. Remote host paths are not replaced by local detection.

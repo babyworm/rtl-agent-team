@@ -40,10 +40,15 @@ settings are errors; the runner never silently falls back to a local tool.
 
 `run_tool` is the command execution entry point. Wrappers export RAT_PROJECT_ROOT
 and delegate their whole invocation to SSH/LSF before local tool discovery.
-Transport synchronizes the project once, excluding Git, agent worktrees, audit
-data, and local execution state. It installs the wrapper and runtime helpers in a
-private remote runtime directory, runs from the remote workspace, and retrieves
-only declared outputs. No rsync deletion is used.
+Transport sends inputs, not outputs. In a Git work tree it sends the Git-visible
+files (tracked plus untracked files that no ignore rule covers), the files the
+filelists resolve, and `execution.inputs`: project-relative glob patterns for
+ignored files the run still needs, such as test vectors or a prebuilt model.
+Build outputs stay local. A folder outside Git is mirrored whole, which also
+copies its build outputs. The runner prints the file count and size before sending.
+It installs the wrapper and runtime helpers in a private remote runtime directory,
+runs from the remote workspace, and retrieves only declared outputs. No rsync
+deletion is used, so files deleted locally remain in a reused remote workspace.
 
 Each wrapper uses its matching runtime shim and helpers. Bundled wrappers use
 bundled helpers; installed project wrappers use the managed project library;
@@ -67,6 +72,26 @@ job success. A missing status artifact is INCONCLUSIVE. The runner records the
 submission output and cancels its own uniquely named job on timeout.
 
 ## Results
+
+`execution.results` selects where remote results land. The default `experiment`
+keeps them only in `experiment/<id>/`, never over the project's files; a run
+without `RAT_EXPERIMENT_ID` gets a generated ID, printed as `Experiment ID: <id>`.
+Outputs keep their usual relative paths inside that folder, so read
+`experiment/<id>/sim/...` where a local run writes `sim/...`, and reuse one ID for
+steps that share outputs. `merge` brings results to their usual project paths and
+keeps other local files; `sync` also removes local files in the fetched output
+folders that the run no longer produced. Both need a Git work tree, run without an
+ID in the shared remote workspace, and never overwrite or delete a sent file. Waveforms and compiled databases stay on the execution
+host; logs, reports and evidence come back. Pull a remaining file into the same
+folder with `eda_runner.py fetch --root <project> --experiment <id> <path>`.
+Read results from `experiment/<id>/`, pass that path to report readers, and fix
+sources, testbenches and scripts in the project. For a large regression, collect
+the findings first, fix them in one batch, then run again with a new ID.
+Experiment folders stay on the execution host until cleanup, so that results can
+still be pulled. When the user asks to clean up experiments or worktrees, remove
+the remote folders in the same step with
+`eda_runner.py clean --root <project> --all --local` (or `--experiment <id>`);
+experiments that are still running are kept.
 
 For parallel experiments, the coordinating agent assigns each independent
 experiment a distinct `RAT_EXPERIMENT_ID` and passes it to its workers. The

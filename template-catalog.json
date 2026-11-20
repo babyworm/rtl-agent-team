@@ -6,8 +6,8 @@
       "sha256": "82d5ff04a0fd367f4c9f65ea96b2e4a0d6c339f3785dc9661582c4cfab9aa9e5"
     },
     "scripts/eda_runner.py": {
-      "version": "2.0.12",
-      "sha256": "9a3e2fdf7d7706c07b8c76bf4f8bbb7d6c8b008e9eef0133d940bbd8600c7541"
+      "version": "2.0.15",
+      "sha256": "a7d4abf8295f578f8c0f5874e5af98daf457750a66f4ee622af3252981caf8b6"
     },
     "scripts/eda_setup.py": {
       "version": "2.0.10",

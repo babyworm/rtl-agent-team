@@ -34,4 +34,4 @@ else
   printf '{"hookSpecificOutput":{"hookEventName":"%s"}}\n' "$event"
   exit 0
 fi
-printf '{"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"[RAT EDA] For EDA work use %s. Read effective settings with bundled scripts/eda_runner.py get --root <project-root> --key <key> (e.g. preferences.simulator). Assign a distinct RAT_EXPERIMENT_ID to each parallel experiment."}}\n' "$event" "$source_hint"
+printf '{"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"[RAT EDA] For EDA work use %s. Read effective settings with bundled scripts/eda_runner.py get --root <project-root> --key <key> (e.g. preferences.simulator). Assign a distinct RAT_EXPERIMENT_ID to each parallel experiment. A remote run that prints Results: experiment/<id>/ keeps its outputs there at their usual relative paths: read them from that folder, and reuse one RAT_EXPERIMENT_ID for steps that share outputs (compile then run, regression then coverage merge)."}}\n' "$event" "$source_hint"

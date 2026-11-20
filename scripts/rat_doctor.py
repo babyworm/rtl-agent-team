@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.0
+# rat-version: 2.0.2
 """Check plugin and project settings and print what is right (✓), unverified (?) or wrong (✗)."""
 
 from __future__ import annotations
@@ -8,13 +8,14 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
 import time
 
-from eda_runner import available, backend, configuration, tool_configuration
-from eda_setup import failed_probe, read_json, tool_fingerprint
+from eda_runner import available, backend, configuration, remote_shell_command, tool_configuration
+from eda_setup import failed_probe, read_json, tool_fingerprint, validate_host
 from verify_evidence import pre_init_state_root
 
 OK, WARN, FAIL, NA = "✓", "?", "✗", "–"
@@ -29,12 +30,21 @@ def add(rows, level, item, status, detail="", fix=""):
     rows.append({"level": level, "item": item, "status": status, "detail": detail, "fix": fix})
 
 
-def ssh_ok(execution, command="true"):
-    options = execution.get("ssh_options", [])
-    options = options if isinstance(options, list) else []
+BAD_HOST = "is not a plain SSH alias or user@host"
+
+
+def ssh_ok(execution, script="true"):
+    """True or False for the remote script; None when the host is not a plain alias."""
+    # Settings may come from a cloned project's rat_config.json: accept only a plain host,
+    # end ssh options before it, ignore ssh_options (keep them in ~/.ssh/config), and pass
+    # the script through the same tcsh-safe encoding as dispatch.
     try:
-        return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", *options, execution["host"], command],
-                              capture_output=True, timeout=20).returncode == 0
+        validate_host(execution.get("host", ""))
+    except ValueError:
+        return None
+    try:
+        return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "--", execution["host"],
+                               remote_shell_command(script)], capture_output=True, timeout=20).returncode == 0
     except (OSError, subprocess.TimeoutExpired):
         return False
 
@@ -104,8 +114,12 @@ def plugin_checks(rows, live):
         add(rows, "plugin", "default site", OK, f"{where}, measured {days:.0f} days ago")
     if live and execution.get("host"):
         reached = ssh_ok(execution)
-        add(rows, "plugin", "site connection", OK if reached else FAIL, f"ssh {execution['host']}",
-            "" if reached else "check the VPN, SSH keys and ~/.ssh/config for this host")
+        if reached is None:
+            add(rows, "plugin", "site connection", FAIL, f"{execution['host']!r} {BAD_HOST}",
+                f"{SETUP}: keep SSH options in ~/.ssh/config and use its alias")
+        else:
+            add(rows, "plugin", "site connection", OK if reached else FAIL, f"ssh {execution['host']}",
+                "" if reached else "check the VPN, SSH keys and ~/.ssh/config for this host")
     return profile
 
 
@@ -138,6 +152,17 @@ def project_checks(rows, root, profile, live):
         add(rows, "project", "execution", OK if complete else FAIL,
             f"{selected} {execution.get('host', '?')} workspace {execution.get('workspace', '?')}",
             "" if complete else f"{SETUP}: select a site for this project")
+        mode = execution.get("results", "experiment")
+        meaning = {"experiment": "only in experiment/<id>/", "merge": "at their usual paths; sources kept",
+                   "sync": "at their usual paths; stale fetched files removed"}
+        if mode not in meaning:
+            add(rows, "project", "remote results", FAIL, f"execution.results={mode!r}",
+                "set execution.results to experiment, merge or sync")
+        elif mode != "experiment" and subprocess.run(["git", "-C", str(root), "rev-parse"], capture_output=True).returncode:
+            add(rows, "project", "remote results", FAIL, f"{mode} needs a Git work tree to protect sources",
+                "use experiment, or run inside a Git work tree")
+        else:
+            add(rows, "project", "remote results", OK, f"{mode}: results land {meaning[mode]}")
         site_host = (profile or {}).get("execution", {}).get("host")
         if config_path.is_file() and site_host and execution.get("host") != site_host:
             add(rows, "project", "default site", NA, f"project uses {execution.get('host')}, default site is {site_host}")
@@ -160,9 +185,13 @@ def project_checks(rows, root, profile, live):
         found = Path(db).is_file()
         add(rows, "project", "technology.db", OK if found else FAIL, db, "" if found else "correct the library path")
     elif live:
-        found = ssh_ok(execution, "test -f " + json.dumps(db))
-        add(rows, "project", "technology.db", OK if found else FAIL, f"{db} on {execution['host']}",
-            "" if found else "correct the library path")
+        found = ssh_ok(execution, "test -f " + shlex.quote(db))
+        if found is None:
+            add(rows, "project", "technology.db", FAIL, f"host {execution.get('host')!r} {BAD_HOST}",
+                "keep SSH options in ~/.ssh/config and use its alias as execution.host")
+        else:
+            add(rows, "project", "technology.db", OK if found else FAIL, f"{db} on {execution['host']}",
+                "" if found else "correct the library path")
     else:
         add(rows, "project", "technology.db", WARN, f"{db} (remote, not checked)", "run the doctor with --live")
 

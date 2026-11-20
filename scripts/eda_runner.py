@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.12
+# rat-version: 2.0.15
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -362,6 +362,46 @@ def relative_output(value: str) -> str:
     return value
 
 
+# Regenerable outputs too large to bring back by default; `fetch` pulls them on request.
+HEAVY_RESULTS = ("*.fsdb", "*.vcd", "*.evcd", "*.vpd", "*.wlf", "*.trn", "*.dsn", "*.shm/", "xcelium.d/",
+                 "INCA_libs/", "csrc/", "*.daidir/", "obj_dir/", "xlib/", "*.o", "*.so", "*.a")
+RESULT_MODES = ("experiment", "merge", "sync")
+NEVER_SENT = ("experiment/", ".rat/", ".rtl-agent-team/", ".git/", ".claude/")
+
+
+def upload_manifest(root: Path, inputs, patterns) -> list[str] | None:
+    """Project-relative files to send: Git-visible files, filelist inputs and execution.inputs.
+
+    None when the root is not a Git work tree; the caller then mirrors the folder.
+    """
+    listing = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                             capture_output=True)
+    if listing.returncode != 0:
+        return None
+    names = set()
+    for name in listing.stdout.decode(errors="surrogateescape").split("\0"):
+        path = root / name
+        if not name or not (path.exists() or path.is_symlink()):
+            continue  # index entries deleted from the work tree
+        if path.is_dir() and not path.is_symlink():  # submodule
+            names.update(name + "/" + inner for inner in upload_manifest(path, (), ()) or ())
+        else:
+            names.add(name)
+    files = [Path(path) for path in inputs]
+    if not isinstance(patterns, list):
+        raise ValueError("execution.inputs must be a list of project-relative patterns")
+    for pattern in patterns:
+        if not isinstance(pattern, str) or not pattern or Path(pattern).is_absolute() or ".." in Path(pattern).parts:
+            raise ValueError(f"execution.inputs must be project-relative patterns: {pattern!r}")
+        for match in root.glob(pattern):
+            files += [match] if match.is_file() else [path for path in match.rglob("*") if path.is_file()]
+    for path in files:
+        # Ship only data inside the project, even when a link points elsewhere.
+        if path.is_file() and path.resolve().is_relative_to(root) and path.absolute().is_relative_to(root):
+            names.add(str(path.absolute().relative_to(root)))
+    return sorted(name for name in names if not name.startswith(NEVER_SENT) and name != ".git")
+
+
 def install_generated_ignore(directory: Path, patterns: str) -> None:
     if directory.resolve() != directory:
         raise ValueError(f"generated directory cannot be symlinked: {directory}")
@@ -482,6 +522,14 @@ def require_project_root(root: Path) -> None:
 
 def dispatch(args, root: Path, config: dict) -> int:
     require_project_root(root)
+    mode = config.get("execution", {}).get("results", "experiment")
+    if mode not in RESULT_MODES:
+        raise ValueError("execution.results must be experiment, merge or sync")
+    if not os.environ.get("RAT_EXPERIMENT_ID") and mode == "experiment":
+        # Results land only under experiment/<id>/, never over the project's sources.
+        os.environ["RAT_EXPERIMENT_ID"] = time.strftime("run-%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:4]
+    if os.environ.get("RAT_EXPERIMENT_ID"):
+        print(f"Experiment ID: {os.environ['RAT_EXPERIMENT_ID']}", file=sys.stderr)
     with ExitStack() as cleanup:
         experiment = None
         if os.environ.get("RAT_EXPERIMENT_ID"):
@@ -519,14 +567,14 @@ def _dispatch_tracked(args, root: Path, config: dict, experiment: Path | None, c
                 "host":socket.gethostname(),"compile_only":"--compile-only" in args.argv}
         atomic_json(snapshot,record)
     try:
-        return _dispatch(args, root, config, experiment, cleanup)
+        return _dispatch(args, root, config, experiment, cleanup, inputs)
     finally:
         if snapshot:
             record.update(verdict="TRANSPORT_COMPLETE",completed_at=time.time())
             atomic_json(snapshot,record)
 
 
-def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: ExitStack) -> int:
+def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: ExitStack, inputs=()) -> int:
     settings = config.get("execution", {})
     selected = backend(config)
     if selected not in ("ssh", "lsf"):
@@ -604,10 +652,23 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     elif remote("mkdir -p " + shlex.quote(workspace), "mkdir"):
         return 2
     transport = ["rsync", "-a", "--protect-args", "-e", shlex.join(["ssh", *ssh_options])]
-    sync = [*transport, "--exclude=.git", "--exclude=.claude", "--exclude=.rat/state",
-            "--exclude=.rat/audit", "--exclude=.rat/remote-runs", "--exclude=/experiment/",
-            "--exclude=/.rat/experiments/", *(["--exclude=/.rtl-agent-team/"] if experiment else []),
-            str(root) + "/", host + ":" + workspace + "/"]
+    manifest = upload_manifest(root, inputs, settings.get("inputs", []))
+    mode = settings.get("results", "experiment")
+    if not experiment and manifest is None:
+        raise ValueError(f"execution.results={mode} needs a Git work tree so that fetched results never "
+                         "overwrite sources; use experiment or run inside a Git work tree")
+    if manifest is None:  # not a Git work tree: mirror the folder
+        print(f"Sending the whole folder to {host} (not a Git work tree; build outputs are copied too)", file=sys.stderr)
+        sync = [*transport, "--exclude=.git", "--exclude=.claude", "--exclude=.rat/state",
+                "--exclude=.rat/audit", "--exclude=.rat/remote-runs", "--exclude=/experiment/",
+                "--exclude=/.rat/experiments/", *(["--exclude=/.rtl-agent-team/"] if experiment else []),
+                str(root) + "/", host + ":" + workspace + "/"]
+    else:
+        listing = cache / "upload.list"
+        listing.write_bytes(b"".join(name.encode(errors="surrogateescape") + b"\0" for name in manifest))
+        size = sum((root / name).lstat().st_size for name in manifest)
+        print(f"Sending {len(manifest)} files ({size / 1e6:.1f} MB) to {host}", file=sys.stderr)
+        sync = [*transport, "--from0", f"--files-from={listing}", str(root) + "/", host + ":" + workspace + "/"]
     status = step(sync, "sync")
     if status:
         return status
@@ -720,6 +781,7 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     if not isinstance(outputs, list):
         raise ValueError("execution.outputs must be a list")
     destination = experiment or root
+    skip = [f"--exclude={pattern}" for pattern in HEAVY_RESULTS]
     if experiment:
         outputs = [relative_output(str(experiment_output(experiment, value).relative_to(experiment))) for value in outputs]
         outputs.extend(value for value in explicit_outputs if not any(Path(value).is_relative_to(parent) for parent in outputs))
@@ -727,11 +789,18 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
             outputs = ["."]
     for index, value in enumerate(outputs):
         if experiment and supported and value == ".":
-            options = ["--safe-links", "--exclude=/.gitignore", "--exclude=/.rat/"]
+            options = ["--safe-links", "--exclude=/.gitignore", "--exclude=/.rat/", *skip]
             source = remote_outputs + "/"
         else:
             value = relative_output(value)
-            options = ["--safe-links", "--relative"] if experiment else ["--relative"]
+            if experiment:
+                options = ["--safe-links", "--relative", *skip]
+            else:
+                # merge/sync land results in place; sent files (sources) are never overwritten or deleted.
+                # ponytail: names containing *, ? or [ act as patterns here; rare in HDL projects.
+                protect = cache / "protect.list"
+                protect.write_text("".join("/" + name + "\n" for name in manifest))
+                options = ["--relative", *skip, f"--exclude-from={protect}", *(["--delete"] if mode == "sync" else [])]
             source = remote_outputs + "/./" + value
         result = step([*transport, *options, host + ":" + source, str(destination) + "/"], f"fetch-{index}")
         if result and status == 0:
@@ -750,8 +819,99 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     elif wrapper.name == "run_sim.sh" and status == 0:
         status = 3
     atomic_json(cache / "result.json", {"backend": selected, "host": host, "workspace": workspace,
-                                        "exit_code": status, "outputs": outputs, "run_id": run_id})
+                                        "exit_code": status, "outputs": outputs, "run_id": run_id,
+                                        "experiment": experiment.name if experiment else None,
+                                        "remote_outputs": remote_outputs, "left_on_host": list(HEAVY_RESULTS)})
+    if not experiment:
+        print(f"Results: {'synced' if mode == 'sync' else 'merged'} into the project; sent sources were left untouched",
+              file=sys.stderr)
+    if experiment:
+        print(f"Results: {experiment.relative_to(root)}/ (waveforms and compiled databases stay on {host}; pull one with "
+              f"eda_runner.py fetch --root <project> --experiment {experiment.name} <path>)", file=sys.stderr)
     return status
+
+
+def clean(args, root: Path, config: dict) -> int:
+    """Remove experiment folders on the execution host, and locally with --local, when the user asks."""
+    names = args.experiment or []
+    if not names and not args.all:
+        raise ValueError("name experiments with --experiment or pass --all")
+    if any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", name) for name in names):
+        raise ValueError("invalid experiment ID")
+    settings = config.get("execution", {})
+    busy, removed = set(), []
+    if backend(config) in ("ssh", "lsf"):
+        from eda_setup import validate_host
+        host, workspace = settings.get("host", ""), settings.get("workspace", "")
+        validate_host(host)
+        if not Path(workspace).is_absolute() or not workspace.strip("/") or any(c in workspace for c in "\n\r\0"):
+            raise ValueError("invalid remote workspace")
+        ssh_options = settings.get("ssh_options", [])
+        if not isinstance(ssh_options, list) or not all(isinstance(value, str) for value in ssh_options):
+            raise ValueError("ssh_options must be an argument list")
+        targets = " ".join(shlex.quote(name) for name in names) if names else "*"
+        # A running experiment holds its "active" reservation; leave it alone.
+        script = (f"cd {shlex.quote(workspace + '/.rat/experiments')} 2>/dev/null || exit 0\n"
+                  f"for id in {targets}; do\n  [ -d \"$id\" ] || continue\n"
+                  '  if [ -e "$id/active" ]; then echo "busy $id"; continue; fi\n'
+                  '  rm -rf -- "$id" && echo "removed $id"\ndone\n')
+        result = subprocess.run(["ssh", *ssh_options, "--", host, remote_shell_command(script)],
+                                capture_output=True, text=True, timeout=600)
+        for line in result.stdout.splitlines():
+            state, _, name = line.partition(" ")
+            if state == "busy":
+                busy.add(name)
+            elif state == "removed":
+                removed.append(name)
+        print(f"{host}: removed {len(removed)} experiment folder(s)" + (f", kept running: {', '.join(sorted(busy))}" if busy else ""),
+              file=sys.stderr)
+        if result.returncode:
+            print(result.stderr.strip(), file=sys.stderr)
+            return 3
+    if args.local:
+        parent = root / "experiment"
+        local = names or sorted(path.name for path in parent.glob("*") if path.is_dir() and not path.is_symlink())
+        for name in local:
+            directory = parent / name
+            if name in busy or not directory.is_dir() or directory.is_symlink():
+                continue
+            fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)  # a local run of this ID holds the lock
+            except BlockingIOError:
+                print(f"kept running local experiment: {name}", file=sys.stderr)
+                continue
+            finally:
+                os.close(fd)
+            shutil.rmtree(directory)
+    return 0
+
+
+def fetch(args, root: Path, config: dict) -> int:
+    """Pull named results of an earlier remote run into experiment/<id>/, never elsewhere."""
+    name = args.experiment
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", name):
+        raise ValueError("invalid experiment ID")
+    paths = [relative_output(value) for value in args.paths]
+    runs = [*(runtime_state_root(root) / "remote-runs").glob("*/result.json"),
+            *(root / "experiment" / name / ".rat/remote-runs").glob("*/result.json")]
+    records = [json.loads(path.read_text()) for path in sorted(runs, key=lambda path: path.stat().st_mtime)]
+    record = next((item for item in reversed(records) if item.get("experiment") == name), None)
+    if not record:
+        raise ValueError(f"no remote run is recorded for experiment {name}")
+    from eda_setup import validate_host
+    validate_host(record["host"])
+    ssh_options = config.get("execution", {}).get("ssh_options", [])
+    if not isinstance(ssh_options, list) or not all(isinstance(value, str) for value in ssh_options):
+        raise ValueError("ssh_options must be an argument list")
+    destination = root / "experiment" / name
+    install_generated_ignore(destination, "*\n")
+    transport = ["rsync", "-a", "--protect-args", "--safe-links", "--relative", "-e", shlex.join(["ssh", *ssh_options])]
+    failed = [value for value in paths
+              if subprocess.run([*transport, f"{record['host']}:{record['remote_outputs']}/./{value}", str(destination) + "/"]).returncode]
+    for value in failed:
+        print(f"could not fetch {value}", file=sys.stderr)
+    return 3 if failed else 0
 
 
 def main() -> int:
@@ -790,6 +950,15 @@ def main() -> int:
     command.add_argument("--stall", type=float)
     command.add_argument("--shell-command")
     command.add_argument("argv", nargs=argparse.REMAINDER)
+    tidy = sub.add_parser("clean", help="remove experiment folders on the execution host (and locally with --local)")
+    tidy.add_argument("--root", required=True)
+    tidy.add_argument("--experiment", action="append")
+    tidy.add_argument("--all", action="store_true")
+    tidy.add_argument("--local", action="store_true")
+    pull = sub.add_parser("fetch", help="pull results of an earlier remote run into experiment/<id>/")
+    pull.add_argument("--root", required=True)
+    pull.add_argument("--experiment", required=True)
+    pull.add_argument("paths", nargs="+")
     remote = sub.add_parser("dispatch")
     remote.add_argument("--root", required=True)
     remote.add_argument("--wrapper", required=True)
@@ -817,6 +986,10 @@ def main() -> int:
             return capabilities(args, config)
         if args.command == "verdict":
             return verdict(args, config)
+        if args.command == "fetch":
+            return fetch(args, root, config)
+        if args.command == "clean":
+            return clean(args, root, config)
         return run(args, root, config) if args.command == "run" else dispatch(args, root, config)
     except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         print(f"EDA execution error: {exc}", file=sys.stderr)

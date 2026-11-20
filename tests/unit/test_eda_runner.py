@@ -1,8 +1,10 @@
 """Execution, configuration, and transport contracts using controlled processes."""
 
 import json
+import re
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -153,7 +155,11 @@ def test_remote_wrapper_maps_inputs_fetches_outputs_and_uses_job_status(remote_p
                             cwd=root, env={**os.environ, **env, "FAKE_JOB_EXIT": str(job_exit)},
                             capture_output=True, text=True, timeout=20)
     assert result.returncode == job_exit, result.stdout + result.stderr
-    assert (root / "out/mapped.txt").read_text().strip() == str(remote / "rtl/input.sv")
+    # Without an ID the run gets one; results land only under experiment/<id>/.
+    experiment = re.search(r"Experiment ID: (\S+)", result.stderr).group(1)
+    work = remote / ".rat/experiments" / experiment / "work"
+    assert (root / "experiment" / experiment / "out/mapped.txt").read_text().strip() == str(work / "rtl/input.sv")
+    assert not (root / "out").exists()
     report = next((runtime_state_root(root) / "remote-runs").glob("*/result.json"))
     assert json.loads(report.read_text())["exit_code"] == job_exit
 
@@ -343,3 +349,142 @@ def test_dispatch_mirrors_only_a_recognizable_project(tmp_path, folder):
     assert result.returncode == 2
     assert ("hidden directory" if folder.startswith(".") else "project root") in result.stderr
     assert not any(root.iterdir())
+
+
+@pytest.mark.skipif(not (shutil.which("rsync") and shutil.which("git")), reason="needs rsync and git")
+def test_transport_sends_inputs_only_and_keeps_results_in_the_experiment(tmp_path):
+    tools = tmp_path / "bin"
+    executable(tools / "ssh", '''#!/usr/bin/env python3
+import subprocess, sys
+args = sys.argv[1:]
+while args and args[0].startswith("-"):
+    if args.pop(0) == "--":
+        break
+args.pop(0)  # host; the rest runs locally as the remote command
+raise SystemExit(subprocess.call(args[0], shell=True) if len(args) == 1 else subprocess.call(args))
+''')
+    root, remote = tmp_path / "project", tmp_path / "remote"
+    for folder in ("rtl", "build", "vec"):
+        (root / folder).mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    (root / ".gitignore").write_text("build/\nvec/\n")
+    (root / "rtl/dut.sv").write_text("module dut; endmodule\n")
+    (root / "build/huge.bin").write_bytes(b"0" * 4096)
+    (root / "vec/in.hex").write_text("00\n")
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote), "inputs": ["vec/**"]}}))
+    wrapper = executable(root / "tool.sh", '''#!/usr/bin/env bash
+set -e
+test -f vec/in.hex && test -f rtl/dut.sv && test ! -e build   # inputs arrived, build outputs did not
+mkdir -p "$2"
+echo PASS > "$2/report.log"
+echo wave > "$2/run.fsdb"
+''')
+    before = sorted(path for path in root.rglob("*") if ".git" not in path.parts)
+    env = {**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"}
+    env.pop("RAT_EXPERIMENT_ID", None)
+    result = subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(wrapper),
+                             "--", "--outdir", "out"], cwd=root, env=env, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Sending 5 files" in result.stderr  # .gitignore, rtl/dut.sv, rat_config.json, tool.sh, vec/in.hex
+    experiment = re.search(r"Experiment ID: (\S+)", result.stderr).group(1)
+    results = root / "experiment" / experiment / "out"
+    assert (results / "report.log").read_text() == "PASS\n"
+    assert not (results / "run.fsdb").exists()  # heavy results stay on the host
+    after = sorted(path for path in root.rglob("*") if ".git" not in path.parts and "experiment" not in path.parts)
+    assert after == before  # nothing outside experiment/<id>/ changed
+
+    pulled = subprocess.run([sys.executable, str(RUNNER), "fetch", "--root", str(root), "--experiment", experiment,
+                             "out/run.fsdb"], env=env, capture_output=True, text=True, timeout=60)
+    assert pulled.returncode == 0, pulled.stderr
+    assert (results / "run.fsdb").read_text() == "wave\n"
+    escape = subprocess.run([sys.executable, str(RUNNER), "fetch", "--root", str(root), "--experiment", experiment,
+                             "../outside"], env=env, capture_output=True, text=True, timeout=60)
+    assert escape.returncode == 2 and "project-relative" in escape.stderr
+
+
+def test_extra_inputs_must_stay_inside_the_project(tmp_path):
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from eda_runner import upload_manifest
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    for pattern in ("../secret/**", "/etc/passwd", ""):
+        with pytest.raises(ValueError):
+            upload_manifest(tmp_path, (), [pattern])
+    outside = tmp_path.parent / "outside-data"
+    outside.mkdir(exist_ok=True)
+    (outside / "key").write_text("secret")
+    (tmp_path / "linked").symlink_to(outside)
+    assert "linked/key" not in upload_manifest(tmp_path, (), ["linked/**"])
+
+
+def test_clean_removes_finished_experiments_on_both_sides(remote_project):
+    root, remote, _, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote)}}))
+    experiments = remote / ".rat/experiments"
+    for name in ("done", "running", "other"):
+        (experiments / name / "work").mkdir(parents=True)
+    (experiments / "running/active").mkdir()
+    for name in ("done", "running", "local-only"):
+        (root / "experiment" / name).mkdir(parents=True)
+
+    def clean(*flags):
+        return subprocess.run([sys.executable, str(RUNNER), "clean", "--root", str(root), *flags],
+                              env={**os.environ, **env}, capture_output=True, text=True, timeout=30)
+
+    named = clean("--experiment", "done")
+    assert named.returncode == 0, named.stderr
+    assert sorted(p.name for p in experiments.iterdir()) == ["other", "running"]
+    assert (root / "experiment/done").is_dir()  # local results stay without --local
+    everything = clean("--all", "--local")
+    assert everything.returncode == 0 and "kept running: running" in everything.stderr
+    assert [p.name for p in experiments.iterdir()] == ["running"]
+    assert [p.name for p in (root / "experiment").iterdir()] == ["running"]
+    assert clean("--experiment", "../x").returncode == 2
+    assert clean().returncode == 2  # nothing named, no --all
+
+
+@pytest.mark.skipif(not (shutil.which("rsync") and shutil.which("git")), reason="needs rsync and git")
+@pytest.mark.parametrize("mode", ["merge", "sync"])
+def test_in_place_results_never_touch_sent_sources(tmp_path, mode):
+    tools = tmp_path / "bin"
+    executable(tools / "ssh", '''#!/usr/bin/env python3
+import subprocess, sys
+args = sys.argv[1:]
+while args and args[0].startswith("-"):
+    if args.pop(0) == "--":
+        break
+args.pop(0)
+raise SystemExit(subprocess.call(args[0], shell=True) if len(args) == 1 else subprocess.call(args))
+''')
+    root, remote = tmp_path / "project", tmp_path / "remote"
+    (root / "sim/out").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    (root / ".gitignore").write_text("sim/out/\n")
+    (root / "sim/tb.sv").write_text("module tb; endmodule // local edit\n")
+    (root / "sim/out/stale.log").write_text("old\n")
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote), "results": mode}}))
+    wrapper = executable(root / "tool.sh", '''#!/usr/bin/env bash
+set -e
+echo "// remote copy" > sim/tb.sv     # the remote copy of a source changes
+mkdir -p sim/out                      # ignored outputs are not sent, so the run creates them
+echo PASS > sim/out/report.log
+''')
+    env = {**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"}
+    env.pop("RAT_EXPERIMENT_ID", None)
+    result = subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(wrapper), "--"],
+                            cwd=root, env=env, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Experiment ID" not in result.stderr and not (root / "experiment").exists()
+    assert (root / "sim/out/report.log").read_text() == "PASS\n"
+    assert (root / "sim/tb.sv").read_text() == "module tb; endmodule // local edit\n"
+    assert (root / "sim/out/stale.log").exists() == (mode == "merge")
+
+
+def test_in_place_results_need_git(remote_project):
+    root, remote, wrapper, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote), "results": "sync"}}))
+    result = invoke(root, "dispatch", "--wrapper", str(wrapper), env=env)
+    assert result.returncode == 2 and "needs a Git work tree" in result.stderr

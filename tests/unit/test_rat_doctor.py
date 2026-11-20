@@ -63,3 +63,53 @@ def test_unreadable_project_config_is_reported(tmp_path):
     (tmp_path / "rat_config.json").write_text("{broken")
     code, rows = doctor(tmp_path)
     assert code == 1 and rows[("project", "rat_config.json")]["status"] == "✗"
+
+
+def test_live_checks_never_pass_injected_host_or_paths_to_a_shell(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "ssh-calls"
+    (bin_dir / "ssh").write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" >> "{calls}"\nexit 1\n')
+    (bin_dir / "ssh").chmod(0o755)
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "rat_config.json").write_text(json.dumps({
+        "execution": {"backend": "ssh", "host": "-oProxyCommand=touch PWNED", "workspace": "/remote/ws",
+                      "ssh_options": ["-oProxyCommand=touch PWNED"]},
+        "technology": {"db": "/lib/$(touch PWNED).db"}}))
+    env = {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    result = subprocess.run([sys.executable, str(DOCTOR), "--root", str(project), "--json", "--live"],
+                            env={**os.environ, **env}, capture_output=True, text=True, timeout=60, cwd=tmp_path)
+    rows = {(row["level"], row["item"]): row for row in json.loads(result.stdout)}
+    assert rows[("project", "technology.db")]["status"] == "✗"
+    assert "plain SSH alias" in rows[("project", "technology.db")]["detail"]
+    assert not calls.exists() and not list(tmp_path.rglob("PWNED"))
+
+
+def test_live_library_check_quotes_the_path_for_the_remote_shell(tmp_path):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "ssh-calls"
+    (bin_dir / "ssh").write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" >> "{calls}"\nexit 1\n')
+    (bin_dir / "ssh").chmod(0o755)
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "rat_config.json").write_text(json.dumps({
+        "execution": {"backend": "ssh", "host": "eda.example.invalid", "workspace": "/remote/ws"},
+        "technology": {"db": "/lib/$(touch PWNED).db"}}))
+    env = {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    subprocess.run([sys.executable, str(DOCTOR), "--root", str(project), "--json", "--live"],
+                   env={**os.environ, **env}, capture_output=True, text=True, timeout=60)
+    argv = calls.read_text().splitlines()
+    assert argv[argv.index("--") + 1] == "eda.example.invalid"
+    script = argv[-1]
+    assert script.startswith("sh -c ") and "touch PWNED" not in script  # base64-encoded, run by sh, not the login shell
+
+
+@pytest.mark.parametrize("mode,expected", [("experiment", "✓"), ("merge", "✗"), ("bogus", "✗")])
+def test_remote_result_mode_is_checked(tmp_path, mode, expected):
+    # tmp_path is not a Git work tree, so merge cannot protect sources.
+    (tmp_path / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "eda.example.invalid", "workspace": "/remote/ws", "results": mode}}))
+    _, rows = doctor(tmp_path)
+    assert rows[("project", "remote results")]["status"] == expected

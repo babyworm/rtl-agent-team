@@ -67,7 +67,8 @@ and configuration flow in `/rtl-agent-team:rat-setup` before claiming tool readi
 Reuse known host facts; ask only for a choice that remains unresolved.
 
 Use the bundled filelist, cocotb Makefile, and Phase 6 PDF Makefile templates only
-where the corresponding project file is missing. The installer provides a Git
+where the corresponding project file is missing. On a remote site, remote results
+land in `experiment/<id>/` unless the user asks for `execution.results` merge or sync. The installer provides a Git
 ignore rule under `experiment/` for generated runs. Preserve existing filelists.
 The installer skips a local rule when the same rule exists in `~/.claude/rules/`.
 If `<markdown_diagram_rule>` is absent from `~/.claude/CLAUDE.md`, keep the document

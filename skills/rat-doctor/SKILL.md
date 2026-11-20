@@ -47,6 +47,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rat_doctor.py" --root "$root" --live
      `readlink -f` shows it resolves to `rat-ssh`.
    - Old settings folder: move `env-config.json` and `sites/` into the listed
      settings folder only when the target does not already have them.
+   - Remote result landing: when the user wants another mode, ask which one
+     (`experiment` default, `merge`, `sync`) and set `execution.results` in the
+     project `rat_config.json`.
    - Project values such as `technology.db`: ask for the correct value and edit the
      project `rat_config.json`. Change a site profile only when the user says the
      value applies to every project on that site.
