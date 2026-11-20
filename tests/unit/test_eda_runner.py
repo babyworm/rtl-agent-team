@@ -325,3 +325,21 @@ def test_dispatch_never_mirrors_a_home_directory_or_its_parent(tmp_path, relativ
                             env=env, capture_output=True, text=True, timeout=20)
     assert result.returncode == 2 and "home directory" in result.stderr
     assert sorted(root.rglob("*")) == before
+
+
+@pytest.mark.parametrize("folder", ["scratch", ".config/scratch"])
+def test_dispatch_mirrors_only_a_recognizable_project(tmp_path, folder):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "env-config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "eda.example.invalid", "workspace": "/remote/ws"}}))
+    home = tmp_path / "home"
+    root = home / folder
+    root.mkdir(parents=True)
+    env = {**os.environ, "HOME": str(home), "RAT_DATA_DIR": str(data)}
+    env.pop("RAT_PROJECT_ROOT", None)
+    result = subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", "run_sim.sh", "--"],
+                            env=env, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 2
+    assert ("hidden directory" if folder.startswith(".") else "project root") in result.stderr
+    assert not any(root.iterdir())

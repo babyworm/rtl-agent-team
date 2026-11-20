@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.9
+# rat-version: 2.0.10
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -44,10 +44,12 @@ def digest(path: Path) -> str:
 
 
 HDL_SUFFIXES = (".sv", ".svh", ".v", ".vh")
-HDL_SPLIT = re.compile(r'("(?:\\.|[^"\\\n])*"|//[^\n]*|/\*.*?\*/|\s+)', re.S)
-# Tool directives live in comments, so a pragma edit is still a source change.
-PRAGMA = re.compile(r"(?i)\b(?:synopsys|synthesis|pragma|translate_o(?:n|ff)|verilator|cadence|ambit|"
-                    r"spyglass|lint_o(?:n|ff)|coverage|full_case|parallel_case)\b")
+# Escaped identifiers (\name ending at whitespace) may contain // or /*; keep them opaque.
+HDL_SPLIT = re.compile(r'(\\\S+|"(?:\\.|[^"\\\n])*"|//[^\n]*|/\*.*?\*/|\s+)', re.S)
+# Tool directives live in comments, so a pragma edit is still a source change. Underscores
+# count as boundaries so prefixed directives such as rtl_synthesis stay significant.
+PRAGMA = re.compile(r"(?i)(?<![a-z0-9])(?:synopsys|synthesis|pragma|translate_o(?:n|ff)|verilator|cadence|ambit|"
+                    r"spyglass|lint_o(?:n|ff)|coverage|full_case|parallel_case)(?![a-z0-9])")
 
 
 def hdl_text(text: str) -> str:

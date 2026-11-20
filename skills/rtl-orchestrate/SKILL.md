@@ -33,7 +33,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "RTL design", "verilog", "FPGA", "ASIC", "chip design", "rat-auto-design" | `/rtl-agent-team:rat-auto-design` | Action Skill |
 | "setup tools", "install tools", "EDA setup", "check tools", "docker image", "EDA docker" | `/rtl-agent-team:rat-setup` | Action Skill |
 | "init project", "initialize project", "new project", "project init" | `/rtl-agent-team:rat-init-project` | Action Skill |
-| "debug", "diagnostics", "plugin status", "rat debug", "tool check" | `/rtl-agent-team:rat-plugin-debug` | Action Skill |
+| "doctor", "debug", "diagnostics", "plugin status", "settings check", "tool check" | `/rtl-agent-team:rat-doctor` | Action Skill |
 | "tutorial", "getting started", "how to use", "help me learn" | `/rtl-agent-team:rat-tutorial` | Action Skill |
 | **--- Phase 1: Research ---** | | |
 | "spec analysis", "requirements", "paper research", "research" | `/rtl-agent-team:p1-spec-research` | Action Skill |
@@ -577,7 +577,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | RTL design, chip design, full pipeline | `/rtl-agent-team:rat-auto-design` |
 | setup tools, EDA setup, install tools | `/rtl-agent-team:rat-setup` |
 | init project, initialize project, new project | `/rtl-agent-team:rat-init-project` |
-| debug, diagnostics, plugin status | `/rtl-agent-team:rat-plugin-debug` |
+| doctor, diagnostics, plugin status, settings check | `/rtl-agent-team:rat-doctor` |
 | tutorial, getting started, how to use | `/rtl-agent-team:rat-tutorial` |
 | spec analysis, requirements, research | `/rtl-agent-team:p1-spec-research` |
 | codec, H.264, H.265, domain expert | `/rtl-agent-team:domain-consult` |

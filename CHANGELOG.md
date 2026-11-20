@@ -7,6 +7,20 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre08] - 2026-11-21
+
+- `rat-doctor` replaces `rat-plugin-debug`: `scripts/rat_doctor.py` checks plugin-level
+  settings (settings folder, legacy forwarders, default site and its SSH connection) and
+  project-level settings (initialization, `rat_config.json`, execution, simulator/synthesis/
+  lint probes, `technology.db`) and prints a ✓/?/✗ table; the skill offers the listed fixes
+  and re-checks after applying the ones the user picks.
+- HDL source identity keeps escaped identifiers opaque (they may contain `//` or `/*`) and
+  treats underscore-prefixed directives such as `rtl_synthesis` as pragmas.
+- Remote dispatch without `rat_config.json` mirrors only a Git work tree or a folder named
+  with `RAT_PROJECT_ROOT`, and refuses hidden folders under the home directory.
+- The hook lock reclaims a dead holder's lock only while that holder's PID is still recorded;
+  before, a waiter could delete a lock that a new holder had just taken.
+
 ## [2.0.0-pre07] - 2026-11-21
 
 - Remote transport logs of a pre-init experiment run also go to the plugin data folder;

@@ -432,3 +432,12 @@ def test_bundled_wrapper_does_not_mix_in_older_project_helpers(simulation):
     result=run()
     assert result.returncode==0,result.stdout+result.stderr
     assert 'stale project helper' not in result.stdout+result.stderr
+
+
+@pytest.mark.parametrize("before,after", [
+    ("wire \\a//x ;", "wire \\a//y ;"),          # escaped identifiers may contain //
+    ("wire \\a/*x ;", "wire \\a/*y ;"),          # ... or /*
+    ("// rtl_synthesis_off\nwire a;", "// rtl_synthesis_on\nwire a;"),  # prefixed directive
+])
+def test_identity_keeps_escaped_identifiers_and_prefixed_directives(before, after):
+    assert evidence.hdl_text(before) != evidence.hdl_text(after)

@@ -39,7 +39,7 @@ RAT_SETUP_SKILL = SKILLS_DIR / "rat-setup" / "SKILL.md"
 RAT_SETUP_INSTALL_COMMANDS = RAT_SETUP_SKILL.parent / "references" / "install-commands.md"
 RAT_SETUP_TOOL_CHECK_COMMANDS = RAT_SETUP_SKILL.parent / "references" / "tool-check-commands.md"
 RAT_SETUP_DOCKER_ENVIRONMENT = RAT_SETUP_SKILL.parent / "references" / "docker-environment.md"
-RAT_PLUGIN_DEBUG_SKILL = SKILLS_DIR / "rat-plugin-debug" / "SKILL.md"
+RAT_PLUGIN_DEBUG_SKILL = SKILLS_DIR / "rat-doctor" / "SKILL.md"
 RTL_LINT_CHECK_SKILL = SKILLS_DIR / "rtl-lint-check" / "SKILL.md"
 RTL_P5S_SVA_POLICY = SKILLS_DIR / "rtl-p5s-sva-policy" / "SKILL.md"
 

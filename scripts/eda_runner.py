@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.11
+# rat-version: 2.0.12
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -471,6 +471,13 @@ def require_project_root(root: Path) -> None:
     home = Path.home().resolve()
     if root == home or home.is_relative_to(root):
         raise ValueError("refusing to synchronize the home directory or a parent of it; run from the project root")
+    if root.is_relative_to(home) and root.relative_to(home).parts[0].startswith("."):
+        raise ValueError("refusing to synchronize a hidden directory under the home directory (~/.ssh, ~/.config, ...)")
+    named = os.environ.get("RAT_PROJECT_ROOT")
+    markers = ("rat_config.json", ".rat", ".rtl-agent-team", ".git")
+    if not any((root / name).exists() for name in markers) and not (named and Path(named).resolve() == root):
+        raise ValueError("remote execution mirrors the whole folder: run from a project root (a Git work tree or "
+                         "a folder with rat_config.json) or name the folder with RAT_PROJECT_ROOT")
 
 
 def dispatch(args, root: Path, config: dict) -> int:

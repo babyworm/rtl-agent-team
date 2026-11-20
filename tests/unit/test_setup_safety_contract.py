@@ -14,7 +14,7 @@ RAT_SETUP_SKILL = REPO_ROOT / "skills" / "rat-setup" / "SKILL.md"
 INSTALL_COMMANDS = REPO_ROOT / "skills" / "rat-setup" / "references" / "install-commands.md"
 DOCKER_ENVIRONMENT = REPO_ROOT / "skills" / "rat-setup" / "references" / "docker-environment.md"
 TOOL_CHECK_COMMANDS = REPO_ROOT / "skills" / "rat-setup" / "references" / "tool-check-commands.md"
-PLUGIN_DEBUG = REPO_ROOT / "skills" / "rat-plugin-debug" / "SKILL.md"
+PLUGIN_DEBUG = REPO_ROOT / "skills" / "rat-doctor" / "SKILL.md"
 TOOL_RUNNER = REPO_ROOT / "skills" / "rat-init-project" / "templates" / "lib" / "tool-runner.sh"
 PROJECT_INSTALLER = REPO_ROOT / "skills" / "rat-init-project" / "scripts" / "install_project_templates.sh"
 SLANG_INSTALLER = REPO_ROOT / "scripts" / "install-slang-server.sh"
@@ -61,34 +61,6 @@ def test_dockerfile_separates_required_and_optional_image_checks() -> None:
     assert verification.index("check_required slang slang --version") < ready
     assert verification.index("check_optional verible-verilog-lint") < ready
     assert "&& \\\n    verible-verilog-lint" not in verification
-
-
-def test_debug_first_line_helper_preserves_a_present_tool_failure() -> None:
-    # Given: the diagnostic helper and a tool that emits output before failing.
-    content = read_contract(PLUGIN_DEBUG)
-    helper = re.search(
-        r"^first_line_or_not_found\(\) \{.*?^\}",
-        content,
-        re.DOTALL | re.MULTILINE,
-    )
-    assert helper is not None
-    script = (
-        f"{helper.group(0)}\n"
-        "failing_tool() { printf 'broken tool\\n'; return 23; }\n"
-        "first_line_or_not_found failing_tool failing_tool\n"
-    )
-
-    # When: the helper formats that tool's first output line.
-    result = subprocess.run(
-        ["bash", "-c", script],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    # Then: formatting does not replace the tool's failure status.
-    assert result.returncode == 23
-    assert "broken tool" in result.stderr
 
 
 def test_docker_run_surfaces_use_mount_user_and_writable_home() -> None:

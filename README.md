@@ -40,6 +40,7 @@ Keep connection details outside this plugin repository. [EDA setup, including Do
 | --- | --- |
 | [`rat-setup`](skills/rat-setup/SKILL.md) | Check that the selected EDA tools run in your environment. |
 | [`rat-init-project`](skills/rat-init-project/SKILL.md) | Create the project layout, tool settings, and runner scripts. |
+| [`rat-doctor`](skills/rat-doctor/SKILL.md) | Check plugin and project settings when something misbehaves, and fix what is wrong. |
 | [`rat-auto-design`](skills/rat-auto-design/SKILL.md) | Run P1–P6 from a specification. |
 | [`rat-refc-to-p5`](skills/rat-refc-to-p5/SKILL.md) | Turn an existing behavioral C model into RTL and verify it through P5. Requires the [`try-2.0` checkout](CONTRIBUTING.md#development-environment-setup). |
 | [`rat-dse`](skills/rat-dse/SKILL.md) | Explore alternatives through microarchitecture and BFM. |

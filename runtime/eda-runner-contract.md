@@ -15,6 +15,9 @@ environment and libraries. Query only the settings needed by the task, such as
 Before initialization, run records (evidence index, tool logs, shims) go to the
 plugin data folder under `projects/<folder>-<hash>/`, so a run never creates `.rat/`
 and the folder stays an ordinary directory. Generated outputs still use the project.
+Remote execution mirrors the whole project root. Without `rat_config.json` that root
+must be a Git work tree or be named with `RAT_PROJECT_ROOT`; home and hidden home
+folders are refused.
 
 `rat_config.json.execution` selects `backend`: `auto`, `local`, `docker`, `ssh`, or
 `lsf`. An absent setting uses `auto`, local execution with the Docker fallback.
