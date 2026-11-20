@@ -25,7 +25,7 @@ done
 source "$_LIB_RUNNER"
 rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
 RAT_EVIDENCE_REQUIRED=0
-[[ -f "$PROJECT_ROOT/rat_config.json" || -d "$PROJECT_ROOT/.rat" ]] && RAT_EVIDENCE_REQUIRED=1
+[[ -f "$PROJECT_ROOT/rat_config.json" || -d "$PROJECT_ROOT/.rat" || -d "$PROJECT_ROOT/.rtl-agent-team" ]] && RAT_EVIDENCE_REQUIRED=1
 
 
 EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:-$(dirname "$_LIB_RUNNER")}/verify_evidence.py"
@@ -36,9 +36,15 @@ finish_campaign() {
   local code=$?
   trap - EXIT
   if [[ -n "$CAMPAIGN_SNAPSHOT" ]]; then
-    local combined="$CAMPAIGN_OUTDIR/campaign.log"
-    find "$CAMPAIGN_OUTDIR" -type f -name '*.log' ! -name campaign.log -exec cat {} + > "$combined"
-    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" || code=$?
+    local combined="$CAMPAIGN_OUTDIR/campaign.log" seed_log
+    local -a seed_args=()
+    for seed_log in "$CAMPAIGN_OUTDIR"/seed_*.log; do
+      if [[ -f "$seed_log" ]]; then
+        seed_args+=(--seed-log "$seed_log")
+        cat "$seed_log"
+      fi
+    done > "$combined"
+    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" "${seed_args[@]}" || code=$?
   fi
   exit "$code"
 }
@@ -219,6 +225,18 @@ if ! [[ "$PARALLEL" =~ ^[0-9]+$ ]] || [[ "$PARALLEL" -lt 1 ]]; then
   exit 2
 fi
 
+if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
+  read -r -a experiment_seeds <<< "$SEEDS"
+  if [[ ! "$MODULE" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$ || ${#experiment_seeds[@]} -eq 0 || "$SEEDS" == *$'\n'* ]]; then
+    echo "ERROR: an experiment requires a module label and numeric seeds" >&2
+    exit 2
+  fi
+  rat_check_experiment_seeds "${experiment_seeds[@]}"
+fi
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
+  RESULTS_DIR=$(rat_experiment_output "$RESULTS_DIR")
+  COVERAGE_DIR=$(rat_experiment_output "$COVERAGE_DIR")
+fi
 RESULTS_DIR="$RESULTS_DIR/run_$TIMESTAMP"
 mkdir -p "$RESULTS_DIR" "$COVERAGE_DIR"
 
@@ -282,7 +300,12 @@ run_seed() {
   echo "[seed=$seed] Starting..."
 
   local rc=0 observed
-  RAT_CONTEXT_TOOL="$SIM" run_tool make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" \
+  local -a result_args=()
+  if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
+    sim_build_dir=$(cd "$sim_build_dir" && pwd -P)
+    result_args+=("COCOTB_RESULTS_FILE=$sim_build_dir/results.xml" "COVERAGE_FILE=$sim_build_dir/.coverage")
+  fi
+  RAT_CONTEXT_TOOL="$SIM" run_tool make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" "${result_args[@]}" \
        > "$log_file" 2>&1 || rc=$?
   observed=$("$RAT_PYTHON" "$EVIDENCE_HELPER" classify --log "$log_file" --exit-code "$rc")
   if [[ "$observed" == PASS ]]; then
@@ -299,7 +322,7 @@ EOF
 EOF
     mv "$result_file.tmp" "$result_file"
     # Capture waveform if available
-    if ls "$TB_DIR"/*.vcd >/dev/null 2>&1; then
+    if [[ "${RAT_EXPERIMENT_ACTIVE:-}" != 1 ]] && ls "$TB_DIR"/*.vcd >/dev/null 2>&1; then
       cp "$TB_DIR"/*.vcd "$RESULTS_DIR/seed_${seed}_waveform.vcd" 2>/dev/null || true
     fi
     return 1

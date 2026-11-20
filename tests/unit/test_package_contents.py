@@ -37,7 +37,7 @@ def test_npm_excludes_private_site_data_even_inside_packaged_directories(tmp_pat
     public.write_text("A synthetic public agent.\n")
     protected = ["agents/.rat/report.json", "skills/example/sites/site.json",
                  "scripts/site-profiles/site.json", "runtime/private-reports/result.json",
-                 "scripts/env-config.json"]
+                 "scripts/env-config.json", "skills/example/experiment/run-a/result.json"]
     for name in protected:
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)

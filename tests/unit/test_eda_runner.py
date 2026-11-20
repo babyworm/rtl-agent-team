@@ -5,10 +5,14 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 import pytest
 
 from tests.conftest import REPO_ROOT
+
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+from verify_evidence import runtime_state_root  # noqa: E402  same lookup the runner uses
 
 RUNNER = REPO_ROOT / "scripts/eda_runner.py"
 
@@ -53,7 +57,8 @@ def test_failed_environment_does_not_execute_tool(tmp_path):
 def test_process_results_and_limits_are_preserved(tmp_path, flags, command, expected, termination):
     result = invoke(tmp_path, "run", *flags, "--shell-command", command)
     assert result.returncode == expected, result.stderr
-    report = next((tmp_path / ".rat/tool-runs").glob("*.result.json"))
+    assert not (tmp_path / ".rat").exists()  # a run before init leaves the folder uninitialized
+    report = next((runtime_state_root(tmp_path) / "tool-runs").glob("*.result.json"))
     assert json.loads(report.read_text())["termination"] == termination
 
 
@@ -111,7 +116,9 @@ src,dst=Path(source),Path(destination)
 if not src.exists(): raise SystemExit(23)
 if src.is_dir():
     dst.mkdir(parents=True,exist_ok=True)
-    shutil.copytree(src,dst,dirs_exist_ok=True,ignore=shutil.ignore_patterns(".rat", ".git", ".claude") if any(a.startswith("--exclude") for a in args) else None)
+    skips=[".rat", ".git", ".claude"]
+    if "--exclude=/experiment/" in args: skips.append("experiment")
+    shutil.copytree(src,dst,dirs_exist_ok=True,ignore=shutil.ignore_patterns(*skips) if any(a.startswith("--exclude") for a in args) else None)
 else:
     dst.parent.mkdir(parents=True,exist_ok=True)
     shutil.copy2(src,dst)
@@ -147,7 +154,7 @@ def test_remote_wrapper_maps_inputs_fetches_outputs_and_uses_job_status(remote_p
                             capture_output=True, text=True, timeout=20)
     assert result.returncode == job_exit, result.stdout + result.stderr
     assert (root / "out/mapped.txt").read_text().strip() == str(remote / "rtl/input.sv")
-    report = next((root / ".rat/remote-runs").glob("*/result.json"))
+    report = next((runtime_state_root(root) / "remote-runs").glob("*/result.json"))
     assert json.loads(report.read_text())["exit_code"] == job_exit
 
 
@@ -157,3 +164,164 @@ def test_remote_submission_without_exit_artifact_is_inconclusive(remote_project)
         "backend": "lsf", "host": "fixture-host", "workspace": str(remote), "outputs": []}}))
     result = invoke(root, "dispatch", "--wrapper", str(wrapper), env={**env, "FAKE_SKIP_JOB": "1"})
     assert result.returncode == 3, result.stdout + result.stderr
+
+
+def test_experiment_namespace_before_init(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    env = {**os.environ, "RAT_EXPERIMENT_ID": "sweep-1"}
+    def output(value, **updates):
+        return subprocess.run([sys.executable, str(RUNNER), "experiment-output", "--root", str(tmp_path), "--", value],
+                              env={**env, **updates}, capture_output=True, text=True)
+
+    directory = tmp_path / "experiment/sweep-1"
+    for value in ("sim/build", "experiment/sweep-1/sim/build", str(directory / "sim/build")):
+        assert output(value).stdout.strip() == str(directory / "sim/build")
+    assert subprocess.run(["git", "-C", str(tmp_path), "check-ignore", "-q", "experiment/sweep-1/sim/build"]).returncode == 0
+    (directory / "escape").symlink_to(tmp_path)
+    for value in ("../other", "/tmp/build", "experiment/other/seed", "escape/build"):
+        assert output(value).returncode == 2
+    assert output(".", RAT_EXPERIMENT_ID="../bad").returncode == 2
+
+
+def test_parallel_experiments_separate_workspaces_and_allow_sequential_reuse(remote_project):
+    root, remote, wrapper, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture", "workspace": str(remote), "outputs": ["out"]}}))
+    wrapper.write_text('''#!/bin/sh
+set -eu
+test "$RAT_EXPERIMENT_ACTIVE" = 1
+test -z "${RAT_EXPERIMENT_ID:-}"
+test ! -d "$RAT_PROJECT_ROOT/experiment"
+mkdir -p out
+printf '%s' "$1" >> out/steps
+while [ -n "${FIXTURE_RELEASE:-}" ] && [ ! -f "$FIXTURE_RELEASE" ]; do sleep .02; done
+''')
+    command = [sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(wrapper), "--"]
+    release = root.parent / "continue"
+    def start(name, label):
+        return subprocess.Popen([*command, label], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, env={**os.environ, **env, "RAT_EXPERIMENT_ID": name,
+                                                "FIXTURE_RELEASE": str(release)})
+
+    first, other = start("left", "a"), start("right", "b")
+    try:
+        deadline = time.monotonic() + 10
+        while len(list(remote.glob(".rat/experiments/*/work/out/steps"))) < 2 and time.monotonic() < deadline:
+            time.sleep(.025)
+        assert len(list(remote.glob(".rat/experiments/*/work/out/steps"))) == 2
+        duplicate = start("left", "bad")
+        assert "experiment already running" in duplicate.communicate(timeout=4)[1]
+        assert duplicate.returncode == 2
+    finally:
+        release.touch()
+        for process in (first, other):
+            stdout, stderr = process.communicate(timeout=7)
+            assert process.returncode == 0, stdout + stderr
+    later = start("left", "c")
+    stdout, stderr = later.communicate(timeout=7)
+    assert later.returncode == 0, stdout + stderr
+    assert (root / "experiment/left/out/steps").read_text() == "ac"
+    assert (root / "experiment/right/out/steps").read_text() == "b"
+    assert not (root / "out").exists()
+    assert not list(remote.glob(".rat/experiments/*/active"))
+
+
+def test_missing_remote_job_status_keeps_experiment_reserved(remote_project):
+    root, remote, wrapper, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "lsf", "host": "fixture", "workspace": str(remote), "outputs": []}}))
+    env = {**env, "RAT_EXPERIMENT_ID": "pending"}
+    missing = invoke(root, "dispatch", "--wrapper", str(wrapper), env={**env, "FAKE_SKIP_JOB": "1"})
+    assert missing.returncode == 3 and "reservation retained" in missing.stderr
+    retry = invoke(root, "dispatch", "--wrapper", str(wrapper), env=env)
+    assert retry.returncode == 2 and "could not reserve" in retry.stderr
+
+
+def test_namespaced_evidence_uses_fetched_logs_and_original_inputs(remote_project):
+    root, remote, wrapper, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture", "workspace": str(remote)}}))
+    (root / "design.v").write_text("module design; endmodule")
+    wrapper = executable(wrapper.with_name("run_sim.sh"), '''#!/bin/bash
+set -eu
+out="$2"
+mkdir -p "$out"
+echo PASS > "$out/sim.log"
+if [[ "$3" = simulate ]]; then
+    base="$RAT_RUNTIME_HELPERS/verify_evidence.py"
+    snapshot=$(python3 "$base" begin --root "$PWD" --outdir "$out" --tool xrun --top design --source design.v)
+    python3 "$base" finish --snapshot "$snapshot" --exit-code 0 --log "$out/sim.log"
+fi
+''')
+    env = {**os.environ, **env, "RAT_EXPERIMENT_ID": "trial"}
+    destination = root / "experiment/trial/custom"
+    command = [sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(wrapper),
+               "--", "--outdir", str(destination)]
+    run = subprocess.run([*command, "simulate"], cwd=root, env=env, capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr + run.stdout
+    index = runtime_state_root(root) / "state/verify-evidence.json"
+    record, = json.loads(index.read_text())["runs"]
+    assert record["verdict"] == "PASS" and record["experiment_id"] == "trial"
+    assert list(record["sources"]) == [str(root / "design.v")]
+    assert record["log"] == str(destination / "sim.log")
+    assert not (root / "custom").exists()
+    stale = subprocess.run([*command, "skip"], cwd=root, env=env, capture_output=True, text=True)
+    assert stale.returncode == 3
+    assert len(json.loads(index.read_text())["runs"]) == 1
+
+
+def test_remote_compile_and_run_only_reuse_private_build_before_init(remote_project, monkeypatch):
+    root, remote, _, env = remote_project
+    remote = remote.with_name("server")
+    tools = root.parent / "bin"
+    compiler = executable(tools / "iverilog", '''#!/bin/sh
+test "$VENDOR_READY" = 1 || exit 15
+while [ "$1" != -o ]; do shift; done
+printf 'compiled\n' > "$2"
+''')
+    executable(tools / "vvp", '#!/bin/sh\ntest -s "$1" && echo RAT_SIM_PASS\n')
+    data = root.parent / "machine"
+    data.mkdir()
+    (data / "env-config.json").write_text(json.dumps({
+        "execution": {"backend": "ssh", "workspace": str(remote), "host": "fixture"},
+        "preferences": {"simulator": "iverilog"},
+        "tools": {"simulators": {"iverilog": {"path": str(compiler), "env_source": "export VENDOR_READY=1",
+                                             "probe": {"output": "fixture-only raw report"}}}},
+    }))
+    (root / "sample.v").write_text("module sample; endmodule")
+    (root / "sim").mkdir()
+    (root / "sim/maintained-test-input").write_text("source")
+    env = {**os.environ, **env, "RAT_PROJECT_ROOT": str(root), "RAT_EXPERIMENT_ID": "split",
+           "RAT_DATA_DIR": str(data)}
+    for step in ("--compile-only", "--run-only"):
+        result = subprocess.run(["bash", str(RUNNER.with_name("run_sim.sh")), "--top", "sample", step, "sample.v"],
+                                cwd=root, env=env, text=True, capture_output=True, timeout=25)
+        assert result.returncode == 0, result.stderr + result.stdout
+    destination = root / "experiment/split"
+    assert (destination / "sim/build/sample").is_file()
+    assert not (destination / "sim/maintained-test-input").exists()
+    assert not (root / "sim/build").exists() and not (root / "rat_config.json").exists()
+    assert not list(root.rglob(".rat"))  # not even inside experiment/<id>/
+    monkeypatch.setenv("RAT_DATA_DIR", env["RAT_DATA_DIR"])  # resolve where the runs wrote
+    index = runtime_state_root(root) / "state/verify-evidence.json"
+    assert [item["verdict"] for item in json.loads(index.read_text())["runs"]] == ["COMPILED", "PASS"]
+    assert not list(root.rglob("dispatch-config.json"))
+    snapshot, *_ = remote.rglob("dispatch-config.json")
+    assert "fixture-only raw report" not in snapshot.read_text()
+
+
+@pytest.mark.parametrize("relative", [".", ".."])
+def test_dispatch_never_mirrors_a_home_directory_or_its_parent(tmp_path, relative):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "env-config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "eda.example.invalid", "workspace": "/remote/ws"}}))
+    home = tmp_path / "home"
+    home.mkdir()
+    root = (home / relative).resolve()
+    before = sorted(root.rglob("*"))
+    env = {**os.environ, "HOME": str(home), "RAT_DATA_DIR": str(data), "RAT_PROJECT_ROOT": str(root)}
+    result = subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", "run_sim.sh", "--"],
+                            env=env, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 2 and "home directory" in result.stderr
+    assert sorted(root.rglob("*")) == before

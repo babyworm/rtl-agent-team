@@ -1,6 +1,7 @@
 # Functional bin logs
 
-Export hit counts for the test plan's required bins. In a UVM coverage subscriber,
+Use the exact coverpoint IDs and minimums from the project's
+`sim/verification-points.json` when exporting planned bins. In a UVM coverage subscriber,
 increment the counters where `write()` samples the corresponding covergroup. Export
 the counts once in `report_phase`. For example, for a command coverpoint with `read`
 and `write` bins and `at_least=2` for both:

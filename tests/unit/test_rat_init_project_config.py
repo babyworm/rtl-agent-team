@@ -392,3 +392,39 @@ def test_bash_version_guard_precedes_associative_arrays():
 
     # Then: Bash 3 exits through a clear gate before unsupported syntax executes.
     assert 0 <= guard < associative_array
+
+
+def test_new_project_uses_the_default_site_and_existing_projects_keep_theirs(tmp_path):
+    data = tmp_path / "data"
+    (data / "sites").mkdir(parents=True)
+    (data / "env-config.json").write_text(json.dumps({"default_site": "fixture"}))
+    (data / "sites/fixture.json").write_text(json.dumps({
+        "schema_version": 1, "measured_at": 1, "home": "/home/fixture",
+        "execution": {"backend": "ssh", "host": "eda.example.invalid", "python": "/usr/bin/python3"},
+        "tools": {"simulators": {"xrun": {"path": "/opt/fixture/xrun", "detected": True,
+                                          "env_source": "", "env_shell": "bash"}}},
+        "preferences": {"simulator": "xrun"}, "technology": {"db": "/opt/fixture/cells.db"}}))
+    env = {**os.environ, "RAT_DATA_DIR": str(data)}
+    new, existing = tmp_path / "new", tmp_path / "existing"
+    new.mkdir()
+    existing.mkdir()
+    (existing / "rat_config.json").write_text(json.dumps(_minimal_config()))
+    for project in (new, existing):
+        result = _run_generator(project, env=env)
+        assert result.returncode == 0, result.stderr
+    created = json.loads((new / "rat_config.json").read_text())
+    assert created["execution"]["host"] == "eda.example.invalid"
+    assert created["preferences"]["simulator"] == "xrun"
+    assert created["technology"]["db"] == "/opt/fixture/cells.db"
+    assert created["project"]["filelist"] == "rtl/filelist_top.f"
+    assert json.loads((existing / "rat_config.json").read_text())["execution"].get("backend") != "ssh"
+
+
+def test_new_project_with_missing_default_site_does_not_select_local_tools(tmp_path):
+    data, project = tmp_path / "data", tmp_path / "project"
+    data.mkdir()
+    project.mkdir()
+    (data / "env-config.json").write_text('{"default_site":"missing"}')
+    result = _run_generator(project, env={**os.environ, "RAT_DATA_DIR": str(data)})
+    assert result.returncode != 0 and "default_site" in result.stderr
+    assert not list(project.iterdir())

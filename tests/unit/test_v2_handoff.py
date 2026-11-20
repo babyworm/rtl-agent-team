@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
 import socket
 import subprocess
 import sys
@@ -16,6 +17,31 @@ from tests.conftest import REPO_ROOT, run_hook
 def script(name, *args, root=None):
     return subprocess.run([sys.executable,str(REPO_ROOT/'scripts'/name),*map(str,args)],
                           cwd=root or REPO_ROOT,text=True,capture_output=True,timeout=15)
+
+
+@pytest.mark.parametrize(("agent", "legacy_status"), [
+    ("uarch-to-verify-orchestrator", 1),
+    ("p5b-silicon-validation-orchestrator", 0),
+])
+def test_bundled_and_split_handoffs_require_current_point_evidence(tmp_path, agent, legacy_status):
+    workflow = (REPO_ROOT / "agents" / (agent + ".md")).read_text().split("<!-- RAT_POLICIES_BEGIN")[0]
+    command, = [s for s in workflow.split("`") if s.startswith("python3 {plugin_root}/scripts/gates/phase_gate.py ")]
+    argv = [arg.replace("{plugin_root}", str(REPO_ROOT)).replace("<project>", str(tmp_path))
+            for arg in shlex.split(command)]
+    report = tmp_path / "reviews/phase-5-verify/final-compliance.md"
+    report.parent.mkdir(parents=True)
+    report.write_text("Verdict: PASS")
+    assert subprocess.run(argv, capture_output=True, timeout=10).returncode == legacy_status
+
+    docs = tmp_path / "docs/phase-5-verify"
+    docs.mkdir(parents=True)
+    (docs / "judgment.json").write_text(json.dumps({
+        "confidence": "high", "material_ambiguities": [], "simulation_runs": ["missing-run"],
+    }))
+    result = subprocess.run(argv, capture_output=True, timeout=10)
+    assert result.returncode == 1
+    assert any(not check["passed"] and "point" in check["check"]
+               for check in json.loads(result.stdout)["checks"])
 
 
 def p1(root, judgment):

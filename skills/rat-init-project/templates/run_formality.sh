@@ -225,16 +225,32 @@ if ! [[ "$TOP" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
 fi
 # Paths below feed the eval-free but replayed command line and the generated
 # Formality Tcl — validate against shell metacharacters first.
+if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
+  [[ "$RTL_FILELIST" == /* ]] || RTL_FILELIST="$PROJECT_ROOT/$RTL_FILELIST"
+  [[ -z "$NETLIST" || "$NETLIST" == /* ]] || NETLIST="$PROJECT_ROOT/$NETLIST"
+  [[ -z "$LIBERTY" || "$LIBERTY" == /* ]] || LIBERTY="$PROJECT_ROOT/$LIBERTY"
+  [[ -z "$SCRIPT_PATH" || "$SCRIPT_PATH" == /* ]] || SCRIPT_PATH="$PROJECT_ROOT/$SCRIPT_PATH"
+  [[ -z "$SVF" || "$SVF" == /* ]] || SVF="$PROJECT_ROOT/$SVF"
+  if [[ -n "$SCRIPT_PATH" && ! -f "$SCRIPT_PATH" ]]; then
+    echo "ERROR: experiment --script must name an existing input script" >&2
+    exit 2
+  fi
+fi
 validate_shell_safe "--rtl path" "$RTL_FILELIST"
 validate_shell_safe "--netlist path" "$NETLIST"
 validate_shell_safe "--svf path" "$SVF"
 validate_shell_safe "--liberty path" "$LIBERTY"
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then OUTDIR=$(rat_experiment_output "$OUTDIR"); fi
 validate_shell_safe "--outdir path" "$OUTDIR"
 validate_shell_safe "--script path" "$SCRIPT_PATH"
 
 mkdir -p "$OUTDIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RUN_CWD="$(pwd)"
+if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
+  OUTDIR=$(cd "$OUTDIR" && pwd -P)
+  RUN_CWD="$OUTDIR"
+fi
 REPLAY_DIR="$OUTDIR/replay"
 mkdir -p "$REPLAY_DIR"
 REPLAY_SCRIPT="$REPLAY_DIR/run_formality_${TOP}_${TIMESTAMP}.sh"
@@ -320,6 +336,7 @@ cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_formality_${TOP}_latest.sh"
 
 # $FM_TCL components (--script / --outdir / --top) validated against shell
 # metacharacters above — execute via argv, no eval.
+cd "$RUN_CWD"
 run_tool fm_shell -64bit -f "$FM_TCL" 2>&1 | tee "$REPORT"
 EXIT_CODE=${PIPESTATUS[0]}
 
@@ -334,4 +351,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.1
+# rat-version: 2.0.2

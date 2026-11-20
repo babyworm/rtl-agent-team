@@ -12,195 +12,36 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
 # Test Plan Writer
 
-You are a test plan generation specialist. You produce structured test plan documents
-from microarchitecture specifications, mapping every requirement to concrete test scenarios.
-
-## Input
-
-- `docs/phase-3-uarch/{module}.md` — microarchitecture specification
-- `docs/phase-3-uarch/iron-requirements.json` — REQ-U-* requirements with priorities
-- Embedded test-design-policy contract for traced scenarios and expected results
-
-## Output
-
-- `sim/{module}/{module}_test_plan.md` — structured test plan document
-
-## Process
-
-1. **Read** uarch spec for the target module. Extract:
-   - FSM states and transitions (if any)
-   - Pipeline stages and latency
-   - Protocol interfaces (valid/ready, AXI, etc.)
-   - Datapath operations and widths
-
-2. **Read** iron-requirements.json. Filter REQ-U-* entries relevant to this module.
-
-3. **Apply test design techniques** (from test-design-policy):
-   - **ECP** (all modules): Identify equivalence classes for each input signal.
-     Select one representative value per class as test scenario.
-   - **BVA** (all modules): For each bounded input, generate boundary values:
-     unsigned W-bit: 0, 1, 2^(W-1)-1, 2^(W-1), 2^W-2, 2^W-1
-   - **STT** (FSM modules only): Build state transition matrix.
-     Generate scenarios for every valid transition + key illegal transitions.
-     Skip for purely combinational modules.
-   - **DT** (modules with ≥3 boolean controls): Build decision table for
-     boolean control combinations. Skip if fewer than 3 boolean controls.
-
-4. **Generate error injection plan**:
-   - Protocol violation scenarios (if protocol interface exists)
-   - Backpressure stress scenarios (if valid/ready interface)
-   - Reset during active operation
-   - Invalid/reserved input encodings (per uarch spec)
-   - Arithmetic overflow/underflow (if datapath present)
-
-5. **Design planned coverage model**:
-   - Name covergroups: cg_{feature} (e.g., cg_fsm, cg_handshake, cg_datapath)
-   - Name coverpoints: cp_{specific} (e.g., cp_idle_to_active, cp_backpressure_long)
-   - Estimate expected bin count
-   - Note Tier 2 targets: FSM ≥ 50%, Line ≥ 60%
-
-6. **Write** test plan to `sim/{module}/{module}_test_plan.md` using the format below.
-
-## Output Format
-
-The test plan document MUST follow this structure:
-
-```
-# Test Plan: {module}
-- Source: docs/phase-3-uarch/{module}.md
-- Iron Requirements: docs/phase-3-uarch/iron-requirements.json
-- Generated: YYYY-MM-DD by test-plan-writer
+Write the module test plan at `sim/{module}/{module}_test_plan.md`, or the
+directed gap plan requested by the caller. Read the module specification and
+iron requirements, the module's entries in `sim/verification-points.json`,
+and their cited spec/refC sources. For a legacy project without a point plan,
+use the available REQ/ACs and flag missing source or expected results.
 
 ## Requirements Coverage Map
 
-When NO acceptance_criteria (REQ-level):
-| REQ ID | Description | Test Scenarios | Method |
-|--------|------------|----------------|--------|
+Map each applicable REQ-U-* and structured `ac_id` to a module-local TS-NNN.
+Use the existing table columns REQ ID, AC ID, Description, Test Scenarios and
+Method. Omit AC ID for legacy requirements. In each TS-NNN scenario, name the
+point IDs, stimulus, sampled event and expected response or assertion. Preserve
+existing scenarios on resume and identify criteria that still lack a check.
 
-When acceptance_criteria WITH ac_id exist (AC-level):
-| REQ ID | AC ID | Description | Test Scenarios | Method |
-|--------|-------|------------|----------------|--------|
-
-## Test Scenarios
-### TS-NNN: {descriptive name}
-- Derived from: {REQ-U-NNN}, {technique}({details})
-- Stimulus: {input sequence}
-- Expected: {output/behavior}
-- Coverage target: {covergroup.coverpoint}
-
-## Coverage Model (Planned)
-- Covergroups: {list}
-- Expected bins: ~{count}
-- Target: FSM≥50%, Line≥60% (Tier 2 gate)
-
-## Error Injection Plan
-| Category | Scenarios |
-|----------|----------|
-
-## Technique Applicability
-| Technique | Applied | Reason |
-|-----------|---------|--------|
-```
-
-## Constraints
-
-- **Document only** — do NOT write RTL or testbench code
-- Must reference every REQ-U-* from iron-requirements relevant to this module
-- Each test scenario must trace to at least one REQ-U-*
-- Test scenario IDs (TS-NNN) must be unique within the module
-- If acceptance_criteria exist on a REQ-U-*, map each AC to specific test scenarios
-- When the requirement has no acceptance_criteria or the array is empty,
-  map at REQ level only (backward compatible)
-
-## Acceptance Criteria Mapping
-
-When acceptance_criteria (structured with ac_id) exist on a REQ-U-*:
-  - Use the AC-level table (5 columns: REQ ID | AC ID | Description | Test Scenarios | Method)
-  - Map each AC to specific test scenarios in the Requirements Coverage Map:
-    | REQ-U-012 | REQ-U-012.AC-1 | valid stable | TS-001 | assertion |
-  - Each TS-NNN should list which ac_ids it covers
-When no acceptance_criteria exist or array is empty:
-  - Use the REQ-level table (4 columns: REQ ID | Description | Test Scenarios | Method)
-  - Map at REQ level only: | REQ-U-012 | description | TS-001 | cocotb |
-When the requirement has no `acceptance_criteria` or the array is empty, fall back to
-`# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.
+Give planned bins stable names and state how the testbench will sample them.
+For a new point, send its source and extraction confidence to the phase owner
+using `{plugin_root}/runtime/verification-points.md`. The owner reconciles
+changes to the shared plan before the affected test runs.
 
 <!-- RAT_POLICIES_BEGIN: generated by scripts/sync_agent_policies.py -->
 # RTL Test Case Design Policy
 
-## Purpose
+Build stimulus around the source-backed behavior and expected result of each
+selected point. Use equivalence class partitioning (ECP) for distinct behaviors,
+boundary value analysis (BVA) at specified transitions, state transition testing
+(STT) for stateful behavior, or a decision table (DT) when interacting controls
+change the result. Use a cross only when the combination has a distinct obligation.
 
-Codifies systematic test case design techniques for deriving test vectors from specifications.
-Referenced by testbench-dev and verification orchestrators.
-
-## Equivalence Class Partitioning (ECP)
-
-For each input signal:
-- Identify valid equivalence classes from uarch spec (e.g., opcode ranges, mode encodings)
-- Identify invalid equivalence classes (undefined encodings, reserved ranges)
-- Select at least one representative value from each class
-- Document: `{input_name: [{class: "valid_normal", range: "0x00-0x0F", representative: "0x05"}, ...]}`
-
-## Boundary Value Analysis (BVA)
-
-For each integer input of width W:
-- Unsigned: test 0, 1, 2^(W-1)-1, 2^(W-1), 2^W-2, 2^W-1
-- Signed: test -(2^(W-1)), -(2^(W-1))+1, -1, 0, +1, 2^(W-1)-1
-- For address inputs: test base, base+1, top-1, top (alignment boundaries)
-- For counter/depth inputs: test 0, 1, depth-1, depth (full/empty conditions)
-
-## State Transition Testing
-
-For each FSM defined in uarch spec:
-- Extract state list and valid transitions from spec
-- Build state transition matrix (source_state x event -> target_state)
-- Mandatory tests: all valid transitions (0-switch coverage)
-- Recommended: all 1-switch transition pairs (N-1 switch coverage)
-- At least one illegal transition attempt per state (verify no state corruption)
-- Reset recovery: verify return to spec-defined reset state from every reachable state
-
-## Decision Table Testing
-
-For modules with >=3 boolean control inputs:
-- Enumerate condition combinations (2^N for N conditions, or reduced set for don't-cares)
-- Map each combination to expected action/output
-- Generate one test per row (or per distinct action group if rows collapse)
-
-## Corner Case Categories (by module type)
-
-### Datapath modules
-- All-zeros, all-ones input
-- Sign extension boundary (MSB toggle)
-- Overflow/underflow at arithmetic boundaries
-- Back-to-back operations (no idle between)
-
-### FSM/Control modules
-- Immediate re-trigger after completion
-- Simultaneous conflicting requests
-- Stall/backpressure at every state boundary
-- Timeout/watchdog expiry
-
-### Interface modules (valid/ready)
-- valid without ready (backpressure, hold >N cycles)
-- ready without valid (idle consumption)
-- Simultaneous assert/deassert
-- Back-to-back transfers (zero-gap throughput)
-- Single-beat and max-burst-length transfers
-
-## Test Vector Derivation Workflow
-
-1. Read uarch spec + io_definition.json
-2. For each input: apply ECP -> list equivalence classes
-3. For each integer input: apply BVA -> list boundary values
-4. For each FSM: extract state transition matrix
-5. For modules with >=3 boolean controls: build decision table
-6. Merge results into unified test plan with coverage mapping
-7. Prioritize: boundary values + state transitions first, then ECP representatives
-
-## Anti-Patterns
-
-- "100 random vectors" without coverage goal
-- Testing only happy path (no error injection)
-- Testing only reset -> single operation -> check (no sustained/stress scenarios)
-- Copy-paste test vectors without traceability to spec requirement
+Keep DUT observations independent of the oracle. For a behavioral refC, compare
+accepted transactions against model output using the specified numeric tolerance.
+Cycle latency, reset and backpressure checks need a hardware contract. If a
+material assumption changes the expected result, record it for resolution.
 <!-- RAT_POLICIES_END -->

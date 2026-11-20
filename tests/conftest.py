@@ -17,12 +17,21 @@ SKILLS_DIR = REPO_ROOT / "skills"
 
 
 @pytest.fixture(autouse=True)
-def _default_stop_block_limit(monkeypatch):
+def _default_stop_block_limit(monkeypatch, tmp_path_factory):
     """Hook tests pin the Stop breaker's default budget and run outside any Claude
     Code session; only an explicit env changes either."""
     for name in ("RAT_STOP_BLOCK_LIMIT", "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", "CLAUDE_PROJECT_DIR",
                  "CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID", "RAT_PROJECT_ROOT"):
         monkeypatch.delenv(name, raising=False)
+    # Pin the simulator choice so results do not depend on the host's PATH. Tests of
+    # the unconfigured case delete it.
+    monkeypatch.setenv("SIM", "iverilog")
+    # Machine defaults and site profiles come from the developer's private data dir otherwise.
+    # In a session both name the plugin data folder: hooks get CLAUDE_PLUGIN_DATA, and
+    # the SessionStart hook hands Bash the same path as RAT_DATA_DIR.
+    data = str(tmp_path_factory.mktemp("plugin-data"))
+    monkeypatch.setenv("CLAUDE_PLUGIN_DATA", data)
+    monkeypatch.setenv("RAT_DATA_DIR", data)
 
 
 @pytest.fixture

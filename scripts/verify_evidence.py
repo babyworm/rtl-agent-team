@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.3
+# rat-version: 2.0.9
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -21,10 +21,176 @@ import uuid
 
 PASS_PATTERN = r"(?im)^\s*(?:RAT_SIM_PASS|ALL TESTS PASSED|TESTS? PASSED|PASS)(?:\b|:)"
 FAIL_PATTERN = r"(?im)(?:^\s*(?:#\s*)?\[?(?:FATAL|FAIL(?:ED|URE|URES)?)\b|%Error(?=[:-])|\bERROR\s*:|\*[EF],|assertion[^\n]*failed|\bFAIL(?:ED|URES?)?\s*[=:]\s*[1-9]\d*)"
+CHECK_POINT = re.compile(r"RAT_CHECK_POINT ([A-Za-z0-9_.:\[\]-]+) ([0-9]+) ([0-9]+)")
+
+
+def check_point_error(line: str) -> str:
+    if not line.startswith("RAT_CHECK_POINT"):
+        return ""
+    record = CHECK_POINT.fullmatch(line)
+    if not record:
+        return f"malformed check record: {line}"
+    if record[3].strip("0"):
+        return f"{record[1]}: {record[3]} failed checks"
+    return ""
+
+
+def log_has_failed_point(lines) -> bool:
+    return any(check_point_error(line.strip().removeprefix("# ")) for line in lines)
 
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+HDL_SUFFIXES = (".sv", ".svh", ".v", ".vh")
+HDL_SPLIT = re.compile(r'("(?:\\.|[^"\\\n])*"|//[^\n]*|/\*.*?\*/|\s+)', re.S)
+# Tool directives live in comments, so a pragma edit is still a source change.
+PRAGMA = re.compile(r"(?i)\b(?:synopsys|synthesis|pragma|translate_o(?:n|ff)|verilator|cadence|ambit|"
+                    r"spyglass|lint_o(?:n|ff)|coverage|full_case|parallel_case)\b")
+
+
+def hdl_text(text: str) -> str:
+    """HDL without ordinary comments or indentation; string literals and line breaks stay."""
+    pieces, gap = [], ""
+    for index, part in enumerate(HDL_SPLIT.split(text)):
+        if not part:
+            continue
+        if index % 2 and (part[0].isspace() or part[:2] in ("//", "/*")) and not PRAGMA.search(part):
+            gap = "\n" if "\n" in part or gap == "\n" else " "
+            continue
+        if pieces and gap:
+            pieces.append(gap)
+        pieces.append(part)
+        gap = ""
+    return "".join(pieces)
+
+
+HDL_IDENTITY_LIMIT = 2_000_000  # larger HDL is generated; its raw hash is its identity
+
+
+def source_digest(path: Path) -> str:
+    """Behavioral identity of a source; comment-only HDL edits keep it. Slower than digest()."""
+    if path.suffix not in HDL_SUFFIXES or path.stat().st_size > HDL_IDENTITY_LIMIT:
+        return digest(path)
+    text = hdl_text(path.read_bytes().decode("utf-8", "surrogateescape"))
+    return hashlib.sha256(text.encode("utf-8", "surrogateescape")).hexdigest()
+
+
+def source_identity(sources) -> dict[str, str]:
+    return {name: source_digest(Path(name)) for name in sources if Path(name).suffix in HDL_SUFFIXES}
+
+
+def source_matches(path: Path, expected: str, identity: str | None = None) -> bool:
+    # The raw hash is the fast path; an HDL file whose comments or indentation
+    # changed still matches its recorded behavioral identity.
+    if not path.is_file():
+        return False
+    return digest(path) == expected or (bool(identity) and path.suffix in HDL_SUFFIXES
+                                        and source_digest(path) == identity)
+
+
+def seed_log_sizes(paths: list[str], runtime_digest: str) -> list[int]:
+    combined = hashlib.sha256()
+    sizes = []
+    seen = set()
+    for name in paths:
+        with Path(name).open("rb") as stream:
+            stat = os.fstat(stream.fileno())
+            identity = (stat.st_dev, stat.st_ino)
+            if identity in seen:
+                raise ValueError(f"duplicate seed log: {name}")
+            seen.add(identity)
+            size = 0
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                combined.update(chunk)
+                size += len(chunk)
+            if not size:
+                raise ValueError(f"empty seed log: {name}")
+            sizes.append(size)
+    if combined.hexdigest() != runtime_digest:
+        raise ValueError("seed logs must concatenate to the runtime log in the supplied order")
+    return sizes
+
+
+POINT_PLAN = Path("sim/verification-points.json")
+MODEL_SUFFIX = r"(?:c(?:pp|xx|c)?|h(?:pp|xx|h)?)"
+MODEL_CITATION = re.compile(
+    rf"`([^`\n]+?\.{MODEL_SUFFIX})(?:[#:][^`\n]*)?`|"
+    rf"(?<![\w./-])([\w./-]+\.{MODEL_SUFFIX})(?=$|[\s#:`,;)\]]|\.(?:\s|$))", re.I)
+MODEL_MENTION = re.compile(r"\b(?:ref[- ]?c|reference c model|c (?:reference )?model)\b", re.I)
+MODEL_REVISION = re.compile(r"\b(?:[0-9a-f]{40}|[0-9a-f]{64})\b", re.I)
+CITED_MODEL_REVISION = re.compile(
+    MODEL_MENTION.pattern + r"\s*(?:at\s+|@\s*|(?:commit|revision|sha256)\s*[:=]?\s*)" + MODEL_REVISION.pattern,
+    re.I)
+
+
+def point_fingerprint(root: Path, point: dict, input_hashes: dict | None = None) -> str:
+    """Bind a measurement to what was observed and the oracle used for that point."""
+    contract = {key: point[key] for key in ("id", "kind", "requirement", "source", "trigger", "expected_result")}
+    inputs = point.get("inputs", [])
+    if not isinstance(inputs, list):
+        raise ValueError("inputs must be a list of project-relative files")
+    source = point["source"]
+    revision = point.get("oracle_revision")
+    if revision is not None:
+        if not isinstance(revision, str) or not MODEL_REVISION.fullmatch(revision):
+            raise ValueError(f"{point['id']}: oracle_revision needs the full commit ID or SHA-256")
+        contract["oracle_revision"] = revision.lower()
+    pinned = revision or CITED_MODEL_REVISION.search(source)
+    url = r"\b[\w+.-]+://[^\s`]+"
+    local_source = re.sub(url, "", source)
+    cites_model = bool(MODEL_MENTION.search(source) or
+                       any(MODEL_CITATION.search(uri) for uri in re.findall(url, source)))
+    local_inputs = list(inputs)
+    for match in MODEL_CITATION.finditer(local_source):
+        quoted, plain = match.groups()
+        name = quoted or plain
+        # A bare token such as Table A.1.c is also a legal C filename.
+        if not (quoted or "/" in name or re.match(r"#\w|:\d", local_source[match.end():])
+                or (root / name).is_file()):
+            continue
+        cites_model = True
+        path = (root / name).resolve()
+        if path.is_relative_to(root):
+            local_inputs.append(str(path.relative_to(root)) if Path(name).is_absolute() else name)
+        elif not pinned:
+            raise ValueError(f"{point['id']}: pin the external refC source with oracle_revision")
+    files = {}
+    if input_hashes is None:
+        input_hashes = {}
+    for name in local_inputs:
+        if not isinstance(name, str) or not name.strip() or Path(name).is_absolute():
+            raise ValueError("inputs must name project-relative files")
+        path = (root / name).resolve(strict=True)
+        if not path.is_relative_to(root) or not path.is_file():
+            raise ValueError(f"invalid point input: {name}")
+        if path not in input_hashes:
+            input_hashes[path] = digest(path)
+        files[name] = input_hashes[path]
+    has_model = any(re.fullmatch(MODEL_SUFFIX, Path(name).suffix[1:], re.I) for name in files)
+    if cites_model and not (has_model or pinned):
+        raise ValueError(f"{point['id']}: cite the local refC source in inputs or pin the external oracle_revision")
+    contract["inputs"] = files
+    return hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
+
+
+def planned_fingerprints(root: Path) -> dict:
+    # An unfinished plan can still run simulations. Closure validates the plan.
+    try:
+        points = json.loads((root / POINT_PLAN).read_text())["points"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+    if not isinstance(points, list):
+        return {}
+    fingerprints = {}
+    input_hashes = {}
+    for point in points:
+        try:
+            fingerprints[point["id"]] = point_fingerprint(root, point, input_hashes)
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError):
+            continue
+    return fingerprints
 
 
 def atomic_json(path: Path, value: dict) -> None:
@@ -56,6 +222,7 @@ def source_paths(root: Path, sources: list[str], filelist: str = "", details: di
         if path not in include_dirs: include_dirs.append(path)
     filelists: set[Path] = set()
     defines: list[str] = []
+    filelist_args: list[str] = []
 
     def resolve(value: str, base: Path) -> Path:
         value = os.path.expandvars(value)
@@ -84,21 +251,33 @@ def source_paths(root: Path, sources: list[str], filelist: str = "", details: di
                 index += 1
                 read_list(resolve(tokens[index], path.parent))
             elif token.startswith("+incdir+"):
-                [add_include(resolve(part, path.parent)) for part in token[8:].split("+") if part]
+                directories = [resolve(part, path.parent) for part in token[8:].split("+") if part]
+                for directory in directories:
+                    add_include(directory)
+                filelist_args.append("+incdir+" + "+".join(map(str, directories)))
             elif token.startswith("+define+"):
                 defines.extend(part for part in token[8:].split("+") if part)
+                filelist_args.append(token)
             elif token in ("-I", "-y"):
                 index += 1
-                add_include(resolve(tokens[index], path.parent))
+                directory = resolve(tokens[index], path.parent)
+                add_include(directory)
+                filelist_args.extend((token, str(directory)))
             elif token.startswith("-I"):
-                add_include(resolve(token[2:], path.parent))
+                directory = resolve(token[2:], path.parent)
+                add_include(directory)
+                filelist_args.append("-I" + str(directory))
             elif token == "-v":
                 index += 1
-                add_source(resolve(tokens[index], path.parent))
+                library = resolve(tokens[index], path.parent)
+                add_source(library)
+                filelist_args.extend(("-v", str(library)))
             elif token.startswith(("-", "+")):
                 raise ValueError(f"unsupported evidence filelist directive: {token}")
             else:
-                add_source(resolve(token, path.parent))
+                source = resolve(token, path.parent)
+                add_source(source)
+                filelist_args.append(str(source))
             index += 1
         visited.remove(path)
 
@@ -115,7 +294,7 @@ def source_paths(root: Path, sources: list[str], filelist: str = "", details: di
         read_list(resolve(filelist, root))
     if details is not None:
         details.update(sources=ordered_sources, includes=include_dirs.copy(),
-                       defines=defines, filelists=sorted(filelists))
+                       defines=defines, filelists=sorted(filelists), filelist_args=filelist_args)
     # Include files can themselves include another file. Hash their complete
     # search directories conservatively rather than attesting only to the DUT.
     [add_include(path.parent) for path in ordered_sources if path.suffix in (".sv", ".v")]
@@ -144,6 +323,10 @@ def inputs(args) -> int:
     root = Path(args.root).resolve()
     details = {}
     source_paths(root, args.source, args.filelist, details)
+    if args.relocate_filelist:
+        # Keep library search (-y), library file (-v) and macro ordering intact.
+        lines = [json.dumps(arg) if any(c.isspace() for c in arg) else arg for arg in details["filelist_args"]]
+        Path(args.relocate_filelist).write_text("\n".join(lines) + "\n")
     if args.write_filelist:
         lines = ["+incdir+" + str(path) for path in details["includes"]]
         lines += ["+define+" + value for value in details["defines"]]
@@ -160,13 +343,15 @@ def inputs(args) -> int:
     return 0
 
 
-def classify(exit_code: int, text: str, pass_pattern: str = PASS_PATTERN) -> str:
+def classify(exit_code: int, text: str, pass_pattern: str = PASS_PATTERN, *, check_points: bool = True) -> str:
     if exit_code == 124 or "RAT_TIMEOUT" in text:
         return "TIMEOUT"
     if "RAT_STALL" in text:
         return "STALL"
     if "RAT_HANG" in text:
         return "HANG"
+    if check_points and "RAT_CHECK_POINT" in text and log_has_failed_point(text.splitlines()):
+        return "FAIL"
     for message in re.findall(r"(?im)^\s*(?:#\s*)?UVM_(?:ERROR|FATAL)\b(.*)$", text):
         if not re.fullmatch(r"\s*:\s*0\s*",message): return "FAIL"
     uvm_failures = re.findall(r"(?im)^\s*UVM_(?:ERROR|FATAL)\s*:\s*(\d+)", text)
@@ -181,8 +366,9 @@ def classify(exit_code: int, text: str, pass_pattern: str = PASS_PATTERN) -> str
     return "INCONCLUSIVE"
 
 
-def unchanged(sources: dict[str, str]) -> bool:
-    return bool(sources) and all(Path(path).is_file() and digest(Path(path)) == expected
+def unchanged(sources: dict[str, str], identity: dict[str, str] | None = None) -> bool:
+    identity = identity if isinstance(identity, dict) else {}
+    return bool(sources) and all(source_matches(Path(path), expected, identity.get(path))
                                  for path, expected in sources.items())
 
 
@@ -196,34 +382,64 @@ def process_identity(pid: int) -> str:
         return result.stdout.strip() if result.returncode==0 else ""
 
 
+def pre_init_state_root(root: Path) -> Path | None:
+    # Hooks treat any .rat/ as a RAT project. Before rat-init-project, keep run records
+    # in the plugin data folder so that running a tool does not initialize the folder.
+    root = root.resolve()
+    folder = os.environ.get("RAT_DATA_DIR") or os.environ.get("CLAUDE_PLUGIN_DATA")
+    if not folder or (root / ".rat").exists() or (root / ".rtl-agent-team").exists():
+        return None
+    name = re.sub(r"[^A-Za-z0-9_.-]", "-", root.name) or "root"
+    return Path(folder) / "projects" / (name + "-" + hashlib.sha256(str(root).encode()).hexdigest()[:12])
+
+
+def runtime_state_root(root: Path) -> Path:
+    legacy = root / ".rtl-agent-team"
+    if legacy.is_dir() and not (root / ".rat").exists():
+        return legacy
+    return pre_init_state_root(root) or root / ".rat"
+
+
+def state_within_bounds(root: Path, path: Path) -> bool:
+    outside = pre_init_state_root(root)
+    path = path.resolve()
+    return path.is_relative_to(root.resolve()) or (outside is not None and path.is_relative_to(outside.resolve()))
+
+
 def begin(args) -> int:
     root = Path(args.root).resolve()
     outdir = Path(args.outdir).resolve()
-    marker = ".rtl-agent-team" if not (root / ".rat").exists() and (root / ".rtl-agent-team").exists() else ".rat"
-    state = root / marker / "state"
-    if not state.resolve().is_relative_to(root):
+    state = runtime_state_root(root) / "state"
+    if not state_within_bounds(root, state):
         raise ValueError("evidence state directory escapes the project")
     if args.run_only:
         build = json.loads((outdir / ".rat-build.json").read_text())
         if (build["tool"] != args.tool or build["top"] != args.top
-                or build.get("context", "") != args.context or not unchanged(build["sources"])):
+                or build.get("context", "") != args.context
+                or not unchanged(build["sources"], build.get("source_identity"))):
             raise ValueError("compiled sources changed; compile again before running")
         if not build.get("artifacts") or not unchanged(build["artifacts"]):
             raise ValueError("compiled artifacts changed or are missing; compile again before running")
         sources = build["sources"]
+        identity = build.get("source_identity", {})
     else:
         sources = {str(path): digest(path) for path in source_paths(root, args.source, args.filelist, extra_includes=args.include_dir)}
         for name in args.dependency:
             dependency = (root / name).resolve(strict=True)
             sources[str(dependency)] = digest(dependency)
+        identity = source_identity(sources)
     if not sources:
         raise ValueError("simulation evidence requires identifiable source inputs")
     record = {"schema_version": 1, "run_id": uuid.uuid4().hex, "root": str(root),
               "outdir": str(outdir), "state_dir": str(state), "tool": args.tool, "top": args.top,
-              "sources": sources, "context": args.context, "verdict": "RUNNING", "started_at": time.time(),
+              "sources": sources, "source_identity": identity, "context": args.context, "verdict": "RUNNING", "started_at": time.time(),
               "runner_pid": args.runner_pid or os.getppid(),
               "runner_identity": process_identity(args.runner_pid or os.getppid()), "host": socket.gethostname(),
               "compile_only": args.compile_only, "artifact_paths": args.artifact}
+    if os.environ.get("RAT_EXPERIMENT_ID"):
+        record["experiment_id"] = os.environ["RAT_EXPERIMENT_ID"]
+    if not args.compile_only and (root / POINT_PLAN).is_file():
+        record["point_fingerprints"] = planned_fingerprints(root)
     target = state / "verify-runs" / (record["run_id"] + ".json")
     atomic_json(target, record)
     print(target)
@@ -238,7 +454,7 @@ def finish(args) -> int:
     runtime_log=Path(args.runtime_log) if args.runtime_log else None
     runtime_text=runtime_log.read_text(errors="replace") if runtime_log and runtime_log.is_file() else "" if runtime_log else text
     verdict = classify(args.exit_code, runtime_text)
-    all_logs=classify(args.exit_code,text)
+    all_logs=classify(args.exit_code,text,check_points=False)
     if all_logs in ("FAIL","TIMEOUT","STALL","HANG"): verdict=all_logs
     if args.compile_only and args.exit_code == 0 and verdict not in ("FAIL","TIMEOUT","STALL","HANG"):
         verdict = "COMPILED"
@@ -250,13 +466,23 @@ def finish(args) -> int:
         if not files and verdict in ("PASS","COMPILED"): verdict="INCONCLUSIVE"
         artifacts.update({str(path.resolve()):digest(path) for path in files})
     record["artifacts"]=artifacts
-    record["sources_fresh"]=unchanged(record["sources"])
+    record["sources_fresh"]=unchanged(record["sources"], record.get("source_identity"))
     if not record["sources_fresh"] and verdict in ("PASS","COMPILED"):
         verdict = "INCONCLUSIVE"
     record.update(verdict=verdict, completed_at=time.time(), exit_code=args.exit_code,
                   log=str(log.resolve()), log_sha256=digest(log) if log.is_file() else None)
     if runtime_log:
         record["runtime_log"]={"path":str(runtime_log.resolve()),"sha256":digest(runtime_log) if runtime_log.is_file() else None}
+    record["check_points_classified"] = True
+    if args.seed_log:
+        try:
+            expected = record["runtime_log"]["sha256"] if runtime_log else record["log_sha256"]
+            record["seed_log_sizes"] = seed_log_sizes(args.seed_log, expected)
+        except (OSError, ValueError) as exc:
+            record["seed_log_error"] = str(exc)
+            print(f"[run_sim] {exc}", file=sys.stderr)
+            if verdict in ("PASS", "COMPILED"):
+                record["verdict"] = verdict = "INCONCLUSIVE"
     atomic_json(target, record)
     if verdict in ("PASS", "COMPILED"):
         atomic_json(Path(record["outdir"]) / ".rat-build.json", record)
@@ -272,9 +498,16 @@ def finish(args) -> int:
     return args.exit_code if args.exit_code else (0 if verdict in ("PASS", "COMPILED") else 3)
 
 
+def tracked_files(root: Path, track: Path) -> set[str]:
+    # A deleted or renamed file has no behavior left to verify; legacy entries that
+    # were parsed from command text name no file at all.
+    paths = {(root / line.strip()).resolve() for line in track.read_text().splitlines() if line.strip()}
+    return {str(path) for path in paths if path.is_file()}
+
+
 def unverified(args) -> int:
     root = Path(args.root).resolve()
-    tracked = {str((root / line.strip()).resolve()) for line in Path(args.track).read_text().splitlines() if line.strip()}
+    tracked = tracked_files(root, Path(args.track))
     index = Path(args.track).parent / "verify-evidence.json"
     try:
         records = json.loads(index.read_text())["runs"]
@@ -284,10 +517,16 @@ def unverified(args) -> int:
         try:
             log = Path(record["log"])
             if (record["verdict"] == "PASS" and log.is_file()
-                    and digest(log) == record["log_sha256"] and unchanged(record["sources"])
+                    and digest(log) == record["log_sha256"]
+                    and unchanged(record["sources"], record.get("source_identity"))
                     and (not record.get("runtime_log") or
                          (Path(record["runtime_log"]["path"]).is_file() and
                           digest(Path(record["runtime_log"]["path"]))==record["runtime_log"]["sha256"]))):
+                if record.get("check_points_classified") is not True:
+                    runtime = (record.get("runtime_log") or {}).get("path", log)
+                    with Path(runtime).open(encoding="utf-8", errors="replace") as stream:
+                        if log_has_failed_point(stream):
+                            continue
                 tracked.difference_update(record["sources"])
         except (OSError, ValueError, KeyError, TypeError):
             continue
@@ -300,7 +539,7 @@ def unverified(args) -> int:
 def pending_run(args) -> int:
     root = Path(args.root).resolve()
     track = Path(args.track)
-    tracked = {str((root / line.strip()).resolve()) for line in track.read_text().splitlines() if line.strip()}
+    tracked = tracked_files(root, track)
     covered = set()
     for path in (track.parent / "verify-runs").glob("*.json"):
         try:
@@ -309,7 +548,7 @@ def pending_run(args) -> int:
                     or record.get("host") != socket.gethostname()
                     or not record.get("runner_identity")
                     or process_identity(record["runner_pid"]) != record["runner_identity"]
-                    or not unchanged(record["sources"])):
+                    or not unchanged(record["sources"], record.get("source_identity"))):
                 continue
             os.kill(record["runner_pid"], 0)
             covered.update(record["sources"])
@@ -338,6 +577,7 @@ def main() -> int:
         end.add_argument("--" + name, required=True)
     end.add_argument("--exit-code", type=int, required=True)
     end.add_argument("--runtime-log", default="")
+    end.add_argument("--seed-log", action="append", default=[])
     end.add_argument("--compile-only", action="store_true")
     check = sub.add_parser("unverified")
     check.add_argument("--root", required=True)
@@ -353,6 +593,7 @@ def main() -> int:
     listing.add_argument("--filelist", default="")
     listing.add_argument("--source", action="append", default=[])
     listing.add_argument("--write-filelist")
+    listing.add_argument("--relocate-filelist")
     args = parser.parse_args()
     try:
         return {"begin": begin, "finish": finish, "unverified": unverified,

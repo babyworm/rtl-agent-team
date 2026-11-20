@@ -64,19 +64,53 @@ tool_available() {
   fi
 }
 
+rat_experiment_output() {
+  "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" experiment-output --root "$_TOOL_RUNNER_PROJECT_ROOT" -- "$1"
+}
+
+rat_check_experiment_seeds() {
+  local seen=" " seed
+  for seed in "$@"; do
+    if [[ ! "$seed" =~ ^(0|[1-9][0-9]*)$ || "$seen" == *" $seed "* ]]; then
+      echo "ERROR: experiment seeds must be distinct unsigned decimal integers" >&2
+      return 2
+    fi
+    seen+="$seed "
+  done
+}
+
+rat_lock_experiment() {
+  local namespace
+  namespace=$(rat_experiment_output .) || return $?
+  # flock belongs to the open file description held by this wrapper until exit.
+  exec {_RAT_EXPERIMENT_FD}<"$namespace" || return $?
+  "$_TOOL_RUNNER_PYTHON" - "$_RAT_EXPERIMENT_FD" <<'PYLOCK' || return $?
+import fcntl
+import sys
+
+try:
+    fcntl.flock(int(sys.argv[1]), fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit("experiment namespace is busy; choose a different RAT_EXPERIMENT_ID")
+PYLOCK
+  export RAT_EXPERIMENT_ACTIVE=1
+}
+
 # Remote backends execute the whole wrapper before any local discovery or output
 # generation. The explicit guard prevents redispatch on the execution host.
 rat_dispatch_wrapper() {
-  [[ "${RAT_REMOTE_ACTIVE:-0}" = "1" || ! -f "$_TOOL_RUNNER_RUNTIME" ]] && return 0
-  local selected
-  selected=$("$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" backend --root "$_TOOL_RUNNER_PROJECT_ROOT") || return $?
-  case "$selected" in
-    ssh|lsf)
-      local wrapper="$1"; shift
-      "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" dispatch --root "$_TOOL_RUNNER_PROJECT_ROOT" --wrapper "$wrapper" -- "$@"
-      exit $?
-      ;;
-  esac
+  if [[ "${RAT_REMOTE_ACTIVE:-0}" != 1 && -f "$_TOOL_RUNNER_RUNTIME" ]]; then
+    local selected
+    selected=$("$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" backend --root "$_TOOL_RUNNER_PROJECT_ROOT") || return $?
+    case "$selected" in
+      ssh|lsf)
+        local wrapper="$1"; shift
+        "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" dispatch --root "$_TOOL_RUNNER_PROJECT_ROOT" --wrapper "$wrapper" -- "$@"
+        exit $?
+        ;;
+    esac
+  fi
+  if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then rat_lock_experiment; fi
 }
 
 _tool_runner_container_name() {
@@ -311,7 +345,7 @@ get_formal_tier() {
   fi
 }
 
-# rat-version: 2.0.1
+# rat-version: 2.0.2
 
 
 rat_capture_path() {

@@ -21,7 +21,9 @@ When no structured AC (REQ-level fallback):
 | REQ-001 | {{DESC}} | test_{{MODULE}}_basic | VERIFIED |
 | REQ-003 | {{DESC}} | — | UNTESTED |
 
-Status values: VERIFIED, FORMAL, PARTIAL, UNTESTED, NOT_VERIFIABLE
+Status values: VERIFIED, FORMAL, PARTIAL, UNTESTED, NOT_VERIFIABLE.
+For a VERIFIED row, cite the run ID and named check with its completed count.
+For a FORMAL row, cite the property and proof report.
 
 ## Coverage Summary
 

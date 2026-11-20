@@ -147,7 +147,7 @@ FILES=$(printf '%s\n' "$TRACKED" | awk -v max=10 'NF { n++; if (n <= max) printf
 # Clean up temporary aggregated file
 rm -f "$AGGREGATED_TRACK"
 
-MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules through scripts/run_sim.sh (for example /rtl-agent-team:rtl-p5s-func-verify, or /rtl-agent-team:rtl-p4s-unit-test). A passing testbench emits RAT_SIM_PASS or a recognized test summary; the runner records fresh source and log hashes in $(shq "$STATE_DIR/verify-evidence.json"). A touched marker is insufficient. If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules through scripts/run_sim.sh; --sim auto uses the configured or an installed simulator (for example /rtl-agent-team:rtl-p4s-unit-test, or the project's regression skill for its configured simulator). A passing testbench emits RAT_SIM_PASS or a recognized test summary; the runner records fresh source and log hashes in $(shq "$STATE_DIR/verify-evidence.json"). A touched marker is insufficient. If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
 NOTICE="Info> Functional verification is pending for ${COUNT} RTL file(s)."
 VERIFY_PROGRESS="$TRACKED"
 while IFS= read -r _vp_file; do
@@ -164,6 +164,24 @@ fi
 save_receipt() {
   printf '%s %s\n' "$FINGERPRINT" "$1" | ratu_state_write "$VERIFY_RECEIPT"
 }
+# A block helps only when a simulator can run. With none configured or on PATH,
+# tell the user once per content state; LSP diagnostics still report syntax.
+SIM_PRESENT=false
+[ -z "${SIM:-}" ] || SIM_PRESENT=true  # run_sim.sh honors the same variable
+if [ "$SIM_PRESENT" != true ] && [ -n "$EVIDENCE_PYTHON" ]; then
+  _VS_RUNNER="$SCRIPT_DIR/../scripts/eda_runner.py"
+  [ -z "$("$EVIDENCE_PYTHON" "$_VS_RUNNER" get --root "$CWD" --key preferences.simulator 2>/dev/null)" ] || SIM_PRESENT=true
+  case "$("$EVIDENCE_PYTHON" "$_VS_RUNNER" backend --root "$CWD" 2>/dev/null)" in docker|ssh|lsf) SIM_PRESENT=true ;; esac
+fi
+for _vs_tool in iverilog verilator vcs xrun vsim; do
+  [ "$SIM_PRESENT" = true ] && break
+  command -v "$_vs_tool" >/dev/null 2>&1 && SIM_PRESENT=true
+done
+if [ "$SIM_PRESENT" != true ]; then
+  save_receipt info || true
+  stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" \
+    "Info> Functional verification is pending for ${COUNT} RTL file(s), but no simulator is configured or on PATH. Run /rtl-agent-team:rat-setup to configure one." 0
+fi
 if [ "$REPORTED" = "$FINGERPRINT requested" ]; then
   save_receipt info || true
   stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" "$NOTICE" 0

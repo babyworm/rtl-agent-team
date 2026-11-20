@@ -199,10 +199,13 @@ When invoked from rat-auto-design, state is tracked in `.rat/state/rat-auto-desi
 ```
 This enables resume: re-read state and continue from next pending sub-phase.
 
-## UVM Verification (Optional)
+## Functional Regression Framework (V5)
 
-If commercial simulator available and UVM mandated, invoke `/rtl-agent-team:rtl-p5s-uvm-verify`
-alongside V5. UVM is NOT a replacement for cocotb regression — both provide complementary coverage.
+Run V5 in the project's configured framework. With a commercial `preferences.simulator` (xrun, vcs,
+questa), V5 is UVM regression through `/rtl-agent-team:rtl-p5s-uvm-verify`. Use cocotb regression
+(`/rtl-agent-team:rtl-p5s-func-verify`) when the configured simulator is open-source and cocotb is
+installed on the execution host, or when the user chooses cocotb. Do not add a second framework
+unless the user asks.
 
 ## Escalation & Stop Conditions
 
@@ -277,7 +280,6 @@ valid after checking behavior, interfaces, constraints, and expected verificatio
 results. Do not invent open items to fill the array. Run the executable phase gate
 for artifact/schema checks. Confidence does not replace functional measurements.
 
-For Phase 5 judgment.json, include `verification_items`: each selected item has
-`id`, `requirement` (REQ/ac_id trace), and `expected_result`. The handoff gate
-rejects a missing observation oracle; leave material ambiguity open until the
-required behavior is settled.
+In P5 judgment.json record `simulation_runs` for the planned points. Keep
+`verification_items` (id, requirement, expected_result) for additional checks.
+The handoff gate reads simulation oracles directly from the pre-run plan.

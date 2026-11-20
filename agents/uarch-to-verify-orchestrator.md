@@ -111,7 +111,7 @@ Read(".rat/state/rat-p4p5-impl-verify-state.json")
    - Add `upper_spec_blocking` (default false)
    - Add per-phase: `started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`
    - Write migrated state back immediately
-2. Restore `review_scope` for this run (use the project default for legacy state). Apply any new explicit choice to the remaining phases. Skip completed phases: `status == "completed"` AND `gate_passed_at != null`
+2. Restore `review_scope` for this run (use the project default for legacy state). Apply any new explicit choice to the remaining phases. Reuse completed work; confirm the Step 4 handoff against current evidence before reporting P5 complete.
 3. Phase 4 resume: check `completed_modules` vs `pending_modules`, `stream_a_status`/`stream_b_status`
 4. Phase 5 resume: check `completed_sub_phases` vs `pending_sub_phases`, `fix_history`
 5. Clear `interrupted_reason` and `partial_work_summary`
@@ -135,6 +135,10 @@ Write(".rat/state/rat-p4p5-impl-verify-state.json",
 ```
 
 ## Step 3: Phase 4 — RTL Implementation + Early Verification (PARALLEL STREAMS)
+
+Use the P3 simulation plan in `sim/verification-points.json`. If the project
+predates it, select the points from the spec and refC before stimulus using
+`{plugin_root}/runtime/verification-points.md`.
 
 ```
 Bash("mkdir -p reviews/phase-4-rtl")
@@ -252,9 +256,8 @@ verdict: PASS or FAIL + findings[]",
 
 # 5c: Integration TB + Ref Model Comparison
 Task(subagent_type="rtl-agent-team:func-verifier",
-     prompt="Run cocotb regression: RTL vs ref_model comparison.
-Multi-seed (5 seeds: 1, 42, 123, 1337, 65536) × N modules.
-Output: reviews/phase-5-verify/requirement-traceability.md.
+     prompt="Compare RTL against the reference using the planned points and configured regression.
+Return runner IDs and write reviews/phase-5-verify/requirement-traceability.md.
 verdict: PASS or FAIL + failures[]",
      run_in_background=true)
 ```
@@ -284,7 +287,7 @@ When no structured AC:
   | REQ ID | Spec Section | Arch Block | μArch Module | RTL File:Line | Test Name | Result |
 Any row with a gap → TRACEABILITY_GAP.
 For each FAILED test: report affected req_ids/ac_ids for backward failure-impact analysis.
-Output: reviews/phase-5-verify/final-compliance.md, reviews/phase-5-verify/e2e-traceability.md.
+Output: reviews/phase-5-verify/final-compliance.md (one Verdict: PASS or Verdict: FAIL field), reviews/phase-5-verify/e2e-traceability.md.
 verdict: PASS or FAIL + findings[]")
 ```
 
@@ -321,10 +324,16 @@ Escalate to user via `AskUserQuestion`:
   "Phase 5→4 feedback loop reached maximum iterations (2) for sub-phase {name}.
    Failures: {failure_list}. Options:
    (A) Allow 1 more iteration
-   (B) Skip failing checks and proceed
+   (B) Stop with the measured gaps open
    (C) Return to Phase 3 for architecture review"
 
 After successful fix: record lesson in `docs/lessons-learned.md`.
+
+Record the applicable `simulation_runs`, decision `confidence` and `material_ambiguities`
+in `docs/phase-5-verify/judgment.json`. After 5e, run
+`python3 {plugin_root}/scripts/gates/phase_gate.py --root <project> --phase 5`.
+Only exit 0 completes P5. On failure, set the compliance verdict to FAIL,
+leave the phase incomplete and repair the reported gap.
 
 On Phase 5 gate PASS: generate Phase 5 summary:
 ```
@@ -559,7 +568,7 @@ All phases must enforce:
 - [ ] Phase 5b: cdc-report.md exists
 - [ ] Phase 5c: requirement-traceability.md exists
 - [ ] Phase 5d: coverage-report.md exists
-- [ ] Phase 5e: e2e-traceability.md + final-compliance.md verdict=PASS
+- [ ] Phase 5e: e2e-traceability.md, final-compliance.md verdict=PASS, and the shared P5 handoff gate passed for the recorded runs
 - [ ] Phase 5: phase-5-summary.md generated
 - [ ] State file updated with all phases completed
 - [ ] Pipeline did NOT proceed to Phase 6

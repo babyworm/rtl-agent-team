@@ -2,9 +2,10 @@ Implement the requested modules against Phase 3 microarchitecture and all upstre
 iron requirements. Use the preloaded SystemVerilog convention where applicable.
 Plan work from real module dependencies, not a prescribed number of waves. Use
 rtl-coder for independent module work; preserve disjoint outputs when delegating.
-A test-plan-writer may select checks from acceptance criteria when the expected
-results need design-specific definition. Do not generate a test oracle from the
-implementation itself. An undefined expected result is a material ambiguity.
+Use the P3 point IDs in unit tests and module test plans. A test-plan-writer
+may refine stimulus or propose a missing point. The phase owner integrates agreed
+additions into `sim/verification-points.json` before running affected tests,
+following `{plugin_root}/runtime/verification-points.md`. Use the upstream oracle.
 
 For each changed module, run the configured lint wrapper and a functional unit
 simulation against the reference model. scripts/run_sim.sh and the regression

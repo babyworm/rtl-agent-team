@@ -35,3 +35,8 @@ pin that alias on another host, give the role body to a generic native worker.
 If the host has no worker facility, execute that role in the current session.
 For a direct skill invocation, load `skills/<skill>/SKILL.md` from the plugin
 and resolve relative references there.
+
+When delegating EDA work on hosts without session hooks, give workers the
+project root and a distinct `RAT_EXPERIMENT_ID` per parallel experiment. The
+bundled runner reads effective settings before project initialization.
+See [EDA execution](eda-runner-contract.md).

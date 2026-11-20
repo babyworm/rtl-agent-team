@@ -97,8 +97,16 @@ esac
 
 # 4. Spawn context agent mapping: hooks/rtl-spawn-context.sh
 SPAWN_HOOK="$ROOT_DIR/hooks/rtl-spawn-context.sh"
+REGISTRY="$ROOT_DIR/phase-registry.json"
 if grep -qE "\"${SKILL}\"" "$SPAWN_HOOK" 2>/dev/null || grep_case_exact "$SPAWN_HOOK"; then
   report FOUND "rtl-spawn-context.sh agent mapping"
+elif jq -e --arg skill "$SKILL" '
+  . as $registry
+  | .skills[$skill].composes
+  | type == "array" and length > 0 and
+      all(.[]; . as $phase_skill | ($registry.agents | any(.[]; . == $phase_skill)))
+' "$REGISTRY" >/dev/null; then
+  report SKIP "rtl-spawn-context.sh agent mapping" "composed phase skills own their agents"
 else
   report MISSING "rtl-spawn-context.sh agent mapping"
 fi

@@ -107,6 +107,7 @@ case "$TOOL" in sg_shell) TOOL=spyglass ;; esac
 [[ "$VERBOSE" -eq 1 ]] && set -x
 
 # ─── Resolve paths to absolute (before cd) ────────────────────────────
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then OUTDIR=$(rat_experiment_output "$OUTDIR"); fi
 case "$OUTDIR" in /*) ;; *) OUTDIR="$PROJECT_ROOT/$OUTDIR" ;; esac
 [[ -n "$FILELIST" && "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
 [[ -n "$WAIVER" && "$WAIVER" != /* ]] && WAIVER="$PROJECT_ROOT/$WAIVER"
@@ -324,4 +325,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.1
+# rat-version: 2.0.2

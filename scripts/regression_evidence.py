@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.1
+# rat-version: 2.0.3
 """Bind regression evidence to the sources expanded by the actual cocotb Makefile."""
 import argparse
 import json
@@ -9,7 +9,7 @@ import shlex
 import subprocess
 import tempfile
 
-from verify_evidence import begin
+from verify_evidence import begin, POINT_PLAN, runtime_state_root
 
 
 def main():
@@ -23,7 +23,7 @@ def main():
     args=p.parse_args();root=args.root.resolve();tb=args.tb_dir.resolve()
     helper=Path(__file__).with_name('eda_runner.py')
     # A unique dry target expands the same Makefile variables without compiling.
-    probes=root/'.rat/source-probes';probes.mkdir(parents=True,exist_ok=True)
+    probes=runtime_state_root(root)/'source-probes';probes.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='run-',dir=probes) as directory:
         work=Path(directory)
         probe=work/'probe.mk';dump=work/'sources.txt'
@@ -38,7 +38,7 @@ def main():
         sources=[str((tb/value).resolve()) for value in values]
         if not sources: raise ValueError('VERILOG_SOURCES is empty; no source-bound functional evidence is possible')
         # Test oracle and build files are dependencies too, not claimed RTL coverage.
-        dependencies=[str(path) for path in tb.rglob('*') if path.is_file() and
+        dependencies=[str(path) for path in tb.rglob('*') if path.is_file() and path != root / POINT_PLAN and
                       (path.suffix in ('.py','.mk','.json') or path.name=='Makefile') and
                       not any(part in ('__pycache__','build','sim_build','regression') for part in path.relative_to(tb).parts)]
         config=root/'rat_config.json'

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.6
+# rat-version: 2.0.10
 """Discover an EDA site, probe selected tools, and apply a reusable site profile."""
 from __future__ import annotations
 
@@ -277,6 +277,10 @@ def discover(host=None, config=None, timeout=60, *, environment=None, check_tool
     remote_python = execution.get("python") if execution.get("backend") in ("ssh", "lsf") and execution.get("host") == host else None
     report = inspect_remote(host, request, timeout, remote_python) if host else inspect_site(request)
     report["execution"] = {"backend": "ssh" if host else "local", "python": report["python"]}
+    # The site's default library travels with the profile; `libraries` holds its measured presence.
+    technology = {key: value for key, value in config.get("technology", {}).items() if isinstance(value, str) and value}
+    if technology:
+        report["technology"] = technology
     if host:
         report["execution"]["host"] = host
     return report
@@ -287,6 +291,26 @@ def read_json(path):
     if not isinstance(value, dict):
         raise ValueError("expected a JSON object: " + str(path))
     return value
+
+
+def user_configuration(root):
+    # Claude Code's plugin data folder: hooks get CLAUDE_PLUGIN_DATA, Bash gets RAT_DATA_DIR.
+    folder = os.environ.get("RAT_DATA_DIR") or os.environ.get("CLAUDE_PLUGIN_DATA")
+    if not folder:
+        return {}
+    data = Path(folder)
+    path = data / "env-config.json"
+    if not path.is_file():
+        return {}
+    machine = read_json(path)
+    site = machine.get("default_site")
+    if site is None or site == "":
+        return {key: machine[key] for key in ("execution", "preferences", "tools", "technology")
+                if key in machine}
+    if not isinstance(site, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", site) or site in (".", ".."):
+        raise ValueError("default_site must name a profile under the private sites directory")
+    profile = read_json(data / "sites" / (site + ".json"))
+    return configure(profile, {}, root)
 
 
 def write_json(path, value):
@@ -351,8 +375,10 @@ def configure(profile, existing, root, workspace=None, preferences=(), backend=N
     selected = config.setdefault("preferences", {})
     def usable(entry):
         return entry.get("detected") and not failed_probe(entry)
+    automatic = selected.get("_auto") if isinstance(selected.get("_auto"), dict) else {}
     for preference, category in PREFERENCES.items():
-        if not selected.get(preference):
+        # A locally auto-detected choice says nothing about this site's tools.
+        if not selected.get(preference) or selected.get(preference) == automatic.get(preference):
             preferred = profile.get("preferences", {}).get(preference)
             if preferred and usable(profile["tools"].get(category, {}).get(preferred, {})):
                 selected[preference] = preferred
@@ -363,6 +389,11 @@ def configure(profile, existing, root, workspace=None, preferences=(), backend=N
         if not separator or key not in PREFERENCES or not usable(profile["tools"].get(PREFERENCES[key], {}).get(value, {})):
             raise ValueError("preference must select a discovered tool: " + item)
         selected[key] = value
+    # The site's default library applies only where the project has not named one.
+    technology = config.setdefault("technology", {})
+    for key, value in profile.get("technology", {}).items():
+        if isinstance(value, str) and value and not technology.get(key):
+            technology[key] = value
     config["detection"] = {"scope": "remote_path_probe" if execution["backend"] in ("ssh", "lsf") else "local",
                            "host": execution.get("host"), "measured_at": profile["measured_at"],
                            "remote_tools_probed": execution["backend"] in ("ssh", "lsf"), "license_checked": False}

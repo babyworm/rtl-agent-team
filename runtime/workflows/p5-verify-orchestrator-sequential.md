@@ -1,8 +1,9 @@
 Close verification from settled acceptance criteria and the P4 unit results.
 Choose applicable checks by actual behavior, interfaces, clocks and constraints.
-For each selected item, record its requirement/ac_id, stimulus/observation,
-expected result and measurement. Unclear latency, tolerance or legal-input bounds
-remain open questions; a PASS under an invented threshold does not settle them.
+Use the selected points in `sim/verification-points.json`. For a project without
+a plan, derive it from the spec, reference and existing test plan before running
+stimulus. Follow `{plugin_root}/runtime/verification-points.md` for selection
+confidence, counters and run IDs. Leave unresolved behavior or tolerances open.
 
 Stage 1 covers per-module lint, functional regression, coverage and any applicable
 formal, CDC, protocol, performance and synthesis checks. Respect dependencies:

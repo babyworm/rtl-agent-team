@@ -8,7 +8,8 @@ import sys
 
 PLUGIN = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PLUGIN / 'scripts'))
-from verify_evidence import atomic_json
+from verify_evidence import atomic_json, POINT_PLAN
+from gates.simulation_points import check_p3_criteria, simulation_point_checks
 
 PHASE_DIRS = {1:'phase-1-research',2:'phase-2-architecture',3:'phase-3-uarch',
               4:'phase-4-rtl',5:'phase-5-verify',6:'phase-6-review'}
@@ -91,11 +92,30 @@ def evaluate(root, phase, entry=False):
                 check('judgment settled',judgment['confidence']=='high' or nonempty_text(judgment.get('user_decision')))
                 if phase == 5:
                     items=judgment.get('verification_items',[])
-                    check('verification oracles',isinstance(items,list) and bool(items) and all(
+                    check('verification oracles',isinstance(items,list) and all(
                         isinstance(item, dict) and all(nonempty_text(item.get(key))
                         for key in ('id', 'requirement', 'expected_result')) for item in items))
             except (OSError,ValueError,KeyError,TypeError):
                 check('judgment record',False,str(path.relative_to(root)))
+    has_plan = (root / POINT_PLAN).exists()
+    if not entry and phase == 3:
+        if has_plan:
+            checks.extend(simulation_point_checks(root, plan_only=True))
+        else:
+            try:
+                check_p3_criteria(root, {})
+            except (OSError, ValueError) as exc:
+                check('simulation point plan', False, str(exc))
+    needs_point_evidence = phase == 5 and not entry
+    if phase == 6:
+        judgment_path = root / 'docs/phase-5-verify/judgment.json'
+        try:
+            needs_point_evidence = has_plan or (judgment_path.exists() and
+                'simulation_runs' in json.loads(judgment_path.read_text()))
+        except (OSError, ValueError, TypeError) as exc:
+            check('P5 judgment', False, str(exc))
+    if needs_point_evidence:
+        checks.extend(simulation_point_checks(root))
     if phase == 6 or (phase == 5 and not entry):
         try:
             check('P5 compliance', p5_report_passes(root / P5_REPORT), P5_REPORT)

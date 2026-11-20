@@ -1188,6 +1188,10 @@ class TestVersionSync:
 
     def test_version_in_readmes(self):
         pkg_ver = json.loads(read_contract(REPO_ROOT / "package.json"))["version"]
+        if "-" in pkg_ver:
+            # A pre-release is not published; the READMEs keep the last release until then.
+            changelog = read_contract(REPO_ROOT / "CHANGELOG.md")
+            pkg_ver = re.search(r"^## \[(\d+\.\d+\.\d+)\]", changelog, re.M)[1]
         for readme in [REPO_ROOT / "README.md", REPO_ROOT / "README_kr.md"]:
             content = read_contract(readme)
             assert pkg_ver in content, f"{readme.name} missing version {pkg_ver}"

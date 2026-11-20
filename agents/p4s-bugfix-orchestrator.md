@@ -122,16 +122,16 @@ Signal naming: dut.sys_clk, dut.sys_rst_n, dut.i_*/dut.o_*.")
 
 ```
 Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Run cocotb test: make -C sim/{module} sim SIM=<configured-cocotb-simulator> TOPLEVEL={module}
-MODULE=test_{module}. Report pass/fail. On failure, capture waveform for debug.")
+     prompt="Run the module's existing testbench on the configured simulator through an evidence-recording runner.
+SV/UVM testbench: scripts/run_sim.sh --sim auto --top tb_{module} --outdir sim/{module} (auto = preferences.simulator).
+cocotb testbench (only when the project uses cocotb): bash {plugin_root}/skills/rtl-p5s-func-verify/scripts/run_regression.sh --tb-dir sim/{module} --module {module} --seeds 1 --sim <configured simulator>
+Report pass/fail. On failure, capture waveform for debug.")
 ```
 
 On failure: debug waveforms, iterate fix (max 2 iterations, then escalate per policy).
 
-On all tests PASS:
-```
-# scripts/run_sim.sh records source-bound evidence after a measured PASS.
-```
+On PASS the runner has recorded source-bound evidence in `.rat/state/verify-evidence.json`;
+a bare `make` run records none, so the Stop gate would still ask for verification.
 
 ## Step 5: Phase 5→4 Feedback Return
 

@@ -46,6 +46,7 @@ Pass `$ARGUMENTS` through. On Claude Code, the leader session for the spawn mani
   When acceptance_criteria is in string-array format (P1/P2), verification
   operates at REQ level.
 - Final compliance check compares test results against P1+P2+P3 `acceptance_criteria`
+- The [simulation point contract](../../runtime/verification-points.md) links spec and refC selections to actual bin hits, assertion activations and oracle comparisons.
 - Phase 5 PASS requires zero unmet iron requirements across all verification categories
 
 ## Output

@@ -381,6 +381,7 @@ def test_native_unavailable_uses_functional_seed_logs(tmp_path, native_status):
     else:
         _write_executable(bin_dir / "imc", "#!/bin/sh\nexit 0\n")
     (project / "rat_config.json").write_text(json.dumps(config))
+    (project / ".rat").mkdir()  # P5 regression runs in an initialized project
     result = _run(project, "--sim", "xrun", "--seeds", "42 43", "--parallel", "1",
                   "--coverage-timeout", "1", FAKE_BIN_LOG="1")
     assert result.returncode == 3, result.stdout + result.stderr

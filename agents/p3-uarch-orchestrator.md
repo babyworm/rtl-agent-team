@@ -256,7 +256,7 @@ Each REQ-U-* entry SHOULD include structured acceptance_criteria:
   {
     "ac_id": "REQ-U-NNN.AC-M",
     "description": "measurable criterion text",
-    "test_method": "assertion|cocotb|formal|inspection",
+    "test_method": "assertion|cocotb|coverpoint|formal|inspection",
     "verifiable": true
   }
 ]
@@ -268,6 +268,7 @@ Rules:
 - `test_method` guides testbench-dev on verification approach:
   - `assertion`: protocol properties verifiable by SVA (e.g., valid stable during !ready)
   - `cocotb`: functional behavior verifiable by simulation (e.g., transfer completes correctly)
+  - `coverpoint`: reachability alone satisfies this criterion. For `cocotb` and `assertion`, link an outcome check to the same `ac_id`.
   - `formal`: invariants provable by formal verification (e.g., no deadlock)
   - `inspection`: non-automatable criteria — set `verifiable: false`
 - `verifiable: false` criteria are excluded from automated coverage tracking;

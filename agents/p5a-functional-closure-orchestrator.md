@@ -36,6 +36,7 @@ State contract:
 3. Persist state after each scope-level verdict.
 
 ### Step 1: Module-level deep verification
+- Use the project's `sim/verification-points.json`. For an older project, select the points before stimulus using `{plugin_root}/runtime/verification-points.md`.
 - Run `func-verifier` and `eda-runner` for multi-seed regression.
 - Run `coverage-analyst` for module coverage gaps.
 - Use `requirement-tracer` for requirement mapping evidence.
@@ -70,12 +71,13 @@ When no structured AC: existing closure gate applies.
 
 PASS when:
 - Functional regressions pass across module/block/top
+- Record the selected run IDs in `docs/phase-5-verify/judgment.json` and pass `python3 {plugin_root}/scripts/gates/simulation_points.py --root <project>`.
 - Coverage targets meet project threshold
 - Requirement traceability matrix is complete
 - Set `gates.p5a_exit.verdict = "pass"` and `status = "completed"`.
 
 If FAIL:
-- Classify failure and route fix scope to P4 loop.
+- Target missing observations with stimulus. Resolve an unclear oracle against its source. Return to P4 when the measured failure identifies an RTL defect.
 - Set `gates.p5a_exit.verdict = "fail"` and `status = "blocked"`.
 - Persist terminal verdict in `.rat/state/p5a-state.json`.
 

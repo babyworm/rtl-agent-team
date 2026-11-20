@@ -35,7 +35,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   4. Area / power — resource usage and switching activity
 
   When reviewing, you MUST read and cross-reference the relevant upper-level spec:
-  - Phase 1 research review: read the ORIGINAL spec sources (specs/**, goal.md) and
+  - Phase 1 research review: read the ORIGINAL spec sources (specs/**, goal.md, and any supplied behavioral refC/tests) and
     `docs/phase-1-research/spec-feature-inventory.json` (if present) — the feature-coverage
     denominator is the spec itself, NEVER the extracted REQ list (extraction omissions
     must surface here, not self-confirm)
@@ -80,7 +80,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
 <Investigation_Protocol>
   1. **Read upper-level spec first.**
-     - For Phase 1 research review: read the original spec sources (specs/**, goal.md) and
+     - For Phase 1 research review: read the original spec sources (specs/**, goal.md, and any supplied behavioral refC/tests) and
        spec-feature-inventory.json if present — build the checklist from SPEC items, then
        verify each maps to a REQ/OPEN id. An unmapped spec item is an extraction omission
        finding (severity HIGH).

@@ -188,7 +188,7 @@ All phases must enforce:
 - [ ] Phase 5b: cdc-report.md exists
 - [ ] Phase 5c: requirement-traceability.md exists
 - [ ] Phase 5d: coverage-report.md exists
-- [ ] Phase 5e: e2e-traceability.md + final-compliance.md verdict=PASS
+- [ ] Phase 5e: e2e-traceability.md, final-compliance.md verdict=PASS, and the shared P5 handoff gate passed for the recorded runs
 - [ ] Phase 5: phase-5-summary.md generated
 - [ ] State file updated with all phases completed
 - [ ] Pipeline did NOT proceed to Phase 6

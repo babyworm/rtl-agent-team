@@ -24,7 +24,7 @@ sctx_skill_to_phase() {
     rtl-p5s-sva-check|rtl-p5s-cdc-verify|rtl-p5s-protocol-verify|rtl-p5s-perf-verify|rtl-p5s-coverage-analyze|rtl-p5s-uvm-verify) echo 5 ;;
     rtl-p6-design-review) echo 6 ;;
     rtl-p7-exploration) echo 7 ;;
-    rat-auto-design|rat-p1p3-spec-uarch|rat-dse) echo 1 ;;
+    rat-auto-design|rat-p1p3-spec-uarch|rat-dse|rat-refc-to-p5) echo 1 ;;
     rat-p4p5-impl-verify) echo 4 ;;
     rtl-ppa-optimize-dc|rat-ultraloop-ppa) echo 8 ;;
     # END GENERATED PHASE_MAP

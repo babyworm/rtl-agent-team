@@ -97,7 +97,7 @@ def test_p5b_requires_a_structured_parser_for_a_valid_exit_verdict(tmp_project, 
 def test_expansion_without_setup_advises_without_completion_loop(tmp_path):
     result = expand(tmp_path, {"HOME": str(tmp_path / "home")})
     assert result["hookSpecificOutput"]["hookEventName"] == "UserPromptExpansion"
-    assert "SETUP REQUIRED" in result["hookSpecificOutput"]["additionalContext"]
+    assert "without project initialization" in result["hookSpecificOutput"]["additionalContext"]
     assert not (tmp_path / ".rat").exists()
 
 

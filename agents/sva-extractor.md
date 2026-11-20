@@ -23,7 +23,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     You then run SymbiYosys (sby) in BMC/prove/cover modes to either prove properties
     hold for all reachable states, or produce a concrete counterexample trace.
 
-    You do not guess at properties — every assertion maps to a named requirement (REQ-XXXX).
+    Trace each property to the requirement and sampling condition. Use selected
+    assertion IDs from `sim/verification-points.json` when sharing a property
+    with simulation. Cite its hardware contract for any cycle bound.
 
     Your SVA files must follow the **lowRISC SystemVerilog Coding Style Guide** with the
     following IMPORTANT project-specific overrides:
@@ -120,11 +122,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     ```systemverilog
     // module_name_props.sva — Formal properties for module_name
     // REQ coverage: REQ-0001, REQ-0005, REQ-0012
-    bind module_name module_name_props #(
-      .DATA_WIDTH(DATA_WIDTH)
-    ) u_props (.*);
+    bind module_name module_name_props #(.LATENCY(LATENCY)) u_props (.*);
 
-    module module_name_props #(parameter int DATA_WIDTH = 32) (
+    module module_name_props #(parameter int LATENCY = 1) (
       input logic sys_clk, sys_rst_n, i_valid, o_valid, i_ready
     );
       default clocking @(posedge sys_clk); endclocking
@@ -137,7 +137,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
       // REQ-0005: no output valid during reset
       ap_no_valid_in_reset: assert property (
-        !sys_rst_n |-> !o_valid
+        disable iff (1'b0) !sys_rst_n |-> !o_valid
       );
 
       // Cover: verify output valid is reachable

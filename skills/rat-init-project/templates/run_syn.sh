@@ -197,6 +197,7 @@ if [[ -z "$SDC_FILE" ]]; then
 fi
 
 # ─── Resolve paths to absolute (before cd to synthesis root) ──────────
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then SYN_ROOT=$(rat_experiment_output "$SYN_ROOT"); fi
 case "$SYN_ROOT" in /*) ;; *) SYN_ROOT="$PROJECT_ROOT/$SYN_ROOT" ;; esac
 [[ -n "$LIBERTY" && "$LIBERTY" != /* ]] && LIBERTY="$PROJECT_ROOT/$LIBERTY"
 [[ -n "$SDC_FILE" && "$SDC_FILE" != /* ]] && SDC_FILE="$PROJECT_ROOT/$SDC_FILE"
@@ -979,4 +980,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.1
+# rat-version: 2.0.2

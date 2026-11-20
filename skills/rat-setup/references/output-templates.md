@@ -143,38 +143,15 @@ Record in env-config.json `technology` section:
 ## Setup Marker + Environment Config
 
 ```bash
-# CLAUDE_PLUGIN_DATA: ~/.claude/plugins/data/rtl-agent-team-rtl-agent-marketplace/
-# Fallback: ~/.config/rtl-agent-team/ (for environments where CLAUDE_PLUGIN_DATA is unavailable)
-PLUGIN_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}"
+# Claude Code's plugin data folder; the SessionStart hook exports it to Bash.
+PLUGIN_DIR="${RAT_DATA_DIR:?restart Claude Code so the rtl-agent-team SessionStart hook can set it}"
 mkdir -p "$PLUGIN_DIR"
 
 # Setup completion marker
 date -u '+%Y-%m-%dT%H:%M:%SZ' > "$PLUGIN_DIR/.setup-complete"
 
-# Machine-wide EDA environment config (tool paths + preferences)
-# Persisted for future use by rat-init-project and other tools.
-# Not yet consumed — foundation for per-project config seeding.
-# Structure mirrors rat_config.json preferences section.
-cat > "$PLUGIN_DIR/env-config.json" <<ENVEOF
-{
-  "generated": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
-  "tools": {
-    "_comment": "Machine-wide EDA tool availability from rat-setup scan.",
-    <... insert detected tool status from Phase 1 scan results ...>
-  },
-  "preferences": {
-    "_comment": "Auto-detected preferences (commercial priority). Per-project rat_config.json overrides these.",
-    "simulator": "<detected preferred sim>",
-    "synthesis": "<detected preferred syn>",
-    "lint": "<detected preferred lint>",
-    "formal": "<detected preferred formal>",
-    "cdc": "<detected preferred cdc>"
-  }
-}
-ENVEOF
 ```
 
-**Note to orchestrator**: The `<... insert ...>` placeholders above must be replaced
-with actual Phase 1 scan results. Use the same detection logic and output format as
-`generate_config.sh` (tools section + preferences section). The LLM executing this
-skill should construct the JSON from the Bash tool check results collected in Phase 1.
+Keep existing keys when updating `env-config.json`. For a named default site,
+set `default_site` to the private profile name. For machine-local tools, store
+the measured `tools`, `preferences` and `technology` fields directly.

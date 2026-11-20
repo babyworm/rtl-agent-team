@@ -287,3 +287,58 @@ def test_remote_capabilities_cannot_probe_the_local_host_by_accident(tmp_path):
     (tmp_path / "rat_config.json").write_text('{"execution":{"backend":"ssh"}}')
     result = call("capabilities", "--root", tmp_path, "--phase", "p1", "--probe-remote", runner=RUNNER)
     assert result.returncode == 2
+
+
+def test_site_defaults_fill_only_unset_or_auto_detected_choices(site, tmp_path):
+    profile, env = site
+    data = json.loads(profile.read_text())
+    data["preferences"] = {"simulator": "xrun"}
+    data["technology"] = {"db": "/site/default.db"}
+    profile.write_text(json.dumps(data))
+    cases = {"auto": ({"simulator": "vcs", "_auto": {"simulator": "vcs"}}, {}),
+             "explicit": ({"simulator": "vcs"}, {"db": "/project/cells.db"})}
+    for name, (preferences, technology) in cases.items():
+        root = tmp_path / name
+        root.mkdir()
+        (root / "rat_config.json").write_text(json.dumps({"preferences": preferences, "technology": technology}))
+        result = call("configure", "--profile", profile, "--root", root, env=env)
+        assert result.returncode == 0, result.stderr
+        value = json.loads((root / "rat_config.json").read_text())
+        expected = ("xrun", "/site/default.db") if name == "auto" else ("vcs", "/project/cells.db")
+        assert (value["preferences"]["simulator"], value["technology"]["db"]) == expected
+
+
+def test_runner_uses_private_settings_before_project_init(tmp_path):
+    root = tmp_path / "fresh project"
+    root.mkdir()
+    data = tmp_path / "user data"
+    (data / "sites").mkdir(parents=True)
+    env = {"RAT_DATA_DIR": str(data)}
+    machine = data / "env-config.json"
+    machine.write_text(json.dumps({"preferences": {"simulator": "iverilog"}}))
+
+    def get(key):
+        return call("get", "--root", root, "--key", key, env=env, runner=RUNNER)
+
+    assert get("preferences.simulator").stdout.strip() == "iverilog"
+    machine.write_text(json.dumps({"default_site": "lab", "preferences": {"simulator": "iverilog"}}))
+    assert get("preferences.simulator").returncode == 2  # A missing selected site must not run locally.
+    assert list(root.iterdir()) == []
+    profile = {
+        "measured_at": 1, "home": "/home/fixture",
+        "execution": {"backend": "ssh", "host": "example.invalid"},
+        "tools": {"simulators": {"xrun": {"path": "/opt/fixture/xrun", "detected": True,
+                                          "env_source": "exit 1", "env_shell": "bash"}}},
+        "preferences": {"simulator": "xrun"}, "technology": {"db": "/opt/fixture/cells.db"},
+    }
+    (data / "sites/lab.json").write_text(json.dumps(profile))
+    assert get("preferences.simulator").stdout.strip() == "xrun"
+    assert get("technology.db").stdout.strip() == "/opt/fixture/cells.db"
+    assert get("execution.workspace").stdout.startswith("/home/fixture/")
+    assert call("available", "--root", root, "--tool", "xrun", env=env, runner=RUNNER).returncode == 0
+    assert call("available", "--root", root, "--tool", "sh", env=env, runner=RUNNER).returncode == 1
+    assert list(root.iterdir()) == []
+    (root / "rat_config.json").write_text('{"execution":{"backend":"local"}}')
+    assert get("execution.backend").stdout.strip() == "local"
+    assert not get("execution.host").stdout.strip()
+    assert not get("technology.db").stdout.strip()

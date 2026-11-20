@@ -134,7 +134,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
       {
         "ac_id": "REQ-U-NNN.AC-1",
         "description": "measurable criterion text",
-        "test_method": "assertion|cocotb|formal|inspection",
+        "test_method": "assertion|cocotb|coverpoint|formal|inspection",
         "verifiable": true
       }
     ]
@@ -143,6 +143,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     Minimum 1 acceptance criterion per requirement. test_method guidance:
     - "assertion": protocol properties verifiable by SVA (e.g., valid stable during !ready)
     - "cocotb": functional behavior verifiable by simulation (e.g., transfer completes in N cycles)
+    - "coverpoint": observing the specified event satisfies this criterion. For required output values or invariants, use an outcome check tied to the same ac_id.
     - "formal": invariants provable by formal verification (e.g., no deadlock, no livelock)
     - "inspection": non-automatable criteria — set verifiable: false
 

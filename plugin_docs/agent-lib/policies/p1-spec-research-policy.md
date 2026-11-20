@@ -101,9 +101,10 @@ the self-counted denominator (5-of-10 modes self-reports 5/5). The completeness 
 comes from an independent census + mechanical diff:
 
 1. **Independent feature census** (clean context): spawn spec-analyst in FEATURE CENSUS
-   MODE. It reads ONLY original spec sources (`specs/**`, `docs/phase-1-research/goal.md`,
-   domain knowledge files) and MUST NOT read iron-requirements.json, open-requirements.json,
-   or any prior Phase 1 analysis. Enumerate EVERY spec-defined item — expand mode/format
+   MODE. Read the original spec, goal, relevant domain sources and any supplied
+   behavioral refC and tests. Cite observable model behavior by file and symbol or
+   test. Keep a spec/model disagreement open with both locations. Use no generated
+   requirements or prior Phase 1 analysis. Enumerate every source-defined feature; expand mode/format
    tables item-by-item (e.g., each intra prediction mode, encoding mode, color format,
    block size is one entry). Write `docs/phase-1-research/spec-feature-inventory.json`:
    ```json

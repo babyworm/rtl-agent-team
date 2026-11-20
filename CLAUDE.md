@@ -21,7 +21,7 @@ synthetic `.invalid` hosts and invented paths in reusable fixtures.
 This is NOT a standalone application or RTL design project itself — it is a **plugin that enables
 agentic coding for SystemVerilog-based Silicon IP design** within Claude Code.
 
-When installed as a plugin, it provides 91 specialized agents, 55 skills, 17 hooks,
+When installed as a plugin, it provides 91 specialized agents, 56 skills, 18 hooks,
 and dynamic prompt injection mechanisms that orchestrate the full RTL design pipeline
 from specification to verified silicon.
 
@@ -112,7 +112,8 @@ resulting single-line JSON inside a `cat << 'JSON_EOF'` heredoc in the hook. The
 single-quoted heredoc preserves all bytes literally — no runtime escaping needed.
 The `.rat`/`.rtl-agent-team` marker check still emits the same minimal envelope
 (`{"hookSpecificOutput":{"hookEventName":"SessionStart"}}`) when no project marker
-is present, so non-RAT sessions stay context-clean.
+is present. Separately, `rtl-eda-context.sh` gives sessions and subagents a short
+settings lookup hint when project or user configuration exists, even before init.
 
 ### Plugin Component Architecture (Design Principles)
 
@@ -185,7 +186,7 @@ rtl-agent-team/                          # Plugin root
 ├── agents/                              # 91 specialized agent definitions (.md), FLAT — no subdirs
 │                                        #   (agents/ is scanned RECURSIVELY: any nested .md
 │                                        #    becomes a phantom agent — see rule 16 below)
-├── skills/                              # 55 skills: 50 action entry-points + 4 conventions + 1 internal; policy fragments are generated into agents
+├── skills/                              # 56 skills: 51 action entry-points + 4 conventions + 1 internal; policy fragments are generated into agents
 │   ├── rtl-orchestrate/SKILL.md         #   Internal routing SSOT + hook export source
 │   ├── rat-init-project/templates/      #   Rules + guides deployed to user projects
 │   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project

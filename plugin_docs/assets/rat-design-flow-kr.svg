@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1096 214" role="img" aria-labelledby="rat-design-flow-kr-title rat-design-flow-kr-desc" xml:lang="ko" id="rat-design-flow-kr-root">
+  <title id="rat-design-flow-kr-title">RTL 설계 흐름</title>
+  <desc id="rat-design-flow-kr-desc">명세부터 설계 노트까지 이어지는 6단계 흐름입니다. 명세 → 아키텍처 → 마이크로아키텍처 → RTL 구현 → 검증 → 설계 노트.</desc>
+  <defs>
+      <style>#rat-design-flow-kr-root .pane { fill: #17191b; stroke: #414446; stroke-width: 1.4; }
+      #rat-design-flow-kr-root .phase { font-size: 16px; font-weight: 700; letter-spacing: .10em; fill: #c5cacf; }
+      #rat-design-flow-kr-root .label { fill: #f5f1e7; font-size: 19px; font-weight: 700; }
+      #rat-design-flow-kr-root .detail { fill: #c5cacf; font-size: 16px; }
+      #rat-design-flow-kr-root .accent { fill: #ffd18d; }
+      #rat-design-flow-kr-root .trace { stroke: #858b91; stroke-width: 1.5; }</style>
+  </defs>
+  <rect x="1" y="1" width="1094" height="212" rx="16" class="pane"/>
+
+  <g id="phase-1">
+    <rect x="32" y="58" width="172" height="48" rx="6" fill="#24282b"/>
+    <path d="M42 82 H91 M145 82 H194" class="trace"/>
+    <circle cx="118" cy="82" r="25" fill="#17191b"
+      stroke="#858b91" stroke-width="1.5"/>
+    <text x="118" y="88" class="phase" text-anchor="middle">P1</text>
+    <text x="118" y="150" class="label" text-anchor="middle">명세</text>
+    <text x="118" y="177" class="detail" text-anchor="middle">요구사항</text>
+  </g>
+  <g id="phase-2">
+    <rect x="204" y="58" width="172" height="48" rx="6" fill="#2b3034"/>
+    <path d="M214 82 H263 M317 82 H366" class="trace"/>
+    <circle cx="290" cy="82" r="25" fill="#17191b"
+      stroke="#858b91" stroke-width="1.5"/>
+    <text x="290" y="88" class="phase" text-anchor="middle">P2</text>
+    <text x="290" y="150" class="label" text-anchor="middle">아키텍처</text>
+    <text x="290" y="177" class="detail" text-anchor="middle">C 참조 모델</text>
+  </g>
+  <g id="phase-3">
+    <rect x="376" y="58" width="172" height="48" rx="6" fill="#24282b"/>
+    <path d="M386 82 H435 M489 82 H538" class="trace"/>
+    <circle cx="462" cy="82" r="25" fill="#17191b"
+      stroke="#858b91" stroke-width="1.5"/>
+    <text x="462" y="88" class="phase" text-anchor="middle">P3</text>
+    <text x="462" y="150" class="label" text-anchor="middle">마이크로아키텍처</text>
+    <text x="462" y="177" class="detail" text-anchor="middle">BFM</text>
+  </g>
+  <g id="phase-4">
+    <rect x="548" y="58" width="172" height="48" rx="6" fill="#2b3034"/>
+    <path d="M558 82 H607 M661 82 H710" class="trace"/>
+    <circle cx="634" cy="82" r="25" fill="#17191b"
+      stroke="#858b91" stroke-width="1.5"/>
+    <text x="634" y="88" class="phase" text-anchor="middle">P4</text>
+    <text x="634" y="150" class="label" text-anchor="middle">RTL 구현</text>
+    <text x="634" y="177" class="detail" text-anchor="middle">단위 테스트</text>
+  </g>
+  <g id="phase-5">
+    <rect x="720" y="58" width="172" height="48" rx="6" fill="#51381f"/>
+    <path d="M730 82 H779 M833 82 H882" class="trace"/>
+    <circle cx="806" cy="82" r="25" fill="#352619"
+      stroke="#ffb358" stroke-width="2"/>
+    <text x="806" y="88" class="phase accent" text-anchor="middle">P5</text>
+    <text x="806" y="150" class="label accent" text-anchor="middle">검증</text>
+    <text x="806" y="177" class="detail" text-anchor="middle">기능·실리콘 검증</text>
+  </g>
+  <g id="phase-6">
+    <rect x="892" y="58" width="172" height="48" rx="6" fill="#2b3034"/>
+    <path d="M902 82 H951 M1005 82 H1054" class="trace"/>
+    <circle cx="978" cy="82" r="25" fill="#17191b"
+      stroke="#858b91" stroke-width="1.5"/>
+    <text x="978" y="88" class="phase" text-anchor="middle">P6</text>
+    <text x="978" y="150" class="label" text-anchor="middle">설계 노트</text>
+    <text x="978" y="177" class="detail" text-anchor="middle">결과와 설계 결정</text>
+  </g>
+</svg>

@@ -69,16 +69,18 @@ class TestIverilogLive:
         )
         assert result.returncode != 0
 
-    def test_define_flag(self, tmp_path):
+    @pytest.mark.parametrize("flags,failures", [(["--define", "MY_DEFINE"], 0), ([], 1)])
+    def test_define_flag(self, tmp_path, flags, failures):
         sv = tmp_path / "tb_define.sv"
         sv.write_text("""\
 module tb_define;
   initial begin
 `ifdef MY_DEFINE
-    $display("DEFINE FOUND");
+    $display("RAT_CHECK_POINT define.present 1 0");
 `else
-    $display("DEFINE MISSING");
+    $display("RAT_CHECK_POINT define.present 1 1");
 `endif
+    $display("RAT_SIM_PASS");
     $finish;
   end
 endmodule
@@ -86,11 +88,12 @@ endmodule
         result = run_script(
             RUN_SIM, "--sim", "iverilog", "--top", "tb_define",
             "--outdir", str(tmp_path / "build"),
-            "--define", "MY_DEFINE", str(sv),
+            *flags, str(sv),
             timeout=60,
         )
-        assert result.returncode == 0
-        assert "DEFINE FOUND" in result.stdout
+        assert f"RAT_CHECK_POINT define.present 1 {failures}" in result.stdout
+        assert (result.returncode == 0) == (failures == 0)
+        assert ("verdict=FAIL" if failures else "verdict=PASS") in result.stdout
 
     def test_filelist_integration(self, tmp_path):
         mod = tmp_path / "adder.sv"

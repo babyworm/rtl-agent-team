@@ -63,6 +63,9 @@ State contract:
 - Re-run top functional regression smoke/full set after synthesis-significant changes.
 - Use `func-verifier` + `coverage-analyst` for regression confidence.
 - Update `scopes.top.functional_precision_regression`.
+- If the P5A plan or its recorded `simulation_runs` exists, preserve valid
+  run IDs in `docs/phase-5-verify/judgment.json` and replace invalidated IDs
+  with runs that measured the affected points.
 
 ### Step 4: Gate decision
 PASS when:
@@ -70,16 +73,21 @@ PASS when:
 - top precision functional checks pass
 - required equivalence checks (if triggered) pass with no unresolved non-equivalent points
 
-FAIL when any signoff-critical risk remains unresolved.
-- Persist terminal verdict in `.rat/state/p5b-state.json`.
+If a signoff-critical risk remains unresolved, record FAIL in the final
+compliance report and `.rat/state/p5b-state.json`.
 
 ### Final Compliance Artifact (P6 entry gate)
 
-On PASS verdict:
+When the silicon checks pass:
 1. Generate `reviews/phase-5-verify/final-compliance.md` with one `Verdict: PASS` field
    - Aggregate P5A functional closure results + P5B silicon validation results
    - Include: requirement traceability summary, coverage metrics, synthesis estimates
-2. Generate `docs/phase-5-verify/phase-5-summary.md` (max 200 lines)
+2. Run `python3 {plugin_root}/scripts/gates/phase_gate.py --root <project> --phase 6 --entry`
+   before persisting a terminal PASS in `.rat/state/p5b-state.json`. This checks
+   current P5A measurements when present and accepts the legacy report for completed
+   P5A runs without a point plan or run IDs. On failure, record FAIL in the
+   compliance report and state and resolve the reported gap.
+3. Generate `docs/phase-5-verify/phase-5-summary.md` (max 200 lines)
    - Compressed summary of all Phase 5 verification results
 
 These artifacts are the canonical entry gate for Phase 6 (`p6-review-orchestrator` requires

@@ -251,6 +251,7 @@ install_script_if_missing \
   755
 
 install_script_if_missing "$PLUGIN_ROOT/skills/rat-init-project/templates/Makefile" "$WORKSPACE/Makefile" 644
+install_script_if_missing "$PLUGIN_ROOT/skills/rat-init-project/templates/experiment.gitignore" "$WORKSPACE/experiment/.gitignore" 644
 
 for rule in rtl-coding-conventions.md rtl-verification-gate.md; do
   if [[ ! -f "$HOME/.claude/rules/$rule" ]]; then

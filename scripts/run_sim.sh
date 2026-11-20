@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rat-version: 2.0.3
+# rat-version: 2.0.6
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
@@ -124,7 +124,24 @@ done
 
 if [[ -z "$SIM" || "$SIM" == auto ]]; then
   SIM=$("$RUNNER_PYTHON" "$RUNNER_HELPER" get --root "$PROJECT_ROOT" --key preferences.simulator)
-  SIM="${SIM:-iverilog}"
+  # A local probe says nothing about an SSH/LSF host; keep the old default there.
+  if [[ -z "$SIM" && "${RAT_REMOTE_ACTIVE:-0}" != "1" ]]; then
+    case "$("$RUNNER_PYTHON" "$RUNNER_HELPER" backend --root "$PROJECT_ROOT" 2>/dev/null)" in
+      ssh|lsf) SIM=iverilog ;;
+    esac
+  fi
+  if [[ -z "$SIM" ]]; then
+    # Unconfigured project: use a simulator that actually runs here; iverilog stays the first choice.
+    for candidate in iverilog verilator vcs xrun vsim; do
+      if "$RUNNER_PYTHON" "$RUNNER_HELPER" available --root "$PROJECT_ROOT" --tool "$candidate" >/dev/null 2>&1; then
+        SIM="$candidate"; break
+      fi
+    done
+  fi
+  if [[ -z "$SIM" ]]; then
+    echo "ERROR: no simulator is configured or found on PATH (tried iverilog, verilator, vcs, xrun, vsim). Run /rtl-agent-team:rat-setup or pass --sim." >&2
+    exit 2
+  fi
 fi
 case "$SIM" in icarus) SIM=iverilog ;; vsim) SIM=questa ;; esac
 
@@ -363,6 +380,19 @@ build_plusargs() {
 # Resolve relative paths against PROJECT_ROOT (honors RAT_PROJECT_ROOT; when
 # unset PROJECT_ROOT == $(pwd), identical to the old behavior), then convert
 # to absolute BEFORE cd to avoid relative path breakage.
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
+  experiment_lib="${RAT_RUNTIME_LIB:-}"
+  for candidate in "$SCRIPT_HOME/../skills/rat-init-project/templates/lib/tool-runner.sh" "$SCRIPT_HOME/../lib/tool-runner.sh" "$SCRIPT_HOME/../../lib/tool-runner.sh"; do
+    [[ -f "$experiment_lib" ]] || experiment_lib="$candidate"
+  done
+  source "$experiment_lib"
+  if [[ "$TOP" == */* || "$TOP" == . || "$TOP" == .. ]]; then
+    echo "ERROR: --top must name a module in an experiment" >&2
+    exit 2
+  fi
+  rat_lock_experiment
+  OUTDIR=$(rat_experiment_output "$OUTDIR")
+fi
 [[ "$OUTDIR" == /* ]] || OUTDIR="$PROJECT_ROOT/$OUTDIR"
 mkdir -p "$OUTDIR"
 OUTDIR="$(cd "$OUTDIR" && pwd)"

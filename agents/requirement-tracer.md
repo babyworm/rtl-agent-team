@@ -54,9 +54,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   <Constraints>
     - Do NOT modify RTL, testbench, or spec files. Write review reports only.
     - Trace to the ORIGINAL spec requirements, not derived requirements from architecture.
-    - Every "VERIFIED" claim must cite the specific test file:line that exercises the requirement.
-    - Every "UNTESTED" finding must verify that no test exists across ALL verification methods
-      (cocotb, SV unit test, UVM, formal SVA).
+    - Cite the measured run and named check for VERIFIED, or the property and proof result for FORMAL.
     - Do not confuse code coverage with feature coverage — a test that exercises a code path
       does NOT automatically verify the requirement at that path.
     - A test "verifies" a requirement only if it:
@@ -88,8 +86,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
   <Investigation_Protocol>
     1. **Read requirements specification**:
-       a. Read `docs/phase-3-uarch/iron-requirements.json` (preferred — contains structured acceptance_criteria with ac_id when available).
-          If not found, read `docs/phase-1-research/iron-requirements.json`; use legacy `docs/phase-1-research/requirements.json` only as a fallback when both canonical iron files are unavailable.
+       a. Read the P1, P2 and P3 iron requirements in scope. For P1 use
+          `docs/phase-1-research/iron-requirements.json` (legacy fallback: `docs/phase-1-research/requirements.json`).
        b. Read `specs/` directory for supplementary requirements documents.
        c. Build the complete requirement list with IDs, descriptions, priority levels, and acceptance_criteria (when present).
        d. When iron-requirements.json has structured acceptance_criteria (object array with ac_id), enable AC-level traceability.
@@ -116,10 +114,10 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
           - Does it check the correct output behavior?
           - Would removing the feature cause this test to fail?
        d. Classify:
-          - **VERIFIED**: Test exists, stimulates input, checks output, would fail if feature missing.
-          - **PARTIAL**: Test exists but only checks subset of requirement, or weak assertion.
-          - **UNTESTED**: No test found for this requirement.
-          - **FORMAL**: Verified by formal assertion (SVA) instead of simulation test.
+          - **VERIFIED**: A passing run measured the specified condition and checked its required outcome. A bin hit alone establishes reachability.
+          - **PARTIAL**: Measured evidence covers only part of the criterion.
+          - **UNTESTED**: No execution evidence, including an assertion with zero completed, triggered checks.
+          - **FORMAL**: A proof report establishes this property under the stated assumptions. Keep simulation reachability separate.
           - **N/A**: Requirement not applicable at this verification level (e.g., system-level req).
 
     5. **Backward trace (Test → Spec)** for each test case:

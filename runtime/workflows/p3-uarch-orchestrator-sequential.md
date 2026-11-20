@@ -3,6 +3,10 @@ microarchitecture. Use uarch-designer and bfm-dev for distinct design/model outp
 Specify interfaces, datapath widths, state transitions, clocks/resets, memory
 latencies and storage allocation only to the detail needed to implement and test
 this design. Carry REQ-A-* and REQ-F/P-* traceability into REQ-U-*.
+Before stimulus, the phase owner writes the shared `sim/verification-points.json`
+from the spec, supplied refC/tests and settled hardware constraints. Follow
+`{plugin_root}/runtime/verification-points.md` for selection, extraction confidence
+and evidence. Preserve point IDs when resuming.
 
 Deliver docs/phase-3-uarch/{<module>.md,iron-requirements.json,
 open-requirements.json,clock-domain-map.md,protocol-assignments.md,judgment.json},

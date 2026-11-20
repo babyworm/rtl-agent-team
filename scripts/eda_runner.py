@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.7
+# rat-version: 2.0.11
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import ExitStack
 import fcntl
 import json
 import os
@@ -22,12 +23,18 @@ import tempfile
 import time
 import uuid
 
-from verify_evidence import atomic_json, classify, digest, unchanged, process_identity, source_paths
+from verify_evidence import (atomic_json, classify, digest, unchanged, pre_init_state_root, process_identity,
+                             runtime_state_root, source_paths, state_within_bounds)
 
 
 def configuration(root: Path) -> dict:
+    from eda_setup import read_json, user_configuration
+
+    helpers = os.environ.get("RAT_RUNTIME_HELPERS")
+    if os.environ.get("RAT_REMOTE_ACTIVE") == "1" and helpers:
+        return read_json(Path(helpers) / "dispatch-config.json")
     path = root / "rat_config.json"
-    return json.loads(path.read_text()) if path.is_file() else {}
+    return read_json(path) if path.is_file() else user_configuration(root)
 
 
 def backend(config: dict) -> str:
@@ -142,6 +149,9 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
 
 def available(args, config: dict) -> int:
     resolved, entry = tool_configuration(config, args.tool, getattr(args, "category", None))
+    if backend(config) in ("ssh", "lsf"):
+        from eda_setup import failed_probe
+        return 0 if entry.get("detected") and not failed_probe(entry) else 1
     source = entry.get("env_source", "")
     container = backend(config) == "docker"
     if container and not source:
@@ -287,7 +297,7 @@ def run(args, root: Path, config: dict) -> int:
     if context:
         context = {"icarus": "iverilog", "questa": "vsim", "xcelium": "xrun", "spyglass": "sg_shell", "vc_cdc": "vc_static_shell", "questa_cdc": "qverify"}.get(context, context)
         _, entry = tool_configuration(config, context)
-        shim_parent = root / ".rat/tool-shims"
+        shim_parent = runtime_state_root(root) / "tool-shims"
         shim_parent.mkdir(parents=True, exist_ok=True)
         shims = tempfile.TemporaryDirectory(prefix="run-", dir=shim_parent)
         names = [context, "vvp"] if context == "iverilog" else ["vsim", "vlog", "vopt", "vlib"] if context == "vsim" else [context]
@@ -329,11 +339,13 @@ def run(args, root: Path, config: dict) -> int:
         mounts=["--mount",f"type=bind,src={root},dst={root}"]
         helpers=Path(__file__).resolve().parent
         if not helpers.is_relative_to(root): mounts += ["--mount",f"type=bind,src={helpers},dst={helpers},readonly"]
+        if shims and not Path(shims.name).is_relative_to(root):  # pre-init shims live in the plugin data folder
+            mounts += ["--mount", f"type=bind,src={shims.name},dst={shims.name},readonly"]
         argv = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}", "--env", "HOME=/tmp",
                 "--env", f"RAT_PROJECT_ROOT={root}", "--env", "RAT_EXECUTION_LOCAL=1", "--env", "PATH=" + env["PATH"],
                 *mounts, "--workdir", str(cwd), image, *argv]
     stamp = uuid.uuid4().hex
-    log = Path(args.log) if args.log else root / ".rat/tool-runs" / (stamp + ".log")
+    log = Path(args.log) if args.log else runtime_state_root(root) / "tool-runs" / (stamp + ".log")
     timeout = args.timeout if args.timeout is not None else float(os.environ.get("RAT_TOOL_TIMEOUT_SECONDS", settings.get("timeout_seconds", 1800)))
     stall = args.stall if args.stall is not None else float(settings.get("stall_seconds", 0))
     try:
@@ -350,40 +362,97 @@ def relative_output(value: str) -> str:
     return value
 
 
+def install_generated_ignore(directory: Path, patterns: str) -> None:
+    if directory.resolve() != directory:
+        raise ValueError(f"generated directory cannot be symlinked: {directory}")
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    ignore = directory / ".gitignore"
+    # Link a complete ignore file atomically so simultaneous starters cannot see a partial file.
+    if not ignore.exists():
+        with tempfile.NamedTemporaryFile(dir=directory) as pending:
+            pending.write(patterns.encode())
+            pending.flush()
+            try:
+                os.link(pending.name, ignore)
+            except FileExistsError:
+                pass
+    if ignore.is_symlink() or not ignore.is_file():
+        raise ValueError(f"generated directory needs a regular .gitignore: {ignore}")
+
+
+def experiment_directory(root: Path) -> Path:
+    name = os.environ.get("RAT_EXPERIMENT_ID", "")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", name):
+        raise ValueError("RAT_EXPERIMENT_ID must be 1–64 letters, digits, dots, dashes or underscores, starting with a letter or digit")
+    directory = root / "experiment" / name
+    install_generated_ignore(directory, "*\n")
+    # Gates share the project evidence index. Keep those generated files out of Git too.
+    if pre_init_state_root(root) is None:  # records outside the project need no ignore rule
+        install_generated_ignore(runtime_state_root(root), "/.gitignore\n/audit/\n/tool-runs/\n/tool-shims/\n/source-probes/\n"
+                                     "/state/verify-runs/\n/state/verify-evidence.json\n/state/verify-evidence.lock\n")
+    return directory
+
+
+def experiment_output(directory: Path, value: str) -> Path:
+    path = Path(value)
+    if not value or ".." in path.parts:
+        raise ValueError(f"invalid experiment output: {value}")
+    if not path.is_absolute():
+        path = (directory.parent.parent if path.parts[:1] == ("experiment",) else directory) / path
+    if not path.is_relative_to(directory) or path.resolve() != path:
+        raise ValueError(f"output must stay inside {directory}: {value}")
+    if path.relative_to(directory).parts[:1] in ((".git",), (".gitignore",), (".rat",)):
+        raise ValueError(f"reserved experiment output: {value}")
+    return path
+
+
 def remote_shell_command(script: str) -> str:
     # tcsh cannot parse literal newlines in the outer SSH command's quotes.
     payload = base64.b64encode(script.encode()).decode()
     return "sh -c " + shlex.quote('payload=$(printf %s ' + payload + ' | base64 -d) || exit 2; eval "$payload"')
 
 
-def import_remote_evidence(path: Path, root: Path, workspace: str, since: float) -> int:
+def import_remote_evidence(path: Path, root: Path, workspace: str, since: float,
+                           experiment: Path | None = None, remote_outputs: str | None = None) -> int:
     data = json.loads(path.read_text())
     records = []
-    prefix = workspace.rstrip("/") + "/"
+    state = runtime_state_root(root) / "state" if experiment else (pre_init_state_root(root) or root / ".rat") / "state"
 
-    def local_path(value):
-        if not value.startswith(prefix):
+    def local_path(value, destination, source=workspace):
+        if value == source:
+            return str(destination)
+        prefix = source.rstrip("/") + "/"
+        if not value.startswith(prefix) or ".." in Path(value).parts:
             raise ValueError(f"remote artifact is outside synchronized workspace: {value}")
-        return str(root / value[len(prefix):])
+        return str(destination / value[len(prefix):])
 
     for remote_record in data.get("runs", []):
         if remote_record.get("started_at", 0) < since:
             continue
         record = dict(remote_record)
-        record["sources"] = {local_path(key): value for key, value in record["sources"].items()}
-        record["log"] = local_path(record["log"])
-        if record.get("runtime_log"): record["runtime_log"]["path"]=local_path(record["runtime_log"]["path"])
-        record["outdir"] = local_path(record["outdir"])
+        generated = experiment or root
+        for field in ("sources", "source_identity"):
+            if field in record:
+                record[field] = {local_path(key, root): value for key, value in record[field].items()}
+        output_root = remote_outputs or workspace
+        record["log"] = local_path(record["log"], generated, output_root)
+        if record.get("runtime_log"):
+            record["runtime_log"]["path"] = local_path(record["runtime_log"]["path"], generated, output_root)
+        record["outdir"] = local_path(record["outdir"], generated, output_root)
+        if experiment:
+            record["experiment_id"] = experiment.name
+            record["artifacts"] = {local_path(key, generated, output_root): value for key, value in record.get("artifacts", {}).items()}
+            record["artifact_paths"] = [local_path(key, generated, output_root) for key in record.get("artifact_paths", [])]
         record["root"] = str(root)
-        record["state_dir"] = str(root / ".rat/state")
+        record["state_dir"] = str(state)
         record["remote_workspace"] = workspace
         log = Path(record["log"])
         if record["verdict"] == "PASS" and (not unchanged(record["sources"]) or not log.is_file()
                                                or digest(log) != record["log_sha256"]):
             record["verdict"] = "INCONCLUSIVE"
         records.append(record)
-    index = root / ".rat/state/verify-evidence.json"
-    if not index.parent.resolve().is_relative_to(root):
+    index = state / "verify-evidence.json"
+    if not state_within_bounds(root, index.parent):
         raise ValueError("local evidence directory escapes project")
     index.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(index.with_suffix(".lock"), os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
@@ -396,7 +465,30 @@ def import_remote_evidence(path: Path, root: Path, workspace: str, since: float)
     return len(records)
 
 
+def require_project_root(root: Path) -> None:
+    # Dispatch mirrors the whole root to the remote host, and without a project config
+    # the root is just the current directory. Never mirror a home directory (keys, tokens).
+    home = Path.home().resolve()
+    if root == home or home.is_relative_to(root):
+        raise ValueError("refusing to synchronize the home directory or a parent of it; run from the project root")
+
+
 def dispatch(args, root: Path, config: dict) -> int:
+    require_project_root(root)
+    with ExitStack() as cleanup:
+        experiment = None
+        if os.environ.get("RAT_EXPERIMENT_ID"):
+            experiment = experiment_directory(root)
+            fd = os.open(experiment, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            cleanup.callback(os.close, fd)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise ValueError(f"experiment already running: {experiment.name}") from exc
+        return _dispatch_tracked(args, root, config, experiment, cleanup)
+
+
+def _dispatch_tracked(args, root: Path, config: dict, experiment: Path | None, cleanup: ExitStack) -> int:
     snapshot=None
     filelist=""
     sources=[]
@@ -412,21 +504,22 @@ def dispatch(args, root: Path, config: dict) -> int:
         inputs=[]
     if inputs:
         run_id=uuid.uuid4().hex
-        snapshot=root/".rat/state/verify-runs"/(run_id+".json")
+        marker = runtime_state_root(root) if experiment else pre_init_state_root(root) or root / ".rat"
+        snapshot=marker/"state/verify-runs"/(run_id+".json")
         record={"schema_version":1,"run_id":run_id,"root":str(root),"tool":"remote-wrapper",
                 "sources":{str(path):digest(path) for path in inputs},"verdict":"RUNNING",
                 "started_at":time.time(),"runner_pid":os.getpid(),"runner_identity":process_identity(os.getpid()),
                 "host":socket.gethostname(),"compile_only":"--compile-only" in args.argv}
         atomic_json(snapshot,record)
     try:
-        return _dispatch(args,root,config)
+        return _dispatch(args, root, config, experiment, cleanup)
     finally:
         if snapshot:
             record.update(verdict="TRANSPORT_COMPLETE",completed_at=time.time())
             atomic_json(snapshot,record)
 
 
-def _dispatch(args, root: Path, config: dict) -> int:
+def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: ExitStack) -> int:
     settings = config.get("execution", {})
     selected = backend(config)
     if selected not in ("ssh", "lsf"):
@@ -459,7 +552,9 @@ def _dispatch(args, root: Path, config: dict) -> int:
                 if not nested.is_file(): nested=root/tokens[index+1]
                 filelists.append(nested.resolve())
     run_id = uuid.uuid4().hex
-    cache = root / ".rat/remote-runs" / run_id
+    cache = (pre_init_state_root(root) or (experiment or root) / ".rat") / "remote-runs" / run_id
+    if experiment and cache.resolve() != cache:
+        raise ValueError("experiment transport directory cannot be symlinked")
     cache.mkdir(parents=True)
     started = time.monotonic()
     started_wall = time.time()
@@ -478,21 +573,54 @@ def _dispatch(args, root: Path, config: dict) -> int:
     def remote(script, name):
         return step([*ssh, remote_shell_command(script)], name)
 
-    if remote("mkdir -p " + shlex.quote(workspace), "mkdir"):
+    if experiment:
+        namespace = workspace.rstrip("/") + "/.rat/experiments/" + experiment.name
+        workspace = namespace + "/work"
+        reservation = shlex.quote(namespace + "/active")
+        create = "umask 077; mkdir -p " + shlex.quote(workspace) + " && mkdir " + reservation
+        may_release = True
+
+        def release():
+            if may_release:
+                try:
+                    code = subprocess.run([*ssh, "rmdir " + reservation], timeout=10, capture_output=True).returncode
+                    if code == 0:
+                        return
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+            print(f"Experiment reservation retained at {namespace}/active; confirm the remote job ended before reusing this ID.",
+                  file=sys.stderr)
+
+        if remote(create, "reserve"):
+            raise ValueError(f"could not reserve remote experiment {experiment.name}; check its active status")
+        cleanup.callback(release)
+    elif remote("mkdir -p " + shlex.quote(workspace), "mkdir"):
         return 2
     transport = ["rsync", "-a", "--protect-args", "-e", shlex.join(["ssh", *ssh_options])]
     sync = [*transport, "--exclude=.git", "--exclude=.claude", "--exclude=.rat/state",
-            "--exclude=.rat/audit", "--exclude=.rat/remote-runs", str(root) + "/", host + ":" + workspace + "/"]
+            "--exclude=.rat/audit", "--exclude=.rat/remote-runs", "--exclude=/experiment/",
+            "--exclude=/.rat/experiments/", *(["--exclude=/.rtl-agent-team/"] if experiment else []),
+            str(root) + "/", host + ":" + workspace + "/"]
     status = step(sync, "sync")
     if status:
         return status
     wrapper = Path(args.wrapper).resolve()
-    package = cache / "runtime"
+    package = Path(cleanup.enter_context(tempfile.TemporaryDirectory(prefix="rat-runtime-")))
     target = package / "syn/scripts" / wrapper.name
     target.parent.mkdir(parents=True)
     shutil.copy2(wrapper, target)
     library = package / "lib"
     library.mkdir()
+    execution_keys = ("timeout_seconds", "stall_seconds", "verdicts")
+    remote_config = {key: config[key] for key in ("technology", "preferences", "verification", "project") if key in config}
+    remote_config["execution"] = {key: settings[key] for key in execution_keys if key in settings}
+    tool_keys = ("path", "env_source", "env_shell", "license_wait_args")
+    remote_config["tools"] = {
+        group: {name: {key: entry[key] for key in tool_keys if key in entry} for name, entry in entries.items()
+                if isinstance(entry, dict)}
+        for group, entries in config.get("tools", {}).items() if isinstance(entries, dict)
+    }
+    atomic_json(library / "dispatch-config.json", remote_config)
     helper_root = Path(__file__).parent
     for name in ("eda_runner.py", "verify_evidence.py", "regression_evidence.py", "eda_setup.py", "merge_coverpoint_logs.py"):
         shutil.copy2(helper_root / name, library / name)
@@ -506,25 +634,59 @@ def _dispatch(args, root: Path, config: dict) -> int:
         shim = helper_root.parent / "skills/rat-init-project/templates/lib/tool-runner.sh"
     shutil.copy2(shim, library / shim.name)
     remote_runtime = workspace + "/.rat/runner-runtime/" + run_id
-    if remote("mkdir -p " + shlex.quote(remote_runtime), "runtime-mkdir"):
+    if remote("umask 077; mkdir -p " + shlex.quote(remote_runtime), "runtime-mkdir"):
         return 2
     if step([*transport, str(package) + "/", host + ":" + remote_runtime + "/"], "runtime-sync"):
         return 2
+    supported = wrapper.name in ("run_sim.sh", "run_syn.sh", "run_lint.sh", "run_cdc.sh", "run_formality.sh",
+                                 "run_conformal.sh", "run_regression.sh", "run_regression_uvm.sh")
+    remote_outputs = workspace + "/experiment/" + experiment.name if experiment and supported else workspace
     mapped = []
+    explicit_outputs = []
+    output_option = False
     for value in args.argv:
-        if value == str(root) or value.startswith(str(root) + "/"):
+        if experiment and output_option:
+            relative = experiment_output(experiment, value).relative_to(experiment)
+            explicit_outputs.append(str(relative) if supported else relative_output(str(relative)))
+            value = str(Path(remote_outputs) / relative)
+        elif experiment and (Path(value).is_relative_to(experiment) or Path(value).parts[:2] == ("experiment", experiment.name)):
+            relative = experiment_output(experiment, value).relative_to(experiment)
+            value = str(Path(remote_outputs) / relative)
+        elif value == str(root) or value.startswith(str(root) + "/"):
             value = workspace + value[len(str(root)):]
         mapped.append(value)
+        output_option = value in ("--outdir", "--syn-root")
     remote_wrapper = remote_runtime + "/syn/scripts/" + wrapper.name
     status_file = remote_runtime + "/exit-status"
+    evidence_path = workspace + "/.rat/state/verify-evidence.json"
+    capture_evidence = ""
+    if experiment:
+        previous = shlex.quote(evidence_path)
+        evidence_path = remote_runtime + "/experiment-evidence.json"
+        # The reserved workspace can be reused for run-only. Export just this invocation's verdicts.
+        experiment_start = f"if [ -f {previous} ]; then mv {previous} {shlex.quote(remote_runtime + '/prior-evidence.json')} || exit 2; fi\n"
+        capture_evidence = f"if [ -f {previous} ]; then mv {previous} {shlex.quote(evidence_path)} || exit 2; fi\n"
+    else:
+        experiment_start = ""
     remote_python = settings.get("python", "python3")
     guarded_wrapper = [remote_python, remote_runtime + "/lib/eda_runner.py", "run", "--root", workspace,
                        "--timeout", str(max(1, limit - (time.monotonic() - started))), "--", "bash", remote_wrapper, *mapped]
-    job = ("export RAT_PROJECT_ROOT=" + shlex.quote(workspace) + " RAT_REMOTE_ACTIVE=1 RAT_EXECUTION_LOCAL=1"
+    experiment_env = ""
+    if experiment:
+        experiment_env = "unset RAT_EXPERIMENT_ID\nexport RAT_EXPERIMENT_ACTIVE=1\n"
+        if supported:
+            experiment_env += "export RAT_EXPERIMENT_ID=" + shlex.quote(experiment.name) + "\n"
+        if wrapper.name in ("run_regression.sh", "run_regression_uvm.sh"):
+            for variable in ("RESULTS_DIR", "COVERAGE_DIR"):
+                if os.environ.get(variable):
+                    relative = experiment_output(experiment, os.environ[variable]).relative_to(experiment)
+                    explicit_outputs.append(str(relative))
+                    experiment_env += "export " + variable + "=" + shlex.quote(remote_outputs + "/" + str(relative)) + "\n"
+    job = (experiment_start + experiment_env + "export RAT_PROJECT_ROOT=" + shlex.quote(workspace) + " RAT_REMOTE_ACTIVE=1 RAT_EXECUTION_LOCAL=1"
            + " RAT_RUNTIME_LIB=" + shlex.quote(remote_runtime + "/lib/tool-runner.sh")
            + " RAT_RUNTIME_HELPERS=" + shlex.quote(remote_runtime + "/lib") + "\n"
            + "cd " + shlex.quote(workspace) + " || exit 2\n"
-           + shlex.join(guarded_wrapper) + "\nstatus=$?\n"
+           + shlex.join(guarded_wrapper) + "\nstatus=$?\n" + capture_evidence
            + "printf '%s\\n' \"$status\" > " + shlex.quote(status_file) + "\nexit \"$status\"")
     job_name = "rat-" + run_id
     if selected == "lsf":
@@ -534,32 +696,46 @@ def _dispatch(args, root: Path, config: dict) -> int:
         command = shlex.join(batch) + " bash -c " + shlex.quote(job)
     else:
         command = "bash -c " + shlex.quote(job)
+    may_release = False
     status = remote(command, "execution")
     if status == 124 and selected == "lsf":
         subprocess.run([*ssh, "bkill -J " + shlex.quote(job_name)], timeout=15, capture_output=True)
     observed = subprocess.run([*ssh, "cat " + shlex.quote(status_file)], capture_output=True, text=True, timeout=15)
     if observed.returncode == 0 and re.fullmatch(r"\d+\s*", observed.stdout) and 0 <= int(observed.stdout.strip()) <= 255:
         status = int(observed.stdout.strip())
+        may_release = True
     elif status != 124:
         status = 3
     outputs = settings.get("outputs")
     if outputs is None:
         default = "syn" if wrapper.name in ("run_syn.sh", "run_formality.sh", "run_conformal.sh") else "lint" if wrapper.name in ("run_lint.sh", "run_cdc.sh") else "sim"
-        outputs = [default]
+        outputs = [] if explicit_outputs and wrapper.name not in ("run_regression.sh", "run_regression_uvm.sh") else [default]
     if not isinstance(outputs, list):
         raise ValueError("execution.outputs must be a list")
+    destination = experiment or root
+    if experiment:
+        outputs = [relative_output(str(experiment_output(experiment, value).relative_to(experiment))) for value in outputs]
+        outputs.extend(value for value in explicit_outputs if not any(Path(value).is_relative_to(parent) for parent in outputs))
+        if "." in outputs:
+            outputs = ["."]
     for index, value in enumerate(outputs):
-        value = relative_output(value)
-        result = step([*transport, "--relative", host + ":" + workspace + "/./" + value, str(root) + "/"], f"fetch-{index}")
+        if experiment and supported and value == ".":
+            options = ["--safe-links", "--exclude=/.gitignore", "--exclude=/.rat/"]
+            source = remote_outputs + "/"
+        else:
+            value = relative_output(value)
+            options = ["--safe-links", "--relative"] if experiment else ["--relative"]
+            source = remote_outputs + "/./" + value
+        result = step([*transport, *options, host + ":" + source, str(destination) + "/"], f"fetch-{index}")
         if result and status == 0:
             status = 3
-    evidence_path = workspace + "/.rat/state/verify-evidence.json"
     present = subprocess.run([*ssh, "test -f " + shlex.quote(evidence_path)], capture_output=True, timeout=15)
     if present.returncode == 0:
         downloaded = cache / "remote-evidence.json"
         result = step([*transport, host + ":" + evidence_path, str(downloaded)], "fetch-evidence")
         if result == 0:
-            imported = import_remote_evidence(downloaded, root, workspace, started_wall)
+            imported = import_remote_evidence(downloaded, root, workspace, 0 if experiment else started_wall,
+                                              experiment, remote_outputs)
             if wrapper.name == "run_sim.sh" and not imported and status == 0:
                 status = 3
         elif status == 0:
@@ -582,6 +758,9 @@ def main() -> int:
     get = sub.add_parser("get")
     get.add_argument("--root", required=True)
     get.add_argument("--key", required=True)
+    output = sub.add_parser("experiment-output")
+    output.add_argument("--root", required=True)
+    output.add_argument("path")
     readiness = sub.add_parser("capabilities")
     readiness.add_argument("--root", required=True)
     readiness.add_argument("--phase", default="p1")
@@ -613,6 +792,9 @@ def main() -> int:
         args.argv = args.argv[1:]
     root = Path(args.root).resolve()
     try:
+        if args.command == "experiment-output":
+            print(experiment_output(experiment_directory(root), args.path))
+            return 0
         config = configuration(root)
         if args.command == "backend":
             print(backend(config))

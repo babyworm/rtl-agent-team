@@ -30,6 +30,11 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-parser-warning.sh\"",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-eda-context.sh\"",
+            "timeout": 3
           }
         ]
       }
@@ -147,6 +152,11 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-subagent.sh\"",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-eda-context.sh\"",
             "timeout": 3
           }
         ]

@@ -32,6 +32,9 @@ Phase 7 is **exempt from pipeline rules** (Rule 9) — free exploration allowed.
 
 ## Execution
 
+Assign each EDA experiment its own `RAT_EXPERIMENT_ID` as described in
+[`runtime/eda-runner-contract.md`](../../runtime/eda-runner-contract.md#results).
+
 Task(subagent_type="rtl-agent-team:p7-exploration-orchestrator",
      prompt="Execute Phase 7 exploration. User input: $ARGUMENTS")
 

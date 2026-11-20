@@ -19,7 +19,7 @@ and continue independent setup work.
 For SSH/LSF setup, read `references/remote-site-setup.md`. The discovery/configure
 CLI handles measured host facts and safe JSON updates; use judgment for the desired
 tools, site environment and unresolved choices. Keep named reusable profiles under
-`${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`. Select a profile for
+`${CLAUDE_PLUGIN_DATA}/sites/`. Select a profile for
 each project; never make one user's host a plugin-wide default.
 Keep real site profiles, connection details and raw probe reports outside the
 plugin repository. Never copy them into plugin docs, examples, tests or evals;
@@ -85,8 +85,14 @@ library. Preserve explicit nand2_area_um2; derive it only when unset.
 
 For Python packages, use a dedicated RAT_EDA_VENV rather than system pip; the exact installation commands are in `references/install-commands.md`.
 
-Machine defaults live at `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/env-config.json`.
+Machine defaults live at `${CLAUDE_PLUGIN_DATA}/env-config.json`. Bash commands see
+this plugin data folder as `$RAT_DATA_DIR`; never store settings elsewhere.
 The project overrides them. Remote host paths are not replaced by local detection.
+When the user names a default execution site, set `default_site` there to its
+profile name. Without a project config, the bundled runner reads the private
+settings directly. Agents can query individual keys with `eda_runner.py get
+--root <project> --key preferences.simulator` before project initialization.
+A profile's `technology` values fill unset fields during project configuration.
 Use execution.backend local/docker/ssh/lsf and the execution contract in
 `{plugin_root}/runtime/eda-runner-contract.md` for site setup.
 

@@ -97,6 +97,7 @@ class TestHookRuntimeContract:
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-orchestrator-inject.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-audit-init.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-parser-warning.sh"',
+            'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-eda-context.sh"',
         ]
 
     def test_pretooluse_skill_hooks_order(self, hooks):
@@ -115,6 +116,11 @@ class TestHookRuntimeContract:
         assert tc_commands == [
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-spawn-context.sh"',
         ]
+
+    def test_eda_context_is_delivered_to_main_and_worker_sessions(self, hooks):
+        events = {event for event, groups in hooks["hooks"].items()
+                  if any("rtl-eda-context.sh" in hook["command"] for group in groups for hook in group["hooks"])}
+        assert events == {"SessionStart", "SubagentStart"}
 
     def test_posttooluse_matchers(self, hooks):
         entries = hooks["hooks"]["PostToolUse"]
@@ -620,9 +626,10 @@ class TestRatInitProjectRuntimeContract:
         content = read_contract(self.RAT_INIT_PROJECT_SKILL)
         assert ".setup-complete" in content
 
-    def test_setup_marker_fallback_path(self):
+    def test_setup_marker_lives_in_plugin_data(self):
         content = read_contract(self.RAT_INIT_PROJECT_SKILL)
-        assert ".config/rtl-agent-team" in content
+        assert "${CLAUDE_PLUGIN_DATA}/.setup-complete" in content
+        assert ".config/rtl-agent-team" not in content
 
     def test_directory_structure_defined(self):
         content = read_contract(self.RAT_INIT_PROJECT_SKILL)

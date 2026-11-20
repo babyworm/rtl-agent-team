@@ -9,12 +9,13 @@ import re
 import sys
 import time
 
-from verify_evidence import atomic_json, digest
+from verify_evidence import atomic_json, digest, source_digest
 
 
 EXTENSIONS = {".sv", ".svh", ".v", ".vh"}
 TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure"}
-OUTPUT_ROOTS = {"syn", "lint", "reviews", "docs"}
+# formal/ holds properties checked by the formal flow; pnr/ holds generated netlists.
+OUTPUT_ROOTS = {"syn", "lint", "reviews", "docs", "formal", "pnr"}
 IGNORED_DIRS = {".git", ".rat", ".rtl-agent-team", ".claude", ".worktrees",
                 ".venv", "node_modules", "obj_dir", "sim_build"}
 
@@ -53,13 +54,14 @@ def candidates(root, tool, payload):
     return None
 
 
-def snapshot(paths, root):
+def snapshot(paths, root, identity=False):
+    """Raw hash per file; the slower behavioral identity only when asked (single-file tools)."""
     values = {}
     for path in paths:
         if not path.is_file() or path.is_symlink():
             continue
         try:
-            values[str(path.relative_to(root))] = digest(path)
+            values[str(path.relative_to(root))] = [digest(path), source_digest(path) if identity else None]
         except FileNotFoundError:
             # Another tool removed this file while we were reading the tree.
             continue
@@ -84,7 +86,7 @@ def main(root, state):
     if paths is None:
         return 0
     if event == "PreToolUse":
-        current = snapshot(paths, root)
+        current = snapshot(paths, root, identity=tool != "Bash")
         # Old snapshots can remain after a tool call is denied or a session is killed.
         for old in directory.glob("*.json"):
             try:
@@ -99,9 +101,32 @@ def main(root, state):
     before = json.loads(path.read_text())
     after = snapshot(paths, root)
     path.unlink(missing_ok=True)
+    # Raw hash -> identity of earlier contents, so a comment-only Bash edit of a file
+    # seen before is not a change. An unknown earlier identity counts as a change.
+    cache_path = state / "hdl-identity-cache.json"
+    try:
+        cache = json.loads(cache_path.read_text()) if not cache_path.is_symlink() else {}
+    except (OSError, ValueError):
+        cache = {}
+    cache = cache if isinstance(cache, dict) and len(cache) < 20000 else {}
+    learned = {}
     for name in sorted(before.keys() | after.keys()):
-        if before.get(name) != after.get(name):
+        old, new = before.get(name), after.get(name)
+        if old is None or new is None:
             print(root / name)
+            continue
+        old_raw, old_identity = (old, None) if isinstance(old, str) else old
+        if old_raw == new[0]:
+            continue
+        new_identity = source_digest(root / name)
+        old_identity = old_identity or cache.get(old_raw)
+        learned[new[0]] = new_identity
+        if old_identity:
+            learned[old_raw] = old_identity
+        if old_identity != new_identity:
+            print(root / name)
+    if learned:
+        atomic_json(cache_path, {**cache, **learned})
     return 0
 
 

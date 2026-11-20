@@ -43,6 +43,15 @@ def test_dry_run_leaves_empty_workspace_untouched(installation):
     assert list(workspace.iterdir()) == []
 
 
+def test_installed_experiment_directory_is_ignored_by_git(installation):
+    _, workspace, install = installation
+    subprocess.run(["git", "init", "-q", str(workspace)], check=True)
+    install()
+    for relative, ignored in [("experiment/trial-a/report.json", True), ("specs/design.json", False)]:
+        result = subprocess.run(["git", "check-ignore", "--no-index", "-q", relative], cwd=workspace)
+        assert result.returncode == (0 if ignored else 1)
+
+
 def test_managed_script_and_guide_update_together(installation):
     plugin, workspace, install = installation
     install()

@@ -6,9 +6,18 @@
 set -euo pipefail
 
 FORMAT="${FORMAT:-verilator}"
-OUTPUT="${OUTPUT:-sim/coverage/merged.info}"
-COVERAGE_DIR="sim/coverage"
-HTML_DIR="sim/coverage/html"
+COVERAGE_DIR="${COVERAGE_DIR:-sim/coverage}"
+OUTPUT="${OUTPUT:-$COVERAGE_DIR/merged.info}"
+RESULTS_DIR="${RESULTS_DIR:-sim/regression}"
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
+  script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+  source "$script_dir/../../rat-init-project/templates/lib/tool-runner.sh"
+  rat_lock_experiment
+  OUTPUT=$(rat_experiment_output "$OUTPUT")
+  COVERAGE_DIR=$(rat_experiment_output "$COVERAGE_DIR")
+  RESULTS_DIR=$(rat_experiment_output "$RESULTS_DIR")
+fi
+HTML_DIR="$COVERAGE_DIR/html"
 
 mkdir -p "$COVERAGE_DIR" "$HTML_DIR"
 
@@ -21,9 +30,9 @@ case "$FORMAT" in
     DAT_FILES=()
     while IFS= read -r f; do
       DAT_FILES+=("$f")
-    done < <(find sim/regression/ -name "coverage.dat" 2>/dev/null | sort)
+    done < <(find "$RESULTS_DIR/" -name "coverage.dat" 2>/dev/null | sort)
     if [[ ${#DAT_FILES[@]} -eq 0 ]]; then
-      echo "No coverage.dat files found in sim/regression/"
+      echo "No coverage.dat files found in $RESULTS_DIR/"
       exit 1
     fi
 
@@ -45,9 +54,9 @@ case "$FORMAT" in
     INFO_FILES=()
     while IFS= read -r f; do
       INFO_FILES+=("$f")
-    done < <(find sim/regression/ -name "*.info" 2>/dev/null | sort)
+    done < <(find "$RESULTS_DIR/" -name "*.info" 2>/dev/null | sort)
     if [[ ${#INFO_FILES[@]} -eq 0 ]]; then
-      echo "No .info files found in sim/regression/"
+      echo "No .info files found in $RESULTS_DIR/"
       exit 1
     fi
 

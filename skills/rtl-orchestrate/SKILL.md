@@ -53,6 +53,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:p1-spec-research` team mode | Action Skill |
 | "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:p2-arch-design` team mode | Action Skill |
 | "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-design` team mode | Action Skill |
+| "refc to RTL", "C model to hardware", "refc to P5", "refc를 RTL로 구현" | `/rtl-agent-team:rat-refc-to-p5` | Action Skill |
 | "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rat-p1p3-spec-uarch` team mode | Action Skill |
 | "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rat-p1p3-spec-uarch` | Action Skill |
 | "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
@@ -589,6 +590,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | Phase 1 team, research team, parallel research | `/rtl-agent-team:p1-spec-research` team mode |
 | Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:p2-arch-design` team mode |
 | Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-design` team mode |
+| refc to RTL, C model to hardware, refc to P5, refc를 RTL로 구현 | `/rtl-agent-team:rat-refc-to-p5` |
 | spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rat-p1p3-spec-uarch` team mode |
 | spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rat-p1p3-spec-uarch` |
 | uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rat-p4p5-impl-verify` |

@@ -267,6 +267,20 @@
       "iron_upstream": [],
       "open_requirements": "",
       "completion_criteria": "ppa-loop-complete|final-report-written"
+    },
+    "rat-refc-to-p5": {
+      "phase": 1,
+      "primary": false,
+      "iron_upstream": [],
+      "open_requirements": "",
+      "completion_criteria": "phase-gate-passed|functional-verify-done",
+      "composes": [
+        "p1-spec-research",
+        "p2-arch-design",
+        "rtl-p3-uarch-design",
+        "rtl-p4-implement",
+        "rtl-p5-verify"
+      ]
     }
   },
   "agents": {

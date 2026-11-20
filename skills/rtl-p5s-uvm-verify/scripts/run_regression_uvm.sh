@@ -25,7 +25,7 @@ done
 source "$_LIB_RUNNER"
 rat_dispatch_wrapper "${BASH_SOURCE[0]}" "$@"
 RAT_EVIDENCE_REQUIRED=0
-[[ -f "$PROJECT_ROOT/rat_config.json" || -d "$PROJECT_ROOT/.rat" ]] && RAT_EVIDENCE_REQUIRED=1
+[[ -f "$PROJECT_ROOT/rat_config.json" || -d "$PROJECT_ROOT/.rat" || -d "$PROJECT_ROOT/.rtl-agent-team" ]] && RAT_EVIDENCE_REQUIRED=1
 
 
 EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:-$(dirname "$_LIB_RUNNER")}/verify_evidence.py"
@@ -38,13 +38,19 @@ finish_campaign() {
   trap - EXIT
   if [[ -n "$CAMPAIGN_SNAPSHOT" ]]; then
     local combined="$CAMPAIGN_OUTDIR/campaign.log"
-    local runtime="$CAMPAIGN_OUTDIR/runtime.log"
-    find "$CAMPAIGN_OUTDIR" -type f -name sim.log -exec cat {} + > "$runtime"
+    local runtime="$CAMPAIGN_OUTDIR/runtime.log" seed_log
+    local -a seed_args=()
+    for seed_log in "$CAMPAIGN_OUTDIR"/seed_*/sim.log; do
+      if [[ -f "$seed_log" ]]; then
+        seed_args+=(--seed-log "$seed_log")
+        cat "$seed_log"
+      fi
+    done > "$runtime"
     cat "$CAMPAIGN_OUTDIR/compile.log" "$runtime" > "$combined"
     evidence_code=$code
     [[ "$FUNCTIONAL_COMPLETE" != 1 ]] || evidence_code=0
     "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" \
-      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" || evidence_result=$?
+      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" "${seed_args[@]}" || evidence_result=$?
     [[ "$code" -ne 0 ]] || code=$evidence_result
   fi
   exit "$code"
@@ -148,6 +154,7 @@ if [[ ${#SEED_ARRAY[@]} -eq 0 ]]; then
   exit 1
 fi
 
+if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then rat_check_experiment_seeds "${SEED_ARRAY[@]}"; fi
 for seed in "${SEED_ARRAY[@]}"; do
   require_uint "--seeds entry" "$seed"
 done
@@ -239,6 +246,10 @@ fi
 # ─── Resolve input/output paths against PROJECT_ROOT ──────────────────
 # Done BEFORE source collection so the filelist/TB dir are found even when the
 # invocation CWD differs from the project root (RAT_PROJECT_ROOT override).
+if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
+  RESULTS_DIR=$(rat_experiment_output "$RESULTS_DIR")
+  COVERAGE_DIR=$(rat_experiment_output "$COVERAGE_DIR")
+fi
 [[ "$RESULTS_DIR" != /* ]] && RESULTS_DIR="$PROJECT_ROOT/$RESULTS_DIR"
 [[ "$COVERAGE_DIR" != /* ]] && COVERAGE_DIR="$PROJECT_ROOT/$COVERAGE_DIR"
 [[ "$FILELIST" != /* ]] && FILELIST="$PROJECT_ROOT/$FILELIST"
@@ -283,7 +294,7 @@ compile_uvm() {
 
   case "$SIM" in
     vcs)
-      (cd "$PROJECT_ROOT" && run_tool vcs -full64 -sverilog -ntb_opts uvm-1.2 \
+      (cd "$COMPILE_CWD" && run_tool vcs -full64 -sverilog -ntb_opts uvm-1.2 \
         "${COMPILE_COVERAGE[@]}" \
         -timescale=1ns/1ps \
         "${SV_ARGS[@]}" \
@@ -296,7 +307,7 @@ compile_uvm() {
       RUN_BIN="$RUN_DIR/simv"
       ;;
     xrun)
-      (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -compile \
+      (cd "$COMPILE_CWD" && run_tool xrun -sv -uvm -compile \
         "${COMPILE_COVERAGE[@]}" \
         -timescale 1ns/1ps \
         "${SV_ARGS[@]}" \
@@ -306,7 +317,7 @@ compile_uvm() {
         echo "ERROR: UVM compilation failed. See $compile_log" >&2
         return "$rc"
       }
-      (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -elaborate \
+      (cd "$COMPILE_CWD" && run_tool xrun -sv -uvm -elaborate \
         "${COMPILE_COVERAGE[@]}" \
         -timescale 1ns/1ps \
         "${SV_ARGS[@]}" \
@@ -319,8 +330,8 @@ compile_uvm() {
       }
       ;;
     questa)
-      run_tool vlib "$RUN_DIR/work" 2>/dev/null || true
-      (cd "$PROJECT_ROOT" && run_tool vlog -sv -work "$RUN_DIR/work" \
+      (cd "$COMPILE_CWD" && run_tool vlib "$RUN_DIR/work") 2>/dev/null || true
+      (cd "$COMPILE_CWD" && run_tool vlog -sv -work "$RUN_DIR/work" \
         "${COMPILE_COVERAGE[@]}" \
         +incdir+"$TB_DIR" \
         "${SV_ARGS[@]}") \
@@ -357,12 +368,13 @@ count_uvm_messages() {
 }
 
 # ─── Run single seed ───────────────────────────────────────────────────────
-run_seed() {
+run_seed() (
   local seed="$1"
   local seed_dir="$RUN_DIR/seed_${seed}"
   local log="$seed_dir/sim.log"
   local result_json="$RUN_DIR/seed_${seed}_results.json"
   mkdir -p "$seed_dir" || return 1
+  if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then cd "$seed_dir" || return 1; fi
 
   local status="PASS"
   local rc=0
@@ -466,13 +478,14 @@ PY
   fi
 
   echo "  Seed $seed: $status (rc=$rc, errors=$uvm_errors)"
-}
+)
 
 # ─── Coverage merge ────────────────────────────────────────────────────────
-run_coverage_tool() {
+run_coverage_tool() (
+  if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then cd "$COVERAGE_DIR" || return 1; fi
   RAT_TOOL_CATEGORY=coverage tool_available "$1" || return 127
   RAT_TOOL_CATEGORY=coverage RAT_TOOL_TIMEOUT_SECONDS="$COVERAGE_TIMEOUT" run_tool "$@"
-}
+)
 
 merge_native_coverage() {
   echo "=== Merging Coverage ==="
@@ -646,6 +659,15 @@ if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
   trap finish_campaign EXIT
 fi
 
+COMPILE_CWD="$PROJECT_ROOT"
+if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
+  COMPILE_CWD="$RUN_DIR"
+  if [[ -f "$FILELIST" ]]; then
+    RAT_CONTEXT_TOOL="$SIM" run_tool "$RAT_PYTHON" "$EVIDENCE_HELPER" inputs --root "$PROJECT_ROOT" --filelist "$FILELIST" \
+      --relocate-filelist "$RUN_DIR/inputs.f" > "$RUN_DIR/inputs.tsv"
+    SV_ARGS[1]="$RUN_DIR/inputs.f"
+  fi
+fi
 compile_uvm
 
 echo ""
@@ -800,4 +822,4 @@ echo "========================================"
 [[ "$VERDICT" != "INCONCLUSIVE" ]] || exit 3
 exit 1
 
-# rat-version: 2.0.4
+# rat-version: 2.0.7

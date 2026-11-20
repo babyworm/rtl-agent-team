@@ -52,10 +52,11 @@ is_setup_exempt() {
 
 # Init advisory: if project not initialized (.rat / .rtl-agent-team missing),
 # point users at rat-init-project. No completion loop starts there.
+INIT_HINT="[RAT] EDA settings can be used without project initialization. Use /rtl-agent-team:rat-init-project when managed templates and phase tracking are needed."
 if ! rat_is_project "$CWD"; then
   [ "$HOOK_EVENT" = "PostToolUse" ] && emit_post_continue
   is_setup_exempt && emit_continue ""
-  emit_continue "[SETUP REQUIRED] RTL project not initialized (.rat/ missing). Run /rtl-agent-team:rat-init-project first to install rules, guides, and directory layout."
+  emit_continue "$INIT_HINT"
 fi
 RAT_DIR=$(rat_project_dir "$CWD")
 CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
@@ -72,7 +73,7 @@ if [ "$HOOK_EVENT" != "PostToolUse" ]; then
   fi
 
   if ! is_setup_exempt && ! has_setup_marker; then
-    emit_continue "[SETUP REQUIRED] Project not initialized. Rules (.claude/rules/), guides, and directory structure are missing. Run /rtl-agent-team:rat-init-project first."
+    emit_continue "$INIT_HINT"
   fi
 
   # Phase entry soft prerequisites (WARNING only, not blocking — per Asymmetric Phase Gate Design)
@@ -99,7 +100,7 @@ fi
 
 # ---- PostToolUse: the Skill call ran; start its completion loop ----
 if ! is_setup_exempt && ! has_setup_marker; then
-  [ "$HOOK_EVENT" = "UserPromptExpansion" ] && emit_continue "[SETUP REQUIRED] Run /rtl-agent-team:rat-init-project before this skill."
+  [ "$HOOK_EVENT" = "UserPromptExpansion" ] && emit_continue "$INIT_HINT"
   emit_post_continue
 fi
 STATE_DIR="$RAT_DIR/state"

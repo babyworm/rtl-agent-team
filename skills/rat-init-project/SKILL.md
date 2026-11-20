@@ -67,7 +67,8 @@ and configuration flow in `/rtl-agent-team:rat-setup` before claiming tool readi
 Reuse known host facts; ask only for a choice that remains unresolved.
 
 Use the bundled filelist, cocotb Makefile, and Phase 6 PDF Makefile templates only
-where the corresponding project file is missing. Preserve existing filelists.
+where the corresponding project file is missing. The installer provides a Git
+ignore rule under `experiment/` for generated runs. Preserve existing filelists.
 The installer skips a local rule when the same rule exists in `~/.claude/rules/`.
 If `<markdown_diagram_rule>` is absent from `~/.claude/CLAUDE.md`, keep the document
 figure policy from the installed docs/ and reviews/ guides; do not add a duplicate
@@ -77,7 +78,7 @@ To enable Codex review at phase handoffs, set `review.codex_cross_review` to tru
 
 ## Tool readiness and completion
 
-`${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/.setup-complete` records plugin
+`${CLAUDE_PLUGIN_DATA}/.setup-complete` records plugin
 setup. A missing marker is advisory: recommend `/rtl-agent-team:rat-setup` when tools
 need installation, and continue project initialization with the available tools.
 

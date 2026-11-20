@@ -29,9 +29,9 @@ Task(subagent_type="rtl-agent-team:dse-orchestrator",
 Start another trial only when the user requests one and identifies the change
 to explore. Keep the current result available throughout the comparison.
 
-1. Identify the baseline commit and trial outputs. If a checkpoint is needed,
-   commit only those outputs, respecting ignore rules and excluding local
-   setup, run state and unrelated changes.
+1. Identify the baseline commit and trial inputs. When a checkpoint is needed,
+   commit the design inputs, run recipe and decisions. Give each parallel EDA
+   trial its own `RAT_EXPERIMENT_ID`; generated results stay under `experiment/<id>/`.
 2. Create a dedicated branch and isolated worktree at the baseline commit
    with `git worktree add -b <trial-branch> <trial-path> <baseline-commit>`.
    Copy required uncommitted design inputs and baseline artifacts into that

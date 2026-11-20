@@ -1,7 +1,9 @@
 Produce a settled functional specification for Phase 2 from the supplied spec or
 seed. Use spec-analyst for requirements; use goal-clarifier only for a material
 unanswered question. A complete short spec is sufficient. Preserve explicit user
-choices and source references. Research a normative reference or consult a domain
+choices and cite the spec clause or supplied behavioral refC symbol/test that
+establishes each observable behavior. Keep conflicting sources and their affected
+expectations open. Research a normative reference or consult a domain
 expert only for a concrete uncertainty; do not commission tutorials or alternatives
 when the selected approach already fits.
 

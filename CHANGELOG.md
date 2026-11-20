@@ -5,7 +5,79 @@ All notable changes to `rtl-agent-team` are documented in this file.
 The format is based on Keep a Changelog and follows the repository's released version history in git.
 Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so the changelog covers the released versions that exist in the repository plus current unreleased work.
 
-## Unreleased (try-2.0, 2026-11-17)
+## [Unreleased]
+
+## [2.0.0-pre07] - 2026-11-21
+
+- Remote transport logs of a pre-init experiment run also go to the plugin data folder;
+  pre06 still created `experiment/<id>/.rat/`.
+
+## [2.0.0-pre06] - 2026-11-21
+
+- A tool run before `rat-init-project` keeps its records (evidence index, tool logs, shims,
+  remote transport logs) in the plugin data folder under `projects/<folder>-<hash>/`. Hooks
+  treat any `.rat/` as a RAT project, so one pre-init run used to turn the folder into one
+  (routing injection and Stop gates). Initialized and legacy projects are unchanged, and the
+  P5 closure gate reads evidence through the same lookup as the writers.
+
+## [2.0.0-pre05] - 2026-11-20
+
+- Private settings (`env-config.json`, `sites/`, `.setup-complete`) live only in Claude Code's
+  plugin data folder (`${CLAUDE_PLUGIN_DATA}`). Hooks receive that variable; Bash commands do
+  not, so the SessionStart hook exports the same path as `RAT_DATA_DIR` through
+  `CLAUDE_ENV_FILE` (verified for main-session and subagent Bash). The `~/.config/rtl-agent-team`
+  fallback is gone: before, hooks and Bash read different folders and the EDA context hint
+  never fired. Uninstalling deletes the folder unless `--keep-data` is passed.
+
+## [2.0.0-pre04] - 2026-11-20
+
+- EDA settings work before `rat-init-project`: without a project `rat_config.json` the runner
+  reads the private `env-config.json` (its `default_site` profile, or its own tools/preferences).
+  `rtl-eda-context.sh` tells sessions and subagents where settings come from; skill entry
+  shows an initialization hint instead of `[SETUP REQUIRED]`.
+- Parallel experiments: `RAT_EXPERIMENT_ID` puts generated outputs under the Git-ignored
+  `experiment/<id>/`, locks the ID locally and reserves it on the remote host. Wrappers
+  resolve their output directories inside it; UVM compiles from a relocated filelist.
+- Remote dispatch refuses to mirror the home directory or a parent of it. Without a
+  project config the root is the current directory, so running there would copy keys and
+  tokens to the execution host.
+
+## [2.0.0-pre03] - 2026-11-20
+
+- A new project starts on the user's default execution site: `default_site` in the private
+  `env-config.json` names a `sites/<name>.json` profile, applied before local detection so
+  local tools or forwarding shims do not pose as the site's tools. Existing projects keep theirs.
+- A site profile carries its default `technology` values (discovered from `--config`); configure
+  fills only unset project fields. A locally auto-detected preference yields to the site's.
+- Tests isolate `CLAUDE_PLUGIN_DATA` from the developer's private machine defaults.
+- Functional regression follows the configured simulator: a commercial simulator (xrun, vcs,
+  questa) runs UVM/SV testbenches; cocotb runs only with an open-source simulator that has it
+  installed, or when the user chooses it. Bug-fix verification uses the project's own testbench
+  through `run_sim.sh --sim auto` (SV/UVM) or the cocotb runner, not cocotb by default.
+
+## [2.0.0-pre02] - 2026-11-20
+
+- Raw hashes stay the fast path for tracking and evidence; the comment-insensitive
+  identity is computed only for files whose raw hash changed (pre01 normalized every
+  HDL file on each Bash call: 3.3 s on a 3,000-file tree, over the 3 s hook timeout).
+- The bug-fix flow verifies through `run_regression.sh`, which records evidence;
+  a bare `make` run left the Stop gate asking for verification after a real PASS.
+- `run_sim.sh --sim auto` keeps iverilog for SSH/LSF backends before any local probe.
+
+## [2.0.0-pre01] - 2026-11-20
+
+Development pre-release of try-2.0. Each `-preNN` is an installable snapshot; the release becomes `2.0.0`.
+
+- The RTL verify gate asks only for verification that can run. A comment-only or
+  indentation-only HDL edit keeps its content identity and its evidence. Tracked paths
+  that no longer exist (deleted, renamed, or legacy command-text entries) need no evidence.
+  `formal/` properties and `pnr/` netlists are not tracked as RTL. With no simulator
+  configured or on PATH, the gate notifies the user once and points to `rat-setup`
+  instead of blocking. `run_sim.sh --sim auto` picks an installed simulator when none
+  is configured (iverilog first, as before).
+- Add `rat-refc-to-p5` to implement and verify RTL from an existing behavioral C model.
+- Trace spec and refC verification points to measured bin hits, triggered assertions
+  and scoreboard comparisons at P5 and P5A closure.
 
 - Make Codex cross-review opt-in per project or phase run. Select worker models
   for the active host and task complexity. Scope team workers to actual tasks.
@@ -36,8 +108,6 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 - Require the exact P5A exit verdict for P5B and an unambiguous final compliance
   verdict at P6 entry. Add seeded verdict tests, generated-source checks, and real
   Verilator template checks in PR and tag CI.
-
-## [Unreleased]
 
 ### Changed
 

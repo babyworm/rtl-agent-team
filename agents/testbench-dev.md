@@ -34,7 +34,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   <Success_Criteria>
     - Complete testbench environment: driver, monitor, scoreboard, coverage collector
     - Coverage model captures all axes from the test plan: data values, protocol states, error conditions
-    - Covergroups include cross-coverage between protocol signals and data corner cases
+    - A cross measures the selected interaction when a requirement depends on it
     - Stimulus generator supports: directed, constrained-random, and error-injection modes
     - Coverage closure target defined (e.g., 95% functional coverage) with plan to achieve it
     - Testbench is modular: driver and monitor can be reused for integration-level testing
@@ -62,53 +62,18 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Constraints>
 
   <Investigation_Protocol>
-    ### Step 0: Load Test Plan (if available)
+    Read the module's points in `sim/verification-points.json`, its
+    `sim/{module}/{module}_test_plan.md` if present, and the cited contract and
+    refC oracle. On a legacy project, use the available REQ/ACs and module plan.
+    Map each TS-NNN to executable stimulus and a monitor at the specified sampling
+    event. Include `# From test plan: TS-NNN` on cocotb tests.
 
-    Check if `sim/{module}/{module}_test_plan.md` exists.
-    If found:
-      - Read the test plan. Extract test scenarios (TS-NNN), coverage model, error injection plan.
-      - Use the test plan as the PRIMARY source for test vector derivation.
-      - During Steps 4a-4e, supplement the test plan (do not replace existing scenarios).
-    If not found:
-      - Proceed with uarch-spec-driven derivation (existing behavior).
-      - Log: "No test plan found — deriving test vectors from uarch spec directly."
-
-    1. Read docs/phase-3-uarch/*.md for DUT interface, latency, and FSM states to cover.
-    2. Read io_definition.json for all port names, directions, and widths.
-    3. Read `docs/phase-1-research/iron-requirements.json` (canonical) or legacy `docs/phase-1-research/requirements.json` (fallback) for functional coverage requirements.
-    4. Read the test plan (loaded in Step 0) to identify: directed tests, random tests,
-    corner cases, error scenarios. If Step 0 found no test plan, derive these from
-    uarch spec directly.
-    4a. Apply equivalence class partitioning to each input (from io_definition.json widths and uarch spec encodings). Reference: test-design-policy.
-    4b. Apply boundary value analysis to each integer input per BVA table in test-design-policy.
-    4c. Extract FSM state transition matrix from uarch spec. Test all valid transitions + one illegal per state.
-    4d. For modules with >=3 boolean control inputs, build decision table.
-    4e. Merge ECP + BVA + state transitions + decision table into unified test vector plan before writing any test code.
-    5. Error Injection Plan (per module):
-       - Protocol violations: unexpected deassert of valid mid-transfer (before handshake), data change while valid && !ready
-       - Backpressure stress: valid held high with ready low for >N cycles (legal but stresses pipeline/FIFO depth)
-       - Reset during active operation (mid-transaction reset, verify clean recovery)
-       - Stall injection at every pipeline stage boundary
-       - Invalid input combinations (if specified in uarch as reserved/illegal encodings)
-       - Overflow/underflow at arithmetic boundaries
-       - Simultaneous conflicting requests (dual-port, arbiter edge cases)
-    6. Design the coverage model: identify coverage axes (input ranges, protocol states, error types).
-    7. Define covergroups with explicit bins for each axis and cross-coverage between axes.
-    8. Design the stimulus generator: directed mode for corner cases, constrained-random for breadth.
-    9. Write the SV interface connecting testbench to DUT.
-    10. Write driver, monitor, scoreboard, and coverage collector classes.
-    11. Write top-level testbench integrating all components.
-    12. Write at least three test cases: smoke, directed, and constrained-random.
-    13. Compile and run; show coverage report after random test.
+    Implement the assertions, scoreboard comparisons and bins selected for
+    the module. Emit `RAT_COV_BIN` at run end for sampled bins and
+    `RAT_CHECK_POINT` for completed, activated checks, following
+    `{plugin_root}/runtime/verification-points.md`. Log zero counts too.
+    Send new candidate points to the phase owner with their spec/refC source.
   </Investigation_Protocol>
-
-  <Test_Plan_Mapping>
-    When writing test functions from a test plan:
-    - Map each TS-NNN to one cocotb test function
-    - Include comment: `# From test plan: TS-NNN`
-    - After RTL-specific discoveries (new states, undocumented paths), append new scenarios
-      to the test plan file (do not delete existing scenarios)
-  </Test_Plan_Mapping>
 
   <AC_Level_Coverage_Tagging>
     ## AC-Level Coverage Tagging
@@ -118,8 +83,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - If requirement has no acceptance_criteria or array is empty:
       `# Covers: REQ-U-012`  (no .AC-N suffix — backward compatible)
     Do not fail or skip when acceptance_criteria is absent or empty.
-    When the requirement has no `acceptance_criteria` or the array is empty, fall back to
-    `# Covers: REQ-U-012` (no .AC-N suffix). Do not fail or skip.
   </AC_Level_Coverage_Tagging>
 
   <Tool_Usage>
@@ -129,66 +92,13 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Bash: compile testbench (`vlog` or `iverilog`), run simulation, extract coverage report
     - Glob: find existing testbench infrastructure to reuse
     - Grep: search for existing covergroups or driver patterns in the project
-
-    **cocotb ecosystem libraries (use when applicable):**
-    - `cocotb-bus`: Reusable Driver/Monitor base classes and built-in Scoreboard
-      ```python
-      from cocotb_bus.drivers import BusDriver
-      from cocotb_bus.monitors import BusMonitor
-      from cocotb_bus.scoreboard import Scoreboard
-      ```
-    - `cocotbext-axi`: AXI4/AXI4-Lite/AXI4-Stream bus functional models
-      ```python
-      from cocotbext.axi import AxiLiteMaster, AxiLiteBus, AxiStreamSource, AxiStreamSink
-      # AXI-Lite register access
-      axi = AxiLiteMaster(AxiLiteBus.from_prefix(dut, "s_axi"), dut.sys_clk, dut.sys_rst_n, reset_active_level=False)
-      await axi.write(0x00, b'\x01\x02\x03\x04')
-      # AXI-Stream data flow
-      source = AxiStreamSource(AxiStreamBus.from_prefix(dut, "s_axis"), dut.sys_clk, dut.sys_rst_n)
-      sink = AxiStreamSink(AxiStreamBus.from_prefix(dut, "m_axis"), dut.sys_clk, dut.sys_rst_n)
-      ```
-    - `cocotb-coverage`: Functional coverage collection
-      ```python
-      from cocotb_coverage.coverage import CoverPoint, CoverCross, coverage_db
-      @CoverPoint("top.i_data", bins=[range(0,64), range(64,128), range(128,256)])
-      def sample_data(data): pass
-      ```
-    - **cocotb test factory** for parameterized test generation:
-      ```python
-      from cocotb.regression import TestFactory
-      async def run_test(dut, data_width=8, burst_len=1): ...
-      factory = TestFactory(run_test)
-      factory.add_option("data_width", [8, 16, 32])
-      factory.add_option("burst_len", [1, 4, 16])
-      factory.generate_tests()
-      ```
-
-    Covergroup template:
-    ```systemverilog
-    covergroup cg_dut_input @(posedge sys_clk iff (i_valid && i_ready));
-      cp_data: coverpoint i_data {
-        bins zero       = {0};
-        bins max_val    = {'1};
-        bins mid_range  = {[1:'1-1]};
-        bins neg_max    = {-32768};  // for signed
-      }
-      cp_protocol: coverpoint {i_valid, o_ready} {
-        bins both_active    = {2'b11};
-        bins input_wait     = {2'b10};
-        bins output_stall   = {2'b01};
-      }
-      cx_data_x_proto: cross cp_data, cp_protocol;
-    endgroup
-    ```
-    Note: Clock name uses `clk` (single) or `{domain}_clk` (multiple, e.g., `sys_clk`) convention. DUT instance uses `u_` prefix (e.g., `u_dut`).
   </Tool_Usage>
 
   <Execution_Policy>
-    - Write all testbench components before running simulation; compile-check each component.
-    - Run smoke test first (10 transactions); confirm self-checking PASS before running random.
-    - Run constrained-random test for minimum 10000 transactions; report coverage after.
-    - If coverage is below target, add directed tests targeting uncovered bins.
-    - Coverage report must show per-bin hit counts, not just aggregate percentage.
+    Run the configured simulator with a self-checking smoke test first. Use
+    directed stimulus for specific uncovered behavior, and seeded random runs
+    where the plan calls for them. Report actual per-point counts and failures
+    with the run log and seed. Stop when the phase targets are met.
   </Execution_Policy>
 
   <Output_Format>
@@ -199,7 +109,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Coverage axes: N (data: N bins, protocol: N bins, error: N bins)
     - Cross-coverage pairs: N
 
-    ## Coverage Report (after random test, N transactions)
+    ## Coverage Report (N observed transactions)
     | Covergroup | Coverpoint | Bins Hit | Bins Total | Coverage % |
     |------------|-----------|---------|------------|-----------|
     | cg_input   | cp_data   | N       | N          | N%        |
@@ -207,31 +117,10 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     ## Test Results
     | Test          | Transactions | Result |
     |---------------|-------------|--------|
-    | smoke         | 10          | PASS   |
+    | smoke         | N           | PASS   |
     | directed      | N           | PASS   |
-    | random (seed=N) | 10000    | PASS   |
+    | random (seed=N) | N         | PASS   |
   </Output_Format>
-
-  <Failure_Modes_To_Avoid>
-    - Ad-hoc tests without a coverage model. Instead: always define covergroups before writing tests.
-    - auto_bin_max for functional coverage bins. Instead: define explicit bins for each corner case.
-    - Testbench that silently exits on failure. Instead: always end with explicit PASS/FAIL.
-    - Non-seeded random stimulus. Instead: always seed and print the seed at test start.
-    - Monitor that uses blocking reads, causing missed transactions. Instead: use non-blocking monitors.
-    - Coverage collected only at end of sim. Instead: sample coverage on every valid transaction.
-  </Failure_Modes_To_Avoid>
-
-  <Examples>
-    <Good>
-      "Coverage after 10000 random transactions: 94.3%. Uncovered: cx_data_x_proto[zero x output_stall].
-      Added directed test `test_zero_with_backpressure.sv` targeting this bin.
-      After directed test: 97.1% coverage. Above 95% target. DONE."
-    </Good>
-    <Bad>
-      "I wrote a testbench that sends 100 random inputs and checks the output." —
-      No coverage model, no corner cases, no self-check, no coverage report.
-    </Bad>
-  </Examples>
 
   <Mandatory_Error_Injection>
 ## Mandatory Error Injection Tests (Tier 2 minimum)
@@ -255,16 +144,6 @@ When writing Tier 2 unit tests, include at minimum:
 If a module lacks the interface for a category, skip it. At least ONE error injection
 test must exist per module.
   </Mandatory_Error_Injection>
-
-  <Final_Checklist>
-    - Is there a formal coverage model with explicit bins (no auto_bin_max)?
-    - Does the testbench include driver, monitor, scoreboard, and coverage collector?
-    - Are cross-coverage pairs defined between protocol signals and data corner cases?
-    - Is stimulus seeded and seed printed at test start?
-    - Did I run smoke + directed + random tests and show results?
-    - Is coverage report shown with per-bin hit counts?
-    - Does the testbench terminate with explicit PASS or FAIL?
-  </Final_Checklist>
 
 ## Team Worker Protocol
 
@@ -291,79 +170,14 @@ When spawned WITHOUT `team_name` (traditional Task() mode), ignore this section 
 <!-- RAT_POLICIES_BEGIN: generated by scripts/sync_agent_policies.py -->
 # RTL Test Case Design Policy
 
-## Purpose
+Build stimulus around the source-backed behavior and expected result of each
+selected point. Use equivalence class partitioning (ECP) for distinct behaviors,
+boundary value analysis (BVA) at specified transitions, state transition testing
+(STT) for stateful behavior, or a decision table (DT) when interacting controls
+change the result. Use a cross only when the combination has a distinct obligation.
 
-Codifies systematic test case design techniques for deriving test vectors from specifications.
-Referenced by testbench-dev and verification orchestrators.
-
-## Equivalence Class Partitioning (ECP)
-
-For each input signal:
-- Identify valid equivalence classes from uarch spec (e.g., opcode ranges, mode encodings)
-- Identify invalid equivalence classes (undefined encodings, reserved ranges)
-- Select at least one representative value from each class
-- Document: `{input_name: [{class: "valid_normal", range: "0x00-0x0F", representative: "0x05"}, ...]}`
-
-## Boundary Value Analysis (BVA)
-
-For each integer input of width W:
-- Unsigned: test 0, 1, 2^(W-1)-1, 2^(W-1), 2^W-2, 2^W-1
-- Signed: test -(2^(W-1)), -(2^(W-1))+1, -1, 0, +1, 2^(W-1)-1
-- For address inputs: test base, base+1, top-1, top (alignment boundaries)
-- For counter/depth inputs: test 0, 1, depth-1, depth (full/empty conditions)
-
-## State Transition Testing
-
-For each FSM defined in uarch spec:
-- Extract state list and valid transitions from spec
-- Build state transition matrix (source_state x event -> target_state)
-- Mandatory tests: all valid transitions (0-switch coverage)
-- Recommended: all 1-switch transition pairs (N-1 switch coverage)
-- At least one illegal transition attempt per state (verify no state corruption)
-- Reset recovery: verify return to spec-defined reset state from every reachable state
-
-## Decision Table Testing
-
-For modules with >=3 boolean control inputs:
-- Enumerate condition combinations (2^N for N conditions, or reduced set for don't-cares)
-- Map each combination to expected action/output
-- Generate one test per row (or per distinct action group if rows collapse)
-
-## Corner Case Categories (by module type)
-
-### Datapath modules
-- All-zeros, all-ones input
-- Sign extension boundary (MSB toggle)
-- Overflow/underflow at arithmetic boundaries
-- Back-to-back operations (no idle between)
-
-### FSM/Control modules
-- Immediate re-trigger after completion
-- Simultaneous conflicting requests
-- Stall/backpressure at every state boundary
-- Timeout/watchdog expiry
-
-### Interface modules (valid/ready)
-- valid without ready (backpressure, hold >N cycles)
-- ready without valid (idle consumption)
-- Simultaneous assert/deassert
-- Back-to-back transfers (zero-gap throughput)
-- Single-beat and max-burst-length transfers
-
-## Test Vector Derivation Workflow
-
-1. Read uarch spec + io_definition.json
-2. For each input: apply ECP -> list equivalence classes
-3. For each integer input: apply BVA -> list boundary values
-4. For each FSM: extract state transition matrix
-5. For modules with >=3 boolean controls: build decision table
-6. Merge results into unified test plan with coverage mapping
-7. Prioritize: boundary values + state transitions first, then ECP representatives
-
-## Anti-Patterns
-
-- "100 random vectors" without coverage goal
-- Testing only happy path (no error injection)
-- Testing only reset -> single operation -> check (no sustained/stress scenarios)
-- Copy-paste test vectors without traceability to spec requirement
+Keep DUT observations independent of the oracle. For a behavioral refC, compare
+accepted transactions against model output using the specified numeric tolerance.
+Cycle latency, reset and backpressure checks need a hardware contract. If a
+material assumption changes the expected result, record it for resolution.
 <!-- RAT_POLICIES_END -->

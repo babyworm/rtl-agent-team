@@ -69,9 +69,13 @@ remote Python >=3.9, checks the chosen tools, prepares project configuration and
 runs the smallest relevant real operation. Unknown site environment commands or
 technology choices remain open; known values are not asked again.
 
-Profiles live under `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`.
-Each project selects a site; no host is a plugin-wide default. Credentials and jump
-hosts remain in SSH configuration. Existing user paths, preferences, libraries,
+Profiles live in Claude Code's plugin data folder,
+`~/.claude/plugins/data/rtl-agent-team-<marketplace>/sites/` (`$RAT_DATA_DIR` in Bash).
+Uninstalling the plugin deletes that folder unless you pass `--keep-data`.
+Your private `env-config.json` can select a profile by name with `default_site`.
+The bundled runner uses it even before `rat-init-project`. An existing project's
+`rat_config.json` takes precedence. Credentials and jump hosts remain in SSH
+configuration. Existing user paths, preferences, libraries,
 queues and output settings are preserved. A private workspace is proposed when
 none is supplied. Use `--dry-run` to inspect configuration without writing it.
 Keep real profiles, connection details and raw qualification reports outside the
@@ -87,6 +91,11 @@ workload evidence.
 with `license_checked: false`. A version probe does not prove license checkout.
 Failed probes are bound to their tool/environment configuration and prevent a
 known broken candidate from being selected automatically.
+
+For parallel experiments, give each run its own `RAT_EXPERIMENT_ID`. Generated
+artifacts go under the Git-ignored `experiment/<id>/` directory. Keep the
+commands, design inputs and test sources that reproduce them in version control.
+See [the execution contract](../runtime/eda-runner-contract.md#results).
 
 Commercial EDA tools (Synopsys, Cadence, Siemens) are typically installed by IT
 or a CAD team and require environment setup (PATH, library paths, environment variables)

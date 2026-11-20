@@ -30,6 +30,18 @@ def _budget_path(state, gate):
     return candidates[0] if len(candidates)==1 else state/('stop-budget-'+gate+'.txt')
 
 
+def _track(tracking, content):
+    """Write a tracking file and create the HDL it names, as a real edit leaves it.
+    The gate needs no evidence for a path that no longer exists."""
+    tracking.write_text(content)
+    root = tracking.parents[2].resolve()
+    for line in content.splitlines():
+        path = (root / line.strip()).resolve() if line.strip() else None
+        if path and path.is_relative_to(root) and path.suffix in (".sv", ".svh", ".v", ".vh") and not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("module fixture; endmodule\n")
+
+
 def _record_passing_evidence(project):
     """A runner-result fixture for gate tests; execution itself is tested separately."""
     state = project / ".rat/state"
@@ -79,6 +91,72 @@ def _assert_denied(result):
     assert hso.get("permissionDecision") == "deny", result
     reason = hso.get("permissionDecisionReason")
     assert isinstance(reason, str) and reason.strip(), result
+
+
+class TestEdaContext:
+    hook = HOOKS_DIR / "rtl-eda-context.sh"
+
+    @pytest.mark.parametrize("event", ["SessionStart", "SubagentStart"])
+    def test_uninitialized_session_uses_private_settings_without_disclosing_values(self, tmp_path, event):
+        project = tmp_path / "uninitialized project"
+        project.mkdir()
+        data = Path(os.environ["RAT_DATA_DIR"])
+        (data / "env-config.json").write_text('{"default_site":"private-fixture"}')
+        (data / "sites").mkdir()
+        (data / "sites/private-fixture.json").write_text('{"execution":{"host":"synthetic.invalid"}}')
+        result = run_hook(self.hook, {"hook_event_name": event, "cwd": str(project)}, cwd=project)
+        envelope = result["hookSpecificOutput"]
+        assert envelope["hookEventName"] == event
+        context = envelope["additionalContext"]
+        assert "env-config.json" in context and "eda_runner.py get" in context
+        assert "distinct RAT_EXPERIMENT_ID" in context
+        assert all(value not in context for value in ["private-fixture", "synthetic.invalid", str(data)])
+        assert list(project.iterdir()) == []
+
+    def test_project_config_wins_without_marker_from_nested_directory(self, tmp_path):
+        project = tmp_path / "project"
+        nested = project / "design"
+        nested.mkdir(parents=True)
+        (project / "rat_config.json").write_text('{"execution":{"host":"private.invalid"}}')
+        (Path(os.environ["RAT_DATA_DIR"]) / "env-config.json").write_text("{}")
+        result = run_hook(self.hook, {"hook_event_name": "SubagentStart", "cwd": str(nested)},
+                          env={"CLAUDE_PROJECT_DIR": str(project)})
+        context = result["hookSpecificOutput"]["additionalContext"]
+        assert "project rat_config.json" in context
+        assert "env-config.json" not in context and "private.invalid" not in context
+        assert not (project / ".rat").exists()
+
+    def test_session_start_hands_the_plugin_data_folder_to_bash(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("RAT_DATA_DIR")  # hooks receive only CLAUDE_PLUGIN_DATA
+        data = Path(os.environ["CLAUDE_PLUGIN_DATA"])
+        (data / "env-config.json").write_text('{"preferences":{"simulator":"fixture-simulator"}}')
+        files = {}
+        for event in ("SessionStart", "SubagentStart"):
+            files[event] = tmp_path / (event + ".env")
+            files[event].write_text("")
+            result = run_hook(self.hook, {"hook_event_name": event, "cwd": str(tmp_path)}, cwd=tmp_path,
+                              env={"CLAUDE_ENV_FILE": str(files[event])})
+            assert "env-config.json" in result["hookSpecificOutput"]["additionalContext"]
+        assert files["SessionStart"].read_text() == f"export RAT_DATA_DIR='{data}'\n"
+        assert files["SubagentStart"].read_text() == ""
+        # Bash commands see only the exported folder, never CLAUDE_PLUGIN_DATA.
+        bash_env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PLUGIN_DATA"}
+        command = (f". '{files['SessionStart']}'; '{sys.executable}' '{REPO_ROOT / 'scripts/eda_runner.py'}' "
+                   f"get --root '{tmp_path}' --key preferences.simulator")
+        shell = subprocess.run(["bash", "-c", command], env=bash_env, capture_output=True, text=True, timeout=20)
+        assert shell.stdout.strip() == "fixture-simulator", shell.stderr
+
+    def test_no_configuration_adds_no_context(self, tmp_path):
+        result = run_hook(self.hook, {"hook_event_name": "SessionStart", "cwd": str(tmp_path)}, cwd=tmp_path)
+        assert result == {"hookSpecificOutput": {"hookEventName": "SessionStart"}}
+        assert list(tmp_path.iterdir()) == []
+
+    def test_machine_preferences_without_default_site_are_available(self, tmp_path):
+        (Path(os.environ["RAT_DATA_DIR"]) / "env-config.json").write_text(
+            '{"preferences":{"simulator":"fixture-simulator"}}')
+        result = run_hook(self.hook, {"hook_event_name": "SessionStart", "cwd": str(tmp_path)}, cwd=tmp_path)
+        context = result["hookSpecificOutput"]["additionalContext"]
+        assert "env-config.json" in context and "fixture-simulator" not in context
 
 
 class TestRtlOrchestratorInject:
@@ -353,8 +431,8 @@ class TestSessionScopedState:
         self._write_team_config(tmp_project, leader_id="leader-001")
         state_dir = tmp_project / ".rat" / "state"
         # Simulate two workers' tracking files
-        (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
-        (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
+        _track((state_dir / "rtl-modified-files-worker-1.txt"), "rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files-worker-2.txt"), "rtl/b.sv\n")
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
             self.GATE_HOOK,
@@ -370,8 +448,8 @@ class TestSessionScopedState:
         """When verify-done exists, gate cleans up all session-scoped files."""
         self._write_team_config(tmp_project, leader_id="leader-001")
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
-        (state_dir / "rtl-modified-files-worker-2.txt").write_text("rtl/b.sv\n")
+        _track((state_dir / "rtl-modified-files-worker-1.txt"), "rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files-worker-2.txt"), "rtl/b.sv\n")
         _record_passing_evidence(tmp_project)
         # Leader session runs the gate — must match leader_session_id
         result = run_hook(
@@ -442,26 +520,26 @@ class TestRtlVerifyStopGate:
 
     def test_empty_tracking_file_allows_exit(self, tmp_project):
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        track.write_text("")
+        _track(track, "")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_tracked_files_without_verification_blocks(self, tmp_project):
         track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        track.write_text("rtl/module/top.sv\n")
+        _track(track, "rtl/module/top.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
 
     def test_verify_done_allows_exit(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/module/top.sv\n")
         _record_passing_evidence(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
 
     def test_verify_waiver_allows_exit(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/module/top.sv\n")
         (state_dir / "rtl-verify-waiver").touch()
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
@@ -470,7 +548,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         track = state_dir / "rtl-modified-files.txt"
         done = state_dir / "rtl-verify-done"
-        track.write_text("rtl/module/top.sv\n")
+        _track(track, "rtl/module/top.sv\n")
         done.touch()
         _record_passing_evidence(tmp_project)
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
@@ -481,7 +559,7 @@ class TestRtlVerifyStopGate:
         state_dir = tmp_project / ".rat" / "state"
         track = state_dir / "rtl-modified-files.txt"
         waiver = state_dir / "rtl-verify-waiver"
-        track.write_text("rtl/a.sv\nrtl/b.sv\n")
+        _track(track, "rtl/a.sv\nrtl/b.sv\n")
         waiver.touch()
         run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert not track.exists()
@@ -490,7 +568,7 @@ class TestRtlVerifyStopGate:
     def test_multiple_files_blocks(self, tmp_project):
         """Multiple tracked files should all be mentioned in block message."""
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\nrtl/b.sv\nrtl/c.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
         ctx = result.get("reason", "")
@@ -499,7 +577,7 @@ class TestRtlVerifyStopGate:
     def test_fallback_file_blocks_exit(self, tmp_project):
         """Fallback entries from lock failure must block exit even without main track file."""
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/alu/alu.sv\n")
+        _track((state_dir / "rtl-modified-files-fallback.txt"), "rtl/alu/alu.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
         ctx = result.get("reason", "")
@@ -508,8 +586,8 @@ class TestRtlVerifyStopGate:
     def test_fallback_merged_with_main_track(self, tmp_project):
         """Fallback and main track entries are both counted."""
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files-fallback.txt"), "rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
         ctx = result.get("reason", "")
@@ -518,8 +596,8 @@ class TestRtlVerifyStopGate:
     def test_verify_done_cleans_fallback(self, tmp_project):
         """Verify-done should clean up fallback file too."""
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/b.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files-fallback.txt"), "rtl/b.sv\n")
         _record_passing_evidence(tmp_project)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["continue"] is True
@@ -538,7 +616,7 @@ class TestRtlVerifyStopGate:
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
         _record_team_owner(tmp_project, config.get("leader_session_id", ""))
-        (state_dir / "rtl-modified-files-fallback.txt").write_text("rtl/c.sv\n")
+        _track((state_dir / "rtl-modified-files-fallback.txt"), "rtl/c.sv\n")
         result = run_hook(
             self.HOOK,
             {"cwd": str(tmp_project), "session_id": "leader-001"},
@@ -554,7 +632,7 @@ class TestRtlVerifyStopGate:
 
     def test_block_leaves_waiver_to_the_user(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         assert result["decision"] == "block"
         assert "touch .rat/state/rtl-verify-waiver" not in result["reason"]
@@ -564,7 +642,7 @@ class TestRtlVerifyStopGate:
 
     def test_unchanged_content_is_informational_once_across_prompts(self, tmp_project):
         track = tmp_project / ".rat/state/rtl-modified-files.txt"
-        track.write_text("rtl/a.sv\n")
+        _track(track, "rtl/a.sv\n")
         payload = {"cwd": str(tmp_project), "session_id": "owner", "prompt_id": "p1"}
         _assert_stop_blocked(run_hook(self.HOOK, payload))
         new_prompt = {**payload, "prompt_id": "p2"}
@@ -579,7 +657,7 @@ class TestRtlVerifyStopGate:
         source = tmp_project / "rtl/a.sv"
         source.parent.mkdir()
         source.write_text("module original; endmodule\n")
-        track.write_text("rtl/a.sv\n")
+        _track(track, "rtl/a.sv\n")
         payload = {"cwd": str(tmp_project)}
         _assert_stop_blocked(run_hook(self.HOOK, payload))
         chained = {**payload, "stop_hook_active": True}
@@ -594,7 +672,7 @@ class TestRtlVerifyStopGate:
         track = tmp_project / ".rat/state/rtl-modified-files.txt"
         outcomes = []
         for i in range(8):
-            track.write_text(f"rtl/source_{i}.sv\n")
+            _track(track, f"rtl/source_{i}.sv\n")
             result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             outcomes.append("B" if result.get("decision") == "block" else "N" if "systemMessage" in result else "-")
         assert "".join(outcomes) == "BBBBBBNN"
@@ -610,7 +688,7 @@ class TestRtlVerifyStopGate:
         }
         (state_dir / "team-config.json").write_text(json.dumps(config))
         _record_team_owner(tmp_project, config.get("leader_session_id", ""))
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
         lead = {"cwd": str(tmp_project), "session_id": "leader-001"}
         run_hook(self.HOOK, lead)
         run_hook(self.HOOK, {**lead, "stop_hook_active": True})
@@ -621,7 +699,7 @@ class TestRtlVerifyStopGate:
     def test_waiver_and_done_clear_the_budget(self, tmp_project, marker):
         state_dir = tmp_project / ".rat" / "state"
         track = state_dir / "rtl-modified-files.txt"
-        track.write_text("rtl/a.sv\n")
+        _track(track, "rtl/a.sv\n")
         results = [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             for i in range(4)
@@ -636,7 +714,7 @@ class TestRtlVerifyStopGate:
         lines = (_budget_path(state_dir, 'verify')).read_text().split("\n")
         assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
         # The cleared gate is not left silent: a new edit in the same chain blocks.
-        track.write_text("rtl/b.sv\n")
+        _track(track, "rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result["decision"] == "block"
 
@@ -645,7 +723,7 @@ class TestRtlVerifyStopGate:
         # The other two allow paths (no tracking file, blank lines only) clear the budget too.
         state_dir = tmp_project / ".rat" / "state"
         track = state_dir / "rtl-modified-files.txt"
-        track.write_text("rtl/a.sv\n")
+        _track(track, "rtl/a.sv\n")
         results = [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             for i in range(4)
@@ -654,18 +732,18 @@ class TestRtlVerifyStopGate:
         if emptied == "removed":
             track.unlink()
         else:
-            track.write_text("\n\n")
+            _track(track, "\n\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result == {"continue": True}
         lines = (_budget_path(state_dir, 'verify')).read_text().split("\n")
         assert (lines[0], lines[2], lines[3]) == ("0", "5", "0")
-        track.write_text("rtl/b.sv\n")
+        _track(track, "rtl/b.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
         assert result["decision"] == "block"
 
     def test_legacy_project_notice_uses_resolved_path(self, tmp_legacy_project):
         state_dir = tmp_legacy_project / ".rtl-agent-team" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
         results = [
             run_hook(self.HOOK, {"cwd": str(tmp_legacy_project), "stop_hook_active": i > 0})
             for i in range(4)
@@ -675,7 +753,7 @@ class TestRtlVerifyStopGate:
         assert str(state_dir / "verify-evidence.json") in results[0]["reason"]
 
     def test_file_list_is_relative_and_deduplicated(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"),
             f"rtl/a.sv\n{tmp_project}/rtl/a.sv\n./rtl/a.sv\nrtl/b.sv\n"
         )
         reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
@@ -683,7 +761,7 @@ class TestRtlVerifyStopGate:
         assert "rtl/a.sv, rtl/b.sv" in reason
 
     def test_file_list_is_relative_to_the_project_root(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"),
             f"{tmp_project}/rtl/a.sv\n"
         )
         elsewhere = tmp_project / "elsewhere"
@@ -695,11 +773,11 @@ class TestRtlVerifyStopGate:
         assert f"{tmp_project}/rtl/a.sv" not in reason
 
     def test_blank_tracking_file_allows_exit(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("\n\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "\n\n")
         assert run_hook(self.HOOK, {"cwd": str(tmp_project)}) == {"continue": True}
 
     def test_file_list_shows_ten_files_and_counts_the_rest(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text(
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"),
             "".join(f"rtl/m{i:02d}.sv\n" for i in range(12))
         )
         reason = run_hook(self.HOOK, {"cwd": str(tmp_project)})["reason"]
@@ -708,13 +786,13 @@ class TestRtlVerifyStopGate:
 
     def test_fallback_duplicate_mid_chain_keeps_the_count(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
         results = [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             for i in range(2)
         ]
         # The same file again, recorded by the lock-failure fallback in absolute form.
-        (state_dir / "rtl-modified-files-fallback.txt").write_text(f"{tmp_project}/rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files-fallback.txt"), f"{tmp_project}/rtl/a.sv\n")
         results += [
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
             for _ in range(2)
@@ -727,7 +805,7 @@ class TestRtlVerifyStopGate:
         project = tmp_path / "o'brien"
         state_dir = project / ".rat" / "state"
         state_dir.mkdir(parents=True)
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
         results = [
             run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": i > 0})
             for i in range(4)
@@ -745,7 +823,7 @@ class TestRtlVerifyStopGate:
         for i in range(6):
             stop = {"cwd": str(tmp_project), "stop_hook_active": i > 0, "prompt_id": "p-1"}
             assert run_hook(self.HOOK, stop) == {"continue": True}
-        (state / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"})
         assert "decision" not in result
         assert result["systemMessage"].startswith("Info>")
@@ -753,7 +831,7 @@ class TestRtlVerifyStopGate:
     def test_signal_mid_aggregation_ends_the_gate_after_cleanup(self, tmp_project):
         state = tmp_project / ".rat" / "state"
         # A worker's tracking file makes the gate aggregate through `sort`.
-        (state / "rtl-modified-files-worker-1.txt").write_text("rtl/a.sv\n")
+        _track((state / "rtl-modified-files-worker-1.txt"), "rtl/a.sv\n")
         shim = tmp_project / "shim"
         shim.mkdir()
         ready, hold = tmp_project / "sort-started", tmp_project / "hold"
@@ -786,7 +864,7 @@ class TestRtlVerifyStopGate:
         assert not list(state.glob("rtl-modified-files-aggregated.*"))
 
     def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         (tmp_project / "sim").mkdir(exist_ok=True)
         result = run_hook(self.HOOK, {"cwd": str(tmp_project / "sim")},
                           env={"CLAUDE_PROJECT_DIR": str(tmp_project)})
@@ -794,7 +872,7 @@ class TestRtlVerifyStopGate:
         assert "a.sv" in result["reason"]
 
     def test_stray_marker_in_a_subdirectory_cannot_waive_verification(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         stray = tmp_project / "rtl" / ".rat" / "state"
         stray.mkdir(parents=True)
         (stray / "rtl-verify-done").touch()  # `touch .rat/state/rtl-verify-done` run from rtl/
@@ -2209,6 +2287,21 @@ class TestSkillCompletionGate:
         assert result.get('systemMessage')
         assert result.get('decision')!='block'
 
+    @pytest.mark.parametrize("active_skill", ["rat-refc-to-p5", "p1-spec-research", "rtl-lint-check"])
+    def test_refc_pipeline_waits_only_for_its_active_phase(self, tmp_project, active_skill):
+        self._write_skill_state(tmp_project, skill=active_skill, pending="phase-gate-passed")
+        state = tmp_project / ".rat/state/rat-refc-to-p5-state.json"
+        state.write_text(json.dumps({
+            "status": "in_progress", "current_skill": "p1-spec-research",
+            "orchestration_control": {"needs_user_decision": True},
+        }))
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
+        if active_skill == "rtl-lint-check":
+            _assert_stop_blocked(result)
+        else:
+            assert result == {"systemMessage": "Info> rat-refc-to-p5 is waiting for your decision."}
+            assert run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True}) == {"continue": True}
+
     def test_infeasibility_notifies_without_another_attempt(self,tmp_project):
         self._write_skill_state(tmp_project,strategy='upstream_challenge',pending='compliance-pass')
         (tmp_project/'.rat/state/compliance-report.json').write_text(json.dumps({
@@ -2497,7 +2590,7 @@ class TestSkillActivation:
     @pytest.mark.parametrize("missing", ["setup-marker", "rat-dir"])
     def test_posttooluse_before_setup_starts_no_loop(self, tmp_project, missing):
         # PreToolUse only advised setup, so the skill ran. No loop starts, and the answer
-        # is a plain PostToolUse continue, not PreToolUse's [SETUP REQUIRED] envelope.
+        # is a plain PostToolUse continue, without PreToolUse's initialization hint.
         env = {**self._criteria_env(tmp_project), "HOME": str(tmp_project)}
         if missing == "setup-marker":
             (tmp_project / ".claude" / "rules" / "rtl-coding-conventions.md").unlink()
@@ -2705,7 +2798,7 @@ class TestPhaseStateBootstrap:
         rtl_dir.mkdir(parents=True, exist_ok=True)
         (rtl_dir / "top.sv").write_text("module top; endmodule\n")
         os.utime(str(rtl_dir / "top.sv"), (1000002, 1000002))
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/top.sv\n")
 
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "skill": "rtl-agent-team:rtl-p5b-silicon-validation"})
         _assert_denied(result)
@@ -2722,7 +2815,7 @@ class TestPhaseStateBootstrap:
         rtl_dir = tmp_project / "rtl"
         rtl_dir.mkdir(parents=True, exist_ok=True)
         (rtl_dir / "top.sv").write_text("module top; endmodule\n")
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/top.sv\n")
         os.utime(str(rtl_dir / "top.sv"), (1000000, 1000000))
 
         p5a_state = state_dir / "p5a-state.json"
@@ -2907,7 +3000,7 @@ class TestTeamAwarenessGuard:
         """Worker in team mode → verify gate allows exit even with tracked files."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/top.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result["continue"] is True
 
@@ -2937,7 +3030,7 @@ class TestTeamAwarenessGuard:
         """Leader session in team mode → verify gate still blocks."""
         self._write_team_config(tmp_project, leader_id="leader-abc")
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/top.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), "session_id": "leader-abc"})
         _assert_stop_blocked(result)
 
@@ -3066,21 +3159,21 @@ echo "rc=$?"
 
     def test_leader_from_the_hook_input_is_enforced(self, tmp_project):
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"],
                           {"cwd": str(tmp_project), "session_id": "leader-abc"})
         _assert_stop_blocked(result)
 
     def test_worker_from_the_hook_input_skips(self, tmp_project):
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"],
                           {"cwd": str(tmp_project), "session_id": "worker-1"})
         assert result == {"continue": True}
 
     def test_session_from_claude_code_env_when_the_input_has_none(self, tmp_project):
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)},
                           env={"CLAUDE_CODE_SESSION_ID": "leader-abc"})
         _assert_stop_blocked(result)
@@ -3090,7 +3183,7 @@ echo "rc=$?"
         # The gate enforces a leader and an unknown session alike, so only a worker shows
         # that the env was read.
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)},
                           env={var: "worker-1"})
         assert result == {"continue": True}
@@ -3103,21 +3196,21 @@ echo "rc=$?"
         # The input's session_id, then CLAUDE_CODE_SESSION_ID, then the legacy CLAUDE_SESSION_ID.
         # The first source present names the leader, so the gate must block.
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project), **stdin},
                           env=env)
         _assert_stop_blocked(result)
 
     def test_unknown_session_enforces_the_gate(self, tmp_project):
         self._write_team_config(tmp_project, leader_id="leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"], {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
 
     @pytest.mark.parametrize("leader", ["<current_session_id>", "${CLAUDE_SESSION_ID}", ""])
     def test_placeholder_leader_enforces_for_everyone(self, tmp_project, leader):
         self._write_team_config(tmp_project, leader_id=leader)
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         result = run_hook(self.HOOKS["verify-stop-gate"],
                           {"cwd": str(tmp_project), "session_id": "worker-1"})
         _assert_stop_blocked(result)
@@ -3167,7 +3260,7 @@ class TestSedFallbackContract:
     def test_verify_gate_fallback_blocks_unverified(self, tmp_project):
         """Tracked files without verification → blocked under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/module/top.sv\n")
         result = run_hook(
             self.HOOKS["verify-stop-gate"],
             {"cwd": str(tmp_project)},
@@ -3178,7 +3271,7 @@ class TestSedFallbackContract:
     def test_verify_gate_fallback_allows_verified(self, tmp_project):
         """Tracked files with verify-done → continue=true under sed fallback."""
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/module/top.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/module/top.sv\n")
         _record_passing_evidence(tmp_project)
         result = run_hook(
             self.HOOKS["verify-stop-gate"],
@@ -3404,7 +3497,7 @@ class TestSpawnContextManifest:
         """RTL tracking file → staleness section reflects modified count."""
         self._setup_project(tmp_project)
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\nrtl/b.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\nrtl/b.sv\n")
 
         self._invoke(tmp_project, "rtl-p4-implement")
 
@@ -3416,7 +3509,7 @@ class TestSpawnContextManifest:
         """rtl-verify-done marker → staleness.rtl_verify_done=true."""
         self._setup_project(tmp_project)
         state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((state_dir / "rtl-modified-files.txt"), "rtl/a.sv\n")
         (state_dir / "rtl-verify-done").touch()
 
         self._invoke(tmp_project, "rtl-p4-implement")
@@ -3960,6 +4053,7 @@ class TestSpawnContextStructuralContracts:
         "rtl-p6-design-review": 6,
         "rtl-p7-exploration": 7,
         "rat-auto-design": 1,
+        "rat-refc-to-p5": 1,
         "rat-p1p3-spec-uarch": 1,
         "rat-dse": 1,
         "rat-p4p5-impl-verify": 4,
@@ -4204,7 +4298,7 @@ class TestTeamProgressHook:
         # The 2h bound measures time since the team was last active: a TaskUpdate from an
         # in-process teammate (the leader's session id plus an agent_id) refreshes the config.
         self._stale_team(tmp_project, "leader-abc")
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "leader-abc",
                              "agent_id": "coordinator"})
         result = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh",
@@ -4245,7 +4339,7 @@ class TestTeamProgressHook:
         # an abandoned run, must not keep the team alive; without a known leader no call is
         # team activity.
         config = self._stale_team(tmp_project, leader)
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
+        _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
         before = config.stat().st_mtime
         stdin = {"cwd": str(tmp_project)}
         if session is not None:
@@ -4784,7 +4878,7 @@ class TestLegacyDirFallback:
 
     def test_verify_gate_blocks_with_legacy_dir(self, tmp_legacy_project):
         track = tmp_legacy_project / ".rtl-agent-team" / "state" / "rtl-modified-files.txt"
-        track.write_text("rtl/mod.sv\n")
+        _track(track, "rtl/mod.sv\n")
         result = run_hook(
             self.VERIFY_HOOK,
             {"cwd": str(tmp_legacy_project)},
@@ -4870,7 +4964,7 @@ class TestCoverageExclusionGate:
 
 
 def _verify_blocks(project):
-    (project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/alu.sv\n")
+    _track((project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/alu.sv\n")
 
 
 def _p6_cascade_blocks(project):

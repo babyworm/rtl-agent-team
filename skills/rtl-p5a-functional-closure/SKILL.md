@@ -10,7 +10,7 @@ Delegate using the current host as described in `{plugin_root}/runtime/model-sel
 
 <Purpose>
 Run deep functional verification closure after P4 sanity gates.
-Coverage and requirement traceability are enforced at module/block/top scope.
+At module, block and top scope, compare the [planned simulation points](../../runtime/verification-points.md) with measured checks and coverage.
 </Purpose>
 
 <Use_When>

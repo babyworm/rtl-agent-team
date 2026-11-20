@@ -22,6 +22,9 @@ bitexact agreement. Produces regression results and Requirement Traceability Mat
 </Use_When>
 
 <Do_Not_Use_When>
+- The configured simulator (`preferences.simulator`) is commercial (xrun, vcs, questa) or cocotb is
+  not installed on the execution host, and the user did not ask for cocotb: use
+  `/rtl-agent-team:rtl-p5s-uvm-verify`, which runs multi-seed regression on that simulator
 - RTL modules don't exist yet (run rtl-p4-implement first)
 - Need full Phase 5 verification (use rtl-p5-verify)
 - Only need a single unit test (use rtl-p4s-unit-test)

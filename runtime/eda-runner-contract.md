@@ -6,6 +6,16 @@ PASS verdicts or repeat a successful review.
 
 ## Configuration
 
+`eda_runner.py get --root <project> --key <key>` reads effective settings without
+initializing a project. An existing project `rat_config.json` owns its execution
+settings. Otherwise the runner reads `env-config.json` under the user's plugin
+data directory. A selected `default_site` uses that site's measured tools,
+environment and libraries. Query only the settings needed by the task, such as
+`preferences.simulator`, `preferences.synthesis` or `technology.db`.
+Before initialization, run records (evidence index, tool logs, shims) go to the
+plugin data folder under `projects/<folder>-<hash>/`, so a run never creates `.rat/`
+and the folder stays an ordinary directory. Generated outputs still use the project.
+
 `rat_config.json.execution` selects `backend`: `auto`, `local`, `docker`, `ssh`, or
 `lsf`. An absent setting uses `auto`, local execution with the Docker fallback.
 `timeout_seconds` bounds wall time (default 1800); `stall_seconds` is optional
@@ -54,6 +64,23 @@ job success. A missing status artifact is INCONCLUSIVE. The runner records the
 submission output and cancels its own uniquely named job on timeout.
 
 ## Results
+
+For parallel experiments, the coordinating agent assigns each independent
+experiment a distinct `RAT_EXPERIMENT_ID` and passes it to its workers. The
+coordinator manages the batch on the selected server and reuses the site's
+SSH session when available. For example,
+`RAT_EXPERIMENT_ID=baseline-42 bash "$PLUGIN_ROOT/scripts/run_sim.sh" --top tb -f sim/files.f`
+puts generated outputs under `experiment/baseline-42/`. Keep seeds of the same
+regression in one invocation when the wrapper supports it. Bound concurrency
+by the site's available licenses. Keep inputs, run recipes and accepted design
+decisions in Git. The experiment directory holds reproducible builds, logs,
+waveforms and raw results.
+Reuse an ID for sequential steps such as compile-only followed by run-only.
+Concurrent use of the same ID is rejected. After a lost connection, check
+whether the previous job is still running before releasing its remote reservation.
+When running a custom Makefile or vendor command directly, the agent must set
+its working and output directories inside the experiment. The bundled wrappers
+resolve their own output directories.
 
 Each executed command records argv, tool, timestamps, exit status, log path, and
 termination reason. Execution success is a process result, not proof of a design.

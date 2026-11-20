@@ -57,7 +57,9 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 
   <Test_Plan_Input>
     ## Test Plan Input (if available)
-    When analyzing coverage gaps, check for `sim/{module}/{module}_test_plan.md`.
+    Compare the module's planned IDs in `sim/verification-points.json` with the
+    measured records. Report missing bins even when the tool reports 100%.
+    For scenario details, check for `sim/{module}/{module}_test_plan.md`.
     If found:
       - Read the planned coverage model (covergroups, coverpoints, expected bins)
       - Compare planned bins against actual coverage data

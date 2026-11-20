@@ -21,7 +21,9 @@ CONFIG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$CONFIG_SCRIPT_DIR/../../../hooks/lib/python-util.sh"
 RAT_PYTHON=$(rat_select_python)
 export RAT_PYTHON
-ENV_CONFIG="${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/env-config.json"
+# Claude Code's plugin data folder: hooks get CLAUDE_PLUGIN_DATA, Bash gets RAT_DATA_DIR.
+DATA_DIR="${RAT_DATA_DIR:-${CLAUDE_PLUGIN_DATA:-}}"
+ENV_CONFIG="${DATA_DIR:+$DATA_DIR/env-config.json}"
 
 PROJECT_ROOT="${1:-.}"
 PROJECT_NAME="${2:-$(basename "$(cd "$PROJECT_ROOT" && pwd)")}"
@@ -154,6 +156,25 @@ ALL_TOOLS=(
   "power       powerpro   powerpro"
 )
 
+# ─── Default execution site ──────────────────────────────────────────────
+# A new project runs on the user's default site: env-config.json "default_site"
+# names a private sites/<name>.json profile. Applying it before local detection
+# keeps local tools (or local forwarding shims) from posing as the site's tools.
+DEFAULT_SITE=""
+SITE_ONLY_CONFIG=""
+[[ -n "$EXISTING_CONFIG" || ! -f "$ENV_CONFIG" ]] || DEFAULT_SITE=$(json_get_path "$ENV_CONFIG" default_site)
+SITE_PROFILE="$(dirname "$ENV_CONFIG")/sites/$DEFAULT_SITE.json"
+if [[ -n "$DEFAULT_SITE" ]]; then
+  if [[ ! "$DEFAULT_SITE" =~ ^[A-Za-z0-9._-]+$ || "$DEFAULT_SITE" == "." || "$DEFAULT_SITE" == ".." || ! -f "$SITE_PROFILE" ]]; then
+    echo "ERROR: default_site must select an existing private sites profile." >&2
+    exit 1
+  fi
+  "$RAT_PYTHON" "$CONFIG_SCRIPT_DIR/../../../scripts/eda_setup.py" configure --profile "$SITE_PROFILE" --root "$PROJECT_ROOT" >/dev/null
+  EXISTING_CONFIG="$CONFIG"
+  SITE_ONLY_CONFIG=1  # holds only site fields; project fields keep their defaults below
+  echo "Default execution site applied: $DEFAULT_SITE"
+fi
+
 # ─── Load existing user fields ─────────────────────────────────────────────
 declare -A SAVED_ENV=()
 declare -A SAVED_PATH=()
@@ -171,7 +192,7 @@ for input_config in "$ENV_CONFIG" "$CONFIG"; do
 done
 
 # Preserve other user-edited sections
-if [[ -f "$CONFIG" ]]; then
+if [[ -f "$CONFIG" && -z "$SITE_ONLY_CONFIG" ]]; then
   TOP_MODULE=$(json_get_path "$CONFIG" project top_module)
   FILELIST=$(json_get_path "$CONFIG" project filelist)
   LIBERTY=$(json_get_path "$CONFIG" technology liberty)
