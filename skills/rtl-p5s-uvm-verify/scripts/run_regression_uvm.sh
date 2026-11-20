@@ -8,8 +8,7 @@
 # Runs UVM test suite with multiple seeds on commercial simulators,
 # captures per-seed results, merges coverage, and generates regression report.
 #
-# Coverage: code coverage (line+cond+fsm+tgl+branch) is always enabled.
-# Functional coverage is collected via UVM covergroups in the testbench.
+# Coverage: native databases, or explicit functional bin counts from the testbench.
 
 set -euo pipefail
 
@@ -31,15 +30,22 @@ RAT_EVIDENCE_REQUIRED=0
 
 EVIDENCE_HELPER="${RAT_RUNTIME_HELPERS:-$(dirname "$_LIB_RUNNER")}/verify_evidence.py"
 [[ -f "$EVIDENCE_HELPER" ]] || EVIDENCE_HELPER="$SCRIPT_DIR/../../../scripts/verify_evidence.py"
-REGRESSION_HELPER="$(dirname "$EVIDENCE_HELPER")/regression_evidence.py"
+COVERPOINT_HELPER="$(dirname "$EVIDENCE_HELPER")/merge_coverpoint_logs.py"
 CAMPAIGN_SNAPSHOT=""
+FUNCTIONAL_COMPLETE=0
 finish_campaign() {
-  local code=$?
+  local code=$? evidence_code evidence_result=0
   trap - EXIT
   if [[ -n "$CAMPAIGN_SNAPSHOT" ]]; then
     local combined="$CAMPAIGN_OUTDIR/campaign.log"
-    find "$CAMPAIGN_OUTDIR" -type f -name '*.log' ! -name campaign.log -exec cat {} + > "$combined"
-    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" || code=$?
+    local runtime="$CAMPAIGN_OUTDIR/runtime.log"
+    find "$CAMPAIGN_OUTDIR" -type f -name sim.log -exec cat {} + > "$runtime"
+    cat "$CAMPAIGN_OUTDIR/compile.log" "$runtime" > "$combined"
+    evidence_code=$code
+    [[ "$FUNCTIONAL_COMPLETE" != 1 ]] || evidence_code=0
+    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" \
+      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" || evidence_result=$?
+    [[ "$code" -ne 0 ]] || code=$evidence_result
   fi
   exit "$code"
 }
@@ -57,6 +63,9 @@ COVERAGE_DIR="${COVERAGE_DIR:-sim/uvm/coverage}"
 FILELIST="${FILELIST:-rtl/filelist_top.f}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)_$$"
 MAX_FAIL_RATE="${MAX_FAIL_RATE:-5}"
+COVERAGE_MODE=auto
+COVERAGE_TIMEOUT=60
+SIM_TIMEOUT=""
 
 # ─── Usage ──────────────────────────────────────────────────────────────────
 usage() {
@@ -73,6 +82,9 @@ Options:
   --tb-dir <path>          UVM testbench directory (default: sim/uvm)
   --filelist <path>        RTL filelist (default: rtl/filelist_top.f)
   --max-fail-rate <N>      Early-stop threshold in percent (default: 5)
+  --coverage-mode <auto|native|functional-log>  Default: auto
+  --coverage-timeout <seconds>  Maximum per vendor coverage command (default: 60)
+  --sim-timeout <seconds>  Maximum per compile, elaborate or seed run (default: execution timeout)
   -h, --help               Show this help
 
 Coverage reference targets (reported for downstream analysis):
@@ -96,6 +108,9 @@ while [[ $# -gt 0 ]]; do
     --tb-dir)        TB_DIR="$2"; shift 2 ;;
     --filelist)      FILELIST="$2"; shift 2 ;;
     --max-fail-rate) MAX_FAIL_RATE="$2"; shift 2 ;;
+    --coverage-mode) COVERAGE_MODE="$2"; shift 2 ;;
+    --coverage-timeout) COVERAGE_TIMEOUT="$2"; shift 2 ;;
+    --sim-timeout)   SIM_TIMEOUT="$2"; shift 2 ;;
     -h|--help)       usage; exit 0 ;;
     *)               echo "ERROR: Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -150,6 +165,16 @@ if [[ -z "$TEST" ]]; then
 fi
 require_identifier "--test" "$TEST"
 
+case "$COVERAGE_MODE" in
+  auto|native|functional-log) ;;
+  *) echo "ERROR: --coverage-mode must be auto, native or functional-log" >&2; exit 1 ;;
+esac
+if [[ ! "$COVERAGE_TIMEOUT" =~ ^[1-9][0-9]*$ || ( -n "$SIM_TIMEOUT" && ! "$SIM_TIMEOUT" =~ ^[1-9][0-9]*$ ) ]]; then
+  echo "ERROR: timeouts must be positive whole seconds" >&2
+  exit 1
+fi
+if [[ -n "$SIM_TIMEOUT" ]]; then export RAT_TOOL_TIMEOUT_SECONDS="$SIM_TIMEOUT"; fi
+
 detect_nproc() {
   if command -v nproc >/dev/null 2>&1; then nproc; return; fi
   if command -v getconf >/dev/null 2>&1; then getconf _NPROCESSORS_ONLN 2>/dev/null || true; return; fi
@@ -178,9 +203,9 @@ fi
 
 # ─── Simulator availability check ──────────────────────────────────────────
 case "$SIM" in
-  vcs)    SIM_BIN="vcs"; RUN_BIN="./simv" ;;
-  xrun)   SIM_BIN="xrun"; RUN_BIN="" ;;
-  questa) SIM_BIN="vsim"; RUN_BIN="" ;;
+  vcs)    SIM_BIN="vcs"; RUN_BIN="./simv"; MERGER="urg" ;;
+  xrun)   SIM_BIN="xrun"; MERGER="imc" ;;
+  questa) SIM_BIN="vsim"; MERGER="vcover" ;;
   *)      echo "ERROR: Unsupported simulator: $SIM (use vcs|xrun|questa)" >&2; exit 1 ;;
 esac
 
@@ -190,8 +215,25 @@ if ! tool_available "$SIM_BIN"; then
 fi
 
 if ! command -v "$RAT_PYTHON" >/dev/null 2>&1; then
-  echo "ERROR: "$RAT_PYTHON" is required to write and validate regression JSON" >&2
+  echo "ERROR: $RAT_PYTHON is required to write and validate regression JSON" >&2
   exit 1
+fi
+
+NATIVE_COVERAGE_STATUS="NOT_RUN"
+NATIVE_CAPTURE=0
+COMPILE_COVERAGE=()
+if [[ "$COVERAGE_MODE" != functional-log ]]; then
+  if RAT_TOOL_CATEGORY=coverage tool_available "$MERGER" || [[ "$COVERAGE_MODE" == native ]]; then
+    NATIVE_CAPTURE=1
+    case "$SIM" in
+      vcs) COMPILE_COVERAGE=(-cm line+cond+fsm+tgl+branch) ;;
+      xrun) COMPILE_COVERAGE=(-coverage all) ;;
+      questa) COMPILE_COVERAGE=(+cover=bcestf) ;;
+    esac
+  else
+    NATIVE_COVERAGE_STATUS="UNAVAILABLE"
+    echo "Native coverage: $MERGER unavailable; using functional bin logs" >&2
+  fi
 fi
 
 # ─── Resolve input/output paths against PROJECT_ROOT ──────────────────
@@ -241,48 +283,52 @@ compile_uvm() {
 
   case "$SIM" in
     vcs)
-      if ! (cd "$PROJECT_ROOT" && run_tool vcs -full64 -sverilog -ntb_opts uvm-1.2 \
-        -cm line+cond+fsm+tgl+branch \
+      (cd "$PROJECT_ROOT" && run_tool vcs -full64 -sverilog -ntb_opts uvm-1.2 \
+        "${COMPILE_COVERAGE[@]}" \
         -timescale=1ns/1ps \
         "${SV_ARGS[@]}" \
         -o "$RUN_DIR/simv") \
-        2>&1 | tee "$compile_log"; then
+        2>&1 | tee "$compile_log" || {
+        local rc=$?
         echo "ERROR: UVM compilation failed. See $compile_log" >&2
-        return 1
-      fi
+        return "$rc"
+      }
       RUN_BIN="$RUN_DIR/simv"
       ;;
     xrun)
-      if ! (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -compile \
-        -coverage all \
+      (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -compile \
+        "${COMPILE_COVERAGE[@]}" \
         -timescale 1ns/1ps \
         "${SV_ARGS[@]}" \
-        -xmlibdirpath "$RUN_DIR/xcelium") \
-        2>&1 | tee "$compile_log"; then
+        -xmlibdirname "$RUN_DIR/xcelium") \
+        2>&1 | tee "$compile_log" || {
+        local rc=$?
         echo "ERROR: UVM compilation failed. See $compile_log" >&2
-        return 1
-      fi
-      if ! (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -elaborate \
-        -coverage all \
+        return "$rc"
+      }
+      (cd "$PROJECT_ROOT" && run_tool xrun -sv -uvm -elaborate \
+        "${COMPILE_COVERAGE[@]}" \
         -timescale 1ns/1ps \
         "${SV_ARGS[@]}" \
         -top "$TB_TOP" \
-        -xmlibdirpath "$RUN_DIR/xcelium") \
-        2>&1 | tee -a "$compile_log"; then
+        -xmlibdirname "$RUN_DIR/xcelium") \
+        2>&1 | tee -a "$compile_log" || {
+        local rc=$?
         echo "ERROR: UVM elaboration failed. See $compile_log" >&2
-        return 1
-      fi
+        return "$rc"
+      }
       ;;
     questa)
       run_tool vlib "$RUN_DIR/work" 2>/dev/null || true
-      if ! (cd "$PROJECT_ROOT" && run_tool vlog -sv -work "$RUN_DIR/work" \
-        +cover=bcestf \
+      (cd "$PROJECT_ROOT" && run_tool vlog -sv -work "$RUN_DIR/work" \
+        "${COMPILE_COVERAGE[@]}" \
         +incdir+"$TB_DIR" \
         "${SV_ARGS[@]}") \
-        2>&1 | tee "$compile_log"; then
+        2>&1 | tee "$compile_log" || {
+        local rc=$?
         echo "ERROR: UVM compilation failed. See $compile_log" >&2
-        return 1
-      fi
+        return "$rc"
+      }
       ;;
   esac
   echo "Compile OK: $compile_log"
@@ -320,36 +366,44 @@ run_seed() {
 
   local status="PASS"
   local rc=0
-  local coverage_present="true"
+  local coverage_present="false"
   local failure_reason=""
+  local coverage_args=() questa_commands="run -all; quit -f"
+  if [[ "$NATIVE_CAPTURE" -eq 1 ]]; then
+    case "$SIM" in
+      vcs) coverage_args=(-cm line+cond+fsm+tgl+branch -cm_dir "$seed_dir/coverage.vdb") ;;
+      xrun) coverage_args=(-coverage all -covworkdir "$seed_dir/cov_work" -covscope "$TB_TOP") ;;
+      questa)
+        coverage_args=(-coverage)
+        questa_commands="coverage save -onexit $seed_dir/coverage.ucdb; $questa_commands"
+        ;;
+    esac
+  fi
 
   case "$SIM" in
     vcs)
       RAT_CONTEXT_TOOL="$SIM" run_tool "$RUN_BIN" \
         +UVM_TESTNAME="$TEST" \
         +ntb_random_seed="$seed" \
-        -cm line+cond+fsm+tgl+branch \
-        -cm_dir "$seed_dir/coverage.vdb" \
+        "${coverage_args[@]}" \
         +UVM_VERBOSITY=UVM_MEDIUM \
         > "$log" 2>&1 || rc=$?
       ;;
     xrun)
       run_tool xrun -R \
         +UVM_TESTNAME="$TEST" \
-        -seed "$seed" \
-        -coverage all \
-        -covworkdir "$seed_dir/cov_work" \
-        -covscope "$TB_TOP" \
-        -xmlibdirpath "$RUN_DIR/xcelium" \
+        -svseed "$seed" \
+        "${coverage_args[@]}" \
+        -xmlibdirname "$RUN_DIR/xcelium" \
         +UVM_VERBOSITY=UVM_MEDIUM \
         > "$log" 2>&1 || rc=$?
       ;;
     questa)
       run_tool vsim -c -work "$RUN_DIR/work" \
-        -coverage \
+        "${coverage_args[@]}" \
         +UVM_TESTNAME="$TEST" \
         -sv_seed "$seed" \
-        -do "coverage save -onexit $seed_dir/coverage.ucdb; run -all; quit -f" \
+        -do "$questa_commands" \
         "$TB_TOP" \
         > "$log" 2>&1 || rc=$?
       ;;
@@ -368,24 +422,16 @@ run_seed() {
   uvm_warnings=$(count_uvm_messages UVM_WARNING "$log")
   uvm_fatals=$(count_uvm_messages UVM_FATAL "$log")
 
-  if [[ $rc -ne 0 || "$uvm_errors" -ne 0 || "$uvm_fatals" -ne 0 ]]; then
+  if [[ "$status" == PASS && ( "$uvm_errors" -ne 0 || "$uvm_fatals" -ne 0 ) ]]; then
     status="FAIL"
     failure_reason="simulation_or_uvm_error"
   fi
 
   case "$SIM" in
-    vcs)    [[ -d "$seed_dir/coverage.vdb" ]] || coverage_present="false" ;;
-    xrun)   [[ -d "$seed_dir/cov_work" ]] || coverage_present="false" ;;
-    questa) [[ -f "$seed_dir/coverage.ucdb" ]] || coverage_present="false" ;;
+    vcs)    [[ ! -d "$seed_dir/coverage.vdb" ]] || coverage_present="true" ;;
+    xrun)   [[ ! -d "$seed_dir/cov_work" ]] || coverage_present="true" ;;
+    questa) [[ ! -f "$seed_dir/coverage.ucdb" ]] || coverage_present="true" ;;
   esac
-  if [[ "$coverage_present" != "true" ]]; then
-    status="FAIL"
-    if [[ -n "$failure_reason" ]]; then
-      failure_reason="${failure_reason},missing_coverage"
-    else
-      failure_reason="missing_coverage"
-    fi
-  fi
 
   if ! "$RAT_PYTHON" - "$result_json" "$seed" "$TEST" "$SIM" "$status" "$rc" \
     "$uvm_errors" "$uvm_warnings" "$uvm_fatals" "$log" "$seed_dir" "$coverage_present" \
@@ -423,11 +469,15 @@ PY
 }
 
 # ─── Coverage merge ────────────────────────────────────────────────────────
-merge_coverage() {
+run_coverage_tool() {
+  RAT_TOOL_CATEGORY=coverage tool_available "$1" || return 127
+  RAT_TOOL_CATEGORY=coverage RAT_TOOL_TIMEOUT_SECONDS="$COVERAGE_TIMEOUT" run_tool "$@"
+}
+
+merge_native_coverage() {
   echo "=== Merging Coverage ==="
   local merged="$COVERAGE_DIR/merged_${TIMESTAMP}"
   local coverage_inputs=0
-  COVERAGE_STATUS="FAILED"
 
   case "$SIM" in
     vcs)
@@ -436,12 +486,10 @@ merge_coverage() {
         [[ -d "$d" ]] && vdb_list+=("$d")
       done
       coverage_inputs=${#vdb_list[@]}
-      [[ "$coverage_inputs" -gt 0 ]] || return 1
-      command -v urg >/dev/null 2>&1 || return 1
-      if ! urg -dir "${vdb_list[@]}" -report "$merged" -format both 2>&1; then
-        return 1
-      fi
-      COVERAGE_STATUS="MERGED"
+      [[ "$coverage_inputs" -eq "$PASSED" ]] || return 1
+      run_coverage_tool urg -dir "${vdb_list[@]}" -report "$merged" -format both \
+        > "$RUN_DIR/coverage-tool.log" 2>&1 || return $?
+      [[ -d "$merged" && -n "$(find "$merged" -type f -size +0c -print -quit)" ]] || return 1
       echo "VCS coverage merged: $merged (text + XML)"
       ;;
     xrun)
@@ -459,12 +507,9 @@ merge_coverage() {
         echo "report -detail -out \"${merged}_report.txt\""
         echo "exit"
       } > "$imc_script"
-      [[ "$coverage_inputs" -gt 0 ]] || return 1
-      command -v imc >/dev/null 2>&1 || return 1
-      if ! imc -exec "$imc_script" 2>&1; then
-        return 1
-      fi
-      COVERAGE_STATUS="MERGED"
+      [[ "$coverage_inputs" -eq "$PASSED" ]] || return 1
+      run_coverage_tool imc -exec "$imc_script" > "$RUN_DIR/coverage-tool.log" 2>&1 || return $?
+      [[ -s "${merged}_report.txt" ]] || return 1
       echo "Xcelium coverage merged: $merged"
       ;;
     questa)
@@ -473,20 +518,29 @@ merge_coverage() {
         [[ -f "$f" ]] && ucdb_list+=("$f")
       done
       coverage_inputs=${#ucdb_list[@]}
-      [[ "$coverage_inputs" -gt 0 ]] || return 1
-      command -v vcover >/dev/null 2>&1 || return 1
-      if ! vcover merge "$merged.ucdb" "${ucdb_list[@]}" 2>&1; then
-        return 1
-      fi
-      if ! vcover report -details "$merged.ucdb" > "$merged.txt" 2>&1; then
-        return 1
-      fi
-      COVERAGE_STATUS="MERGED"
+      [[ "$coverage_inputs" -eq "$PASSED" ]] || return 1
+      run_coverage_tool vcover merge "$merged.ucdb" "${ucdb_list[@]}" \
+        > "$RUN_DIR/coverage-tool.log" 2>&1 || return $?
+      run_coverage_tool vcover report -details "$merged.ucdb" > "$merged.txt" 2>&1 || return $?
+      [[ -s "$merged.ucdb" && -s "$merged.txt" ]] || return 1
       echo "Questa coverage merged: $merged.ucdb"
       ;;
   esac
 
   [[ "$coverage_inputs" -gt 0 ]]
+}
+
+merge_functional_coverage() {
+  local logs=() seed log
+  for seed in "${RUN_SEEDS[@]}"; do
+    log="$RUN_DIR/seed_$seed/sim.log"
+    logs+=("${log#"$PROJECT_ROOT/"}")
+  done
+  local report="$COVERAGE_DIR/functional_${TIMESTAMP}.json"
+  report="${report#"$PROJECT_ROOT/"}"
+  (cd "$PROJECT_ROOT" && "$RAT_PYTHON" "$COVERPOINT_HELPER" --output "$report" "${logs[@]}") || return $?
+  FUNCTIONAL_COVERAGE_REPORT="$report"
+  echo "Functional coverage from seed logs: $FUNCTIONAL_COVERAGE_REPORT"
 }
 
 # ─── Harvest results ───────────────────────────────────────────────────────
@@ -496,6 +550,7 @@ FAILED_SEEDS=""
 STOP_DISPATCH=0
 PROCESSED_RESULT_FILES=""
 COVERAGE_STATUS="NOT_RUN"
+FUNCTIONAL_COVERAGE_REPORT=""
 INFRASTRUCTURE_FAILED=0
 WORKER_PIDS=()
 
@@ -643,31 +698,55 @@ fi
 mark_missing_results
 
 # ─── Coverage merge ────────────────────────────────────────────────────────
-if ! merge_coverage; then
+if [[ "$FAILED" -eq 0 && "$INFRASTRUCTURE_FAILED" -eq 0 && "$PASSED" -eq "${#SEED_ARRAY[@]}" ]]; then
+  FUNCTIONAL_COMPLETE=1
   COVERAGE_STATUS="FAILED"
-  INFRASTRUCTURE_FAILED=1
-  echo "ERROR: Coverage artifacts were missing or could not be merged" >&2
+  if [[ "$NATIVE_CAPTURE" -eq 1 ]]; then
+    if merge_native_coverage; then
+      NATIVE_COVERAGE_STATUS="MERGED"
+      COVERAGE_STATUS="MERGED"
+    else
+      case "$?" in
+        124) NATIVE_COVERAGE_STATUS="TIMEOUT" ;;
+        125) NATIVE_COVERAGE_STATUS="STALL" ;;
+        127) NATIVE_COVERAGE_STATUS="UNAVAILABLE" ;;
+        *) NATIVE_COVERAGE_STATUS="FAILED" ;;
+      esac
+      echo "Native coverage: $NATIVE_COVERAGE_STATUS" >&2
+    fi
+  fi
+  if [[ "$COVERAGE_STATUS" != MERGED && "$COVERAGE_MODE" != native ]] && merge_functional_coverage; then
+    COVERAGE_STATUS="FUNCTIONAL_LOG"
+  fi
+  if [[ "$COVERAGE_STATUS" == FAILED ]]; then
+    INFRASTRUCTURE_FAILED=1
+    echo "ERROR: Coverage artifacts were missing or could not be merged" >&2
+  fi
 fi
 
 # ─── Regression report ──────────────────────────────────────────────────────
 TOTAL=$((PASSED + FAILED))
 REPORT="$RESULTS_DIR/regression_${MODULE}_${TIMESTAMP}.json"
-VERDICT="PASS"
-if [[ "$FAILED" -ne 0 || "$INFRASTRUCTURE_FAILED" -ne 0 || "$COVERAGE_STATUS" != "MERGED" ]]; then
-  VERDICT="FAIL"
+VERDICT="FAIL"
+if [[ "$FUNCTIONAL_COMPLETE" -eq 1 && "$INFRASTRUCTURE_FAILED" -eq 0 ]]; then
+  if [[ "$COVERAGE_STATUS" == MERGED || "$COVERAGE_MODE" == functional-log ]]; then
+    VERDICT="PASS"
+  else
+    VERDICT="INCONCLUSIVE"
+  fi
 fi
 
 "$RAT_PYTHON" - "$REPORT" "$MODULE" "$SIM" "$TEST" "$TIMESTAMP" "$TOTAL" \
   "$PASSED" "$FAILED" "$STOP_DISPATCH" "$COVERAGE_STATUS" \
   "$INFRASTRUCTURE_FAILED" "$COVERAGE_DIR" "$RUN_DIR" "$VERDICT" \
-  "$FAILED_SEEDS" <<'PY'
+  "$FAILED_SEEDS" "$COVERAGE_MODE" "$NATIVE_COVERAGE_STATUS" "$FUNCTIONAL_COVERAGE_REPORT" "$FUNCTIONAL_COMPLETE" <<'PY'
 import json
 import sys
 
 (
     output, module, simulator, test, timestamp, total, passed, failed,
     halted, coverage_status, infrastructure_failed, coverage_dir, run_dir,
-    verdict, failed_seeds_text,
+    verdict, failed_seeds_text, coverage_mode, native_status, functional_report, functional_complete,
 ) = sys.argv[1:]
 payload = {
     "module": module,
@@ -680,6 +759,11 @@ payload = {
     "failed_seeds": [int(seed) for seed in failed_seeds_text.split()],
     "halted_early": halted == "1",
     "coverage_status": coverage_status,
+    "coverage_scope": {"MERGED": "native", "FUNCTIONAL_LOG": "functional_only"}.get(coverage_status),
+    "coverage_mode": coverage_mode,
+    "native_coverage_status": native_status,
+    "functional_coverage_report": functional_report or None,
+    "functional_regression_passed": functional_complete == "1",
     "coverage_targets": {
         "line": 90,
         "toggle": 80,
@@ -713,6 +797,7 @@ echo " Verdict: $VERDICT"
 echo "========================================"
 
 [[ "$VERDICT" == "PASS" ]] && exit 0
+[[ "$VERDICT" != "INCONCLUSIVE" ]] || exit 3
 exit 1
 
-# rat-version: 2.0.2
+# rat-version: 2.0.4

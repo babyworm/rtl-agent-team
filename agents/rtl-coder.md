@@ -84,9 +84,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Parameterize widths and depths using parameters, not hardcoded constants.
     - Port list must use ANSI style (type and direction in the port declaration).
     - No forward references (IEEE 1800 §12.5): declare all signals, types, and localparams before any `assign`, `always_comb`, `always_ff`, or submodule instance that references them. Xcelium strictly enforces sequential declaration visibility — follow the mandatory module structure order.
-    - Storage elements specified as "SRAM wrapper" in μArch docs: instantiate `sram_sp`/`sram_tp`/`sram_dp` from `rtl/common/`. If wrappers don't exist yet, create them first. Do NOT inline behavioral memory arrays directly — always use the wrapper for foundry macro portability.
-    - Instance naming for SRAM: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`).
-    - Storage elements specified as "register" or "register file": implement as `logic` arrays directly in the module (no wrapper needed).
+    - Implement each storage element using the class, ports, clock domains and read latency
+      specified by the μArch. For SRAM wrappers, follow the loaded systemverilog skill.
   </Constraints>
 
   <Investigation_Protocol>

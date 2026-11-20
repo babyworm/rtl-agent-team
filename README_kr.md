@@ -87,6 +87,8 @@ cd ~/work/my-rtl-project
 
 ### Stage C — 설계 작업 (프로젝트 내에서 반복)
 
+단계가 끝날 때마다 Codex 교차검증을 받으려면 프로젝트 루트의 `rat_config.json`에 `"review": {"codex_cross_review": true}`를 설정합니다. 기본값은 false입니다. 한 번만 적용하려면 “이번 auto design은 Codex 교차검증 포함” 또는 “이번에는 P3만 교차검증”처럼 요청합니다.
+
 RTL 설계 및 검증 파이프라인을 실행합니다. 초기화된 프로젝트 내부에서 실행하세요 — 산출물이 CWD 기준으로 생성되므로, 초기화되지 않은 디렉토리에서는 예상 구조가 형성되지 않습니다.
 
 ```bash
@@ -98,7 +100,7 @@ RTL 설계 및 검증 파이프라인을 실행합니다. 초기화된 프로젝
 #     인코더 구현. TSMC 28nm, 4K 60fps @ 500MHz, margin 40%"
 
 # C2. 또는 분할 파이프라인 (단계 사이 인간 리뷰 가능)
-/rtl-agent-team:rat-dse               # Phase 1→2: DSE (알고리즘 + 아키텍처)
+/rtl-agent-team:rat-dse               # Phase 1→3: μArch와 BFM까지 설계 대안을 탐색합니다.
 /rtl-agent-team:rat-p1p3-spec-uarch   # Phase 1→3: Spec → μArch 설계 문서
 /rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: RTL 구현 + 검증
 
@@ -161,20 +163,17 @@ claude --plugin-dir .
 
 6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
 
-### Autopilot 에스컬레이션 래더
+### Autopilot 재시도
 
-`rat-auto-design`의 gate 재시도는 gate별 `N` 기준으로 동작합니다:
-- `1..N`: 기본 전략
-- `N+1..2N`: fallback 전략 (실패 범위 분해 + 에이전트 조합 전환)
-- `2N+1`: last-chance 대안 전략 1회 자동 실행
-- last-chance 실패 후: 즉시 사용자 가이드 요청
-
-fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text`)에 기록되고 Stop hook에서 주입됩니다.
+`rat-auto-design`은 측정 결과가 실패하면 해당 부분을 수정한 뒤 관련 검증을 다시 실행합니다.
+같은 게이트에서 두 번 수정해도 검증에 실패하면 작업을 멈추고 사용자에게 다음 결정을 요청합니다.
+요구사항의 해석에 따라 설계나 검증의 기대 결과가 달라지면 즉시 질문합니다.
+작업을 재개할 때는 기존 검증 결과와 수정 횟수를 이어받습니다.
 
 ### 파이프라인 분할 실행
 
 ```
-/rtl-agent-team:rat-dse              # Phase 1→2: 심층 알고리즘 + 아키텍처 탐색 (DSE)
+/rtl-agent-team:rat-dse              # Phase 1→3: μArch와 BFM까지 설계 대안을 탐색합니다.
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate 평가 (알고리즘 비교)
 /rtl-agent-team:codec-conformance-eval  # 디코더 conformance 평가 (JVET/JCTVC/3rd party)
 /rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch 설계 문서 완성
@@ -182,7 +181,7 @@ fallback/last-chance 지시는 상태(`orchestration_control.dynamic_prompt_text
 ```
 
 설계와 구현 사이에 인간 리뷰를 위해 파이프라인을 분할합니다:
-- `rat-dse`: 심층 Design Space Exploration — 여러 알고리즘과 아키텍처 후보를 정량적 trade-off로 비교합니다. 기존 functional C model을 architectural reference model로 변환할 수도 있습니다. Phase 2에서 리뷰를 위해 멈춥니다.
+- `rat-dse`: 요구사항을 충족하는 알고리즘과 아키텍처 후보를 정량적으로 비교합니다. 기존 C 기능 모델이 있으면 아키텍처 참조 모델로 변환할 수 있습니다. Phase 3에서 μArch와 BFM을 완성하고 한 번 검토한 뒤 종료합니다. 사용자가 다른 대안을 요청하면 별도 worktree에서 시험해 기존 결과와 비교합니다.
 - `rat-p1p3-spec-uarch`: 표준 Phase 1→3 — μArch까지 설계 문서를 완성합니다. RTL 구현 전 리뷰를 위해 멈춥니다.
 - `rat-p4p5-impl-verify`: Phase 4→5 — 승인된 μArch 문서로부터 RTL 구현 및 전체 검증을 수행합니다.
 
@@ -287,7 +286,7 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 
 ## 에이전트 팀
 
-### 에이전트 구성 (91개: Fable 36개, Opus 53개, Sonnet 2개)
+### 에이전트 구성
 
 | 카테고리 | 에이전트 수 | 주요 에이전트 |
 |---------|-----------|-------------|
@@ -301,10 +300,9 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 | Phase 4 블록 병렬 | 2 | p4-block-parallel-coordinator, p4-block-worker |
 | 오케스트레이터 | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator 외 26개 (팀/서브페이즈 변형) |
 
-모델 사용 원칙:
-- `fable` — orchestration, 판단, 아키텍처, 마이크로아키텍처
-- `opus` — 설계, 검증, 확인
-- `sonnet` — 도구 실행과 리포트 파싱 (`eda-runner`, `dc-report-parser`, `synthesis-reporter`, `ipxact-generator`)
+복잡한 설계 판단, 설계·검증, 일반 도구 작업, 단순 추출에 Claude는 각각 Fable·Opus·Sonnet·Haiku를 쓰고 Codex는 Astra·Sol·Terra·Luna를 씁니다. Codex, Antigravity(`agy`), Grok은 설치된 CLI의 모델 목록에서 실제 ID를 선택합니다. 역할의 기본 등급은 실제 작업 난이도에 따라 조정하며, 사용자가 모델을 지정하면 그 선택을 우선합니다. [호스트별 모델 선택](runtime/model-selection.md)
+
+호스트가 설치된 스킬을 인식하면 이름으로 호출합니다. 직접 불러올 때는 로컬 플러그인의 `skills/<skill>/SKILL.md`를 지정합니다. 예를 들어 DSE는 `skills/rat-dse/SKILL.md`를 사용합니다. 호스트가 스킬에서 참조하는 에이전트와 스크립트에도 접근할 수 있도록 플러그인 디렉터리 전체를 유지합니다.
 
 ### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
 

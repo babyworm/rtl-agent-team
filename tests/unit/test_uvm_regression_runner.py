@@ -47,6 +47,10 @@ import sys
 args = sys.argv[1:]
 with open(os.environ["VCS_ARGV_LOG"], "a") as handle:
     handle.write(json.dumps(args) + "\\n")
+if os.environ.get("FAKE_COMPILE_WAIT"):
+    os.close(1)
+    os.close(2)
+    os.execlp("sleep", "sleep", "12")
 output = Path(args[args.index("-o") + 1])
 output.write_text(r'''#!/usr/bin/env bash
 if [[ "${FAKE_KILL_PARENT:-0}" == "1" ]]; then
@@ -102,14 +106,32 @@ import sys
 args = sys.argv[1:]
 with open(os.environ["XRUN_ARGV_LOG"], "a") as handle:
     handle.write(json.dumps(args) + "\\n")
-if "-R" in args and "-covworkdir" in args:
-    coverage_dir = Path(args[args.index("-covworkdir") + 1])
-    coverage_dir.mkdir(parents=True, exist_ok=True)
-    (coverage_dir / "raw.ucd").write_text("fake coverage\\n")
+if "-R" in args:
+    if "-covworkdir" in args:
+        coverage_dir = Path(args[args.index("-covworkdir") + 1])
+        coverage_dir.mkdir(parents=True, exist_ok=True)
+        (coverage_dir / "raw.ucd").write_text("fake coverage\\n")
+    if os.environ.get("FAKE_BIN_LOG"):
+        seed = int(args[args.index("-svseed") + 1])
+        key = "tb.request.retry" if os.environ.get("FAKE_BIN_DRIFT") and seed == 43 else "tb.request.read"
+        print(f"RAT_COV_BIN {key} {int(seed == 42)} 1")
+        print("RAT_COV_BIN tb.request.write 1 2")
+        print("RAT_COV_BIN tb.request.unseen 0 1")
+        print("RAT_COV_END 3")
     print("RAT_SIM_PASS")
 """,
     )
-    _write_executable(bin_dir / "imc", "#!/usr/bin/env bash\nexit 0\n")
+    _write_executable(
+        bin_dir / "imc",
+        """#!/usr/bin/env python3
+from pathlib import Path
+import sys
+
+script = Path(sys.argv[sys.argv.index("-exec") + 1]).read_text()
+report = script.split('report -detail -out "')[1].split('"')[0]
+Path(report).write_text("fake coverage\\n")
+""",
+    )
 
 
 def _env(project: Path, **overrides: str) -> dict[str, str]:
@@ -342,3 +364,66 @@ def test_xrun_elaborates_before_running(tmp_path: Path) -> None:
     calls = [json.loads(line) for line in (project / "xrun.argv.jsonl").read_text().splitlines()]
     phases = ["-compile" if "-compile" in call else "-elaborate" if "-elaborate" in call else "-R" for call in calls]
     assert phases[:3] == ["-compile", "-elaborate", "-R"]
+    library_dirs = {argv[argv.index("-xmlibdirname") + 1] for argv in calls[:3]}
+    assert len(library_dirs) == 1
+    assert calls[2][calls[2].index("-svseed") + 1] == "42"
+
+
+@pytest.mark.parametrize("native_status", ["UNAVAILABLE", "TIMEOUT", "FAILED"])
+def test_native_unavailable_uses_functional_seed_logs(tmp_path, native_status):
+    project, bin_dir = _project(tmp_path)
+    _fake_xrun(bin_dir)
+    config = {"execution": {"backend": "local"}, "tools": {"coverage": {"imc": {}}}}
+    if native_status == "UNAVAILABLE":
+        config["tools"]["coverage"]["imc"]["path"] = str(project / "absent-imc")
+    elif native_status == "TIMEOUT":
+        _write_executable(bin_dir / "imc", "#!/bin/sh\nexec 1>&- 2>&-\nexec sleep 12\n")
+    else:
+        _write_executable(bin_dir / "imc", "#!/bin/sh\nexit 0\n")
+    (project / "rat_config.json").write_text(json.dumps(config))
+    result = _run(project, "--sim", "xrun", "--seeds", "42 43", "--parallel", "1",
+                  "--coverage-timeout", "1", FAKE_BIN_LOG="1")
+    assert result.returncode == 3, result.stdout + result.stderr
+    report = _report(project)
+    assert report["native_coverage_status"] == native_status
+    assert report["coverage_status"] == "FUNCTIONAL_LOG"
+    assert report["coverage_scope"] == "functional_only"
+    assert report["verdict"] == "INCONCLUSIVE"
+    assert report["functional_regression_passed"]
+    if native_status == "UNAVAILABLE":
+        calls = map(json.loads, (project / "xrun.argv.jsonl").read_text().splitlines())
+        assert all("-coverage" not in argv for argv in calls)
+    linked_report = Path(report["functional_coverage_report"])
+    assert not linked_report.is_absolute()
+    data = json.loads((project / linked_report).read_text())
+    assert data["scope"] == "functional_only"
+    assert all((project / log).is_file() for log in data["seed_logs"])
+    assert (data["covered_bins"], data["total_bins"]) == (2, 3)
+    assert data["bins"]["tb.request.write"] == {"hits": 2, "minimum_hits": 2, "covered": True}
+    assert not data["bins"]["tb.request.unseen"]["covered"]
+    evidence = json.loads((project / ".rat/state/verify-evidence.json").read_text())
+    assert evidence["runs"][-1]["verdict"] == "PASS"
+
+
+@pytest.mark.parametrize("drift", [False, True])
+def test_explicit_functional_scope_checks_matching_bins_without_vendor_flags(tmp_path, drift):
+    project, bin_dir = _project(tmp_path)
+    _fake_xrun(bin_dir)
+    _write_executable(bin_dir / "imc", '#!/bin/sh\ntouch "$RAT_PROJECT_ROOT/imc-invoked"\n')
+    result = _run(project, "--sim", "xrun", "--seeds", "42 43", "--parallel", "1",
+                  "--coverage-mode", "functional-log", FAKE_BIN_LOG="1", FAKE_BIN_DRIFT="1" if drift else "")
+    assert result.returncode == int(drift), result.stdout + result.stderr
+    assert not (project / "imc-invoked").exists()
+    calls = map(json.loads, (project / "xrun.argv.jsonl").read_text().splitlines())
+    assert all("-coverage" not in argv and "-covworkdir" not in argv for argv in calls)
+    report = _report(project)
+    assert report["coverage_status"] == ("FAILED" if drift else "FUNCTIONAL_LOG")
+    assert report["native_coverage_status"] == "NOT_RUN"
+
+
+def test_vcs_compile_wait_reports_timeout(tmp_path):
+    project, bin_dir = _project(tmp_path)
+    _fake_vcs(bin_dir)
+    result = _run(project, "--sim", "vcs", "--sim-timeout", "1", "--seeds", "42", FAKE_COMPILE_WAIT="1")
+    assert result.returncode == 124, result.stdout + result.stderr
+    assert "RAT_TIMEOUT" in result.stdout

@@ -6,6 +6,8 @@ argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Measure RTL performance (throughput, latency, stall cycles) against BFM-predicted baselines and flag deviations exceeding 10%. Outputs: `sim/{module}/{module}_perf.json` (raw measured vs expected metrics) and `reviews/phase-5-verify/{module}-performance-report.md` (PASS/FAIL verdict with deviation analysis).
 </Purpose>

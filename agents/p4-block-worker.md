@@ -267,23 +267,12 @@ All RTL produced in Phase 4 MUST follow:
 
 Meet the required throughput, then use less area. Share an arithmetic operator across uses that do not overlap in a cycle, and keep that operator busy while input is available. A μArch schedule that already fixes the operator count is binding. Do not add operators once the target is met, and do not miss the target to save area.
 
-## Memory Wrapper Rules
+## Memory wrappers
 
-Storage elements specified as "SRAM wrapper" in Phase 3 μArch docs MUST use the standardized
-wrappers in `rtl/common/` (parameterized behavioral models for simulation, foundry macros for synthesis):
-
-| Wrapper | File | Use |
-|---------|------|-----|
-| `sram_sp` | `rtl/common/sram_sp.sv` | Single-port: 1 R/W port, single clock |
-| `sram_tp` | `rtl/common/sram_tp.sv` | Two-port: 1W + 1R, single clock (`clk`) |
-| `sram_dp` | `rtl/common/sram_dp.sv` | Dual-port: 1W + 1R, dual clock (`wclk`/`rclk`) |
-
-- Parameters: `DEPTH`, `WIDTH`; derived `ADDR_W = $clog2(DEPTH)` (localparam inside wrapper)
-- Instance naming: `u_mem_{purpose}` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
-- Full interface spec (per-wrapper port lists, storage selection thresholds, synthesis
-  blackbox/macro-replacement strategy) is OWNED by `.claude/rules/rtl-coding-conventions.md`
-  ("Storage Selection" section, deployed by rat-init-project) — follow it verbatim
-- **Wave 1 responsibility**: rtl-coder creates `rtl/common/sram_*.sv` wrappers if not already present, then instantiates them in modules per μArch spec
+For storage specified as an SRAM wrapper in P3, Wave 1 reuses the matching project
+wrapper in `rtl/common/` or creates it from the SP, TP or DP scaffold in the
+`systemverilog` skill. Preserve the specified ports, clocks and read behavior.
+The skill covers macro linking and blackbox reporting for synthesis.
 
 ## Timing constraints
 

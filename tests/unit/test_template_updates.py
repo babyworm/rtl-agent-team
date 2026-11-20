@@ -15,7 +15,7 @@ from tests.conftest import REPO_ROOT
 def installation(tmp_path):
     plugin = tmp_path / "plugin"
     shutil.copytree(REPO_ROOT / "skills/rat-init-project", plugin / "skills/rat-init-project")
-    for relative in ["scripts/run_sim.sh", "scripts/verify_evidence.py", "scripts/eda_runner.py", "scripts/eda_setup.py", "scripts/regression_evidence.py", "hooks/lib/python-util.sh", "skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh"]:
+    for relative in ["scripts/run_sim.sh", "scripts/verify_evidence.py", "scripts/eda_runner.py", "scripts/eda_setup.py", "scripts/regression_evidence.py", "scripts/merge_coverpoint_logs.py", "hooks/lib/python-util.sh", "skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh"]:
         target = plugin / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(REPO_ROOT / relative, target)

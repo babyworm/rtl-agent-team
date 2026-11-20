@@ -6,6 +6,8 @@ argument-hint: "[module-list or --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run deep functional verification closure after P4 sanity gates.
 Coverage and requirement traceability are enforced at module/block/top scope.

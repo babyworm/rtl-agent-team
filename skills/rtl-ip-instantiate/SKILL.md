@@ -6,6 +6,8 @@ argument-hint: "[ip-name | path/to/ip-descriptor.xml]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Generate a convention-compliant SystemVerilog wrapper module that instantiates a third-party IP with correct port connections, parameter settings, and explicit tie-offs. Output: `rtl/ip_wrappers/{ip_name}_wrapper.sv`.
 </Purpose>

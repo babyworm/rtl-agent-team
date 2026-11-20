@@ -6,6 +6,8 @@ argument-hint: "[top-module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute ONE iteration of the DC-based PPA optimization loop against a verified
 RTL design. Produces `docs/ppa-opt/iter-{N}/` with the synthesis reports, RTL

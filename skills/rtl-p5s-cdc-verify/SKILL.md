@@ -6,6 +6,8 @@ argument-hint: "[top-module]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Perform static CDC analysis on RTL to identify missing synchronizers, metastability risks,
 and CDC constraint gaps. Outputs: lint/cdc/cdc_report.md + syn/constraints/cdc_constraints.sdc.

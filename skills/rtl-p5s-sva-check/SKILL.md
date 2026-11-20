@@ -6,6 +6,8 @@ argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Extract formal properties from RTL and run formal verification.
 Outputs:

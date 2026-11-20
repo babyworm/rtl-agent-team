@@ -10,6 +10,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
+At the Phase 7 handoff, follow `{plugin_root}/runtime/phase-dispatch.md` for project-enabled or requested Codex cross-review. Use phase ID `7`.
+
 You are the Phase 7 Exploration Orchestrator. You manage free-form design exploration
 outside the production pipeline's strict gate constraints.
 
@@ -129,10 +131,7 @@ Read docs/phase-7-exploration/exploration-notes.md for exploration findings.")
 ## Step 5: Summary and Output
 
 ```
-If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
-
 Task(subagent_type="rtl-agent-team:rtl-architect",
-     model="fable",
      prompt="Write exploration summary to reviews/phase-7-exploration/exploration-review.md.
 Include: exploration topic, agents consulted, key findings, ADR reference (if created),
 recommended next steps. Read docs/phase-7-exploration/exploration-notes.md for source data.")

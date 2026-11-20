@@ -1,8 +1,6 @@
 #!/bin/sh
 # RTL Edit Tracker: PostToolUse:Edit/Write/Bash hook
-# Tracks modified .sv/.svh/.v/.vh files for verification enforcement.
-# When an RTL file is edited, records it in a tracking file and injects
-# a reminder that functional verification (not just lint) is required.
+# Measure HDL changes across tool events and record changes for the Stop gate.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -159,118 +157,40 @@ _prepare_gate_output() {
 # Extract file_path from tool input
 FILE_PATH=$(jsonu_get_input_string "$INPUT" "file_path")
 
-# B1: Bash command RTL detection
-# When invoked as PostToolUse:Bash, file_path is absent — scan command string instead
-if [ -z "$FILE_PATH" ]; then
-  COMMAND=$(jsonu_get_input_string "$INPUT" "command")
-  if [ -z "$COMMAND" ]; then
-    emit_post_continue
-  fi
-  # Quick pass-through: no RTL extensions in command → minimal overhead
-  if ! printf '%s' "$COMMAND" | grep -qE '\.(sv|svh|v|vh)([^a-zA-Z0-9_]|$)'; then
-    emit_post_continue
-  fi
-  # Extract first command and strip trailing & for classification.
-  FIRST_CMD=$(printf '%s' "$COMMAND" | sed 's/^[[:space:]]*//' | awk '{print $1}')
-  FIRST_CMD_BASE=$(basename "$FIRST_CMD" 2>/dev/null || printf '%s' "$FIRST_CMD")
-  LINT_CHECK_CMD=$(printf '%s' "$COMMAND" | sed 's/[[:space:]]*&[[:space:]]*$//')
-  # Mixed-command / write-intent check FIRST: skip all exemptions when detected.
-  # This prevents read-only/lint prefixes from masking write operations.
-  # Note: pipes (|) are NOT treated as mixed — both sides of a pipe are read-only
-  # for RTL tracking purposes. fd redirections (2>&1) are stripped before & check.
-  IS_MIXED=false
-  case "$LINT_CHECK_CMD" in
-    *"&&"*|*"||"*|*";"*) IS_MIXED=true ;;
-  esac
-  # Check for background & separately after stripping fd redirections (N>&M)
-  if [ "$IS_MIXED" = "false" ]; then
-    AMPERSAND_CHECK=$(printf '%s' "$LINT_CHECK_CMD" | sed 's/[0-9]*>&[0-9]*/  /g')
-    case "$AMPERSAND_CHECK" in
-      *"&"*) IS_MIXED=true ;;
-    esac
-  fi
-  # Output redirection to RTL files is a write even from read-only commands
-  # (e.g., cat /dev/null > rtl/top.sv). Check only when not already mixed.
-  if [ "$IS_MIXED" = "false" ]; then
-    case "$LINT_CHECK_CMD" in
-      *">"*)
-        if printf '%s' "$LINT_CHECK_CMD" | awk 'BEGIN{rc=1} />[> ]*[^ ]*\.(sv|svh|v|vh)([^a-zA-Z0-9_]|$)/{rc=0} END{exit rc}'; then
-          IS_MIXED=true
-        fi ;;
-    esac
-  fi
-  if [ "$IS_MIXED" = "false" ]; then
-    # Filter read-only commands (fail-closed: unknown commands are tracked).
-    # find excluded: find -exec/-delete can write. Only safe single-command reads here.
-    case "$FIRST_CMD_BASE" in
-      cat|head|tail|less|more|grep|egrep|fgrep|rg|wc|file|stat|ls|diff|cmp|strings|hexdump|od|readlink|md5sum|sha256sum|sha1sum|cksum)
-        emit_post_continue
-        ;;
-      git)
-        case "$LINT_CHECK_CMD" in
-          "git diff "*|"git add "*|"git status"*|"git show "*) emit_post_continue ;;
-        esac ;;
-      sed)
-        case "$LINT_CHECK_CMD" in "sed -n "*) emit_post_continue ;; esac ;;
-      make)
-        case "$LINT_CHECK_CMD" in "make sim "*|"make sim"|"make test "*) emit_post_continue ;; esac ;;
-      iverilog|vvp|vcs|xrun|vsim|vlog|run_sim.sh)
-        emit_post_continue ;;
-    esac
-    # Token-aware lint-only exemption: only when first command IS a lint tool.
-    case "$FIRST_CMD_BASE" in
-      verilator)
-        case "$LINT_CHECK_CMD" in *--lint-only*)
-          emit_post_continue
-        esac ;;
-      verible-verilog-lint)
-        emit_post_continue
-        ;;
-      slang)
-        case "$LINT_CHECK_CMD" in *--lint-only*|*-W*)
-          emit_post_continue
-        esac ;;
-    esac
-  fi
-  # Extract RTL file paths from command (POSIX-safe: awk tokenizer, no grep -oE or GNU sed)
-  BASH_RTL_FILES=$(printf '%s' "$COMMAND" | awk '{
-    gsub(/[;&<>|"'\''"]/, " ")
-    n = split($0, tokens, " ")
-    for (i = 1; i <= n; i++) {
-      t = tokens[i]
-      if (t ~ /\.(sv|svh|v|vh)$/) print t
-    }
-  }' | sort -u)
-  if [ -z "$BASH_RTL_FILES" ]; then
-    emit_post_continue
-  fi
-  BASH_RTL_FILES=$(printf '%s\n' "$BASH_RTL_FILES" | while IFS= read -r _raw; do
-    _normalized=$(ratu_normalize_path "$_raw" "$SESSION_CWD" "$CWD")
-    case "$_normalized" in .claude/worktrees/*) continue ;; /*) ;; *) _normalized="$CWD/$_normalized" ;; esac
-    printf '%s\n' "$_normalized"
-  done)
-  [ -n "$BASH_RTL_FILES" ] || emit_post_continue
-  _setup_tracking
-  # PPA-loop scope check: skip accumulation only for files inside allowed_edit_scope.
-  _PPA_SKIP=true
-  for _brf in $(printf '%s\n' "$BASH_RTL_FILES"); do
-    if ! _rat_in_ppa_scope "$_brf"; then
-      _PPA_SKIP=false
-      break
-    fi
-  done
-  if [ "$_PPA_SKIP" = "true" ]; then
-    _check_p6_stale "$CWD" "$STATE_DIR" >/dev/null
-    # PostToolUse hook — emit a PostToolUse envelope (emit_continue hardcodes a
-    # PreToolUse hookEventName, which fails PostToolUse schema validation and is
-    # silently dropped).
-    emit_post_context "PPA scope edit: run the required equivalence and smoke checks; Phase 6 documents are stale."
-  fi
-  _track_and_invalidate "$BASH_RTL_FILES"
-  _prepare_gate_output
-  emit_post_context "[RTL Verify Gate] Bash command references RTL files ($COUNT unverified). Run functional simulation for changed RTL; scripts/run_sim.sh records content-bound evidence after PASS. $P6_MSG"
-  exit 0
+# Pair tool events by ID. The Bash command text is never used as evidence of edits.
+HOOK_EVENT=$(jsonu_get_root_string "$INPUT" hook_event_name)
+TOOL_NAME=$(jsonu_get_root_string "$INPUT" tool_name)
+TOOL_USE_ID=$(jsonu_get_root_string "$INPUT" tool_use_id)
+
+measure_changes() {
+  . "$SCRIPT_DIR/lib/python-util.sh"
+  _MEASURE_PY=$(rat_select_python 2>/dev/null) || return 1
+  printf '%s' "$INPUT" | "$_MEASURE_PY" "$SCRIPT_DIR/../scripts/rtl_change_snapshot.py" "$CWD" "$RAT_DIR/state"
+}
+
+if [ "$HOOK_EVENT" = PreToolUse ]; then
+  measure_changes >/dev/null || true
+  emit_post_continue
 fi
+
+if [ -n "$TOOL_USE_ID" ]; then
+  if CHANGED_FILES=$(measure_changes); then
+    if [ -n "$CHANGED_FILES" ]; then
+      _setup_tracking
+      PENDING_FILES=$(printf '%s\n' "$CHANGED_FILES" | while IFS= read -r _changed; do
+        if ! _rat_in_ppa_scope "$_changed"; then printf '%s\n' "$_changed"; fi
+      done)
+      [ -z "$PENDING_FILES" ] || _track_and_invalidate "$PENDING_FILES"
+      _check_p6_stale "$CWD" "$STATE_DIR" >/dev/null
+      emit_post_continue
+    fi
+    # HDL no-op or excluded output. Non-HDL edits still run the artifact hooks below.
+    case "$FILE_PATH" in *.sv|*.svh|*.v|*.vh) emit_post_continue ;; esac
+  fi
+fi
+[ "$HOOK_EVENT" != PostToolUseFailure ] || emit_post_continue
+[ "$TOOL_NAME" != Bash ] || emit_post_continue
+[ -n "$FILE_PATH" ] || emit_post_continue
 
 # Check if the file is an RTL file
 case "$FILE_PATH" in

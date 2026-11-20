@@ -4,26 +4,10 @@
 This document defines the standard protocol for agents operating as workers
 within a Claude Code native team (TeamCreate/SendMessage/TaskCreate).
 
-> **Orchestrator as Teammate**: The team leader is the skill (main session).
-> The skill calls TeamCreate, spawns a coordinator teammate (orchestrator) and
-> 3-5 general-purpose workers. The coordinator manages the task graph via
-> TaskCreate/TaskList/TaskUpdate and directs workers via SendMessage.
-> Workers communicate with the coordinator via SendMessage and pick up tasks
-> from the shared task list. For specialist work, workers spawn Task() subagents.
-
-```
-Skill (main session = leader)
-  ├── TeamCreate
-  ├── TaskCreate (initial graph)
-  ├── Agent(coordinator) ← TEAMMATE (orchestrator)
-  │   ├── TaskCreate/TaskList/TaskUpdate ✓
-  │   └── SendMessage ✓ (to workers + leader)
-  ├── Agent(worker) × 3-5
-  │   └── Task(specialist) ← subagent calls
-  ├── Leader: TaskList monitoring loop
-  ├── TeamDelete
-  └── Cleanup
-```
+The main session creates the team and spawns the phase coordinator. The coordinator
+assigns independent work to available teammates and requests a specialist when
+needed. Workers report to the coordinator. See `runtime/workflows/team-leader.md`
+for the main session's lifecycle and teardown.
 
 ## Worker Lifecycle
 

@@ -63,6 +63,13 @@ def test_timeout_kills_descendant_that_holds_stdout_after_parent_exits(tmp_path)
     assert result.returncode == 124
 
 
+def test_wall_timeout_survives_closed_output(tmp_path):
+    tool = executable(tmp_path / "licence_wait", "#!/bin/sh\nexec 1>&- 2>&-\nexec sleep 5\n")
+    result = invoke(tmp_path, "run", "--timeout", "0.15", "--shell-command", str(tool))
+    assert result.returncode == 124
+    assert "RAT_TIMEOUT" in result.stdout
+
+
 def test_docker_mount_preserves_absolute_project_paths(tmp_path):
     binary = executable(tmp_path / "bin/docker", '#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps(sys.argv[1:]))\n')
     (tmp_path / "rat_config.json").write_text('{"execution":{"backend":"docker"}}')

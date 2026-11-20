@@ -6,6 +6,8 @@ argument-hint: "[top-module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run Tier 4 integration-level tests on the complete RTL system. Verifies cross-module interactions: data flows end-to-end with correct values, reset propagates to all sub-modules, clocks are connected correctly, and handshake protocols are observed across module boundaries. Outputs: `sim/top/integration_results.json` (per-test PASS/FAIL) and `reviews/phase-5-verify/integration-test-report.md`.
 </Purpose>

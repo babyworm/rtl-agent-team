@@ -6,6 +6,8 @@ argument-hint: "[block-name | --all-blocks]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Implement SystemC TLM-2.0 Bus Functional Models for each architectural block using LT (Loosely Timed) blocking transport by default, with ARM AMBA protocol extensions (AXI/AHB/APB/ACE). Outputs: `bfm/src/*.cpp`, `bfm/build/`, `bfm/smoke_test_result.txt`, `bfm/perf_baseline.json`, and `reviews/phase-3-uarch/bfm-feature-coverage.md`.
 </Purpose>

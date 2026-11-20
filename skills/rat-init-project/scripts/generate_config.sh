@@ -370,6 +370,7 @@ $(category_json coverage urg imc vcover),
 $(category_json sta pt_shell),
 $(category_json power pwr_shell joules voltus powerpro)
   },
+  "review": {"codex_cross_review": false},
   "preferences": {
     "_comment": "Preferred tool per category. Auto-set to first detected (commercial priority). User-overridable.",
     "simulator": $(json_quote "$PREF_SIM"),

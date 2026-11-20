@@ -41,10 +41,15 @@ Practical rules:
 }
 ```
 
-**Event types**: `SessionStart`, `PreToolUse`, `PostToolUse`, `SubagentStart`, `SubagentStop`, `Stop`
+**Event types**: `SessionStart`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `SubagentStart`, `SubagentStop`, `Stop`
 
 **Matcher**: For `PreToolUse`/`PostToolUse`, matches the tool name (e.g., `Edit|Write|Bash`,
 `Skill`, `Agent`). Use `*` for all-tool matching (SessionStart, Stop, Subagent events).
+
+The RTL edit tracker pairs `Edit`, `Write` and `Bash` events by `tool_use_id`.
+It compares HDL content hashes before and after the call, including failed calls
+that wrote files before exiting. It ignores generated `syn/`, `lint/`, `sim/build/`
+and conventional build directories. Bash command text cannot establish an edit.
 
 **Timeout**: Seconds before the hook is killed. Default 3s for responsiveness. The skill
 completion gate and `stop-gate.sh` get 10s: in python parser mode each starts python about
@@ -116,11 +121,10 @@ Claude stop with a notice to the user in two cases:
   user sets `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, the bound follows it: two Stops under
   it (at least 1), and none when it is 0.
 
-After its notice a gate does not block again in that chain. It stays silent unless it
-opts in to `stopu_renotify`, as the verify gate does: when its progress moves later in
-the chain, the notice is shown again. Another Stop hook (Claude Code's `/goal`, a
-persistent-loop plugin) can keep a chain going long after the notice, and Claude Code's
-own cap counts only blocked Stops with no tool call between them.
+The RTL verify gate requests verification once per pending content fingerprint
+within the chain cap. The next Stop for that fingerprint shows one `Info>` line
+and lets Claude stop. A new prompt keeps that receipt. New content can re-arm the
+gate within the chain cap, and fresh functional evidence clears pending tracking.
 
 To use it:
 - Set `STOP_CHAIN=$(stopu_chain_active "$INPUT" <state-dir> <gate-ids>)` on every

@@ -104,16 +104,16 @@ vsim -c opt_tb +UVM_TESTNAME={module}_base_test +UVM_VERBOSITY=UVM_MEDIUM \
 # Compile
 xrun -sv -uvm -compile -access +rwc \
   +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv \
-  -xmlibdirpath build/xcelium
+  -xmlibdirname build/xcelium
 
 # Elaborate
 xrun -sv -uvm -elaborate -access +rwc \
   +incdir+sim/uvm rtl/*/*.sv sim/uvm/*.sv \
-  -top tb_top -xmlibdirpath build/xcelium
+  -top tb_top -xmlibdirname build/xcelium
 
 # Run
-xrun -R -xmlibdirpath build/xcelium \
-  +UVM_TESTNAME={module}_base_test -seed 42 -l run.log
+xrun -R -xmlibdirname build/xcelium \
+  +UVM_TESTNAME={module}_base_test -svseed 42 -l run.log
 ```
 
 ## UVM Coverage Best Practices

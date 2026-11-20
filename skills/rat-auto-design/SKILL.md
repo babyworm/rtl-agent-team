@@ -6,86 +6,46 @@ argument-hint: "[spec-file or project-description]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
-<Purpose>
-Execute the full RTL design pipeline from specification to verified silicon.
-In team mode (default), the skill sequences each phase skill with `team` in the arguments.
-In sequential mode (--no-team), delegates to autopilot-orchestrator.
-</Purpose>
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
 
-<Use_When>
-- Starting a complete RTL design from a specification document
-- User says "design a chip", "full pipeline", "RTL design", "autopilot"
-- Need end-to-end flow: Research → Architecture → μArch → RTL → Verify → Design Note
-</Use_When>
+Run P1 through P6 from the supplied specification. Team mode is the default
+when team tools are available. For `--no-team` or a host without teams,
+use the host's sequential delegation:
 
-<Do_Not_Use_When>
-- Only need a specific phase (use the phase-specific skill instead)
-- Only need design space exploration (use rat-dse)
-- Only need design documents without RTL (use rat-p1p3-spec-uarch)
-</Do_Not_Use_When>
-
-## Prerequisites
-
-None — this is the full pipeline entry point. Setup is handled automatically.
-
-## Execution
-
-```python
-# Parse mode
-TEAM_MODE = "--no-team" not in ARGUMENTS
-
-if TEAM_MODE:
-    # ═══ TEAM MODE: Skill sequences phases directly ═══
-
-    # State management
-    Write(".rat/state/rat-auto-design-state.json",
-      { "schema_version": "3.0", "status": "running",
-        "current_phase": 1, "execution_mode": "team",
-        "phases": { "1": {"status":"pending"}, "2": {"status":"pending"},
-                    "3": {"status":"pending"}, "4": {"status":"pending"},
-                    "5": {"status":"pending"}, "6": {"status":"pending"} } })
-
-    # Phase 1: Research (team)
-    Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")
-    # Gate check + state update
-
-    # Phase 2: Architecture + RefC (team)
-    Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete")
-    # Gate check + state update
-
-    # Phase 3: uArch + BFM (team)
-    Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete")
-    # Gate check + state update
-
-    # Phase 4: RTL Implementation (team)
-    Skill(skill="rtl-agent-team:rtl-p4-implement", args="team Phase 3 complete")
-    # Gate check + state update
-
-    # Phase 5: Verification (team)
-    Skill(skill="rtl-agent-team:rtl-p5-verify", args="team Phase 4 complete")
-    # Gate check + state update
-
-    # Phase 6: Design Review (no team — sequential only)
-    Bash("mkdir -p reviews/phase-6-review")
-    Task(subagent_type="rtl-agent-team:p6-review-orchestrator",
-         prompt="Execute Phase 6 design review. Context: Phase 5 PASS.")
-
-    # Mark completed (stop-gate.sh reads top-level "status" to allow exit)
-    # Write completed status BEFORE cleanup so stop hook sees it
-    # Portable in-place JSON edit — avoids GNU/BSD sed -i differences (macOS BSD sed requires `-i ''`).
-    Bash("python3 -c 'import json, pathlib; p = pathlib.Path(\".rat/state/rat-auto-design-state.json\"); d = json.loads(p.read_text()); d[\"status\"] = \"completed\"; p.write_text(json.dumps(d, indent=2))'")
-    # Cleanup state
-    Bash("rm -f .rat/state/rat-auto-design-state.json")
-
-else:
-    # ═══ SEQUENTIAL MODE: Delegate to autopilot-orchestrator ═══
-    Task(subagent_type="rtl-agent-team:autopilot-orchestrator",
-         prompt="Execute full RTL autopilot pipeline. --no-team. User input: $ARGUMENTS")
+```
+Task(subagent_type="rtl-agent-team:autopilot-orchestrator",
+     prompt="Run the full pipeline sequentially. User input and review scope: $ARGUMENTS.")
 ```
 
-Team mode uses native teams within each phase for parallel execution (Orchestrator as Teammate pattern).
-Each phase skill's team mode handles its own TeamCreate/TeamDelete lifecycle with a coordinator teammate + 3-5 workers.
-Sequential mode delegates everything to the autopilot-orchestrator.
+Follow `{plugin_root}/runtime/phase-dispatch.md`. Capture the user's Codex
+review choice as `review_scope` (including any phases named); preserve it on
+resume and forward it to each phase owner. A run override is local to this run.
+
+## Team mode
+
+Initialize or resume `.rat/state/rat-auto-design-state.json` (schema 3.0).
+Persist `review_scope`, execution mode, current phase, evidence and cross-review
+results. On resume, keep the saved scope unless explicitly changed. Dispatch
+pending phases in order after the preceding gate passes. For a completed
+phase, rerun only work invalidated by changed inputs or a newly requested
+review. Reuse its current evidence.
+
+```
+Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS {review_scope}")
+Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete {review_scope}")
+Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete {review_scope}")
+Skill(skill="rtl-agent-team:rtl-p4-implement", args="team Phase 3 complete {review_scope}")
+Skill(skill="rtl-agent-team:rtl-p5-verify", args="team Phase 4 complete {review_scope}")
+Task(subagent_type="rtl-agent-team:p6-review-orchestrator",
+     prompt="Run the Phase 6 design review after Phase 5 PASS. Review scope: {review_scope}.")
+```
+
+Each phase owns its workers, review and gate results. Carry failed measured
+repairs into the active gate's counters on resume. At two failed repairs,
+set `orchestration_control.needs_user_decision=true` and report the result.
+Set top-level status to
+`completed` after P6 succeeds, before the normal state-file cleanup. Preserve
+interrupted state for resume.
 
 ## Output
 

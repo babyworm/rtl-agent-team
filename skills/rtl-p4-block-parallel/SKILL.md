@@ -6,6 +6,8 @@ argument-hint: "[--all or specific block names]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate, AskUserQuestion
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute Phase 4 RTL implementation using block-parallel worktree strategy with Claude Code
 native team infrastructure. Each of 6 codec blocks (entropy, tq, me, mc, intra, filter)

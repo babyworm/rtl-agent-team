@@ -12,7 +12,7 @@ CATALOG=ROOT/'template-catalog.json'
 
 def current():
     folder=ROOT/'skills/rat-init-project/templates'
-    files=[ROOT/'scripts'/name for name in ('run_sim.sh','verify_evidence.py','eda_runner.py','regression_evidence.py','eda_setup.py')]
+    files=[ROOT/'scripts'/name for name in ('run_sim.sh','verify_evidence.py','eda_runner.py','regression_evidence.py','eda_setup.py','merge_coverpoint_logs.py')]
     files += [ROOT/'hooks/lib/python-util.sh',ROOT/'skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh']
     files += [folder/name for name in ('Makefile','lib/tool-runner.sh','run_cdc.sh','run_lint.sh','run_syn.sh','run_formality.sh','run_conformal.sh')]
     files += list((folder/'rules').glob('*.md'))+list((folder/'guides').glob('*.md'))

@@ -70,7 +70,6 @@ Bash("mkdir -p reviews/phase-6-review")
 
 ```
 Task(subagent_type="rtl-agent-team:code-quality-reviewer",
-     model="opus",
      prompt="Perform intensive per-module code quality review for Phase 6.
 Read docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/*.md for context.
 Read ALL rtl/*/*.sv files for full code review.
@@ -86,7 +85,6 @@ Save comprehensive review to reviews/phase-6-review/code-review.md.",
      run_in_background=true)
 
 Task(subagent_type="rtl-agent-team:design-quality-reviewer",
-     model="opus",
      prompt="Perform cross-phase design quality review for Phase 6.
 Read ALL design artifacts in order: docs/phase-1-research/iron-requirements.json -> docs/phase-2-architecture/architecture.md ->
 docs/phase-3-uarch/*.md -> rtl/*/*.sv.
@@ -114,7 +112,6 @@ Correct inconsistencies in-place. Append CC1 log to each document.
 
 ```
 Task(subagent_type="rtl-agent-team:design-note-writer",
-     model="opus",
      prompt="Write comprehensive design note for Phase 6.
 Read ALL artifacts: docs/phase-1-research/iron-requirements.json, architecture.md, docs/phase-3-uarch/*.md, rtl/*/*.sv.
 Read CC1-corrected Phase 6 reviews: reviews/phase-6-review/code-review.md,
@@ -128,7 +125,6 @@ Save to reviews/phase-6-review/design-note.md (or split files).",
      run_in_background=true)
 
 Task(subagent_type="rtl-agent-team:improvement-analyst",
-     model="opus",
      prompt="Analyze all review findings and produce prioritized improvement recommendations.
 Read CC1-corrected Phase 6 reviews: reviews/phase-6-review/code-review.md,
 reviews/phase-6-review/design-review.md. Read Phase 4/5 reviews for context.
@@ -156,8 +152,8 @@ On agent failure: retry once, then escalate to user.
 
 ## Optional independent review
 
-When the user requests a cross-review, invoke `/rtl-agent-team:codex-cross-review`
-once and report disagreements. Do not append it automatically to a completed review.
+At the Phase 6 handoff, follow `{plugin_root}/runtime/phase-dispatch.md` for project-enabled or requested Codex cross-review. Use phase ID `6`.
+
 
 ## Step 8: PDF Generation (optional, on user request)
 

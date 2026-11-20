@@ -231,7 +231,7 @@ Each REQ-U-* entry SHOULD include structured acceptance_criteria:
 ```
 
 Rules:
-- Every REQ-U-* SHOULD have ≥1 acceptance criterion
+- Every iron REQ-U-* needs at least one observable acceptance criterion for the P3 handoff gate.
 - `ac_id` format: `{parent_req_id}.AC-{N}` (e.g., `REQ-U-012.AC-1`)
 - `test_method` guides testbench-dev on verification approach:
   - `assertion`: protocol properties verifiable by SVA (e.g., valid stable during !ready)
@@ -240,8 +240,7 @@ Rules:
   - `inspection`: non-automatable criteria — set `verifiable: false`
 - `verifiable: false` criteria are excluded from automated coverage tracking;
   documented in RTM as `NOT_VERIFIABLE`
-- P3 exit gate: advisory WARNING if any REQ-U-* has no AC (not a hard-block)
-- Empty array `[]` treated same as absent field (backward compatible)
+- Missing or empty `acceptance_criteria` fails the handoff gate. For legacy string criteria without `ac_id`, trace at the requirement level.
 
 ## iron-requirements.json Schema — traces_to
 
@@ -258,7 +257,7 @@ Rules:
 
 ### Zero-Opens Invariant
 
-Phase 3 records each remaining choice. High confidence resolves it. Low confidence asks once, and that answer resolves it. Do not fail the phase in order to run another analysis. P4 reads iron requirements. An item the user has answered is iron.
+Record the evidence and confidence for each remaining design choice. A material ambiguity remains open until the specification or the user resolves it. P4 consumes the settled iron requirements.
 
 ## Compliance Check Procedure
 

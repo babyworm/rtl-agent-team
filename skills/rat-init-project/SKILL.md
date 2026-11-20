@@ -73,6 +73,8 @@ If `<markdown_diagram_rule>` is absent from `~/.claude/CLAUDE.md`, keep the docu
 figure policy from the installed docs/ and reviews/ guides; do not add a duplicate
 universal drawing tutorial.
 
+To enable Codex review at phase handoffs, set `review.codex_cross_review` to true in the project-root `rat_config.json`. It defaults to false.
+
 ## Tool readiness and completion
 
 `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/.setup-complete` records plugin

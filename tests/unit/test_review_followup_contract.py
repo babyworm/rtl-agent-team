@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,9 +18,14 @@ def test_review_followup_contract(tmp_path: Path) -> None:
         check=False,
     )
     assert clean.returncode == 0, clean.stdout + clean.stderr
+    consumers = sum(
+        bool(re.search(r"^#{2,3} Step 0: Context Bootstrap", p.read_text(), re.MULTILINE))
+        for p in (REPO_ROOT / "agents").glob("*.md")
+    )
+    assert consumers > 0
     assert (
-        "Step 0 sync complete: consumer files scanned: 21, changed: 0, "
-        "unchanged: 21, skipped: 0."
+        f"consumer files scanned: {consumers}, changed: 0, "
+        f"unchanged: {consumers}, skipped: 0."
     ) in clean.stdout
 
     fixture_root = tmp_path / "sync-fixture"

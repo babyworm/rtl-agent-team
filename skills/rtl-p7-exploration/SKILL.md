@@ -6,6 +6,8 @@ argument-hint: "[exploration topic]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute Phase 7 free exploration. Investigates algorithm alternatives, optimization
 experiments, and technology evaluations without pipeline gate constraints.

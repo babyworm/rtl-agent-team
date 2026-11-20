@@ -17,17 +17,26 @@ SSH_HOST comes from the user, not this reference.
 "$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_setup.py" discover --host "$SSH_HOST" --output "$SITE_PROFILE"
 ```
 
-Pass `--config "$PROJECT_ROOT/rat_config.json"` when it already exists so discovery
-uses its explicit tool paths and trusted environment setup. The helper selects
-remote Python >=3.9 even when `python3` is old, tolerates login banners, and records
-paths without pretending that licenses or runtime dependencies were checked.
-If a site needs environment modules or a setup script, inspect its documented
-setup or the relevant startup-file source statements. Put the selected trusted
-command in the candidate configuration and rediscover using `--config`. Do not
-dump full environment/startup files or scan unrelated filesystems.
+Pass `--env-script "$SETUP_SCRIPT" --env-shell tcsh` for a shared tcsh script on
+the execution host. The shell defaults to bash. `--config "$PROJECT_ROOT/rat_config.json"`
+preserves explicit paths and per-tool `env_source` overrides. The helper selects
+remote Python >=3.9 and resolves known binaries in the sourced PATH.
 
-Choose the requested tools from the evidence and existing preferences. Probe a
-selected candidate only with its documented/site-verified arguments:
+Discovery automatically runs bounded startup checks and tiny simulations for
+Xcelium and VCS. Each tool reports `setup_status` and any measured `probe`.
+`command_passed` records startup evidence. `workload_passed` requires the task's
+completion output. `probe.license_checked` applies only to the measured workload.
+Use `--probe-timeout` to override the 8-second limit per check, or `--paths-only`
+for inventory. SSH/LSF discovery measures the SSH host. Scheduler and signoff
+qualification use their actual execution paths.
+
+For a site-specific check, add `setup_check` to the tool's private configuration.
+Set `args` to the tool's argument array and `expected_line` to its exact completion
+output. Set `licensed` to `true` when the configured workload exercises the
+license feature to be checked. Other tools without a known check report `unchecked`.
+
+Choose the requested tools from the evidence and existing preferences. To
+diagnose an individual tool, use its documented/site-verified arguments:
 
 ```bash
 "$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_setup.py" probe --profile "$SITE_PROFILE" --tool simulators.xrun --record --output "$PROBE_RESULT" -- -version
@@ -60,10 +69,10 @@ measured remote home; its local-root hash prevents two projects sharing a basena
 from overwriting each other. `--backend lsf` selects LSF with a verified scheduler/queue;
 preserve the selected LSF backend rather than assuming every SSH host uses LSF.
 
-Finish with the smallest authorized real operation for the requested capability,
-through the installed wrapper. For simulation, a tiny self-checking SV test proves
-compile/elaboration/run and license use; preserve its runner-written evidence.
-For synthesis/signoff, use the actual technology library and constraints. Keep
+Reuse the smoke result for basic simulator setup. When the requested framework or
+phase still needs qualification, run the smallest relevant operation through the
+installed wrapper and preserve its evidence. For synthesis/signoff, use the actual
+technology library and constraints. Keep
 missing libraries, unsupported tool versions, license failures and undefined
 requirements open. Setup smoke evidence is not verification of the user's design.
 Save the readiness scope and results, reuse them until an affected setting changes,

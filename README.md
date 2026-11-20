@@ -87,6 +87,8 @@ cd ~/work/my-rtl-project
 
 ### Stage C — Design Work (recurring, inside project)
 
+For Codex cross-review at each phase handoff, set `"review": {"codex_cross_review": true}` in the project-root `rat_config.json`. It defaults to false. For a single run, ask for “auto design with Codex cross-review” or name the phase to review.
+
 Execute RTL design and verification pipeline. Run from inside an initialized project — artifacts are created relative to CWD, so an uninitialized directory will not have the expected structure.
 
 ```bash
@@ -98,7 +100,7 @@ Execute RTL design and verification pipeline. Run from inside an initialized pro
 #     model in ../vdc-m/refc. Target 4K 60fps at 500MHz, margin 40% under TSMC 28nm"
 
 # C2. OR split pipeline (for human review between stages)
-/rtl-agent-team:rat-dse               # Phase 1→2: DSE (algorithm + architecture)
+/rtl-agent-team:rat-dse               # Phase 1→3: DSE through μArch + BFM
 /rtl-agent-team:rat-p1p3-spec-uarch   # Phase 1→3: Spec → μArch design docs
 /rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: RTL implementation + verification
 
@@ -162,20 +164,17 @@ project directory**. See [Quick Start](#quick-start) for the full stage map.
 
 Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
 
-### Autopilot escalation ladder
+### Autopilot repairs
 
-`rat-auto-design` gates use a per-gate retry ladder:
-- `1..N`: primary strategy
-- `N+1..2N`: fallback strategy (scope split + agent composition switch)
-- `2N+1`: last-chance alternative (one automatic attempt)
-- after last-chance fail: stop and ask user guidance
-
-Dynamic fallback guidance is injected through state (`orchestration_control.dynamic_prompt_text`) and surfaced by Stop hooks.
+After a measured failure, `rat-auto-design` repairs the affected scope and reruns
+its checks. Two failed repairs at the same gate pause the run for your decision.
+An unresolved requirement that changes the design or expected result triggers
+a question immediately. Resume keeps the phase evidence and repair count.
 
 ### Pipeline composition (split execution)
 
 ```
-/rtl-agent-team:rat-dse              # Phase 1→2: Deep algorithm + architecture exploration (DSE)
+/rtl-agent-team:rat-dse              # Phase 1→3: Explore architecture through μArch + BFM
 /rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate evaluation for algorithm comparison
 /rtl-agent-team:codec-conformance-eval  # Decoder conformance evaluation (JVET/JCTVC/3rd party)
 /rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch design documents
@@ -183,7 +182,7 @@ Dynamic fallback guidance is injected through state (`orchestration_control.dyna
 ```
 
 Split the pipeline for human review between design and implementation:
-- `rat-dse`: Deep Design Space Exploration — compare multiple algorithms and architecture candidates with quantitative trade-offs. Can also transform an existing functional C model into an architectural reference model. Stops at Phase 2 for review.
+- `rat-dse`: Compare viable algorithms and architectures using quantitative trade-offs. DSE can transform an existing functional C model into an architectural reference model. It ends after Phase 3 (μArch + BFM) and one self-critique. Request another trial to compare an alternative in an isolated worktree.
 - `rat-p1p3-spec-uarch`: Standard Phase 1→3 — produce design documents through μArch. Stops for review before RTL.
 - `rat-p4p5-impl-verify`: Phase 4→5 — implement RTL and run full verification from approved μArch documents.
 
@@ -288,7 +287,7 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 
 ## Agent Team
 
-### Agent Composition (91 agents: 36 Fable, 53 Opus, 2 Sonnet)
+### Agent composition
 
 | Category | Count | Key Agents |
 |----------|-------|------------|
@@ -302,10 +301,17 @@ python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_ho
 | Phase 4 Block-Parallel | 2 | p4-block-parallel-coordinator, p4-block-worker |
 | Orchestrators | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator, and 26 more (team/sub-phase variants) |
 
-Model policy:
-- `fable` — orchestration, judgment, architecture, and microarchitecture.
-- `opus` — design, verification, and checking.
-- `sonnet` — running a tool or parsing its report (`eda-runner`, `dc-report-parser`, `synthesis-reporter`, `ipxact-generator`).
+Claude, Codex, Antigravity (`agy`) and Grok use their own model IDs for
+delegation. Complex, design/verification, straightforward and trivial work map
+to Fable/Opus/Sonnet/Haiku on Claude and Astra/Sol/Terra/Luna on Codex.
+The resolver consults the installed CLI catalog for Codex, agy and Grok.
+Task complexity can override the role default. An explicit model takes precedence.
+[Native model selection](runtime/model-selection.md)
+
+On a host that discovers the installed skill, invoke it by name. Otherwise open
+`skills/<skill>/SKILL.md` from the local plugin checkout, for example
+`skills/rat-dse/SKILL.md`, and ask the host to follow it. Keep the checkout
+available so the skill can load its bundled roles, workflows and scripts.
 
 ### 6-Phase Pipeline (+Phase 7 Optional Exploration)
 

@@ -21,15 +21,16 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 | Branch | ≥ 80% | `-cm cond` | if/case branch coverage |
 | Functional | ≥ 95% | UVM covergroups | Architect-defined coverpoints |
 
-**Code coverage** is always enabled during regression (`-cm line+cond+fsm+tgl+branch` for VCS,
-`-coverage all` for Xcelium, `-coverage` for Questa). Merged from all seeds before evaluation.
+**Code coverage** uses the simulator's native coverage flags and requires a
+successful vendor merge before evaluation.
 
 **Functional coverage** is collected via `uvm_subscriber`-based coverage collectors in the
 testbench. Covergroups must be mapped to requirements (REQ-U-*).
 
-The regression runner enforces that every dispatched seed produces coverage and that the
-vendor merge command succeeds. It records `coverage_status` and the reference targets in
-the aggregate JSON. `coverage-analyst` owns percentage extraction and target enforcement.
+When the merger is unavailable, fails, or times out, auto mode can merge explicit
+functional bin hits from all passing seed logs. The aggregate JSON records the
+measured scope and native merge status. `coverage-analyst` evaluates measured
+targets and marks missing required metrics as unmeasured.
 
 ## Coverage-Driven Verification (CDV) Feedback Loop
 
@@ -83,7 +84,7 @@ bash {plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh --sim
 - Per-seed result JSON under `sim/uvm/regression/run_{timestamp}/`, merged coverage, and `sim/uvm/regression/regression_{module}_{timestamp}.json`
 - Default UVM test is `{module}_base_test` unless `--test` is supplied
 - Coverage merge: VCS `urg`, Xcelium `imc`, Questa `vcover`
-- Missing per-seed coverage or a failed merge forces the aggregate verdict to `FAIL`
+- A successful auto fallback leaves full coverage `INCONCLUSIVE`. Missing evidence for the selected coverage scope yields `FAIL`.
 
 ## Escalation & Stop Conditions
 
@@ -143,14 +144,14 @@ vcover report -details sim/uvm/coverage/merged.ucdb
 xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
     -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
     sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
-    -xmlibdirpath build/xcelium
+    -xmlibdirname build/xcelium
 xrun -sv -uvm -elaborate -coverage all -timescale 1ns/1ps \
     -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
     sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
-    -top tb_top -xmlibdirpath build/xcelium
-xrun -R +UVM_TESTNAME={test} -seed {seed} \
+    -top tb_top -xmlibdirname build/xcelium
+xrun -R +UVM_TESTNAME={test} -svseed {seed} \
     -coverage all -covworkdir sim/uvm/coverage/seed_{seed}/cov_work -covscope tb_top \
-    -xmlibdirpath build/xcelium
+    -xmlibdirname build/xcelium
 
 # Xcelium — merge (via imc TCL script)
 imc -exec merge_script.tcl   # merge -run seed_*/cov_work → report
@@ -159,7 +160,7 @@ imc -exec merge_script.tcl   # merge -run seed_*/cov_work → report
 **Common mistakes to avoid:**
 - Questa: omitting `+cover=bcestf` at `vlog` compile → runtime `-coverage` collects nothing
 - VCS: omitting `-cm` at runtime → compile instrumentation wasted
-- Xcelium: using `-R` without matching `-xmlibdirpath` → snapshot not found
+- Xcelium: using `-R` without matching `-xmlibdirname` → snapshot not found
 - All tools: merging before all seeds complete → partial coverage report
 
 See `{plugin_root}/skills/rtl-p5s-uvm-verify/references/uvm-architecture.md` for complete UVM class hierarchy, phase order,

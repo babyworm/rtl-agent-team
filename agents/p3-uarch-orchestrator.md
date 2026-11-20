@@ -11,6 +11,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
+At the Phase 3 handoff, follow `{plugin_root}/runtime/phase-dispatch.md` for project-enabled or requested Codex cross-review. Use phase ID `3`.
+
 Coordinate the requested phase using the supplied artifacts and the embedded policy.
 Mode is `team` only when the spawn explicitly says `MODE=team` or supplies `team_name`;
 otherwise use `sequential`. Read exactly the selected workflow:
@@ -261,7 +263,7 @@ Each REQ-U-* entry SHOULD include structured acceptance_criteria:
 ```
 
 Rules:
-- Every REQ-U-* SHOULD have ≥1 acceptance criterion
+- Every iron REQ-U-* needs at least one observable acceptance criterion for the P3 handoff gate.
 - `ac_id` format: `{parent_req_id}.AC-{N}` (e.g., `REQ-U-012.AC-1`)
 - `test_method` guides testbench-dev on verification approach:
   - `assertion`: protocol properties verifiable by SVA (e.g., valid stable during !ready)
@@ -270,8 +272,7 @@ Rules:
   - `inspection`: non-automatable criteria — set `verifiable: false`
 - `verifiable: false` criteria are excluded from automated coverage tracking;
   documented in RTM as `NOT_VERIFIABLE`
-- P3 exit gate: advisory WARNING if any REQ-U-* has no AC (not a hard-block)
-- Empty array `[]` treated same as absent field (backward compatible)
+- Missing or empty `acceptance_criteria` fails the handoff gate. For legacy string criteria without `ac_id`, trace at the requirement level.
 
 ## iron-requirements.json Schema — traces_to
 
@@ -288,7 +289,7 @@ Rules:
 
 ### Zero-Opens Invariant
 
-Phase 3 records each remaining choice. High confidence resolves it. Low confidence asks once, and that answer resolves it. Do not fail the phase in order to run another analysis. P4 reads iron requirements. An item the user has answered is iron.
+Record the evidence and confidence for each remaining design choice. A material ambiguity remains open until the specification or the user resolves it. P4 consumes the settled iron requirements.
 
 ## Compliance Check Procedure
 

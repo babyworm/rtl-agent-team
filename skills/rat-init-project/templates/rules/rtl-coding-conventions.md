@@ -40,14 +40,11 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
   the function/task (e.g., `// External deps (read): cfg_mode, base_addr`). Prefer passing signals
   as arguments.
 
-## iverilog Limitations
+## Simulator Compatibility
 
-- Flag: `-g2012` (basic SV syntax support)
-- **Unsupported**: `interface`, unpacked `struct`/`union` — agents must not generate these
-- `typedef struct packed` / `typedef union packed` are supported (usable)
-- Do not modify if user has added them directly or they exist in existing code
-- verilator/slang fully support 2009 features with default settings
-- No synthesis-related feature additions after 2012 (2017 is errata only, 2023 has early tool support)
+Use the project's configured simulators and language modes. For an Icarus target, compile
+with `-g2012` and check the installed version's support for any interface ports, modports
+or unpacked aggregates used by the changed code.
 
 ## Declaration Ordering (IEEE 1800 §12.5)
 
@@ -61,26 +58,13 @@ These rules apply only to RTL source code under `rtl/`. Verification code (UVM, 
   5. `always_comb` / `always_ff` blocks
 - Reordering concurrent RTL statements has zero synthesis impact, but **declarations must precede usage**
 
-## Storage Selection (Register vs SRAM Wrapper)
+## Storage
 
-| Total Bits | Ports | Implementation |
-|-----------|-------|---------------|
-| ≤256 | any | Flip-flop array (`logic [W-1:0] name [0:D-1]`) |
-| 257–4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_tp` wrapper from `rtl/common/` (recommended) |
-| >4096, ≤2 R/W | ≤2 | `sram_sp` / `sram_tp` wrapper (mandatory) |
-| any, >2 R/W | >2 | Flip-flop array (multi-port register file) |
-
-- Exceptions: non-zero reset, partial-word RMW, clock-gating survival → register file with documented rationale
-- SRAM wrapper naming: `sram_sp.sv`, `sram_tp.sv`, `sram_dp.sv` in `rtl/common/`
-- SRAM instance prefix: `u_mem_` (e.g., `u_mem_coeff`, `u_mem_line_buf`)
-- Wrapper parameters: `DEPTH`, `WIDTH` (derived `ADDR_W = $clog2(DEPTH)` inside wrapper)
-- SP ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (1-cycle read latency, registered output)
-- TP ports (1W+1R, single `clk`): `clk`, `i_wen`, `i_waddr`, `i_wdata`, `i_ren`, `i_raddr`, `o_rdata` (1-cycle read latency)
-- DP ports (1W+1R, dual clock): `wclk`, `i_wen`, `i_waddr`, `i_wdata`, `rclk`, `i_ren`, `i_raddr`, `o_rdata` (1-cycle read latency, `rclk` domain)
-- Synthesis: guard the behavioral array with `// synopsys translate_off`/`translate_on` (DC/Genus
-  skip it → blackbox); put compiled-macro instances in `` `ifdef RAT_MEM_<PROCESS> `` branches.
-  `run_syn.sh --mem-process/--mem-lib` selects/links the macro; without one the wrapper is
-  blackboxed (`set_dont_touch` + `set_disable_timing`) with a WARNING.
+Follow the P3 memory class, dimensions, concurrent port accesses, read latency, clocks and
+specified collision behavior. Use the project's matching wrapper in `rtl/common/` for a
+specified SRAM and name the instance `u_mem_{purpose}`. The standard SP, TP and DP scaffolds
+all read in one cycle. For DC/Genus macro selection and blackbox handling, see the
+`systemverilog` skill.
 
 ## Convention Skills (Loaded by Writer Agents)
 
@@ -96,4 +80,4 @@ naming basics are also enforced by this rules file on .sv access.
 | `.sv` (UVM testbench) | Phase 5 (UVM) | `uvm` — naming, m_/u_ boundary, RTL port matching, anti-patterns |
 | `.cpp`, `.h` (SystemC/TLM) | Phase 2 (Ref Model), Phase 3 (BFM) | `systemc` — naming, bit-exactness, AT-default BFM, build rules |
 
-<!-- rat-version: 2.0.0 -->
+<!-- rat-version: 2.0.1 -->

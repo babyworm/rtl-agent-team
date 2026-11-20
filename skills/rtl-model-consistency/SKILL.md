@@ -6,6 +6,8 @@ argument-hint: "[--vectors path/to/test_vectors.bin | --generate N]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run a 3-way bitexact comparison between the C reference model (`refc/`), SystemC BFM (`bfm/`), and RTL simulation on a shared test vector set. Outputs: `sim/consistency/consistency_report.md` with a pairwise comparison matrix and diagnosis identifying which model diverges.
 </Purpose>

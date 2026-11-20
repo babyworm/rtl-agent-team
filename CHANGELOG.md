@@ -7,12 +7,18 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## Unreleased (try-2.0, 2026-11-17)
 
+- Make Codex cross-review opt-in per project or phase run. Select worker models
+  for the active host and task complexity. Scope team workers to actual tasks.
+- Track HDL content changes across tool calls. Report an unchanged verification
+  state once as `Info>` and allow subsequent Stops, including across prompts.
 - Replace compulsory review/strategy ladders with one evidence review and targeted
   repairs; material ambiguity remains open regardless of confidence.
 - Add direct-command hook parity, accepted-call state writes, safe template
   previews/updates, source/build/log-bound functional evidence and scoped approvals.
 - Unify EDA command execution, configured environments/paths, bounded timeouts and
   local/Docker/SSH/LSF transport. Readiness follows requested phase capabilities.
+- Bound UVM coverage-tool license waits and merge explicit functional bin counts
+  from passing seed logs when vendor coverage is unavailable.
 - Consolidate the runtime registry to 91 agents and 55 skills, generate policy
   fragments into consumers, and replace report-only agents with parser scripts.
 - Add deterministic handoff gates and reproducible model/runtime evaluations.
@@ -22,6 +28,8 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 - Add LLM-assisted site discovery, reusable per-user profiles, safe project
   configuration and scoped remote readiness. Handle old default Python, tcsh SSH
   command parsing, and zero-exit loader failures without repeating passed probes.
+- Discover EDA tools after sourcing a shared setup script. Record bounded tool
+  startup and licensed simulator smoke results per tool in the private site profile.
 - Keep real site data outside the plugin repository. Reject in-repository site
   JSON writes and exclude private state/profiles/reports from package contents;
   repository fixtures use synthetic hosts and paths only.

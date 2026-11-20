@@ -3,6 +3,7 @@
   "current_phase": 1,
   "current_phase_name": "research",
   "status": "in_progress",
+  "review_scope": null,
   "started_at": "{{TIMESTAMP}}",
   "interrupted_reason": null,
   "partial_work_summary": null,

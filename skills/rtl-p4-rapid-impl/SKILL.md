@@ -6,6 +6,8 @@ argument-hint: "[module-list or --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run Phase 4 rapid loop for RTL module implementation and block-level sanity integration.
 This phase optimizes for fast detection of functional breakage and interface mismatches.

@@ -155,7 +155,7 @@ When modifying this plugin:
 8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-init-project` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Executable contracts** — Fix recurring mechanical failures in code and add a reproducer to CI. Use prompts for decisions that require interpreting requirements or evidence. Rerun checks in the affected scope.
-11. **Model policy** — `fable` for orchestration, judgment, architecture, and microarchitecture. `opus` for design, verification, and checking. `sonnet` for running a tool or parsing its report. A spawn `model=` uses the same rule as that agent's frontmatter. Do not set agent `effort:`. The session default applies. Do not raise effort to force another review pass. A Codex CLI call keeps the Claude `model:` and selects the Codex family `fable` → `astra`, `opus` → `sol`, `sonnet` → `terra`. Pass `-m` with the highest-priority catalog slug for that family. The bare family name is rejected. Effort still comes from `~/.codex/config.toml`.
+11. **Model policy**. Match the actual task complexity to a tier on the running host using `runtime/model-selection.md`. Keep explicit model choices and session effort. When a native delegate has no applicable model override, inherit its host session.
 12. **CI before push (CRITICAL)** — Always run `pytest tests/unit/ -x -q` locally before pushing to `main`. Shell scripts under `set -eo pipefail` are especially fragile — a single unguarded `grep` no-match can silently crash a script. CI failures on `main` block all contributors
 13. **Plugin docs location** — Plugin development documents (specs, plans, design docs) go in `plugin_docs/`, never in `docs/`. `docs/` is gitignored — it is reserved for user project artifacts deployed by `rat-init-project`. If `git add -f` is needed, the file is in the wrong location
 14. **Version bump checklist** — When bumping the plugin version, update ALL of the following in a single release-prep batch:
@@ -343,7 +343,7 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 | `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
 | `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |
 | `rtl-skill-activation.sh` | PreToolUse:Skill, PostToolUse:Skill | Setup and phase advisory before the call; completion-loop state (criteria, same-skill counter reset) once the call ran |
-| `stop-gate.sh` | Stop | Autopilot gate ladder enforcement (`N→2N→last-chance→user escalation`) + dynamic prompt injection |
+| `stop-gate.sh` | Stop | Autopilot pauses for a user decision after two failed measured repairs at the active gate |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Bounded completion reminder; no automatic review ladder |
@@ -356,61 +356,19 @@ All 14 hook scripts and their enforcement responsibilities are listed below.
 
 **State files**: Stored under `.rat/state/`. Pipeline state, verification gates, skill completion tracking, and each Stop gate's no-progress budget (`stop-budget-<gate-id>.txt`).
 
-## Native Team Mode (v0.6.6) — Orchestrator as Teammate Pattern
+## Native Team Mode
 
-Phases 1-5 support **Claude Code native team mode**
-using `TeamCreate`, `TaskCreate`, `SendMessage` for true parallel execution.
+P1–P5 run sequentially by default. When the user requests a team, the phase
+skill follows `runtime/workflows/team-leader.md`. The main session creates the
+team and starts the phase orchestrator as its coordinator. The coordinator
+assigns workers to independent tasks and reports the phase gate result. The
+leader shuts down the team after that message. If team creation fails, the
+skill uses the sequential entry point.
 
-**Architecture**: Team lifecycle (TeamCreate/Agent/TeamDelete) is managed by the **skill**
-(main session). The orchestrator is promoted to a **coordination teammate** via
-`Agent(team_name=...)`, enabling it to use SendMessage to direct workers. Workers are
-3-5 general-purpose teammates that spawn specialist `Task()` subagents internally.
-
-```
-Skill (main session = leader)
-  ├── TeamCreate + team-config.json
-  ├── TaskCreate (initial task graph)
-  ├── Agent(coordinator) ← TEAMMATE (orchestrator)
-  │     ├── TaskCreate/TaskList/TaskUpdate ✓
-  │     └── SendMessage ✓ (to workers + leader)
-  ├── Agent(worker) × 3-5
-  │     └── Task(specialist) ← subagent calls
-  ├── Leader: TaskList monitoring loop
-  ├── TeamDelete()
-  └── Cleanup (rm team-config.json)
-```
-
-| Component | Purpose |
-|-----------|---------|
-| `skills/p1-spec-research/SKILL.md` | Team mode: creates team, spawns coordinator + 4 workers |
-| `skills/p2-arch-design/SKILL.md` | Team mode: dual-stream arch + RefC (coordinator + 3 workers) |
-| `skills/rtl-p3-uarch-design/SKILL.md` | Team mode: dual-stream uArch + BFM (coordinator + 3 workers) |
-| `skills/rtl-p4-implement/SKILL.md` | Team mode: 10-wave pipeline (coordinator + 4 workers) |
-| `skills/rtl-p5-verify/SKILL.md` | Team mode: 9-category verification (coordinator + 4 workers) |
-| `skills/rat-p1p3-spec-uarch/SKILL.md` | Team mode: sequences P1→P2→P3 with `team` in the arguments |
-| `agents/p1-research-orchestrator.md` | Coordination teammate: task graph + SendMessage |
-| `agents/p2-arch-orchestrator.md` | Coordination teammate: dual-stream tasks |
-| `agents/p3-uarch-orchestrator.md` | Coordination teammate: uArch + BFM tasks |
-| `agents/p4-implement-orchestrator.md` | Coordination teammate: 10-wave tasks |
-| `agents/p5-verify-orchestrator.md` | Coordination teammate: verification tasks |
-| `plugin_docs/agent-lib/team-worker-preamble.md` | Standard worker lifecycle protocol |
-| `plugin_docs/agent-lib/team-worker-protocol.md` | Worker communication and coordination protocol |
-| `plugin_docs/agent-lib/team-fallback.md` | Graceful degradation patterns (Orchestrator as Teammate) |
-
-**Team-awareness**: Stop hooks check `.rat/state/team-config.json` — coordinator
-and workers bypass gates, only the leader session is subject to stop enforcement.
-Hook concurrency is protected by POSIX file locking (`hooks/lib/flock-util.sh`).
-
-Hooks identify sessions by the hook input's root `session_id`, falling back to
-`CLAUDE_CODE_SESSION_ID`. `CLAUDE_SESSION_ID` is never set by Claude Code. The team
-skills record the leader as `${CLAUDE_SESSION_ID}`, which Claude Code substitutes
-when it loads the skill. A placeholder or empty leader, or an unknown session, is
-fail-closed: every session is gated. Hooks judge a team config by its mtime: it goes
-stale after 2 hours without in-process teammate activity, and the Stop gates, the
-edit tracker and skill activation treat a stale config as no team mode and remove it.
-The spawn manifest's team section and team-progress tracking do not check staleness.
-
-**Fallback**: If `TeamCreate` fails at skill level, the skill falls back to the sequential
-(non-team) orchestrator automatically.
+The main session writes `.rat/state/team-config.json`. The Write hook records
+the owning session and the file fingerprint in `.rat/state/team-owner.json`.
+A current, matching record lets Stop hooks distinguish workers from the leader.
+After two hours without in-process teammate activity, the Stop gates, edit
+tracker and skill activation remove stale team configuration.
 
 <!-- RTL-AGENT-TEAM:END -->

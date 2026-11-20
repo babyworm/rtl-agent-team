@@ -10,6 +10,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
+Forward the run-scoped Codex review choice to each delegated phase. At any phase handoff you own directly, follow `{plugin_root}/runtime/phase-dispatch.md`. You own the bundled P5 handoff here.
+
 You are the μArch-to-Verify Orchestrator. You drive the RTL design pipeline through
 Phase 4 (RTL Implementation) and Phase 5 (Extensive Verification), using completed
 Phase 1-3 design documents as input.
@@ -109,7 +111,7 @@ Read(".rat/state/rat-p4p5-impl-verify-state.json")
    - Add `upper_spec_blocking` (default false)
    - Add per-phase: `started_at`, `completed_at`, `gate_passed_at`, `review_rounds_completed`, `partial_work`
    - Write migrated state back immediately
-2. Skip completed phases: `status == "completed"` AND `gate_passed_at != null`
+2. Restore `review_scope` for this run (use the project default for legacy state). Apply any new explicit choice to the remaining phases. Skip completed phases: `status == "completed"` AND `gate_passed_at != null`
 3. Phase 4 resume: check `completed_modules` vs `pending_modules`, `stream_a_status`/`stream_b_status`
 4. Phase 5 resume: check `completed_sub_phases` vs `pending_sub_phases`, `fix_history`
 5. Clear `interrupted_reason` and `partial_work_summary`
@@ -118,7 +120,7 @@ Read(".rat/state/rat-p4p5-impl-verify-state.json")
 ```
 Write(".rat/state/rat-p4p5-impl-verify-state.json",
   { schema_version: "3.0", current_phase: 4, current_phase_name: "rtl_implementation",
-    pipeline_scope: "phase-4-to-5",
+    pipeline_scope: "phase-4-to-5", review_scope: review_scope,
     interrupted_reason: null, partial_work_summary: null, upper_spec_blocking: false,
     phases: {
       "4": { status: "pending", started_at: null, completed_at: null, gate_passed_at: null,
@@ -142,7 +144,7 @@ Bash("mkdir -p reviews/phase-4-rtl")
 Invoke the p4-implement-orchestrator agent for wave-based RTL coding:
 ```
 Task(subagent_type="rtl-agent-team:p4-implement-orchestrator",
-     prompt="Execute Phase 4 RTL implementation for all modules defined in docs/phase-3-uarch/*.md.")
+     prompt="Execute Phase 4 RTL implementation for all modules defined in docs/phase-3-uarch/*.md. Review scope: {review_scope}.")
 ```
 
 ### Stream B: Early Verification Framework (parallel with Stream A)
@@ -201,9 +203,7 @@ with list of specific missing files.
 
 On PASS: generate Phase 4 summary:
 ```
-If a Task with `model="fable"` fails because Fable is not available, retry that spawn once with `model="opus"` and record the fallback. Do not retry Fable again in that session.
-
-Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
+Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Read all Phase 4 artifacts. Generate docs/phase-4-rtl/phase-4-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.
 
@@ -328,10 +328,12 @@ After successful fix: record lesson in `docs/lessons-learned.md`.
 
 On Phase 5 gate PASS: generate Phase 5 summary:
 ```
-Task(subagent_type="rtl-agent-team:rtl-architect", model="fable",
+Task(subagent_type="rtl-agent-team:rtl-architect",
      prompt="Read all Phase 5 artifacts. Generate docs/phase-5-verify/phase-5-summary.md
 Format: max 1 page with tables for Key Decisions (with ADR refs), Module Inventory, Interface Summary, Quality Gate Results (verdict/retries), Open Items, and Document References.")
 ```
+
+At this P5 handoff, apply `review_scope` per `{plugin_root}/runtime/phase-dispatch.md` before marking the run complete.
 
 ## Step 5: Completion
 

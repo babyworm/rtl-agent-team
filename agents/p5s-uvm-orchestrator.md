@@ -159,6 +159,7 @@ MANDATORY — coverage collector (env/{design}_coverage.sv):
   - Define covergroups for key protocol states, data ranges, and cross-coverage
   - Map each coverpoint to REQ-U-* via comments
   - Sample in write() method from monitor's analysis port
+  - Export functional bin hit counts using {plugin_root}/skills/rtl-p5s-uvm-verify/references/functional-coverage-log.md so the same seed logs can be merged if the vendor tool fails.
   - Example:
     covergroup cg_data_transfer;
       cp_cmd:  coverpoint m_txn.cmd  { bins read = {0}; bins write = {1}; }
@@ -202,39 +203,30 @@ bash sim/uvm/scripts/run_regression_uvm.sh \
   --filelist rtl/filelist_{module}.f \
   --parallel 4
 
-The script:
-1. Compiles once (with code coverage: line+cond+fsm+tgl+branch)
-2. Runs all seeds in parallel with failure halt (default: 5% threshold)
-3. Writes per-seed result JSON to sim/uvm/regression/run_*/seed_*_results.json
-4. Merges coverage (VCS: urg, Xcelium: imc, Questa: vcover) into sim/uvm/coverage/
-5. Produces regression report: sim/uvm/regression/regression_{module}_*.json
-
-If `--test` is omitted, the runner uses `{module}_base_test`.
-Report: pass/fail per seed, overall verdict, and coverage merge location.",
+Read the aggregate regression JSON for seed outcomes, native coverage status,
+coverage artifact, and verdict. Use functional-log mode if requested. Honor any
+requested simulator or coverage timeout.",
      run_in_background=true)
 ```
 
-If compilation fails → report exact errors to user, halt.
-If regression verdict is FAIL → proceed to Step 6 (failure analysis) for failed seeds.
-
-**Stimulus effectiveness gate**: After first regression iteration, compare coverage across seeds.
-If coverage delta < 0.1% across all seeds → stimulus is NOT reaching DUT.
-HALT regression and invoke uvm-reviewer to diagnose:
-- Missing `this.randomize()` call on `rand` fields
-- Config variables not connected to DUT ports (config_db path broken)
-- TB top hardcoding values that should come from test class
-Only resume regression after stimulus connectivity is confirmed.
+Report compilation or license failures from the tool log. Run Step 6 for a
+functional failure shown in a seed log. A coverage collection failure after all
+seeds pass leaves coverage unmeasured and does not call for a simulation retry.
 
 ## Step 5: One Coverage Fill
 
 After the regression, if a target is missed, fill once and report what remains. Do not schedule a second fill.
+When the report links `functional_coverage_report`, use its named bins for gap
+analysis. Mark missing code metrics as unmeasured and full closure as `INCONCLUSIVE`
+when those metrics are required. Use functional-log mode for any directed rerun of
+those gaps to avoid waiting again for native coverage.
 
 ```
 Task(subagent_type="rtl-agent-team:coverage-analyst",
-     prompt="Analyze merged UVM coverage from sim/uvm/coverage/ once.
+     prompt="Analyze the current regression's coverage report once. For functional bin logs, use the bins and hits in the linked JSON.
 Targets: line ≥ 90%, toggle ≥ 80%, FSM ≥ 70%, branch ≥ 80%, functional ≥ 95%.
-If every target is met, report PASS and stop.
-Otherwise write one CDTG row per gap:
+If every measured target is met, report its scope and stop. Missing required metrics leave full closure INCONCLUSIVE.
+Otherwise write one CDTG row per measured gap:
   | Gap ID | Type | Uncovered Bin/Line/State | REQ | Constraint | Sequence | Expected |
 Write sim/uvm/coverage/coverage_gaps.md.
 Save .rat/scratch/phase-5/uvm-coverage-iteration.md.")
@@ -320,15 +312,16 @@ UVM environment code MUST follow the project coding conventions (CLAUDE.md):
 | Branch | ≥ 80% | `-cm cond` | if/case branch coverage |
 | Functional | ≥ 95% | UVM covergroups | Architect-defined coverpoints |
 
-**Code coverage** is always enabled during regression (`-cm line+cond+fsm+tgl+branch` for VCS,
-`-coverage all` for Xcelium, `-coverage` for Questa). Merged from all seeds before evaluation.
+**Code coverage** uses the simulator's native coverage flags and requires a
+successful vendor merge before evaluation.
 
 **Functional coverage** is collected via `uvm_subscriber`-based coverage collectors in the
 testbench. Covergroups must be mapped to requirements (REQ-U-*).
 
-The regression runner enforces that every dispatched seed produces coverage and that the
-vendor merge command succeeds. It records `coverage_status` and the reference targets in
-the aggregate JSON. `coverage-analyst` owns percentage extraction and target enforcement.
+When the merger is unavailable, fails, or times out, auto mode can merge explicit
+functional bin hits from all passing seed logs. The aggregate JSON records the
+measured scope and native merge status. `coverage-analyst` evaluates measured
+targets and marks missing required metrics as unmeasured.
 
 ## Coverage-Driven Verification (CDV) Feedback Loop
 
@@ -382,7 +375,7 @@ bash {plugin_root}/skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh --sim
 - Per-seed result JSON under `sim/uvm/regression/run_{timestamp}/`, merged coverage, and `sim/uvm/regression/regression_{module}_{timestamp}.json`
 - Default UVM test is `{module}_base_test` unless `--test` is supplied
 - Coverage merge: VCS `urg`, Xcelium `imc`, Questa `vcover`
-- Missing per-seed coverage or a failed merge forces the aggregate verdict to `FAIL`
+- A successful auto fallback leaves full coverage `INCONCLUSIVE`. Missing evidence for the selected coverage scope yields `FAIL`.
 
 ## Escalation & Stop Conditions
 
@@ -442,14 +435,14 @@ vcover report -details sim/uvm/coverage/merged.ucdb
 xrun -sv -uvm -compile -coverage all -timescale 1ns/1ps \
     -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
     sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
-    -xmlibdirpath build/xcelium
+    -xmlibdirname build/xcelium
 xrun -sv -uvm -elaborate -coverage all -timescale 1ns/1ps \
     -f rtl/filelist_top.f sim/uvm/agents/*/*.sv sim/uvm/env/*.sv \
     sim/uvm/seq/*.sv sim/uvm/tests/*.sv sim/uvm/tb/*.sv \
-    -top tb_top -xmlibdirpath build/xcelium
-xrun -R +UVM_TESTNAME={test} -seed {seed} \
+    -top tb_top -xmlibdirname build/xcelium
+xrun -R +UVM_TESTNAME={test} -svseed {seed} \
     -coverage all -covworkdir sim/uvm/coverage/seed_{seed}/cov_work -covscope tb_top \
-    -xmlibdirpath build/xcelium
+    -xmlibdirname build/xcelium
 
 # Xcelium — merge (via imc TCL script)
 imc -exec merge_script.tcl   # merge -run seed_*/cov_work → report
@@ -458,7 +451,7 @@ imc -exec merge_script.tcl   # merge -run seed_*/cov_work → report
 **Common mistakes to avoid:**
 - Questa: omitting `+cover=bcestf` at `vlog` compile → runtime `-coverage` collects nothing
 - VCS: omitting `-cm` at runtime → compile instrumentation wasted
-- Xcelium: using `-R` without matching `-xmlibdirpath` → snapshot not found
+- Xcelium: using `-R` without matching `-xmlibdirname` → snapshot not found
 - All tools: merging before all seeds complete → partial coverage report
 
 See `{plugin_root}/skills/rtl-p5s-uvm-verify/references/uvm-architecture.md` for complete UVM class hierarchy, phase order,

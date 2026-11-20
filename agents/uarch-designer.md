@@ -71,19 +71,11 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Memory access latency awareness (from Phase 2 architecture):
       - Internal memory (SRAM, register file): MEM_LATENCY_INTERNAL = 1 cycle (default)
       - External memory (DDR/HBM): MEM_LATENCY_EXTERNAL = 500 cycles (default, parameterizable)
-    - Pipeline stages with external memory access MUST specify latency hiding strategy
-    - **Storage selection** (register vs SRAM wrapper) for every storage element:
-      - ≤256 bits: flip-flop array (register)
-      - 257–4096 bits, ≤2 ports: SRAM wrapper recommended (register acceptable with rationale)
-      - >4096 bits, ≤2 ports: SRAM wrapper mandatory
-      - >2 read/write ports: register file regardless of size (multi-port SRAM macros are rare)
-      - Streaming buffers (line buffer, frame buffer, init-time coefficient table) → always SRAM wrapper regardless of size
-      - 0-cycle read required → register file; 1-cycle read OK → SRAM wrapper
-      - Exceptions: non-zero reset, partial-word RMW, clock-gating survival → register file
-    - Every SRAM instance must specify: SP/TP/DP type, DEPTH, WIDTH, read latency, banking (if needed)
-    - Standard wrappers: `sram_sp`, `sram_tp`, `sram_dp` from `rtl/common/`
-    - SRAM wrapper ports: `clk`, `i_ce`, `i_we`, `i_addr`, `i_wdata`, `o_rdata` (SP standard)
-      (prefetch buffer, double buffering, decoupled access-execute, or accepted stall with justification).
+    - For external memory access, specify how the pipeline hides latency or which stalls it accepts.
+    - Choose storage from the P2 access schedule, latency and resource budget, and the memories
+      available on the target. Record the class (e.g. register file, SRAM wrapper, inferred RAM),
+      depth, width, concurrent ports, clocks, read latency and any required banking, reset,
+      write masks or collision behavior. Identify a mapping assumption if the macro is unconfirmed.
     - Total per-stage latency = compute_cycles + memory_access_latency (with or without hiding).
     - Share an arithmetic operator across operations that do not need it in the same cycle, and schedule it so the operator takes new work as soon as it is free. Record that operator count. Do not leave a copy idle, and do not drop below the required throughput to save area.
     - **Throughput invariant** (MANDATORY for all pipeline decisions):
@@ -110,9 +102,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
        place register cuts, identify forwarding paths.
     10. For datapaths: trace each signal from input to output, calculating bit width at each operator.
     11. For programmable blocks: define the register map with all fields, widths, reset values.
-    12. For every storage element (buffers, tables, coefficient stores, line buffers): apply storage
-        selection criteria (≤256b→register, 257-4096b→SRAM recommended, >4096b→SRAM mandatory,
-        >2 ports→register file). Document type, DEPTH, WIDTH, SP/DP, read latency, banking.
+    12. Record the storage contract for each buffer or table that the RTL must implement.
     13. Identify all RAW/WAW/WAR hazards and specify resolution (stall, forward, or structural).
     14. Produce Mermaid stateDiagram-v2 FSM diagrams for all non-trivial state machines.
     15. For each pipeline stage with external memory access, specify latency hiding strategy.
@@ -265,10 +255,6 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
       Instead: assign specific operations to specific stages with cycle-accurate assignment.
     - Register field gaps: register map with undefined bit ranges between fields.
       Instead: all bits must be accounted for — use RESERVED fields for unused bits.
-    - Missing storage type decision: spec says "256-entry table" without specifying register vs SRAM.
-      Instead: calculate total bits (depth × width), apply storage selection criteria, specify type with rationale.
-    - Oversized register file: 8KB coefficient table specified as registers wastes area.
-      Instead: >4096 bits with ≤2 ports → SRAM wrapper mandatory. Register only with documented exception.
   </Failure_Modes_To_Avoid>
 
   <Examples>

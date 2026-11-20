@@ -6,6 +6,8 @@ argument-hint: "[algorithm-name | --update]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Build a golden C functional reference model (Phase 2) that validates algorithm correctness and estimates external memory bandwidth. Outputs: `refc/*.c`, `refc/include/*.h`, `conformance_report.json`, `bandwidth_report.json`, and `reviews/phase-2-architecture/ref-model-feature-coverage.md`.
 </Purpose>

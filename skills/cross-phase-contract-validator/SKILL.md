@@ -35,12 +35,12 @@ For each port: `io_definition[width] == uarch_spec[width] == RTL_port_width`.
 Mismatch → CRITICAL.
 
 ### 2. Memory Classification Match
-For each storage element in P3 uarch docs:
-- If P3 says "SRAM wrapper" → P4 RTL MUST contain `sram_sp`/`sram_tp`/`sram_dp` instance
-- If P3 says "register file" → P4 RTL should use `logic [...] name [...]` array
-- Anti-pattern: P3 says "SRAM 512×104" but P4 has `logic [103:0] mem [511:0]` with
-  combinational read → CRITICAL (register array where SRAM required)
-- Check: `DEPTH * WIDTH > 4096` and no SRAM wrapper instantiated → CRITICAL
+Compare each P3 storage class and its access contract with P4 RTL. Check dimensions,
+simultaneous ports, clock domains, read latency and any specified collision behavior.
+Inspect the instantiated wrapper or inferred memory where needed. Report a demonstrated
+mismatch as CRITICAL (e.g., P3 requires a one-cycle SRAM wrapper and P4 uses an inline
+array with same-cycle reads). If a missing P3 decision prevents comparison, report that
+specification gap and identify the affected check.
 
 ### 3. Pipeline Depth Match
 For each module with pipeline specification in P3:

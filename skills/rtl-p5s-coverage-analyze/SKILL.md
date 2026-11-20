@@ -6,12 +6,14 @@ argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Analyze simulation coverage data to identify uncovered lines, branches, and FSM states. Prioritize gaps by reachability and architectural significance, generate directed tests to close high-value gaps, and produce a convergence report. Outputs: `reviews/phase-5-verify/{module}-coverage-report.md` (gap list + PASS/FAIL verdict) and `sim/coverage/test_coverage_fill.py` (directed tests targeting identified gaps).
 </Purpose>
 
 <Use_When>
-- A coverage report exists from a `rtl-p5s-func-verify` run.
+- A coverage report exists from a functional regression, including UVM functional bin logs.
 - Coverage is below target (90% line, 80% toggle, 70% FSM).
 - Preparing for a verification closure milestone.
 </Use_When>
@@ -28,7 +30,7 @@ Raw coverage reports are verbose and hard to prioritize. `coverage-analyst` iden
 
 ## Prerequisites
 
-- `sim/coverage/coverage.xml`, `.dat`, or `merged.info` must exist from a prior `rtl-p5s-func-verify` run.
+- Use code coverage from the selected functional regression or the `functional_coverage_report` linked by its passing UVM seeds' regression report.
 
 If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p5s-func-verify` first. Proceed with available artifacts; orchestrator adapts scope.
 
@@ -49,6 +51,7 @@ If prerequisite is missing: WARNING — recommend running `/rtl-agent-team:rtl-p
 
 <Execution>
 1. Read `references/coverage-conventions.md` for coverage targets, report structure, and exclusion approval rules.
+   For UVM bin logs, use the named bins and counts from `functional_coverage_report`. Mark missing code metrics as unmeasured and full closure as `INCONCLUSIVE` if those metrics are required.
 2. Spawn `p5s-coverage-orchestrator` (see Tool_Usage) for one pass: parse the coverage report (deterministic extraction via `scripts/parse_coverage.py` — supports lcov `.info` and Verilator `coverage.dat`; `v_user` points count as the fsm metric), name the gaps, generate directed tests, re-run simulation once, and report what remains.
 3. The orchestrator writes `reviews/phase-5-verify/{module}-coverage-report.md` using `templates/coverage-gap-report.md` as scaffold, populating high-value and unreachable gap tables.
 4. The orchestrator writes `sim/coverage/test_coverage_fill.py` with one test function per targeted gap.
@@ -92,7 +95,7 @@ Do not perform analysis work directly — the orchestrator runs one coverage pas
 - Coverage data absent → emit WARNING; do not fabricate numbers; stop.
 - Functional failures remain → refuse to run; report that coverage from a failing simulation is unreliable.
 - Exclusion of unreachable bins needed → route through `rtl-coverage-exclusion-gate.sh`; never apply silently.
-- After 3 rounds coverage is still below target → report the residual gaps and recommend user review of the exclusion candidates.
+- Coverage remains below target after the directed pass → report residual gaps and any exclusions pending user review.
 </Escalation_And_Stop_Conditions>
 
 ## Output
@@ -101,10 +104,10 @@ Do not perform analysis work directly — the orchestrator runs one coverage pas
 - `sim/coverage/test_coverage_fill.py` — directed tests generated to close identified high-value gaps.
 
 <Final_Checklist>
-- [ ] Coverage data read from `sim/coverage/coverage.xml` or `.dat` — no fabricated numbers.
+- [ ] Coverage data read from artifacts for the selected regression.
 - [ ] Gaps prioritized into high-value (reachable) and unreachable tables.
 - [ ] Directed tests written in `test_coverage_fill.py` targeting high-value gaps only.
 - [ ] Coverage exclusions routed through `rtl-coverage-exclusion-gate.sh` — none applied silently.
-- [ ] `reviews/phase-5-verify/{module}-coverage-report.md` written with PASS/FAIL verdict.
+- [ ] `reviews/phase-5-verify/{module}-coverage-report.md` records the verdict and measured scope.
 - [ ] RTL source not modified.
 </Final_Checklist>

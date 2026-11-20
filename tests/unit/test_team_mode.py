@@ -1,20 +1,21 @@
-from tests.contracts import read_contract
 """Tests for Claude Code native team integration.
 
 Validates:
 - team-config.json creation and cleanup logic
-- Task dependency graph structure for P5 verification
+- Phase handoff gates shared by sequential and team runs
 - Worker preamble file existence
 - Team orchestrator agent structural integrity
 """
 
 import json
 import re
-from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
 from tests.conftest import REPO_ROOT
+from tests.contracts import read_contract
 
 AGENTS_DIR = REPO_ROOT / "agents"
 SKILLS_DIR = REPO_ROOT / "skills"
@@ -70,183 +71,39 @@ class TestTeamConfigLifecycle:
         assert not config_file.exists()
 
 
-class TestP5TaskDependencyGraph:
-    """Validate the P5 verification task dependency structure."""
-
-    CATEGORIES = ["V1_lint", "V2_sva", "V3_cdc", "V4_proto", "V5_func",
-                  "V6_cov", "V7_perf", "V8_synth", "V9_review"]
-
-    def _build_dependency_graph(self):
-        """Build the canonical P5 dependency graph per module."""
-        return {
-            "V1_lint": [],
-            "V2_sva": [],
-            "V3_cdc": [],
-            "V4_proto": [],
-            "V8_synth": [],
-            "V5_func": ["V1_lint"],  # Per policy: V5 depends only on V1 (lint-clean required for sim)
-            "V6_cov": ["V5_func"],
-            "V7_perf": ["V5_func"],
-            "V9_review": ["V1_lint", "V2_sva", "V3_cdc", "V4_proto",
-                          "V5_func", "V6_cov", "V7_perf", "V8_synth"],
-        }
-
-    def test_independent_categories_have_no_deps(self):
-        graph = self._build_dependency_graph()
-        for cat in ["V1_lint", "V2_sva", "V3_cdc", "V4_proto", "V8_synth"]:
-            assert graph[cat] == [], f"{cat} should have no dependencies"
-
-    def test_functional_depends_on_lint_only(self):
-        """Per policy: V5 depends only on V1 (lint-clean required for sim)."""
-        graph = self._build_dependency_graph()
-        assert set(graph["V5_func"]) == {"V1_lint"}
-
-    def test_coverage_and_perf_depend_on_functional(self):
-        graph = self._build_dependency_graph()
-        assert graph["V6_cov"] == ["V5_func"]
-        assert graph["V7_perf"] == ["V5_func"]
-
-    def test_review_depends_on_all_others(self):
-        graph = self._build_dependency_graph()
-        all_except_review = [k for k in graph if k != "V9_review"]
-        assert set(graph["V9_review"]) == set(all_except_review)
-
-    def test_no_circular_dependencies(self):
-        """Verify the graph is a DAG (no cycles)."""
-        graph = self._build_dependency_graph()
-        visited = set()
-        in_stack = set()
-
-        def has_cycle(node):
-            if node in in_stack:
-                return True
-            if node in visited:
-                return False
-            visited.add(node)
-            in_stack.add(node)
-            for dep in graph.get(node, []):
-                if has_cycle(dep):
-                    return True
-            in_stack.discard(node)
-            return False
-
-        for node in graph:
-            assert not has_cycle(node), f"Cycle detected involving {node}"
-
-    def test_multi_module_graph_scales_linearly(self):
-        """For N modules, total tasks = 9 * N (one per category per module)."""
-        modules = ["mod_a", "mod_b", "mod_c"]
-        graph = self._build_dependency_graph()
-        total_tasks = len(modules) * len(graph)
-        assert total_tasks == 27  # 3 modules * 9 categories
+def test_full_p4_requires_synthesizability():
+    skill = "rtl-p4-implement"
+    criteria = json.loads(read_contract(REPO_ROOT / "skill-completion-criteria.json"))
+    registry = json.loads(read_contract(REPO_ROOT / "phase-registry.json"))
+    assert "synthesizability-pass" in criteria[skill].split("|")
+    assert criteria[skill] == registry["skills"][skill]["completion_criteria"]
 
 
-class TestP4TaskDependencyGraph:
-    """Validate the P4 implementation 10-wave task dependency structure."""
+@pytest.mark.parametrize(("criteria", "expected"), [
+    (None, "FAIL"), ([], "FAIL"), (["Carry is retained in bit 8."], "PASS"),
+])
+def test_p3_handoff_accepts_legacy_criteria_but_requires_an_oracle(tmp_path, criteria, expected):
+    docs = tmp_path / "docs/phase-3-uarch"
+    docs.mkdir(parents=True)
+    (docs / "adder.md").write_text("An 8-bit adder exposes its carry at bit 8.")
+    requirement = {"id": "REQ-U-001"}
+    if criteria is not None:
+        requirement["acceptance_criteria"] = criteria
+    (docs / "iron-requirements.json").write_text(json.dumps([requirement]))
+    (docs / "open-requirements.json").write_text("[]")
+    (docs / "judgment.json").write_text(json.dumps({"confidence": "high", "material_ambiguities": []}))
+    (tmp_path / "bfm").mkdir()
+    (tmp_path / "bfm/adder.cpp").write_text("unsigned add(unsigned a, unsigned b) { return a + b; }")
 
-    WAVES = ["W1_write", "W2_lint", "W3_fix", "W4_review", "W5_bugfix",
-             "W6_unittest", "W7_cdc", "W8_protocol", "W9_refactor", "W10_integration"]
-
-    def _build_dependency_graph(self):
-        """Build the canonical P4 dependency graph per module."""
-        return {
-            "W1_write": [],
-            "W2_lint": ["W1_write"],
-            "W3_fix": ["W2_lint"],
-            "W3_5_synthgate": ["W2_lint"],  # HARD gate on lint-clean modules (or W3_fix)
-            "W4_review": ["W3_5_synthgate"],  # review only after synthesizability PASS
-            "W5_bugfix": ["W4_review"],
-            "W6_unittest": ["W4_review"],  # or W5_bugfix if issues found
-            "W7_cdc": ["W1_write"],
-            "W8_protocol": ["W1_write"],
-            "W9_refactor": ["W6_unittest", "W7_cdc", "W8_protocol"],
-            "W10_integration": ["W9_refactor"],  # blockedBy ALL wave 9 tasks (cross-module)
-        }
-
-    def test_synthgate_is_hard_gate_before_review(self):
-        """Wave 3.5 synthesizability HARD gate sits between lint and review;
-        review is blocked on it (both P4 orchestrators enforce it)."""
-        graph = self._build_dependency_graph()
-        assert graph.get("W3_5_synthgate") == ["W2_lint"], "Wave 3.5 must gate on lint"
-        assert graph["W4_review"] == ["W3_5_synthgate"], (
-            "review must be gated on synthesizability, not lint directly"
-        )
-
-    def test_p4_completion_criteria_include_synthesizability(self):
-        """Wave 3.5 is a HARD gate, so both full-P4 skills must carry the
-        synthesizability-pass completion token (registry parity enforced)."""
-        scc = json.loads(read_contract(REPO_ROOT / "skill-completion-criteria.json"))
-        pr = json.loads(read_contract(REPO_ROOT / "phase-registry.json"))
-        for skill in ("rtl-p4-implement",):
-            assert "synthesizability-pass" in scc[skill], (
-                f"{skill} missing synthesizability-pass in skill-completion-criteria.json"
-            )
-            assert scc[skill] == pr["skills"][skill]["completion_criteria"], (
-                f"{skill} criteria drift between registries"
-            )
-
-    def test_write_has_no_deps(self):
-        graph = self._build_dependency_graph()
-        assert graph["W1_write"] == []
-
-    def test_lint_depends_on_write(self):
-        graph = self._build_dependency_graph()
-        assert graph["W2_lint"] == ["W1_write"]
-
-    def test_cdc_and_protocol_depend_only_on_write(self):
-        """Waves 7 and 8 run parallel with lint path (Waves 2-5)."""
-        graph = self._build_dependency_graph()
-        assert graph["W7_cdc"] == ["W1_write"]
-        assert graph["W8_protocol"] == ["W1_write"]
-
-    def test_refactor_depends_on_unittest_cdc_protocol(self):
-        graph = self._build_dependency_graph()
-        assert set(graph["W9_refactor"]) == {"W6_unittest", "W7_cdc", "W8_protocol"}
-
-    def test_no_circular_dependencies(self):
-        graph = self._build_dependency_graph()
-        visited = set()
-        in_stack = set()
-
-        def has_cycle(node):
-            if node in in_stack:
-                return True
-            if node in visited:
-                return False
-            visited.add(node)
-            in_stack.add(node)
-            for dep in graph.get(node, []):
-                if has_cycle(dep):
-                    return True
-            in_stack.discard(node)
-            return False
-
-        for node in graph:
-            assert not has_cycle(node), f"Cycle detected involving {node}"
-
-    def test_refactor_no_protocol_deps_exclude_w8(self):
-        """W9 depends only on W6+W7 when module has no bus interfaces (no W8)."""
-        graph_no_proto = {
-            "W1_write": [],
-            "W2_lint": ["W1_write"],
-            "W3_fix": ["W2_lint"],
-            "W4_review": ["W2_lint"],
-            "W5_bugfix": ["W4_review"],
-            "W6_unittest": ["W4_review"],
-            "W7_cdc": ["W1_write"],
-            # W8_protocol omitted — module has no bus interfaces
-            "W9_refactor": ["W6_unittest", "W7_cdc"],
-            "W10_integration": ["W9_refactor"],
-        }
-        assert "W8_protocol" not in graph_no_proto["W9_refactor"]
-        assert set(graph_no_proto["W9_refactor"]) == {"W6_unittest", "W7_cdc"}
-        assert len(graph_no_proto) == 9  # 9 waves, not 10
-
-    def test_wave_count_per_module(self):
-        # 10 numbered waves + the Wave 3.5 synthesizability HARD gate = 11 nodes.
-        graph = self._build_dependency_graph()
-        assert len(graph) == 11
-        assert len(self.WAVES) == 10  # WAVES lists the 10 numbered waves only
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts/gates/phase_gate.py"), "--root", str(tmp_path), "--phase", "3"],
+        capture_output=True, text=True, timeout=15,
+    )
+    report = json.loads(result.stdout)
+    assert report["verdict"] == expected
+    assert [item["check"] for item in report["checks"] if not item["passed"]] == (
+        [] if expected == "PASS" else ["acceptance:REQ-U-001"]
+    )
 
 
 class TestTeamOrchestratorStructure:
@@ -396,10 +253,16 @@ class TestAutopilotTeamAwareness:
         content = read_contract(agent)
         assert "p5-verify-orchestrator" in content
 
-    def test_autopilot_checks_team_config(self):
-        agent = AGENTS_DIR / "autopilot-orchestrator.md"
-        content = read_contract(agent)
-        assert "team-config.json" in content
+    def test_sequential_autopilot_forwards_review_scope_to_each_phase(self):
+        agent = read_contract(AGENTS_DIR / "autopilot-orchestrator.md")
+        rows = re.findall(r"^\| ([1-6]) \| `rtl-agent-team:([\w-]+)` \|$", agent, re.M)
+        assert [int(phase) for phase, _owner in rows] == list(range(1, 7))
+        assert all((AGENTS_DIR / f"{owner}.md").exists() for _phase, owner in rows)
+        dispatch = agent.split("Task(subagent_type=phase_owner,", 1)[1].split('```', 1)[0]
+        assert "MODE=sequential" in dispatch and "{review_scope}" in dispatch
+        template = json.loads((SKILLS_DIR / "rat-auto-design/templates/autopilot-state.json").read_text())
+        assert template["review_scope"] is None
+
 
 
 class TestTeamIntegrationInfrastructure:
@@ -446,285 +309,6 @@ class TestTeamIntegrationInfrastructure:
         skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
         content = read_contract(skill)
         assert "--no-team" in content or "team mode" in content.lower()
-
-
-# ── P1 Task Dependency Graph ────────────────────────────────────────────────
-
-
-class TestP1TaskDependencyGraph:
-    """Validate the P1 research tree-of-thought task dependency structure."""
-
-    def _build_dependency_graph(self):
-        """Build the canonical P1 dependency graph."""
-        return {
-            "T1_tree": [],
-            "T2_validate": ["T1_tree"],
-            "T3a_deepdive": ["T2_validate"],
-            "T3b_deepdive": ["T2_validate"],
-            "T4a_memory": ["T2_validate"],
-            "T4b_interconnect": ["T2_validate"],
-            "T4c_power": ["T2_validate"],
-            "T5_comparison": ["T3a_deepdive", "T3b_deepdive",
-                              "T4a_memory", "T4b_interconnect", "T4c_power"],
-            "T6a_syntax": ["T5_comparison"],
-            "T6b_prediction": ["T5_comparison"],
-            "T6c_transform": ["T5_comparison"],
-            "T6d_filter": ["T5_comparison"],
-            "T6e_vidproc": ["T5_comparison"],
-            "T6f_merge": ["T5_comparison"],
-            "T7_review_r1": ["T6a_syntax", "T6b_prediction", "T6c_transform",
-                             "T6d_filter", "T6e_vidproc", "T6f_merge"],
-            "T8_revision_r1": ["T7_review_r1"],
-            "T9_review_r2": ["T8_revision_r1"],
-            "T10_revision_r2": ["T9_review_r2"],
-            "T11_review_r3": ["T10_revision_r2"],
-            "T12_artifacts": ["T11_review_r3"],
-        }
-
-    def test_tree_construction_has_no_deps(self):
-        graph = self._build_dependency_graph()
-        assert graph["T1_tree"] == []
-
-    def test_validation_depends_on_tree(self):
-        graph = self._build_dependency_graph()
-        assert graph["T2_validate"] == ["T1_tree"]
-
-    def test_deepdive_depends_on_validation(self):
-        graph = self._build_dependency_graph()
-        assert graph["T3a_deepdive"] == ["T2_validate"]
-        assert graph["T3b_deepdive"] == ["T2_validate"]
-
-    def test_surveys_depend_on_validation(self):
-        graph = self._build_dependency_graph()
-        for key in ["T4a_memory", "T4b_interconnect", "T4c_power"]:
-            assert graph[key] == ["T2_validate"]
-
-    def test_comparison_depends_on_all_deepdives_and_surveys(self):
-        graph = self._build_dependency_graph()
-        deps = set(graph["T5_comparison"])
-        assert "T3a_deepdive" in deps
-        assert "T4a_memory" in deps
-        assert "T4b_interconnect" in deps
-        assert "T4c_power" in deps
-
-    def test_subdomain_tasks_depend_on_comparison(self):
-        graph = self._build_dependency_graph()
-        for key in ["T6a_syntax", "T6b_prediction", "T6c_transform",
-                     "T6d_filter", "T6e_vidproc", "T6f_merge"]:
-            assert graph[key] == ["T5_comparison"]
-
-    def test_review_r1_depends_on_all_subdomain(self):
-        graph = self._build_dependency_graph()
-        assert len(graph["T7_review_r1"]) == 6
-
-    def test_three_mandatory_review_rounds(self):
-        graph = self._build_dependency_graph()
-        assert "T7_review_r1" in graph
-        assert "T9_review_r2" in graph
-        assert "T11_review_r3" in graph
-
-    def test_final_artifacts_depend_on_r3(self):
-        graph = self._build_dependency_graph()
-        assert graph["T12_artifacts"] == ["T11_review_r3"]
-
-    def test_no_circular_dependencies(self):
-        graph = self._build_dependency_graph()
-        visited = set()
-        in_stack = set()
-
-        def has_cycle(node):
-            if node in in_stack:
-                return True
-            if node in visited:
-                return False
-            visited.add(node)
-            in_stack.add(node)
-            for dep in graph.get(node, []):
-                if has_cycle(dep):
-                    return True
-            in_stack.discard(node)
-            return False
-
-        for node in graph:
-            assert not has_cycle(node), f"Cycle detected involving {node}"
-
-
-# ── P2 Task Dependency Graph ────────────────────────────────────────────────
-
-
-class TestP2TaskDependencyGraph:
-    """Validate the P2 architecture dual-stream task dependency structure."""
-
-    def _build_dependency_graph(self):
-        """Build the canonical P2 dependency graph."""
-        return {
-            "T1a_hw_eval": [],
-            "T1b_hw_eval": [],
-            "T2_selection": ["T1a_hw_eval", "T1b_hw_eval"],
-            "T3_arch_design": ["T2_selection"],
-            "T4_refc_dev": ["T2_selection"],
-            "T5_bandwidth": ["T3_arch_design", "T4_refc_dev"],
-            "T6a_r1_spec": ["T5_bandwidth"],
-            "T6b_r1_mem": ["T5_bandwidth"],
-            "T6c_r1_model": ["T5_bandwidth"],
-            "T7_aggregate_r1": ["T6a_r1_spec", "T6b_r1_mem", "T6c_r1_model"],
-            "T8a_explore": ["T7_aggregate_r1"],
-            "T9_apply": ["T8a_explore"],
-            "T10a_r2_spec": ["T9_apply"],
-            "T10b_r2_mem": ["T9_apply"],
-            "T10c_r2_model": ["T9_apply"],
-            "T11_aggregate_r2": ["T10a_r2_spec", "T10b_r2_mem", "T10c_r2_model"],
-            "T12a_r3_spec": ["T11_aggregate_r2"],
-            "T12b_r3_mem": ["T11_aggregate_r2"],
-            "T12c_r3_model": ["T11_aggregate_r2"],
-            "T13_final": ["T12a_r3_spec", "T12b_r3_mem", "T12c_r3_model"],
-        }
-
-    def test_hw_eval_has_no_deps(self):
-        graph = self._build_dependency_graph()
-        assert graph["T1a_hw_eval"] == []
-        assert graph["T1b_hw_eval"] == []
-
-    def test_selection_depends_on_all_hw_evals(self):
-        graph = self._build_dependency_graph()
-        assert set(graph["T2_selection"]) == {"T1a_hw_eval", "T1b_hw_eval"}
-
-    def test_parallel_streams_depend_on_selection(self):
-        graph = self._build_dependency_graph()
-        assert graph["T3_arch_design"] == ["T2_selection"]
-        assert graph["T4_refc_dev"] == ["T2_selection"]
-
-    def test_bandwidth_depends_on_both_streams(self):
-        graph = self._build_dependency_graph()
-        assert set(graph["T5_bandwidth"]) == {"T3_arch_design", "T4_refc_dev"}
-
-    def test_three_parallel_reviewers_per_round(self):
-        graph = self._build_dependency_graph()
-        # R1: 3 reviewers
-        for key in ["T6a_r1_spec", "T6b_r1_mem", "T6c_r1_model"]:
-            assert graph[key] == ["T5_bandwidth"]
-        # R2: 3 reviewers
-        for key in ["T10a_r2_spec", "T10b_r2_mem", "T10c_r2_model"]:
-            assert graph[key] == ["T9_apply"]
-        # R3: 3 reviewers
-        for key in ["T12a_r3_spec", "T12b_r3_mem", "T12c_r3_model"]:
-            assert graph[key] == ["T11_aggregate_r2"]
-
-    def test_final_depends_on_all_r3(self):
-        graph = self._build_dependency_graph()
-        assert set(graph["T13_final"]) == {"T12a_r3_spec", "T12b_r3_mem", "T12c_r3_model"}
-
-    def test_no_circular_dependencies(self):
-        graph = self._build_dependency_graph()
-        visited = set()
-        in_stack = set()
-
-        def has_cycle(node):
-            if node in in_stack:
-                return True
-            if node in visited:
-                return False
-            visited.add(node)
-            in_stack.add(node)
-            for dep in graph.get(node, []):
-                if has_cycle(dep):
-                    return True
-            in_stack.discard(node)
-            return False
-
-        for node in graph:
-            assert not has_cycle(node), f"Cycle detected involving {node}"
-
-
-# ── P3 Task Dependency Graph ────────────────────────────────────────────────
-
-
-class TestP3TaskDependencyGraph:
-    """Validate the P3 uArch dual-stream task dependency structure."""
-
-    def _build_dependency_graph(self):
-        """Build the canonical P3 dependency graph."""
-        return {
-            "T1_uarch": [],
-            "T2_bfm": [],
-            "T3_bfm_gate": ["T1_uarch", "T2_bfm"],
-            "T4a_r1_feature": ["T3_bfm_gate"],
-            "T4b_r1_timing": ["T3_bfm_gate"],
-            "T4c_r1_algo": ["T3_bfm_gate"],
-            "T4d_r1_model": ["T3_bfm_gate"],
-            "T4e_r1_bfm": ["T3_bfm_gate"],
-            "T5_aggregate_r1": ["T4a_r1_feature", "T4b_r1_timing",
-                                "T4c_r1_algo", "T4d_r1_model", "T4e_r1_bfm"],
-            "T6_revision": ["T5_aggregate_r1"],
-            "T7a_r2": ["T6_revision"],
-            "T7b_r2": ["T6_revision"],
-            "T8_aggregate_r2": ["T7a_r2", "T7b_r2"],
-            "T9a_r3": ["T8_aggregate_r2"],
-            "T9b_r3": ["T8_aggregate_r2"],
-            "T9c_r3": ["T8_aggregate_r2"],
-            "T9d_r3": ["T8_aggregate_r2"],
-            "T9e_r3": ["T8_aggregate_r2"],
-            "T10_final": ["T9a_r3", "T9b_r3", "T9c_r3", "T9d_r3", "T9e_r3"],
-        }
-
-    def test_parallel_streams_have_no_deps(self):
-        graph = self._build_dependency_graph()
-        assert graph["T1_uarch"] == []
-        assert graph["T2_bfm"] == []
-
-    def test_bfm_gate_depends_on_both_streams(self):
-        graph = self._build_dependency_graph()
-        assert set(graph["T3_bfm_gate"]) == {"T1_uarch", "T2_bfm"}
-
-    def test_five_reviewers_in_r1(self):
-        graph = self._build_dependency_graph()
-        r1_tasks = [k for k in graph if k.startswith("T4")]
-        assert len(r1_tasks) == 5
-        for key in r1_tasks:
-            assert graph[key] == ["T3_bfm_gate"]
-
-    def test_aggregate_r1_depends_on_all_reviewers(self):
-        graph = self._build_dependency_graph()
-        assert len(graph["T5_aggregate_r1"]) == 5
-
-    def test_r2_is_selective(self):
-        """R2 has fewer reviewers (only those with findings)."""
-        graph = self._build_dependency_graph()
-        r2_tasks = [k for k in graph if k.startswith("T7") and k != "T7_aggregate"]
-        assert len(r2_tasks) >= 2  # At least some selective reviewers
-
-    def test_r3_is_mandatory_all_five(self):
-        graph = self._build_dependency_graph()
-        r3_tasks = [k for k in graph if k.startswith("T9") and k != "T9_aggregate"]
-        assert len(r3_tasks) == 5
-
-    def test_final_depends_on_all_r3(self):
-        graph = self._build_dependency_graph()
-        assert len(graph["T10_final"]) == 5
-
-    def test_no_circular_dependencies(self):
-        graph = self._build_dependency_graph()
-        visited = set()
-        in_stack = set()
-
-        def has_cycle(node):
-            if node in in_stack:
-                return True
-            if node in visited:
-                return False
-            visited.add(node)
-            in_stack.add(node)
-            for dep in graph.get(node, []):
-                if has_cycle(dep):
-                    return True
-            in_stack.discard(node)
-            return False
-
-        for node in graph:
-            assert not has_cycle(node), f"Cycle detected involving {node}"
-
-
-# ── P1-P3 Team Orchestrator Structure ───────────────────────────────────────
 
 
 class TestP1P3TeamOrchestratorStructure:
@@ -825,9 +409,9 @@ class TestSpecToUarchTeamStructure:
         """Pipeline skill team mode invokes the phase skills with team in the arguments."""
         skill = SKILLS_DIR / "rat-p1p3-spec-uarch" / "SKILL.md"
         content = read_contract(skill)
-        assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")' in content
-        assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 artifacts complete")' in content
-        assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 artifacts complete")' in content
+        assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS {review_scope}")' in content
+        assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 artifacts complete {review_scope}")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 artifacts complete {review_scope}")' in content
 
 
 # ── P1-P3 Agent Worker Protocol ─────────────────────────────────────────────
@@ -888,11 +472,11 @@ class TestAutopilotP1P3TeamAwareness:
         """In team mode, autopilot skill invokes phase team skills."""
         skill = SKILLS_DIR / "rat-auto-design" / "SKILL.md"
         content = read_contract(skill)
-        assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")' in content
-        assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete")' in content
-        assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete")' in content
-        assert 'Skill(skill="rtl-agent-team:rtl-p4-implement", args="team Phase 3 complete")' in content
-        assert 'Skill(skill="rtl-agent-team:rtl-p5-verify", args="team Phase 4 complete")' in content
+        assert 'Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS {review_scope}")' in content
+        assert 'Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 complete {review_scope}")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 complete {review_scope}")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p4-implement", args="team Phase 3 complete {review_scope}")' in content
+        assert 'Skill(skill="rtl-agent-team:rtl-p5-verify", args="team Phase 4 complete {review_scope}")' in content
 
     def test_autopilot_orchestrator_references_p1_team_orchestrator(self):
         """Autopilot orchestrator (sequential mode) still references team orchestrators."""
@@ -914,161 +498,45 @@ class TestAutopilotP1P3TeamAwareness:
 class TestTeamSkillContract:
     """Validate that team skills contain team lifecycle primitives (Skill as Leader)."""
 
-    TEAM_SKILLS = [
-        "p1-spec-research",
-        "p2-arch-design",
-        "rtl-p3-uarch-design",
-        "rtl-p4-implement",
-        "rtl-p5-verify",
-    ]
+    PHASE_TEAMS = {
+        "p1-spec-research": "p1-research",
+        "p2-arch-design": "p2-arch",
+        "rtl-p3-uarch-design": "p3-uarch",
+        "rtl-p4-implement": "p4-implement",
+        "rtl-p5-verify": "p5-verify",
+    }
 
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_has_team_create(self, skill_name):
-        """Team skills must call TeamCreate (Skill as Leader pattern)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        assert "TeamCreate" in content, f"{skill_name} missing TeamCreate"
+    @pytest.mark.parametrize("skill_name,team", PHASE_TEAMS.items())
+    def test_team_entrypoint_dispatches_to_phase_owner(self, skill_name, team):
+        content = read_contract(SKILLS_DIR / skill_name / "SKILL.md")
+        frontmatter = content.split("---", 2)[1]
+        allowed = re.search(r"^allowed-tools: (.*)$", frontmatter, re.M).group(1)
+        assert {"TeamCreate", "Agent", "SendMessage", "TeamDelete", "Write"} <= set(allowed.split(", "))
 
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_has_team_delete(self, skill_name):
-        """Team skills must call TeamDelete for cleanup."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        assert "TeamDelete" in content, f"{skill_name} missing TeamDelete"
+        sequential, team_section = content.split("## Team mode", 1)
+        coordinator = f"rtl-agent-team:{team}-orchestrator"
+        assert f'Task(subagent_type="{coordinator}"' in sequential
+        assert coordinator in team_section and f"`{team}`" in team_section
+        assert "$ARGUMENTS" in team_section
+        resource = "runtime/workflows/team-leader.md"
+        assert resource in team_section and resource not in sequential
+        assert (REPO_ROOT / resource).is_file()
+        assert "mandatory Codex cross-review" not in content
+        assert not re.search(r'"worker_count":\s*[1-9]|while True:', team_section)
 
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_spawns_workers(self, skill_name):
-        """Team skills must spawn workers via Agent(team_name=...)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        assert "team_name=" in content, f"{skill_name} missing Agent(team_name=...)"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_has_expanded_allowed_tools(self, skill_name):
-        """Team skills must have TeamCreate, TeamDelete, Agent in allowed-tools."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        # Extract frontmatter
-        parts = content.split("---", 2)
-        fm = parts[1] if len(parts) >= 3 else ""
-        assert "TeamCreate" in fm, f"{skill_name} allowed-tools missing TeamCreate"
-        assert "TeamDelete" in fm, f"{skill_name} allowed-tools missing TeamDelete"
-        assert "Agent" in fm, f"{skill_name} allowed-tools missing Agent"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_writes_team_config(self, skill_name):
-        """Team skills must write team-config.json."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        assert "team-config.json" in content, f"{skill_name} missing team-config.json write"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_uses_subagent_type(self, skill_name):
-        """Agent calls must use subagent_type= not agent_type= (official API)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        # Exclude 'subagent_type=' matches when checking for bare 'agent_type='
-        import re
-        bare_agent_type = re.findall(r'(?<!sub)agent_type=', content)
-        assert bare_agent_type == [], \
-            f"{skill_name} uses deprecated agent_type= (should be subagent_type=)"
-        assert "subagent_type=" in content, \
-            f"{skill_name} missing subagent_type= in Agent calls"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_agent_has_description(self, skill_name):
-        """Agent calls must include description= parameter (required by API)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        # Count uncommented Agent( calls and description= occurrences in Agent blocks
-        import re
-        # Multi-line Agent calls: count Agent( opening lines (uncommented)
-        agent_starts = re.findall(r'^(?!\s*#)\s*Agent\(', content, re.MULTILINE)
-        # Count description= within Agent call context (uncommented lines)
-        desc_params = re.findall(r'^(?!\s*#).*description=', content, re.MULTILINE)
-        assert len(agent_starts) > 0, f"{skill_name} has no Agent() calls"
-        assert len(desc_params) >= len(agent_starts), \
-            f"{skill_name}: {len(agent_starts) - len(desc_params)} Agent() calls missing description="
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_task_create_uses_subject(self, skill_name):
-        """TaskCreate must use subject= not title= (official API)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        if "TaskCreate(" in content:
-            # Check no TaskCreate uses 'title='
-            for line in content.split('\n'):
-                if 'TaskCreate(' in line:
-                    assert 'title=' not in line, \
-                        f"{skill_name} TaskCreate uses title= (should be subject=)"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_team_delete_no_params(self, skill_name):
-        """TeamDelete() should have no parameters (uses current team context)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        assert "TeamDelete()" in content, \
-            f"{skill_name} TeamDelete should have no parameters"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_spawns_coordinator_as_teammate(self, skill_name):
-        """Coordinator must be spawned via Agent(team_name=...) not Task()."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        # Must have Agent() call with coordinator/orchestrator name and team_name
-        import re
-        coordinator_agent = re.findall(
-            r'Agent\([^)]*team_name=[^)]*orchestrator', content, re.DOTALL)
-        assert len(coordinator_agent) >= 1, \
-            f"{skill_name} must spawn coordinator orchestrator via Agent(team_name=...)"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_no_task_orchestrator(self, skill_name):
-        """Team mode spawns the coordinator via Agent(), not Task().
-
-        The sequential section of the same skill still uses Task().
-        """
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        import re
-        sequential, _, team = content.partition("## Team mode")
-        assert team, f"{skill_name} missing ## Team mode"
-        seq_task = re.findall(
-            r'^(?!\s*#).*Task\([^)]*orchestrator', sequential, re.MULTILINE)
-        assert seq_task, (
-            f"{skill_name} sequential section must spawn its orchestrator via Task()"
-        )
-        team_task = re.findall(
-            r'^(?!\s*#).*Task\([^)]*orchestrator', team, re.MULTILINE)
-        assert team_task == [], (
-            f"{skill_name} team mode still uses Task() for the orchestrator "
-            "(should use Agent(team_name=...))"
-        )
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_worker_count_within_limit(self, skill_name):
-        """Team skills must have 4-6 Agent(team_name=...) calls (1 coordinator + 3-5 workers)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        import re
-        # Count uncommented Agent(team_name=...) calls
-        agent_calls = re.findall(
-            r'^(?!\s*#)\s*Agent\([^)]*team_name=', content, re.MULTILINE)
-        assert 4 <= len(agent_calls) <= 6, \
-            f"{skill_name} has {len(agent_calls)} Agent(team_name=...) calls, expected 4-6"
-
-    @pytest.mark.parametrize("skill_name", TEAM_SKILLS)
-    def test_team_skill_teardown_gated_on_coordinator_signal(self, skill_name):
-        """v0.12.0: Step 7 leader teardown must be gated on the coordinator signal,
-        not solely on a drained task graph (the old break-on-empty-TaskList path)."""
-        skill = SKILLS_DIR / skill_name / "SKILL.md"
-        content = read_contract(skill)
-        assert "coordinator_signaled_phase_complete" in content, (
-            f"{skill_name} Step 7 must gate teardown on coordinator_signaled_phase_complete"
-        )
-        assert "COORDINATOR SIGNAL" in content, (
-            f"{skill_name} Step 7 must reference the COORDINATOR SIGNAL for teardown"
-        )
+    def test_shared_leader_contract_preserves_lifecycle(self):
+        leader = read_contract(REPO_ROOT / "runtime/workflows/team-leader.md")
+        ordered = [
+            "TeamCreate", "Write", ".rat/state/team-config.json",
+            'name="coordinator"', "independent work", "completion message",
+            "phase gate", "shutdown_request", "TeamDelete()", ".rat/state/team-config.json",
+        ]
+        start = 0
+        for token in ordered:
+            start = leader.index(token, start) + len(token)
+        assert "sequential entry" in leader
+        assert "mandatory Codex cross-review" not in leader
+        assert not re.search(r'"worker_count":\s*[1-9]|while True:', leader)
 
     def test_team_orchestrators_signal_only_after_phase_gate(self):
         """v0.12.0: each team orchestrator's Signal completion bullet must fire

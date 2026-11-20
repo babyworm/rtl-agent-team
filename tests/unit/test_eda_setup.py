@@ -40,7 +40,7 @@ raise SystemExit(subprocess.call(sys.argv[-1],shell=True,executable="/bin/sh"))
     executable(tools / "vcs", "#!/bin/sh\nprintf 'error while loading shared libraries: libnsl.so.1\\n'\n")
     profile = tmp_path / "sites/synthetic-site.json"
     env = {"PATH": str(tools) + os.pathsep + os.environ["PATH"]}
-    result = call("discover", "--host", "eda-fixture.example.invalid", "--output", profile, env=env)
+    result = call("discover", "--host", "eda-fixture.example.invalid", "--paths-only", "--output", profile, env=env)
     assert result.returncode == 0, result.stderr
     return profile, env
 
@@ -63,6 +63,55 @@ def test_remote_discovery_does_not_reuse_a_local_python_path(site, tmp_path):
     result = call("discover", "--host", "eda-fixture.example.invalid", "--config", config, env=env)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["execution"]["python"] != "/local-only/python"
+
+
+def test_discovery_sources_shared_setup_and_checks_execution_on_host(site, tmp_path):
+    _, env = site
+    vendor = tmp_path / "vendor bin"
+    xrun = executable(vendor / "xrun", '#!/bin/sh\ntest "$FIXTURE_ENV" = loaded || exit 3\n'
+                      'test -s "rat_setup_tb.sv" || exit 4\nprintf "RAT_SETUP_SIM_PASS\\n"\n')
+    executable(vendor / "vcs", '#!/bin/sh\nprintf "error while loading shared libraries: missing.so\\n"\n')
+    executable(vendor / "vsim", '#!/bin/sh\nexec 1>&- 2>&-\nexec sleep 6\n')
+    executable(vendor / "dc_shell", '#!/bin/sh\nprintf "FLEXnet Licensing checkout error:\\n"\n')
+    executable(vendor / "imc", '#!/bin/sh\ntest "$1" = -exec && test -f "$2" && echo RAT_SETUP_TCL_READY\n')
+    setup = tmp_path / "setup script.sh"
+    setup.write_text(f'export PATH="{vendor}:$PATH"\nexport FIXTURE_ENV=loaded\necho setup-banner\n')
+    result = call("discover", "--host", "eda-fixture.example.invalid", "--env-script", setup,
+                  "--probe-timeout", "1", env=env)
+    assert result.returncode == 0, result.stderr
+    value = json.loads(result.stdout)
+    assert value["evidence_level"] == "tool_readiness"
+    sims = value["tools"]["simulators"]
+    assert sims["xrun"]["path"] == str(xrun)
+    assert sims["xrun"]["setup_status"] == "workload_passed"
+    assert sims["xrun"]["probe"]["license_checked"]
+    assert sims["vcs"]["setup_status"] == "loader_failed"
+    assert sims["vsim"]["setup_status"] == "timeout"
+    assert "output" not in sims["vcs"]["probe"]
+    assert value["tools"]["synthesis"]["dc_shell"]["setup_status"] == "license_failed"
+    imc = value["tools"]["coverage"]["imc"]
+    assert imc["setup_status"] == "command_passed"
+    assert imc["probe"]["license_checked"] is False
+
+
+def test_discovery_preserves_configured_check_and_requires_workload_evidence(tmp_path):
+    tool = executable(tmp_path / "imc", '#!/bin/sh\nprintf "%s\\n" "IMC launched"\n')
+    source = tmp_path / "candidate.json"
+    source.write_text(json.dumps({"tools": {"coverage": {"imc": {
+        "path": str(tool), "setup_check": {"args": ["test"], "expected_line": "MERGED", "licensed": True}
+    }}}}))
+    profile = tmp_path / "profile.json"
+    result = call("discover", "--config", source, "--output", profile)
+    assert result.returncode == 0, result.stderr
+    imc = json.loads(profile.read_text())["tools"]["coverage"]["imc"]
+    assert imc["setup_status"] == "workload_unverified"
+    assert imc["probe"]["license_checked"] is False
+    root = tmp_path / "project"
+    result = call("configure", "--profile", profile, "--root", root)
+    assert result.returncode == 0, result.stderr
+    persisted = json.loads((root / "rat_config.json").read_text())["tools"]["coverage"]["imc"]
+    assert persisted["setup_check"] == imc["setup_check"]
+    assert persisted["setup_status"] == "workload_unverified"
 
 
 def test_probe_detects_loader_failure_despite_zero_exit(site, tmp_path):

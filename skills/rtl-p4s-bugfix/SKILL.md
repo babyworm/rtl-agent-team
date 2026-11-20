@@ -4,6 +4,8 @@ description: "P4 RTL bug fix enforcing full cycle through TB update and function
 user-invocable: true
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 A workflow skill that enforces the design-to-verification flow when fixing RTL bugs.
 A fix is only considered complete after TB generation and functional simulation pass — not just lint.

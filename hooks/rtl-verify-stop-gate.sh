@@ -5,12 +5,8 @@
 # Verification evidence: runner-written verify-evidence.json with fresh hashes
 # Waiver: .rat/state/rtl-verify-waiver (the user's decision)
 #
-# Unverified RTL blocks the stop so Claude keeps working, within the bounds of
-# hooks/lib/stop-budget-util.sh. After RAT_STOP_BLOCK_LIMIT blocks without progress in
-# one continuation chain, the gate lets Claude stop and shows the user a notice.
-# From the chain's Stop STOPU_CHAIN_CAP + 1 on, whichever hooks blocked the earlier
-# Stops, the gate shows the notice instead of blocking. When another Stop hook keeps the
-# chain going after the notice, new unverified files show the notice again.
+# Request verification once for a new unverified content state. Its next Stop
+# shows one informational line even if the user started a new prompt.
 
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
@@ -20,6 +16,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/posix-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
+. "$SCRIPT_DIR/lib/python-util.sh"
 jsonu_detect_parser
 
 CWD=$(jsonu_get_root_string "$INPUT" "cwd")
@@ -38,6 +35,7 @@ if teamu_should_skip_gate "$STATE_DIR" "$INPUT"; then
 fi
 STOP_CHAIN=$(stopu_chain_active "$INPUT" "$STATE_DIR" verify)
 stopu_background_agent_pending "$INPUT" && emit_post_continue  # paused for a background agent; its completion wakes the session
+VERIFY_RECEIPT="$(stopu_budget_file verify "$STATE_DIR").reported"
 
 # Team mode aggregation: merge all session-scoped tracking files into a combined view.
 # In team mode, each worker writes to rtl-modified-files-{SESSION_ID}.txt.
@@ -101,7 +99,7 @@ fi
 
 # If no tracked files, allow exit
 if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
-  rm -f "$AGGREGATED_TRACK"
+  rm -f "$AGGREGATED_TRACK" "$VERIFY_RECEIPT"
   stopu_clear verify "$STATE_DIR"
   emit_post_continue
 fi
@@ -110,9 +108,9 @@ fi
 # runner evidence once; when no parser is available, keep verification pending.
 EVIDENCE_VERIFIED=false
 EVIDENCE_PENDING=""
-EVIDENCE_PYTHON="${RAT_PYTHON:-python3}"
+EVIDENCE_PYTHON=$(rat_select_python 2>/dev/null) || EVIDENCE_PYTHON=""
 EVIDENCE_HELPER="$SCRIPT_DIR/../scripts/verify_evidence.py"
-if command -v "$EVIDENCE_PYTHON" >/dev/null 2>&1 && [ -f "$EVIDENCE_HELPER" ]; then
+if [ -n "$EVIDENCE_PYTHON" ] && [ -f "$EVIDENCE_HELPER" ]; then
   if "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" pending --root "$CWD" --track "$TRACK_FILE"; then
     emit_post_continue
   fi
@@ -124,7 +122,7 @@ fi
 
 if [ "$EVIDENCE_VERIFIED" = "true" ] || [ -f "$VERIFY_WAIVER" ]; then
   # Clean up solo + all session-scoped tracking files
-  rm -f "$STATE_DIR/rtl-modified-files.txt" "$VERIFY_DONE" "$VERIFY_WAIVER" "$AGGREGATED_TRACK" "$STATE_DIR/rtl-modified-files-fallback.txt"
+  rm -f "$STATE_DIR/rtl-modified-files.txt" "$VERIFY_DONE" "$VERIFY_WAIVER" "$AGGREGATED_TRACK" "$STATE_DIR/rtl-modified-files-fallback.txt" "$VERIFY_RECEIPT"
   for sf in "$STATE_DIR"/rtl-modified-files-*.txt; do
     [ -f "$sf" ] && rm -f "$sf"
   done
@@ -140,7 +138,7 @@ TRACKED=$(RAT_TRACK_ROOT="$PROJECT_ROOT/" awk 'BEGIN { p = ENVIRON["RAT_TRACK_RO
 [ -z "$EVIDENCE_PENDING" ] || TRACKED="$EVIDENCE_PENDING"
 # A tracking file with blank lines only lists no files: allow exit.
 if [ -z "$TRACKED" ]; then
-  rm -f "$AGGREGATED_TRACK"
+  rm -f "$AGGREGATED_TRACK" "$VERIFY_RECEIPT"
   stopu_clear verify "$STATE_DIR"
   emit_post_continue
 fi
@@ -150,9 +148,7 @@ FILES=$(printf '%s\n' "$TRACKED" | awk -v max=10 'NF { n++; if (n <= max) printf
 rm -f "$AGGREGATED_TRACK"
 
 MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules through scripts/run_sim.sh (for example /rtl-agent-team:rtl-p5s-func-verify, or /rtl-agent-team:rtl-p4s-unit-test). A passing testbench emits RAT_SIM_PASS or a recognized test summary; the runner records fresh source and log hashes in $(shq "$STATE_DIR/verify-evidence.json"). A touched marker is insufficient. If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
-NOTICE="[RTL Verify Gate] ${COUNT} RTL files have no recorded verification: ${FILES}. The verify gate is not asking Claude to continue in this turn and will ask again on your next message. Run functional verification, or waive it if the change is non-functional: touch $(shq "$VERIFY_WAIVER")"
-# After its notice the gate does not block again in this chain. When another Stop hook keeps
-# the chain going and more RTL changes meanwhile, show the notice again with the new files.
+NOTICE="Info> Functional verification is pending for ${COUNT} RTL file(s)."
 VERIFY_PROGRESS="$TRACKED"
 while IFS= read -r _vp_file; do
   case "$_vp_file" in /*) ;; *) _vp_file="$PROJECT_ROOT/$_vp_file" ;; esac
@@ -160,8 +156,24 @@ while IFS= read -r _vp_file; do
 done <<EOF
 $TRACKED
 EOF
-if stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS"; then
-  stopu_clear verify "$STATE_DIR"
-  STOP_CHAIN=false
+FINGERPRINT=$(stopu_fingerprint "$VERIFY_PROGRESS")
+REPORTED=$(cat "$VERIFY_RECEIPT" 2>/dev/null)
+if [ "$REPORTED" = "$FINGERPRINT info" ]; then
+  emit_post_continue
 fi
-stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" "$NOTICE"
+save_receipt() {
+  printf '%s %s\n' "$FINGERPRINT" "$1" | ratu_state_write "$VERIFY_RECEIPT"
+}
+if [ "$REPORTED" = "$FINGERPRINT requested" ]; then
+  save_receipt info || true
+  stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" "$NOTICE" 0
+fi
+
+# Re-arm for changed content without resetting the cap shared by the Stop chain.
+stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" || true
+if [ "$(stopu_decision verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" 1)" = block ] &&
+   save_receipt requested; then
+  stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" "$NOTICE" 1
+fi
+save_receipt info || true
+stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" "$NOTICE" 0

@@ -6,6 +6,8 @@ argument-hint: "[spec-file or project-description | --resume | team]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute the Phase 1→3 pipeline (Research → Architecture → μArch) with enforced
 dual-layer phase gates, then STOP for human review before RTL implementation.
@@ -25,6 +27,8 @@ Produces all design documents needed for RTL coding.
 - Need the full pipeline including RTL (use rat-auto-design)
 - Only need a single phase (use the phase-specific skill; pass `team` on that skill for parallel workers)
 </Do_Not_Use_When>
+
+Forward the run-scoped Codex review choice (`review_scope`) to each phase, including on resume, as specified in `{plugin_root}/runtime/phase-dispatch.md`.
 
 ## Mode
 
@@ -61,14 +65,15 @@ if legacy:
 # Initialize or resume state
 state = Read(".rat/state/rat-p1p3-spec-uarch-state.json")  # may not exist
 
-if state and state.current_phase > 1:
-    # Resume: skip completed phases
-    pass
+if state:
+    # Keep partial P1 and completed phases. Use the saved choice unless the user changes it.
+    review_scope = current_request_choice or state.get("review_scope") or "project"
 else:
     # Fresh start
+    review_scope = current_request_choice or "project"
     Write(".rat/state/rat-p1p3-spec-uarch-state.json",
       { "schema_version": "3.0", "current_phase": 1, "pipeline_scope": "phase-1-to-3",
-        "execution_mode": "team",
+        "execution_mode": "team", "review_scope": review_scope,
         "phases": {
           "1": { "status": "pending" },
           "2": { "status": "pending" },
@@ -76,9 +81,11 @@ else:
         }
       })
 
+# Persist review_scope in the pipeline state before dispatch.
+
 # ── Phase 1: Research (team) ──────────────────────────────────
 if phases["1"]["status"] != "completed":
-    Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS")
+    Skill(skill="rtl-agent-team:p1-spec-research", args="team $ARGUMENTS {review_scope}")
 
     # Phase 1→2 artifact gate (iron-requirements is the settled SSOT;
     # open-requirements is optional — absent if Phase 1 had no deferred research)
@@ -93,7 +100,7 @@ if phases["1"]["status"] != "completed":
 
 # ── Phase 2: Architecture + RefC (team) ───────────────────────
 if phases["2"]["status"] != "completed":
-    Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 artifacts complete")
+    Skill(skill="rtl-agent-team:p2-arch-design", args="team Phase 1 artifacts complete {review_scope}")
 
     # Phase 2→3 artifact gate
     Glob("docs/phase-2-architecture/architecture.md")
@@ -105,7 +112,7 @@ if phases["2"]["status"] != "completed":
 
 # ── Phase 3: uArch + BFM (team) ──────────────────────────────
 if phases["3"]["status"] != "completed":
-    Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 artifacts complete")
+    Skill(skill="rtl-agent-team:rtl-p3-uarch-design", args="team Phase 2 artifacts complete {review_scope}")
 
     # Phase 3 artifact gate
     Glob("docs/phase-3-uarch/*.md")

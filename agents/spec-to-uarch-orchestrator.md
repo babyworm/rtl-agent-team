@@ -11,6 +11,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
+Forward the run-scoped Codex review choice to each delegated phase. At any phase handoff you own directly, follow `{plugin_root}/runtime/phase-dispatch.md`.
+
 Coordinate the requested phase using the supplied artifacts and the embedded policy.
 Mode is `team` only when the spawn explicitly says `MODE=team` or supplies `team_name`;
 otherwise use `sequential`. Read exactly the selected workflow:

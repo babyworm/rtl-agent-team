@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.6
+# rat-version: 2.0.7
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -75,7 +75,8 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
     interrupted=0
     try:
         with log.open("wb") as stream:
-            while selector.get_map():
+            # Some license launchers close their output before they start waiting.
+            while selector.get_map() or process.poll() is None:
                 now = time.monotonic()
                 reason = "TIMEOUT" if now - started >= timeout else "STALL" if stall and now - last_output >= stall else ""
                 if reason and termination == "exit":
@@ -96,6 +97,10 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
                     stream.write(marker)
                     sys.stdout.buffer.write(marker)
                     sys.stdout.buffer.flush()
+                    break
+                if not selector.get_map():
+                    time.sleep(0.05)
+                    continue
                 for key, _ in selector.select(timeout=0.05):
                     data = os.read(key.fd, 65536)
                     if not data:
@@ -117,6 +122,7 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
     finally:
         for number,handler in handlers.items(): signal.signal(number,handler)
     selector.close()
+    process.stdout.close()
     status = process.wait()
     if interrupted:
         status = 128 + interrupted
@@ -488,7 +494,7 @@ def _dispatch(args, root: Path, config: dict) -> int:
     library = package / "lib"
     library.mkdir()
     helper_root = Path(__file__).parent
-    for name in ("eda_runner.py", "verify_evidence.py", "regression_evidence.py", "eda_setup.py"):
+    for name in ("eda_runner.py", "verify_evidence.py", "regression_evidence.py", "eda_setup.py", "merge_coverpoint_logs.py"):
         shutil.copy2(helper_root / name, library / name)
     selector = helper_root / "python-util.sh"
     if not selector.is_file():

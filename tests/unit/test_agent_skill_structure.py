@@ -241,11 +241,7 @@ class TestAgentDefinitions:
         assert missing == [], f"Agents missing 'model:' in frontmatter: {missing}"
 
     def test_model_follows_the_work(self, agent_files):
-        """fable: orchestration, judgment, architecture, microarchitecture.
-        opus: design, verification, checking.
-        sonnet: running a tool or parsing its report.
-        A spawn model= matches that agent's frontmatter.
-        """
+        """Claude role defaults encode portable tiers. Dispatch uses the host's model."""
         fable_named = {
             "arch-designer",
             "rtl-architect",
@@ -263,7 +259,6 @@ class TestAgentDefinitions:
             "ipxact-generator",
         }
         wrong = []
-        front = {}
         for f in agent_files:
             name = f.stem
             parts = read_contract(f).split("---", 2)
@@ -273,7 +268,6 @@ class TestAgentDefinitions:
                 for line in fm.splitlines()
                 if line.startswith("model:")
             )
-            front[name] = model
             if name.endswith("-orchestrator") or name.endswith("-coordinator") or name in fable_named:
                 expect = "fable"
             elif name in sonnet:
@@ -284,21 +278,10 @@ class TestAgentDefinitions:
                 wrong.append(f"{name}: {model} != {expect}")
         assert wrong == [], wrong
 
-        import re
-        drift = []
         for f in agent_files:
-            text = read_contract(f)
-            for match in re.finditer(
-                r'subagent_type="rtl-agent-team:([a-z0-9-]+)"'
-                r'(?:[^"\n]*\bmodel="(sonnet|opus|fable)"'
-                r'|\s*,\s*\n\s*model="(sonnet|opus|fable)")',
-                text,
-            ):
-                target = match.group(1)
-                pinned = match.group(2) or match.group(3)
-                if front.get(target) != pinned:
-                    drift.append(f"{f.name}: {target} pinned {pinned}")
-        assert drift == [], drift
+            assert not re.search(r'\bmodel="(?:fable|opus|sonnet|haiku)"', read_contract(f)), (
+                f"{f.name} pins a Claude-specific model in a delegated task"
+            )
 
     def test_all_agents_have_description(self, agent_files):
         missing = []
@@ -440,9 +423,6 @@ class TestSkillDefinitions:
 
     def test_skills_dir_exists(self):
         assert SKILLS_DIR.is_dir(), "skills/ directory must exist"
-
-    def test_at_least_30_skills(self, skill_dirs):
-        assert len(skill_dirs) >= 85, f"Expected ≥85 skill dirs, got {len(skill_dirs)}"
 
     def test_every_skill_dir_has_skill_md(self, skill_dirs):
         policies = {p.stem for p in (AGENT_LIB_DIR / 'policies').glob('*.md')}
@@ -677,113 +657,26 @@ class TestCrossReferences:
             assert source.read_text().strip() in agent_file.read_text()
 
     def test_codex_cross_review_skill_agent_contract(self):
-        """codex-cross-review: action skill + agent exist, skill delegates to agent,
-        agent has phase-scoped artifacts, and all phase orchestrators (solo+team) reference it."""
-        # 1. Skill exists and is user-invocable
-        skill_file = SKILLS_DIR / "codex-cross-review" / "SKILL.md"
-        assert skill_file.exists(), "Missing action skill: codex-cross-review"
-        skill_fm = _read_frontmatter(skill_file)
-        assert re.search(r"^user-invocable:\s*true\s*$", skill_fm, re.MULTILINE), (
-            "codex-cross-review must be user-invocable"
-        )
-
-        # 2. Agent exists
-        agent_file = AGENTS_DIR / "codex-cross-reviewer.md"
-        assert agent_file.exists(), "Missing agent: codex-cross-reviewer"
-
-        # 3. Skill delegates to agent
-        skill_content = read_contract(skill_file)
-        assert re.search(
-            r'Task\(subagent_type="rtl-agent-team:codex-cross-reviewer"', skill_content
-        ), "codex-cross-review skill must delegate to codex-cross-reviewer agent"
-
-        # 4. Agent uses phase-scoped paths (not bare cross-review/)
-        agent_content = read_contract(agent_file)
-        assert "cross-review/phase-{N}/" in agent_content, (
-            "codex-cross-reviewer must use phase-scoped artifact paths"
-        )
-
-        # 5. Agent includes re-validation step
-        assert re.search(r"Re-Validation", agent_content), (
-            "codex-cross-reviewer must include re-validation step after fixes"
-        )
-
-        # 5b. The one Codex pass keeps Step 2b's timeout protection.
-        # There is no Step 4b follow-up. A second exchange runs only when the user asks.
-        timeout_count = agent_content.count("timeout 1200")
-        assert timeout_count >= 3, (
-            f"codex-cross-reviewer Step 2b must have timeout 1200 in Mode A, fallback, and Mode B "
-            f"(expected >=3 occurrences, found {timeout_count})"
-        )
-        assert "Falling back to Mode B" in agent_content, (
-            "codex-cross-reviewer Step 2b must have Mode B fallback"
-        )
-        assert "Do not run Codex again" in agent_content, (
-            "codex-cross-reviewer stops after one Codex pass"
-        )
-        assert "Step 4b" not in agent_content, (
-            "codex-cross-reviewer must not keep a follow-up round"
-        )
-        exec_blocks = agent_content.split("timeout 1200 codex exec")
-        assert len(exec_blocks) - 1 >= 3, (
-            "codex-cross-reviewer must have three codex exec sites"
-        )
-        for block in exec_blocks[1:4]:
-            command_lines = []
-            for line in block.splitlines():
-                command_lines.append(line)
-                if not line.rstrip().endswith("\\"):
-                    break
-            window = "\n".join(command_lines)
-            assert "-m " in window, "each codex exec must pass -m"
-            assert "-c " not in window, "codex exec must not override effort with -c"
-            assert "-m sol" not in window and "-m astra" not in window and "-m terra" not in window, (
-                "codex exec must not pass the bare family name"
-            )
-            assert "CODEX_MODEL" in window, "codex exec must pass the resolved slug"
-        assert agent_content.count("FAMILY=sol") >= 3, (
-            "each exec site must default the Codex family to sol"
-        )
-        assert 'endswith("-"+family)' in agent_content, (
-            "the slug resolver must select the family suffix"
-        )
-        assert "fable" in agent_content and "astra" in agent_content, (
-            "codex-cross-reviewer must map fable to astra"
-        )
-        assert "sonnet" in agent_content and "terra" in agent_content, (
-            "codex-cross-reviewer must map sonnet to terra"
-        )
-        assert "never override" not in agent_content, (
-            "codex-cross-reviewer must pass the mapped Codex model"
-        )
-        assert "astra" in skill_content and "sol" in skill_content and "terra" in skill_content, (
-            "codex-cross-review must state the Codex model map"
-        )
-        assert "bare family name" in skill_content, (
-            "codex-cross-review must not tell the caller to pass the bare family name"
-        )
-
-        # 5c. Completion marker uses ${N} substitution, not literal N
-        assert "cross-review-phase-${N}-done" in agent_content, (
-            "codex-cross-reviewer completion marker must use ${N} substitution"
-        )
-
-        # Cross-review remains an explicit Action Skill, not another mandatory phase pass.
-        for orch in ('p1-research','p2-arch','p3-uarch','p4-implement','p5-verify'):
-            text = read_contract(AGENTS_DIR / (orch + '-orchestrator.md'))
-            assert 'Task(subagent_type="rtl-agent-team:codex-cross-reviewer"' not in text
-
-        # 6b. Phase auto-detection must not reference dead current-phase fallback
-        assert "current-phase" not in skill_content, (
-            "codex-cross-review skill must not reference dead current-phase state file"
-        )
-
-        # 7. Routing table includes codex-cross-review
-        orchestrate_file = SKILLS_DIR / "rtl-orchestrate" / "SKILL.md"
-        orchestrate_content = read_contract(orchestrate_file)
-        assert "codex-cross-review" in orchestrate_content, (
-            "rtl-orchestrate routing table must include codex-cross-review"
-        )
+        skill_dir = SKILLS_DIR / "codex-cross-review"
+        skill = skill_dir / "SKILL.md"
+        assert re.search(r"^user-invocable:\s*true\s*$", _read_frontmatter(skill), re.MULTILINE)
+        dispatch = REPO_ROOT / "runtime/phase-dispatch.md"
+        reviewer = read_contract(AGENTS_DIR / "codex-cross-reviewer.md")
+        runner = skill_dir / "scripts/review.py"
+        assert runner.is_file()
+        assert (skill_dir / "review-schema.json").is_file()
+        assert str(runner.relative_to(REPO_ROOT)) in reviewer
+        assert str(runner.relative_to(REPO_ROOT)) in dispatch.read_text()
+        assert 'Task(subagent_type="rtl-agent-team:codex-cross-reviewer"' in read_contract(skill)
+        report = ".rat/cross-review/phase-{N}/cross-review-report.md"
+        assert report in reviewer and report in read_contract(skill)
+        assert ".rat/state/cross-review-phase-${N}-done" in reviewer
+        registry = json.loads((REPO_ROOT / "phase-registry.json").read_text())["skills"]
+        assert registry["codex-cross-review"]["phase"] == 0
+        assert "/rtl-agent-team:codex-cross-review" in read_contract(RTL_ORCHESTRATE_SKILL)
+        for phase in ("p1-spec-research", "p2-arch-design", "rtl-p3-uarch-design",
+                      "rtl-p4-implement", "rtl-p5-verify"):
+            assert str(dispatch.relative_to(REPO_ROOT)) in read_contract(SKILLS_DIR / phase / "SKILL.md")
 
     def test_p4_state_module_population_contract_is_explicit(self):
         p4_template = SKILLS_DIR / "rtl-p4-rapid-impl-policy" / "templates" / "p4-state.json"

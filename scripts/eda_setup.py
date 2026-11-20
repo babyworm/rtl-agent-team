@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.3
+# rat-version: 2.0.6
 """Discover an EDA site, probe selected tools, and apply a reusable site profile."""
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import hashlib
 import importlib.util
+from itertools import repeat
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -21,6 +24,9 @@ import tempfile
 import time
 
 MARKER = "RAT_SETUP_JSON:"
+PATH_MARKER = "RAT_TOOL_PATH:"
+SMOKE_PASS = "RAT_SETUP_SIM_PASS"
+TCL_READY = "RAT_SETUP_TCL_READY"
 TOOLS = {
     "simulators": {name: name for name in ("vcs", "xrun", "vsim", "verilator", "iverilog")},
     "synthesis": {name: name for name in ("dc_shell", "genus", "yosys")},
@@ -36,6 +42,19 @@ TOOLS = {
 }
 PREFERENCES = {"simulator": "simulators", "synthesis": "synthesis", "lint": "lint",
                "formal": "formal", "cdc": "cdc", "equivalence": "equivalence"}
+VERSION_ARGS = dict.fromkeys(("verilator", "verible-verilog-lint", "slang", "svlens", "yosys",
+                              "make", "gcc", "clang", "cc", "g++", "clang++", "rsync"), "--version")
+VERSION_ARGS.update({"vsim": "-version", "iverilog": "-V", "sby": "--help", "urg": "-help"})
+SIMULATION_ARGS = {
+    "xrun": ("-sv", "-top", "rat_setup_tb", "rat_setup_tb.sv"),
+    "vcs": ("-full64", "-sverilog", "-R", "rat_setup_tb.sv"),
+}
+TCL_ARGS = {
+    "dc_shell": ("-64bit", "-f"),
+    "fm_shell": ("-64bit", "-f"),
+    "genus": ("-batch", "-files"),
+    "imc": ("-exec",),
+}
 
 
 def bounded(argv, timeout, **kwargs):
@@ -44,13 +63,14 @@ def bounded(argv, timeout, **kwargs):
     try:
         output, _ = process.communicate(timeout=timeout)
         return process.returncode, output.decode(errors="replace")
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-        output, _ = process.communicate()
-        return 124, output.decode(errors="replace") + "\nRAT_TIMEOUT: probe limit reached"
+        process.stdout.close()
+        process.wait()
+        return 124, (exc.output or b"").decode(errors="replace") + "\nRAT_TIMEOUT: probe limit reached"
 
 
 def environment_command(entry, argv):
@@ -68,19 +88,41 @@ def environment_command(entry, argv):
 def inspect_site(request):
     tools = {}
     configured = request.get("tools", {})
+    environments = {}
+    shared = request.get("environment", {})
     for category, entries in TOOLS.items():
         tools[category] = {}
         for key, binary in entries.items():
             entry = configured.get(category, {}).get(key, {})
+            environment = entry if entry.get("env_source") else shared
             candidate = entry.get("path") or binary
-            if entry.get("env_source"):
-                code, output = bounded(environment_command(entry, ["sh", "-c", 'command -v -- "$1"', "rat-path", candidate]), 10)
-                path = output.strip().splitlines()[-1] if code == 0 and output.strip() else ""
-            else:
-                path = shutil.which(candidate) or ""
-            tools[category][key] = {"path": path, "detected": bool(path),
-                                    "env_source": entry.get("env_source", ""),
-                                    "env_shell": entry.get("env_shell", "bash")}
+            measured = {"path": "", "detected": False, "env_source": environment.get("env_source", ""),
+                        "env_shell": environment.get("env_shell", "bash")}
+            if "setup_check" in entry:
+                measured["setup_check"] = entry["setup_check"]
+            tools[category][key] = measured
+            environment = (measured["env_source"], measured["env_shell"])
+            environments.setdefault(environment, []).append((category, key, candidate, measured))
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for results in pool.map(resolve_environment, environments.values(), repeat(request.get("probe_timeout", 8))):
+            for measured, path, status in results:
+                measured.update(path=path, detected=bool(path), setup_status=status)
+        if request.get("check_tools"):
+            checks, pending = {}, []
+            for entries in environments.values():
+                for category, key, _, measured in entries:
+                    if not measured["detected"]:
+                        continue
+                    binary = TOOLS[category][key]
+                    identity = (tool_fingerprint(measured), binary)
+                    if identity not in checks:
+                        checks[identity] = pool.submit(check_tool, binary, measured, request["probe_timeout"])
+                    pending.append((measured, checks[identity]))
+            for measured, check in pending:
+                status, evidence = check.result()
+                measured["setup_status"] = status
+                if evidence:
+                    measured["probe"] = evidence
     systemc = bounded(["pkg-config", "--exists", "systemc"], 10)[0] == 0 if shutil.which("pkg-config") else False
     return {"schema_version": 1, "measured_at": time.time(), "hostname": socket.gethostname(),
             "home": str(Path.home()), "login_shell": os.environ.get("SHELL", ""),
@@ -88,24 +130,103 @@ def inspect_site(request):
             "tools": tools, "cocotb": importlib.util.find_spec("cocotb") is not None,
             "systemc": systemc,
             "libraries": {path: Path(path).is_file() for path in request.get("libraries", [])},
-            "evidence_level": "executable_paths", "license_checked": False}
+            "evidence_level": "tool_readiness" if request.get("check_tools") else "executable_paths",
+            "license_checked": False}
 
 
-def probe_tool(request):
+def resolve_environment(entries, timeout):
+    environment = entries[0][3]
+    if not environment["env_source"]:
+        results = []
+        for _, _, candidate, entry in entries:
+            path = shutil.which(candidate)
+            results.append((entry, os.path.abspath(path) if path else "", "found" if path else "missing"))
+        return results
+    candidates = list(dict.fromkeys(candidate for _, _, candidate, _ in entries))
+    script = ('for tool do path=$(command -v -- "$tool") || continue; '
+              '[ -f "$path" ] && [ -x "$path" ] || continue; '
+              'case "$path" in /*) ;; *) path="$PWD/$path" ;; esac; '
+              'printf "' + PATH_MARKER + '%s\\t%s\\n" "$tool" "$path"; done; exit 0')
+    argv = environment_command(environment, ["/bin/sh", "-c", script, "rat-path", *candidates])
+    try:
+        code, output = bounded(argv, timeout, stdin=subprocess.DEVNULL)
+    except OSError:
+        code, output = 127, ""
+    paths = dict(line[len(PATH_MARKER):].split("\t", 1) for line in output.splitlines()
+                 if line.startswith(PATH_MARKER) and "\t" in line)
+    status = "environment_timeout" if code == 124 else "environment_failed" if code else "missing"
+    return [(entry, paths.get(candidate, "") if not code else "",
+             "found" if not code and candidate in paths else status) for _, _, candidate, entry in entries]
+
+
+def check_tool(binary, entry, timeout):
+    configured = entry.get("setup_check")
+    smoke = tcl = False
+    if configured is not None:
+        check = configured
+    elif binary in SIMULATION_ARGS:
+        smoke = True
+        check = {"args": SIMULATION_ARGS[binary], "expected_line": SMOKE_PASS, "licensed": True}
+    elif binary in TCL_ARGS:
+        tcl = True
+        check = {"args": (*TCL_ARGS[binary], "rat_setup.tcl"), "expected_line": TCL_READY}
+    elif binary in VERSION_ARGS:
+        check = {"args": [VERSION_ARGS[binary]]}
+    else:
+        return "unchecked", None
+    if not isinstance(check, dict):
+        raise ValueError("setup_check must be an object")
+    arguments, expected = check.get("args"), check.get("expected_line")
+    licensed = check.get("licensed", False)
+    if (not isinstance(arguments, (list, tuple)) or not all(isinstance(arg, str) for arg in arguments)
+            or (expected is not None and (not isinstance(expected, str) or not expected.strip()))
+            or not isinstance(licensed, bool) or (licensed and not expected)):
+        raise ValueError("setup_check requires string args and an expected_line for a licensed workload")
+    request = {"entry": entry, "tool": binary, "arguments": arguments, "timeout": timeout,
+               "expected_line": expected, "licensed": licensed}
+    with tempfile.TemporaryDirectory(prefix="rat-eda-setup-") as directory:
+        if smoke:
+            (Path(directory) / "rat_setup_tb.sv").write_text(
+                'module rat_setup_tb; initial begin $display("' + SMOKE_PASS + '"); $finish; end endmodule\n')
+        elif tcl:
+            (Path(directory) / "rat_setup.tcl").write_text(f"puts {TCL_READY}\nexit\n")
+        result = probe_tool(request, cwd=directory)
+    summary = {key: value for key, value in result.items() if key not in ("argv", "output")}
+    if tcl:
+        summary["evidence_level"] = "command_probe"
+    if result["status"] == "failed":
+        return result["failure"], summary
+    return ("workload_passed" if expected and not tcl else "command_passed"), summary
+
+
+def probe_tool(request, cwd=None):
     entry = request["entry"]
     argv = [entry["path"], *request["arguments"]]
-    status, output = bounded(environment_command(entry, argv), request["timeout"], stdin=subprocess.DEVNULL)
+    try:
+        status, output = bounded(environment_command(entry, argv), request["timeout"], stdin=subprocess.DEVNULL, cwd=cwd)
+    except OSError as exc:
+        status, output = 127, str(exc)
     loader_error = bool(re.search(r"error while loading shared libraries|cannot open shared object file|command not found", output, re.I))
+    license_error = bool(re.search(r"licensing checkout error|checkout denied|\*[EF],NOLIC[\w]*\b|"
+                                   r"(?:failed|unable) to (?:check out|checkout|obtain)[^\n]*license", output, re.I))
+    expected = request.get("expected_line")
+    failure = ("timeout" if status == 124 else "loader_failed" if loader_error else "license_failed" if license_error else
+               "command_failed" if status else
+               "workload_unverified" if expected and not any(line.strip().removeprefix("# ") == expected
+                                                            for line in output.splitlines()) else None)
     return {"schema_version": 1, "measured_at": time.time(), "tool": request["tool"],
             "argv": argv, "exit_code": status, "output": output[-12000:],
             "configuration_sha256": tool_fingerprint(entry),
-            "status": "failed" if status or loader_error else "completed",
-            "evidence_level": "command_probe", "license_checked": False}
+            "status": "failed" if failure else "completed", "failure": failure,
+            "evidence_level": "workload_probe" if expected else "command_probe",
+            "license_checked": not failure and bool(expected and request.get("licensed"))}
 
 
 def tool_fingerprint(entry):
     fields = {key: entry.get(key, "bash" if key == "env_shell" else "")
               for key in ("path", "env_source", "env_shell")}
+    if "setup_check" in entry:
+        fields["setup_check"] = entry["setup_check"]
     return hashlib.sha256(json.dumps(fields, sort_keys=True).encode()).hexdigest()
 
 
@@ -144,12 +265,13 @@ def inspect_remote(host, request, timeout=60, python=None):
     return json.loads(records[0])
 
 
-def discover(host=None, config=None, timeout=60):
+def discover(host=None, config=None, timeout=60, *, environment=None, check_tools=False, probe_timeout=8):
     config = config or {}
-    tools = {category: {key: {field: entry[field] for field in ("path", "env_source", "env_shell") if field in entry}
+    tools = {category: {key: {field: entry[field] for field in ("path", "env_source", "env_shell", "setup_check") if field in entry}
                         for key, entry in entries.items() if isinstance(entry, dict)}
              for category, entries in config.get("tools", {}).items() if isinstance(entries, dict)}
-    request = {"action": "discover", "tools": tools,
+    request = {"action": "discover", "tools": tools, "environment": environment or {},
+               "check_tools": check_tools, "probe_timeout": probe_timeout,
                "libraries": [config["technology"]["db"]] if config.get("technology", {}).get("db") else []}
     execution = config.get("execution", {})
     remote_python = execution.get("python") if execution.get("backend") in ("ssh", "lsf") and execution.get("host") == host else None
@@ -215,13 +337,17 @@ def configure(profile, existing, root, workspace=None, preferences=(), backend=N
             target = config.setdefault("tools", {}).setdefault(category, {}).setdefault(key, {})
             # Existing explicit tool/environment choices take priority over discovery.
             for field, value in measured.items():
-                if field not in ("detected", "probe") and not target.get(field):
+                if field not in ("detected", "probe", "setup_status") and not target.get(field):
                     target[field] = value
             probe = measured.get("probe", {})
-            if probe.get("configuration_sha256") == tool_fingerprint(target):
+            matches_probe = probe.get("configuration_sha256") == tool_fingerprint(target)
+            if matches_probe:
                 target["probe"] = copy.deepcopy(probe)
             target["detected"] = all(target.get(field, "") == measured.get(field, "")
                                      for field in ("path", "env_source", "env_shell"))
+            if "setup_status" in measured:
+                target["setup_status"] = (measured["setup_status"] if target["detected"] and (not probe or matches_probe)
+                                          else "override_unchecked")
     selected = config.setdefault("preferences", {})
     def usable(entry):
         return entry.get("detected") and not failed_probe(entry)
@@ -249,6 +375,10 @@ def main():
     discovery = commands.add_parser("discover")
     discovery.add_argument("--host")
     discovery.add_argument("--config", type=Path)
+    discovery.add_argument("--env-script", type=Path, help="trusted setup script on the execution host")
+    discovery.add_argument("--env-shell", choices=("bash", "csh", "tcsh"), default="bash")
+    discovery.add_argument("--paths-only", action="store_true", help="skip tool execution checks")
+    discovery.add_argument("--probe-timeout", type=float, default=8, help="maximum seconds per setup or tool check")
     discovery.add_argument("--output", type=Path)
     discovery.add_argument("--timeout", type=float, default=60)
     proposal = commands.add_parser("configure")
@@ -267,10 +397,17 @@ def main():
     probe.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
-        if getattr(args, "timeout", 1) <= 0:
-            raise ValueError("timeout must be positive")
+        if any(not math.isfinite(limit) or limit <= 0 for limit in
+               (getattr(args, "timeout", 1), getattr(args, "probe_timeout", 1))):
+            raise ValueError("timeouts must be positive and finite")
         if args.action == "discover":
-            value = discover(args.host, read_json(args.config) if args.config else None, args.timeout)
+            environment = {}
+            if args.env_script:
+                if not args.env_script.is_absolute() or any(c in str(args.env_script) for c in "\n\r\0"):
+                    raise ValueError("--env-script must be an absolute path on the execution host")
+                environment = {"env_source": "source " + shlex.quote(str(args.env_script)), "env_shell": args.env_shell}
+            value = discover(args.host, read_json(args.config) if args.config else None, args.timeout,
+                             environment=environment, check_tools=not args.paths_only, probe_timeout=args.probe_timeout)
         elif args.action == "configure":
             destination = args.root / "rat_config.json"
             value = configure(read_json(args.profile), read_json(destination) if destination.exists() else {}, args.root, args.workspace, args.prefer, args.backend)

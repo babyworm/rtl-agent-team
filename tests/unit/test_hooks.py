@@ -562,63 +562,42 @@ class TestRtlVerifyStopGate:
         assert "rtl-modified-files" not in result["reason"]
         assert "ask the user" in result["reason"]
 
-    def test_chain_without_progress_hands_waiver_to_user(self, tmp_project):
-        state_dir = tmp_project / ".rat" / "state"
-        (state_dir / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        results = [
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-            for i in range(4)
-        ]
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "decision" not in results[3]
-        notice = results[3]["systemMessage"]
-        assert "no recorded verification" in notice
-        assert "is not asking Claude to continue in this turn" in notice
-        assert "rtl-verify-waiver" in notice
-        assert str(tmp_project / ".rat" / "state" / "rtl-verify-waiver") in notice
-
-    def test_new_rtl_edit_restarts_budget(self, tmp_project):
-        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
+    def test_unchanged_content_is_informational_once_across_prompts(self, tmp_project):
+        track = tmp_project / ".rat/state/rtl-modified-files.txt"
         track.write_text("rtl/a.sv\n")
-        results = []
-        for i in range(6):
-            if i == 2:
-                track.write_text("rtl/a.sv\nrtl/b.sv\n")
-            results.append(run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0}))
-        assert [r.get("decision") for r in results[:5]] == ["block"] * 5
-        assert "systemMessage" in results[5]
+        payload = {"cwd": str(tmp_project), "session_id": "owner", "prompt_id": "p1"}
+        _assert_stop_blocked(run_hook(self.HOOK, payload))
+        new_prompt = {**payload, "prompt_id": "p2"}
+        notice = run_hook(self.HOOK, new_prompt)
+        assert notice == {"systemMessage": "Info> Functional verification is pending for 1 RTL file(s)."}
+        assert run_hook(self.HOOK, {**new_prompt, "stop_hook_active": True}) == {"continue": True}
+        assert run_hook(self.HOOK, {**payload, "prompt_id": "p3"}) == {"continue": True}
+        assert track.exists()
 
-    def test_new_rtl_edit_after_the_notice_rearms_verification(self, tmp_project):
-        # Another Stop hook (Claude Code's /goal, a persistent-loop plugin) can keep the chain
-        # going after the notice; new unverified files are shown, but the gate never blocks.
-        track = tmp_project / '.rat/state/rtl-modified-files.txt'
-        track.write_text('rtl/a.sv\n')
-        for i in range(4): run_hook(self.HOOK, {'cwd':str(tmp_project),'stop_hook_active':i>0})
-        track.write_text('rtl/a.sv\nrtl/b.sv\n')
-        result=run_hook(self.HOOK, {'cwd':str(tmp_project),'stop_hook_active':True})
-        assert result.get('decision')=='block'
-        assert '2 RTL files' in result['reason']
-
-    def test_long_chain_rearms_only_for_new_rtl_changes(self, tmp_project):
-        # Twenty chained Stops kept going by another hook; an edit lands every fifth Stop.
-        track = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        files = ["rtl/a.sv"]
+    def test_same_path_with_new_content_rearms_verification(self, tmp_project):
+        track = tmp_project / ".rat/state/rtl-modified-files.txt"
+        source = tmp_project / "rtl/a.sv"
+        source.parent.mkdir()
+        source.write_text("module original; endmodule\n")
         track.write_text("rtl/a.sv\n")
+        payload = {"cwd": str(tmp_project)}
+        _assert_stop_blocked(run_hook(self.HOOK, payload))
+        chained = {**payload, "stop_hook_active": True}
+        assert run_hook(self.HOOK, chained)["systemMessage"].startswith("Info>")
+        source.touch()
+        assert run_hook(self.HOOK, chained) == {"continue": True}
+        source.write_text("module changed; endmodule\n")
+        _assert_stop_blocked(run_hook(self.HOOK, chained))
+        assert run_hook(self.HOOK, chained)["systemMessage"].startswith("Info>")
+
+    def test_new_content_does_not_reset_the_chain_cap(self, tmp_project):
+        track = tmp_project / ".rat/state/rtl-modified-files.txt"
         outcomes = []
-        for i in range(20):
-            if i and i % 5 == 0:
-                files.append(f"rtl/f{i}.sv")
-                track.write_text("".join(f + "\n" for f in files))
+        for i in range(8):
+            track.write_text(f"rtl/source_{i}.sv\n")
             result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             outcomes.append("B" if result.get("decision") == "block" else "N" if "systemMessage" in result else "-")
-        # Three blocks and the notice, then one notice per new file (Stops 6, 11 and 16).
-        assert "".join(outcomes) == "BBBN-BBBN-BBBN-BBBN-"
-
-    def test_new_chain_after_notice_blocks_again(self, tmp_project):
-        (tmp_project / ".rat" / "state" / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
-        for i in range(5):
-            run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
-        assert run_hook(self.HOOK, {"cwd": str(tmp_project)})["decision"] == "block"
+        assert "".join(outcomes) == "BBBBBBNN"
 
     def test_worker_stop_keeps_leader_budget(self, tmp_project):
         state_dir = tmp_project / ".rat" / "state"
@@ -636,7 +615,7 @@ class TestRtlVerifyStopGate:
         run_hook(self.HOOK, lead)
         run_hook(self.HOOK, {**lead, "stop_hook_active": True})
         run_hook(self.HOOK, {"cwd": str(tmp_project), "session_id": "worker-1"})
-        assert (_budget_path(state_dir, 'verify')).read_text().startswith("2\n")
+        assert (_budget_path(state_dir, 'verify')).read_text().startswith("1\n")
 
     @pytest.mark.parametrize("marker", ["rtl-verify-waiver", "rtl-verify-done"])
     def test_waiver_and_done_clear_the_budget(self, tmp_project, marker):
@@ -647,7 +626,7 @@ class TestRtlVerifyStopGate:
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             for i in range(4)
         ]
-        assert "systemMessage" in results[3]
+        assert "systemMessage" in results[1]
         (state_dir / marker).touch()
         if marker == "rtl-verify-done":
             _record_passing_evidence(tmp_project)
@@ -671,7 +650,7 @@ class TestRtlVerifyStopGate:
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": i > 0})
             for i in range(4)
         ]
-        assert "systemMessage" in results[3]
+        assert "systemMessage" in results[1]
         if emptied == "removed":
             track.unlink()
         else:
@@ -691,9 +670,8 @@ class TestRtlVerifyStopGate:
             run_hook(self.HOOK, {"cwd": str(tmp_legacy_project), "stop_hook_active": i > 0})
             for i in range(4)
         ]
-        notice = results[3]["systemMessage"]
-        assert ".rtl-agent-team/state/rtl-verify-waiver" in notice
-        assert "'.rat/state" not in notice
+        notice = results[1]["systemMessage"]
+        assert notice == "Info> Functional verification is pending for 1 RTL file(s)."
         assert str(state_dir / "verify-evidence.json") in results[0]["reason"]
 
     def test_file_list_is_relative_and_deduplicated(self, tmp_project):
@@ -741,8 +719,9 @@ class TestRtlVerifyStopGate:
             run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True})
             for _ in range(2)
         ]
-        assert [r.get("decision") for r in results[:3]] == ["block"] * 3
-        assert "systemMessage" in results[3]
+        assert results[0]["decision"] == "block"
+        assert results[1]["systemMessage"].startswith("Info>")
+        assert results[2:] == [{"continue": True}] * 2
 
     def test_commands_survive_a_quote_in_the_project_path(self, tmp_path):
         project = tmp_path / "o'brien"
@@ -753,9 +732,8 @@ class TestRtlVerifyStopGate:
             run_hook(self.HOOK, {"cwd": str(project), "stop_hook_active": i > 0})
             for i in range(4)
         ]
-        waive = results[3]["systemMessage"].split("non-functional: ", 1)[1]
-        subprocess.run(["sh", "-c", waive], check=True)
-        assert (state_dir / "rtl-verify-waiver").exists()
+        assert results[1]["systemMessage"].startswith("Info>")
+        assert not (state_dir / "rtl-verify-waiver").exists()
         assert str(state_dir / "verify-evidence.json") in results[0]["reason"].replace("'\\''", "'")
         assert "record it: touch" not in results[0]["reason"]
 
@@ -770,7 +748,7 @@ class TestRtlVerifyStopGate:
         (state / "rtl-modified-files.txt").write_text("rtl/a.sv\n")
         result = run_hook(self.HOOK, {"cwd": str(tmp_project), "stop_hook_active": True, "prompt_id": "p-1"})
         assert "decision" not in result
-        assert "rtl-verify-waiver" in result["systemMessage"]
+        assert result["systemMessage"].startswith("Info>")
 
     def test_signal_mid_aggregation_ends_the_gate_after_cleanup(self, tmp_project):
         state = tmp_project / ".rat" / "state"
@@ -1320,231 +1298,67 @@ class TestStopGate:
 
 
 class TestRtlEditTrackerBash:
-    """B1: Tests for Bash command RTL detection in hooks/rtl-edit-tracker.sh."""
-
     HOOK = HOOKS_DIR / "rtl-edit-tracker.sh"
 
-    def test_bash_command_with_sv_file_tracked(self, tmp_project):
-        """B1: Bash write command containing .sv file should trigger RTL tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/old/new/' rtl/module/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-        assert "top.sv" in track_file.read_text()
+    def execute(self, project, command, cwd=None):
+        folder = cwd or project
+        payload = {"cwd": str(folder), "session_id": "author", "tool_use_id": "tool-fixture",
+                   "tool_name": "Bash", "tool_input": {"command": command}}
+        env = {"CLAUDE_PROJECT_DIR": str(project)}
+        assert run_hook(self.HOOK, {**payload, "hook_event_name": "PreToolUse"}, env=env) == {"continue": True}
+        process = subprocess.run(["bash", "-c", command], cwd=folder, capture_output=True, timeout=10)
+        event = "PostToolUseFailure" if process.returncode else "PostToolUse"
+        assert run_hook(self.HOOK, {**payload, "hook_event_name": event}, env=env) == {"continue": True}
+        track = project / ".rat/state/rtl-modified-files.txt"
+        return track.read_text().splitlines() if track.exists() else []
 
-    def test_bash_lint_only_not_tracked(self, tmp_project):
-        """B1: verilator --lint-only is read-only and should NOT trigger RTL tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/module/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists()
+    @pytest.fixture
+    def project_sources(self, tmp_project):
+        for name in ("rtl/top.sv", "rtl/second.sv", "syn/netlist.v", "sim/build/model.v"):
+            path = tmp_project / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("module old; endmodule\n")
+        return tmp_project
 
-    def test_bash_verible_lint_not_tracked(self, tmp_project):
-        """B1: verible-verilog-lint is read-only and should NOT trigger RTL tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "verible-verilog-lint rtl/module/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists()
+    @pytest.mark.parametrize("command", [
+        "sed -n '1p' rtl/top.sv && cat rtl/second.sv",
+        "find rtl -name '*.sv'",
+        "find syn -name '*.v' && wc -l syn/netlist.v",
+        "cp rtl/top.sv syn/new.v && cp rtl/second.sv sim/build/next.v",
+        "touch rtl/top.sv",
+        "cat rtl/top.sv > read.log; false",
+    ])
+    def test_read_and_build_output_do_not_track(self, project_sources, command):
+        assert self.execute(project_sources, command) == []
+        assert run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", {"cwd": str(project_sources)}) == {"continue": True}
 
-    def test_bash_backgrounded_lint_not_tracked(self, tmp_project):
-        """B1: Backgrounded lint-only command should NOT trigger RTL tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv &"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists()
+    @pytest.mark.parametrize("command,expected", [
+        ("grep module rtl/top.sv && printf 'module edited; endmodule' > rtl/second.sv", ["rtl/second.sv"]),
+        ("cp -r rtl another_source_dir", ["another_source_dir/second.sv", "another_source_dir/top.sv"]),
+        ("cp rtl/top.sv 'rtl/space name.svh'", ["rtl/space name.svh"]),
+        ("rm rtl/top.sv", ["rtl/top.sv"]),
+        ("printf 'module edited; endmodule' > rtl/top.sv; false", ["rtl/top.sv"]),
+    ])
+    def test_detects_only_content_changes_even_after_tool_failure(self, project_sources, command, expected):
+        state = project_sources / ".rat/state"
+        waiver = state / "rtl-verify-waiver"
+        waiver.touch()
+        assert self.execute(project_sources, command) == expected
+        assert not waiver.exists()
 
-    def test_bash_command_without_rtl_passthrough(self, tmp_project):
-        """B1: Bash command without RTL extensions should pass through silently."""
-        stdin = {"cwd": str(tmp_project), "command": "ls -la docs/"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        assert "hookSpecificOutput" not in result
+    def test_deduplicates_changes_from_a_subdirectory(self, project_sources):
+        for module in ("first", "second"):
+            assert self.execute(project_sources, f"printf 'module {module}; endmodule' > ./top.sv",
+                                cwd=project_sources / "rtl") == ["rtl/top.sv"]
 
-    def test_bash_mixed_command_lint_plus_write_tracked(self, tmp_project):
-        """B1: Mixed command with lint AND write must still trigger RTL tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/top.sv && verilator --lint-only rtl/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_background_ampersand_mixed_tracked(self, tmp_project):
-        """B1: Background & separating lint and write must still trigger tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only rtl/top.sv & sed -i 's/x/y/' rtl/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_lint_substring_in_sed_still_tracked(self, tmp_project):
-        """B1: sed command containing 'verilator --lint-only' in quoted text must be tracked."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/verilator --lint-only/x/' rtl/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_adjacent_ampersand_rtl_extracted(self, tmp_project):
-        """B1: RTL path adjacent to && should still be extracted by awk tokenizer."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/top.sv&&echo done"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_readonly_prefix_with_write_tracked(self, tmp_project):
-        """B1: Read-only prefix (grep) followed by write via && must be tracked."""
-        stdin = {"cwd": str(tmp_project), "command": "grep foo rtl/top.sv && sed -i 's/x/y/' rtl/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_redirect_to_rtl_file_tracked(self, tmp_project):
-        """B1: Output redirection to RTL file must be tracked even with read-only prefix."""
-        stdin = {"cwd": str(tmp_project), "command": "cat /dev/null > rtl/top.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_lint_redirect_to_log_not_tracked(self, tmp_project):
-        """B1: Lint redirecting to non-RTL log file should NOT be tracked."""
-        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv > lint.log"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists()
-
-    def test_bash_pipe_readonly_not_tracked(self, tmp_project):
-        """B1: Pipe from grep to wc is read-only — should NOT be tracked."""
-        stdin = {"cwd": str(tmp_project), "command": "grep foo rtl/top.sv | wc -l"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists()
-
-    def test_bash_lint_stderr_redirect_not_tracked(self, tmp_project):
-        """B1: Lint with 2>&1 is read-only — should NOT be tracked."""
-        stdin = {"cwd": str(tmp_project), "command": "verilator --lint-only -Wall rtl/top.sv > lint.log 2>&1"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists()
-
-    def test_bash_quoted_rtl_path_tracked(self, tmp_project):
-        """B1: Bash command with quoted RTL path should still trigger tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' 'rtl/top.sv'"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert track_file.exists()
-
-    def test_bash_command_with_svh_tracked(self, tmp_project):
-        """B1: Bash write command containing .svh file should trigger tracking."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/include/defines.svh"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "RTL Verify Gate" in ctx
-
-    def test_bash_command_with_v_file_tracked(self, tmp_project):
-        stdin = {"cwd": str(tmp_project), "command": "iverilog -o sim rtl/legacy/counter.v"}
-        assert run_hook(self.HOOK, stdin) == {"continue": True}
-        assert not (tmp_project / '.rat/state/rtl-modified-files.txt').exists()
-
-    def test_bash_empty_command_passthrough(self, tmp_project):
-        """B1: Empty command should pass through."""
-        stdin = {"cwd": str(tmp_project), "command": ""}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        assert "hookSpecificOutput" not in result
-
-    def test_bash_no_file_path_no_command_passthrough(self, tmp_project):
-        """B1: Missing both file_path and command should pass through."""
-        stdin = {"cwd": str(tmp_project)}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        assert "hookSpecificOutput" not in result
-
-    def test_bash_multiple_sv_files_tracked(self, tmp_project):
-        """B1: Bash write command with multiple RTL files should track all."""
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/a.sv rtl/b.sv"}
-        result = run_hook(self.HOOK, stdin)
-        assert result["continue"] is True
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        content = track_file.read_text()
-        assert "a.sv" in content
-        assert "b.sv" in content
-
-    def test_bash_readonly_command_not_tracked(self, tmp_project):
-        """B1: Read-only commands (cat, grep, etc.) should not trigger RTL tracking."""
-        for cmd in ["cat rtl/top.sv", "grep pattern rtl/mod.sv", "head -20 rtl/block.svh",
-                     "diff rtl/a.sv rtl/b.sv", "wc -l rtl/top.sv"]:
-            stdin = {"cwd": str(tmp_project), "command": cmd}
-            result = run_hook(self.HOOK, stdin)
-            assert result["continue"] is True
-            ctx = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-            assert "RTL Verify Gate" not in ctx, f"Read-only command should not trigger tracking: {cmd}"
-        # Tracking file must not be created by read-only commands
-        track_file = tmp_project / ".rat" / "state" / "rtl-modified-files.txt"
-        assert not track_file.exists(), "Read-only commands must not create tracking file"
-
-    def test_bash_write_invalidates_verify_done(self, tmp_project):
-        """B1: Bash write command must invalidate verify-done/waiver markers."""
-        state_dir = tmp_project / ".rat" / "state"
-        state_dir.mkdir(parents=True, exist_ok=True)
-        (state_dir / "rtl-verify-done").touch()
-        (state_dir / "rtl-verify-waiver").touch()
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/x/y/' rtl/mod.sv"}
-        run_hook(self.HOOK, stdin)
-        assert not (state_dir / "rtl-verify-done").exists(), "Bash RTL write must invalidate verify-done"
-        assert not (state_dir / "rtl-verify-waiver").exists(), "Bash RTL write must invalidate verify-waiver"
-
-    def test_bash_phase6_stale_on_rtl_command(self, tmp_project):
-        """B1: Bash RTL command should mark Phase 6 stale if full review set exists."""
-        p6_dir = tmp_project / "reviews" / "phase-6-review"
-        p6_dir.mkdir(parents=True)
-        (p6_dir / "code-review.md").write_text("# Code Review")
-        (p6_dir / "design-review.md").write_text("# Design Review")
-        (p6_dir / "design-note.md").write_text("# Design Note")
-        (p6_dir / "improvements.md").write_text("# Improvements")
-        stdin = {"cwd": str(tmp_project), "command": "sed -i 's/foo/bar/' rtl/mod.sv"}
-        result = run_hook(self.HOOK, stdin)
-        stale = tmp_project / ".rat" / "state" / "phase6-stale"
-        assert stale.exists()
-
-    @pytest.mark.parametrize("token", ["alu.sv", "./alu.sv"])
-    def test_edits_from_a_subdirectory_track_one_project_path(self, tmp_project, token):
-        rtl = tmp_project / "rtl"
-        rtl.mkdir(exist_ok=True)
-        env = {"CLAUDE_PROJECT_DIR": str(tmp_project)}
-        run_hook(self.HOOK, {"cwd": str(rtl), "command": f"sed -i 's/a/b/' {token}"}, env=env)
-        run_hook(self.HOOK, {"cwd": str(rtl), "file_path": str(rtl / "alu.sv")}, env=env)
-        gate = run_hook(HOOKS_DIR / "rtl-verify-stop-gate.sh", {"cwd": str(rtl)}, env=env)
-        _assert_stop_blocked(gate)
-        assert "1 RTL files" in gate["reason"]
-        assert "rtl/alu.sv" in gate["reason"]
+    def test_identical_write_is_quiet(self, project_sources):
+        path = project_sources / "rtl/top.sv"
+        payload = {"cwd": str(project_sources), "tool_name": "Write", "tool_use_id": "tool-noop",
+                   "tool_input": {"file_path": str(path)}}
+        run_hook(self.HOOK, {**payload, "hook_event_name": "PreToolUse"})
+        path.write_bytes(path.read_bytes())
+        assert run_hook(self.HOOK, {**payload, "hook_event_name": "PostToolUse"}) == {"continue": True}
+        assert not (project_sources / ".rat/state/rtl-modified-files.txt").exists()
 
 
 class TestRtlEditTrackerPhase6:

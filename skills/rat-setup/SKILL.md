@@ -25,9 +25,11 @@ Keep real site profiles, connection details and raw probe reports outside the
 plugin repository. Never copy them into plugin docs, examples, tests or evals;
 use synthetic site data in reusable sources.
 
-Separate executable discovery, a working tool invocation, and licensed functional
-or silicon evidence. A found path or a version string cannot settle the later
-checks. Probe only the chosen tools, and stop repeating a successful check.
+Use `eda_setup.py discover` for automatic PATH and bounded tool checks. Pass the
+user's setup script with `--env-script` and its shell with `--env-shell`. Report
+each tool's `setup_status` and `probe.license_checked` from the private profile.
+Refresh a path-only profile when it has no execution results. Reuse measured
+results during setup. Complete phase-specific qualification for the requested flow.
 
 ## Discovery and readiness
 
@@ -42,6 +44,9 @@ export RAT_PYTHON
 bash "$PLUGIN_ROOT/skills/rat-init-project/scripts/generate_config.sh" "$PROJECT_ROOT"
 "$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_runner.py" capabilities --root "$PROJECT_ROOT" --phase "$RAT_PHASE"
 ```
+
+On a local host, use the same discovery/configure commands as the remote setup
+reference, omitting `--host`. For Docker, measure within the selected image.
 
 Phases: p1 needs no EDA tools; p2/p3 need a C/C++ build toolchain; p4/p5a need a
 simulator and linter; p5b needs synthesis. `--phase all` checks that combined set.

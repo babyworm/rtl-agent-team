@@ -6,6 +6,8 @@ argument-hint: "[module-name | --all]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Generate per-module Markdown documentation for SystemVerilog RTL — port table, parameter table, instance table, FSM section, and synthesis summary. Output: docs/rtl/{module}.md.
 </Purpose>

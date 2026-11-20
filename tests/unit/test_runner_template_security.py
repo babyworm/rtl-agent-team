@@ -590,7 +590,7 @@ class TestRatProjectRootOverride:
             fake_bin, "urg",
             "out=''; while [ $# -gt 0 ]; do "
             "if [ \"$1\" = '-report' ]; then out=\"$2\"; shift 2; continue; fi; shift; done; "
-            '[ -n "$out" ] && mkdir -p "$out"',
+            '[ -n "$out" ] && mkdir -p "$out" && echo "fake coverage" > "$out/dashboard.txt"',
         )
         result = run_script(
             RUN_REGRESSION_UVM, "--sim", "vcs", "--seeds", "42",

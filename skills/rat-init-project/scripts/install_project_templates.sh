@@ -212,6 +212,7 @@ install_script_if_missing "$PLUGIN_ROOT/scripts/verify_evidence.py" "$WORKSPACE/
 install_script_if_missing "$PLUGIN_ROOT/scripts/eda_runner.py" "$WORKSPACE/lib/eda_runner.py" 644
 install_script_if_missing "$PLUGIN_ROOT/scripts/eda_setup.py" "$WORKSPACE/lib/eda_setup.py" 644
 install_script_if_missing "$PLUGIN_ROOT/scripts/regression_evidence.py" "$WORKSPACE/lib/regression_evidence.py" 644
+install_script_if_missing "$PLUGIN_ROOT/scripts/merge_coverpoint_logs.py" "$WORKSPACE/lib/merge_coverpoint_logs.py" 644
 install_script_if_missing "$PLUGIN_ROOT/hooks/lib/python-util.sh" "$WORKSPACE/lib/python-util.sh" 644
 
 install_script_if_missing \

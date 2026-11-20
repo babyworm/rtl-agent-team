@@ -6,6 +6,8 @@ argument-hint: "<target-skill-name>"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill, AskUserQuestion
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute an autonomous implement-review-improve loop that wraps a target skill (typically
 rtl-p4-block-parallel) for unattended long-running execution. Each cycle: execute/continue

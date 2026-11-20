@@ -6,6 +6,8 @@ argument-hint: "[module-name --seeds=N]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute functional verification with cocotb-based multi-seed regression.
 Compares RTL simulation outputs against C/Python reference models for

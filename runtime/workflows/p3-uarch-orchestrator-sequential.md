@@ -17,4 +17,4 @@ Resolve remaining OPEN-2-* items before RTL handoff. Write an empty open list wh
 none remain; no further phase-specific open file is introduced. Record user decisions
 for genuinely unresolved material choices rather than selecting by average score.
 Perform compliance against P1/P2 iron, one microarchitecture review, phase summary
-and significant ADRs. No automatic second reviewer or cross-review is required.
+and significant ADRs.

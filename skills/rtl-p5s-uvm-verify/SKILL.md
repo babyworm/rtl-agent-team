@@ -6,10 +6,12 @@ argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run a UVM-based verification environment on the target RTL using a commercial simulator
 (VCS, Questa, or Xcelium). Outputs are timestamped under `sim/uvm/regression/`
-with merged vendor coverage artifacts under `sim/uvm/coverage/`.
+with coverage artifacts under `sim/uvm/coverage/`.
 
 See `references/uvm-architecture.md` for UVM component hierarchy, phase order,
 simulator compile commands, and agent template with project naming conventions.
@@ -55,9 +57,22 @@ generation, compilation, test execution, and coverage collection.
 
 - `sim/uvm/regression/run_{timestamp}/seed_{seed}_results.json` — per-seed pass/fail result and log path for this run only
 - `sim/uvm/regression/regression_{module}_{timestamp}.json` — aggregate regression report and verdict
-- `sim/uvm/coverage/` — merged functional and code coverage vendor artifacts
+- `sim/uvm/coverage/` — merged vendor artifacts or `functional_{timestamp}.json`
 - `reviews/phase-5-verify/{module}-uvm-review.md` — UVM verification review with coverage analysis
 
-The runner reports `coverage_status=MERGED` only when per-seed coverage exists and the
-vendor merge command succeeds. Coverage percentage targets are evaluated downstream by
-the coverage-analysis gate.
+## Coverage and license waits
+
+The runner defaults to `--coverage-mode auto`. It skips native coverage capture if
+IMC, URG, or vcover is unavailable. If a native merge fails or times out, it uses
+the functional bin records from the same passing seeds. The full coverage verdict
+is `INCONCLUSIVE` (exit 3) when only functional bin coverage is collected.
+
+Use `--coverage-mode functional-log` to run with bin logs and without vendor
+coverage flags. `--coverage-mode native` requires a successful vendor merge.
+`--coverage-timeout` defaults to 60 seconds per vendor coverage command.
+`--sim-timeout` bounds each compile, elaboration, or seed run. It defaults to the
+configured `execution.timeout_seconds` (1800 seconds without configuration).
+The simulator itself still requires a license.
+
+See [functional bin logging](references/functional-coverage-log.md) for the
+testbench changes and report format. The coverage-analysis gate evaluates targets.

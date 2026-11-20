@@ -6,6 +6,8 @@ argument-hint: "[resume or module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute the Phase 4→5 pipeline (RTL Implementation → Verification) from existing
 Phase 1-3 design documents. Produces RTL code, unit tests, and full verification

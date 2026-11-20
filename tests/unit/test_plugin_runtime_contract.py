@@ -74,7 +74,7 @@ class TestHookRuntimeContract:
 
     def test_event_keys_present(self, hooks):
         event_keys = set(hooks["hooks"].keys())
-        assert event_keys == {"SessionStart", "PostToolUse", "PreToolUse", "UserPromptExpansion", "SubagentStart", "SubagentStop", "Stop"}
+        assert event_keys == {"SessionStart", "PostToolUse", "PostToolUseFailure", "PreToolUse", "UserPromptExpansion", "SubagentStart", "SubagentStop", "Stop"}
 
     def test_hook_commands_use_plugin_root(self, hooks):
         for event_entries in hooks["hooks"].values():
@@ -100,7 +100,7 @@ class TestHookRuntimeContract:
         ]
 
     def test_pretooluse_skill_hooks_order(self, hooks):
-        entries = hooks["hooks"]["PreToolUse"]
+        entries = [e for e in hooks["hooks"]["PreToolUse"] if e["matcher"] in {"Skill", "Agent"}]
         assert len(entries) == 2
         # Skill matcher: phase-state-bootstrap → skill-activation
         assert entries[0]["matcher"] == "Skill"
@@ -125,6 +125,13 @@ class TestHookRuntimeContract:
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-phase-state-bootstrap.sh"',
             'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-skill-activation.sh"',
         ]
+
+    def test_edit_tracking_pairs_success_and_failure_events(self, hooks):
+        for event in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+            entry = next(e for e in hooks["hooks"][event] if e["matcher"] == "Edit|Write|Bash")
+            assert [h["command"] for h in entry["hooks"]] == [
+                'sh "${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh"',
+            ]
 
     def test_stop_order_matches_gate_contract(self, hooks):
         entries = hooks["hooks"]["Stop"]

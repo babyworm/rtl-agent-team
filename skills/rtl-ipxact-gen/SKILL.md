@@ -6,6 +6,8 @@ argument-hint: "[module-name]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Generate a standards-compliant IP-XACT (IEEE 1685-2014) XML descriptor for an RTL module. Extracts ports, parameters, and bus interfaces directly from the SystemVerilog source to ensure the descriptor stays accurate as RTL evolves. Output: `ipxact/{module_name}.xml`, validated against the IEEE 1685-2014 schema.
 </Purpose>

@@ -111,6 +111,7 @@ def regenerated_config(tmp_path_factory: pytest.TempPathFactory):
             "seeds": "7 11 13",
             "max_fail_rate": 2,
         },
+        "review": {"codex_cross_review": True},
         "waivers": {
             "verilator": "waivers/verilator.vlt",
             "verible": "waivers/verible.rules",
@@ -138,6 +139,7 @@ def regenerated_config(tmp_path_factory: pytest.TempPathFactory):
     ("field_path", "expected"),
     [
         (("project", "name"), "user-project"),
+        (("review", "codex_cross_review"), True),
         (("project", "top_module"), "user_top"),
         (("project", "filelist"), "rtl/user_files.f"),
         (("preferences", "simulator"), "iverilog"),

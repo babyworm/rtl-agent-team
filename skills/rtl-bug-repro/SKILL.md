@@ -6,6 +6,8 @@ argument-hint: "[bug-id | --failing-test <path>]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Reproduce a reported RTL bug with the minimal stimulus, isolate the root cause via waveform analysis, and produce a confirmed reproduction testbench. Outputs: `sim/bugs/{bug_id}/repro_tb.sv` (minimal TB that reproduces the failure) and `sim/bugs/{bug_id}/root_cause.md` (signal trace, first failure cycle, suspected RTL location).
 </Purpose>

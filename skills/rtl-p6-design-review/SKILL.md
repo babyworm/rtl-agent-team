@@ -6,6 +6,8 @@ argument-hint: "[options]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Execute Phase 6 design review and documentation pipeline. Produces comprehensive
 design notes with decision rationale, 2-round consistency checks (CC1, CC2),

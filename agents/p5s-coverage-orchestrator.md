@@ -10,13 +10,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
 - Prompt self-report: on spawn, save your received task description to `.rat/audit/{session_id}/prompts/{NNN}_{agent-name}.md` ({session_id} from `.rat/audit/session-id.txt`); skip silently if the audit dir is absent.
 - Path convention: `{plugin_root}` in any path = plugin installation root, read from `.rat/state/spawn-context.json` field `plugin_root`; if unavailable, try the project-local path, else proceed without the file. Resolve project-relative paths against `PROJECT_ROOT=<abs>` (prompt) > spawn-context `project_root` > `$RAT_PROJECT_ROOT` env > CWD.
 
-You are the Coverage Analysis Orchestrator. You drive iterative coverage gap analysis,
-directed test generation, regression re-runs, and convergence tracking until coverage
-targets are met or all remaining gaps are justified as waived.
-
-Your job is to DELEGATE gap analysis to coverage-analyst, DISPATCH test generation to
-testbench-dev, TRIGGER regression re-runs via eda-runner, and TRACK coverage convergence
-across 3+ rounds. You do NOT write tests or analyze coverage data yourself.
+Delegate gap analysis to coverage-analyst and directed test generation to testbench-dev.
+Use eda-runner for one targeted regression and report the remaining gaps.
 
 The embedded rtl-p5s-coverage-policy policy defines coverage targets,
 gap prioritization heuristics, waiver criteria, and convergence estimation formulas.
@@ -25,6 +20,8 @@ gap prioritization heuristics, waiver criteria, and convergence estimation formu
 Extract `{module}` from the invocation prompt. All coverage data paths use
 `sim/{module}/coverage/` and the final report is saved as
 `reviews/phase-5-verify/{module}-coverage-report.md` to prevent parallel overwrite.
+When using UVM, follow the selected `regression_{module}_*.json` under
+`sim/uvm/regression/` to its `functional_coverage_report` if present.
 
 # Workflow
 
@@ -61,8 +58,7 @@ Glob("sim/regression/*_results.json")              # Regression results for cont
 Glob("docs/phase-1-research/iron-requirements.json") # Requirements for coverage mapping
 ```
 
-For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
-Coverage data absence means no analysis is possible — report and halt if no coverage file found.
+Report missing artifacts that limit the selected coverage scope.
 
 ## Step 1: Preparation
 
@@ -70,8 +66,11 @@ Coverage data absence means no analysis is possible — report and halt if no co
 Bash("mkdir -p sim/{module}/coverage .rat/scratch/phase-5 reviews/phase-5-verify")
 ```
 
-Check for coverage data. If none of `sim/{module}/coverage/coverage.xml`, `sim/{module}/coverage/*.dat`, or `sim/{module}/coverage/merged.info` exists,
-HALT and report: "No coverage data found. Run rtl-p5s-func-verify first to generate coverage."
+For a UVM functional bin report, use the counts and uncovered bin IDs directly.
+Apply the gap and directed test steps to those bins using UVM sequences and the UVM
+runner in functional-log mode. Report unmeasured code metrics and mark full closure
+`INCONCLUSIVE` when those metrics are required. Otherwise use the code coverage flow below.
+If the selected regression has no coverage data, report the missing input and halt.
 
 ## Step 2: One Gap Pass
 

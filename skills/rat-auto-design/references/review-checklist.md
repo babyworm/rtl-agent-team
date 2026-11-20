@@ -1,7 +1,6 @@
 # Review Artifact Checklist
 
-Verify ALL files below exist before declaring pipeline completion.
-Each file must contain a valid verdict (PASS/FAIL) in standard review Markdown format.
+Use this index to locate evidence applicable to the design. Each phase owner validates its required artifacts and measurements. Record a PASS/FAIL verdict in reports that evaluate a gate.
 
 ## Phase 1: Research
 - [ ] `reviews/phase-1-research/research-review.md`

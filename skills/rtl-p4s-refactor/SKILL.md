@@ -4,6 +4,8 @@ description: "P4 RTL refactor with no behavioral change: naming/style cleanup, m
 user-invocable: true
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Refactor existing RTL for improved readability, maintainability, or lint compliance
 without changing functional behavior. Verifies equivalence after refactoring.

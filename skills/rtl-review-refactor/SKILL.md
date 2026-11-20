@@ -6,6 +6,8 @@ argument-hint: "[scope: module|block|top]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run structured review/refactor workflow with explicit severity and re-validation policy.
 </Purpose>

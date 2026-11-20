@@ -6,6 +6,8 @@ argument-hint: "[--top <name>]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Run silicon-readiness validation after functional closure PASS.
 Focus: constraints, synthesis, CDC/STA signoff posture, and precise top integration checks.

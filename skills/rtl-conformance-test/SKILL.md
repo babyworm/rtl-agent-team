@@ -6,6 +6,8 @@ argument-hint: "[--standard H.264|H.265] [--vectors path/to/vectors/]"
 allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Verify that RTL-encoded or decoded bitstreams match JM (H.264) or HM (H.265) reference output with 100% bitexact accuracy. This is the final standards compliance gate before tape-out sign-off. Outputs: `sim/conformance/results.json` with per-vector PASS/FAIL and divergence details.
 </Purpose>

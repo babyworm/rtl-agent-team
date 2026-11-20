@@ -637,6 +637,10 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 Convention skills are loaded by writer agents via their `skills:` frontmatter (rtl-coder→systemverilog, bfm-dev→systemc, testbench-dev/sva-extractor/protocol-checker→systemverilog-assertion/uvm); naming basics also enforced by the deployed `.claude/rules` file on .sv access.
 Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and loaded by agents when needed.
 
+## Agent dispatch
+Resolve worker tiers using `{plugin_root}/runtime/model-selection.md` for the active host. Inherit the session model when no suitable ID is available.
+Phase owners use `{plugin_root}/runtime/phase-dispatch.md` for project-enabled or explicitly requested Codex reviews.
+
 ## Core Design Principles
 - **Hierarchical Spec Compliance**: Lower stages must never violate upper stage specs. Spec → Arch → μArch → RTL → Verify. Changes require returning upstream.
 - **Light review**: One review against the evidence, then stop and name the open items. A further round only when the user asks. With no measurement, the model's confidence is the gate: one spec reading, or one architecture choice, passes. Do not iterate to raise it. Low confidence is asked once. Lint, simulation, formal, coverage, synthesis, CDC, and model comparison are judged from the measured result. Confidence does not override a measurement. Prompts state the goal, the constraints, the evidence, and the done condition. Do not add step-by-step scaffolding for judgment work. Leave effort at the session default.

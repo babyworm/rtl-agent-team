@@ -4,6 +4,8 @@ description: "Route domain questions to the best expert agent: codec standards, 
 user-invocable: true
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Analyze the user's question and route it to the most appropriate domain expert agent.
 Returns the expert's answer without modification.

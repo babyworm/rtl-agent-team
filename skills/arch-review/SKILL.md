@@ -4,6 +4,8 @@ description: "Read-only architecture review of RTL vs uArch spec with area/timin
 user-invocable: true
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Review RTL architecture for consistency with the microarchitecture spec, timing feasibility,
 and code quality. All agents operate READ-ONLY — no modifications are made.

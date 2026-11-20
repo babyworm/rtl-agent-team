@@ -80,6 +80,9 @@ plugin repository. Only synthetic site fixtures belong in public docs/tests/eval
 The installed helper is `scripts/eda_setup.py` (also deployed to project `lib/`).
 It provides `discover`, `probe --record`, and `configure`; the complete conditional
 workflow is in [the setup reference](../skills/rat-setup/references/remote-site-setup.md).
+Pass `--env-script` to discover binaries in the script's PATH and run bounded tool
+checks on the target host. The private profile records per-tool startup and
+workload evidence.
 `eda_runner.py capabilities --probe-remote` reports executable/framework readiness,
 with `license_checked: false`. A version probe does not prove license checkout.
 Failed probes are bound to their tool/environment configuration and prevent a

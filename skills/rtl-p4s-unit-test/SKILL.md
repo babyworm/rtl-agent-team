@@ -4,6 +4,8 @@ description: "P4 Tier 2 unit tests: verify each RTL module against its uarch spe
 user-invocable: true
 ---
 
+Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
+
 <Purpose>
 Write and run unit tests that verify each RTL module implements its microarchitecture
 specification correctly. Compares RTL output against the C reference model for functional

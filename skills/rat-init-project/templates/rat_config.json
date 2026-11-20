@@ -219,6 +219,7 @@
       }
     }
   },
+  "review": {"codex_cross_review": false},
   "preferences": {
     "_comment": "Preferred tool per category. Auto-set to first detected commercial tool (or first open-source). User-overridable.",
     "simulator": "",
