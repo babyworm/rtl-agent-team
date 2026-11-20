@@ -101,16 +101,17 @@ def test_review_followup_contract(tmp_path: Path) -> None:
         REPO_ROOT / "plugin_docs" / "plans" / "p3-11-hook-output-standardization.md"
     ).read_text()
 
-    assert "SLANG_VERSION=v11.0" in readme and "SVLENS_VERSION=v0.3.6" in readme
-    assert "SLANG_VERSION=v11.0" in readme_kr and "SVLENS_VERSION=v0.3.6" in readme_kr
-    assert "genus, vivado" not in readme.lower()
-    assert "genus, vivado" not in readme_kr.lower()
-    assert "managed exceptions" in readme and "config.mk" in readme
-    assert "관리 대상 예외" in readme_kr and "config.mk" in readme_kr
-    assert "{syn_root}/scr/replay/" in readme
-    assert "{syn_root}/scr/replay/" in readme_kr
-    assert "Regression helpers generate reports rather than replay scripts" in readme
-    assert "회귀 테스트 helper는 replay 대신 보고서를 생성" in readme_kr
+    dockerfile = (REPO_ROOT / "docker" / "Dockerfile").read_text()
+    for tool in ("SLANG", "SVLENS"):
+        version_arg = next(line.split(" ", 1)[1] for line in dockerfile.splitlines()
+                           if line.startswith(f"ARG {tool}_VERSION="))
+        assert f"--build-arg {version_arg}" in eda_guide
+    for overview in (readme, readme_kr):
+        assert "plugin_docs/eda-setup-guide.md" in overview
+        assert "genus, vivado" not in overview.lower()
+    assert "config.mk" in eda_guide
+    assert "{syn_root}/scr/replay/" in eda_guide
+    assert "Regression helpers generate per-seed and aggregate" in eda_guide
     assert "trusted project input" in init_skill
     assert "stale or unusable" in init_skill
     assert "trusted project input" in eda_guide

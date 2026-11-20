@@ -1,10 +1,10 @@
 # v2 execution and prompt audit
 
-Status (2026-11-17): repository implementation complete for the prompt audit and
-roadmap Phases 1b–5 on `try-2.0`, starting from `0db2ba5`. External site
-qualification remains open as listed below. No commit, release, installed-plugin
-update, or global tool installation was performed. Package version 0.14.6 still
-identifies the last published release.
+Status: Historical snapshot, 2026-11-17. This record covers the implementation
+and validation performed from `0db2ba5` through the initial `try-2.0` v2
+work. See the [README](../../README.md) and [changelog](../../CHANGELOG.md)
+for current behavior and later changes.
+
 
 ## Governing decisions
 

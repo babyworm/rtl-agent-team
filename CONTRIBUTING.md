@@ -27,6 +27,8 @@ python3 -m venv .venv
 claude --plugin-dir "$(pwd)"
 ```
 
+Check out `try-2.0` before testing that branch. A `--plugin-dir` session reads the working tree. To try it against an RTL project, switch to that project directory and launch `claude --plugin-dir /path/to/rtl-agent-team`.
+
 ### Filing an issue
 
 - **Bug reports**: use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md)
@@ -368,7 +370,7 @@ With four or more domain experts, adding a **Chief agent** is recommended.
 A Chief agent's job:
 - Cross-review the sub-domain experts' output
 - Identify inter-block dependencies
-- Converge on quality through iterated review (3 rounds enforced by default)
+- Review the evidence once and record material decisions that remain open.
 
 Reference: `agents/vcodec-chief-standard-expert.md`
 
@@ -596,20 +598,7 @@ while `git rev-parse <tag>^{commit}` always returns the commit. Verify with
 
 ### iverilog compatibility
 
-iverilog supports base SystemVerilog syntax with `-g2012`, but some features are missing:
-
-| Construct | iverilog support | Alternative |
-|-----------|------------------|-------------|
-| `logic`, `always_ff`, `always_comb` | supported | — |
-| `typedef enum` | supported | — |
-| `typedef struct packed` | supported | — |
-| `typedef union packed` | supported | — |
-| `interface` / `modport` | unsupported | port list |
-| unpacked `struct` / `union` | unsupported | individual signals or a packed version |
-
-Coding agents must not generate unsupported constructs.
-They must not rewrite such constructs when a user added them or when they already
-exist in the codebase.
+When Icarus Verilog is a project target, check construct support against the installed version. For new RTL, choose a compatible expression that preserves the specified interfaces and behavior. See the [SystemVerilog skill](skills/systemverilog/SKILL.md) for project rules and verification.
 
 ### RTL naming rules
 

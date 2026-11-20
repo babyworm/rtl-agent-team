@@ -27,6 +27,8 @@ python3 -m venv .venv
 claude --plugin-dir "$(pwd)"
 ```
 
+`try-2.0`을 테스트할 때는 해당 브랜치를 체크아웃한 뒤 실행합니다. `--plugin-dir` 세션은 현재 작업 트리를 읽습니다. RTL 프로젝트에서 시험하려면 해당 프로젝트 디렉토리로 이동한 뒤 `claude --plugin-dir /path/to/rtl-agent-team`을 실행하세요.
+
 ### Issue 제출
 
 - **버그 리포트**: [Bug Report 템플릿](.github/ISSUE_TEMPLATE/bug_report.md) 사용
@@ -337,7 +339,7 @@ domain-packages/{domain}/
 Chief 에이전트의 역할:
 - 서브 도메인 전문가 출력을 cross-review
 - 블록 간 의존성 식별
-- 반복 리뷰를 통한 품질 수렴 (기본 3회 강제)
+- 근거를 한 번 검토하고 사용자 결정이 필요한 항목을 기록합니다.
 
 참조: `agents/vcodec-chief-standard-expert.md`
 
@@ -552,21 +554,9 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 `.cl
 - iverilog 플래그: `-g2012` (2009 하위 호환 파싱)
 - 2012 이후 합성 관련 추가 기능 없음 (2017은 errata만, 2023은 도구 지원 초기)
 
-### iverilog 호환성
+### Icarus Verilog 호환성
 
-iverilog는 `-g2012` 옵션으로 SystemVerilog 기본 문법을 지원하지만 일부 기능은 미지원:
-
-| 구문 | iverilog 지원 | 대체 |
-|------|-------------|------|
-| `logic`, `always_ff`, `always_comb` | 지원 | — |
-| `typedef enum` | 지원 | — |
-| `typedef struct packed` | 지원 | — |
-| `typedef union packed` | 지원 | — |
-| `interface` / `modport` | 미지원 | 포트 리스트 |
-| unpacked `struct` / `union` | 미지원 | 개별 signal 또는 packed 버전 |
-
-코딩 에이전트는 미지원 구문을 생성하지 않는다.
-사용자가 직접 추가하거나 기존 코드에 존재하는 경우 수정하지 않는다.
+Icarus Verilog를 실행 대상으로 선택했다면 설치된 버전에서 해당 구문을 지원하는지 확인합니다. 새 RTL에 호환성 문제가 있으면 명세에 정해진 인터페이스와 동작을 유지하는 표현을 사용합니다. 프로젝트 규칙과 검증 절차는 [SystemVerilog 스킬](skills/systemverilog/SKILL.md)을 참고하세요.
 
 ### RTL 네이밍 규칙
 

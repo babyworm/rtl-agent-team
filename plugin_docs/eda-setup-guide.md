@@ -93,6 +93,13 @@ or a CAD team and require environment setup (PATH, library paths, environment va
 before they can be invoked. The plugin handles this through the `env_source` field
 in `rat_config.json`.
 
+UVM regression uses native coverage when a supported coverage tool is available.
+In automatic mode, a missing tool or failed merge can fall back to functional
+bin counts exported by passing seeds. Each vendor coverage command defaults to a
+60-second timeout. Functional bins alone leave the full coverage verdict
+`INCONCLUSIVE`. See the [UVM skill](../skills/rtl-p5s-uvm-verify/SKILL.md#coverage-and-license-waits)
+and the [bin record format](../skills/rtl-p5s-uvm-verify/references/functional-coverage-log.md).
+
 ### How `env_source` works
 
 Tool entries support path, env_source, env_shell, detected, and optional license_wait_args:
@@ -109,7 +116,7 @@ Tool entries support path, env_source, env_shell, detected, and optional license
 |-------|---------|-------------|
 | `detected` | Whether the tool was found during last scan | `generate_config.sh` (automatic) |
 | `path` | Absolute path to the tool binary | `generate_config.sh` (automatic) or user |
-| `env_source` | Shell command to set up the tool environment | **User** (manual) |
+| `env_source` | Shell command to set up the tool environment | `rat-setup` from a trusted site setup script, or user |
 
 `env_source` is trusted project input: the generator and runner evaluate it in the configured bash/csh/tcsh environment. Keep this field project-owned and never populate it from untrusted data.
 
@@ -119,8 +126,9 @@ When `generate_config.sh` runs, it:
    banners before probing the tool: `bash -c 'eval "$1" >/dev/null 2>&1 && command -v -- "$2"' _ "$env_source" "$tool"`
 3. If the tool is found after sourcing, marks `detected: true` and records `path`
 
-**The key insight**: you only need to fill in `env_source` with the command that makes
-the tool available in your shell. The detection and path recording happen automatically.
+For a named SSH site, provide the trusted setup script to `rat-setup` so discovery
+runs in that environment. For manual local configuration, supply the same shell
+command in `env_source`. The discovery output records the resulting tool path.
 
 ### Environment setup patterns
 
@@ -424,6 +432,14 @@ Paths to lint/CDC waiver files (tool-specific):
 
 ---
 
+## Run reports and replays
+
+Project wrappers record timestamped runs. Simulation, lint, CDC, and equivalence
+write replay scripts under `{outdir}/replay/`. Synthesis writes them under
+`{syn_root}/scr/replay/`. Regression helpers generate per-seed and aggregate
+reports. The cocotb functional-verification skill uses the plugin's
+`run_regression.sh`, which defaults to local execution.
+
 ## Docker Fallback (Open-Source Only)
 
 The Docker image bundles all open-source EDA tools. It does **not** include
@@ -441,6 +457,15 @@ docker run -it --rm \
   --user "$(id -u):$(id -g)" --env HOME=/tmp \
   --mount "type=bind,src=/absolute/path/to/rtl-project,dst=/workspace" \
   --workdir /workspace rtl-eda-tools
+```
+
+The Dockerfile pins tool versions. Override specific build arguments when needed:
+
+```bash
+docker build -t rtl-eda-tools \
+  --build-arg SLANG_VERSION=v11.0 \
+  --build-arg SVLENS_VERSION=v0.3.6 \
+  docker/
 ```
 
 The `lib/tool-runner.sh` library provides transparent Docker fallback:

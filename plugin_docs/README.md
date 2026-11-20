@@ -1,7 +1,16 @@
 # Plugin Documentation Lifecycle
 
-`plugin_docs/` contains current operational guides and dated design records. A
-document's status header controls how it should be used:
+`plugin_docs/` contains current operational guides and dated design records. Use these guides for current workflows:
+
+- [Quick start and local checkout](../README.md#quick-start)
+- [Contributing and deployment](../CONTRIBUTING.md)
+- [EDA tool setup and private site profiles](eda-setup-guide.md)
+- [Hook development and RTL Stop behavior](hook-development-guide.md)
+- [Host-native model selection](../runtime/model-selection.md)
+- [Phase-scoped Codex cross-review](../runtime/phase-dispatch.md)
+- [Running tests](../tests/README.md) and [model evaluations](../evals/README.md)
+
+A dated document's status header controls how it should be used:
 
 - `Draft`: exploratory material that is not approved for implementation.
 - `Approved`: accepted design with implementation still pending or in progress.

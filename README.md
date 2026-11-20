@@ -1,485 +1,63 @@
-> **한국어 문서**: [README_kr.md](./README_kr.md)
-
-> Fable 5.x and Opus 5.5 and later already reason for a long time on each turn. This plugin reviews once, names what is still open, and stops. Where no measurement exists, the model's confidence is the gate: one spec reading, or one architecture choice, passes. It does not iterate to become more sure. Low confidence is named and asked once. Lint, simulation, formal, coverage, synthesis, and model comparison are judged from the measured result. Prompts state the goal, the constraints, the evidence, and the done condition. Effort stays at the session default. 
+[한국어](README_kr.md)
 
 # RTL Agent Team
 
-> A Claude Code plugin for automated RTL design and verification.
-> 91 specialized AI agents + 55 skills automate the 6-Phase pipeline:
-> Research → Architecture → μArch → RTL → Verify → Design Note.
-
-A Claude Code plugin for automated RTL design and verification.
-
-Automates the 6-Phase design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) with 91 specialized AI agents + 55 skills + 27 reference documents.
-
-![](./rat_logo.jpg)
-
-## try-2.0 development status
-
-This branch implements v2 with 55 skills and 91 agents. Policies are embedded in their consumers; sequential/team modes share an agent identity. See the [execution and evaluation record](plugin_docs/plans/2026-11-17-v2-execution.md). The package version still identifies the last published release.
-
-Readiness is phase-scoped. Fable/Opus live evaluation was unavailable due to the account usage limit. Commercial EDA and real SSH/LSF qualification require a configured site.
-
-## Marketplace
-
-This repository serves as the **RTL Agent Marketplace**, providing hardware design plugins.
-
-| Plugin | Description | Version |
-|--------|-------------|---------|
-| **rtl-agent-team** | 91-agent RTL design pipeline (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
-| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server based — diagnostics, hover, go-to-definition, etc.) | 1.2.0 |
-
-Additional plugins (domain knowledge packages, MCP servers, specialized skills, etc.) will be added to the Marketplace over time.
+Claude Code plugin for RTL design and verification. Its 91 specialized AI agents
+and 55 skills cover specification, architecture, microarchitecture, RTL
+implementation, verification, and design notes.
 
 ## Quick Start
 
-The workflow has **three distinct stages**, each with a different scope and frequency:
+In Claude Code, install the published plugin (v0.14.6):
 
-| Stage | Scope | Frequency | Commands |
-|-------|-------|-----------|----------|
-| **A. Machine Setup** | Per machine (global) | Once per machine | `/plugin marketplace add` + `/plugin install` + `/rtl-agent-team:rat-setup` |
-| **B. Project Init** | Per project directory | Once per project | `/rtl-agent-team:rat-init-project` |
-| **C. Design Work** | Inside project | Recurring | `/rtl-agent-team:rat-auto-design`, phase/sub-skills |
-
-Run each stage from its appropriate working directory: Stage A runs anywhere; Stages B and C should run from **inside** the target project directory (artifacts like `docs/phase-*/`, `rtl/`, `.rat/state/` are written relative to CWD).
-
-### Stage A — Machine Setup (one-time, per machine)
-
-Installs the plugin and prepares the requested EDA capabilities. Tell the setup
-skill where tools run; it discovers paths, records a reusable site profile, and
-prepares project configuration. Ask only about unresolved site or design choices.
-
-```bash
-# A1. Register the Marketplace (one-time)
+```text
 /plugin marketplace add babyworm/rtl-agent-team
-
-# A2. Install plugins (one-time)
 /plugin install rtl-agent-team
-/plugin install systemverilog-lsp   # (optional) SV LSP
+```
 
-# A3. Check the requested phase and execution site
+From your RTL project directory, set up the tools, initialize the project, and
+start with your specification:
+
+```text
 /rtl-agent-team:rat-setup
-```
-
-For remote tools, add "use SSH host <ssh-host>" to the request. Named profiles
-live under `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`; each project
-selects its own site. Setup distinguishes executable discovery, a working tool
-invocation, and licensed design evidence. See [SSH setup](plugin_docs/eda-setup-guide.md#llm-assisted-ssh-setup).
-
-> If `systemverilog-lsp` is installed but `slang-server` is missing, the sub-plugin checks on `SessionStart` and prompts for `local` (`~/.local/bin`, recommended), `global`, or `skip`.
-
-### Stage B — Project Initialization (one-time, per project)
-
-Scaffolds project directory structure, deploys per-project rules and guides, and auto-installs EDA wrapper scripts. Run from inside the project directory. Existing templates and rules are left intact; managed exceptions are the RAT block in project `CLAUDE.md`, refreshed tool detection in `rat_config.json`, and regenerated `config.mk`. Usable tool path overrides are preserved, while stale or unusable paths are refreshed.
-
-```bash
-# B1. cd into your project directory
-cd ~/work/my-rtl-project
-
-# B2. Initialize project structure (run inside project)
-#     - Creates docs/, rtl/, sim/, refc/, lint/, syn/, formal/, reviews/
-#     - Deploys .claude/rules/ (coding conventions, verification gate)
-#     - Deploys subdirectory CLAUDE.md (phase-specific guides)
-#     - Auto-installs run_sim.sh, run_lint.sh, run_syn.sh, run_cdc.sh
-#     - Existing templates/rules are not overwritten; managed config is refreshed
 /rtl-agent-team:rat-init-project
+/rtl-agent-team:rat-auto-design specs/design.md
 ```
 
-### Stage C — Design Work (recurring, inside project)
+For remote EDA, give `rat-setup` the SSH alias, target phase, and site setup
+script if needed. Keep connection details and generated configuration outside
+this plugin repository. [EDA setup, including Docker](plugin_docs/eda-setup-guide.md)
 
-For Codex cross-review at each phase handoff, set `"review": {"codex_cross_review": true}` in the project-root `rat_config.json`. It defaults to false. For a single run, ask for “auto design with Codex cross-review” or name the phase to review.
+## Choose a workflow
 
-Execute RTL design and verification pipeline. Run from inside an initialized project — artifacts are created relative to CWD, so an uninitialized directory will not have the expected structure.
+| Goal | Skill |
+| --- | --- |
+| Run P1–P6 | `rat-auto-design` |
+| Explore alternatives through microarchitecture and BFM | `rat-dse` |
+| Review the design before writing RTL | `rat-p1p3-spec-uarch` |
+| Implement and verify RTL from an approved microarchitecture | `rat-p4p5-impl-verify` |
+| Close functional verification | `rtl-p5a-functional-closure` |
+| Check synthesis, timing, and CDC after P5A passes | `rtl-p5b-silicon-validation` |
+
+Use the `/rtl-agent-team:` prefix for each skill. Full automation uses team mode
+when available and the bundled Phase 5 verification flow. Pass `--no-team` for
+sequential execution. Rerun the same command to resume with valid evidence.
+
+Codex cross-review is off by default. Ask for it in a run, including for a single
+phase, or set `review.codex_cross_review` to `true` in the project's
+`rat_config.json`. [Cross-review behavior](runtime/phase-dispatch.md)
+
+## Local plugin development
+
+From a `try-2.0` checkout, run `claude --plugin-dir .` to load the current working
+tree. For a fresh checkout:
 
 ```bash
-# C1. Full automation (6-Phase pipeline)
-/rtl-agent-team:rat-auto-design
-# Example natural-language usage:
-#   /rtl-agent-team:rat-auto-design "Design an H.264 TQ subsystem"
-#   /rtl-agent-team:rat-auto-design "implement VDC-M 1.2 encoder using reference C
-#     model in ../vdc-m/refc. Target 4K 60fps at 500MHz, margin 40% under TSMC 28nm"
-
-# C2. OR split pipeline (for human review between stages)
-/rtl-agent-team:rat-dse               # Phase 1→3: DSE through μArch + BFM
-/rtl-agent-team:rat-p1p3-spec-uarch   # Phase 1→3: Spec → μArch design docs
-/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: RTL implementation + verification
-
-# C3. OR individual phase/sub-phase skills (see Usage section below)
-```
-
----
-
-## Installation (Stage A alternatives)
-
-The [Quick Start](#quick-start) Stage A already covers plugin installation. The
-alternatives below are for users who prefer CLI or development symlinks. After
-installing the plugin, still run `/rtl-agent-team:rat-setup` once to audit the EDA
-toolchain.
-
-### Install from Claude Code chat (recommended)
-
-```
-/plugin marketplace add babyworm/rtl-agent-team
-/plugin install rtl-agent-team
-```
-
-Verify installation: `/plugin`
-
-### Install from CLI
-
-```bash
-claude plugin marketplace add babyworm/rtl-agent-team
-claude plugin install rtl-agent-team
-```
-
-### Local plugin development
-
-When developing with direct access to the plugin source, launch Claude Code from
-the standalone clone root with the supported `--plugin-dir` option:
-
-```bash
-git clone https://github.com/babyworm/rtl-agent-team.git
+git clone --branch try-2.0 https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 claude --plugin-dir .
 ```
 
-## Usage (Stage C — in-project design work)
-
-This section assumes **Stage A (machine setup) and Stage B (project init) are
-already complete**. All commands in this section run from **inside an initialized
-project directory**. See [Quick Start](#quick-start) for the full stage map.
-
-### Routing contract
-
-- Route user intent to **Action Skills first** (for example, `/rtl-agent-team:rat-auto-design`, `/rtl-agent-team:rtl-p5-verify`).
-- Orchestrator agents are internal execution units and are spawned by Action Skills via `Task(...)`.
-- Policy fragments are generated into their consuming agents by `scripts/sync_agent_policies.py`; convention skills remain preloaded.
-- `rtl-orchestrate` is an internal routing reference skill (`user-invocable: false`), not a user slash command.
-
-### Full automation
-
-```
-/rtl-agent-team:rat-auto-design
-```
-
-Runs the entire 6-Phase pipeline automatically. You can also use natural language, e.g., "Design an H.264 TQ subsystem".
-
-### Autopilot repairs
-
-After a measured failure, `rat-auto-design` repairs the affected scope and reruns
-its checks. Two failed repairs at the same gate pause the run for your decision.
-An unresolved requirement that changes the design or expected result triggers
-a question immediately. Resume keeps the phase evidence and repair count.
-
-### Pipeline composition (split execution)
-
-```
-/rtl-agent-team:rat-dse              # Phase 1→3: Explore architecture through μArch + BFM
-/rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate evaluation for algorithm comparison
-/rtl-agent-team:codec-conformance-eval  # Decoder conformance evaluation (JVET/JCTVC/3rd party)
-/rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch design documents
-/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: μArch → RTL implementation + verification
-```
-
-Split the pipeline for human review between design and implementation:
-- `rat-dse`: Compare viable algorithms and architectures using quantitative trade-offs. DSE can transform an existing functional C model into an architectural reference model. It ends after Phase 3 (μArch + BFM) and one self-critique. Request another trial to compare an alternative in an isolated worktree.
-- `rat-p1p3-spec-uarch`: Standard Phase 1→3 — produce design documents through μArch. Stops for review before RTL.
-- `rat-p4p5-impl-verify`: Phase 4→5 — implement RTL and run full verification from approved μArch documents.
-
-### Resume interrupted pipeline
-
-If `rat-auto-design` is interrupted, progress is saved automatically. Re-run the same command to resume from the last incomplete step — completed phases are skipped.
-
-> **Note:** Project initialization (`rat-init-project`) and EDA tool setup
-> (`rat-setup`) belong to Stages A/B and are described in [Quick Start](#quick-start).
-
-### Individual skills
-
-```
-/rtl-agent-team:rtl-lint-check           # RTL lint check
-/rtl-agent-team:rtl-p5s-func-verify      # cocotb functional verification
-/rtl-agent-team:rtl-synth-check          # Yosys synthesis
-/rtl-agent-team:rtl-p5s-sva-check        # SVA formal verification
-/rtl-agent-team:p2-arch-design           # Architecture design
-/rtl-agent-team:domain-consult           # Domain expert consultation
-```
-
-### Skill categories (55 skills)
-
-| Category | Count | Description |
-|----------|-------|-------------|
-| **Action Entry Points** | 50 | User-invocable slash commands: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, and utility skills (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
-| **Convention** | 4 | Auto-applied by file extension: SystemVerilog, SVA, UVM, SystemC |
-| **Internal** | 1 | Routing SSOT (`rtl-orchestrate`) |
-| **Total** | **55** | |
-
-Assets (Templates, Scripts, References, Examples) are distributed across the 55 skills — see each skill directory for its bundled assets.
-
-## Project Artifact Structure
-
-Each Phase's design artifacts (`docs/`) serve as inputs to the next Phase, forming a pipeline.
-Spec compliance verdicts (`reviews/`) are managed separately.
-
-```
-docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase-3-uarch/
-        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ reviews/phase-6-review/
-        ──→ docs/phase-7-exploration/ (optional, free exploration)
-```
-
-| Directory | Role | Notes |
-|-----------|------|-------|
-| `docs/phase-N-*/` | Phase-specific design documents (guide pipeline) | Phase N → Phase N+1 input |
-| `reviews/phase-N-*/` | Spec compliance verdict (PASS/FAIL) | Verdict only, no data |
-| `rtl/` | RTL SystemVerilog source code | Phase 4 code artifact |
-| `sim/`, `formal/` | Testbenches | Phase 4-5 code artifacts |
-| `refc/` | C golden reference model (DPI-C compatible) | Phase 2 code artifact |
-| `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 decision rationale |
-| `docs/lessons-learned.md` | Lessons learned from feedback loops | Accumulated across phases |
-
-## Plugin Structure
-
-```
-rtl-agent-team/
-├── .claude-plugin/
-│   ├── plugin.json             # Plugin manifest (auto-discovery)
-│   └── marketplace.json        # Marketplace definition
-├── CLAUDE.md                   # 6-Phase pipeline rules
-├── agents/                     # 91 agents (design/verification/review/EDA/domain/orchestrators)
-├── scripts/
-│   └── run_sim.sh              # Simulator-agnostic compile+run wrapper (replay-enabled)
-├── skills/                     # 55 skills (SKILL.md + templates/ + examples/)
-│   ├── rtl-orchestrate/        # Internal routing SSOT + SessionStart hook export source
-│   ├── rat-init-project/
-│   │   ├── scripts/
-│   │   │   └── install_project_templates.sh  # Hook-driven template auto-installer
-│   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + other templates
-│   ├── rtl-p5s-func-verify/
-│   │   ├── scripts/            # run_regression.sh, merge_coverage.sh
-│   │       └── run_regression.sh  # Multi-seed regression runner (local-first)
-│   ├── systemverilog/          # RTL coding conventions (lowRISC + overrides)
-│   ├── systemverilog-assertion/ # SVA coding conventions (bind, SymbiYosys)
-│   ├── uvm/                    # UVM coding conventions (factory, TLM, coverage)
-│   ├── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-│   └── {skill}/references/     # 27 reference documents (distributed per skill)
-│       ├── coding-style-guide.md   # SV naming conventions (in systemverilog/)
-│       ├── axi-protocol-rules.md   # AXI4 per-channel SVA templates (in rtl-p5s-protocol-verify/)
-│       ├── sva-patterns.md         # SVA temporal operators + pattern library (in rtl-p5s-sva-check/)
-│       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (in rtl-p5s-func-verify/)
-│       └── ...                     # + 23 more (CDC, UVM, Yosys, SDC, etc.)
-├── hooks/                      # Event-driven enforcement (14 hook scripts / 16 registrations)
-│   ├── rtl-skill-activation.sh # PreToolUse+PostToolUse:Skill — setup check + template bootstrap; completion loop
-│   └── ...                     # + 13 more (routing inject, verify gate, cascade, etc.)
-├── docker/                     # EDA tool Docker image
-│   └── Dockerfile              # Open-source EDA full bundle
-└── domain-packages/            # Domain knowledge packages
-    ├── video-codec/            # H.264/H.265 knowledge, conformance data
-    └── video-processing/       # Color conversion, denoise, HDR/ISP (3 agents)
-```
-
-### Routing sync for contributors
-
-When modifying routing/delegation docs:
-
-```bash
-sh scripts/sync_orchestrator_inject.sh
-python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
-```
-
-## Agent Team
-
-### Agent composition
-
-| Category | Count | Key Agents |
-|----------|-------|------------|
-| Design | 9 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer, goal-clarifier |
-| Verification | 8 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer, test-plan-writer |
-| Specialized Review | 16 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer, compliance-checker, ultraloop-reviewer |
-| Phase 6 Design Note | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
-| EDA/Synthesis | 11 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer, dc-report-parser, synthesizability-gate, ppa-optimizer-dc |
-| Infrastructure | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| Domain Experts | 13 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-intra-pred-expert, vcodec-me-expert, vcodec-mc-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
-| Phase 4 Block-Parallel | 2 | p4-block-parallel-coordinator, p4-block-worker |
-| Orchestrators | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator, and 26 more (team/sub-phase variants) |
-
-Claude, Codex, Antigravity (`agy`) and Grok use their own model IDs for
-delegation. Complex, design/verification, straightforward and trivial work map
-to Fable/Opus/Sonnet/Haiku on Claude and Astra/Sol/Terra/Luna on Codex.
-The resolver consults the installed CLI catalog for Codex, agy and Grok.
-Task complexity can override the role default. An explicit model takes precedence.
-[Native model selection](runtime/model-selection.md)
-
-On a host that discovers the installed skill, invoke it by name. Otherwise open
-`skills/<skill>/SKILL.md` from the local plugin checkout, for example
-`skills/rat-dse/SKILL.md`, and ask the host to follow it. Keep the checkout
-available so the skill can load its bundled roles, workflows and scripts.
-
-### 6-Phase Pipeline (+Phase 7 Optional Exploration)
-
-| Phase | Name | Key Agents | docs/ Artifacts | reviews/ Verdict |
-|-------|------|------------|-----------------|------------------|
-| 1 | Research | spec-analyst | iron-requirements.json, open-requirements.json, io_definition.json, domain-analysis.md | research-review.md |
-| 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
-| 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (per module) | uarch-review.md |
-| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B artifacts | design-review.md |
-| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md, etc. | final-compliance.md, e2e-traceability.md |
-| 6 | Design Note | code-quality-reviewer, design-note-writer | - | code-review.md, design-review.md, design-note.md, improvements.md |
-| 7 | Exploration (optional) | improvement-analyst | exploration-notes.md | exploration-review.md |
-
-> **Additional pipeline artifacts:** Each Phase (1-5) generates `phase-N-summary.md` for downstream context compression. Phase 4 Stream B produces SVA/CDC/TB skeletons in parallel with RTL coding. Phase 2-3 record Architecture Decision Records in `docs/decisions/`.
-
-### Post-Verify PPA Optimization (new in v0.10.0)
-
-Optional stage between Phase 5 (verify PASS) and Phase 6 (design note). Runs
-an iterative Design Compiler synthesis → JSON report → RTL patch → equivalence
-+ smoke → convergence-check loop until one of three termination tiers fires:
-**normal convergence** (3-iter streak × |Δ|<2%), **early plateau** (iter 1-2
-×|Δ|<1% → escalate to user, EDA tools already near optimum), or **max cycles**
-(default 4). Timing-first heuristic (default weights 0.7 / 0.2 / 0.1).
-
-| Command | Purpose |
-|---------|---------|
-| `/rtl-agent-team:rtl-ppa-optimize-dc [top]` | One-shot single iteration |
-| `/rtl-agent-team:rat-ultraloop-ppa [top]` | Auto-loop until convergence + 30-min auto-continue |
-
-**Requirements**:
-- `dc_shell` (Synopsys Design Compiler) OR `genus` (Cadence) in PATH
-- `requirements.json["ppa_targets"]` section (scaffold auto-written on first run)
-- Phase 5 PASS (`reviews/phase-5-verify/final-compliance.md` verdict=PASS)
-- Clean git tree under `rtl/${top}/`
-
-**Artifacts**: `docs/ppa-opt/iter-{N}/` (reports, patch, rationale, equiv/smoke evidence), `docs/ppa-opt/final-report.md`, `reviews/ppa-opt/convergence-review.md`. Every iteration that worsens WNS by >20 ps or fails equivalence/smoke is automatically rolled back. See `plugin_docs/specs/2026-04-17-ppa-optimizer-dc-design.md` for the full spec.
-
-### Coding Convention Skills
-
-| Skill | Target | Key Content |
-|-------|--------|-------------|
-| `systemverilog` | `.sv`, `.svh`, `.v`, `.vh` | lowRISC + project overrides, Power, FPGA, Pipelining |
-| `systemverilog-assertion` | SVA, bind files | assume/assert/cover, SymbiYosys, bind patterns |
-| `uvm` | UVM testbench | factory, TLM ports, coverage, phase callback |
-| `systemc` | `.cpp`, `.h` (SystemC) | TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ |
-
-### 3-Layer Documentation Structure (Progressive Disclosure)
-
-| Layer | Location | Role |
-|-------|----------|------|
-| Core rules | `skills/*/SKILL.md` → `<Steps>` | Mandatory rules that agents always read |
-| Situational guides | `skills/*/SKILL.md` → `<Advanced>` | Referenced only in specific optimization/scenarios |
-| Detailed references | `skills/*/references/*.md` | Command references, pattern libraries, protocol details |
-
-## EDA Tools
-
-The `eda-runner` agent executes local EDA CLI tools directly via Bash.
-
-| Tool | Purpose | Required |
-|------|---------|----------|
-| verilator / iverilog / VCS / Xcelium / Questa | Simulation | One suitable simulator for P4/P5A |
-| verible / slang / Verilator / SpyGlass | Lint | One suitable linter for P4/P5A |
-| svlens / SpyGlass / VC CDC / Questa CDC | CDC | For multi-clock designs |
-| slang-server | SV Language Server (LSP) | Recommended |
-| cocotb | Functional verification | For the cocotb path; commercial UVM does not require it |
-| Python >= 3.9 | Execution and evidence helpers | RAT_PYTHON |
-| C/C++ compiler | Reference/BFM build | P2/P3 |
-| make | Build system | Required |
-| SystemC | TLM BFM | Only for requested SystemC/TLM BFMs |
-| iverilog | Fallback simulator | Optional (if verilator installed) |
-| yosys | Synthesis (Phase 5B+) | Optional |
-| sby (SymbiYosys) | Formal verification | Optional |
-| gtkwave | Waveform viewer | Optional |
-| vcs / xrun / questa | Commercial simulators | Optional |
-| spyglass (sg_shell) | Commercial lint + CDC | Optional |
-| dc_shell (Design Compiler) | Commercial synthesis | Optional |
-| vc_cdc / questa_cdc | Commercial CDC analysis | Optional (satisfies CDC requirement) |
-
-Use `/rtl-agent-team:rat-setup` to check tool installation status and configure commercial tools interactively.
-
-For detailed commercial tool setup (env_source, technology library, vendor examples), see the **[EDA Setup Guide](plugin_docs/eda-setup-guide.md)**.
-
-### EDA Wrapper Scripts
-
-Project EDA wrappers record timestamped runs and generate `_latest.sh` replay scripts
-for reproducibility. The regression runner is a plugin-bundled helper with its own
-per-seed and aggregate JSON reports; it does not generate replay scripts.
-
-| Script | Location | Supports |
-|--------|----------|----------|
-| `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
-| `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
-| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler), genus |
-| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), svlens, spyglass, vc_cdc, questa_cdc |
-| `run_regression.sh` | `{plugin_root}/skills/rtl-p5s-func-verify/scripts/` | Multi-seed cocotb regression (local-first, AWS opt-in); writes results to `sim/regression/` by default |
-
-`rat-init-project` installs the project wrappers listed above plus formal/equivalence
-and UVM regression helpers. Simulation, lint, CDC, and equivalence runs write replay
-scripts under `{outdir}/replay/`; synthesis writes them under `{syn_root}/scr/replay/`.
-Regression helpers generate reports rather than replay scripts. `run_regression.sh`
-remains under `{plugin_root}` and is invoked by the functional-verification skill.
-
-Regression runner defaults to `--mode local` with `max(1, nproc-2)` parallel jobs. AWS Batch requires explicit opt-in (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
-
-### Docker EDA Image (Recommended)
-
-If installing EDA tools individually is cumbersome, you can build a Docker image containing all tools:
-
-```bash
-# Run these build commands from a standalone rtl-agent-team clone root.
-cd /path/to/rtl-agent-team
-
-# Build image (one-time)
-docker build -t rtl-eda-tools docker/
-
-# Run with an RTL project mounted
-docker run -it --rm \
-  --user "$(id -u):$(id -g)" --env HOME=/tmp \
-  --mount "type=bind,src=/absolute/path/to/rtl-project,dst=/workspace" \
-  --workdir /workspace rtl-eda-tools
-
-# Build with specific versions
-docker build -t rtl-eda-tools \
-  --build-arg VERILATOR_VERSION=5.024 \
-  --build-arg SLANG_VERSION=v11.0 \
-  --build-arg SVLENS_VERSION=v0.3.6 \
-  --build-arg SYSTEMC_VERSION=3.0.2 \
-  docker/
-```
-
-Included tools: Verilator, Verible, Yosys, Icarus Verilog, slang, svlens (CDC + structural analysis), slang-server (SV LSP), SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
-
-You can also build from Claude Code: "Build the EDA Docker image" or run `/rtl-agent-team:rat-setup` and select the Docker option.
-
-## Marketplace Structure
-
-This repository operates as a **marketplace**, not a single plugin. The
-`systemverilog-lsp` entry is sourced from its external GitHub repository and is not
-vendored in this tree.
-
-```
-rtl-agent-team/                          # Marketplace root
-├── .claude-plugin/
-│   ├── plugin.json                      # rtl-agent-team plugin manifest
-│   └── marketplace.json                 # Marketplace definition (plugin list)
-├── agents/                              # rtl-agent-team agents (91)
-├── skills/                              # rtl-agent-team skills (91, with 27 reference docs)
-└── domain-packages/                     # Domain knowledge packages
-    ├── video-codec/                     # H.264/H.265 codec knowledge
-    └── video-processing/                # Color, denoise, HDR/ISP
-```
-
-To add a new plugin to the Marketplace, add an entry to the `plugins` array in `.claude-plugin/marketplace.json`:
-- Same repo: `"source": "./plugins/new-plugin"`
-- External repo: `"source": {"source": "github", "repo": "owner/repo"}`
-
-## Development
-
-This plugin is declarative-first (`.md` + `.json` skill definitions with helper `.py`/`.sh` scripts) — no build step required.
-
-```bash
-git clone https://github.com/babyworm/rtl-agent-team.git
-cd rtl-agent-team
-claude --plugin-dir .
-```
-
-## License
-
-MIT
-
-Claude Code can label a working gate block `Stop hook error occurred`. Read its reason: RAT is reporting incomplete work. Repeated blocks without progress are bounded.
+- [Contributing](CONTRIBUTING.md) · [Tests](tests/README.md)
+- [Technical guides](plugin_docs/README.md) · [Model selection](runtime/model-selection.md)
+- [Changelog](CHANGELOG.md) · [MIT License](LICENSE)

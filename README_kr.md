@@ -1,477 +1,64 @@
-> **English version**: [README.md](./README.md)
-
-> Fable 5.x와 Opus 5.5 이후 모델은 한 턴에서 이미 오래 추론합니다. 이 플러그인은 리뷰를 한 번 하고, 남은 항목을 적고, 멈춥니다. 측정이 없으면 모델의 confidence가 게이트입니다. 스펙이 한 가지로 읽히거나 아키텍처가 하나로 정해지면 통과하고, 확신을 올리려고 반복하지 않습니다. 낮으면 한 번 묻습니다. lint, 시뮬레이션, formal, coverage, synthesis, 모델 비교는 측정 결과로 판단합니다. 프롬프트는 목표, 제약, 근거, 완료 조건만 말합니다. effort는 세션 기본값을 유지합니다.
+[English](README.md)
 
 # RTL Agent Team
 
-> A Claude Code plugin for automated RTL design and verification.
-> 91 specialized AI agents + 55 skills automate the 6-Phase pipeline:
-> Research → Architecture → μArch → RTL → Verify → Design Note.
+RTL 설계와 검증을 위한 Claude Code 플러그인입니다. 91개 전문 AI 에이전트와
+스킬 55개가 명세, 아키텍처, 마이크로아키텍처, RTL 구현, 검증, 설계 노트
+작성을 지원합니다.
 
-RTL 설계 및 검증 자동화를 위한 Claude Code 플러그인.
+## 빠른 시작
 
-91개 전문 AI 에이전트 + 55개 스킬 + 27개 레퍼런스 문서를 통해 6-Phase 설계 파이프라인(Research → Architecture → μArch → RTL → Verify → Design Note)을 자동화합니다.
+Claude Code에서 배포 버전(v0.14.6)을 설치합니다.
 
-![](./rat_logo.jpg)
-
-## try-2.0 개발 상태
-
-스킬 55개와 에이전트 91개를 사용하는 v2 구현입니다. 정책은 에이전트에 포함하며, 순차·팀 모드는 같은 에이전트를 사용합니다. 공식 가이드 검토, 모델 평가와 외부 환경 검증 범위는 [작업 기록](plugin_docs/plans/2026-11-17-v2-execution.md)에 정리했습니다.
-
-도구 준비 여부는 Phase별로 확인합니다. 계정 사용 한도 때문에 Fable·Opus 실측은 수행하지 못했으며, 상용 EDA와 실제 SSH/LSF 검증에는 사이트 환경이 필요합니다.
-
-## Marketplace
-
-이 repository는 **RTL Agent Marketplace**로, 하드웨어 설계 관련 플러그인들을 제공합니다.
-
-| 플러그인 | 설명 | 버전 |
-|---------|------|------|
-| **rtl-agent-team** | 91-agent RTL 설계 파이프라인 (Research → Architecture → μArch → RTL → Verify → Design Note) | 0.14.6 |
-| **systemverilog-lsp** | SystemVerilog/Verilog LSP (slang-server 기반 — diagnostics, hover, go-to-definition 등) | 1.2.0 |
-
-Marketplace에 추가 플러그인(도메인 지식 패키지, MCP 서버, 전문 스킬 등)이 지속적으로 추가될 예정입니다.
-
-## Quick Start
-
-워크플로는 **세 가지 단계**로 명확히 구분되며, 각 단계는 범위와 빈도가 다릅니다:
-
-| 단계 | 범위 | 빈도 | 명령어 |
-|------|------|------|--------|
-| **A. 머신 설정** | 머신 단위 (전역) | 머신당 1회 | `/plugin install` + `/rtl-agent-team:rat-setup` |
-| **B. 프로젝트 초기화** | 프로젝트 디렉토리 단위 | 프로젝트당 1회 | `/rtl-agent-team:rat-init-project` |
-| **C. 설계 작업** | 프로젝트 내부 | 반복 수행 | `/rtl-agent-team:rat-auto-design`, phase/sub 스킬 |
-
-각 단계는 올바른 작업 디렉토리에서 실행해야 합니다. Stage A는 어디서든 실행 가능합니다. Stage B와 Stage C는 **프로젝트 디렉토리 안에서** 실행하세요 (`docs/phase-*/`, `rtl/`, `.rat/state/` 등 산출물이 CWD 기준으로 생성됩니다).
-
-### Stage A — 머신 설정 (머신당 1회)
-
-플러그인을 설치하고 요청한 작업에 필요한 EDA 기능을 준비합니다. 실행 호스트를 알려주면
-LLM이 도구 경로를 조사하고 재사용할 사이트 프로필과 프로젝트 설정을 작성합니다.
-사용자에게는 아직 결정하지 않은 환경·설계 항목만 확인합니다.
-
-```bash
-# A1. Marketplace 등록 (1회)
+```text
 /plugin marketplace add babyworm/rtl-agent-team
-
-# A2. 플러그인 설치 (1회)
 /plugin install rtl-agent-team
-/plugin install systemverilog-lsp   # (선택) SV LSP
+```
 
-# A3. 요청한 Phase와 실행 환경을 확인합니다.
+RTL 프로젝트 디렉토리에서 도구를 준비하고 프로젝트를 초기화한 뒤, 명세를
+지정해 설계를 시작합니다.
+
+```text
 /rtl-agent-team:rat-setup
-```
-
-원격 도구를 사용한다면 “SSH 호스트 <호스트 이름>에서 실행해줘”라고 함께 요청합니다.
-사이트 프로필은 `${CLAUDE_PLUGIN_DATA:-$HOME/.config/rtl-agent-team}/sites/`에 저장하며,
-프로젝트마다 사용할 사이트를 선택합니다. 도구 경로 발견, 실행 성공, 라이선스를 사용하는
-실제 설계 검증 결과를 구분합니다. [SSH 설정 안내](plugin_docs/eda-setup-guide.md#llm-assisted-ssh-setup)를 참고하세요.
-
-> `systemverilog-lsp`가 설치되어 있지만 `slang-server`가 없으면, 서브플러그인이 `SessionStart`에서 이를 점검하고 `local`(`~/.local/bin`, 권장), `global`, `skip` 중 하나를 고르도록 안내합니다.
-
-### Stage B — 프로젝트 초기화 (프로젝트당 1회)
-
-프로젝트 디렉토리 구조 생성, 프로젝트별 규칙/가이드 배포, EDA wrapper 스크립트 자동 설치를 수행합니다. 프로젝트 디렉토리 내부에서 실행하세요. 기존 템플릿과 규칙은 유지되며, 관리 대상 예외는 프로젝트 `CLAUDE.md`의 RAT 블록, `rat_config.json` 도구 탐지 정보 갱신, `config.mk` 재생성입니다. 사용 가능한 도구 경로 override는 유지하고 오래되었거나 실행 불가능한 경로는 갱신합니다.
-
-```bash
-# B1. 프로젝트 디렉토리로 이동
-cd ~/work/my-rtl-project
-
-# B2. 프로젝트 구조 초기화 (프로젝트 내부에서 실행)
-#     - docs/, rtl/, sim/, refc/, lint/, syn/, formal/, reviews/ 생성
-#     - .claude/rules/ 배포 (코딩 컨벤션, 검증 게이트)
-#     - 서브디렉토리 CLAUDE.md 배포 (Phase별 가이드)
-#     - run_sim.sh, run_lint.sh, run_syn.sh, run_cdc.sh 자동 설치
-#     - 기존 템플릿/규칙은 덮어쓰지 않으며 관리 대상 설정은 갱신
 /rtl-agent-team:rat-init-project
+/rtl-agent-team:rat-auto-design specs/design.md
 ```
 
-### Stage C — 설계 작업 (프로젝트 내에서 반복)
+원격 EDA를 사용할 때는 `rat-setup`에 SSH 별칭과 실행할 단계를 알려 주세요.
+필요하면 사이트 초기화 스크립트도 지정합니다. 접속 정보와 생성된 설정은
+이 플러그인 저장소 밖에 보관합니다. [EDA 및 Docker 설정](plugin_docs/eda-setup-guide.md)
 
-단계가 끝날 때마다 Codex 교차검증을 받으려면 프로젝트 루트의 `rat_config.json`에 `"review": {"codex_cross_review": true}`를 설정합니다. 기본값은 false입니다. 한 번만 적용하려면 “이번 auto design은 Codex 교차검증 포함” 또는 “이번에는 P3만 교차검증”처럼 요청합니다.
+## 작업별 스킬
 
-RTL 설계 및 검증 파이프라인을 실행합니다. 초기화된 프로젝트 내부에서 실행하세요 — 산출물이 CWD 기준으로 생성되므로, 초기화되지 않은 디렉토리에서는 예상 구조가 형성되지 않습니다.
+| 목표 | 스킬 |
+| --- | --- |
+| P1~P6 전체 실행 | `rat-auto-design` |
+| 마이크로아키텍처와 BFM까지 설계 대안 탐색 | `rat-dse` |
+| RTL 구현 전 설계 검토 | `rat-p1p3-spec-uarch` |
+| 승인된 마이크로아키텍처로 RTL 구현 및 검증 | `rat-p4p5-impl-verify` |
+| 기능 검증 완료 여부 확인 | `rtl-p5a-functional-closure` |
+| P5A 통과 후 합성·타이밍·CDC 확인 | `rtl-p5b-silicon-validation` |
+
+스킬 이름 앞에 `/rtl-agent-team:`을 붙여 실행합니다. 전체 자동화는 팀 도구를
+사용할 수 있을 때 팀 모드로 진행하며, Phase 5는 통합 검증을 실행합니다.
+순차 실행은 `--no-team`을 지정합니다. 같은 명령으로 재개하면 유효한 검증
+결과를 재사용합니다.
+
+Codex 교차검증은 기본적으로 꺼져 있습니다. 실행할 때 전체 또는 특정 단계의
+교차검증을 요청하거나, 프로젝트의 `rat_config.json`에서
+`review.codex_cross_review`를 `true`로 설정합니다. [교차검증 동작](runtime/phase-dispatch.md)
+
+## 로컬 플러그인 개발
+
+이미 `try-2.0`을 받아 뒀다면 해당 디렉토리에서 `claude --plugin-dir .`로
+현재 작업 트리를 읽습니다. 새로 받는 경우에는 아래 명령을 실행합니다.
 
 ```bash
-# C1. 전체 자동화 (6-Phase 파이프라인)
-/rtl-agent-team:rat-auto-design
-# 자연어 사용 예시:
-#   /rtl-agent-team:rat-auto-design "H.264 TQ 서브시스템 설계해줘"
-#   /rtl-agent-team:rat-auto-design "../vdc-m/refc의 레퍼런스 C 모델로 VDC-M 1.2
-#     인코더 구현. TSMC 28nm, 4K 60fps @ 500MHz, margin 40%"
-
-# C2. 또는 분할 파이프라인 (단계 사이 인간 리뷰 가능)
-/rtl-agent-team:rat-dse               # Phase 1→3: μArch와 BFM까지 설계 대안을 탐색합니다.
-/rtl-agent-team:rat-p1p3-spec-uarch   # Phase 1→3: Spec → μArch 설계 문서
-/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: RTL 구현 + 검증
-
-# C3. 또는 개별 phase/sub-phase 스킬 (아래 사용법 섹션 참조)
-```
-
----
-
-## 설치 (Stage A 대체 방법)
-
-위의 [Quick Start](#quick-start) Stage A에서 이미 플러그인 설치가 다뤄집니다. 아래는
-CLI나 개발용 심볼릭 링크를 선호하는 사용자를 위한 대체 방법입니다. 플러그인 설치
-후에도 EDA 툴체인 점검을 위해 `/rtl-agent-team:rat-setup`을 1회 실행해야 합니다.
-
-### Claude Code 대화창에서 설치 (권장)
-
-```
-/plugin marketplace add babyworm/rtl-agent-team
-/plugin install rtl-agent-team
-```
-
-설치 확인: `/plugin`
-
-### CLI에서 설치
-
-```bash
-claude plugin marketplace add babyworm/rtl-agent-team
-claude plugin install rtl-agent-team
-```
-
-### 로컬 플러그인 개발
-
-플러그인 소스를 직접 수정하며 개발할 때는 독립 clone root에서 공식
-`--plugin-dir` 옵션으로 Claude Code를 실행합니다:
-
-```bash
-git clone https://github.com/babyworm/rtl-agent-team.git
+git clone --branch try-2.0 https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 claude --plugin-dir .
 ```
 
-## 사용법 (Stage C — 프로젝트 내 설계 작업)
-
-이 섹션은 **Stage A(머신 설정)와 Stage B(프로젝트 초기화)가 이미 완료된 상태**를
-전제로 합니다. 아래 모든 명령어는 **초기화된 프로젝트 디렉토리 안에서** 실행하세요.
-전체 단계 맵은 [Quick Start](#quick-start)를 참조하세요.
-
-### 라우팅 계약
-
-- 사용자 요청은 **Action Skill 우선**으로 라우팅합니다 (예: `/rtl-agent-team:rat-auto-design`, `/rtl-agent-team:rtl-p5-verify`).
-- Orchestrator Agent는 사용자 직접 호출 대상이 아니며, Action Skill이 `Task(...)`로 내부 스폰합니다.
-- 내부 정책은 sync 스크립트로 해당 에이전트에 포함됩니다. 스킬 목록에는 등록하지 않습니다.
-- `rtl-orchestrate`는 내부 라우팅 참조 스킬(`user-invocable: false`)이며 사용자 slash-command가 아닙니다.
-
-### 전체 자동화
-
-```
-/rtl-agent-team:rat-auto-design
-```
-
-6-Phase 파이프라인 전체를 자동 실행합니다. 또는 자연어로 "H.264 TQ 서브시스템 설계해줘"라고 요청할 수 있습니다.
-
-### Autopilot 재시도
-
-`rat-auto-design`은 측정 결과가 실패하면 해당 부분을 수정한 뒤 관련 검증을 다시 실행합니다.
-같은 게이트에서 두 번 수정해도 검증에 실패하면 작업을 멈추고 사용자에게 다음 결정을 요청합니다.
-요구사항의 해석에 따라 설계나 검증의 기대 결과가 달라지면 즉시 질문합니다.
-작업을 재개할 때는 기존 검증 결과와 수정 횟수를 이어받습니다.
-
-### 파이프라인 분할 실행
-
-```
-/rtl-agent-team:rat-dse              # Phase 1→3: μArch와 BFM까지 설계 대안을 탐색합니다.
-/rtl-agent-team:codec-rd-eval        # BD-PSNR/BD-rate 평가 (알고리즘 비교)
-/rtl-agent-team:codec-conformance-eval  # 디코더 conformance 평가 (JVET/JCTVC/3rd party)
-/rtl-agent-team:rat-p1p3-spec-uarch    # Phase 1→3: Spec → μArch 설계 문서 완성
-/rtl-agent-team:rat-p4p5-impl-verify  # Phase 4→5: μArch → RTL 구현 + 검증
-```
-
-설계와 구현 사이에 인간 리뷰를 위해 파이프라인을 분할합니다:
-- `rat-dse`: 요구사항을 충족하는 알고리즘과 아키텍처 후보를 정량적으로 비교합니다. 기존 C 기능 모델이 있으면 아키텍처 참조 모델로 변환할 수 있습니다. Phase 3에서 μArch와 BFM을 완성하고 한 번 검토한 뒤 종료합니다. 사용자가 다른 대안을 요청하면 별도 worktree에서 시험해 기존 결과와 비교합니다.
-- `rat-p1p3-spec-uarch`: 표준 Phase 1→3 — μArch까지 설계 문서를 완성합니다. RTL 구현 전 리뷰를 위해 멈춥니다.
-- `rat-p4p5-impl-verify`: Phase 4→5 — 승인된 μArch 문서로부터 RTL 구현 및 전체 검증을 수행합니다.
-
-### 중단된 파이프라인 재개
-
-`rat-auto-design` 실행 중 중단되면 진행 상태가 자동 저장됩니다. 동일 명령을 다시 실행하면 완료된 Phase를 건너뛰고 마지막 미완료 단계부터 재개합니다.
-
-> **참고:** 프로젝트 초기화(`rat-init-project`)와 EDA 도구 설정(`rat-setup`)은
-> Stage A/B에 해당하며 [Quick Start](#quick-start)에서 설명됩니다.
-
-### 개별 스킬
-
-```
-/rtl-agent-team:rtl-lint-check           # RTL lint 검사
-/rtl-agent-team:rtl-p5s-func-verify      # cocotb 기능 검증
-/rtl-agent-team:rtl-synth-check          # Yosys 합성
-/rtl-agent-team:rtl-p5s-sva-check        # SVA formal 검증
-/rtl-agent-team:p2-arch-design           # 아키텍처 설계
-/rtl-agent-team:domain-consult           # 도메인 전문가 상담
-```
-
-### 스킬 카테고리 (55개)
-
-| 카테고리 | 수량 | 설명 |
-|----------|------|------|
-| **Action Entry Points** | 50 | 사용자 호출 가능 slash 커맨드: Pipeline (`rat-auto-design`, `rat-setup`, `rat-init-project`, `rat-dse`, `rat-ultraloop`, ...), Phase 1-3 spec/arch/uArch, Phase 4 RTL + bugfix + refactor + unit test + block-parallel, Phase 5 functional/formal/CDC/protocol/perf/coverage/UVM/integration, Phase 6-7 review + exploration, utility (lint, synth, ipxact, bug-repro, domain-consult, codec eval, ref-model, bfm-develop, arch-review, ...) |
-| **Convention** | 4 | 파일 확장자별 자동 적용: SystemVerilog, SVA, UVM, SystemC |
-| **Internal** | 1 | 라우팅 SSOT (`rtl-orchestrate`) |
-| **합계** | **55** | |
-
-에셋(템플릿/스크립트/레퍼런스/예제)은 55개 스킬에 분산되어 있습니다 — 각 스킬 디렉토리에서 번들된 에셋을 확인할 수 있습니다.
-
-## 프로젝트 산출물 구조
-
-각 Phase의 설계 산출물(`docs/`)은 다음 Phase의 입력이 되는 파이프라인을 형성합니다.
-상위 스펙 준수 여부 verdict(`reviews/`)는 별도로 관리됩니다.
-
-```
-docs/phase-1-research/ ──→ docs/phase-2-architecture/ ──→ docs/phase-3-uarch/
-        ──→ docs/phase-4-rtl/ ──→ docs/phase-5-verify/ ──→ reviews/phase-6-review/
-        ──→ docs/phase-7-exploration/ (선택적, 자유 탐색)
-```
-
-| 디렉토리 | 역할 | 비고 |
-|----------|------|------|
-| `docs/phase-N-*/` | Phase별 설계 문서 (가이드 파이프라인) | Phase N → Phase N+1 입력 |
-| `reviews/phase-N-*/` | 상위 스펙 준수 verdict (PASS/FAIL) | 데이터 없이 판정만 |
-| `rtl/` | RTL SystemVerilog 소스코드 | Phase 4 코드 산출물 |
-| `sim/`, `formal/` | 테스트벤치 | Phase 4-5 코드 산출물 |
-| `refc/` | C 골든 레퍼런스 모델 (DPI-C 호환) | Phase 2 코드 산출물 |
-| `docs/decisions/` | Architecture Decision Records (ADR) | Phase 2-3 설계 결정 근거 |
-| `docs/lessons-learned.md` | 피드백 루프에서 축적된 교훈 | Phase 전체에 걸쳐 누적 |
-
-## 플러그인 구조
-
-```
-rtl-agent-team/
-├── .claude-plugin/
-│   ├── plugin.json             # 플러그인 매니페스트 (auto-discovery)
-│   └── marketplace.json        # 마켓플레이스 정의
-├── CLAUDE.md                   # 6-Phase 파이프라인 규칙
-├── agents/                     # 91개 에이전트 (설계/검증/리뷰/EDA/도메인/오케스트레이터)
-├── scripts/
-│   └── run_sim.sh              # 시뮬레이터 공통 compile+run wrapper (replay 지원)
-├── skills/                     # 55개 스킬 (SKILL.md + templates/ + examples/)
-│   ├── rtl-orchestrate/        # 내부 라우팅 SSOT + SessionStart hook export 소스
-│   ├── rat-init-project/
-│   │   ├── scripts/
-│   │   │   └── install_project_templates.sh  # Hook-driven 템플릿 자동 설치
-│   │   └── templates/          # run_lint.sh, run_syn.sh, run_cdc.sh + 기타 템플릿
-│   ├── rtl-p5s-func-verify/
-│   │   ├── scripts/            # run_regression.sh, merge_coverage.sh
-│   │       └── run_regression.sh  # Multi-seed 회귀 테스트 (local-first)
-│   ├── systemverilog/          # RTL 코딩 컨벤션 (lowRISC + 오버라이드)
-│   ├── systemverilog-assertion/ # SVA 코딩 컨벤션 (bind, SymbiYosys)
-│   ├── uvm/                    # UVM 코딩 컨벤션 (factory, TLM, coverage)
-│   ├── systemc/                # SystemC/TLM-2.0 (AT non-blocking, AMBA-PV)
-│   └── {skill}/references/     # 27개 레퍼런스 문서 (스킬별 분산)
-│       ├── coding-style-guide.md   # SV 명명 규칙 상세 (systemverilog/)
-│       ├── axi-protocol-rules.md   # AXI4 채널별 SVA 템플릿 (rtl-p5s-protocol-verify/)
-│       ├── sva-patterns.md         # SVA 시간 연산자 + 패턴 라이브러리 (rtl-p5s-sva-check/)
-│       ├── cocotb-ecosystem.md     # cocotb API, cocotb-bus, coverage (rtl-p5s-func-verify/)
-│       └── ...                     # + 23개 (CDC, UVM, Yosys, SDC 등)
-├── hooks/                      # 이벤트 기반 품질 게이트 (14개 hook 스크립트 / 16개 등록)
-│   ├── rtl-skill-activation.sh # PreToolUse+PostToolUse:Skill — setup 체크 + 템플릿 bootstrap, 완료 루프
-│   └── ...                     # + 13개 (라우팅 주입, 검증 게이트, cascade 등)
-├── docker/                     # EDA 도구 Docker 이미지
-│   └── Dockerfile              # 오픈소스 EDA 전체 번들
-└── domain-packages/            # 도메인 지식 패키지
-    ├── video-codec/            # H.264/H.265 지식, 적합성 데이터
-    └── video-processing/       # 색공간 변환, 노이즈 제거, HDR/ISP (3 agents)
-```
-
-### 라우팅 동기화 (기여자)
-
-라우팅/위임 문서를 수정한 뒤 아래를 실행하세요:
-
-```bash
-sh scripts/sync_orchestrator_inject.sh
-python3 -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
-```
-
-## 에이전트 팀
-
-### 에이전트 구성
-
-| 카테고리 | 에이전트 수 | 주요 에이전트 |
-|---------|-----------|-------------|
-| 설계 | 9 | spec-analyst, arch-designer, rtl-architect, uarch-designer, rtl-coder, rtl-critic, rtl-planner, rtl-explorer, goal-clarifier |
-| 검증 | 8 | testbench-dev, func-verifier, perf-verifier, sva-extractor, protocol-checker, coverage-analyst, waveform-analyzer, test-plan-writer |
-| 전문 리뷰 | 16 | codex-cross-reviewer, cdc-reviewer, protocol-reviewer, formal-reviewer, power-analyzer, synthesis-reviewer, uvm-reviewer, cocotb-reviewer, ref-model-reviewer, requirement-tracer, regression-analyzer, equivalence-checker, integration-verifier, security-reviewer, compliance-checker, ultraloop-reviewer |
-| Phase 6 설계 노트 | 4 | code-quality-reviewer, design-quality-reviewer, design-note-writer, improvement-analyst |
-| EDA/합성 | 11 | eda-runner, synthesis-reporter, lint-checker, constraint-writer, timing-advisor, cdc-checker, clock-architect, dft-designer, dc-report-parser, synthesizability-gate, ppa-optimizer-dc |
-| 인프라 | 3 | ipxact-generator, bfm-dev, ref-model-dev |
-| 도메인 전문가 | 13 | domain-expert, vcodec-chief-standard-expert, vcodec-syntax-entropy-expert, vcodec-intra-pred-expert, vcodec-me-expert, vcodec-mc-expert, vcodec-transform-quant-expert, vcodec-filter-recon-expert, vcodec-architecture-expert, video-processing-expert, vproc-color-format-expert, vproc-denoise-expert, vproc-image-processing-expert |
-| Phase 4 블록 병렬 | 2 | p4-block-parallel-coordinator, p4-block-worker |
-| 오케스트레이터 | 33 | autopilot-orchestrator, p1-research-orchestrator, p2-arch-orchestrator, p3-uarch-orchestrator, p4-implement-orchestrator, p5-verify-orchestrator, p6-review-orchestrator 외 26개 (팀/서브페이즈 변형) |
-
-복잡한 설계 판단, 설계·검증, 일반 도구 작업, 단순 추출에 Claude는 각각 Fable·Opus·Sonnet·Haiku를 쓰고 Codex는 Astra·Sol·Terra·Luna를 씁니다. Codex, Antigravity(`agy`), Grok은 설치된 CLI의 모델 목록에서 실제 ID를 선택합니다. 역할의 기본 등급은 실제 작업 난이도에 따라 조정하며, 사용자가 모델을 지정하면 그 선택을 우선합니다. [호스트별 모델 선택](runtime/model-selection.md)
-
-호스트가 설치된 스킬을 인식하면 이름으로 호출합니다. 직접 불러올 때는 로컬 플러그인의 `skills/<skill>/SKILL.md`를 지정합니다. 예를 들어 DSE는 `skills/rat-dse/SKILL.md`를 사용합니다. 호스트가 스킬에서 참조하는 에이전트와 스크립트에도 접근할 수 있도록 플러그인 디렉터리 전체를 유지합니다.
-
-### 6-Phase 파이프라인 (+Phase 7 선택적 탐색)
-
-| Phase | 이름 | 주요 에이전트 | docs/ 산출물 | reviews/ verdict |
-|-------|------|-------------|-------------|-----------------|
-| 1 | Research | spec-analyst | iron-requirements.json, open-requirements.json, io_definition.json, domain-analysis.md | research-review.md |
-| 2 | Architecture + Ref Model | arch-designer, ref-model-dev | architecture.md | architecture-review.md |
-| 3 | μArch + BFM | uarch-designer, bfm-dev | {module}.md (모듈별) | uarch-review.md |
-| 4 | RTL + Unit Test | rtl-coder, lint-checker | module-descriptions.md, unit-test-design.md, Stream B 산출물 | design-review.md |
-| 5 | Verify | func-verifier, sva-extractor | unit-test-report.md, lint-report.md 등 | final-compliance.md, e2e-traceability.md |
-| 6 | Design Note | code-quality-reviewer, design-note-writer | - | code-review.md, design-review.md, design-note.md, improvements.md |
-| 7 | Exploration (선택) | improvement-analyst | exploration-notes.md | exploration-review.md |
-
-> **추가 파이프라인 산출물:** 각 Phase(1-5) 완료 시 `phase-N-summary.md`가 생성되어 하위 Phase의 컨텍스트 압축에 사용됩니다. Phase 4 Stream B는 RTL 코딩과 병렬로 SVA/CDC/TB 스켈레톤을 생성합니다. Phase 2-3은 주요 설계 결정을 `docs/decisions/`에 ADR로 기록합니다.
-
-### Post-Verify PPA 최적화 (v0.10.0 신규)
-
-Phase 5 (verify PASS)와 Phase 6 (design note) 사이에 위치한 **선택적 단계**.
-Design Compiler 합성 → JSON 리포트 → RTL patch → equivalence+smoke →
-수렴 판정 루프를 3가지 종료 조건 중 하나에 도달할 때까지 반복합니다:
-**정상 수렴** (3회 연속 |Δ|<2%), **early plateau** (iter 1-2 ×|Δ|<1%
-→ EDA 툴이 이미 최적점 근처라 판단, 사용자에게 escalate), **max cycles**
-(기본 4). Timing-first 휴리스틱 (기본 가중치 0.7 / 0.2 / 0.1).
-
-| 명령어 | 용도 |
-|--------|------|
-| `/rtl-agent-team:rtl-ppa-optimize-dc [top]` | 단일 반복 실행 |
-| `/rtl-agent-team:rat-ultraloop-ppa [top]` | 수렴까지 자동 루프 + 30분 auto-continue |
-
-**전제 조건**:
-- PATH에 `dc_shell` (Synopsys Design Compiler) 또는 `genus` (Cadence) 필요
-- `requirements.json["ppa_targets"]` 섹션 (최초 실행 시 scaffold 자동 생성)
-- Phase 5 PASS (`reviews/phase-5-verify/final-compliance.md` verdict=PASS)
-- `rtl/${top}/` 하위 clean git 상태
-
-**산출물**: `docs/ppa-opt/iter-{N}/` (리포트, patch, rationale, equiv/smoke 증거), `docs/ppa-opt/final-report.md`, `reviews/ppa-opt/convergence-review.md`. WNS가 20 ps 이상 악화되거나 equivalence/smoke가 실패하면 해당 iteration은 자동 rollback됩니다. 전체 스펙은 `plugin_docs/specs/2026-04-17-ppa-optimizer-dc-design.md` 참조.
-
-### 코딩 컨벤션 스킬
-
-| 스킬 | 적용 대상 | 주요 내용 |
-|------|----------|----------|
-| `systemverilog` | `.sv`, `.svh`, `.v`, `.vh` | lowRISC + 프로젝트 오버라이드, Power, FPGA, Pipelining |
-| `systemverilog-assertion` | SVA, bind 파일 | assume/assert/cover, SymbiYosys, bind 패턴 |
-| `uvm` | UVM testbench | factory, TLM 포트, coverage, phase callback |
-| `systemc` | `.cpp`, `.h` (SystemC) | TLM-2.0 AT non-blocking, AMBA-PV (AXI/AHB/APB), Memory Manager, PEQ |
-
-### 문서 3계층 구조 (점진적 공개)
-
-| 계층 | 위치 | 역할 |
-|------|------|------|
-| 핵심 규칙 | `skills/*/SKILL.md` → `<Steps>` | 에이전트가 항상 읽는 필수 규칙 |
-| 상황별 가이드 | `skills/*/SKILL.md` → `<Advanced>` | 특정 최적화/상황에서만 참조 |
-| 상세 레퍼런스 | `skills/*/references/*.md` | 명령 레퍼런스, 패턴 라이브러리, 프로토콜 상세 |
-
-## EDA 도구
-
-`eda-runner` 에이전트가 Bash를 통해 로컬 EDA CLI 도구를 직접 실행합니다.
-
-| 도구 | 용도 | 필수 여부 |
-|------|------|----------|
-| verilator / iverilog / VCS / Xcelium / Questa | Simulation | P4/P5A에서 적합한 시뮬레이터 1개를 선택합니다. |
-| verible / slang / Verilator / SpyGlass | Lint | P4/P5A에서 1개를 선택합니다. |
-| svlens / SpyGlass / VC CDC / Questa CDC | CDC | 클록 도메인이 여러 개인 설계에 필요합니다. |
-| slang-server | SV Language Server (LSP) | 권장 |
-| cocotb | Functional verification | cocotb 검증 경로에 필요합니다. 상용 UVM 경로에는 필요하지 않습니다. |
-| Python >= 3.9 | Execution and evidence helpers | RAT_PYTHON |
-| C/C++ compiler | Reference/BFM build | P2/P3 |
-| make | 빌드 시스템 | 필수 |
-| SystemC | TLM BFM | SystemC/TLM BFM을 요청한 경우에 필요합니다. |
-| iverilog | 대안 시뮬레이터 | 선택 (verilator 설치 시) |
-| yosys | 합성 (Phase 5B+) | 선택 |
-| sby (SymbiYosys) | Formal 검증 | 선택 |
-| gtkwave | 파형 뷰어 | 선택 |
-| vcs / xrun / questa | 상용 시뮬레이터 | 선택 |
-| spyglass (sg_shell) | 상용 lint + CDC | 선택 |
-| dc_shell (Design Compiler) | 상용 합성 | 선택 |
-| vc_cdc / questa_cdc | 상용 CDC 분석 | 선택 (CDC 요구사항 충족) |
-
-`/rtl-agent-team:rat-setup`으로 도구 설치 상태를 확인하고 상용 도구를 대화형으로 설정할 수 있습니다.
-
-상용 도구 설정 상세 안내(env_source, 타겟 라이브러리, 벤더별 예시)는 **[EDA Setup Guide](plugin_docs/eda-setup-guide.md)**를 참조하세요.
-
-### EDA Wrapper 스크립트
-
-프로젝트 EDA wrapper는 실행 기록과 `_latest.sh` replay 스크립트를 생성합니다.
-회귀 테스트 runner는 플러그인에 번들된 별도 helper로 seed별/집계 JSON 보고서를
-생성하며 replay 스크립트는 생성하지 않습니다.
-
-| 스크립트 | 위치 | 지원 도구 |
-|---------|------|----------|
-| `run_sim.sh` | `scripts/` | iverilog, verilator, vcs, xrun (xcelium), questa |
-| `run_lint.sh` | `lint/scripts/` | verilator, verible, slang, spyglass |
-| `run_syn.sh` | `syn/scripts/` | yosys, dc_shell (Design Compiler), genus |
-| `run_cdc.sh` | `lint/scripts/` | structural (heuristic), svlens, spyglass, vc_cdc, questa_cdc |
-| `run_regression.sh` | `{plugin_root}/skills/rtl-p5s-func-verify/scripts/` | Multi-seed cocotb 회귀 테스트 (local-first, AWS opt-in); 기본 결과 경로는 `sim/regression/` |
-
-`rat-init-project`는 위 프로젝트 wrapper와 formal/equivalence 및 UVM 회귀 테스트
-helper를 설치합니다. 시뮬레이션, lint, CDC, equivalence 실행은
-`{outdir}/replay/`에 replay 스크립트를 쓰고, 합성은 `{syn_root}/scr/replay/`에
-씁니다. 회귀 테스트 helper는 replay 대신 보고서를 생성합니다. `run_regression.sh`는
-프로젝트에 복사되지 않고 `{plugin_root}`에서 기능 검증 스킬이 호출합니다.
-
-Regression runner는 기본 `--mode local`에 `max(1, nproc-2)` 병렬로 동작합니다. AWS Batch는 명시적 opt-in이 필요합니다 (`RTL_ALLOW_AWS=1` + `RTL_AWS_BATCH_RUNNER`).
-
-### Docker EDA 이미지 (권장)
-
-EDA 도구 설치가 번거롭다면, 모든 도구가 포함된 Docker 이미지를 빌드할 수 있습니다:
-
-```bash
-# 독립 rtl-agent-team clone root에서 아래 빌드 명령을 실행합니다.
-cd /path/to/rtl-agent-team
-
-# 이미지 빌드 (최초 1회)
-docker build -t rtl-eda-tools docker/
-
-# RTL 프로젝트를 마운트하여 실행
-docker run -it --rm \
-  --user "$(id -u):$(id -g)" --env HOME=/tmp \
-  --mount "type=bind,src=/absolute/path/to/rtl-project,dst=/workspace" \
-  --workdir /workspace rtl-eda-tools
-
-# 버전 지정 빌드
-docker build -t rtl-eda-tools \
-  --build-arg VERILATOR_VERSION=5.024 \
-  --build-arg SLANG_VERSION=v11.0 \
-  --build-arg SVLENS_VERSION=v0.3.6 \
-  --build-arg SYSTEMC_VERSION=3.0.2 \
-  docker/
-```
-
-포함 도구: Verilator, Verible, Yosys, Icarus Verilog, slang, svlens (CDC + 구조 분석), slang-server (SV LSP), SystemC/TLM-2.0, SymbiYosys (+ boolector, z3), GTKWave, cocotb, cocotb-bus, cocotbext-axi, gcc/g++.
-
-Claude Code에서도 빌드 가능: "EDA 도커 이미지 만들어줘" 또는 `/rtl-agent-team:rat-setup` 실행 후 Docker 옵션 선택.
-
-## Marketplace 구조
-
-이 repository는 단일 플러그인이 아닌 **marketplace**로 동작합니다.
-`systemverilog-lsp` 항목은 외부 GitHub repository에서 가져오며 이 트리에
-vendoring되지 않습니다.
-
-```
-rtl-agent-team/                          # Marketplace root
-├── .claude-plugin/
-│   ├── plugin.json                      # rtl-agent-team 플러그인 매니페스트
-│   └── marketplace.json                 # Marketplace 정의 (플러그인 목록)
-├── agents/                              # rtl-agent-team 에이전트 (91개)
-├── skills/                              # rtl-agent-team 스킬 (55개, 27개 레퍼런스 문서 포함)
-└── domain-packages/                     # 도메인 지식 패키지
-    ├── video-codec/                     # H.264/H.265 코덱 지식
-    └── video-processing/                # 색공간, 노이즈 제거, HDR/ISP
-```
-
-Marketplace에 새 플러그인을 추가하려면 `.claude-plugin/marketplace.json`의 `plugins` 배열에 항목을 추가합니다:
-- 같은 repo 내: `"source": "./plugins/new-plugin"`
-- 외부 repo: `"source": {"source": "github", "repo": "owner/repo"}`
-
-## 개발
-
-이 플러그인은 선언형 `.md`/`.json` 정의와 helper `.py`/`.sh` 스크립트로
-구성되며 별도 빌드 과정이 필요 없습니다.
-
-```bash
-git clone https://github.com/babyworm/rtl-agent-team.git
-cd rtl-agent-team
-claude --plugin-dir .
-```
-
-## 라이선스
-
-MIT
-
-Claude Code에서 `Stop hook error occurred`가 표시되면 RAT가 미완료 조건을 반환한 것일 수 있습니다. 함께 표시된 사유를 확인합니다. 동일 조건의 반복 차단에는 한도가 있습니다.
+- [기여 안내](CONTRIBUTING_kr.md) · [테스트](tests/README_kr.md)
+- [기술 문서](plugin_docs/README.md) · [모델 선택](runtime/model-selection.md)
+- [변경 이력](CHANGELOG.md) · [MIT 라이선스](LICENSE)
