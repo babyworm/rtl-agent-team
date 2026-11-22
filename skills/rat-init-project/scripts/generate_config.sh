@@ -181,7 +181,7 @@ declare -A SAVED_PATH=()
 declare -A SAVED_SHELL=()
 for input_config in "$ENV_CONFIG" "$CONFIG"; do
   [[ -f "$input_config" ]] || continue
-  for entry in "${ALL_TOOLS[@]}"; do
+  for entry in ${ALL_TOOLS[@]+"${ALL_TOOLS[@]}"}; do
     read -r cat key _bin <<< "$entry"
     index="$cat/$key"
     [[ -n "$(json_get_path "$input_config" tools "$cat" "$key")" ]] || continue
@@ -226,7 +226,7 @@ echo "=== EDA Tool Detection ==="
 declare -A DET_STATUS=()
 declare -A DET_PATH=()
 
-for entry in "${ALL_TOOLS[@]}"; do
+for entry in ${ALL_TOOLS[@]+"${ALL_TOOLS[@]}"}; do
   read -r cat key bin <<< "$entry"
   env_src="${SAVED_ENV[$cat/$key]:-}"
   exp_path="${SAVED_PATH[$cat/$key]:-}"
@@ -247,7 +247,7 @@ DET_PATH["cdc/structural"]="(built-in)"
 
 # Print summary
 PREV_CAT=""
-for entry in "${ALL_TOOLS[@]}"; do
+for entry in ${ALL_TOOLS[@]+"${ALL_TOOLS[@]}"}; do
   read -r cat key bin <<< "$entry"
   if [[ "$cat" != "$PREV_CAT" ]]; then
     [[ -n "$PREV_CAT" ]] && echo ""
@@ -268,7 +268,7 @@ echo ""
 pick_pref() {
   local cat="$1"; shift
   local candidates=("$@")
-  for key in "${candidates[@]}"; do
+  for key in ${candidates[@]+"${candidates[@]}"}; do
     if [[ "${DET_STATUS[$cat/$key]:-false}" == "true" ]]; then
       echo "$key"
       return

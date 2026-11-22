@@ -176,7 +176,7 @@ build() {
         log_info "Arch Linux detected: using vendored fmt"
     fi
 
-    cmake "${cmake_args[@]}"
+    cmake ${cmake_args[@]+"${cmake_args[@]}"}
 
     log_info "Building slang-server (this may take a few minutes)..."
     local nproc

@@ -141,7 +141,7 @@ collect_rtl_filelist() {
   [[ -f "$filelist" ]] || { echo "ERROR: RTL filelist not found: $filelist" >&2; exit 1; }
 
   if ((${#FILELIST_STACK[@]})); then
-    for stack_item in "${FILELIST_STACK[@]}"; do
+    for stack_item in ${FILELIST_STACK[@]+"${FILELIST_STACK[@]}"}; do
       [[ "$stack_item" == "$filelist" ]] && {
         echo "ERROR: recursive RTL filelist include cycle at: $filelist" >&2
         exit 1
@@ -277,7 +277,7 @@ if [[ ! -f "$FM_TCL" ]] || [[ -z "$SCRIPT_PATH" ]]; then
     echo ""
     echo "# --- Reference design (RTL) ---"
     printf 'read_sverilog -container r -libname WORK'
-    for f in "${RTL_ARGS[@]}"; do
+    for f in ${RTL_ARGS[@]+"${RTL_ARGS[@]}"}; do
       printf ' "%s"' "$f"
     done
     printf '\n'
@@ -351,4 +351,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.2
+# rat-version: 2.0.3

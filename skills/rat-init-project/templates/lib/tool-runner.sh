@@ -83,8 +83,9 @@ rat_lock_experiment() {
   local namespace
   namespace=$(rat_experiment_output .) || return $?
   # flock belongs to the open file description held by this wrapper until exit.
-  exec {_RAT_EXPERIMENT_FD}<"$namespace" || return $?
-  "$_TOOL_RUNNER_PYTHON" - "$_RAT_EXPERIMENT_FD" <<'PYLOCK' || return $?
+  # A fixed descriptor: bash 3.2 (macOS) has no `exec {var}<` allocation.
+  exec 19<"$namespace" || return $?
+  "$_TOOL_RUNNER_PYTHON" - 19 <<'PYLOCK' || return $?
 import fcntl
 import sys
 
@@ -345,7 +346,7 @@ get_formal_tier() {
   fi
 }
 
-# rat-version: 2.0.2
+# rat-version: 2.0.3
 
 
 rat_capture_path() {

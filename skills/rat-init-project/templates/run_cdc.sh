@@ -139,10 +139,10 @@ INPUT_DEFINES=()
 INPUT_ARGS=(inputs --root "$PROJECT_ROOT")
 [[ -z "$FILELIST" ]] || INPUT_ARGS+=(--filelist "$FILELIST")
 if [[ ${#FILES[@]} -gt 0 ]]; then
-  for input_source in "${FILES[@]}"; do INPUT_ARGS+=(--source "$input_source"); done
+  for input_source in ${FILES[@]+"${FILES[@]}"}; do INPUT_ARGS+=(--source "$input_source"); done
 fi
 _INPUT_HELPER="$(dirname "${_TOOL_RUNNER_RUNTIME}")/verify_evidence.py"
-INPUT_RECORDS=$("${_TOOL_RUNNER_PYTHON}" "$_INPUT_HELPER" "${INPUT_ARGS[@]}")
+INPUT_RECORDS=$("${_TOOL_RUNNER_PYTHON}" "$_INPUT_HELPER" ${INPUT_ARGS[@]+"${INPUT_ARGS[@]}"})
 while IFS=$'\t' read -r input_kind input_value; do
   case "$input_kind" in
     sources) SRC_FILES+=("$input_value") ;;
@@ -158,10 +158,10 @@ fi
 
 # Resolve source files to absolute paths (before cd)
 _abs_src=()
-for f in "${SRC_FILES[@]}"; do
+for f in ${SRC_FILES[@]+"${SRC_FILES[@]}"}; do
   case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
 done
-SRC_FILES=("${_abs_src[@]}")
+SRC_FILES=(${_abs_src[@]+"${_abs_src[@]}"})
 
 # cd to CDC directory — all tool artifacts stay contained
 cd "$OUTDIR"
@@ -180,10 +180,10 @@ case "$TOOL" in
       echo "Rule: detect clock/reset naming patterns and obvious async crossings."
       echo ""
       echo "Clock-like signals:"
-      grep -RhoE '\b[a-zA-Z0-9_]*_clk\b|\bclk\b' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true
+      grep -RhoE '\b[a-zA-Z0-9_]*_clk\b|\bclk\b' ${SRC_FILES[@]+"${SRC_FILES[@]}"} 2>/dev/null | sort -u || true
       echo ""
       echo "Reset-like signals:"
-      grep -RhoE '\b[a-zA-Z0-9_]*_rst_n\b|\brst_n\b' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true
+      grep -RhoE '\b[a-zA-Z0-9_]*_rst_n\b|\brst_n\b' ${SRC_FILES[@]+"${SRC_FILES[@]}"} 2>/dev/null | sort -u || true
     } | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
 
@@ -196,17 +196,17 @@ case "$TOOL" in
       SVLENS_ARGS=(svlens cdc --format all -o "$SVLENS_OUTDIR")
       [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
       [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
-      SVLENS_ARGS+=("${SRC_FILES[@]}")
+      SVLENS_ARGS+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
       # The CMD echo and replay script serialize these argv values into shell
       # text — validate against shell metacharacters first (live invocation
       # via run_tool "${SVLENS_ARGS[@]}" is argv-safe on its own).
       validate_shell_safe "--top" "$TOP"
       validate_shell_safe "--outdir path" "$SVLENS_OUTDIR"
       validate_shell_safe "filelist path" "$FILELIST"
-      validate_shell_safe "source file path" "${SRC_FILES[@]}"
-      echo "CMD: ${SVLENS_ARGS[*]}"
-      write_replay "${SVLENS_ARGS[*]}"
-      if run_tool "${SVLENS_ARGS[@]}" 2>&1 | tee -a "$REPORT"; then
+      validate_shell_safe "source file path" ${SRC_FILES[@]+"${SRC_FILES[@]}"}
+      echo "CMD: ${SVLENS_ARGS[*]:-}"
+      write_replay "${SVLENS_ARGS[*]:-}"
+      if run_tool ${SVLENS_ARGS[@]+"${SVLENS_ARGS[@]}"} 2>&1 | tee -a "$REPORT"; then
         echo "[svlens] Crosscheck complete (0 violations). Reports in $SVLENS_OUTDIR/"
       else
         SVLENS_EXIT=$?
@@ -235,18 +235,18 @@ case "$TOOL" in
     SVLENS_ARGS=(svlens cdc --format all -o "$OUTDIR")
     [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
     [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
-    SVLENS_ARGS+=("${SRC_FILES[@]}")
+    SVLENS_ARGS+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
     # The CMD echo and replay script serialize these argv values into shell
     # text — validate against shell metacharacters first (live invocation
     # via run_tool "${SVLENS_ARGS[@]}" is argv-safe on its own).
     validate_shell_safe "--top" "$TOP"
     validate_shell_safe "--outdir path" "$OUTDIR"
     validate_shell_safe "filelist path" "$FILELIST"
-    validate_shell_safe "source file path" "${SRC_FILES[@]}"
+    validate_shell_safe "source file path" ${SRC_FILES[@]+"${SRC_FILES[@]}"}
     echo "=== svlens cdc (AST-based CDC analysis) ==="
-    echo "CMD: ${SVLENS_ARGS[*]}"
-    write_replay "${SVLENS_ARGS[*]}"
-    run_tool "${SVLENS_ARGS[@]}" 2>&1 | tee "$REPORT"
+    echo "CMD: ${SVLENS_ARGS[*]:-}"
+    write_replay "${SVLENS_ARGS[*]:-}"
+    run_tool ${SVLENS_ARGS[@]+"${SVLENS_ARGS[@]}"} 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -255,7 +255,7 @@ case "$TOOL" in
     # the replayed command line — validate against shell metacharacters first.
     validate_shell_safe "--top" "$TOP"
     validate_shell_safe "--outdir path" "$OUTDIR"
-    validate_shell_safe "source file path" "${SRC_FILES[@]}"
+    validate_shell_safe "source file path" ${SRC_FILES[@]+"${SRC_FILES[@]}"}
 
     CDC_TCL="$SCRIPT_PATH"
     if [[ -z "$CDC_TCL" ]]; then
@@ -272,21 +272,21 @@ case "$TOOL" in
         echo 'if {[catch {'
         echo "new_project spyglass_cdc -projectwdir \"$SPYGLASS_PROJDIR\" -force"
         echo "set_option enableSV12 yes"
-        for src in "${SRC_FILES[@]}"; do
+        for src in ${SRC_FILES[@]+"${SRC_FILES[@]}"}; do
           echo "read_file -type verilog \"$src\""
         done
         if [[ ${#INPUT_INCLUDE_DIRS[@]} -gt 0 ]]; then
-          validate_shell_safe "filelist include directory" "${INPUT_INCLUDE_DIRS[@]}"
+          validate_shell_safe "filelist include directory" ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}
           printf 'set_option incdir [list'
-          printf ' "%s"' "${INPUT_INCLUDE_DIRS[@]}"
+          printf ' "%s"' ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}
           printf ']\n'
         fi
         if [[ ${#INPUT_DEFINES[@]} -gt 0 ]]; then
-          for definition in "${INPUT_DEFINES[@]}"; do
+          for definition in ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}; do
             [[ "$definition" =~ ^[A-Za-z0-9_./=:+,\'-]+$ ]] || { echo "ERROR: unsupported Tcl define: $definition" >&2; exit 1; }
           done
           printf 'set_option define {'
-          printf ' %s' "${INPUT_DEFINES[@]}"
+          printf ' %s' ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}
           printf ' }\n'
         fi
         [[ -n "$TOP" ]] && echo "set_option top \"$TOP\""
@@ -375,4 +375,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.2
+# rat-version: 2.0.3

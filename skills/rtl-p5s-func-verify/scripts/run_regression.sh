@@ -44,7 +44,7 @@ finish_campaign() {
         cat "$seed_log"
       fi
     done > "$combined"
-    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" "${seed_args[@]}" || code=$?
+    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" ${seed_args[@]+"${seed_args[@]}"} || code=$?
   fi
   exit "$code"
 }
@@ -126,7 +126,7 @@ harvest_new_results() {
 
   local result_file
   local seed_value
-  for result_file in "${result_files[@]}"; do
+  for result_file in ${result_files[@]+"${result_files[@]}"}; do
     case "$PROCESSED_RESULT_FILES" in
       *"|${result_file}|"*) continue ;;
     esac
@@ -231,7 +231,7 @@ if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
     echo "ERROR: an experiment requires a module label and numeric seeds" >&2
     exit 2
   fi
-  rat_check_experiment_seeds "${experiment_seeds[@]}"
+  rat_check_experiment_seeds ${experiment_seeds[@]+"${experiment_seeds[@]}"}
 fi
 if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
   RESULTS_DIR=$(rat_experiment_output "$RESULTS_DIR")
@@ -305,7 +305,7 @@ run_seed() {
     sim_build_dir=$(cd "$sim_build_dir" && pwd -P)
     result_args+=("COCOTB_RESULTS_FILE=$sim_build_dir/results.xml" "COVERAGE_FILE=$sim_build_dir/.coverage")
   fi
-  RAT_CONTEXT_TOOL="$SIM" run_tool make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" "${result_args[@]}" \
+  RAT_CONTEXT_TOOL="$SIM" run_tool make -C "$TB_DIR" sim SIM="$SIM" RANDOM_SEED="$seed" COVERAGE=1 SIM_BUILD="$sim_build_dir" ${result_args[@]+"${result_args[@]}"} \
        > "$log_file" 2>&1 || rc=$?
   observed=$("$RAT_PYTHON" "$EVIDENCE_HELPER" classify --log "$log_file" --exit-code "$rc")
   if [[ "$observed" == PASS ]]; then

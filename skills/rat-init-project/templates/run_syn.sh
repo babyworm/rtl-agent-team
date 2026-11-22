@@ -125,7 +125,7 @@ while [[ $# -gt 0 ]]; do
     --mem-process) if [[ -n "$2" ]]; then MEM_PROCESS+=("$2"); fi; shift 2 ;;
     --mem-lib)   MEM_LIB="$2"; shift 2 ;;
     --mem-module) IFS=',' read -ra _mm <<< "$2"
-                  for _t in "${_mm[@]}"; do if [[ -n "$_t" ]]; then MEM_MODULES+=("$_t"); fi; done
+                  for _t in ${_mm[@]+"${_mm[@]}"}; do if [[ -n "$_t" ]]; then MEM_MODULES+=("$_t"); fi; done
                   shift 2 ;;
     --mem-strict) MEM_STRICT=1; shift ;;
     --script)    SCRIPT_PATH="$2"; shift 2 ;;
@@ -177,14 +177,14 @@ fi
 # --mem-process / --mem-module tokens must be plain identifiers. A blank or glob-bearing
 # token would otherwise become `ref_name =~ *` in the Tcl filter and blackbox the WHOLE design.
 if [[ ${#MEM_PROCESS[@]} -gt 0 ]]; then
-  for _t in "${MEM_PROCESS[@]}"; do
+  for _t in ${MEM_PROCESS[@]+"${MEM_PROCESS[@]}"}; do
     if ! [[ "$_t" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
       echo "ERROR: --mem-process must be a Verilog identifier (got: '$_t')" >&2; exit 1
     fi
   done
 fi
 if [[ ${#MEM_MODULES[@]} -gt 0 ]]; then
-  for _t in "${MEM_MODULES[@]}"; do
+  for _t in ${MEM_MODULES[@]+"${MEM_MODULES[@]}"}; do
     if ! [[ "$_t" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
       echo "ERROR: --mem-module must be module identifier(s) (got: '$_t')" >&2; exit 1
     fi
@@ -412,7 +412,7 @@ parse_filelist() {
 if [[ -n "$FILELIST" ]]; then
   parse_filelist "$FILELIST"
 fi
-[[ ${#FILES[@]} -gt 0 ]] && SRC_FILES+=("${FILES[@]}")
+[[ ${#FILES[@]} -gt 0 ]] && SRC_FILES+=(${FILES[@]+"${FILES[@]}"})
 
 if [[ ${#SRC_FILES[@]} -eq 0 && "$TOOL" != "vivado" ]]; then
   echo "ERROR: No source files specified. Use -f <filelist> or pass .sv files directly." >&2
@@ -422,10 +422,10 @@ fi
 if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
   # Resolve source files to absolute paths (before cd)
   _abs_src=()
-  for f in "${SRC_FILES[@]}"; do
+  for f in ${SRC_FILES[@]+"${SRC_FILES[@]}"}; do
     _abs_src+=("$(resolve_project_path "$f")")
   done
-  SRC_FILES=("${_abs_src[@]}")
+  SRC_FILES=(${_abs_src[@]+"${_abs_src[@]}"})
 fi
 
 if [[ -d "$PROJECT_ROOT/rtl/common" ]]; then
@@ -449,10 +449,10 @@ for _p in "${SRC_FILES[@]+"${SRC_FILES[@]}"}"; do append_synth_file "$_p"; done
 # script (`yosys -s "$SCRIPT"`), where the same character set is shell-active.
 _tcl_paths="${PROJECT_ROOT}|${SYN_ROOT}|${LIBERTY}|${SDC_FILE}|${MEM_LIB}|${SCRIPT_PATH}"
 if [[ ${#ALL_SYNTH_FILES[@]} -gt 0 ]]; then
-  for _p in "${ALL_SYNTH_FILES[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+  for _p in ${ALL_SYNTH_FILES[@]+"${ALL_SYNTH_FILES[@]}"}; do _tcl_paths="${_tcl_paths}|${_p}"; done
 fi
 if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
-  for _p in "${INCLUDE_DIRS[@]}"; do _tcl_paths="${_tcl_paths}|${_p}"; done
+  for _p in ${INCLUDE_DIRS[@]+"${INCLUDE_DIRS[@]}"}; do _tcl_paths="${_tcl_paths}|${_p}"; done
 fi
 case "$_tcl_paths" in
   *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'`'* | *\\* | *$'\n'* | *$'\r'* )
@@ -473,7 +473,7 @@ esac
 _relmem=""
 if [[ ${#SRC_FILES[@]} -gt 0 ]]; then
   # shellcheck disable=SC2016
-  _relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' "${SRC_FILES[@]}" 2>/dev/null | sort -u || true)
+  _relmem=$(grep -hoE '\$readmem[hb][[:space:]]*\([[:space:]]*"[^"/][^"]*"' ${SRC_FILES[@]+"${SRC_FILES[@]}"} 2>/dev/null | sort -u || true)
 fi
 if [[ -n "$_relmem" ]]; then
   echo "WARNING: RTL uses RELATIVE \$readmemh/\$readmemb ROM paths. Synthesis runs from" >&2
@@ -495,7 +495,7 @@ fi
 # The behavioral 2-D array is kept under `synopsys translate_off`, so synthesis never
 # elaborates it into flip-flops.
 MEM_WRAP_NAMES=(sram_sp sram_tp sram_dp)
-[[ ${#MEM_MODULES[@]} -gt 0 ]] && MEM_WRAP_NAMES+=("${MEM_MODULES[@]}")
+[[ ${#MEM_MODULES[@]} -gt 0 ]] && MEM_WRAP_NAMES+=(${MEM_MODULES[@]+"${MEM_MODULES[@]}"})
 # Real (non-blackboxed) memory needs BOTH: --mem-process to activate the wrapper's `ifdef
 # macro branch AND --mem-lib to resolve the macro's timing. With only one (or neither), the
 # wrapper resolves to its empty `synopsys translate_off behavioral `else (or an unresolved
@@ -504,19 +504,19 @@ MEM_BLACKBOX=1
 [[ -n "$MEM_LIB" && ${#MEM_PROCESS[@]} -gt 0 ]] && MEM_BLACKBOX=0
 # Tcl get_cells filter (ref_name glob per recognized wrapper module)
 MEM_CELL_FILTER=""
-for _name in "${MEM_WRAP_NAMES[@]}"; do
+for _name in ${MEM_WRAP_NAMES[@]+"${MEM_WRAP_NAMES[@]}"}; do
   [[ -n "$MEM_CELL_FILTER" ]] && MEM_CELL_FILTER+=" || "
   MEM_CELL_FILTER+="ref_name =~ ${_name}*"
 done
 
 # Verilog +define+ clause for the selected memory process(es), shared by DC/Genus
 MEM_DEFINE_TOKENS=""
-[[ ${#MEM_PROCESS[@]} -gt 0 ]] && MEM_DEFINE_TOKENS="${MEM_PROCESS[*]}"
+[[ ${#MEM_PROCESS[@]} -gt 0 ]] && MEM_DEFINE_TOKENS="${MEM_PROCESS[*]:-}"
 if [[ ${#FILE_DEFINES[@]} -gt 0 ]]; then
   if [[ -n "$MEM_DEFINE_TOKENS" ]]; then
-    MEM_DEFINE_TOKENS="$MEM_DEFINE_TOKENS ${FILE_DEFINES[*]}"
+    MEM_DEFINE_TOKENS="$MEM_DEFINE_TOKENS ${FILE_DEFINES[*]:-}"
   else
-    MEM_DEFINE_TOKENS="${FILE_DEFINES[*]}"
+    MEM_DEFINE_TOKENS="${FILE_DEFINES[*]:-}"
   fi
 fi
 
@@ -581,7 +581,7 @@ case "$TOOL" in
         SV2V_ARGS+=("$f")
       done
       echo "=== sv2v Conversion ==="
-      sv2v "${SV2V_ARGS[@]}"
+      sv2v ${SV2V_ARGS[@]+"${SV2V_ARGS[@]}"}
       echo "Converted: $SV2V_OUT (${#ALL_SYNTH_FILES[@]} total source files)"
       USE_SV2V=1
     else
@@ -682,7 +682,7 @@ case "$TOOL" in
       echo ""
       echo "set_app_var search_path [list . ${DIR_DB} ${DIR_WORK}/dc]"
       if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
-        echo "set_app_var search_path [concat [get_app_var search_path] [list ${INCLUDE_DIRS[*]}]]"
+        echo "set_app_var search_path [concat [get_app_var search_path] [list ${INCLUDE_DIRS[*]:-}]]"
       fi
       echo "set_app_var sh_command_log_file \"${DIR_LOG}/command.log\""
       if [[ -n "$LIBERTY" ]]; then
@@ -823,7 +823,7 @@ case "$TOOL" in
         echo ""
         echo "# Work directory"
         if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
-          echo "set_db init_hdl_search_path [list ${INCLUDE_DIRS[*]}]"
+          echo "set_db init_hdl_search_path [list ${INCLUDE_DIRS[*]:-}]"
         fi
         echo "set_db hdl_work_directory \"${GENUS_WORK}\""
         echo "set_db log_directory \"${DIR_LOG}\""
@@ -980,4 +980,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.2
+# rat-version: 2.0.3

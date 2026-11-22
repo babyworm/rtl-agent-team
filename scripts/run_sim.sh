@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rat-version: 2.0.6
+# rat-version: 2.0.7
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
@@ -149,7 +149,7 @@ if [[ -f "$RUNNER_HELPER" && "${RAT_REMOTE_ACTIVE:-0}" != "1" ]]; then
   SELECTED_BACKEND=$("$RUNNER_PYTHON" "$RUNNER_HELPER" backend --root "$PROJECT_ROOT")
   case "$SELECTED_BACKEND" in
     ssh|lsf)
-      "$RUNNER_PYTHON" "$RUNNER_HELPER" dispatch --root "$PROJECT_ROOT" --wrapper "${BASH_SOURCE[0]}" -- "${ORIGINAL_ARGS[@]}"
+      "$RUNNER_PYTHON" "$RUNNER_HELPER" dispatch --root "$PROJECT_ROOT" --wrapper "${BASH_SOURCE[0]}" -- ${ORIGINAL_ARGS[@]+"${ORIGINAL_ARGS[@]}"}
       exit $?
       ;;
   esac
@@ -270,7 +270,7 @@ finalize_replay() {
 build_defines() {
   local sim="$1"
   local result=""
-  for def in "${DEFINES[@]}"; do
+  for def in ${DEFINES[@]+"${DEFINES[@]}"}; do
     case "$sim" in
       iverilog|verilator|vcs|xrun|questa)
         result+=" -D${def}"
@@ -284,7 +284,7 @@ build_defines() {
 build_params() {
   local sim="$1"
   local result=""
-  for param in "${PARAMS[@]}"; do
+  for param in ${PARAMS[@]+"${PARAMS[@]}"}; do
     case "$sim" in
       iverilog)   result+=" -P${TOP}.${param}" ;;
       verilator)  result+=" -G${param}" ;;
@@ -419,9 +419,9 @@ validate_shell_safe "--timeout" "$TIMEOUT"
 validate_shell_safe "--outdir path" "$OUTDIR"
 validate_shell_safe "--dpi path" "$DPI_LIB"
 validate_shell_safe "--filelist path" "$FILELIST"
-[[ ${#DEFINES[@]} -gt 0 ]] && validate_shell_safe "--define" "${DEFINES[@]}"
-[[ ${#PARAMS[@]} -gt 0 ]] && validate_shell_safe "--param" "${PARAMS[@]}"
-[[ ${#SV_FILES[@]} -gt 0 ]] && validate_shell_safe "source file path" "${SV_FILES[@]}"
+[[ ${#DEFINES[@]} -gt 0 ]] && validate_shell_safe "--define" ${DEFINES[@]+"${DEFINES[@]}"}
+[[ ${#PARAMS[@]} -gt 0 ]] && validate_shell_safe "--param" ${PARAMS[@]+"${PARAMS[@]}"}
+[[ ${#SV_FILES[@]} -gt 0 ]] && validate_shell_safe "source file path" ${SV_FILES[@]+"${SV_FILES[@]}"}
 
 DEFINE_FLAGS=""
 if [[ ${#DEFINES[@]} -gt 0 ]]; then
@@ -473,7 +473,7 @@ EVIDENCE_ARGS=(begin --root "$PROJECT_ROOT" --outdir "$OUTDIR" --tool "$SIM" --t
 [[ -z "$DPI_LIB" ]] || EVIDENCE_ARGS+=(--dependency "$DPI_LIB")
 [[ ! -f "$PROJECT_ROOT/rat_config.json" ]] || EVIDENCE_ARGS+=(--dependency "$PROJECT_ROOT/rat_config.json")
 if [[ ${#SV_FILES[@]} -gt 0 ]]; then
-  for source_file in "${SV_FILES[@]}"; do EVIDENCE_ARGS+=(--source "$source_file"); done
+  for source_file in ${SV_FILES[@]+"${SV_FILES[@]}"}; do EVIDENCE_ARGS+=(--source "$source_file"); done
 fi
 [[ $RUN_ONLY -eq 0 ]] || EVIDENCE_ARGS+=(--run-only)
 [[ $COMPILE_ONLY -eq 0 ]] || EVIDENCE_ARGS+=(--compile-only)
@@ -489,7 +489,7 @@ capture_metadata_path() {
   if [[ "$status" -ne 0 ]]; then printf '%s\n' "$output" >&2; return "$status"; fi
   printf '%s\n' "$output" | tail -n 1
 }
-EVIDENCE_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" capture_metadata_path "$RUNNER_PYTHON" "$RUNNER_HELPER" run --root "$PROJECT_ROOT" -- "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" "${EVIDENCE_ARGS[@]}")
+EVIDENCE_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" capture_metadata_path "$RUNNER_PYTHON" "$RUNNER_HELPER" run --root "$PROJECT_ROOT" -- "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" ${EVIDENCE_ARGS[@]+"${EVIDENCE_ARGS[@]}"})
 finish_simulation() {
   local status=$?
   trap - EXIT
@@ -497,7 +497,7 @@ finish_simulation() {
   cat "${SIM_LOG_PREFIX}_compile.log" "${SIM_LOG_PREFIX}_run.log" > "$evidence_log" 2>/dev/null || true
   local finish_args=(finish --snapshot "$EVIDENCE_SNAPSHOT" --exit-code "$status" --log "$evidence_log")
   if [[ $COMPILE_ONLY -eq 0 ]]; then finish_args+=(--runtime-log "${SIM_LOG_PREFIX}_run.log"); else finish_args+=(--compile-only); fi
-  "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" "${finish_args[@]}" || status=$?
+  "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" ${finish_args[@]+"${finish_args[@]}"} || status=$?
   finalize_replay || true
   exit "$status"
 }

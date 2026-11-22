@@ -83,11 +83,11 @@ if [[ -f "$SRC_DIR/Makefile" || -f "$SRC_DIR/makefile" ]]; then
         -j"$(nproc 2>/dev/null || echo 4)"
 else
     echo "Strategy: direct gcc compilation"
-    echo "Files:   ${C_FILES[*]}"
+    echo "Files:   ${C_FILES[*]:-}"
 
     # shellcheck disable=SC2086
     $CC $CFLAGS ${EXTRA_CFLAGS[@]+"${EXTRA_CFLAGS[@]}"} ${INCLUDE_DIR:+"$INCLUDE_DIR"} \
-        "${C_FILES[@]}" \
+        ${C_FILES[@]+"${C_FILES[@]}"} \
         -o "$OUTPUT_BINARY" \
         $LDFLAGS
 fi

@@ -122,10 +122,10 @@ INPUT_DEFINES=()
 INPUT_ARGS=(inputs --root "$PROJECT_ROOT")
 [[ -z "$FILELIST" ]] || INPUT_ARGS+=(--filelist "$FILELIST")
 if [[ ${#FILES[@]} -gt 0 ]]; then
-  for input_source in "${FILES[@]}"; do INPUT_ARGS+=(--source "$input_source"); done
+  for input_source in ${FILES[@]+"${FILES[@]}"}; do INPUT_ARGS+=(--source "$input_source"); done
 fi
 _INPUT_HELPER="$(dirname "${_TOOL_RUNNER_RUNTIME}")/verify_evidence.py"
-INPUT_RECORDS=$("${_TOOL_RUNNER_PYTHON}" "$_INPUT_HELPER" "${INPUT_ARGS[@]}")
+INPUT_RECORDS=$("${_TOOL_RUNNER_PYTHON}" "$_INPUT_HELPER" ${INPUT_ARGS[@]+"${INPUT_ARGS[@]}"})
 while IFS=$'\t' read -r input_kind input_value; do
   case "$input_kind" in
     sources) SRC_FILES+=("$input_value") ;;
@@ -141,10 +141,10 @@ fi
 
 # Resolve source files to absolute paths (before cd)
 _abs_src=()
-for f in "${SRC_FILES[@]}"; do
+for f in ${SRC_FILES[@]+"${SRC_FILES[@]}"}; do
   case "$f" in /*) _abs_src+=("$f") ;; *) _abs_src+=("$PROJECT_ROOT/$f") ;; esac
 done
-SRC_FILES=("${_abs_src[@]}")
+SRC_FILES=(${_abs_src[@]+"${_abs_src[@]}"})
 
 # All values below feed the tool command line, the generated replay script,
 # and/or the generated SpyGlass Tcl — validate against shell metacharacters
@@ -153,7 +153,7 @@ validate_shell_safe "--top" "$TOP"
 validate_shell_safe "--waiver path" "$WAIVER"
 validate_shell_safe "--outdir path" "$OUTDIR"
 validate_shell_safe "--script path" "$SCRIPT_PATH"
-validate_shell_safe "source file path" "${SRC_FILES[@]}"
+validate_shell_safe "source file path" ${SRC_FILES[@]+"${SRC_FILES[@]}"}
 
 # cd to lint directory — all tool artifacts stay contained
 cd "$OUTDIR"
@@ -183,16 +183,16 @@ case "$TOOL" in
     # Command built as an argv array; every element validated against shell
     # metacharacters above — direct invocation, no eval.
     CMD=(verilator --lint-only -Wall -Wpedantic -sv)
-    for directory in "${INPUT_INCLUDE_DIRS[@]}"; do CMD+=("-I$directory"); done
-    for definition in "${INPUT_DEFINES[@]}"; do CMD+=("-D$definition"); done
+    for directory in ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}; do CMD+=("-I$directory"); done
+    for definition in ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}; do CMD+=("-D$definition"); done
     [[ -n "$TOP" ]] && CMD+=(--top-module "$TOP")
     [[ -n "$WAIVER" ]] && CMD+=("$WAIVER")
-    CMD+=("${SRC_FILES[@]}")
+    CMD+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
     REPORT="$OUTDIR/verilator_lint_${TIMESTAMP}.log"
     echo "=== Verilator Lint ==="
-    echo "CMD: ${CMD[*]}"
-    write_replay "${CMD[*]}"
-    run_tool "${CMD[@]}" 2>&1 | tee "$REPORT"
+    echo "CMD: ${CMD[*]:-}"
+    write_replay "${CMD[*]:-}"
+    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -200,27 +200,27 @@ case "$TOOL" in
     # Argv array; elements validated against shell metacharacters above — no eval.
     CMD=(verible-verilog-lint)
     [[ -n "$WAIVER" ]] && CMD+=("--rules_config=$WAIVER")
-    CMD+=("${SRC_FILES[@]}")
+    CMD+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
     REPORT="$OUTDIR/verible_lint_${TIMESTAMP}.log"
     echo "=== Verible Lint ==="
-    echo "CMD: ${CMD[*]}"
-    write_replay "${CMD[*]}"
-    run_tool "${CMD[@]}" 2>&1 | tee "$REPORT"
+    echo "CMD: ${CMD[*]:-}"
+    write_replay "${CMD[*]:-}"
+    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   slang)
     # Argv array; elements validated against shell metacharacters above — no eval.
     CMD=(slang --color-diagnostics)
-    for directory in "${INPUT_INCLUDE_DIRS[@]}"; do CMD+=("-I$directory"); done
-    for definition in "${INPUT_DEFINES[@]}"; do CMD+=("-D$definition"); done
+    for directory in ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}; do CMD+=("-I$directory"); done
+    for definition in ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}; do CMD+=("-D$definition"); done
     [[ -n "$TOP" ]] && CMD+=(--top "$TOP")
 
     # Strict mode for RTL: -Weverything catches multi-driver violations
     # (e.g., always_ff + initial on same signal — VCS ICPD error)
     # TB code: --allow-dup-initial-drivers relaxes this for testbenches
     IS_RTL=0
-    for f in "${SRC_FILES[@]}"; do
+    for f in ${SRC_FILES[@]+"${SRC_FILES[@]}"}; do
       case "$f" in
         rtl/*|*/rtl/*) IS_RTL=1; break ;;
       esac
@@ -231,13 +231,13 @@ case "$TOOL" in
       CMD+=(--allow-dup-initial-drivers)
     fi
 
-    CMD+=("${SRC_FILES[@]}")
+    CMD+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
     REPORT="$OUTDIR/slang_lint_${TIMESTAMP}.log"
     echo "=== slang Lint ==="
     [[ "$IS_RTL" -eq 1 ]] && echo "Mode: RTL strict (-Weverything)" || echo "Mode: TB (--allow-dup-initial-drivers)"
-    echo "CMD: ${CMD[*]}"
-    write_replay "${CMD[*]}"
-    run_tool "${CMD[@]}" 2>&1 | tee "$REPORT"
+    echo "CMD: ${CMD[*]:-}"
+    write_replay "${CMD[*]:-}"
+    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT"
     EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
@@ -256,21 +256,21 @@ case "$TOOL" in
         echo 'if {[catch {'
         echo "new_project spyglass_lint -projectwdir \"$SPYGLASS_PROJDIR\" -force"
         echo "set_option enableSV12 yes"
-        for src in "${SRC_FILES[@]}"; do
+        for src in ${SRC_FILES[@]+"${SRC_FILES[@]}"}; do
           echo "read_file -type verilog \"$src\""
         done
         if [[ ${#INPUT_INCLUDE_DIRS[@]} -gt 0 ]]; then
-          validate_shell_safe "filelist include directory" "${INPUT_INCLUDE_DIRS[@]}"
+          validate_shell_safe "filelist include directory" ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}
           printf 'set_option incdir [list'
-          printf ' "%s"' "${INPUT_INCLUDE_DIRS[@]}"
+          printf ' "%s"' ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}
           printf ']\n'
         fi
         if [[ ${#INPUT_DEFINES[@]} -gt 0 ]]; then
-          for definition in "${INPUT_DEFINES[@]}"; do
+          for definition in ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}; do
             [[ "$definition" =~ ^[A-Za-z0-9_./=:+,\'-]+$ ]] || { echo "ERROR: unsupported Tcl define: $definition" >&2; exit 1; }
           done
           printf 'set_option define {'
-          printf ' %s' "${INPUT_DEFINES[@]}"
+          printf ' %s' ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}
           printf ' }\n'
         fi
         [[ -n "$TOP" ]] && echo "set_option top \"$TOP\""
@@ -325,4 +325,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.2
+# rat-version: 2.0.3

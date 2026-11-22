@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.16
+# rat-version: 2.0.17
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -8,6 +8,7 @@ import argparse
 import base64
 from contextlib import ExitStack
 import fcntl
+import functools
 import json
 import os
 from pathlib import Path
@@ -452,6 +453,42 @@ def remote_shell_command(script: str) -> str:
     return "sh -c " + shlex.quote('payload=$(printf %s ' + payload + ' | base64 -d) || exit 2; eval "$payload"')
 
 
+@functools.lru_cache(maxsize=None)
+def rsync_features(rsync: str | None) -> tuple[bool, bool]:
+    """(--protect-args, the /./ marker of --relative), probed once per rsync binary. GNU rsync 3 has
+    both; GNU rsync 2.6.9 lacks --protect-args; macOS openrsync lacks both. An rsync that does not
+    answer --version keeps the GNU argv."""
+    if not rsync:
+        return True, True
+    try:
+        version = subprocess.run([rsync, "--version"], capture_output=True, text=True, timeout=15)
+        if version.returncode:
+            return True, True
+        protect = subprocess.run([rsync, "--protect-args", "--version"], capture_output=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        return True, True
+    return protect.returncode == 0, "openrsync" not in version.stdout
+
+
+def rsync_transport(ssh_options: list[str], *options: str):
+    """rsync argv prefix, and a host:path builder that keeps a remote path one argument.
+    Without --protect-args the remote login shell splits the path, so it is quoted for that shell."""
+    protected = rsync_features(shutil.which("rsync"))[0]
+    argv = ["rsync", "-a", *(["--protect-args"] if protected else []), *options, "-e", shlex.join(["ssh", *ssh_options])]
+    return argv, lambda host, path: host + ":" + (path if protected else shlex.quote(path))
+
+
+def rsync_relative(remote_root: str, value: str, destination: Path):
+    """Options, remote source, local target and transfer-root prefix that copy remote_root/value to
+    destination/value. openrsync ignores the /./ marker, so there the transfer starts at the parent
+    of value, and anchored filter rules drop that prefix."""
+    if rsync_features(shutil.which("rsync"))[1]:
+        return ["--relative"], remote_root + "/./" + value, destination, ""
+    parent = Path(value).parent
+    (destination / parent).mkdir(parents=True, exist_ok=True)
+    return [], remote_root + "/" + value, destination / parent, "" if parent == Path(".") else parent.as_posix() + "/"
+
+
 def import_remote_evidence(path: Path, root: Path, workspace: str, since: float,
                            experiment: Path | None = None, remote_outputs: str | None = None) -> int:
     data = json.loads(path.read_text())
@@ -658,7 +695,7 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
         cleanup.callback(release)
     elif remote("mkdir -p " + shlex.quote(workspace), "mkdir"):
         return 2
-    transport = ["rsync", "-a", "--protect-args", "-e", shlex.join(["ssh", *ssh_options])]
+    transport, remote_operand = rsync_transport(ssh_options)
     manifest = upload_manifest(root, inputs, settings.get("inputs", []))
     mode = settings.get("results", "experiment")
     if not experiment and manifest is None:
@@ -669,13 +706,13 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
         sync = [*transport, "--exclude=.git", "--exclude=.claude", "--exclude=.rat/state",
                 "--exclude=.rat/audit", "--exclude=.rat/remote-runs", "--exclude=/experiment/",
                 "--exclude=/.rat/experiments/", *(["--exclude=/.rtl-agent-team/"] if experiment else []),
-                str(root) + "/", host + ":" + workspace + "/"]
+                str(root) + "/", remote_operand(host, workspace + "/")]
     else:
         listing = cache / "upload.list"
         listing.write_bytes(b"".join(name.encode(errors="surrogateescape") + b"\0" for name in manifest))
         size = sum((root / name).lstat().st_size for name in manifest)
         print(f"Sending {len(manifest)} files ({size / 1e6:.1f} MB) to {host}", file=sys.stderr)
-        sync = [*transport, "--from0", f"--files-from={listing}", str(root) + "/", host + ":" + workspace + "/"]
+        sync = [*transport, "--from0", f"--files-from={listing}", str(root) + "/", remote_operand(host, workspace + "/")]
     status = step(sync, "sync")
     if status:
         return status
@@ -711,7 +748,7 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     remote_runtime = workspace + "/.rat/runner-runtime/" + run_id
     if remote("umask 077; mkdir -p " + shlex.quote(remote_runtime), "runtime-mkdir"):
         return 2
-    if step([*transport, str(package) + "/", host + ":" + remote_runtime + "/"], "runtime-sync"):
+    if step([*transport, str(package) + "/", remote_operand(host, remote_runtime + "/")], "runtime-sync"):
         return 2
     supported = wrapper.name in ("run_sim.sh", "run_syn.sh", "run_lint.sh", "run_cdc.sh", "run_formality.sh",
                                  "run_conformal.sh", "run_regression.sh", "run_regression_uvm.sh")
@@ -797,25 +834,25 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     for index, value in enumerate(outputs):
         if experiment and supported and value == ".":
             options = ["--safe-links", "--exclude=/.gitignore", "--exclude=/.rat/", *skip]
-            source = remote_outputs + "/"
+            source, target = remote_outputs + "/", destination
         else:
             value = relative_output(value)
+            relative, source, target, prefix = rsync_relative(remote_outputs, value, destination)
             if experiment:
-                options = ["--safe-links", "--relative", *skip]
+                options = ["--safe-links", *relative, *skip]
             else:
                 # merge/sync land results in place; sent files (sources) are never overwritten or deleted.
                 # ponytail: names containing *, ? or [ act as patterns here; rare in HDL projects.
                 protect = cache / "protect.list"
-                protect.write_text("".join("/" + name + "\n" for name in manifest))
-                options = ["--relative", *skip, f"--exclude-from={protect}", *(["--delete"] if mode == "sync" else [])]
-            source = remote_outputs + "/./" + value
-        result = step([*transport, *options, host + ":" + source, str(destination) + "/"], f"fetch-{index}")
+                protect.write_text("".join("/" + name[len(prefix):] + "\n" for name in manifest if name.startswith(prefix)))
+                options = [*relative, *skip, f"--exclude-from={protect}", *(["--delete"] if mode == "sync" else [])]
+        result = step([*transport, *options, remote_operand(host, source), str(target) + "/"], f"fetch-{index}")
         if result and status == 0:
             status = 3
     present = subprocess.run([*ssh, "test -f " + shlex.quote(evidence_path)], capture_output=True, timeout=15)
     if present.returncode == 0:
         downloaded = cache / "remote-evidence.json"
-        result = step([*transport, host + ":" + evidence_path, str(downloaded)], "fetch-evidence")
+        result = step([*transport, remote_operand(host, evidence_path), str(downloaded)], "fetch-evidence")
         if result == 0:
             imported = import_remote_evidence(downloaded, root, workspace, 0 if experiment else started_wall,
                                               experiment, remote_outputs)
@@ -913,9 +950,12 @@ def fetch(args, root: Path, config: dict) -> int:
         raise ValueError("ssh_options must be an argument list")
     destination = root / "experiment" / name
     install_generated_ignore(destination, "*\n")
-    transport = ["rsync", "-a", "--protect-args", "--safe-links", "--relative", "-e", shlex.join(["ssh", *ssh_options])]
-    failed = [value for value in paths
-              if subprocess.run([*transport, f"{record['host']}:{record['remote_outputs']}/./{value}", str(destination) + "/"]).returncode]
+    failed = []
+    for value in paths:
+        relative, source, target, _ = rsync_relative(record["remote_outputs"], value, destination)
+        transport, remote_operand = rsync_transport(ssh_options, "--safe-links", *relative)
+        if subprocess.run([*transport, remote_operand(record["host"], source), str(target) + "/"]).returncode:
+            failed.append(value)
     for value in failed:
         print(f"could not fetch {value}", file=sys.stderr)
     return 3 if failed else 0

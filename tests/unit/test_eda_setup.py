@@ -76,6 +76,11 @@ def test_discovery_sources_shared_setup_and_checks_execution_on_host(site, tmp_p
     executable(vendor / "imc", '#!/bin/sh\ntest "$1" = -exec && test -f "$2" && echo RAT_SETUP_TCL_READY\n')
     setup = tmp_path / "setup script.sh"
     setup.write_text(f'export PATH="{vendor}:$PATH"\nexport FIXTURE_ENV=loaded\necho setup-banner\n')
+    # An exec scanner (Microsoft Defender on macOS) holds the first exec of each new file for
+    # 0.1-0.5 s, longer under parallel load. Run the tools that must finish once, so that the
+    # 1 s budget below measures the probe and not that scan.
+    for name in ("xrun", "vcs", "dc_shell", "imc"):
+        subprocess.run([str(vendor / name)], capture_output=True, timeout=20)
     result = call("discover", "--host", "eda-fixture.example.invalid", "--env-script", setup,
                   "--probe-timeout", "1", env=env)
     assert result.returncode == 0, result.stderr

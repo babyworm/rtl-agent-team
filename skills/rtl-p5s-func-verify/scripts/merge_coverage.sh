@@ -37,12 +37,12 @@ case "$FORMAT" in
     fi
 
     # Merge into single info file
-    verilator_coverage --write-info "$OUTPUT" "${DAT_FILES[@]}"
+    verilator_coverage --write-info "$OUTPUT" ${DAT_FILES[@]+"${DAT_FILES[@]}"}
     echo "Merged ${#DAT_FILES[@]} coverage files → $OUTPUT"
 
     # Annotate source
     mkdir -p "${COVERAGE_DIR}/annotated"
-    verilator_coverage --annotate "${COVERAGE_DIR}/annotated/" "${DAT_FILES[@]}"
+    verilator_coverage --annotate "${COVERAGE_DIR}/annotated/" ${DAT_FILES[@]+"${DAT_FILES[@]}"}
 
     # Generate HTML
     genhtml "$OUTPUT" -o "$HTML_DIR" --title "Regression Coverage"
@@ -64,11 +64,11 @@ case "$FORMAT" in
     # find results are passed as single arguments, so a hostile .info file
     # name cannot inject shell commands.
     MERGE_CMD=(lcov)
-    for f in "${INFO_FILES[@]}"; do
+    for f in ${INFO_FILES[@]+"${INFO_FILES[@]}"}; do
       MERGE_CMD+=(--add-tracefile "$f")
     done
     MERGE_CMD+=(--output-file "$OUTPUT")
-    "${MERGE_CMD[@]}"
+    ${MERGE_CMD[@]+"${MERGE_CMD[@]}"}
 
     echo "Merged ${#INFO_FILES[@]} coverage files → $OUTPUT"
 

@@ -50,7 +50,7 @@ finish_campaign() {
     evidence_code=$code
     [[ "$FUNCTIONAL_COMPLETE" != 1 ]] || evidence_code=0
     "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" \
-      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" "${seed_args[@]}" || evidence_result=$?
+      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" ${seed_args[@]+"${seed_args[@]}"} || evidence_result=$?
     [[ "$code" -ne 0 ]] || code=$evidence_result
   fi
   exit "$code"
@@ -154,8 +154,8 @@ if [[ ${#SEED_ARRAY[@]} -eq 0 ]]; then
   exit 1
 fi
 
-if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then rat_check_experiment_seeds "${SEED_ARRAY[@]}"; fi
-for seed in "${SEED_ARRAY[@]}"; do
+if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then rat_check_experiment_seeds ${SEED_ARRAY[@]+"${SEED_ARRAY[@]}"}; fi
+for seed in ${SEED_ARRAY[@]+"${SEED_ARRAY[@]}"}; do
   require_uint "--seeds entry" "$seed"
 done
 
@@ -295,9 +295,9 @@ compile_uvm() {
   case "$SIM" in
     vcs)
       (cd "$COMPILE_CWD" && run_tool vcs -full64 -sverilog -ntb_opts uvm-1.2 \
-        "${COMPILE_COVERAGE[@]}" \
+        ${COMPILE_COVERAGE[@]+"${COMPILE_COVERAGE[@]}"} \
         -timescale=1ns/1ps \
-        "${SV_ARGS[@]}" \
+        ${SV_ARGS[@]+"${SV_ARGS[@]}"} \
         -o "$RUN_DIR/simv") \
         2>&1 | tee "$compile_log" || {
         local rc=$?
@@ -308,9 +308,9 @@ compile_uvm() {
       ;;
     xrun)
       (cd "$COMPILE_CWD" && run_tool xrun -sv -uvm -compile \
-        "${COMPILE_COVERAGE[@]}" \
+        ${COMPILE_COVERAGE[@]+"${COMPILE_COVERAGE[@]}"} \
         -timescale 1ns/1ps \
-        "${SV_ARGS[@]}" \
+        ${SV_ARGS[@]+"${SV_ARGS[@]}"} \
         -xmlibdirname "$RUN_DIR/xcelium") \
         2>&1 | tee "$compile_log" || {
         local rc=$?
@@ -318,9 +318,9 @@ compile_uvm() {
         return "$rc"
       }
       (cd "$COMPILE_CWD" && run_tool xrun -sv -uvm -elaborate \
-        "${COMPILE_COVERAGE[@]}" \
+        ${COMPILE_COVERAGE[@]+"${COMPILE_COVERAGE[@]}"} \
         -timescale 1ns/1ps \
-        "${SV_ARGS[@]}" \
+        ${SV_ARGS[@]+"${SV_ARGS[@]}"} \
         -top "$TB_TOP" \
         -xmlibdirname "$RUN_DIR/xcelium") \
         2>&1 | tee -a "$compile_log" || {
@@ -332,9 +332,9 @@ compile_uvm() {
     questa)
       (cd "$COMPILE_CWD" && run_tool vlib "$RUN_DIR/work") 2>/dev/null || true
       (cd "$COMPILE_CWD" && run_tool vlog -sv -work "$RUN_DIR/work" \
-        "${COMPILE_COVERAGE[@]}" \
+        ${COMPILE_COVERAGE[@]+"${COMPILE_COVERAGE[@]}"} \
         +incdir+"$TB_DIR" \
-        "${SV_ARGS[@]}") \
+        ${SV_ARGS[@]+"${SV_ARGS[@]}"}) \
         2>&1 | tee "$compile_log" || {
         local rc=$?
         echo "ERROR: UVM compilation failed. See $compile_log" >&2
@@ -397,7 +397,7 @@ run_seed() (
       RAT_CONTEXT_TOOL="$SIM" run_tool "$RUN_BIN" \
         +UVM_TESTNAME="$TEST" \
         +ntb_random_seed="$seed" \
-        "${coverage_args[@]}" \
+        ${coverage_args[@]+"${coverage_args[@]}"} \
         +UVM_VERBOSITY=UVM_MEDIUM \
         > "$log" 2>&1 || rc=$?
       ;;
@@ -405,14 +405,14 @@ run_seed() (
       run_tool xrun -R \
         +UVM_TESTNAME="$TEST" \
         -svseed "$seed" \
-        "${coverage_args[@]}" \
+        ${coverage_args[@]+"${coverage_args[@]}"} \
         -xmlibdirname "$RUN_DIR/xcelium" \
         +UVM_VERBOSITY=UVM_MEDIUM \
         > "$log" 2>&1 || rc=$?
       ;;
     questa)
       run_tool vsim -c -work "$RUN_DIR/work" \
-        "${coverage_args[@]}" \
+        ${coverage_args[@]+"${coverage_args[@]}"} \
         +UVM_TESTNAME="$TEST" \
         -sv_seed "$seed" \
         -do "$questa_commands" \
@@ -500,7 +500,7 @@ merge_native_coverage() {
       done
       coverage_inputs=${#vdb_list[@]}
       [[ "$coverage_inputs" -eq "$PASSED" ]] || return 1
-      run_coverage_tool urg -dir "${vdb_list[@]}" -report "$merged" -format both \
+      run_coverage_tool urg -dir ${vdb_list[@]+"${vdb_list[@]}"} -report "$merged" -format both \
         > "$RUN_DIR/coverage-tool.log" 2>&1 || return $?
       [[ -d "$merged" && -n "$(find "$merged" -type f -size +0c -print -quit)" ]] || return 1
       echo "VCS coverage merged: $merged (text + XML)"
@@ -532,7 +532,7 @@ merge_native_coverage() {
       done
       coverage_inputs=${#ucdb_list[@]}
       [[ "$coverage_inputs" -eq "$PASSED" ]] || return 1
-      run_coverage_tool vcover merge "$merged.ucdb" "${ucdb_list[@]}" \
+      run_coverage_tool vcover merge "$merged.ucdb" ${ucdb_list[@]+"${ucdb_list[@]}"} \
         > "$RUN_DIR/coverage-tool.log" 2>&1 || return $?
       run_coverage_tool vcover report -details "$merged.ucdb" > "$merged.txt" 2>&1 || return $?
       [[ -s "$merged.ucdb" && -s "$merged.txt" ]] || return 1
@@ -545,13 +545,13 @@ merge_native_coverage() {
 
 merge_functional_coverage() {
   local logs=() seed log
-  for seed in "${RUN_SEEDS[@]}"; do
+  for seed in ${RUN_SEEDS[@]+"${RUN_SEEDS[@]}"}; do
     log="$RUN_DIR/seed_$seed/sim.log"
     logs+=("${log#"$PROJECT_ROOT/"}")
   done
   local report="$COVERAGE_DIR/functional_${TIMESTAMP}.json"
   report="${report#"$PROJECT_ROOT/"}"
-  (cd "$PROJECT_ROOT" && "$RAT_PYTHON" "$COVERPOINT_HELPER" --output "$report" "${logs[@]}") || return $?
+  (cd "$PROJECT_ROOT" && "$RAT_PYTHON" "$COVERPOINT_HELPER" --output "$report" ${logs[@]+"${logs[@]}"}) || return $?
   FUNCTIONAL_COVERAGE_REPORT="$report"
   echo "Functional coverage from seed logs: $FUNCTIONAL_COVERAGE_REPORT"
 }
@@ -574,7 +574,7 @@ harvest_results() {
 
   if [[ ${#result_files[@]} -eq 0 ]]; then return; fi
 
-  for result_file in "${result_files[@]}"; do
+  for result_file in ${result_files[@]+"${result_files[@]}"}; do
     case "$PROCESSED_RESULT_FILES" in
       *"|${result_file}|"*) continue ;;
     esac
@@ -609,7 +609,7 @@ PY
 
 mark_missing_results() {
   local seed result_file
-  for seed in "${RUN_SEEDS[@]}"; do
+  for seed in ${RUN_SEEDS[@]+"${RUN_SEEDS[@]}"}; do
     result_file="$RUN_DIR/seed_${seed}_results.json"
     if [[ -f "$result_file" ]]; then
       continue
@@ -648,14 +648,14 @@ if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
   CAMPAIGN_OUTDIR="$RUN_DIR"
   args=(begin --root "$PROJECT_ROOT" --outdir "$RUN_DIR" --tool "$SIM" --top "$TB_TOP" --runner-pid "$$" --context "uvm:$TEST")
   [[ ! -f "$PROJECT_ROOT/rat_config.json" ]] || args+=(--dependency "$PROJECT_ROOT/rat_config.json")
-  for input in "${SV_ARGS[@]}"; do
+  for input in ${SV_ARGS[@]+"${SV_ARGS[@]}"}; do
     [[ "$input" == -f ]] && continue
     if [[ "$input" == "$FILELIST" ]]; then args+=(--filelist "$input"); else args+=(--source "$input"); fi
   done
   args+=(--include-dir "$TB_DIR")
   # Standard UVM headers are site inputs and must be locatable for hashing.
   [[ -z "${UVM_HOME:-}" ]] || args+=(--include-dir "$UVM_HOME/src")
-  CAMPAIGN_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" rat_capture_path "$RAT_PYTHON" "$EVIDENCE_HELPER" "${args[@]}")
+  CAMPAIGN_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" rat_capture_path "$RAT_PYTHON" "$EVIDENCE_HELPER" ${args[@]+"${args[@]}"})
   trap finish_campaign EXIT
 fi
 
@@ -673,7 +673,7 @@ compile_uvm
 echo ""
 echo "=== Running Seeds ==="
 RUN_SEEDS=()
-for seed in "${SEED_ARRAY[@]}"; do
+for seed in ${SEED_ARRAY[@]+"${SEED_ARRAY[@]}"}; do
   if [[ "$STOP_DISPATCH" -eq 1 ]]; then
     echo "  Skipping seed $seed (halt threshold reached)"
     continue
@@ -710,7 +710,7 @@ if [[ "$PARALLEL" -gt 1 ]]; then
     sleep 0.2
     harvest_results
   done
-  for worker_pid in "${WORKER_PIDS[@]}"; do
+  for worker_pid in ${WORKER_PIDS[@]+"${WORKER_PIDS[@]}"}; do
     if ! wait "$worker_pid" 2>/dev/null; then
       INFRASTRUCTURE_FAILED=1
     fi
@@ -822,4 +822,4 @@ echo "========================================"
 [[ "$VERDICT" != "INCONCLUSIVE" ]] || exit 3
 exit 1
 
-# rat-version: 2.0.7
+# rat-version: 2.0.8
