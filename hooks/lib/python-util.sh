@@ -1,14 +1,26 @@
 #!/bin/sh
-# rat-version: 2.0.1
+# rat-version: 2.0.2
 # Select an interpreter capable of running the shared execution/evidence helpers.
 # RAT_PYTHON_MIN is the plugin's Python floor; keep it equal to MIN_PYTHON in
 # scripts/rat_compat.py (tests/unit/test_python_compat.py checks both). Python 2 fails
 # the probe, so it is never selected.
 RAT_PYTHON_MIN=3.9
 
+# Without the developer tools, macOS /usr/bin/python3 is a shim that opens an install dialog
+# when run; a hook must never start it. True when $1 is that shim (compared as a file, so
+# /usr//bin or a symlink to it count too) and the selected developer folder has no python3.
+rat_python_stub() {
+  [ "$1" -ef /usr/bin/python3 ] || return 1
+  [ "$(uname -s 2>/dev/null)" = Darwin ] || return 1
+  _rps_dir=$(xcode-select -p 2>/dev/null) && [ -x "$_rps_dir/usr/bin/python3" ] && return 1
+  return 0
+}
+
 # True when the interpreter runs and is at least RAT_PYTHON_MIN.
 rat_python_ok() {
-  "$1" -c 'import sys; floor = tuple(int(part) for part in sys.argv[1].split(".")); sys.exit(tuple(sys.version_info[:2]) < floor)' \
+  _rpo_path=$(command -v "$1" 2>/dev/null) || return 1
+  rat_python_stub "$_rpo_path" && return 1
+  "$_rpo_path" -c 'import sys; floor = tuple(int(part) for part in sys.argv[1].split(".")); sys.exit(tuple(sys.version_info[:2]) < floor)' \
     "$RAT_PYTHON_MIN" >/dev/null 2>&1
 }
 

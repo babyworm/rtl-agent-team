@@ -7,6 +7,21 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre15] - 2026-11-22
+
+- Hooks never start Apple's `/usr/bin/python3` stub: without the developer tools it opens an
+  install dialog. `rat_select_python` and the JSON helper treat a candidate that is the same file
+  as `/usr/bin/python3` (any spelling of the path, or a symlink) as the stub on macOS unless the
+  folder `xcode-select -p` names holds a `usr/bin/python3`; a test fakes both tools, so it runs on
+  Linux too. The JSON helper now hands on the checked path, not the bare name.
+- The JSON helper probes Python only when jq is missing or the Python parser is forced, which
+  saves an interpreter start on every hook call where jq exists. Its bare `python` escape
+  fallback (possibly Python 2) is gone.
+- A failed remote fetch removes the empty folders it created, and only those (created one level
+  at a time); a fake-openrsync test covers that branch on Linux.
+- CI: a `test-macos` job runs the unit suite on macOS 15 with `/bin/bash` 3.2 and
+  `/usr/bin/rsync` first on PATH, the paths the Linux jobs never run.
+
 ## [2.0.0-pre14] - 2026-11-22
 
 - Python floor 3.9, one number for the whole plugin: `RAT_PYTHON_MIN` in

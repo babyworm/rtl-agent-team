@@ -9,23 +9,31 @@ jsonu_escape() {
     printf '%s' "$1" | jq -Rs '.' 2>/dev/null | sed 's/^"//; s/"$//' | tr -d '\n'
   elif [ -n "${JSONU_PY_BIN:-}" ]; then
     printf '%s' "$1" | "$JSONU_PY_BIN" -c 'import json,sys; s=sys.stdin.read(); print(json.dumps(s)[1:-1], end="")' 2>/dev/null
-  elif command -v python >/dev/null 2>&1; then
-    printf '%s' "$1" | python -c 'import json,sys; s=sys.stdin.read(); sys.stdout.write(json.dumps(s)[1:-1])' 2>/dev/null
   else
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | tr '\001-\037' '[ *]'
   fi
 }
 
+# Same rules as rat_select_python (hooks/lib/python-util.sh), which callers of this file
+# may not have sourced: the plugin floor, and never macOS's install-dialog stub.
+jsonu_python_ok() {
+  _JP_PATH=$(command -v "$1" 2>/dev/null) || return 1
+  if [ "$_JP_PATH" -ef /usr/bin/python3 ] && [ "$(uname -s 2>/dev/null)" = Darwin ]; then
+    _JP_DEV=$(xcode-select -p 2>/dev/null) && [ -x "$_JP_DEV/usr/bin/python3" ] || return 1
+  fi
+  "$_JP_PATH" -c 'import sys; sys.exit(sys.version_info < (3,9))' >/dev/null 2>&1
+}
+
+# Prints the checked path, so later calls run the interpreter that passed the check.
 jsonu_python() {
   if [ -n "${RAT_PYTHON:-}" ]; then
-    "$RAT_PYTHON" -c 'import sys; sys.exit(sys.version_info < (3,9))' >/dev/null 2>&1 || return 1
-    printf '%s' "$RAT_PYTHON"
+    jsonu_python_ok "$RAT_PYTHON" || return 1
+    printf '%s' "$_JP_PATH"
     return 0
   fi
   for _JP_BIN in python3 python python3.14 python3.13 python3.12 python3.11 python3.10 python3.9; do
-    command -v "$_JP_BIN" >/dev/null 2>&1 || continue
-    "$_JP_BIN" -c 'import sys; sys.exit(sys.version_info < (3,9))' >/dev/null 2>&1 || continue
-    printf '%s' "$_JP_BIN"
+    jsonu_python_ok "$_JP_BIN" || continue
+    printf '%s' "$_JP_PATH"
     return 0
   done
   return 1
@@ -33,7 +41,12 @@ jsonu_python() {
 
 jsonu_detect_parser() {
   JSONU_PARSER_MODE='sed'
-  JSONU_PY_BIN=$(jsonu_python) || JSONU_PY_BIN=""
+  JSONU_PY_BIN=""
+  # Probe Python only when it can matter: no jq, or the Python parser forced. With jq this
+  # saves an interpreter start on every hook call.
+  if ! command -v jq >/dev/null 2>&1 || [ "${RTL_FORCE_PYTHON_PARSER:-0}" = 1 ]; then
+    JSONU_PY_BIN=$(jsonu_python) || JSONU_PY_BIN=""
+  fi
   if command -v jq >/dev/null 2>&1; then
     JSONU_PARSER_MODE=jq
   elif [ -n "$JSONU_PY_BIN" ]; then

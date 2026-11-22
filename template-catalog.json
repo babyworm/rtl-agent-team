@@ -2,12 +2,12 @@
   "schema_version": 1,
   "templates": {
     "hooks/lib/python-util.sh": {
-      "version": "2.0.1",
-      "sha256": "8f30d954f924b9ba4da3199ce84c9b9177f4cfaaa108b02740f5f56d41610f45"
+      "version": "2.0.2",
+      "sha256": "65797b5a25a4f669fc257ac45563d12dd6624b41737b4f24840aea6b6432e6c5"
     },
     "scripts/eda_runner.py": {
-      "version": "2.0.18",
-      "sha256": "d0038e5d42a83f7c5863d20df083f06328426e89dbecbea467f867d41bea19a9"
+      "version": "2.0.19",
+      "sha256": "687228914e6bedd0e7d3549157d2d11f0fb848aeda4ccfd2839592c003960512"
     },
     "scripts/eda_setup.py": {
       "version": "2.0.11",

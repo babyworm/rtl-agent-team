@@ -831,3 +831,40 @@ def test_fetch_with_the_hosts_real_rsync_lands_results_at_their_path(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert (root / "experiment/exp-1/sim/out/report.log").read_text() == "TESTS=1 PASS=1 FAIL=0\n"
     assert not (root / "experiment/exp-1/sim/report.log").exists()
+
+
+@pytest.mark.skipif(shutil.which("rsync") is None, reason="needs a real rsync")
+def test_a_failed_fetch_leaves_no_empty_folders(tmp_path):
+    tools = tmp_path / "bin"
+    executable(tools / "ssh", '#!/bin/sh\nshift\nexec /bin/sh -c "$*"\n')
+    root = tmp_path / "project"
+    run = root / ".rat/remote-runs/run-1"
+    run.mkdir(parents=True)
+    (run / "result.json").write_text(json.dumps({"experiment": "exp-2", "host": "fixture",
+                                                 "remote_outputs": str(tmp_path / "remote")}))
+    result = subprocess.run([sys.executable, str(RUNNER), "fetch", "--root", str(root), "--experiment", "exp-2",
+                             "deep/missing/out"], cwd=root, capture_output=True, text=True, timeout=60,
+                            env={**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"})
+    assert result.returncode == 3 and "could not fetch deep/missing/out" in result.stderr
+    assert sorted(path.name for path in (root / "experiment/exp-2").iterdir()) == [".gitignore"]
+
+
+def test_a_failed_fetch_through_openrsync_removes_the_folders_it_made(tmp_path):
+    # Linux CI has GNU rsync; this fake answers like macOS openrsync, so the branch that creates
+    # the output's parent folders runs everywhere.
+    tools = tmp_path / "bin"
+    executable(tools / "rsync", '#!/bin/sh\n'
+               'case "$*" in *--protect-args*--version*) exit 1 ;; *--version*) echo "openrsync: protocol version 29"; exit 0 ;; esac\n'
+               'exit 23\n')
+    executable(tools / "ssh", '#!/bin/sh\nexit 255\n')
+    root = tmp_path / "project"
+    run = root / ".rat/remote-runs/run-1"
+    run.mkdir(parents=True)
+    (run / "result.json").write_text(json.dumps({"experiment": "exp-3", "host": "fixture",
+                                                 "remote_outputs": "/remote/ws"}))
+    result = subprocess.run([sys.executable, str(RUNNER), "fetch", "--root", str(root), "--experiment", "exp-3",
+                             "deep/missing/out"], cwd=root, capture_output=True, text=True, timeout=60,
+                            env={**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"})
+    assert result.returncode == 3, result.stdout + result.stderr
+    assert sorted(path.name for path in (root / "experiment/exp-3").iterdir()) == [".gitignore"]
+

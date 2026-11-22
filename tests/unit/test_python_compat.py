@@ -1,6 +1,7 @@
 """The plugin's Python floor is one number, enforced in CI and in every Python file."""
 
 import ast
+import os
 import re
 import subprocess
 import sys
@@ -120,3 +121,56 @@ def test_every_python_file_stays_within_the_floor():
             for match in re.finditer(pattern, text):
                 problems.append(f"{name}:{text.count(chr(10), 0, match.start()) + 1}: newer than the floor: {match[0]}")
     assert not problems, "\n".join(problems)
+
+
+def _shell(script, path):
+    # /bin/sh by absolute path, so PATH can hold nothing but the fakes.
+    return subprocess.run(["/bin/sh", "-c", script], capture_output=True, text=True, timeout=20,
+                          env={"PATH": path, "HOME": "/tmp"})
+
+
+@pytest.mark.skipif(not os.path.exists("/usr/bin/python3"), reason="needs /usr/bin/python3")
+@pytest.mark.parametrize("spelling", ["/usr/bin", "/usr//bin", "symlink"])
+@pytest.mark.parametrize("tools_installed", [False, True])
+def test_macos_install_stub_is_never_started(tmp_path, tools_installed, spelling):
+    # Without the developer tools, macOS /usr/bin/python3 opens an install dialog when run.
+    # The guard compares files, so another spelling of the path or a symlink is caught too.
+    if subprocess.run(["/usr/bin/python3", "-c", "import sys; sys.exit(sys.version_info < (3, 9))"],
+                      capture_output=True).returncode:
+        pytest.skip("/usr/bin/python3 is older than the floor here")
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    developer = tmp_path / "Developer"
+    (developer / "usr/bin").mkdir(parents=True)
+    (developer / "usr/bin/python3").symlink_to("/usr/bin/python3")
+    (fake / "uname").write_text("#!/bin/sh\necho Darwin\n")
+    (fake / "xcode-select").write_text(f"#!/bin/sh\necho {developer}\n" if tools_installed else "#!/bin/sh\nexit 2\n")
+    for tool in ("uname", "xcode-select"):
+        (fake / tool).chmod(0o755)
+    if spelling == "symlink":
+        (fake / "python3").symlink_to("/usr/bin/python3")
+        path = f"{fake}:/bin"
+    else:
+        path = f"{fake}:{spelling}:/bin"
+    hooks = REPO_ROOT / "hooks/lib"
+    selected = _shell(f'. "{hooks}/python-util.sh"; rat_select_python', path)
+    parsed = _shell(f'. "{hooks}/json-util.sh"; RTL_FORCE_PYTHON_PARSER=1 jsonu_detect_parser; printf %s "$JSONU_PY_BIN"', path)
+    assert (selected.returncode == 0) == tools_installed, selected.stderr
+    assert (parsed.stdout != "") == tools_installed
+
+
+def test_python_is_not_started_when_jq_parses(tmp_path):
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    started = tmp_path / "python-started"
+    (fake / "python3").write_text(f'#!/bin/sh\n: > "{started}"\nexit 1\n')
+    (fake / "jq").write_text("#!/bin/sh\nexit 0\n")
+    for tool in ("python3", "jq"):
+        (fake / tool).chmod(0o755)
+    hooks = REPO_ROOT / "hooks/lib"
+    # Only the fakes on PATH: CI images carry a real jq in /usr/bin (= /bin there).
+    with_jq = _shell(f'. "{hooks}/json-util.sh"; jsonu_detect_parser; printf %s "$JSONU_PARSER_MODE"', str(fake))
+    assert with_jq.stdout == "jq" and not started.exists()
+    (fake / "jq").unlink()
+    _shell(f'. "{hooks}/json-util.sh"; jsonu_detect_parser', str(fake))
+    assert started.exists()  # without jq the parser needs Python and probes it

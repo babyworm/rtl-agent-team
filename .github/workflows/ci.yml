@@ -17,6 +17,23 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -r tests/requirements-test.txt
       - run: python -m pytest tests/unit/ -x -q
+  test-macos:
+    # The paths Linux CI never runs: macOS /bin/bash 3.2 (also /bin/sh there) and /usr/bin/rsync
+    # (openrsync on macOS 15). Stock tools go first on PATH, after setup-python's. The developer
+    # tools are installed on the runner, so the install stub is covered by a faked test instead.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install -r tests/requirements-test.txt
+      - name: Unit tests with the stock shell and rsync
+        run: |
+          export PATH="$(dirname "$(command -v python)"):/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+          bash --version | head -1
+          rsync --version | head -1
+          python -m pytest tests/unit/ -x -q
   shellcheck:
     runs-on: ubuntu-latest
     steps:

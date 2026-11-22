@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.18
+# rat-version: 2.0.19
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -491,8 +491,30 @@ def rsync_relative(remote_root: str, value: str, destination: Path):
     if rsync_features(shutil.which("rsync"))[1]:
         return ["--relative"], remote_root + "/./" + value, destination, ""
     parent = Path(value).parent
-    (destination / parent).mkdir(parents=True, exist_ok=True)
     return [], remote_root + "/" + value, destination / parent, "" if parent == Path(".") else parent.as_posix() + "/"
+
+
+def make_target(target: Path) -> list[Path]:
+    """Create a fetch target; returns the folders this call created, deepest last."""
+    created = []
+    for folder in (*reversed(target.parents), target):
+        if folder.is_dir():
+            continue
+        try:
+            folder.mkdir()  # one level at a time: a folder another process made is not ours
+        except FileExistsError:
+            continue
+        created.append(folder)
+    return created
+
+
+def remove_if_empty(created: list[Path]) -> None:
+    """A failed fetch leaves no empty folders it made itself."""
+    for folder in reversed(created):
+        try:
+            folder.rmdir()
+        except OSError:
+            break  # not empty: the transfer put something there
 
 
 def import_remote_evidence(path: Path, root: Path, workspace: str, since: float,
@@ -838,12 +860,14 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
         if "." in outputs:
             outputs = ["."]
     for index, value in enumerate(outputs):
+        created = []
         if experiment and supported and value == ".":
             options = ["--safe-links", "--exclude=/.gitignore", "--exclude=/.rat/", *skip]
             source, target = remote_outputs + "/", destination
         else:
             value = relative_output(value)
             relative, source, target, prefix = rsync_relative(remote_outputs, value, destination)
+            created = make_target(target)
             if experiment:
                 options = ["--safe-links", *relative, *skip]
             else:
@@ -855,6 +879,8 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
                 options = [*relative, *skip, "--exclude=.git", "--exclude=.claude", f"--exclude-from={protect}",
                            *(["--delete"] if mode == "sync" else [])]
         result = step([*transport, *options, remote_operand(host, source), str(target) + "/"], f"fetch-{index}")
+        if result:
+            remove_if_empty(created)
         if result and status == 0:
             status = 3
     present = subprocess.run([*ssh, "test -f " + shlex.quote(evidence_path)], capture_output=True, timeout=15)
@@ -961,8 +987,10 @@ def fetch(args, root: Path, config: dict) -> int:
     failed = []
     for value in paths:
         relative, source, target, _ = rsync_relative(record["remote_outputs"], value, destination)
+        created = make_target(target)
         transport, remote_operand = rsync_transport(ssh_options, "--safe-links", *relative)
         if subprocess.run([*transport, remote_operand(record["host"], source), str(target) + "/"]).returncode:
+            remove_if_empty(created)
             failed.append(value)
     for value in failed:
         print(f"could not fetch {value}", file=sys.stderr)
