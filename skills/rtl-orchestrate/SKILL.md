@@ -294,7 +294,7 @@ column.
 2. **No TB without Ref Model** (policy): Do not write a Testbench without a Reference Model
 3. **No Synthesis without RTL** (policy): Do not run synthesis without RTL code
 4. **No Formal without Lint** (policy — skill warning): Do not run Formal verification without passing Lint
-5. **Verification Required** (HARD — `rtl-verify-stop-gate.sh`): Do not declare completion after RTL modification without functional verification (lint alone is insufficient)
+5. **Verification Required** (HARD by default — `rtl-verify-stop-gate.sh`; `verification.stop_gate` = `notify` or `off` relaxes it per project, the user's decision): Do not declare completion after RTL modification without functional verification (lint alone is insufficient)
 6. **Unit Tests for Phase Gate** (policy — skill warning): Do not proceed to Phase 5 without per-module unit tests upon Phase 4 completion + Stream B early verification artifacts (SVA skeletons, CDC preliminary, TB skeletons)
 7. **Feedback Loop Limit** (policy — orchestrator counter): When Phase 5 FAILs, allow a maximum of 2 Phase 4 feedback loops; escalate to user if exceeded
 8. **Phase 5 PASS Required** (policy — skill warning): Do not proceed to Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required)
@@ -431,7 +431,7 @@ This rule applies to ALL tasks that modify `.sv/.svh/.v/.vh` files.
 **Correct flow:** RTL modify → lint pass → TB create/update → simulation PASS → "done"
 
 **Gate signals:**
-- Verification done: `scripts/run_sim.sh` records `.rat/state/verify-evidence.json` after a measured PASS
+- Verification done: `scripts/run_sim.sh`, or `eda_runner.py verify-run` around a project's own runner, records `.rat/state/verify-evidence.json` after a measured PASS
 - Waiver (non-functional changes): the user's decision. Ask before creating `.rat/state/rtl-verify-waiver`.
 - Both files are in the project root's `.rat/state/` (the root is the directory that holds `.rat/`), not in a subdirectory the session cd'd into.
 
@@ -555,7 +555,7 @@ This block is the single source for SessionStart routing injection.
 2. No Testbench without Reference Model — policy
 3. No synthesis without RTL code — policy
 4. No Formal verification without passing Lint — policy (skill warning)
-5. **No completion after RTL modification without functional verification** (lint alone is insufficient) — HARD (rtl-verify-stop-gate.sh)
+5. **No completion after RTL modification without functional verification** (lint alone is insufficient) — HARD (rtl-verify-stop-gate.sh; `verification.stop_gate` notify/off relaxes it, the user's decision; ask first)
 6. No Phase 5 without per-module unit tests upon Phase 4 completion + Stream B early verification artifacts — policy (skill warning)
 7. Phase 5 FAIL → max 2 Phase 4 feedback loops; escalate to user if exceeded — policy (orchestrator counter)
 8. No Phase 6 without Phase 5 PASS (final-compliance.md verdict=PASS required) — policy (skill warning)
@@ -656,7 +656,7 @@ Port prefix `i_`/`o_`/`io_` (NOT suffix; clk/rst exempt). Clock `clk`/`{domain}_
 
 ## Mandatory Verification After RTL Changes
 RTL modify → configured lint → TB create/update → simulation PASS → done
-Gate: `scripts/run_sim.sh` records `.rat/state/verify-evidence.json`; completion requires a measured PASS bound to the current inputs and logs. A waiver for non-functional changes (`.rat/state/rtl-verify-waiver`) is the user's decision; ask first. Both are in the project root's `.rat/state/`, not in a subdirectory the session cd'd into.
+Gate: `scripts/run_sim.sh`, or `eda_runner.py verify-run` around a project's own runner (local, or remote with `--remote-host`/`--remote-root`), records `.rat/state/verify-evidence.json`; completion requires a measured PASS bound to the current inputs and logs. A waiver for non-functional changes (`.rat/state/rtl-verify-waiver`) is the user's decision; ask first. Both are in the project root's `.rat/state/`, not in a subdirectory the session cd'd into.
 
 ## 6+1 Phase Design Pipeline
 P1: Research → P2: Arch/Ref → P3: μArch → P4: RTL+Unit → P5: Verify → P6: Design Note → P7: Exploration (optional)

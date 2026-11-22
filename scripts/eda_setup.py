@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.10
+# rat-version: 2.0.11
 """Discover an EDA site, probe selected tools, and apply a reusable site profile."""
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def bounded(argv, timeout, **kwargs):
     except subprocess.TimeoutExpired as exc:
         try:
             os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):  # macOS: EPERM once only the zombie leader is left
             pass
         process.stdout.close()
         process.wait()
@@ -305,12 +305,15 @@ def user_configuration(root):
     machine = read_json(path)
     site = machine.get("default_site")
     if site is None or site == "":
-        return {key: machine[key] for key in ("execution", "preferences", "tools", "technology")
+        return {key: machine[key] for key in ("execution", "preferences", "tools", "technology", "verification")
                 if key in machine}
     if not isinstance(site, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", site) or site in (".", ".."):
         raise ValueError("default_site must name a profile under the private sites directory")
     profile = read_json(data / "sites" / (site + ".json"))
-    return configure(profile, {}, root)
+    config = configure(profile, {}, root)
+    if "verification" in machine:  # machine policy such as verification.stop_gate, whichever site runs
+        config["verification"] = machine["verification"]
+    return config
 
 
 def write_json(path, value):

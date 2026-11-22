@@ -7,6 +7,30 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre13] - 2026-11-22
+
+- `eda_runner.py verify-run --root <project> -f <filelist> [--log <summary>] [--remote-host
+  <host> --remote-root <dir>] -- <runner>` turns a project's own runner into Rule 5 evidence
+  without changing the runner or its transport (local script, rsync/SSH bridge, LSF wrapper,
+  plain `ssh`). It runs the command from the project root, hashes the inputs and the runner
+  script before and after the run, and judges the console or a summary file the run wrote
+  (ctime changed, mtime not older than the start by more than 120 s, so a stale copy fetched
+  again is rejected). With `--remote-*` it hashes the same project-relative inputs on the
+  execution host after a successful run (`sha256sum` or `shasum` over `ssh … sh -s`, no
+  remote Python); a missing or different remote file, or a failed SSH step, makes the result
+  INCONCLUSIVE and names it, and the record never stays RUNNING. Only `RAT_SIM_PASS` or
+  `TESTS=<n> PASS=<n> FAIL=0` count as completion; commands that only print are refused, and
+  there is no command-line PASS pattern.
+- `verification.stop_gate` selects how the RTL verify gate reacts to pending files: `block`
+  (default, also for unknown values, which the message names), `notify` (one `Info>` line
+  per content state, never a block) or `off` (silent; tracking stays). A project
+  `rat_config.json` owns it; the machine `env-config.json` applies without one, also with a
+  `default_site`. Changing it is the user's decision, like a waiver. The block message names
+  the `verify-run` route.
+- macOS: a timed-out or interrupted run no longer fails with `Operation not permitted`.
+  Darwin's `killpg` returns EPERM once only the zombie group leader is left; the runner and
+  setup probes treat that like a finished group.
+
 ## [2.0.0-pre12] - 2026-11-21
 
 - `execution.results` selects where remote results land: `experiment` (default, only

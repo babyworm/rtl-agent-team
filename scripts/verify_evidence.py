@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.10
+# rat-version: 2.0.11
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -409,6 +409,11 @@ def state_within_bounds(root: Path, path: Path) -> bool:
 
 
 def begin(args) -> int:
+    print(begin_record(args))
+    return 0
+
+
+def begin_record(args) -> Path:
     root = Path(args.root).resolve()
     outdir = Path(args.outdir).resolve()
     state = runtime_state_root(root) / "state"
@@ -444,8 +449,7 @@ def begin(args) -> int:
         record["point_fingerprints"] = planned_fingerprints(root)
     target = state / "verify-runs" / (record["run_id"] + ".json")
     atomic_json(target, record)
-    print(target)
-    return 0
+    return target
 
 
 def finish(args) -> int:
@@ -455,7 +459,7 @@ def finish(args) -> int:
     text = log.read_text(errors="replace") if log.is_file() else ""
     runtime_log=Path(args.runtime_log) if args.runtime_log else None
     runtime_text=runtime_log.read_text(errors="replace") if runtime_log and runtime_log.is_file() else "" if runtime_log else text
-    verdict = classify(args.exit_code, runtime_text)
+    verdict = classify(args.exit_code, runtime_text, getattr(args, "pass_pattern", PASS_PATTERN))
     all_logs=classify(args.exit_code,text,check_points=False)
     if all_logs in ("FAIL","TIMEOUT","STALL","HANG"): verdict=all_logs
     if args.compile_only and args.exit_code == 0 and verdict not in ("FAIL","TIMEOUT","STALL","HANG"):
@@ -471,6 +475,13 @@ def finish(args) -> int:
     record["sources_fresh"]=unchanged(record["sources"], record.get("source_identity"))
     if not record["sources_fresh"] and verdict in ("PASS","COMPILED"):
         verdict = "INCONCLUSIVE"
+    # Wrapped runners (eda_runner.py verify-run) name a binding they could not establish.
+    unbound = getattr(args, "unbound", "")
+    if unbound:
+        record["unbound_reason"] = unbound
+        if verdict in ("PASS", "COMPILED"):
+            verdict = "INCONCLUSIVE"
+    record.update(getattr(args, "extra", None) or {})
     record.update(verdict=verdict, completed_at=time.time(), exit_code=args.exit_code,
                   log=str(log.resolve()), log_sha256=digest(log) if log.is_file() else None)
     if runtime_log:
@@ -496,7 +507,7 @@ def finish(args) -> int:
         data = json.loads(index.read_text()) if index.is_file() else {"schema_version": 1, "runs": []}
         data["runs"].append(record)
         atomic_json(index, data)
-    print(f"[run_sim] verdict={verdict}; evidence={target}")
+    print(f"[{getattr(args, 'label', 'run_sim')}] verdict={verdict}; evidence={target}")
     return args.exit_code if args.exit_code else (0 if verdict in ("PASS", "COMPILED") else 3)
 
 

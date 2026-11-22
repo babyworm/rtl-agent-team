@@ -6,12 +6,12 @@
       "sha256": "82d5ff04a0fd367f4c9f65ea96b2e4a0d6c339f3785dc9661582c4cfab9aa9e5"
     },
     "scripts/eda_runner.py": {
-      "version": "2.0.15",
-      "sha256": "a7d4abf8295f578f8c0f5874e5af98daf457750a66f4ee622af3252981caf8b6"
+      "version": "2.0.16",
+      "sha256": "b28cefb6384ad179dcc2686b6cae8cffb457840d116718f6f3d2647f341ceb71"
     },
     "scripts/eda_setup.py": {
-      "version": "2.0.10",
-      "sha256": "82b5ae6864091ea6bda5ffea5116f836f9f47a11ac18ac4e82a39d0347836c6f"
+      "version": "2.0.11",
+      "sha256": "25f94723279ee26d725b666c483549401eec6cf06462e6f50448d43045e365d4"
     },
     "scripts/merge_coverpoint_logs.py": {
       "version": "2.0.0",
@@ -26,8 +26,8 @@
       "sha256": "b62b2f0289f2035f5d1e8d6c792829236508b3c4e4e6e35630eb0ca8231fd7a6"
     },
     "scripts/verify_evidence.py": {
-      "version": "2.0.10",
-      "sha256": "8aa5d14c4201e5c00bb6fc3ff179328f26b9236230948da4361a1c6eac083509"
+      "version": "2.0.11",
+      "sha256": "2ffd9d0b24fb88bc59ec554647ad5a6095434acb54c7c92f330bdd7b952584e3"
     },
     "skills/rat-init-project/templates/Makefile": {
       "version": "2.0.0",
@@ -70,8 +70,8 @@
       "sha256": "80c346416fd3cbe2040c31b8f32a9feeef6399e1428dcd7ab0c65e95d1adafb9"
     },
     "skills/rat-init-project/templates/rules/rtl-verification-gate.md": {
-      "version": "2.0.0",
-      "sha256": "b2c7390e68a04b327b6fd6b9aa8fc4a86d999af3b715280a0c51e06691e7d394"
+      "version": "2.0.1",
+      "sha256": "2acc9aa0e3be2084566e2e024baa2d50879f0872d0c7d62039bdb7646342bc0c"
     },
     "skills/rat-init-project/templates/run_cdc.sh": {
       "version": "2.0.2",

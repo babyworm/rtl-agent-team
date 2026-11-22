@@ -881,6 +881,63 @@ class TestRtlVerifyStopGate:
         _assert_stop_blocked(result)
 
 
+class TestVerifyGateModes:
+    """verification.stop_gate selects block (default), notify or off."""
+
+    HOOK = HOOKS_DIR / "rtl-verify-stop-gate.sh"
+
+    def _pending(self, project, project_mode=None, machine_mode=None):
+        _track(project / ".rat/state/rtl-modified-files.txt", "rtl/a.sv\n")
+        if project_mode is not None:
+            (project / "rat_config.json").write_text(json.dumps({"verification": {"stop_gate": project_mode}}))
+        if machine_mode is not None:
+            (Path(os.environ["RAT_DATA_DIR"]) / "env-config.json").write_text(
+                json.dumps({"verification": {"stop_gate": machine_mode}}))
+        return {"cwd": str(project), "prompt_id": "p1"}
+
+    def test_default_blocks_and_names_the_project_runner_route(self, tmp_project):
+        result = run_hook(self.HOOK, self._pending(tmp_project))
+        _assert_stop_blocked(result)
+        assert "eda_runner.py' verify-run" in result["reason"] and "--remote-host" in result["reason"]
+
+    def test_notify_shows_one_notice_and_never_blocks(self, tmp_project):
+        stop = self._pending(tmp_project, "notify")
+        assert run_hook(self.HOOK, stop) == {"systemMessage": "Info> Functional verification is pending for "
+                                             "1 RTL file(s) (verification.stop_gate=notify)."}
+        assert run_hook(self.HOOK, {**stop, "prompt_id": "p2"}) == {"continue": True}
+        assert (tmp_project / ".rat/state/rtl-modified-files.txt").exists()
+
+    def test_notify_still_clears_verified_files(self, tmp_project):
+        stop = self._pending(tmp_project, "notify")
+        _record_passing_evidence(tmp_project)
+        assert run_hook(self.HOOK, stop) == {"continue": True}
+        assert not (tmp_project / ".rat/state/rtl-modified-files.txt").exists()
+
+    def test_off_is_silent_and_block_resumes_the_pending_files(self, tmp_project):
+        stop = self._pending(tmp_project, "off")
+        assert run_hook(self.HOOK, stop) == {"continue": True}
+        assert (tmp_project / ".rat/state/rtl-modified-files.txt").exists()
+        (tmp_project / "rat_config.json").write_text(json.dumps({"verification": {"stop_gate": "block"}}))
+        _assert_stop_blocked(run_hook(self.HOOK, {**stop, "prompt_id": "p2"}))
+
+    def test_returning_from_notify_to_block_blocks_the_notified_files(self, tmp_project):
+        stop = self._pending(tmp_project, "notify")
+        assert "systemMessage" in run_hook(self.HOOK, stop)
+        (tmp_project / "rat_config.json").write_text(json.dumps({"verification": {"stop_gate": "block"}}))
+        _assert_stop_blocked(run_hook(self.HOOK, {**stop, "prompt_id": "p2"}))
+
+    def test_unknown_mode_blocks_and_names_the_value(self, tmp_project):
+        result = run_hook(self.HOOK, self._pending(tmp_project, "relaxed"))
+        _assert_stop_blocked(result)
+        assert "relaxed" in result["reason"] and "block, notify or off" in result["reason"]
+
+    def test_machine_setting_applies_without_project_config(self, tmp_project):
+        assert run_hook(self.HOOK, self._pending(tmp_project, machine_mode="off")) == {"continue": True}
+
+    def test_project_config_owns_the_setting(self, tmp_project):
+        _assert_stop_blocked(run_hook(self.HOOK, self._pending(tmp_project, "block", machine_mode="off")))
+
+
 class TestStopGate:
     """Tests for hooks/stop-gate.sh."""
 

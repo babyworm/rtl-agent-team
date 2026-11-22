@@ -138,6 +138,41 @@ INCONCLUSIVE and need a site-specific parser/pattern, not an LLM's reassurance.
 License waiting is bounded by the same wall-time limit. Use a site's configured
 license wait argument list; do not guess vendor flags or retry indefinitely.
 
+## Project runners
+
+A project's own runner (a regression script, a Makefile target, or a script that reaches
+a remote simulator through rsync and SSH, LSF or a site bridge) records the same evidence
+through `eda_runner.py verify-run --root <project> -f <filelist> [--source <file>]
+[--log <summary file>] [--remote-host <host> --remote-root <dir>] -- <runner>`.
+The runner itself is unchanged. `verify-run` hashes the inputs that `-f`/`--source`
+resolve (relative paths resolve against the project root, filelist entries against the
+filelist and then the root, as for every evidence record), plus the runner script itself,
+so editing the runner afterwards voids the evidence. It runs the command from the project
+root with the configured time limits and judges the console output. With `--log`, it
+judges that summary file instead: the run must write it (its ctime changes), its mtime
+must not be older than the start by more than 120 seconds (a stale copy fetched with
+`rsync -a` or `cp -p` keeps its old time), and the evidence keeps a copy. Failure
+signatures in either log win. Only `RAT_SIM_PASS` at the start of a line or
+`TESTS=<n> PASS=<n> FAIL=0` count as completion; a bare `PASS` line or a zero exit is
+INCONCLUSIVE. Commands that only print (`echo`, `printf`, `true`, ...) are refused.
+
+When the runner executes elsewhere, `--remote-host`/`--remote-root` hash the same
+project-relative inputs on that host after a successful run (`sha256sum`, else
+`shasum -a 256`; no remote Python; the script goes over `ssh -o BatchMode=yes … sh -s`).
+Filelists must then name project-relative paths without environment variables, as for
+`dispatch`. UVM library headers under `$UVM_HOME/src` stay bound locally only, because
+each host has its own installation. A missing or different file, or a failed SSH step,
+makes the result INCONCLUSIVE and names the files. The transport stays the runner's;
+`verify-run` neither sends files nor deletes any. The record carries `origin:
+verify-run`, the command, the host and directory, the manifest hash and the local Git
+commit as metadata. A commit hash names a revision; it does not prove what the remote
+copy held. A plain `ssh <host> '<command>'` is a runner too.
+
+`verification.stop_gate` selects how Rule 5 reacts to pending files: `block` (default),
+`notify` (a notice, no block) or `off`. Changing it is the user's decision, like a waiver. A project `rat_config.json` owns it; without one,
+the machine `env-config.json` applies. A hand-written `rat_config.json` replaces the
+machine configuration as a whole, so create it with rat-init-project.
+
 ## Validation boundary
 
 Unit tests exercise process exit propagation, timeouts, log verdicts, source

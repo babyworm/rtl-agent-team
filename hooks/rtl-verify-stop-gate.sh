@@ -3,7 +3,12 @@
 #
 # Tracking file: .rat/state/rtl-modified-files.txt (one path per line)
 # Verification evidence: runner-written verify-evidence.json with fresh hashes
+#   (scripts/run_sim.sh and the regression wrappers, or eda_runner.py verify-run
+#   around a project's own runner, local or remote)
 # Waiver: .rat/state/rtl-verify-waiver (the user's decision)
+# Mode: verification.stop_gate in rat_config.json, else the machine env-config.json:
+#   block (default; also for unknown values), notify (one line per content state,
+#   never blocks), off (silent; tracking stays, so block resumes the pending files)
 #
 # Request verification once for a new unverified content state. Its next Stop
 # shows one informational line even if the user started a new prompt.
@@ -104,11 +109,28 @@ if [ ! -f "$TRACK_FILE" ] || [ ! -s "$TRACK_FILE" ]; then
   emit_post_continue
 fi
 
+EVIDENCE_PYTHON=$(rat_select_python 2>/dev/null) || EVIDENCE_PYTHON=""
+RUNNER_HELPER="$SCRIPT_DIR/../scripts/eda_runner.py"
+# The mode is read only with tracked files present; without Python the gate blocks.
+GATE_MODE=block
+GATE_MODE_NOTE=""
+if [ -n "$EVIDENCE_PYTHON" ]; then
+  _vg_mode=$("$EVIDENCE_PYTHON" "$RUNNER_HELPER" get --root "$CWD" --key verification.stop_gate 2>/dev/null)
+  case "$_vg_mode" in
+    ""|block) ;;
+    notify|off) GATE_MODE=$_vg_mode ;;
+    *) GATE_MODE_NOTE=" verification.stop_gate is $(printf '%s' "$_vg_mode" | LC_ALL=C tr -cd '\040-\176' | LC_ALL=C cut -c1-40), not block, notify or off, so the gate blocks." ;;
+  esac
+fi
+if [ "$GATE_MODE" = off ]; then
+  rm -f "$AGGREGATED_TRACK"
+  emit_post_continue
+fi
+
 # A bare verify-done marker does not establish that a simulation ran. Check
 # runner evidence once; when no parser is available, keep verification pending.
 EVIDENCE_VERIFIED=false
 EVIDENCE_PENDING=""
-EVIDENCE_PYTHON=$(rat_select_python 2>/dev/null) || EVIDENCE_PYTHON=""
 EVIDENCE_HELPER="$SCRIPT_DIR/../scripts/verify_evidence.py"
 if [ -n "$EVIDENCE_PYTHON" ] && [ -f "$EVIDENCE_HELPER" ]; then
   if "$EVIDENCE_PYTHON" "$EVIDENCE_HELPER" pending --root "$CWD" --track "$TRACK_FILE"; then
@@ -147,7 +169,7 @@ FILES=$(printf '%s\n' "$TRACKED" | awk -v max=10 'NF { n++; if (n <= max) printf
 # Clean up temporary aggregated file
 rm -f "$AGGREGATED_TRACK"
 
-MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules through scripts/run_sim.sh; --sim auto uses the configured or an installed simulator (for example /rtl-agent-team:rtl-p4s-unit-test, or the project's regression skill for its configured simulator). A passing testbench emits RAT_SIM_PASS or a recognized test summary; the runner records fresh source and log hashes in $(shq "$STATE_DIR/verify-evidence.json"). A touched marker is insufficient. If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
+MSG="[RTL Verify Gate BLOCKED] ${COUNT} RTL files modified but functional verification not performed: ${FILES}. Run functional verification for the affected modules through scripts/run_sim.sh; --sim auto uses the configured or an installed simulator (for example /rtl-agent-team:rtl-p4s-unit-test, or the project's regression skill for its configured simulator). A passing testbench emits RAT_SIM_PASS or a recognized test summary; the runner records fresh source and log hashes in $(shq "$STATE_DIR/verify-evidence.json"). A touched marker is insufficient. A project's own runner (a local script, or one that reaches a remote simulator through rsync/ssh or LSF) records the same evidence through $(shq "$(cd "$SCRIPT_DIR/.." && pwd)/scripts/eda_runner.py") verify-run --root <project> -f <filelist> [--log <summary file>] [--remote-host <host> --remote-root <dir>] -- <runner>; the runner must print RAT_SIM_PASS or TESTS=<n> PASS=<n> FAIL=0, and --remote-host hashes the inputs on that host after the run.${GATE_MODE_NOTE} If verification cannot run here, report what is missing and ask the user with AskUserQuestion whether to waive it; a waiver is the user's decision."
 NOTICE="Info> Functional verification is pending for ${COUNT} RTL file(s)."
 VERIFY_PROGRESS="$TRACKED"
 while IFS= read -r _vp_file; do
@@ -164,12 +186,19 @@ fi
 save_receipt() {
   printf '%s %s\n' "$FINGERPRINT" "$1" | ratu_state_write "$VERIFY_RECEIPT"
 }
+if [ "$GATE_MODE" = notify ]; then
+  # Its own receipt: returning to block must still request verification for this content.
+  [ "$REPORTED" != "$FINGERPRINT notify" ] || emit_post_continue
+  save_receipt notify || true
+  stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VERIFY_PROGRESS" "$MSG" \
+    "Info> Functional verification is pending for ${COUNT} RTL file(s) (verification.stop_gate=notify)." 0
+fi
 # A block helps only when a simulator can run. With none configured or on PATH,
 # tell the user once per content state; LSP diagnostics still report syntax.
 SIM_PRESENT=false
 [ -z "${SIM:-}" ] || SIM_PRESENT=true  # run_sim.sh honors the same variable
 if [ "$SIM_PRESENT" != true ] && [ -n "$EVIDENCE_PYTHON" ]; then
-  _VS_RUNNER="$SCRIPT_DIR/../scripts/eda_runner.py"
+  _VS_RUNNER="$RUNNER_HELPER"
   [ -z "$("$EVIDENCE_PYTHON" "$_VS_RUNNER" get --root "$CWD" --key preferences.simulator 2>/dev/null)" ] || SIM_PRESENT=true
   case "$("$EVIDENCE_PYTHON" "$_VS_RUNNER" backend --root "$CWD" 2>/dev/null)" in docker|ssh|lsf) SIM_PRESENT=true ;; esac
 fi

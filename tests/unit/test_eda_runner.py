@@ -488,3 +488,283 @@ def test_in_place_results_need_git(remote_project):
         "backend": "ssh", "host": "fixture-host", "workspace": str(remote), "results": "sync"}}))
     result = invoke(root, "dispatch", "--wrapper", str(wrapper), env=env)
     assert result.returncode == 2 and "needs a Git work tree" in result.stderr
+
+
+# verify-run: a project's own runner, unchanged, recorded as content-bound evidence.
+EVIDENCE = REPO_ROOT / "scripts/verify_evidence.py"
+
+
+def verify_run(root, *arguments, env=None):
+    return subprocess.run([sys.executable, str(RUNNER), "verify-run", "--root", str(root), *arguments],
+                          cwd=root, env={**os.environ, **(env or {})}, capture_output=True, text=True, timeout=30)
+
+
+def project_runner(root, body):
+    return executable(root / "regress.sh", "#!/bin/sh\n" + body)
+
+
+def add_rtl(root):
+    (root / ".rat/state").mkdir(parents=True, exist_ok=True)
+    (root / "rtl").mkdir(exist_ok=True)
+    (root / "rtl/top.sv").write_text("module top; endmodule\n")
+    (root / "rtl/files.f").write_text("top.sv\n")
+    return root
+
+
+@pytest.fixture
+def runner_project(tmp_path):
+    return add_rtl(tmp_path / "project")
+
+
+def pending_files(root):
+    track = root / ".rat/state/rtl-modified-files.txt"
+    track.write_text("rtl/top.sv\n")
+    result = subprocess.run([sys.executable, str(EVIDENCE), "unverified", "--root", str(root), "--track", str(track)],
+                            capture_output=True, text=True, timeout=15)
+    return result.stdout.split()
+
+
+def last_record(root):
+    return json.loads((root / ".rat/state/verify-evidence.json").read_text())["runs"][-1]
+
+
+def test_verify_run_records_a_project_runner_the_gate_accepts(runner_project):
+    from tests.conftest import run_hook
+    root = runner_project
+    regress = project_runner(root, 'echo "TESTS=2 PASS=2 FAIL=0"\n')
+    result = verify_run(root, "-f", "rtl/files.f", "--", str(regress))
+    assert result.returncode == 0, result.stdout + result.stderr
+    record = last_record(root)
+    assert (record["verdict"], record["origin"], record["argv"]) == ("PASS", "verify-run", [str(regress)])
+    assert pending_files(root) == []
+    assert run_hook(REPO_ROOT / "hooks/rtl-verify-stop-gate.sh", {"cwd": str(root)}) == {"continue": True}
+
+
+@pytest.mark.parametrize("body,code,verdict", [
+    ('echo "*E,ELBERR: elaboration failed"\n', 3, "FAIL"),
+    ('echo "regression finished"\n', 3, "INCONCLUSIVE"),
+    ('echo "TESTS=1 PASS=1 FAIL=0"; exit 5\n', 5, "FAIL"),
+])
+def test_verify_run_judges_the_runner_output(runner_project, body, code, verdict):
+    result = verify_run(runner_project, "-f", "rtl/files.f", "--", str(project_runner(runner_project, body)))
+    assert result.returncode == code, result.stdout + result.stderr
+    assert last_record(runner_project)["verdict"] == verdict
+    assert pending_files(runner_project) == ["rtl/top.sv"]
+
+
+def test_summary_file_must_be_written_by_this_run(runner_project):
+    root = runner_project
+    summary = root / "results/regress.txt"
+    summary.parent.mkdir()
+    summary.write_text("TESTS=1 PASS=1 FAIL=0\n")  # left by an earlier run
+    stale = verify_run(root, "-f", "rtl/files.f", "--log", "results/regress.txt", "--",
+                       str(project_runner(root, "true\n")))
+    assert stale.returncode == 3
+    record = last_record(root)
+    assert record["verdict"] == "INCONCLUSIVE" and "results/regress.txt" in record["unbound_reason"]
+    fresh = project_runner(root, 'printf "TESTS=23 PASS=23 FAIL=0\\n" > results/regress.txt\n')
+    result = verify_run(root, "-f", "rtl/files.f", "--log", "results/regress.txt", "--", str(fresh))
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary.write_text("overwritten by a later run\n")
+    assert pending_files(root) == []  # the evidence keeps its own copy of the summary
+
+
+def test_failure_in_the_console_overrides_a_passing_summary(runner_project):
+    root = runner_project
+    (root / "results").mkdir()
+    body = 'echo "*F,INTERR: simulator crashed"\nprintf "TESTS=1 PASS=1 FAIL=0\\n" > results/regress.txt\n'
+    result = verify_run(root, "-f", "rtl/files.f", "--log", "results/regress.txt", "--", str(project_runner(root, body)))
+    assert result.returncode == 3
+    assert last_record(root)["verdict"] == "FAIL"
+
+
+def test_local_edit_during_the_run_is_inconclusive(runner_project):
+    body = 'echo "module extra; endmodule" >> rtl/top.sv\necho "TESTS=1 PASS=1 FAIL=0"\n'
+    result = verify_run(runner_project, "-f", "rtl/files.f", "--", str(project_runner(runner_project, body)))
+    assert result.returncode == 3
+    assert last_record(runner_project)["verdict"] == "INCONCLUSIVE"
+
+
+def test_remote_manifest_binds_the_copy_the_host_ran(remote_project):
+    root, remote, _, env = remote_project
+    add_rtl(root)
+    shutil.copytree(root / "rtl", remote / "rtl")  # the project's own runner synchronized it
+    flags = ["-f", "rtl/files.f", "--remote-host", "fixture", "--remote-root", str(remote), "--",
+             str(project_runner(root, 'echo "TESTS=4 PASS=4 FAIL=0"\n'))]
+    passed = verify_run(root, *flags, env=env)
+    assert passed.returncode == 0, passed.stdout + passed.stderr
+    record = last_record(root)
+    assert record["remote_host"] == "fixture" and record["remote_root"] == str(remote)
+    assert len(record["remote_manifest_sha256"]) == 64
+    assert pending_files(root) == []
+    (remote / "rtl/top.sv").write_text("module stale; endmodule\n")
+    stale = verify_run(root, *flags, env=env)
+    assert stale.returncode == 3
+    assert "differs on fixture: rtl/top.sv" in last_record(root)["unbound_reason"]
+    (remote / "rtl/top.sv").unlink()
+    missing = verify_run(root, *flags, env=env)
+    assert missing.returncode == 3
+    assert "missing on fixture: rtl/top.sv" in last_record(root)["unbound_reason"]
+
+
+def test_failed_runner_skips_the_remote_step(remote_project):
+    root, remote, _, env = remote_project
+    add_rtl(root)
+    result = verify_run(root, "-f", "rtl/files.f", "--remote-host", "fixture", "--remote-root", str(remote / "absent"),
+                        "--", str(project_runner(root, "exit 4\n")), env=env)
+    assert result.returncode == 4
+    record = last_record(root)
+    assert record["verdict"] == "FAIL"
+    assert "remote_manifest_sha256" not in record and "unbound_reason" not in record
+
+
+def test_live_run_lets_the_gate_wait(runner_project):
+    root = runner_project
+    release = root / "release"
+    regress = project_runner(root, f'while [ ! -f "{release}" ]; do sleep 0.05; done\necho "TESTS=1 PASS=1 FAIL=0"\n')
+    process = subprocess.Popen([sys.executable, str(RUNNER), "verify-run", "--root", str(root), "-f", "rtl/files.f",
+                                "--", str(regress)], cwd=root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        track = root / ".rat/state/rtl-modified-files.txt"
+        track.write_text("rtl/top.sv\n")
+        deadline = time.time() + 10
+        while not list((root / ".rat/state").glob("verify-runs/*.json")) and time.time() < deadline:
+            time.sleep(0.05)
+        waiting = subprocess.run([sys.executable, str(EVIDENCE), "pending", "--root", str(root), "--track", str(track)],
+                                 timeout=15)
+        assert waiting.returncode == 0
+    finally:
+        release.touch()
+        assert process.wait(timeout=20) == 0
+
+
+@pytest.mark.parametrize("flags", [
+    ["--", "RUNNER"],
+    ["-f", "rtl/files.f"],
+    ["-f", "rtl/files.f", "--remote-host", "fixture", "--", "RUNNER"],
+    ["-f", "rtl/files.f", "--remote-host", "fixture", "--remote-root", "relative/dir", "--", "RUNNER"],
+    ["-f", "rtl/files.f", "--remote-host", "bad host", "--remote-root", "/remote/ws", "--", "RUNNER"],
+    ["-f", "rtl/files.f", "--", "no-such-runner-anywhere"],
+    ["-f", "rtl/files.f", "--", "echo", "RAT_SIM_PASS"],
+    ["-f", "rtl/files.f", "--", "printf", "RAT_SIM_PASS"],
+])
+def test_invalid_requests_run_nothing_and_leave_no_record(runner_project, flags):
+    regress = project_runner(runner_project, 'touch ran\necho RAT_SIM_PASS\n')
+    result = verify_run(runner_project, *[str(regress) if value == "RUNNER" else value for value in flags])
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "EDA execution error" in result.stderr or "usage" in result.stderr
+    assert not (runner_project / "ran").exists()
+    assert not (runner_project / ".rat/state/verify-runs").exists()
+
+
+def test_a_command_that_only_prints_the_token_is_refused(runner_project):
+    result = verify_run(runner_project, "-f", "rtl/files.f", "--", "echo", "RAT_SIM_PASS")
+    assert result.returncode == 2 and "runs no simulation" in result.stderr
+
+
+def test_remote_hashing_covers_project_files_only(runner_project, tmp_path):
+    outside = tmp_path / "outside.sv"
+    outside.write_text("module outside; endmodule\n")
+    result = verify_run(runner_project, "--source", str(outside), "--remote-host", "fixture",
+                        "--remote-root", "/remote/ws", "--", str(project_runner(runner_project, "true\n")))
+    assert result.returncode == 2 and "outside the project" in result.stderr
+    assert not (runner_project / ".rat/state/verify-runs").exists()
+
+
+def test_remote_filelists_must_stay_project_relative(runner_project):
+    (runner_project / "rtl/files.f").write_text(str(runner_project / "rtl/top.sv") + "\n")
+    result = verify_run(runner_project, "-f", "rtl/files.f", "--remote-host", "fixture", "--remote-root", "/remote/ws",
+                        "--", str(project_runner(runner_project, "true\n")))
+    assert result.returncode == 2 and "project-relative" in result.stderr
+
+
+def test_only_documented_completion_lines_pass(runner_project):
+    result = verify_run(runner_project, "-f", "rtl/files.f", "--",
+                        str(project_runner(runner_project, 'echo "PASS: lint clean"\necho "TEST PASSED"\n')))
+    assert result.returncode == 3
+    assert last_record(runner_project)["verdict"] == "INCONCLUSIVE"
+
+
+def test_editing_the_runner_afterwards_voids_its_evidence(runner_project):
+    regress = project_runner(runner_project, "echo RAT_SIM_PASS\n")
+    assert verify_run(runner_project, "-f", "rtl/files.f", "--", str(regress)).returncode == 0
+    assert pending_files(runner_project) == []
+    regress.write_text("#!/bin/sh\necho RAT_SIM_PASS  # never simulates\n")
+    assert pending_files(runner_project) == ["rtl/top.sv"]
+
+
+def test_a_summary_copied_back_from_an_earlier_run_is_inconclusive(runner_project):
+    root = runner_project
+    (root / "results").mkdir()
+    old = root / "results/previous.txt"
+    old.write_text("TESTS=23 PASS=23 FAIL=0\n")
+    os.utime(old, (1577836800, 1577836800))  # 2020-01-01, as rsync -a keeps the host's time
+    body = "rm -f results/regress.txt\ncp -p results/previous.txt results/regress.txt\n"
+    result = verify_run(root, "-f", "rtl/files.f", "--log", "results/regress.txt", "--", str(project_runner(root, body)))
+    assert result.returncode == 3
+    assert "older time" in last_record(root)["unbound_reason"]
+
+
+def test_runner_runs_from_the_project_root(runner_project, tmp_path):
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    regress = project_runner(runner_project, 'printf "TESTS=1 PASS=1 FAIL=0\\n" > results.txt\n')
+    result = subprocess.run([sys.executable, str(RUNNER), "verify-run", "--root", str(runner_project), "-f",
+                             "rtl/files.f", "--log", "results.txt", "--", "./regress.sh"],
+                            cwd=elsewhere, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (runner_project / "results.txt").is_file() and not (elsewhere / "results.txt").exists()
+    assert regress.is_file()
+
+
+@pytest.mark.parametrize("case", ["no-ssh-client", "remote-root-missing"])
+def test_a_failed_remote_step_finishes_the_record_as_inconclusive(remote_project, case):
+    root, remote, _, env = remote_project
+    add_rtl(root)
+    if case == "no-ssh-client":  # keep only ps, which process identity needs where /proc is absent
+        tools = root / "tools-without-ssh"
+        tools.mkdir()
+        (tools / "ps").symlink_to(shutil.which("ps"))
+        env = {**env, "PATH": str(tools)}
+    target = remote / "absent" if case == "remote-root-missing" else remote
+    result = verify_run(root, "-f", "rtl/files.f", "--remote-host", "fixture", "--remote-root", str(target), "--",
+                        str(project_runner(root, "echo RAT_SIM_PASS\n")), env=env)
+    assert result.returncode == 3, result.stdout + result.stderr
+    record = last_record(root)
+    assert record["verdict"] == "INCONCLUSIVE" and "hashing the inputs on fixture failed" in record["unbound_reason"]
+    runs = [json.loads(path.read_text()) for path in (root / ".rat/state/verify-runs").glob("*.json")]
+    assert runs and all(run["verdict"] != "RUNNING" for run in runs)
+
+
+def test_uvm_library_headers_stay_local_in_the_remote_check(remote_project, tmp_path):
+    root, remote, _, env = remote_project
+    add_rtl(root)
+    uvm = tmp_path / "uvm"
+    (uvm / "src").mkdir(parents=True)
+    (uvm / "src/uvm_macros.svh").write_text("`define UVM_FIXTURE\n")
+    (root / "rtl/top.sv").write_text('`include "uvm_macros.svh"\nmodule top; endmodule\n')
+    shutil.copytree(root / "rtl", remote / "rtl")
+    result = verify_run(root, "-f", "rtl/files.f", "--remote-host", "fixture", "--remote-root", str(remote), "--",
+                        str(project_runner(root, "echo RAT_SIM_PASS\n")), env={**env, "UVM_HOME": str(uvm)})
+    assert result.returncode == 0, result.stdout + result.stderr
+    record = last_record(root)
+    assert str((uvm / "src/uvm_macros.svh").resolve()) in record["sources"]  # still bound locally
+    assert "uvm_macros" not in (Path(record["outdir"]) / "remote-manifest.txt").read_text()
+
+
+def test_machine_verification_settings_apply_without_project_config(tmp_path):
+    (Path(os.environ["RAT_DATA_DIR"]) / "env-config.json").write_text(
+        json.dumps({"verification": {"stop_gate": "notify"}}))
+    assert invoke(tmp_path, "get", "--key", "verification.stop_gate").stdout.strip() == "notify"
+    (tmp_path / "rat_config.json").write_text("{}")  # a project configuration owns its settings
+    assert invoke(tmp_path, "get", "--key", "verification.stop_gate").stdout.strip() == ""
+
+
+def test_machine_verification_settings_apply_with_a_default_site(tmp_path):
+    data = Path(os.environ["RAT_DATA_DIR"])
+    (data / "sites").mkdir(exist_ok=True)
+    (data / "sites/lab.json").write_text(json.dumps({"measured_at": 1, "home": "/home/fixture", "tools": {},
+                                                     "execution": {"backend": "ssh", "host": "example.invalid"}}))
+    (data / "env-config.json").write_text(json.dumps({"default_site": "lab", "verification": {"stop_gate": "off"}}))
+    result = invoke(tmp_path, "get", "--key", "verification.stop_gate")
+    assert result.stdout.strip() == "off", result.stderr

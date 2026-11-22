@@ -125,6 +125,14 @@ The RTL verify gate requests verification once per pending content fingerprint
 within the chain cap. The next Stop for that fingerprint shows one `Info>` line
 and lets Claude stop. A new prompt keeps that receipt. New content can re-arm the
 gate within the chain cap, and fresh functional evidence clears pending tracking.
+`verification.stop_gate` (project `rat_config.json`, else the machine
+`env-config.json`) selects `block` (default, also for unknown values), `notify` (that
+`Info>` line once per content state, never a block) or `off` (silent; tracking stays,
+so `block` resumes the pending files). Notify keeps its own receipt, so returning to
+`block` still requests verification. The gate reads the mode only when files are
+pending. Changing it is the user's decision, like a waiver.
+Evidence comes from the bundled wrappers or from `eda_runner.py verify-run`, which
+wraps a project's own runner and can hash the inputs on a remote host after the run.
 
 To use it:
 - Set `STOP_CHAIN=$(stopu_chain_active "$INPUT" <state-dir> <gate-ids>)` on every

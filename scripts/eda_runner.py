@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.15
+# rat-version: 2.0.16
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
                     termination = reason
                     try:
                         os.killpg(process.pid, signal.SIGTERM)
-                    except ProcessLookupError:
+                    except (ProcessLookupError, PermissionError):  # macOS: EPERM once only the zombie leader is left
                         pass
                     try:
                         process.wait(timeout=1)
@@ -98,7 +98,7 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
                         pass
                     try:
                         os.killpg(process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
+                    except (ProcessLookupError, PermissionError):
                         pass
                     marker = f"\nRAT_{reason}: execution limit reached\n".encode()
                     stream.write(marker)
@@ -121,11 +121,11 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
         interrupted=event.number
         termination="INTERRUPTED"
         try: os.killpg(process.pid,signal.SIGTERM)
-        except ProcessLookupError: pass
+        except (ProcessLookupError, PermissionError): pass
         try: process.wait(timeout=1)
         except subprocess.TimeoutExpired: pass
         try: os.killpg(process.pid,signal.SIGKILL)
-        except ProcessLookupError: pass
+        except (ProcessLookupError, PermissionError): pass
     finally:
         for number,handler in handlers.items(): signal.signal(number,handler)
     selector.close()
@@ -505,6 +505,26 @@ def import_remote_evidence(path: Path, root: Path, workspace: str, since: float,
     return len(records)
 
 
+def require_relative_filelists(root: Path, filelists: list[Path], variables: bool = True) -> None:
+    """The execution host opens filelist entries itself, so they must name project-relative paths."""
+    checked=set()
+    while filelists:
+        filelist=filelists.pop()
+        if filelist in checked:continue
+        checked.add(filelist)
+        tokens=shlex.split(filelist.read_text(),comments=True)
+        for index,token in enumerate(tokens):
+            paths=token[8:].split("+") if token.startswith("+incdir+") else [token[2:]] if token.startswith("-I") else [token]
+            if any(path.startswith("/") and not path.startswith("//") for path in paths):
+                raise ValueError(f"remote filelists require project-relative inputs: {filelist}")
+            if not variables and "$" in token:  # expanded here, but the host may expand it differently
+                raise ValueError(f"remote filelists cannot use environment variables: {filelist}: {token}")
+            if token in ("-f","-F") and index+1<len(tokens):
+                nested=filelist.parent/tokens[index+1]
+                if not nested.is_file(): nested=root/tokens[index+1]
+                filelists.append(nested.resolve())
+
+
 def require_project_root(root: Path) -> None:
     # Dispatch mirrors the whole root to the remote host, and without a project config
     # the root is just the current directory. Never mirror a home directory (keys, tokens).
@@ -592,20 +612,7 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     if not filelists:
         default=root/config.get("project",{}).get("filelist", "rtl/filelist_top.f")
         if default.is_file(): filelists=[default]
-    checked=set()
-    while filelists:
-        filelist=filelists.pop()
-        if filelist in checked:continue
-        checked.add(filelist)
-        tokens=shlex.split(filelist.read_text(),comments=True)
-        for index,token in enumerate(tokens):
-            paths=token[8:].split("+") if token.startswith("+incdir+") else [token[2:]] if token.startswith("-I") else [token]
-            if any(path.startswith("/") and not path.startswith("//") for path in paths):
-                raise ValueError(f"remote filelists require project-relative inputs: {filelist}")
-            if token in ("-f","-F") and index+1<len(tokens):
-                nested=filelist.parent/tokens[index+1]
-                if not nested.is_file(): nested=root/tokens[index+1]
-                filelists.append(nested.resolve())
+    require_relative_filelists(root, filelists)
     run_id = uuid.uuid4().hex
     cache = (pre_init_state_root(root) or (experiment or root) / ".rat") / "remote-runs" / run_id
     if experiment and cache.resolve() != cache:
@@ -914,6 +921,181 @@ def fetch(args, root: Path, config: dict) -> int:
     return 3 if failed else 0
 
 
+# The execution host's Python may predate the runtime; coreutils or perl hash the inputs there.
+REMOTE_HASH = ('if command -v sha256sum >/dev/null 2>&1; then rat_hash() { sha256sum -- "$@"; }\n'
+               'elif command -v shasum >/dev/null 2>&1; then rat_hash() { shasum -a 256 -- "$@"; }\n'
+               "else echo 'RAT_NO_SHA256: neither sha256sum nor shasum on the execution host' >&2; exit 2; fi\n")
+MANIFEST_LINE = re.compile(r"([0-9a-f]{64}) [ *](.+)")
+# verify-run accepts only the completion lines it documents; a bare "PASS:" may be anything.
+VERIFY_RUN_PASS = r"(?m)^\s*RAT_SIM_PASS\b"
+# Commands that print text but run nothing; a runner that only echoes a token proves nothing.
+NOT_RUNNERS = {"echo", "printf", "true", "false", ":", "cat", "yes", "test", "["}
+INTERPRETERS = {"sh", "bash", "dash", "ksh", "zsh", "csh", "tcsh", "python", "python3", "perl", "tclsh"}
+# A summary fetched with rsync -a keeps the host's mtime; allow this much clock skew between hosts.
+SUMMARY_SKEW_SECONDS = 120
+
+
+def remote_input_mismatches(root: Path, names: list[str], host: str, remote_root: str, ssh_options: list[str],
+                            manifest: Path, timeout: float) -> str:
+    """Hash project-relative inputs on the host the runner used; an empty result means every digest matches."""
+    # The script travels on stdin: no argument-length limit, and no login-shell quoting.
+    script = ("cd -- " + shlex.quote(remote_root) + " || exit 2\n" + REMOTE_HASH
+              + "rat_hash " + " ".join(shlex.quote(name) for name in names) + "\n")
+    try:
+        result = subprocess.run(["ssh", "-o", "BatchMode=yes", *ssh_options, "--", host, "sh -s"],
+                                input=script.encode(), capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return f"hashing the inputs on {host} timed out"
+    except OSError as exc:
+        return f"hashing the inputs on {host} failed: {exc}"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_bytes(result.stdout)
+    remote = {}
+    for line in result.stdout.decode(errors="replace").split("\n"):
+        match = MANIFEST_LINE.fullmatch(line)
+        if match:
+            remote[match[2]] = match[1]
+    # 1 is the hash tool's "some file is missing"; with no output at all the step itself failed.
+    if result.returncode not in (0, 1) or not remote:
+        detail = result.stderr.decode(errors="replace").strip().splitlines()[-1:]
+        return f"hashing the inputs on {host} failed (status {result.returncode})" + (": " + detail[0] if detail else "")
+    missing = [name for name in names if name not in remote]
+    differs = [name for name in names if name in remote and remote[name] != digest(root / name)]
+    problems = [f"missing on {host}: " + ", ".join(missing)] if missing else []
+    problems += [f"differs on {host}: " + ", ".join(differs)] if differs else []
+    return "; ".join(problems)
+
+
+def git_state(root: Path) -> dict:
+    """Commit metadata only: the execution host's copy is no checkout, so a hash there proves nothing."""
+    try:
+        head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=15)
+        if head.returncode:
+            return {}
+        dirty = subprocess.run(["git", "--no-optional-locks", "-C", str(root), "status", "--porcelain",
+                                "--untracked-files=no"], capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    return {"git_head": head.stdout.strip(), "git_dirty": bool(dirty.stdout.strip())}
+
+
+def change_stamp(path: Path) -> int | None:
+    # ctime: a write or rename sets it to the local clock; rsync -a can copy mtime, never ctime.
+    try:
+        return path.stat().st_ctime_ns
+    except FileNotFoundError:
+        return None
+
+
+def runner_files(root: Path, argv: list[str]) -> list[str]:
+    """The runner script, and the script an interpreter runs, are part of what the evidence covers."""
+    found = []
+    candidates = [argv[0]]
+    if Path(argv[0]).name in INTERPRETERS:
+        candidates += [value for value in argv[1:] if not value.startswith("-")][:1]
+    for value in candidates:
+        path = Path(value) if Path(value).is_absolute() else root / value
+        if path.is_file() and path.resolve().is_relative_to(root):
+            found.append(str(path.resolve()))
+    return found
+
+
+def verify_run(args, root: Path, config: dict) -> int:
+    """Run a project's own runner unchanged and record evidence bound to its inputs."""
+    from verify_evidence import begin_record, finish  # an older project helper must not break other commands
+
+    if not args.argv:
+        raise ValueError("verify-run needs the runner command after --")
+    if not args.filelist and not args.source:
+        raise ValueError("verify-run needs the runner's inputs: -f <filelist> or --source <file>")
+    command = args.argv[0]
+    if Path(command).name in NOT_RUNNERS:
+        raise ValueError(f"{command} runs no simulation; pass the runner that does")
+    executable_path = Path(command) if Path(command).is_absolute() else root / command
+    if not (executable_path.is_file() and os.access(executable_path, os.X_OK) if "/" in command else shutil.which(command)):
+        raise ValueError(f"runner not found or not executable: {command}")
+    if bool(args.remote_host) != bool(args.remote_root):
+        raise ValueError("--remote-host and --remote-root go together")
+    settings = config.get("execution", {})
+    ssh_options = settings.get("ssh_options", [])
+    if args.remote_host:
+        from eda_setup import validate_host
+        validate_host(args.remote_host)
+        if (not args.remote_root.startswith("/") or not args.remote_root.strip("/")
+                or any(char in args.remote_root for char in "\n\r\0")):
+            raise ValueError("--remote-root must be an absolute directory on the execution host")
+        if not isinstance(ssh_options, list) or not all(isinstance(value, str) for value in ssh_options):
+            raise ValueError("ssh_options must be an argument list")
+    timeout = args.timeout if args.timeout is not None else float(
+        os.environ.get("RAT_TOOL_TIMEOUT_SECONDS", settings.get("timeout_seconds", 1800)))
+    stall = args.stall if args.stall is not None else float(settings.get("stall_seconds", 0))
+    if timeout <= 0 or stall < 0:
+        raise ValueError("timeout must be positive; stall timeout must be nonnegative")
+    details = {}
+    inputs = source_paths(root, args.source, args.filelist, details)
+    remote_names = []
+    if args.remote_host:
+        require_relative_filelists(root, list(details["filelists"]), variables=False)
+        # UVM library headers come from each host's own installation; only project files are compared.
+        library = Path(os.environ["UVM_HOME"]).resolve() / "src" if os.environ.get("UVM_HOME") else None
+        outside = [str(path) for path in inputs if not path.is_relative_to(root)
+                   and not (library and path.is_relative_to(library))]
+        if outside:
+            raise ValueError("remote hashing covers project files only; outside the project: " + ", ".join(outside))
+        remote_names = [str(path.relative_to(root)) for path in inputs if path.is_relative_to(root)]
+        unsafe = [name for name in remote_names if "\\" in name or not name.isprintable()]
+        if unsafe:
+            raise ValueError("cannot hash paths with a backslash or control character remotely: " + ", ".join(unsafe))
+    summary = None
+    if args.log:
+        summary = Path(args.log) if Path(args.log).is_absolute() else root / args.log
+    outdir = runtime_state_root(root) / "tool-runs" / ("verify-run-" + uuid.uuid4().hex)
+    snapshot = begin_record(argparse.Namespace(
+        root=str(root), outdir=str(outdir), tool=args.tool, top="", context="verify-run: " + Path(command).name,
+        source=args.source, filelist=args.filelist, include_dir=[], dependency=runner_files(root, args.argv),
+        artifact=[], run_only=False, compile_only=False, runner_pid=os.getpid()))  # a live run keeps the gate waiting
+    before = change_stamp(summary) if summary else None
+    started = time.time()
+    console = outdir / "console.log"
+    status = execute(list(args.argv), root, console, timeout, stall, cwd=root,
+                     env={**os.environ, "RAT_PROJECT_ROOT": str(root)})
+    reasons = []
+    runtime_log = ""
+    extra = {"origin": "verify-run", "argv": list(args.argv), **git_state(root)}
+    try:  # a failure after the run still finishes the record, so it never stays RUNNING
+        if summary:
+            stat = summary.stat() if summary.is_file() else None
+            if stat is None or change_stamp(summary) == before:
+                reasons.append(f"the runner did not write {args.log} during this run")
+            elif stat.st_mtime < started - SUMMARY_SKEW_SECONDS:
+                reasons.append(f"{args.log} was written during this run but carries an older time; "
+                               "it may be a copy of an earlier result")
+            else:
+                copy = outdir / ("summary-" + summary.name)  # a later run may overwrite the project's file
+                shutil.copyfile(summary, copy)
+                runtime_log = str(copy)
+        if args.remote_host:
+            extra.update(remote_host=args.remote_host, remote_root=args.remote_root)
+            if status == 0:  # a failed run is FAIL whatever the remote copy holds
+                manifest = outdir / "remote-manifest.txt"
+                reason = remote_input_mismatches(root, remote_names, args.remote_host, args.remote_root,
+                                                 ssh_options, manifest, min(timeout, 300))
+                if manifest.is_file():
+                    extra["remote_manifest_sha256"] = digest(manifest)
+                if reason:
+                    reasons.append(reason)
+    except OSError as exc:
+        reasons.append(f"could not check the run's results: {exc}")
+    if status in (124, 125):
+        print("[verify-run] the runner hit its time limit; a remote job it started may still be running", file=sys.stderr)
+    for reason in reasons:
+        print("[verify-run] " + reason, file=sys.stderr)
+    return finish(argparse.Namespace(snapshot=str(snapshot), log=str(console), exit_code=status,
+                                     runtime_log=runtime_log, seed_log=[], compile_only=False,
+                                     unbound="; ".join(reasons), extra=extra, pass_pattern=VERIFY_RUN_PASS,
+                                     label="verify-run"))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -959,6 +1141,17 @@ def main() -> int:
     pull.add_argument("--root", required=True)
     pull.add_argument("--experiment", required=True)
     pull.add_argument("paths", nargs="+")
+    wrapped = sub.add_parser("verify-run", help="run a project's own runner and record evidence bound to its inputs")
+    wrapped.add_argument("--root", required=True)
+    wrapped.add_argument("-f", "--filelist", default="")
+    wrapped.add_argument("--source", action="append", default=[])
+    wrapped.add_argument("--log", default="", help="summary file the runner writes; judged instead of the console")
+    wrapped.add_argument("--tool", default="project-runner")
+    wrapped.add_argument("--timeout", type=float)
+    wrapped.add_argument("--stall", type=float)
+    wrapped.add_argument("--remote-host", default="", help="host the runner executed on; its copy is hashed after the run")
+    wrapped.add_argument("--remote-root", default="", help="absolute project directory on that host")
+    wrapped.add_argument("argv", nargs=argparse.REMAINDER)
     remote = sub.add_parser("dispatch")
     remote.add_argument("--root", required=True)
     remote.add_argument("--wrapper", required=True)
@@ -990,6 +1183,8 @@ def main() -> int:
             return fetch(args, root, config)
         if args.command == "clean":
             return clean(args, root, config)
+        if args.command == "verify-run":
+            return verify_run(args, root, config)
         return run(args, root, config) if args.command == "run" else dispatch(args, root, config)
     except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         print(f"EDA execution error: {exc}", file=sys.stderr)
