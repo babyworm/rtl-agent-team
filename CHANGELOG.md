@@ -7,6 +7,17 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre16] - 2026-11-23
+
+- macOS stub guard, from a verification review of pre15: an `xcode-select -p` answer that is
+  empty or `/` no longer counts as installed developer tools (the folder's `usr/bin/python3`
+  must not be the shim itself), and `uname` falls back to `/usr/bin/uname` when PATH lacks it.
+  The `-ef` file tests carry a ShellCheck SC3013 exception, so shellcheck 0.9 and 0.10 accept
+  them as 0.11 does.
+- Tests: the stub test no longer runs `/usr/bin/python3` to decide whether to skip on a Mac
+  without the developer tools, and covers the empty and `/` answers; the openrsync cleanup test
+  asserts that the openrsync branch ran.
+
 ## [2.0.0-pre15] - 2026-11-22
 
 - Hooks never start Apple's `/usr/bin/python3` stub: without the developer tools it opens an

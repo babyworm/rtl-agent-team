@@ -1,5 +1,5 @@
 #!/bin/sh
-# rat-version: 2.0.2
+# rat-version: 2.0.3
 # Select an interpreter capable of running the shared execution/evidence helpers.
 # RAT_PYTHON_MIN is the plugin's Python floor; keep it equal to MIN_PYTHON in
 # scripts/rat_compat.py (tests/unit/test_python_compat.py checks both). Python 2 fails
@@ -9,10 +9,16 @@ RAT_PYTHON_MIN=3.9
 # Without the developer tools, macOS /usr/bin/python3 is a shim that opens an install dialog
 # when run; a hook must never start it. True when $1 is that shim (compared as a file, so
 # /usr//bin or a symlink to it count too) and the selected developer folder has no python3.
+# -ef is in dash, bash, busybox, ksh and zsh (POSIX.1-2024); older shellcheck flags it.
 rat_python_stub() {
+  # shellcheck disable=SC3013
   [ "$1" -ef /usr/bin/python3 ] || return 1
-  [ "$(uname -s 2>/dev/null)" = Darwin ] || return 1
-  _rps_dir=$(xcode-select -p 2>/dev/null) && [ -x "$_rps_dir/usr/bin/python3" ] && return 1
+  [ "$(uname -s 2>/dev/null || /usr/bin/uname -s 2>/dev/null)" = Darwin ] || return 1
+  # The selected developer folder must hold its own python3, not point back at the shim
+  # (an empty or "/" answer from xcode-select would otherwise name the shim itself).
+  _rps_dir=$(xcode-select -p 2>/dev/null) || return 0
+  # shellcheck disable=SC3013
+  [ -x "$_rps_dir/usr/bin/python3" ] && ! [ "$_rps_dir/usr/bin/python3" -ef /usr/bin/python3 ] && return 1
   return 0
 }
 

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "templates": {
     "hooks/lib/python-util.sh": {
-      "version": "2.0.2",
-      "sha256": "65797b5a25a4f669fc257ac45563d12dd6624b41737b4f24840aea6b6432e6c5"
+      "version": "2.0.3",
+      "sha256": "a75e23cf0529d16f22f0c73245635ace6292d658dee766cf793a95e8e158cd2a"
     },
     "scripts/eda_runner.py": {
       "version": "2.0.19",

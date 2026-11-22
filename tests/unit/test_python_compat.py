@@ -129,22 +129,35 @@ def _shell(script, path):
                           env={"PATH": path, "HOME": "/tmp"})
 
 
-@pytest.mark.skipif(not os.path.exists("/usr/bin/python3"), reason="needs /usr/bin/python3")
+def _real_python3_usable():
+    """/usr/bin/python3 runs and meets the floor, without starting macOS's install stub."""
+    if not os.path.exists("/usr/bin/python3"):
+        return False
+    if sys.platform == "darwin":
+        developer = subprocess.run(["xcode-select", "-p"], capture_output=True, text=True)
+        tools = os.path.join(developer.stdout.strip() or "/missing", "usr/bin/python3")
+        if developer.returncode or not os.access(tools, os.X_OK) or os.path.samefile(tools, "/usr/bin/python3"):
+            return False
+    probe = ["/usr/bin/python3", "-c", "import sys; sys.exit(sys.version_info < (3, 9))"]
+    return subprocess.run(probe, capture_output=True).returncode == 0
+
+
+@pytest.mark.skipif(not _real_python3_usable(), reason="needs a /usr/bin/python3 that meets the floor")
 @pytest.mark.parametrize("spelling", ["/usr/bin", "/usr//bin", "symlink"])
-@pytest.mark.parametrize("tools_installed", [False, True])
-def test_macos_install_stub_is_never_started(tmp_path, tools_installed, spelling):
+@pytest.mark.parametrize("tools", ["installed", "missing", "empty answer", "root answer"])
+def test_macos_install_stub_is_never_started(tmp_path, tools, spelling):
     # Without the developer tools, macOS /usr/bin/python3 opens an install dialog when run.
-    # The guard compares files, so another spelling of the path or a symlink is caught too.
-    if subprocess.run(["/usr/bin/python3", "-c", "import sys; sys.exit(sys.version_info < (3, 9))"],
-                      capture_output=True).returncode:
-        pytest.skip("/usr/bin/python3 is older than the floor here")
+    # The guard compares files, so another spelling of the path or a symlink is caught too,
+    # and an xcode-select answer that points back at the shim does not count as installed.
     fake = tmp_path / "bin"
     fake.mkdir()
     developer = tmp_path / "Developer"
     (developer / "usr/bin").mkdir(parents=True)
-    (developer / "usr/bin/python3").symlink_to("/usr/bin/python3")
+    (developer / "usr/bin/python3").symlink_to(sys.executable)
+    answers = {"installed": f"echo {developer}", "missing": "exit 2", "empty answer": "exit 0",
+               "root answer": "echo /"}
     (fake / "uname").write_text("#!/bin/sh\necho Darwin\n")
-    (fake / "xcode-select").write_text(f"#!/bin/sh\necho {developer}\n" if tools_installed else "#!/bin/sh\nexit 2\n")
+    (fake / "xcode-select").write_text(f"#!/bin/sh\n{answers[tools]}\n")
     for tool in ("uname", "xcode-select"):
         (fake / tool).chmod(0o755)
     if spelling == "symlink":
@@ -155,8 +168,8 @@ def test_macos_install_stub_is_never_started(tmp_path, tools_installed, spelling
     hooks = REPO_ROOT / "hooks/lib"
     selected = _shell(f'. "{hooks}/python-util.sh"; rat_select_python', path)
     parsed = _shell(f'. "{hooks}/json-util.sh"; RTL_FORCE_PYTHON_PARSER=1 jsonu_detect_parser; printf %s "$JSONU_PY_BIN"', path)
-    assert (selected.returncode == 0) == tools_installed, selected.stderr
-    assert (parsed.stdout != "") == tools_installed
+    assert (selected.returncode == 0) == (tools == "installed"), selected.stderr
+    assert (parsed.stdout != "") == (tools == "installed")
 
 
 def test_python_is_not_started_when_jq_parses(tmp_path):

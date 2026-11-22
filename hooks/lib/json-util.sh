@@ -18,8 +18,13 @@ jsonu_escape() {
 # may not have sourced: the plugin floor, and never macOS's install-dialog stub.
 jsonu_python_ok() {
   _JP_PATH=$(command -v "$1" 2>/dev/null) || return 1
-  if [ "$_JP_PATH" -ef /usr/bin/python3 ] && [ "$(uname -s 2>/dev/null)" = Darwin ]; then
-    _JP_DEV=$(xcode-select -p 2>/dev/null) && [ -x "$_JP_DEV/usr/bin/python3" ] || return 1
+  # shellcheck disable=SC3013  # -ef: dash, bash, busybox, ksh, zsh (POSIX.1-2024)
+  if [ "$_JP_PATH" -ef /usr/bin/python3 ] &&
+     [ "$(uname -s 2>/dev/null || /usr/bin/uname -s 2>/dev/null)" = Darwin ]; then
+    _JP_DEV=$(xcode-select -p 2>/dev/null) || return 1
+    [ -x "$_JP_DEV/usr/bin/python3" ] || return 1
+    # shellcheck disable=SC3013
+    ! [ "$_JP_DEV/usr/bin/python3" -ef /usr/bin/python3 ] || return 1
   fi
   "$_JP_PATH" -c 'import sys; sys.exit(sys.version_info < (3,9))' >/dev/null 2>&1
 }

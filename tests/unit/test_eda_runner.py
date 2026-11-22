@@ -853,9 +853,10 @@ def test_a_failed_fetch_through_openrsync_removes_the_folders_it_made(tmp_path):
     # Linux CI has GNU rsync; this fake answers like macOS openrsync, so the branch that creates
     # the output's parent folders runs everywhere.
     tools = tmp_path / "bin"
+    calls = tmp_path / "rsync-calls"
     executable(tools / "rsync", '#!/bin/sh\n'
                'case "$*" in *--protect-args*--version*) exit 1 ;; *--version*) echo "openrsync: protocol version 29"; exit 0 ;; esac\n'
-               'exit 23\n')
+               f'printf "%s\\n" "$*" >> "{calls}"\nexit 23\n')
     executable(tools / "ssh", '#!/bin/sh\nexit 255\n')
     root = tmp_path / "project"
     run = root / ".rat/remote-runs/run-1"
@@ -866,5 +867,7 @@ def test_a_failed_fetch_through_openrsync_removes_the_folders_it_made(tmp_path):
                              "deep/missing/out"], cwd=root, capture_output=True, text=True, timeout=60,
                             env={**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"})
     assert result.returncode == 3, result.stdout + result.stderr
+    # The openrsync branch ran: it fetched into the output's parent, which it had to create.
+    assert calls.read_text().rstrip().endswith("experiment/exp-3/deep/missing/")
     assert sorted(path.name for path in (root / "experiment/exp-3").iterdir()) == [".gitignore"]
 
