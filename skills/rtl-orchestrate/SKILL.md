@@ -545,7 +545,7 @@ Templates:
 ## SessionStart Hook Export (SSOT)
 
 This block is the single source for SessionStart routing injection.
-`scripts/sync_orchestrator_inject.sh` copies it into `hooks/rtl-orchestrator-inject.sh`.
+`hooks/rtl-orchestrator-inject.sh` reads it at session start (`hooks/lib/session_inject.py`).
 
 <!-- SESSIONSTART_HOOK_EXPORT_START -->
 # RTL Agent Team — Active Project Rules

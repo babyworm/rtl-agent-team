@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.11
+# rat-version: 2.0.12
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -511,22 +511,26 @@ def finish(args) -> int:
     return args.exit_code if args.exit_code else (0 if verdict in ("PASS", "COMPILED") else 3)
 
 
-def tracked_files(root: Path, track: Path) -> set[str]:
+def tracked_paths(root: Path, lines) -> set[str]:
     # A deleted or renamed file has no behavior left to verify; legacy entries that
     # were parsed from command text name no file at all.
-    paths = {(root / line.strip()).resolve() for line in track.read_text().splitlines() if line.strip()}
+    paths = {(root / line.strip()).resolve() for line in lines if line.strip()}
     return {str(path) for path in paths if path.is_file()}
 
 
-def unverified(args) -> int:
-    root = Path(args.root).resolve()
-    tracked = tracked_files(root, Path(args.track))
-    index = Path(args.track).parent / "verify-evidence.json"
+def tracked_files(root: Path, track: Path) -> set[str]:
+    return tracked_paths(root, track.read_text().splitlines())
+
+
+def clearing(root: Path, tracked: set[str], index: Path) -> tuple[set[str], list[tuple[dict, set[str]]]]:
+    """Tracked files that no valid PASS record covers, and each record that cleared some."""
+    remaining = set(tracked)
+    used = []
     try:
         records = json.loads(index.read_text())["runs"]
     except (OSError, ValueError, KeyError, TypeError):
         records = []
-    for record in records:
+    for record in records if isinstance(records, list) else ():
         try:
             log = Path(record["log"])
             if (record["verdict"] == "PASS" and log.is_file()
@@ -540,21 +544,28 @@ def unverified(args) -> int:
                     with Path(runtime).open(encoding="utf-8", errors="replace") as stream:
                         if log_has_failed_point(stream):
                             continue
-                tracked.difference_update(record["sources"])
+                hit = remaining & set(record["sources"])
+                if hit:
+                    used.append((record, hit))
+                    remaining -= hit
         except (OSError, ValueError, KeyError, TypeError):
             continue
-    for path in sorted(tracked):
+    return remaining, used
+
+
+def unverified(args) -> int:
+    root = Path(args.root).resolve()
+    remaining, _ = clearing(root, tracked_files(root, Path(args.track)), Path(args.track).parent / "verify-evidence.json")
+    for path in sorted(remaining):
         candidate = Path(path)
         print(candidate.relative_to(root) if candidate.is_relative_to(root) else candidate)
-    return bool(tracked)
+    return bool(remaining)
 
 
-def pending_run(args) -> int:
-    root = Path(args.root).resolve()
-    track = Path(args.track)
-    tracked = tracked_files(root, track)
+def running_cover(root: Path, tracked: set[str], runs: Path) -> bool:
+    """True when live runs on this host, over unchanged inputs, cover every tracked file."""
     covered = set()
-    for path in (track.parent / "verify-runs").glob("*.json"):
+    for path in runs.glob("*.json"):
         try:
             record = json.loads(path.read_text())
             if (record["verdict"] != "RUNNING" or record.get("compile_only")
@@ -567,7 +578,13 @@ def pending_run(args) -> int:
             covered.update(record["sources"])
         except (OSError, ValueError, KeyError, TypeError):
             continue
-    return 0 if tracked and tracked <= covered else 1
+    return bool(tracked) and tracked <= covered
+
+
+def pending_run(args) -> int:
+    root = Path(args.root).resolve()
+    track = Path(args.track)
+    return 0 if running_cover(root, tracked_files(root, track), track.parent / "verify-runs") else 1
 
 
 def main() -> int:

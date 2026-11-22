@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.17
+# rat-version: 2.0.18
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -357,10 +357,15 @@ def run(args, root: Path, config: dict) -> int:
 
 
 def relative_output(value: str) -> str:
+    """A project-relative output in normal form: "sim/out/" is sim/out; "./", "./." and "" name the root."""
     path = Path(value)
-    if path.is_absolute() or ".." in path.parts or value in ("", "."):
+    # Normal form matters: openrsync fetches from the output's parent, so "sim/out/" would land in sim/,
+    # and a root value would sync the whole workspace (with --delete) onto the project.
+    if path.is_absolute() or ".." in path.parts or not path.parts:
         raise ValueError(f"remote output must be project-relative: {value}")
-    return value
+    if path.parts[0] in RESERVED_OUTPUTS:
+        raise ValueError(f"reserved remote output: {value}")
+    return path.as_posix()
 
 
 # Regenerable outputs too large to bring back by default; `fetch` pulls them on request.
@@ -368,6 +373,7 @@ HEAVY_RESULTS = ("*.fsdb", "*.vcd", "*.evcd", "*.vpd", "*.wlf", "*.trn", "*.dsn"
                  "INCA_libs/", "csrc/", "*.daidir/", "obj_dir/", "xlib/", "*.o", "*.so", "*.a")
 RESULT_MODES = ("experiment", "merge", "sync")
 NEVER_SENT = ("experiment/", ".rat/", ".rtl-agent-team/", ".git/", ".claude/")
+RESERVED_OUTPUTS = (".git", ".claude", ".rat", ".rtl-agent-team")  # never fetched over the project
 
 
 def upload_manifest(root: Path, inputs, patterns) -> list[str] | None:
@@ -845,7 +851,9 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
                 # ponytail: names containing *, ? or [ act as patterns here; rare in HDL projects.
                 protect = cache / "protect.list"
                 protect.write_text("".join("/" + name[len(prefix):] + "\n" for name in manifest if name.startswith(prefix)))
-                options = [*relative, *skip, f"--exclude-from={protect}", *(["--delete"] if mode == "sync" else [])]
+                # Excluded names are also kept by --delete: a nested .git (a submodule) survives a sync.
+                options = [*relative, *skip, "--exclude=.git", "--exclude=.claude", f"--exclude-from={protect}",
+                           *(["--delete"] if mode == "sync" else [])]
         result = step([*transport, *options, remote_operand(host, source), str(target) + "/"], f"fetch-{index}")
         if result and status == 0:
             status = 3

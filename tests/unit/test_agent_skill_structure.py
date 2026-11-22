@@ -728,40 +728,19 @@ class TestCrossReferences:
         assert re.search(r"not\s+a\s+replacement.*phase pipeline", content, re.IGNORECASE | re.DOTALL)
         assert re.search(r"P1\s*-\s*P6|P1-P6", content)
 
-    def test_rtl_orchestrate_hook_export_is_synced(self):
-        import json
+    def test_session_start_delivers_the_export_block(self):
+        from tests.conftest import session_start_context
 
         skill_block = extract_marked_block(
             RTL_ORCHESTRATE_SKILL,
             "<!-- SESSIONSTART_HOOK_EXPORT_START -->",
             "<!-- SESSIONSTART_HOOK_EXPORT_END -->",
         )
-        hook_block = extract_marked_block(
-            ORCHESTRATOR_INJECT_HOOK,
-            "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh",
-            "# END GENERATED ROUTING BLOCK",
-        )
         assert skill_block, "Export block in rtl-orchestrate must not be empty"
-
-        # Since v0.10.3 the hook block wraps the routing markdown inside a
-        # single-quoted heredoc that emits one JSON envelope on stdout
-        # (see CLAUDE.md "Hook output schema (SessionStart)").
-        lines = hook_block.splitlines()
-        assert lines and lines[0] == "cat << 'JSON_EOF'", (
-            "Hook block must start with `cat << 'JSON_EOF'`. "
-            "Run: sh scripts/sync_orchestrator_inject.sh"
-        )
-        assert lines[-1] == "JSON_EOF", (
-            "Hook block must end with `JSON_EOF`. "
-            "Run: sh scripts/sync_orchestrator_inject.sh"
-        )
-        envelope = json.loads("\n".join(lines[1:-1]))
-        assert envelope["hookSpecificOutput"]["hookEventName"] == "SessionStart"
-        additional = envelope["hookSpecificOutput"]["additionalContext"]
-        assert additional.strip() == skill_block, (
-            "Hook additionalContext is out of sync with skills/rtl-orchestrate/SKILL.md. "
-            "Run: sh scripts/sync_orchestrator_inject.sh"
-        )
+        # The hook reads the SSOT when the session starts; no generated copy can drift.
+        assert session_start_context().strip() == skill_block
+        assert "GENERATED ROUTING BLOCK" not in ORCHESTRATOR_INJECT_HOOK.read_text()
+        assert not (REPO_ROOT / "scripts/sync_orchestrator_inject.sh").exists()
 
     def test_key_agents_exist(self, agent_names):
         """Core agents listed in CLAUDE.md delegation table must exist."""

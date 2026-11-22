@@ -1,21 +1,20 @@
+from __future__ import annotations
+
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from tests.conftest import REPO_ROOT, find_bash4
+from tests.conftest import REPO_ROOT
 
 
 GENERATE_CONFIG = REPO_ROOT / "skills" / "rat-init-project" / "scripts" / "generate_config.sh"
 
-# generate_config.sh self-guards on `BASH_VERSINFO[0] >= 4`; macOS ships bash 3.2.
-BASH4 = find_bash4()
-pytestmark = pytest.mark.skipif(
-    BASH4 is None,
-    reason="generate_config.sh requires bash >= 4 (macOS ships 3.2 — `brew install bash`)",
-)
+# generate_config.sh runs on bash 3.2 too (macOS /bin/bash), so these tests use whatever bash is first.
+BASH = shutil.which("bash")
 
 
 def _minimal_config():
@@ -41,7 +40,7 @@ def _minimal_config():
 
 def _run_generator(project: Path, *, env: dict[str, str] | None = None):
     return subprocess.run(
-        [BASH4, str(GENERATE_CONFIG), str(project), "generated-name"],
+        [BASH, str(GENERATE_CONFIG), str(project), "generated-name"],
         check=False,
         capture_output=True,
         text=True,
@@ -125,7 +124,7 @@ def regenerated_config(tmp_path_factory: pytest.TempPathFactory):
     # When: the project config generator runs again.
     env = os.environ | {"PATH": f"{path_dc_shell.parent}:{os.environ['PATH']}"}
     subprocess.run(
-        [BASH4, str(GENERATE_CONFIG), str(project), "generated-name"],
+        [BASH, str(GENERATE_CONFIG), str(project), "generated-name"],
         check=True,
         capture_output=True,
         text=True,
@@ -382,16 +381,11 @@ def test_invalid_json_does_not_replace_existing_config_mk(tmp_path: Path):
     assert config_mk.read_text() == original_mk
 
 
-def test_bash_version_guard_precedes_associative_arrays():
-    # Given: the generator source used by Bash on every platform.
+def test_generator_runs_on_bash_3_2():
+    # macOS /bin/bash is 3.2: no associative arrays, and no version gate that turns users away.
     source = GENERATE_CONFIG.read_text()
-
-    # When: the version gate and first associative-array use are located.
-    guard = source.find("BASH_VERSINFO[0]")
-    associative_array = source.find("declare -A")
-
-    # Then: Bash 3 exits through a clear gate before unsupported syntax executes.
-    assert 0 <= guard < associative_array
+    assert "declare -A" not in source and "BASH_VERSINFO" not in source
+    assert "map_set()" in source and "map_get()" in source
 
 
 def test_new_project_uses_the_default_site_and_existing_projects_keep_theirs(tmp_path):

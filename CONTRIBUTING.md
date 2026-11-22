@@ -16,7 +16,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 git clone --branch try-2.0 https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
-# 2. Install test dependencies
+# 2. Install test dependencies (Python >= 3.9; the hooks need it too)
 python3 -m venv .venv
 ".venv/bin/python" -m pip install -r tests/requirements-test.txt
 
@@ -225,8 +225,7 @@ Adding or removing an agent or skill requires updating the counts and lists in:
 | File | What to update |
 |------|----------------|
 | `skills/rtl-orchestrate/SKILL.md` | Skill routing table + Action Skill→Orchestrator→Policy mapping + SessionStart export block (single source of truth) |
-| `scripts/sync_orchestrator_inject.sh` | Syncs the `rtl-orchestrate` export block into the `hooks/rtl-orchestrator-inject.sh` generated block |
-| `hooks/rtl-orchestrator-inject.sh` | Condensed SessionStart routing (never hand-edit the generated block) |
+| `hooks/rtl-orchestrator-inject.sh` | SessionStart launcher; `hooks/lib/session_inject.py` reads the export block at session start, so there is nothing to regenerate |
 | `README.md`, `README_kr.md`, `CLAUDE.md` | Agent/skill counts, structure description, agent team table |
 | `.claude-plugin/marketplace.json` | Counts in the plugin description |
 | `skills/rat-auto-design/references/review-checklist.md` | Update when a review artifact is added or removed |
@@ -239,7 +238,6 @@ the runtime must know has to travel through the `SESSIONSTART_HOOK_EXPORT` block
 Always run the following after a routing or delegation change:
 
 ```bash
-sh scripts/sync_orchestrator_inject.sh
 ".venv/bin/python" -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
 ```
 
@@ -458,7 +456,7 @@ Three places must be updated together:
 
 1. `skills/domain-consult/SKILL.md` — add the new standard's keywords to the routing table
 2. `skills/rtl-orchestrate/SKILL.md` — SSOT routing block (the hook export source)
-3. `hooks/rtl-orchestrator-inject.sh` — run `sh scripts/sync_orchestrator_inject.sh`
+3. Run the routing tests; the SessionStart hook reads the SSOT block at runtime
 
 ### Separating non-codec video processing
 

@@ -349,5 +349,5 @@ A: `".venv/bin/python" -m pip install pytest-xdist` 후 `".venv/bin/python" -m p
 **Q: 새로운 에이전트를 추가하면 테스트가 깨지나요?**
 A: `test_agent_skill_structure.py`가 자동으로 새 에이전트의 YAML frontmatter 구조를 검증합니다. `name`, `model`, `description` 필드가 있으면 통과합니다.
 
-**Q: macOS에서 일부 테스트가 SKIP되는데요?**
-A: `generate_config.sh`가 `BASH_VERSINFO[0] >= 4`로 자체 가드하는데 macOS는 bash 3.2를 탑재합니다. `tests/conftest.py::find_bash4`가 bash 4 이상을 탐지하고 없으면 해당 테스트를 SKIP합니다. `brew install bash`로 설치하면 실행되며, Linux CI에서는 항상 실행됩니다.
+**Q: macOS에서도 테스트가 돌아가나요?**
+A: 네. 번들 bash 스크립트는 macOS `/bin/bash` 3.2에서 동작하며, `tests/unit/test_bash_portability.py`가 bash 4 이상 문법과 `set -u` 아래의 보호되지 않은 빈 배열 확장을 막습니다. 원격 전송도 macOS openrsync를 지원합니다. Python 도우미와 훅에는 Python 3.9 이상이 필요합니다(`tests/unit/test_python_compat.py`).

@@ -104,15 +104,13 @@ delivers its routing markdown via the `additionalContext` field of that envelope
 ```
 
 Raw markdown stdout fails schema validation and is silently dropped (with a validator
-error visible in `claude --debug` logs). To keep the runtime hook dependency-free
-(no jq/python at session start), JSON encoding is performed at **sync time** by
-`scripts/sync_orchestrator_inject.sh`, which reads the SSOT block in
-`skills/rtl-orchestrate/SKILL.md`, encodes it via `python3 -m json`, and embeds the
-resulting single-line JSON inside a `cat << 'JSON_EOF'` heredoc in the hook. The
-single-quoted heredoc preserves all bytes literally — no runtime escaping needed.
-The `.rat`/`.rtl-agent-team` marker check still emits the same minimal envelope
-(`{"hookSpecificOutput":{"hookEventName":"SessionStart"}}`) when no project marker
-is present. Separately, `rtl-eda-context.sh` gives sessions and subagents a short
+error visible in `claude --debug` logs). Since 2.0.0-pre14 the hook encodes at **session
+start**: `hooks/lib/session_inject.py` reads the SSOT block in
+`skills/rtl-orchestrate/SKILL.md` and prints the envelope, so there is no generated copy
+to resync. The `.rat`/`.rtl-agent-team` marker check runs in sh first and still emits the
+minimal envelope (`{"hookSpecificOutput":{"hookEventName":"SessionStart"}}`) when no
+project marker is present, without starting Python. Without Python >= the floor the hook
+emits that envelope plus one `systemMessage` naming rat-doctor. Separately, `rtl-eda-context.sh` gives sessions and subagents a short
 settings lookup hint when project or user configuration exists, even before init.
 
 ### Plugin Component Architecture (Design Principles)
@@ -152,7 +150,7 @@ When modifying this plugin:
 4. **Skill completion criteria** — Action skills with completion enforcement must be listed in `skill-completion-criteria.json` (plugin root)
 5. **Phase pipeline integrity** — New features must respect the 6-phase pipeline ordering and gates
 6. **Non-destructive deployment** — `rat-init-project` deploys rules/guides only if files don't already exist
-7. **POSIX shell compatibility** — Hook scripts (`hooks/*.sh`) are invoked with `sh`, not `bash`. Use `[` not `[[`. Scripts in `scripts/` may use `bash` when specified via shebang
+7. **Hook launchers in POSIX sh, logic in Python** — `hooks.json` runs every hook as `sh "<hook>.sh"`, so entry points stay POSIX sh (`[` not `[[`; checked by shellcheck in CI). Parsing JSON, evidence or Markdown belongs in Python modules under `hooks/lib/*.py`, started through `rat_select_python` (`hooks/lib/python-util.sh`). The Python floor is `RAT_PYTHON_MIN` / `scripts/rat_compat.py` `MIN_PYTHON` (3.9; Python 2 unsupported), enforced by `tests/unit/test_python_compat.py` and the CI matrix (floor, middle, newest). A launcher must stay safe without Python: a Stop gate blocks, SessionStart emits a valid envelope. Start Python only when there is work (the verify gate skips it on a Stop with nothing tracked) and stay well inside the hook timeout. Older hooks still carry short inline Python heredocs (edit tracker, phase-state bootstrap); they select it with `rat_select_python` and move into `hooks/lib/*.py` when their logic next changes. The Stop budget stays one sh implementation (`stop-budget-util.sh`) for every gate. Scripts in `scripts/` may use `bash` when specified via shebang, but must run on bash 3.2 (macOS); `tests/unit/test_bash_portability.py` rejects bash 4+ constructs
 8. **Skill as soft advisory** — Action skills emit WARNING for missing phase prerequisites but proceed with available artifacts; only `rat-init-project` is a hard block
 9. **Setup prerequisite** — Orchestrator agents check `.claude/rules/rtl-coding-conventions.md` as setup marker in Step 0
 10. **Executable contracts** — Fix recurring mechanical failures in code and add a reproducer to CI. Use prompts for decisions that require interpreting requirements or evidence. Rerun checks in the affected scope.
@@ -167,7 +165,7 @@ When modifying this plugin:
     - `CHANGELOG.md` (move `[Unreleased]` items into new versioned section with date)
     - Verify no stale version references remain: `grep -r '0\.OLD\.VER' package.json .claude-plugin/ README.md README_kr.md`
     - **Sub-plugin sha pin (marketplace.json)**: when bumping a github-source sub-plugin (e.g., `systemverilog-lsp`), use the **commit sha**, not the annotated tag-object sha. `git rev-parse <tag>` returns the tag-object sha for annotated tags; `git rev-parse <tag>^{commit}` always returns the commit sha. They are equal only for lightweight tags. Verify with `git cat-file -t <sha>` — must print `commit`, never `tag`. v0.10.5 pinned a tag-object sha by mistake; v0.10.6 corrected it.
-15. **Hook stdout must be valid JSON when non-empty** — Claude Code validates hook output against per-event schemas (`hookSpecificOutput.hookEventName` is mandatory for SessionStart, PreToolUse, PostToolUse). Raw text stdout silently fails validation. To inject context, embed JSON-encoded content inside `additionalContext` (SessionStart) or `permissionDecisionReason` (PreToolUse). For large/multi-line content, perform the JSON encoding at **sync/build time** in a dev script — never at runtime — so the hook stays POSIX-only with zero jq/python dependency. Canonical pattern in this plugin: `hooks/rtl-orchestrator-inject.sh` + `scripts/sync_orchestrator_inject.sh`. Validation: `echo '{"cwd":"<dir>"}' | sh hooks/<hook>.sh | python3 -m json.tool`.
+15. **Hook stdout must be valid JSON when non-empty** — Claude Code validates hook output against per-event schemas (`hookSpecificOutput.hookEventName` is mandatory for SessionStart, PreToolUse, PostToolUse). Raw text stdout silently fails validation. To inject context, embed JSON-encoded content inside `additionalContext` (SessionStart) or `permissionDecisionReason` (PreToolUse). For large or multi-line content, encode in the hook's Python module (`json.dumps`), never with shell string escaping. Canonical pattern: `hooks/rtl-orchestrator-inject.sh` + `hooks/lib/session_inject.py`. Validation: `echo '{"cwd":"<dir>"}' | sh hooks/<hook>.sh | python3 -m json.tool`.
     Gates never emit `"continue": false`: it overrides `decision: "block"` and `permissionDecision: "deny"`, ends the turn, and drops the reason. Stop gates block and notify only through `stopu_gate` (`hooks/lib/stop-budget-util.sh`). They hand user decisions over with `stopu_gate … 0`, which shows the notice once per chain.
 16. **`agents/` must stay flat — no subdirectories** — Claude Code discovers agents by scanning `agents/` **recursively** (`plugin.json` has no `agents` field, so auto-discovery applies). A `.md` file in any subdirectory is registered as a real, spawnable agent named `rtl-agent-team:<subdir>:<stem>`, described as "Agent from rtl-agent-team plugin", granted **all tools**, and carrying no role prompt — an unconstrained agent in the always-on registry. Shared prompt fragments and sync templates belong in `plugin_docs/agent-lib/`. v0.14.1 and earlier leaked 6 phantom agents this way from `agents/lib/`; guarded since v0.14.2 by `test_agents_dir_has_no_nested_markdown`. Note the trap: the agent test fixture globs `agents/*.md` non-recursively, so nested files are invisible to every other agent test.
 17. **Hook context comes from the hook input's root, and the project from `rat_project_dir`.** Claude Code reports the session's current directory as `cwd`, and a `cd` persists. So every hook resolves the project with `rat_project_dir` (it walks up to `$CLAUDE_PROJECT_DIR`; the root marker wins) and re-bases `CWD=$(dirname "$RAT_DIR")` before building any path. Read session fields with `jsonu_get_root_string` or `jsonu_session_id`, never from `tool_input`. `test_hooks_honor_project_root_override` enforces the re-base; `test_session_id_comes_from_the_hook_input_root` and `test_agent_cwd_does_not_move_the_session_project` pin the root reads, and `test_hooks_read_session_fields_from_the_input_root` forbids reading one through `jsonu_get_input_string` or by hand (it lists the three hand scans, which read inputs without `tool_input`).
@@ -208,10 +206,12 @@ rtl-agent-team/                          # Plugin root
 │   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:Agent: audit spawn completion
 │   ├── rtl-spawn-context.sh             #   PreToolUse:Agent: spawn context manifest
 │   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
-│   └── lib/                             #   11 shared libs (json-util.sh, flock-util.sh, posix-util.sh,
+│   └── lib/                             #   shared sh libs (json-util.sh, flock-util.sh, posix-util.sh,
 │                                        #     hook-output-util.sh, spawn-context-util.sh,
 │                                        #     team-gate-util.sh, audit-util.sh, artifact-map.sh,
-│                                        #     compliance-gate-util.sh, rat-dir-util.sh, stop-budget-util.sh)
+│                                        #     compliance-gate-util.sh, rat-dir-util.sh, stop-budget-util.sh,
+│                                        #     python-util.sh) + Python hook logic (verify_gate.py,
+│                                        #     session_inject.py)
 ├── plugin_docs/                         # Plugin development documents (tracked)
 │   ├── specs/                           #   Design specifications
 │   ├── plans/                           #   Implementation plans
@@ -228,7 +228,7 @@ rtl-agent-team/                          # Plugin root
 ├── tests/                               # Unit + integration test suite
 ├── scripts/                             # Utility scripts
 │   ├── post-install.sh                  #   One-time EDA environment check
-│   ├── sync_orchestrator_inject.sh      #   Regenerate condensed routing block in hook
+│   ├── rat_compat.py                    #   Python floor and compatibility level (parses under any Python)
 │   └── ...                              #   (other helper scripts)
 └── .rat/                                # Runtime state (gitignored, created per-project)
 ```
@@ -249,9 +249,8 @@ Routing contract:
 - Orchestrator agents are spawned by Action Skills via `Task()`.
 - Policy fragments are generated into their consuming agents by `scripts/sync_agent_policies.py`; convention skills remain preloaded.
 
-When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md`, then run:
-- `sh scripts/sync_orchestrator_inject.sh`
-to regenerate the condensed routing block in `hooks/rtl-orchestrator-inject.sh`.
+When adding or modifying skills/agents, update `skills/rtl-orchestrate/SKILL.md`. The
+SessionStart hook reads its export block at session start, so no regeneration step exists.
 
 ## Pipeline Rules (policy + enforcement map)
 

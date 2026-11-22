@@ -13,7 +13,7 @@ Brief description of the changes.
 ## Checklist
 
 - [ ] Agent/skill count updated in README.md, README_kr.md, CLAUDE.md, marketplace.json (if added/removed)
-- [ ] Routing sync done: `sh scripts/sync_orchestrator_inject.sh` (if routing changed)
+- [ ] Routing SSOT updated: `skills/rtl-orchestrate/SKILL.md` (the SessionStart hook reads it at runtime)
 - [ ] Tests pass: `python3 -m pytest tests/unit/ -x -q`
 - [ ] Shell scripts pass: `shellcheck -s sh hooks/*.sh hooks/lib/*.sh` (if hooks modified)
 - [ ] No stale version references: `grep -r 'OLD_VER' package.json .claude-plugin/ README.md`

@@ -326,7 +326,9 @@ def test_dispatch_never_mirrors_a_home_directory_or_its_parent(tmp_path, relativ
     home.mkdir()
     root = (home / relative).resolve()
     before = sorted(root.rglob("*"))
-    env = {**os.environ, "HOME": str(home), "RAT_DATA_DIR": str(data), "RAT_PROJECT_ROOT": str(root)}
+    # Apple's system Python keeps bytecode under ~/Library/Caches; the runner itself writes nothing there.
+    env = {**os.environ, "HOME": str(home), "RAT_DATA_DIR": str(data), "RAT_PROJECT_ROOT": str(root),
+           "PYTHONDONTWRITEBYTECODE": "1"}
     result = subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", "run_sim.sh", "--"],
                             env=env, capture_output=True, text=True, timeout=20)
     assert result.returncode == 2 and "home directory" in result.stderr
@@ -537,6 +539,9 @@ def test_verify_run_records_a_project_runner_the_gate_accepts(runner_project):
     record = last_record(root)
     assert (record["verdict"], record["origin"], record["argv"]) == ("PASS", "verify-run", [str(regress)])
     assert pending_files(root) == []
+    # The user sees which runner cleared Rule 5; a runner can only print a token so much.
+    assert run_hook(REPO_ROOT / "hooks/rtl-verify-stop-gate.sh", {"cwd": str(root)}) == {
+        "systemMessage": "Info> Rule 5 cleared for 1 RTL file(s) by verify-run: regress.sh."}
     assert run_hook(REPO_ROOT / "hooks/rtl-verify-stop-gate.sh", {"cwd": str(root)}) == {"continue": True}
 
 
@@ -597,6 +602,10 @@ def test_remote_manifest_binds_the_copy_the_host_ran(remote_project):
     assert record["remote_host"] == "fixture" and record["remote_root"] == str(remote)
     assert len(record["remote_manifest_sha256"]) == 64
     assert pending_files(root) == []
+    from tests.conftest import run_hook
+    notice = run_hook(REPO_ROOT / "hooks/rtl-verify-stop-gate.sh", {"cwd": str(root)})["systemMessage"]
+    assert notice.endswith(" on fixture.") and "regress.sh" in notice
+    pending_files(root)  # track again for the checks below
     (remote / "rtl/top.sv").write_text("module stale; endmodule\n")
     stale = verify_run(root, *flags, env=env)
     assert stale.returncode == 3
@@ -768,3 +777,57 @@ def test_machine_verification_settings_apply_with_a_default_site(tmp_path):
     (data / "env-config.json").write_text(json.dumps({"default_site": "lab", "verification": {"stop_gate": "off"}}))
     result = invoke(tmp_path, "get", "--key", "verification.stop_gate")
     assert result.stdout.strip() == "off", result.stderr
+
+
+# Remote output paths and the rsync variants (GNU rsync 3, GNU 2.6.9, macOS openrsync).
+import eda_runner  # noqa: E402
+
+
+@pytest.mark.parametrize("value,expected", [("sim/out/", "sim/out"), ("./sim/out", "sim/out"),
+                                            ("sim//out", "sim/out"), ("out", "out")])
+def test_outputs_are_kept_in_normal_form(value, expected):
+    assert eda_runner.relative_output(value) == expected
+
+
+@pytest.mark.parametrize("value", ["", ".", "./", "./.", ".//", "/abs/out", "../up", "sim/../..",
+                                   ".git", ".git/hooks", ".rat/state", ".claude", ".rtl-agent-team"])
+def test_root_absolute_and_reserved_outputs_are_refused(value):
+    with pytest.raises(ValueError):
+        eda_runner.relative_output(value)
+
+
+@pytest.mark.parametrize("features", [(True, True), (False, True), (False, False)], ids=["gnu3", "gnu2.6.9", "openrsync"])
+def test_relative_fetch_targets_the_output_path_for_every_rsync(features, monkeypatch, tmp_path):
+    import shlex
+    monkeypatch.setattr(eda_runner, "rsync_features", lambda rsync: features)
+    value = eda_runner.relative_output("sim/out/")
+    options, source, target, prefix = eda_runner.rsync_relative("/remote ws", value, tmp_path)
+    if features[1]:
+        assert (options, source, target, prefix) == (["--relative"], "/remote ws/./sim/out", tmp_path, "")
+    else:  # rsync copies sim/out itself into target/, so it lands in tmp_path/sim/out
+        assert (options, source, target, prefix) == ([], "/remote ws/sim/out", tmp_path / "sim", "sim/")
+    argv, operand = eda_runner.rsync_transport([], *options)
+    assert ("--protect-args" in argv) == features[0]
+    assert operand("host", source) == "host:" + (source if features[0] else shlex.quote(source))
+
+
+@pytest.mark.skipif(shutil.which("rsync") is None, reason="needs a real rsync")
+def test_fetch_with_the_hosts_real_rsync_lands_results_at_their_path(tmp_path):
+    # The real rsync on PATH (GNU on Linux, openrsync on macOS) over an ssh that runs the
+    # "remote" command locally, as a login shell would: the path below has a space and a quote.
+    tools = tmp_path / "bin"
+    executable(tools / "ssh", '#!/bin/sh\nshift\nexec /bin/sh -c "$*"\n')
+    remote = tmp_path / "remote ws'1"
+    (remote / "sim/out").mkdir(parents=True)
+    (remote / "sim/out/report.log").write_text("TESTS=1 PASS=1 FAIL=0\n")
+    root = tmp_path / "project"
+    run = root / ".rat/remote-runs/run-1"
+    run.mkdir(parents=True)
+    (run / "result.json").write_text(json.dumps({"experiment": "exp-1", "host": "fixture",
+                                                 "remote_outputs": str(remote)}))
+    result = subprocess.run([sys.executable, str(RUNNER), "fetch", "--root", str(root), "--experiment", "exp-1",
+                             "sim/out/"], cwd=root, capture_output=True, text=True, timeout=60,
+                            env={**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"})
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (root / "experiment/exp-1/sim/out/report.log").read_text() == "TESTS=1 PASS=1 FAIL=0\n"
+    assert not (root / "experiment/exp-1/sim/report.log").exists()

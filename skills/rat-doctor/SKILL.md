@@ -30,7 +30,10 @@ setup, mark each item, and help the user fix the wrong ones. Marks: ✓ verified
 
 ```bash
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rat_doctor.py" --root "$root" --live
+. "${CLAUDE_PLUGIN_ROOT}/hooks/lib/python-util.sh"
+# No Python >= the floor: rat_compat.py parses under any Python and says what is missing.
+RAT_PYTHON=$(rat_select_python) || { python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rat_compat.py"; exit 2; }
+"$RAT_PYTHON" "${CLAUDE_PLUGIN_ROOT}/scripts/rat_doctor.py" --root "$root" --live
 ```
 
    Exit status 1 means at least one ✗.

@@ -7,6 +7,46 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre14] - 2026-11-22
+
+- Python floor 3.9, one number for the whole plugin: `RAT_PYTHON_MIN` in
+  `hooks/lib/python-util.sh` and `MIN_PYTHON` in `scripts/rat_compat.py` (a test keeps them
+  equal). Python 2 is never selected. `rat_compat.py` parses under any Python and reports the
+  level: unsupported below 3.9, supported but past end of life for 3.9, supported up to the
+  newest tested version (3.14), untested above it. `post-install.sh`, rat-setup and rat-doctor
+  report it; rat-doctor selects its interpreter with `rat_select_python` and shows a Python row.
+- Compatibility is enforced: CI tests 3.9, 3.12 and 3.14, and `tests/unit/test_python_compat.py`
+  parses every Python file with the 3.9 grammar, requires `from __future__ import annotations`
+  for `X | Y` annotations and rejects newer APIs. This found `Path.hardlink_to` (3.10) in three
+  tests and an unguarded `X | None` annotation that made a test module fail to import on 3.9.
+- Hooks: launchers stay POSIX sh, logic moves to Python. The RTL verify gate's decision
+  (tracking aggregation, `verification.stop_gate`, evidence, cleanup, messages) is
+  `hooks/lib/verify_gate.py`; the launcher keeps the shared Stop budget calls and starts no
+  Python on a Stop with nothing tracked. Without Python >= 3.9 the gate blocks and names the
+  missing interpreter; a waiver still clears. When `verify-run` evidence clears Rule 5, the
+  user sees `Info> Rule 5 cleared for N RTL file(s) by verify-run: <runner> [on <host>].`
+- SessionStart reads the routing SSOT at runtime: `hooks/lib/session_inject.py` encodes the
+  export block of `skills/rtl-orchestrate/SKILL.md` when the session starts (output identical to
+  the former generated copy). `scripts/sync_orchestrator_inject.sh` and its CI step are removed.
+  Without Python the hook emits a valid envelope and one notice naming rat-doctor.
+- macOS: bundled bash scripts run on `/bin/bash` 3.2. `tool-runner.sh` locks on a fixed
+  descriptor instead of `exec {var}<`; every array expansion under `set -u` is guarded
+  (bash < 4.4, also RHEL 7's 4.2, treats an empty array as unbound); `generate_config.sh` keeps
+  its tool tables in per-key variables instead of associative arrays, so `rat-init-project`
+  works with the stock shell. `tests/unit/test_bash_portability.py` rejects bash 4+ syntax and
+  unguarded expansions in every bundled script.
+- macOS openrsync: remote transport probes rsync once. Without `--protect-args` it quotes the
+  remote path for the login shell; openrsync ignores the `/./` marker, so relative fetches start
+  at the output's parent there. GNU rsync keeps the same command line. A test runs `fetch`
+  through the host's real rsync.
+- Remote outputs are kept in normal form and the project root is refused: `sim/out/` is
+  `sim/out`, and `./`, `./.` or `.//` no longer pass as an output, which in `results: sync`
+  would have synced the whole workspace onto the project with `--delete`. Outputs under `.git`,
+  `.claude`, `.rat` and `.rtl-agent-team` are refused, and merge/sync fetches keep a nested
+  `.git` (a submodule) from deletion.
+- The edit tracker's PPA scope check selects Python with `rat_select_python` (it accepted any
+  `python3` or `python`); without one the edit is tracked, so Rule 5 stays active.
+
 ## [2.0.0-pre13] - 2026-11-22
 
 - `eda_runner.py verify-run --root <project> -f <filelist> [--log <summary>] [--remote-host

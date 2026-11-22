@@ -4,10 +4,12 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned: setup-python publishes builds per image, and a newer image may lack the 3.9 floor.
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ['3.10', '3.12']
+        # The floor (scripts/rat_compat.py MIN_PYTHON), a middle and the newest version.
+        python-version: ['3.9', '3.12', '3.14']
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -93,7 +95,6 @@ jobs:
         run: |
           python3 scripts/sync_agent_policies.py
           bash scripts/generate-phase-maps.sh --write
-          sh scripts/sync_orchestrator_inject.sh
           git diff --no-ext-diff -- agents/ hooks/ > "$RUNNER_TEMP/generated-files.patch"
           if [ -s "$RUNNER_TEMP/generated-files.patch" ]; then
             echo '::error::Generated files differ from their sources. See the generated-files-patch artifact.'

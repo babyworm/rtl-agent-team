@@ -33,14 +33,17 @@ results during setup. Complete phase-specific qualification for the requested fl
 
 ## Discovery and readiness
 
-Resolve plugin_root from the skill location. Select Python >=3.9 using
-`{plugin_root}/hooks/lib/python-util.sh` (`rat_select_python`); honor RAT_PYTHON.
-Generate or refresh project detection while preserving user configuration:
+Resolve plugin_root from the skill location. Select Python >= the plugin floor
+(`RAT_PYTHON_MIN` in `{plugin_root}/hooks/lib/python-util.sh`, currently 3.9) with
+`rat_select_python`; honor RAT_PYTHON. The hooks need the same interpreter, so report its
+compatibility line to the user. Without one, stop and name what to install. Python 2 is not
+supported. Generate or refresh project detection while preserving user configuration:
 
 ```bash
 source "$PLUGIN_ROOT/hooks/lib/python-util.sh"
-RAT_PYTHON=$(rat_select_python)
+RAT_PYTHON=$(rat_select_python) || { python3 "$PLUGIN_ROOT/scripts/rat_compat.py"; exit 2; }
 export RAT_PYTHON
+"$RAT_PYTHON" "$PLUGIN_ROOT/scripts/rat_compat.py"
 bash "$PLUGIN_ROOT/skills/rat-init-project/scripts/generate_config.sh" "$PROJECT_ROOT"
 "$RAT_PYTHON" "$PLUGIN_ROOT/scripts/eda_runner.py" capabilities --root "$PROJECT_ROOT" --phase "$RAT_PHASE"
 ```

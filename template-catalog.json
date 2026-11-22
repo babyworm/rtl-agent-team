@@ -2,12 +2,12 @@
   "schema_version": 1,
   "templates": {
     "hooks/lib/python-util.sh": {
-      "version": "2.0.0",
-      "sha256": "82d5ff04a0fd367f4c9f65ea96b2e4a0d6c339f3785dc9661582c4cfab9aa9e5"
+      "version": "2.0.1",
+      "sha256": "8f30d954f924b9ba4da3199ce84c9b9177f4cfaaa108b02740f5f56d41610f45"
     },
     "scripts/eda_runner.py": {
-      "version": "2.0.17",
-      "sha256": "76f031cfddd4afabc3ae01cb5842ceee10472d10d09f43774a50dc29c95284d5"
+      "version": "2.0.18",
+      "sha256": "d0038e5d42a83f7c5863d20df083f06328426e89dbecbea467f867d41bea19a9"
     },
     "scripts/eda_setup.py": {
       "version": "2.0.11",
@@ -26,8 +26,8 @@
       "sha256": "e86634626b63da5ef9cb78e600bfecad8040e86dd05351449cf6455f8c581d10"
     },
     "scripts/verify_evidence.py": {
-      "version": "2.0.11",
-      "sha256": "2ffd9d0b24fb88bc59ec554647ad5a6095434acb54c7c92f330bdd7b952584e3"
+      "version": "2.0.12",
+      "sha256": "6fffe680d1932030b3211fea94e4a3949c0f7b7a4f174ddf2b20322203e205c0"
     },
     "skills/rat-init-project/templates/Makefile": {
       "version": "2.0.0",

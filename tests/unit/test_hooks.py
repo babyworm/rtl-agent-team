@@ -828,19 +828,17 @@ class TestRtlVerifyStopGate:
         assert "decision" not in result
         assert result["systemMessage"].startswith("Info>")
 
-    def test_signal_mid_aggregation_ends_the_gate_after_cleanup(self, tmp_project):
+    def test_signal_mid_decision_leaves_no_output_and_keeps_tracking(self, tmp_project):
         state = tmp_project / ".rat" / "state"
-        # A worker's tracking file makes the gate aggregate through `sort`.
         _track((state / "rtl-modified-files-worker-1.txt"), "rtl/a.sv\n")
-        shim = tmp_project / "shim"
-        shim.mkdir()
-        ready, hold = tmp_project / "sort-started", tmp_project / "hold"
+        ready, hold = tmp_project / "decision-started", tmp_project / "hold"
         os.mkfifo(hold)
-        # The shim reports that the gate reached `sort`, then blocks on the FIFO.
-        (shim / "sort").write_text('#!/bin/sh\n: > "$RAT_TEST_READY"\nread _ < "$RAT_TEST_HOLD"\n')
-        (shim / "sort").chmod(0o755)
-        env = {**os.environ, "PATH": f"{shim}:{os.environ['PATH']}",
-               "RAT_TEST_READY": str(ready), "RAT_TEST_HOLD": str(hold)}
+        # An interpreter that passes the version probe, then stops inside the decision.
+        python = tmp_project / "slow-python"
+        python.write_text(f'#!/bin/sh\n[ "$1" = -c ] && exec "{sys.executable}" "$@"\n'
+                          ': > "$RAT_TEST_READY"\nread _ < "$RAT_TEST_HOLD"\n')
+        python.chmod(0o755)
+        env = {**os.environ, "RAT_PYTHON": str(python), "RAT_TEST_READY": str(ready), "RAT_TEST_HOLD": str(hold)}
         gate = subprocess.Popen(
             ["sh", str(self.HOOK)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, env=env, text=True, start_new_session=True,
@@ -850,7 +848,7 @@ class TestRtlVerifyStopGate:
             gate.stdin.close()
             deadline = time.monotonic() + 10
             while not ready.exists():
-                assert time.monotonic() < deadline, "the gate never reached the aggregation"
+                assert time.monotonic() < deadline, "the gate never started its decision"
                 time.sleep(0.01)
             os.killpg(gate.pid, signal.SIGTERM)
             out = gate.stdout.read()
@@ -859,9 +857,33 @@ class TestRtlVerifyStopGate:
             if gate.poll() is None:
                 os.killpg(gate.pid, signal.SIGKILL)
                 gate.wait()
-        assert rc == 143
-        assert out == ""
-        assert not list(state.glob("rtl-modified-files-aggregated.*"))
+        assert rc in (143, -signal.SIGTERM)  # ended by the signal, by a trap or by default
+        assert out == ""  # no partial JSON
+        assert (state / "rtl-modified-files-worker-1.txt").read_text() == "rtl/a.sv\n"
+        assert not [path for path in state.iterdir() if path.suffix == ".tmp"]
+
+    def test_without_python_the_gate_blocks_and_names_it(self, tmp_project):
+        _track((tmp_project / ".rat/state/rtl-modified-files.txt"), "rtl/a.sv\n")
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"RAT_PYTHON": str(tmp_project / "no-python")})
+        _assert_stop_blocked(result)
+        assert "Python >= 3.9 was not found" in result["reason"]
+
+    def test_without_python_a_waiver_still_clears(self, tmp_project):
+        state = tmp_project / ".rat/state"
+        _track((state / "rtl-modified-files.txt"), "rtl/a.sv\n")
+        (state / "rtl-verify-waiver").touch()
+        assert run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"RAT_PYTHON": str(tmp_project / "none")}) == {
+            "continue": True}
+        assert not (state / "rtl-modified-files.txt").exists() and not (state / "rtl-verify-waiver").exists()
+
+    def test_a_failing_helper_blocks_instead_of_opening_the_gate(self, tmp_project):
+        _track((tmp_project / ".rat/state/rtl-modified-files.txt"), "rtl/a.sv\n")
+        python = tmp_project / "broken-python"
+        python.write_text(f'#!/bin/sh\n[ "$1" = -c ] && exec "{sys.executable}" "$@"\nexit 1\n')
+        python.chmod(0o755)
+        result = run_hook(self.HOOK, {"cwd": str(tmp_project)}, env={"RAT_PYTHON": str(python)})
+        _assert_stop_blocked(result)
+        assert "verify_gate.py failed" in result["reason"]
 
     def test_gate_blocks_while_the_session_is_in_a_subdirectory(self, tmp_project):
         _track((tmp_project / ".rat" / "state" / "rtl-modified-files.txt"), "rtl/a.sv\n")
@@ -1832,7 +1854,7 @@ class TestSpecCascadeMarkerLifecycle:
         external_report.write_text("- Verdict: PASS\n")
         report = tmp_project / "reviews" / "cross-phase-contract-validation.md"
         report.parent.mkdir(parents=True)
-        report.hardlink_to(external_report)
+        os.link(external_report, report)  # Path.hardlink_to needs Python 3.10
 
         run_hook(
             self.HOOK,
@@ -5141,3 +5163,21 @@ class TestStopGatesYieldToBackgroundAgents:
             assert self._stop(tmp_project, gate, True, [self.AGENT], prompt=f"p-{turn}") == {"continue": True}
         assert outcomes[-1] == "notice", outcomes
         assert outcomes.count("block") <= 3, outcomes
+
+
+@pytest.mark.parametrize("python, in_scope", [(None, True), ("/no/python", False)])
+def test_ppa_scope_edit_needs_the_floor_python_and_fails_safe(tmp_project, python, in_scope):
+    # In scope, a PPA-loop edit skips staleness tracking; without Python >= the floor the
+    # recursive glob cannot be checked, so the edit is tracked and Rule 5 stays active.
+    (tmp_project / "rtl/core").mkdir(parents=True)
+    source = tmp_project / "rtl/core/top.sv"
+    source.write_text("module t; endmodule\n")
+    (tmp_project / ".rat/state/ppa-loop-state.json").write_text(
+        json.dumps({"mode": "ppa-loop", "allowed_edit_scope": ["rtl/**/*.sv"]}))
+    result = run_hook(HOOKS_DIR / "rtl-edit-tracker.sh",
+                      {"cwd": str(tmp_project), "hook_event_name": "PostToolUse", "tool_name": "Edit",
+                       "tool_input": {"file_path": str(source)}},
+                      env={"RAT_PYTHON": python} if python else None)
+    context = result["hookSpecificOutput"]["additionalContext"]
+    assert ("ppa-loop scope edit" in context) == in_scope
+    assert (tmp_project / ".rat/state/rtl-modified-files.txt").exists() == (not in_scope)

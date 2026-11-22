@@ -356,8 +356,8 @@ A: Install with `".venv/bin/python" -m pip install pytest-xdist`, then run
 A: `test_agent_skill_structure.py` validates the new agent's YAML frontmatter
 automatically. It passes as long as `name`, `model` and `description` are present.
 
-**Q: Some tests SKIP on macOS — why?**
-A: `generate_config.sh` self-guards on `BASH_VERSINFO[0] >= 4`, and macOS ships bash
-3.2. `tests/conftest.py::find_bash4` detects a bash ≥ 4 and skips those tests when
-none is available. Install one with `brew install bash` to run them; Linux CI runs
-them unconditionally.
+**Q: Do the tests run on macOS?**
+A: Yes. Bundled bash scripts run on macOS `/bin/bash` 3.2, and
+`tests/unit/test_bash_portability.py` rejects bash 4+ syntax and unguarded empty-array
+expansions under `set -u`. Remote transport also handles macOS openrsync. Python helpers
+and hooks need Python >= 3.9 (`tests/unit/test_python_compat.py`).

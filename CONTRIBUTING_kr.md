@@ -16,7 +16,7 @@ RTL Agent Marketplace에 기여하는 방법을 설명합니다.
 git clone --branch try-2.0 https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
-# 2. 테스트 의존성 설치
+# 2. 테스트 의존성 설치 (Python >= 3.9, 훅도 같은 버전이 필요)
 python3 -m venv .venv
 ".venv/bin/python" -m pip install -r tests/requirements-test.txt
 
@@ -202,8 +202,7 @@ skills/{skill-name}/
 | 파일 | 업데이트 내용 |
 |------|-------------|
 | `skills/rtl-orchestrate/SKILL.md` | 스킬 라우팅 테이블 + Action Skill→Orchestrator→Policy 매핑 + SessionStart export block (single source of truth) |
-| `scripts/sync_orchestrator_inject.sh` | `rtl-orchestrate`의 export block을 `hooks/rtl-orchestrator-inject.sh` generated block으로 동기화 |
-| `hooks/rtl-orchestrator-inject.sh` | SessionStart 축약 라우팅 (generated block 직접 수동 수정 금지) |
+| `hooks/rtl-orchestrator-inject.sh` | SessionStart 런처. `hooks/lib/session_inject.py`가 세션 시작 시 export block을 읽으므로 재생성 단계가 없음 |
 | `README.md`, `README_kr.md`, `CLAUDE.md` | 에이전트/스킬 카운트, 구조 설명, 에이전트 팀 테이블 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
 | `skills/rat-auto-design/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
@@ -212,7 +211,6 @@ skills/{skill-name}/
 라우팅/위임 변경 시 반드시 아래를 실행하세요:
 
 ```bash
-sh scripts/sync_orchestrator_inject.sh
 ".venv/bin/python" -m pytest -q tests/unit/test_agent_skill_structure.py tests/unit/test_hooks.py tests/unit/test_plugin_runtime_contract.py
 ```
 
@@ -423,7 +421,7 @@ codec 표준은 지식 파일 세트, 전문가 프롬프트 동기화, 라우�
 
 1. `skills/domain-consult/SKILL.md` — 라우팅 테이블에 새 표준 키워드 추가
 2. `skills/rtl-orchestrate/SKILL.md` — SSOT 라우팅 블록 (hook export 소스)
-3. `hooks/rtl-orchestrator-inject.sh` — `sh scripts/sync_orchestrator_inject.sh` 실행
+3. 라우팅 테스트 실행 (SessionStart 훅이 런타임에 SSOT 블록을 읽음)
 
 ### Non-Codec Video Processing 분리
 

@@ -12,10 +12,12 @@
 
 set -euo pipefail
 
-if (( BASH_VERSINFO[0] < 4 )); then
-  echo "ERROR: generate_config.sh requires Bash 4 or newer." >&2
-  exit 2
-fi
+# Runs on bash 3.2 (macOS /bin/bash): no associative arrays, see map_set/map_get.
+
+# Each map entry is one variable named after the map and the key. Keys are
+# <category>/<tool> identifiers, so "/" -> "__" cannot collide.
+map_set() { printf -v "_RAT_MAP_${1}__${2//\//__}" '%s' "$3"; }
+map_get() { local _rat_name="_RAT_MAP_${1}__${2//\//__}"; printf '%s' "${!_rat_name:-${3:-}}"; }
 
 CONFIG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$CONFIG_SCRIPT_DIR/../../../hooks/lib/python-util.sh"
@@ -176,18 +178,15 @@ if [[ -n "$DEFAULT_SITE" ]]; then
 fi
 
 # ─── Load existing user fields ─────────────────────────────────────────────
-declare -A SAVED_ENV=()
-declare -A SAVED_PATH=()
-declare -A SAVED_SHELL=()
 for input_config in "$ENV_CONFIG" "$CONFIG"; do
   [[ -f "$input_config" ]] || continue
   for entry in ${ALL_TOOLS[@]+"${ALL_TOOLS[@]}"}; do
     read -r cat key _bin <<< "$entry"
     index="$cat/$key"
     [[ -n "$(json_get_path "$input_config" tools "$cat" "$key")" ]] || continue
-    SAVED_ENV[$index]=$(json_get_path "$input_config" tools "$cat" "$key" env_source)
-    SAVED_PATH[$index]=$(json_get_path "$input_config" tools "$cat" "$key" path)
-    SAVED_SHELL[$index]=$(json_get_path "$input_config" tools "$cat" "$key" env_shell)
+    map_set SAVED_ENV "$index" "$(json_get_path "$input_config" tools "$cat" "$key" env_source)"
+    map_set SAVED_PATH "$index" "$(json_get_path "$input_config" tools "$cat" "$key" path)"
+    map_set SAVED_SHELL "$index" "$(json_get_path "$input_config" tools "$cat" "$key" env_shell)"
   done
 done
 
@@ -223,27 +222,25 @@ fi
 # ─── Detect all tools ──────────────────────────────────────────────────────
 echo "=== EDA Tool Detection ==="
 
-declare -A DET_STATUS=()
-declare -A DET_PATH=()
 
 for entry in ${ALL_TOOLS[@]+"${ALL_TOOLS[@]}"}; do
   read -r cat key bin <<< "$entry"
-  env_src="${SAVED_ENV[$cat/$key]:-}"
-  exp_path="${SAVED_PATH[$cat/$key]:-}"
+  env_src="$(map_get SAVED_ENV "$cat/$key")"
+  exp_path="$(map_get SAVED_PATH "$cat/$key")"
 
   found_path=""
-  if found_path=$(tool_detect "$bin" "$env_src" "$exp_path" "${SAVED_SHELL[$cat/$key]:-bash}"); then
-    DET_STATUS[$cat/$key]=true
-    DET_PATH[$cat/$key]="$found_path"
+  if found_path=$(tool_detect "$bin" "$env_src" "$exp_path" "$(map_get SAVED_SHELL "$cat/$key" bash)"); then
+    map_set DET_STATUS "$cat/$key" true
+    map_set DET_PATH "$cat/$key" "$found_path"
   else
-    DET_STATUS[$cat/$key]=false
-    DET_PATH[$cat/$key]=""
+    map_set DET_STATUS "$cat/$key" false
+    map_set DET_PATH "$cat/$key" ""
   fi
 done
 
 # structural CDC is always available
-DET_STATUS["cdc/structural"]=true
-DET_PATH["cdc/structural"]="(built-in)"
+map_set DET_STATUS "cdc/structural" true
+map_set DET_PATH "cdc/structural" "(built-in)"
 
 # Print summary
 PREV_CAT=""
@@ -254,7 +251,7 @@ for entry in ${ALL_TOOLS[@]+"${ALL_TOOLS[@]}"}; do
     printf "  %-12s" "$cat:"
     PREV_CAT="$cat"
   fi
-  if [[ "${DET_STATUS[$cat/$key]}" == "true" ]]; then
+  if [[ "$(map_get DET_STATUS "$cat/$key")" == "true" ]]; then
     printf " %s(OK)" "$key"
   else
     printf " %s(-)" "$key"
@@ -269,7 +266,7 @@ pick_pref() {
   local cat="$1"; shift
   local candidates=("$@")
   for key in ${candidates[@]+"${candidates[@]}"}; do
-    if [[ "${DET_STATUS[$cat/$key]:-false}" == "true" ]]; then
+    if [[ "$(map_get DET_STATUS "$cat/$key" false)" == "true" ]]; then
       echo "$key"
       return
     fi
@@ -305,7 +302,7 @@ normalize_for_make() {
 safe_formal_pref() {
   case "$1" in
     jg|vcf)
-      if [[ "${DET_STATUS[formal/sby]:-false}" == "true" ]]; then echo "sby"
+      if [[ "$(map_get DET_STATUS "formal/sby" false)" == "true" ]]; then echo "sby"
       else normalize_for_make "$1"
       fi ;;
     *) echo "$1" ;;
@@ -346,9 +343,9 @@ fi
 # ─── Generate tool JSON block ─────────────────────────────────────────────
 tool_json() {
   local cat="$1" key="$2"
-  local det="${DET_STATUS[$cat/$key]:-false}"
-  local path="${DET_PATH[$cat/$key]:-}"
-  local env="${SAVED_ENV[$cat/$key]:-}"
+  local det="$(map_get DET_STATUS "$cat/$key" false)"
+  local path="$(map_get DET_PATH "$cat/$key")"
+  local env="$(map_get SAVED_ENV "$cat/$key")"
   printf '      "%s": { "detected": %s, "path": %s, "env_source": %s }' \
     "$key" "$det" "$(json_quote "$path")" "$(json_quote "$env")"
 }

@@ -8,12 +8,28 @@ start, tool use, session stop) without requiring user invocation.
 
 All 14 hooks are registered in `hooks/hooks.json` and run by the Claude Code plugin runtime.
 
-## POSIX sh Constraint
+## POSIX sh Launchers and Python Logic
 
-Hook scripts are invoked with `sh`, **not** `bash`. This is a Claude Code plugin runtime
-requirement — the plugin calls `sh "${CLAUDE_PLUGIN_ROOT}/hooks/script.sh"`.
+Hook entry points are invoked with `sh`, **not** `bash`: `hooks.json` calls
+`sh "${CLAUDE_PLUGIN_ROOT}/hooks/script.sh"`. Keep the launcher in POSIX sh and move
+parsing (JSON, evidence, Markdown) into a Python module under `hooks/lib/*.py`:
 
-Practical rules:
+- Select the interpreter with `rat_select_python` from `hooks/lib/python-util.sh`. It
+  honors `RAT_PYTHON` and enforces the floor `RAT_PYTHON_MIN` (3.9, equal to
+  `scripts/rat_compat.py` `MIN_PYTHON`). Python 2 is never selected.
+- Write the module for the floor: `tests/unit/test_python_compat.py` parses every `.py`
+  with `feature_version=(3, 9)`, requires `from __future__ import annotations` for
+  `X | Y` annotations and rejects newer APIs; CI also runs the suite on 3.9.
+- The launcher must be safe without Python. A Stop gate blocks (it cannot read evidence);
+  SessionStart emits a valid envelope and one `systemMessage`.
+- Hand results back as data the launcher cannot misread: `verify_gate.py` prints
+  single-quoted shell assignments that the launcher `eval`s; `session_inject.py` prints
+  the finished envelope. Print only once the whole result is ready.
+- Start Python only when there is work, and stay well inside the hook timeout. The verify
+  gate runs in about 0.2 s with files pending and starts no Python otherwise.
+- Stop gates keep the shared budget calls (`stopu_*`) in the launcher.
+
+Rules for the sh part:
 - Use `[` not `[[` for conditionals
 - No bash arrays, `${var,,}`, `<<<`, process substitution, or `local -n`
 - Use `$(cmd)` not backticks
@@ -230,6 +246,5 @@ python3 -m pytest tests/unit/test_audit.py -x -q
 7. **Use `_` prefix** for internal variables to avoid namespace collisions
 8. **Add tests** in `tests/unit/test_hooks.py` using `run_hook()` from conftest
 9. **Update routing** if the hook affects skill/agent behavior:
-   - Update `skills/rtl-orchestrate/SKILL.md` (routing SSOT)
-   - Run `sh scripts/sync_orchestrator_inject.sh` to regenerate hook injection
+   - Update `skills/rtl-orchestrate/SKILL.md` (routing SSOT); the SessionStart hook reads it at runtime
 10. **Update CLAUDE.md** hook table if adding a new hook file

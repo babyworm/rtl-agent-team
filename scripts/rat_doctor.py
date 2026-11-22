@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.2
+# rat-version: 2.0.3
 """Check plugin and project settings and print what is right (✓), unverified (?) or wrong (✗)."""
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import time
 from eda_runner import available, backend, configuration, remote_shell_command, tool_configuration
 from eda_setup import failed_probe, read_json, tool_fingerprint, validate_host
 from verify_evidence import pre_init_state_root
+import rat_compat
 
 OK, WARN, FAIL, NA = "✓", "?", "✗", "–"
 STALE_DAYS = 90
@@ -73,6 +74,13 @@ def plugin_checks(rows, live):
     plugin = Path(__file__).resolve().parents[1]
     version = json.loads((plugin / ".claude-plugin/plugin.json").read_text()).get("version", "?")
     add(rows, "plugin", "version", OK, f"{version} ({plugin})")
+    found = rat_compat.level()
+    floor = ".".join(map(str, rat_compat.MIN_PYTHON))
+    add(rows, "plugin", "python", {"supported": OK, "unsupported": FAIL}.get(found, WARN),
+        f"{rat_compat.describe()} ({sys.executable})",
+        "" if found == "supported" else f"install Python >= {floor} and set RAT_PYTHON" if found == "unsupported"
+        else "set RAT_PYTHON to a newer Python 3 if hooks misbehave" if found == "untested"
+        else "install a newer Python 3 and set RAT_PYTHON to it")
     data = os.environ.get("RAT_DATA_DIR") or os.environ.get("CLAUDE_PLUGIN_DATA")
     if not data:
         add(rows, "plugin", "settings folder", FAIL, "RAT_DATA_DIR is not set in this shell",

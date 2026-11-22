@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import REPO_ROOT, extract_marked_block
+from tests.conftest import REPO_ROOT, extract_marked_block, session_start_context
 
 HOOKS_JSON = REPO_ROOT / "hooks" / "hooks.json"
 PLUGIN_JSON = REPO_ROOT / ".claude-plugin" / "plugin.json"
@@ -43,8 +43,6 @@ RAT_PLUGIN_DEBUG_SKILL = SKILLS_DIR / "rat-doctor" / "SKILL.md"
 RTL_LINT_CHECK_SKILL = SKILLS_DIR / "rtl-lint-check" / "SKILL.md"
 RTL_P5S_SVA_POLICY = SKILLS_DIR / "rtl-p5s-sva-policy" / "SKILL.md"
 
-SESSIONSTART_BLOCK_START = "# BEGIN GENERATED ROUTING BLOCK - sync via scripts/sync_orchestrator_inject.sh"
-SESSIONSTART_BLOCK_END = "# END GENERATED ROUTING BLOCK"
 
 
 
@@ -297,26 +295,10 @@ class TestSessionStartRoutingBlockContract:
 
     @pytest.fixture
     def generated_block(self):
-        """Return the routing markdown delivered by the SessionStart hook.
-
-        Since v0.10.3 the BEGIN/END region in the hook is a `cat << 'JSON_EOF'`
-        heredoc wrapping a single JSON envelope (see CLAUDE.md "Hook output
-        schema (SessionStart)"). This fixture decodes the envelope and returns
-        the `additionalContext` markdown so existing section-split assertions
-        keep operating on the routing markdown directly.
-        """
-        import json
-
-        raw = extract_marked_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
-        assert raw.strip(), "Generated SessionStart block must not be empty"
-        lines = raw.splitlines()
-        assert lines and lines[0] == "cat << 'JSON_EOF'" and lines[-1] == "JSON_EOF", (
-            "Generated block must be `cat << 'JSON_EOF' ... JSON_EOF`. "
-            "Run: sh scripts/sync_orchestrator_inject.sh"
-        )
-        envelope = json.loads("\n".join(lines[1:-1]))
-        assert envelope["hookSpecificOutput"]["hookEventName"] == "SessionStart"
-        return envelope["hookSpecificOutput"]["additionalContext"]
+        """The routing markdown the SessionStart hook delivers, read from the SSOT at runtime."""
+        context = session_start_context()
+        assert context.strip(), "SessionStart routing markdown must not be empty"
+        return context
 
     @pytest.fixture
     def routing_section(self, generated_block):
@@ -977,10 +959,7 @@ class TestPipelineRuleCoverage:
 
     @staticmethod
     def _generated_block():
-        raw = extract_marked_block(INJECT_HOOK, SESSIONSTART_BLOCK_START, SESSIONSTART_BLOCK_END)
-        lines = raw.splitlines()
-        envelope = json.loads("\n".join(lines[1:-1]))
-        return envelope["hookSpecificOutput"]["additionalContext"]
+        return session_start_context()
 
     def test_all_claude_md_rules_reach_the_runtime(self):
         declared = self._claude_md_rules()

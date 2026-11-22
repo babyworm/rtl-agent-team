@@ -19,12 +19,6 @@ from tests.conftest import REPO_ROOT
 
 SCRIPT_GLOBS = ("scripts/*.sh", "skills/**/*.sh")
 
-# Scripts that may use bash 4 syntax because they exit with a clear error under bash < 4
-# before reaching it. The guard itself is checked below.
-BASH4_ONLY = {
-    "skills/rat-init-project/scripts/generate_config.sh":
-        "associative arrays; refuses bash < 4 at entry, and its tests skip without bash 4",
-}
 
 # Never sets -u itself, but every wrapper that sources it does.
 SOURCED_UNDER_NOUNSET = {"skills/rat-init-project/templates/lib/tool-runner.sh"}
@@ -39,9 +33,15 @@ BASH4_CONSTRUCTS = {
     "|& (bash 4.0)": re.compile(r"\|&"),
     ";& / ;;& case fall-through (bash 4.0)": re.compile(r";;?&"),
     "&>> (bash 4.0)": re.compile(r"&>>"),
+    "declare -g / -l / -u (bash 4.2 / 4.0)": re.compile(r"\b(?:declare|local|typeset)\s+-[a-zA-Z]*[glu]"),
+    "[[ -v name ]] (bash 4.2)": re.compile(r"\[\[\s+!?\s*-v\s"),
+    "negative array index (bash 4.3)": re.compile(r"\$\{[A-Za-z_]\w*\[-\d+\]\}"),
+    "${x@Q} transformations (bash 4.4)": re.compile(r"\$\{[A-Za-z_]\w*(?:\[[^]]*\])?@[QEPAaKkUuL]\}"),
+    "shopt globstar (bash 4.0)": re.compile(r"\bshopt\s+-s\s+[^;\n]*\bglobstar\b"),
 }
 
-NOUNSET = re.compile(r"^\s*set\s+(?:-[a-zA-Z]*u|-o\s+nounset)", re.M)
+# set -u, set -eu, set -o nounset and set -o errexit -o nounset all turn nounset on.
+NOUNSET = re.compile(r"^\s*set\s+(?:[^;\n#]*\s)?(?:-[a-zA-Z]*u[a-zA-Z]*(?:\s|$)|-o\s+nounset\b)", re.M)
 # ${name[@]+"${name[@]}"}, also inside outer double quotes.
 GUARDED = re.compile(r'\$\{([A-Za-z_]\w*)\[@\]\+"\$\{\1\[@\]\}"\}')
 ARRAY_EXPANSION = re.compile(r"\$\{([A-Za-z_]\w*)\[([@*])\]([^}]*)\}")
@@ -131,7 +131,7 @@ def test_scan_covers_the_bundled_runners():
                      "skills/rtl-p5s-func-verify/scripts/run_regression.sh",
                      "skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh"):
         assert expected in names
-    assert set(BASH4_ONLY) | SOURCED_UNDER_NOUNSET <= names
+    assert SOURCED_UNDER_NOUNSET | {"skills/rat-init-project/scripts/generate_config.sh"} <= names
 
 
 def test_scanner_reads_bash_quoting_and_heredocs():
@@ -157,7 +157,8 @@ echo ${f[@]+"${f[@]}"} "${g[*]:-}" ${#h[@]} ${!i[@]}
 @pytest.mark.parametrize("line", [
     'exec {fd}<"$file"', "exec {out}>log", "declare -A seen=()", "local -n ref=$1", "mapfile -t rows < f",
     "readarray rows", 'echo "${name,,}"', "echo ${name^^}", "wait -n", "coproc worker { :; }",
-    "make |& tee log", "a) x ;&", "a) x ;;&", "make &>> log",
+    "make |& tee log", "a) x ;&", "a) x ;;&", "make &>> log", "declare -g count=0", "local -l lower",
+    "[[ -v name ]] && echo set", 'echo "${items[-1]}"', 'echo "${x@Q}"', "shopt -s globstar",
 ])
 def test_scanner_flags_bash4_syntax(line):
     [(_, code, _)] = code_lines(line + "\n")
@@ -168,10 +169,6 @@ def test_scanner_flags_bash4_syntax(line):
 def test_no_bash4_syntax(path):
     name = relative(path)
     text = path.read_text()
-    if name in BASH4_ONLY:
-        assert re.search(r"BASH_VERSINFO\[0\]\s*<\s*4\b.*\n.*\n\s*exit", text), \
-            f"{name} must refuse bash < 4 before using bash 4 syntax"
-        return
     problems = [f"{name}:{number}: {label}: {code.strip()}"
                 for number, code, body in code_lines(text) if not body
                 for label, pattern in BASH4_CONSTRUCTS.items() if pattern.search(code)]
@@ -193,3 +190,14 @@ def test_array_expansions_survive_nounset_before_bash_4_4(path):
                 problems.append(f"{name}:{number}: {match.group(0)}")
     assert not problems, ('empty arrays are unbound under set -u before bash 4.4; write ${a[@]+"${a[@]}"} '
                           "or ${a[*]:-}:\n" + "\n".join(problems))
+
+
+@pytest.mark.parametrize("line", ["set -u", "set -euo pipefail", "set -o nounset", "set -o errexit -o nounset",
+                                  "  set -eu"])
+def test_nounset_forms_are_recognized(line):
+    assert NOUNSET.search(line + "\n")
+
+
+@pytest.mark.parametrize("line", ["set -e", "set -o pipefail", "set +u", "offset -u"])
+def test_other_set_lines_are_not_nounset(line):
+    assert not NOUNSET.search(line + "\n")

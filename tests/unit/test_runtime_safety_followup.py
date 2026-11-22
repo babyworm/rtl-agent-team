@@ -85,7 +85,7 @@ def test_installer_update_rejects_hard_link_without_touching_external_file(
     external_target = tmp_path / "external-run-syn.sh"
     original = "# rat-version: 0.0.1\nexternal target\n"
     external_target.write_text(original)
-    destination.hardlink_to(external_target)
+    os.link(external_target, destination)  # Path.hardlink_to needs Python 3.10
 
     result = _run_installer(workspace, update=True)
 
@@ -395,7 +395,7 @@ def test_container_setup_rejects_unsafe_state_destination_before_docker(
             state_file.mkdir()
         else:
             external_file.write_text(original)
-            state_file.hardlink_to(external_file)
+            os.link(external_file, state_file)
 
     bin_dir, log = _fake_docker(tmp_path, containers_exist=False)
     result = subprocess.run(

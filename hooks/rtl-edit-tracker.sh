@@ -5,6 +5,7 @@
 INPUT=$(cat)
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
+. "$SCRIPT_DIR/lib/python-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
 jsonu_detect_parser
 
@@ -48,7 +49,7 @@ _check_p6_stale() {
 #   the fast-exit "not in ppa-loop" path.
 # - Recursive `**` glob matching against allowed_edit_scope keeps a python
 #   step (fnmatch + custom regex is non-trivial to reproduce correctly in
-#   POSIX sh or jq). When neither python3 nor python is available, the
+#   POSIX sh or jq). Without Python >= RAT_PYTHON_MIN (rat_select_python), the
 #   function returns 1 (out-of-scope) so the verify gate stays active —
 #   safer to over-track than to silently skip a real RTL change.
 _rat_in_ppa_scope() {
@@ -57,13 +58,7 @@ _rat_in_ppa_scope() {
   [ ! -f "$_ppa_state" ] && return 1
   _ppa_mode=$(jsonu_get_file_path_string "$_ppa_state" "mode")
   [ "$_ppa_mode" != "ppa-loop" ] && return 1
-  if command -v python3 >/dev/null 2>&1; then
-    _PPA_PY=python3
-  elif command -v python >/dev/null 2>&1; then
-    _PPA_PY=python
-  else
-    return 1
-  fi
+  _PPA_PY=$(rat_select_python 2>/dev/null) || return 1  # the plugin floor; never Python 2
   "$_PPA_PY" - "$_ppa_file" "$_ppa_state" <<'PY'
 # Mirror the recursive ** matcher used by
 # skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py so that
