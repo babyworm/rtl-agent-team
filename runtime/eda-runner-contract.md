@@ -1,6 +1,6 @@
 # EDA execution contract
 
-This supplies the execution contract missing from the original v2 roadmap.
+This supplies the execution contract for v1.0.0.
 Runtime instructions describe goals and consume these results; they do not invent
 PASS verdicts or repeat a successful review.
 

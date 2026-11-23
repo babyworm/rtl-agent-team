@@ -104,7 +104,7 @@ delivers its routing markdown via the `additionalContext` field of that envelope
 ```
 
 Raw markdown stdout fails schema validation and is silently dropped (with a validator
-error visible in `claude --debug` logs). Since 2.0.0-pre14 the hook encodes at **session
+error visible in `claude --debug` logs). Since v1.0.0 the hook encodes at **session
 start**: `hooks/lib/session_inject.py` reads the SSOT block in
 `skills/rtl-orchestrate/SKILL.md` and prints the envelope, so there is no generated copy
 to resync. The `.rat`/`.rtl-agent-team` marker check runs in sh first and still emits the

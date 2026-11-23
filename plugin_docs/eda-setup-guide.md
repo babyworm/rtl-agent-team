@@ -539,7 +539,7 @@ path is replaced when detection finds the tool. Project `config.mk` is regenerat
 from the refreshed configuration. These managed updates apply whether invoked via
 `/rtl-agent-team:rat-init-project` or the plugin generator directly.
 
-## v2 execution and updates
+## v1.0.0 execution and updates
 
 All wrappers consume tool paths, setup environments, preferences, and bounded
 timeouts through the shared runner. See [the execution contract](specs/2026-11-17-eda-runner-contract.md)

@@ -14,7 +14,7 @@ The full flow produces design documents, RTL and testbenches, then records the v
 
 **Check your EDA environment before starting a design.** Lint, simulation, and synthesis can produce verification evidence only when the tools required for that phase actually run. The plugin's hooks and helpers need Python 3.9 or newer; `rat-setup` and `rat-doctor` check it. [EDA setup guide](plugin_docs/eda-setup-guide.md)
 
-In Claude Code, install the published plugin (v0.14.6):
+In Claude Code, install the published plugin (v1.0.0):
 
 ```text
 /plugin marketplace add babyworm/rtl-agent-team

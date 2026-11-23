@@ -1,4 +1,4 @@
-# v2 evaluation
+# v1.0.0 evaluation
 
 Run one assessment per fixed fixture and model, with no response retries:
 
