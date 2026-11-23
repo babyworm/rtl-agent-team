@@ -96,7 +96,7 @@ jsonu_get_input_string() {
       # non-object) fall back to the root key. Guarding the type avoids a jq
       # error when tool_input is a scalar, matching the python branch.
       printf '%s' "$JSONU_INPUT" | jq -r --arg key "$JSONU_KEY" \
-        '(if (.tool_input | type) == "object" then .tool_input[$key] else null end) // .[$key] // empty' 2>/dev/null
+        '(if (.tool_input | type) == "object" then (.tool_input[$key] | strings) else empty end) // (.[$key] | strings) // empty' 2>/dev/null
       ;;
     python)
       printf '%s' "$JSONU_INPUT" | "$JSONU_PY_BIN" -c '
@@ -130,18 +130,39 @@ jsonu_cache_file() {
   [ "${JSONU_PARSER_MODE:-}" = python ] && [ -f "$1" ] || return 0
   JSONU_CACHE_DATA=$("$JSONU_PY_BIN" - "$1" <<'PYCACHE'
 import json,sys
-try: data=json.load(open(sys.argv[1]))
-except (OSError,ValueError): data={}
-def flatten(node,path):
-    if isinstance(node,dict):
-        for key,value in node.items(): flatten(value,path+[key])
-    elif isinstance(node,(str,int,float,bool)):
-        kind='bool' if isinstance(node,bool) else 'string' if isinstance(node,str) else 'num'
-        if kind=='num' and (not isinstance(node,int)): return
-        value=('true' if node else 'false') if kind=='bool' else str(node)
-        value=value.replace('\\','\\\\').replace('\n','\\n').replace('\r','\\r').replace('\t','\\t')
-        print('.'.join(path)+'\t'+kind+'\t'+value)
-flatten(data,[])
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+except (OSError, ValueError):
+    data = {}
+def esc(val):
+    return val.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+def emit(path, kind, val):
+    print('.'.join(path) + '\t' + kind + '\t' + esc(val))
+def flatten(node, path):
+    if isinstance(node, dict):
+        if path:
+            emit(path, 'string', json.dumps(node, separators=(',', ':')))
+        for key, value in node.items():
+            flatten(value, path + [key])
+    elif isinstance(node, list):
+        if path:
+            emit(path, 'string', json.dumps(node, separators=(',', ':')))
+    elif isinstance(node, bool):
+        val = 'true' if node else 'false'
+        emit(path, 'bool', val)
+        emit(path, 'string', val)
+    elif isinstance(node, int):
+        val = str(node)
+        emit(path, 'num', val)
+        emit(path, 'string', val)
+    elif isinstance(node, float):
+        if node == int(node):
+            emit(path, 'num', str(int(node)))
+        emit(path, 'string', str(node))
+    elif isinstance(node, str):
+        emit(path, 'string', node)
+flatten(data, [])
 PYCACHE
 ) || return 0
   JSONU_CACHE_FILE="$1"

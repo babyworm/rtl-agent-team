@@ -147,6 +147,17 @@ require_identifier() {
   fi
 }
 
+require_tcl_safe_path() {
+  local name="$1"
+  local value="$2"
+  case "$value" in
+    *[$'\n\r\t']* | *'['* | *']'* | *'{'* | *'}'* | *'$'* | *';'* | *'"'* | *'\'*)
+      echo "ERROR: $name contains Tcl-unsafe characters: $value" >&2
+      exit 1
+      ;;
+  esac
+}
+
 SEED_ARRAY=()
 read -r -a SEED_ARRAY <<< "$SEEDS"
 if [[ ${#SEED_ARRAY[@]} -eq 0 ]]; then
@@ -285,6 +296,8 @@ fi
 # ─── Directory setup ───────────────────────────────────────────────────────
 mkdir -p "$RESULTS_DIR" "$COVERAGE_DIR"
 RUN_DIR="$RESULTS_DIR/run_${TIMESTAMP}"
+require_tcl_safe_path "RUN_DIR" "$RUN_DIR"
+require_tcl_safe_path "COVERAGE_DIR" "$COVERAGE_DIR"
 mkdir -p "$RUN_DIR"
 
 # ─── Compile (once) ────────────────────────────────────────────────────────
@@ -387,7 +400,7 @@ run_seed() (
       xrun) coverage_args=(-coverage all -covworkdir "$seed_dir/cov_work" -covscope "$TB_TOP") ;;
       questa)
         coverage_args=(-coverage)
-        questa_commands="coverage save -onexit $seed_dir/coverage.ucdb; $questa_commands"
+        questa_commands="coverage save -onexit \"$seed_dir/coverage.ucdb\"; $questa_commands"
         ;;
     esac
   fi
@@ -822,4 +835,4 @@ echo "========================================"
 [[ "$VERDICT" != "INCONCLUSIVE" ]] || exit 3
 exit 1
 
-# rat-version: 2.0.8
+# rat-version: 2.0.9

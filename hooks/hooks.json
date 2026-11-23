@@ -61,7 +61,7 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       },
@@ -103,7 +103,7 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       }
@@ -115,7 +115,7 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/rtl-edit-tracker.sh\"",
-            "timeout": 3
+            "timeout": 10
           }
         ]
       },

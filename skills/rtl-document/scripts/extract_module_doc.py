@@ -147,6 +147,22 @@ def _verible_json(verible: str, rtl: str) -> dict:
         return {"_error": f"verible JSON decode error: {e}"}
 
 
+def _consume_balanced_parens(text: str, open_idx: int) -> int | None:
+    """Return the index of the ')' matching '(' at open_idx, or None."""
+    if open_idx >= len(text) or text[open_idx] != "(":
+        return None
+    depth = 0
+    for idx in range(open_idx, len(text)):
+        ch = text[idx]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return idx
+    return None
+
+
 def _flatten_port_block(text: str) -> str:
     """Extract the module's port-list block and normalise multi-line port
     declarations into one logical line per declaration.
@@ -160,8 +176,9 @@ def _flatten_port_block(text: str) -> str:
 
     Such forms defeat a strict line-anchored PORT_RE. This helper:
       1. Strips // and /* */ comments so they cannot fuse adjacent declarations.
-      2. Captures the module header's port list (text between the second `(`
-         and the matching `);`).
+      2. Skips an optional `#(...)` parameter block with arbitrary nested
+         parentheses (e.g. `$clog2(DEPTH)`), then captures the module header's
+         port list `(...)` preceding `;`.
       3. Collapses internal whitespace (newlines + indentation) to single spaces.
       4. Re-splits the flattened text at every `input|output|inout` keyword
          boundary using a lookahead, so each declaration ends up on its own
@@ -172,14 +189,37 @@ def _flatten_port_block(text: str) -> str:
     """
     no_comments = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
     no_comments = re.sub(r"//[^\n]*", "", no_comments)
-    m = re.search(
-        r"\bmodule\s+[A-Za-z_]\w*\s*(?:#\s*\([^)]*\))?\s*\((.*?)\)\s*;",
-        no_comments,
-        re.DOTALL,
-    )
-    if not m:
+    hdr = re.search(r"\bmodule\s+[A-Za-z_]\w*\s*", no_comments)
+    if not hdr:
         return text
-    port_list = m.group(1)
+    pos = hdr.end()
+    n = len(no_comments)
+    # Skip optional package imports (`import pkg::*;`) before #( or (
+    while True:
+        imp = re.match(r"import\s+[^;]+;\s*", no_comments[pos:])
+        if not imp:
+            break
+        pos += imp.end()
+    # Skip optional #(...) parameter block with balanced parens
+    if pos < n and no_comments[pos] == "#":
+        pos += 1
+        while pos < n and no_comments[pos].isspace():
+            pos += 1
+        end_param = _consume_balanced_parens(no_comments, pos)
+        if end_param is None:
+            return text
+        pos = end_param + 1
+        while pos < n and no_comments[pos].isspace():
+            pos += 1
+    if pos >= n or no_comments[pos] != "(":
+        return text
+    end_ports = _consume_balanced_parens(no_comments, pos)
+    if end_ports is None:
+        return text
+    after = no_comments[end_ports + 1 :].lstrip()
+    if not after.startswith(";"):
+        return text
+    port_list = no_comments[pos + 1 : end_ports]
     flat = re.sub(r"\s+", " ", port_list).strip()
     decls = re.split(r"(?=\b(?:input|output|inout)\b)", flat)
     return "\n".join(

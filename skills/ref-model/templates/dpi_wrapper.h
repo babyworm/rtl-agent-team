@@ -4,8 +4,8 @@
  * Import these functions in SystemVerilog testbench:
  *   import "DPI-C" function int dpi_{{MODULE_NAME}}_init();
  *   import "DPI-C" function int dpi_{{MODULE_NAME}}_process(
- *       input  int unsigned data_in,
- *       output int unsigned data_out
+ *       input  bit [31:0] data_in,
+ *       output bit [31:0] data_out
  *   );
  *   import "DPI-C" function void dpi_{{MODULE_NAME}}_cleanup();
  *

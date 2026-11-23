@@ -26,6 +26,11 @@ if [[ ! -f "$TEMPLATE" ]]; then
   exit 1
 fi
 
+if [[ -L "$CLAUDE_MD" ]]; then
+  echo "ERROR: Refusing to modify symlinked CLAUDE.md: $CLAUDE_MD" >&2
+  exit 1
+fi
+
 if [[ ! -f "$CLAUDE_MD" ]]; then
   # Case 1: Create new file with RAT section
   {
@@ -35,8 +40,14 @@ if [[ ! -f "$CLAUDE_MD" ]]; then
   } > "$CLAUDE_MD"
   echo "RAT: Created $CLAUDE_MD with managed section"
 
-elif grep -qF "$START_TAG" "$CLAUDE_MD"; then
+elif grep -qxF "$START_TAG" "$CLAUDE_MD"; then
+  if ! grep -qxF "$END_TAG" "$CLAUDE_MD"; then
+    echo "ERROR: Found $START_TAG without matching $END_TAG in $CLAUDE_MD; refusing to truncate" >&2
+    exit 1
+  fi
   # Case 3: Replace existing RAT section
+  tmp_file=$(mktemp "${CLAUDE_MD}.rat-tmp.XXXXXX")
+  trap 'rm -f "$tmp_file"' EXIT
   awk -v start="$START_TAG" -v end="$END_TAG" -v tpl="$TEMPLATE" '
     $0 == start {
       print start
@@ -51,8 +62,9 @@ elif grep -qF "$START_TAG" "$CLAUDE_MD"; then
       next
     }
     !skip { print }
-  ' "$CLAUDE_MD" > "${CLAUDE_MD}.rat-tmp"
-  mv "${CLAUDE_MD}.rat-tmp" "$CLAUDE_MD"
+  ' "$CLAUDE_MD" > "$tmp_file"
+  mv "$tmp_file" "$CLAUDE_MD"
+  trap - EXIT
   echo "RAT: Updated managed section in $CLAUDE_MD"
 
 else

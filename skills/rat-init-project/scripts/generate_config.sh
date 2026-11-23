@@ -343,9 +343,10 @@ fi
 # ─── Generate tool JSON block ─────────────────────────────────────────────
 tool_json() {
   local cat="$1" key="$2"
-  local det="$(map_get DET_STATUS "$cat/$key" false)"
-  local path="$(map_get DET_PATH "$cat/$key")"
-  local env="$(map_get SAVED_ENV "$cat/$key")"
+  local det path env
+  det="$(map_get DET_STATUS "$cat/$key" false)"
+  path="$(map_get DET_PATH "$cat/$key")"
+  env="$(map_get SAVED_ENV "$cat/$key")"
   printf '      "%s": { "detected": %s, "path": %s, "env_source": %s }' \
     "$key" "$det" "$(json_quote "$path")" "$(json_quote "$env")"
 }

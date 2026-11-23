@@ -223,7 +223,10 @@ def main(argv=None):
                   file=sys.stderr)
             return 2
 
-    run_cmd = [binary.as_posix()]
+    exe = binary.as_posix()
+    if "/" not in exe:
+        exe = f"./{exe}"
+    run_cmd = [exe]
     if args.input:
         run_cmd += ["--input", args.input]
     if args.output:

@@ -53,9 +53,13 @@ audit_session_id() {
     return 0
   fi
 
-  # A session id from the env takes priority over the cached file to prevent cross-session contamination.
-  # Claude Code exports CLAUDE_CODE_SESSION_ID to command hooks; CLAUDE_SESSION_ID is legacy.
-  _ASI_ENV_ID=${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}
+  # A session id from hook stdin JSON or env takes priority over the cached file
+  # to prevent cross-session contamination.
+  _ASI_ENV_ID=""
+  if [ -n "${2:-${INPUT:-}}" ] && command -v jsonu_session_id >/dev/null 2>&1; then
+    _ASI_ENV_ID=$(jsonu_session_id "${2:-${INPUT:-}}")
+  fi
+  [ -n "$_ASI_ENV_ID" ] || _ASI_ENV_ID=${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}
   if [ -n "$_ASI_ENV_ID" ]; then
     _AUDIT_SESSION_ID_CACHE=$(_audit_validate_session_id "$_ASI_ENV_ID")
     printf '%s' "$_AUDIT_SESSION_ID_CACHE"
@@ -63,7 +67,10 @@ audit_session_id() {
   fi
 
   # Fallback: read from cached file (for environments without a session id)
-  _ASI_RAT=$(rat_project_dir "$_ASI_CWD") || _ASI_RAT="$_ASI_CWD/.rat"
+  _ASI_RAT=$(rat_project_dir "$_ASI_CWD")
+  _ASI_RC=$?
+  [ "$_ASI_RC" -eq 2 ] && return 1
+  [ -n "$_ASI_RAT" ] || _ASI_RAT="$_ASI_CWD/.rat"
   _ASI_ID_FILE="$_ASI_RAT/audit/session-id.txt"
   if [ -f "$_ASI_ID_FILE" ]; then
     _ASI_RAW=$(cat "$_ASI_ID_FILE" 2>/dev/null)
@@ -82,6 +89,8 @@ audit_session_id() {
 audit_init_session() {
   _AIS_CWD="$1"
   _AIS_STATE=$(rat_project_dir "$_AIS_CWD")
+  _AIS_RC=$?
+  [ "$_AIS_RC" -eq 2 ] && return 1
 
   # Only initialize if this looks like an RTL project
   if [ -z "$_AIS_STATE" ] && [ ! -d "$_AIS_CWD/rtl" ] && [ ! -d "$_AIS_CWD/docs" ]; then
@@ -90,6 +99,7 @@ audit_init_session() {
 
   # Default to .rat for new projects where neither marker exists yet
   [ -z "$_AIS_STATE" ] && _AIS_STATE="$_AIS_CWD/.rat"
+  [ ! -L "$_AIS_STATE" ] && [ ! -L "$_AIS_STATE/audit" ] || return 1
   _AIS_ID=$(audit_session_id "$_AIS_CWD")
   _AIS_AUDIT_DIR="$_AIS_STATE/audit"
   _AIS_SESSION_DIR="$_AIS_AUDIT_DIR/$_AIS_ID"
@@ -97,7 +107,9 @@ audit_init_session() {
   mkdir -p "$_AIS_SESSION_DIR/prompts"
 
   # Cache session ID to file
-  printf '%s' "$_AIS_ID" > "$_AIS_AUDIT_DIR/session-id.txt"
+  if [ ! -L "$_AIS_AUDIT_DIR/session-id.txt" ]; then
+    printf '%s' "$_AIS_ID" > "$_AIS_AUDIT_DIR/session-id.txt"
+  fi
 
   return 0
 }

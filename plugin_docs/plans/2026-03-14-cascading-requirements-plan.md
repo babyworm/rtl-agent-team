@@ -216,7 +216,7 @@ class TestComplianceStateSchema:
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd /Users/babyworm/work/rtl-agent-team && python -m pytest tests/unit/test_compliance_schema.py -v`
+Run: `cd <repo-root> && python -m pytest tests/unit/test_compliance_schema.py -v`
 Expected: All tests PASS (these are schema definition tests, not integration tests)
 
 - [ ] **Step 6: Commit**

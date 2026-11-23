@@ -1,7 +1,7 @@
 # Shared runner functions require Bash.
 SHELL := /bin/bash
 .SHELLFLAGS := -e -o pipefail -c
-# rat-version: 2.0.0
+# rat-version: 2.0.1
 # =============================================================================
 # RTL Build System
 # =============================================================================
@@ -150,9 +150,10 @@ sim_regression:
 	@FAIL=0; \
 	for seed in $(SEEDS); do \
 	  echo "--- Seed: $$seed ---"; \
+	  RC=0; \
 	  SIM=$(_cocotb_sim) TOPLEVEL=$(TOP) RANDOM_SEED=$$seed SIM_BUILD=$(BUILD_DIR)/regression/seed_$$seed \
-	    $(MAKE) -C sim/$(TOP) > sim/$(TOP)/regression_seed_$$seed.log 2>&1; \
-	  RC=$$?; cat sim/$(TOP)/regression_seed_$$seed.log; \
+	    $(MAKE) -C sim/$(TOP) > sim/$(TOP)/regression_seed_$$seed.log 2>&1 || RC=$$?; \
+	  cat sim/$(TOP)/regression_seed_$$seed.log; \
 	  if [ $$RC -ne 0 ]; then FAIL=1; fi; \
 	done; \
 	echo "=== Regression Complete (seeds: $(SEEDS)) ==="; \
@@ -277,7 +278,7 @@ endif
 
 uvm_regression:
 	$(call _require_top)
-	$(UVM_REG_SCRIPT) --sim $(UVM_SIM) --seeds "$(SEEDS)" \
+	$(UVM_REG_SCRIPT) --sim $(UVM_SIM) --seeds "$(or $(UVM_SEEDS),$(SEEDS))" \
 	  --test $(UVM_TEST) --module $(TOP) --filelist $(FILELIST)
 
 uvm_coverage:

@@ -11,8 +11,8 @@ plugin — Bash scripts, Python scripts and hook scripts.
 
 | Tier | Directory | EDA tools needed | Tests | Runtime |
 |------|-----------|:---:|:---:|:---:|
-| Unit | `tests/unit/` | No | 1641 | ~30 s |
-| Integration | `tests/integration/` | Yes (Docker/Yosys) | 47 | ~1 min on the ordinary non-Docker path; 10-30 min for the opt-in first Docker build |
+| Unit | `tests/unit/` | No | 2564+ | ~30 s |
+| Integration | `tests/integration/` | Yes (Docker/Yosys) | 49 | ~1 min on the ordinary non-Docker path; 10-30 min for the opt-in first Docker build |
 
 Integration tests are faster when the Docker image already exists. The first
 opt-in build time depends on the host and network.

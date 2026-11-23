@@ -40,6 +40,16 @@ def normalize_weights(w):
     return {k: v / s for k, v in w.items()}
 
 
+def _positive_target(targets, key, default):
+    raw = targets.get(key)
+    if raw is None:
+        return float(default)
+    val = float(raw)
+    if val <= 0:
+        return float(default)
+    return val
+
+
 def weighted_delta(curr, prev, targets, weights, clock_hz=None):
     # Compute target_period_ns from clock_hz; fallback to a conservative default.
     if clock_hz and clock_hz > 0:
@@ -48,8 +58,8 @@ def weighted_delta(curr, prev, targets, weights, clock_hz=None):
         # Fallback when clock_hz is missing — 1.25 ns period matches the
         # default 800 MHz design target documented in the PPA brief scaffold.
         target_period_ns = 1.25
-    target_power = float(targets.get("power_mw", 100.0))
-    target_area = float(targets.get("area_um2", 50000.0))
+    target_power = _positive_target(targets, "power_mw", 100.0)
+    target_area = _positive_target(targets, "area_um2", 50000.0)
     d_timing = (curr["timing"]["wns_ns"] - prev["timing"]["wns_ns"]) / target_period_ns
     d_power = (prev["power"]["total_mw"] - curr["power"]["total_mw"]) / target_power
     d_area = (prev["area"]["total_um2"] - curr["area"]["total_um2"]) / target_area
@@ -58,11 +68,16 @@ def weighted_delta(curr, prev, targets, weights, clock_hz=None):
 
 
 def targets_met(report, targets):
-    target_slack = float(targets.get("timing_slack_ns", 0.0))
+    raw_slack = targets.get("timing_slack_ns")
+    target_slack = 0.0 if raw_slack is None else float(raw_slack)
+    raw_power = targets.get("power_mw")
+    target_power = 1e9 if raw_power is None else float(raw_power)
+    raw_area = targets.get("area_um2")
+    target_area = 1e9 if raw_area is None else float(raw_area)
     return {
         "timing": report["timing"]["wns_ns"] >= target_slack,
-        "power": report["power"]["total_mw"] <= float(targets.get("power_mw", 1e9)),
-        "area": report["area"]["total_um2"] <= float(targets.get("area_um2", 1e9)),
+        "power": report["power"]["total_mw"] <= target_power,
+        "area": report["area"]["total_um2"] <= target_area,
     }
 
 

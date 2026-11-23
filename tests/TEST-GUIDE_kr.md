@@ -11,9 +11,9 @@
 
 | 구분 | 테스트 수 | 상태 |
 |------|----------|------|
-| 유닛 테스트 | 1641개 | EDA 도구 불필요 |
-| 통합 테스트 | 47개 | EDA/Docker 환경에 따라 SKIP |
-| **합계** | **1688개** | collection 기준 |
+| 유닛 테스트 | 2564+개 | EDA 도구 불필요 |
+| 통합 테스트 | 49개 | EDA/Docker 환경에 따라 SKIP |
+| **합계** | **2613+개** | collection 기준 |
 
 ---
 
@@ -141,7 +141,7 @@ python3 -m pytest tests/unit/ -n auto
 | 테스트 파일 | 대상 스크립트 | 검증 내용 |
 |------------|-------------|----------|
 | `test_run_sim_args.py` | `run_sim.sh` | 시뮬레이터 인자 검증, 도움말, 미지원 옵션 |
-| `test_check_conventions.py` | `check_conventions.sh` | RTL 코딩 컨벤션 검사 (버그 2건 문서화) |
+| `test_check_conventions.py` | `check_conventions.sh` | RTL 코딩 컨벤션 검사 (버그 3건 문서화) |
 | `test_build_scripts.py` | `build_encoder.sh`, `build_decoder.sh` | 빌드 인자 검증, 실제 컴파일 |
 | `test_regression_coverage.py` | `run_regression.sh`, `merge_coverage.sh` | 회귀 테스트 인자, 커버리지 병합 |
 
@@ -151,10 +151,10 @@ python3 -m pytest tests/unit/ -n auto
 
 | 검증 항목 | 설명 |
 |----------|------|
-| 에이전트 YAML frontmatter | 99개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
+| 에이전트 YAML frontmatter | 91개 에이전트의 `name`, `model`, `description` 필드 존재 확인 |
 | 에이전트 이름-파일명 일치 | `agents/rtl-coder.md`의 `name: rtl-coder` 일치 확인 |
 | `agents/` 평면 구조 유지 | 중첩 `.md` 금지 — 중첩 파일은 유령 에이전트로 등록됨 |
-| 스킬 SKILL.md 존재 | 91개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
+| 스킬 SKILL.md 존재 | 56개 스킬 디렉토리마다 `SKILL.md` 존재 확인 |
 | 스킬 이름-디렉토리 일치 | `skills/rtl-p4-implement/SKILL.md`의 `name: rtl-p4-implement` 일치 확인 |
 | 스킬 description 예산 | 스킬당 160자 이하, 전체 15 KB 이하 — 전역 예산 초과 시 하네스가 조용히 절삭 |
 | 스킬 자산 경로 | skill-relative 자산 경로 해석 가능 여부, 런타임에 없는 플러그인 내부 경로 참조 금지 |

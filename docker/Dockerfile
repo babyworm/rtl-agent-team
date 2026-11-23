@@ -109,8 +109,8 @@ ENV PATH="${PATH}:/opt/oss-cad-suite/bin"
 # -----------------------------------------------------------------------------
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then VERIBLE_ARCH="x86_64"; else VERIBLE_ARCH="$ARCH"; fi && \
-    VERIBLE_URL=$(curl -s https://api.github.com/repos/chipsalliance/verible/releases/latest \
-      | python3 -c "import sys,json; r=json.load(sys.stdin); print([a['browser_download_url'] for a in r['assets'] if 'linux' in a['name'].lower() and '${VERIBLE_ARCH}' in a['name'].lower()][0] if [a for a in r['assets'] if 'linux' in a['name'].lower() and '${VERIBLE_ARCH}' in a['name'].lower()] else '')") && \
+    VERIBLE_URL=$( (curl -fsSL https://api.github.com/repos/chipsalliance/verible/releases/latest || echo '{}') \
+      | python3 -c "import sys,json; r=json.load(sys.stdin); assets=r.get('assets',[]) if isinstance(r,dict) else []; urls=[a['browser_download_url'] for a in assets if 'linux' in a.get('name','').lower() and '${VERIBLE_ARCH}' in a.get('name','').lower()]; print(urls[0] if urls else '')") && \
     if [ -n "$VERIBLE_URL" ]; then \
       cd /tmp && \
       curl -fsSL "$VERIBLE_URL" -o verible.tar.gz && \

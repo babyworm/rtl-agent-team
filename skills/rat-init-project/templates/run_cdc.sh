@@ -195,8 +195,14 @@ case "$TOOL" in
       mkdir -p "$SVLENS_OUTDIR"
       SVLENS_ARGS=(svlens cdc --format all -o "$SVLENS_OUTDIR")
       [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
-      [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
-      SVLENS_ARGS+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
+      if [[ -n "$FILELIST" ]]; then
+        SVLENS_ARGS+=(-f "$FILELIST")
+        for f in ${FILES[@]+"${FILES[@]}"}; do
+          case "$f" in /*) SVLENS_ARGS+=("$f") ;; *) SVLENS_ARGS+=("$PROJECT_ROOT/$f") ;; esac
+        done
+      else
+        SVLENS_ARGS+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
+      fi
       # The CMD echo and replay script serialize these argv values into shell
       # text — validate against shell metacharacters first (live invocation
       # via run_tool "${SVLENS_ARGS[@]}" is argv-safe on its own).
@@ -234,8 +240,14 @@ case "$TOOL" in
     fi
     SVLENS_ARGS=(svlens cdc --format all -o "$OUTDIR")
     [[ -n "$TOP" ]] && SVLENS_ARGS+=(--top "$TOP")
-    [[ -n "$FILELIST" ]] && SVLENS_ARGS+=(-f "$FILELIST")
-    SVLENS_ARGS+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
+    if [[ -n "$FILELIST" ]]; then
+      SVLENS_ARGS+=(-f "$FILELIST")
+      for f in ${FILES[@]+"${FILES[@]}"}; do
+        case "$f" in /*) SVLENS_ARGS+=("$f") ;; *) SVLENS_ARGS+=("$PROJECT_ROOT/$f") ;; esac
+      done
+    else
+      SVLENS_ARGS+=(${SRC_FILES[@]+"${SRC_FILES[@]}"})
+    fi
     # The CMD echo and replay script serialize these argv values into shell
     # text — validate against shell metacharacters first (live invocation
     # via run_tool "${SVLENS_ARGS[@]}" is argv-safe on its own).
@@ -246,8 +258,8 @@ case "$TOOL" in
     echo "=== svlens cdc (AST-based CDC analysis) ==="
     echo "CMD: ${SVLENS_ARGS[*]:-}"
     write_replay "${SVLENS_ARGS[*]:-}"
-    run_tool ${SVLENS_ARGS[@]+"${SVLENS_ARGS[@]}"} 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool ${SVLENS_ARGS[@]+"${SVLENS_ARGS[@]}"} 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   spyglass)
@@ -311,13 +323,13 @@ case "$TOOL" in
     echo "CMD: $CMD"
     write_replay "$CMD"
     EXIT_CODE=0
-    run_tool sg_shell -tcl "$CDC_TCL" </dev/null 2>&1 | tee "$REPORT" || EXIT_CODE=$?
-    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" verdict --root "$PROJECT_ROOT" --purpose goals --tool spyglass --log "$REPORT" --exit-code "$EXIT_CODE"
-    EXIT_CODE=$?
+    run_tool sg_shell -tcl "$CDC_TCL" </dev/null 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
+    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" verdict --root "$PROJECT_ROOT" --purpose goals --tool spyglass --log "$REPORT" --exit-code "$EXIT_CODE" || EXIT_CODE=$?
     ;;
 
   vc_cdc)
-    CDC_TCL="$SCRIPT_PATH"
+    CDC_TCL="${SCRIPT_PATH:-${VC_CDC_TCL:-}}"
+    [[ -n "$CDC_TCL" && "$CDC_TCL" != /* ]] && CDC_TCL="$PROJECT_ROOT/$CDC_TCL"
     if [[ -z "$CDC_TCL" ]]; then
       echo "ERROR: vc_cdc requires --script <tcl> (or set VC_CDC_TCL)." >&2
       exit 1
@@ -333,12 +345,13 @@ case "$TOOL" in
     echo "=== VC SpyGlass CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    run_tool vc_static_shell -f "$CDC_TCL" -batch 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool vc_static_shell -f "$CDC_TCL" -batch 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   questa_cdc)
-    CDC_TCL="$SCRIPT_PATH"
+    CDC_TCL="${SCRIPT_PATH:-${QUESTA_CDC_TCL:-}}"
+    [[ -n "$CDC_TCL" && "$CDC_TCL" != /* ]] && CDC_TCL="$PROJECT_ROOT/$CDC_TCL"
     if [[ -z "$CDC_TCL" ]]; then
       echo "ERROR: questa_cdc requires --script <do/tcl> (or set QUESTA_CDC_TCL)." >&2
       exit 1
@@ -353,8 +366,8 @@ case "$TOOL" in
     echo "=== Questa CDC ==="
     echo "CMD: $CMD"
     write_replay "$CMD"
-    run_tool qverify -c -do "$CDC_TCL" -od "$OUTDIR" 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool qverify -c -do "$CDC_TCL" -od "$OUTDIR" 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   *)
@@ -375,4 +388,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.3
+# rat-version: 2.0.4

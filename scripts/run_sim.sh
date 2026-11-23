@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rat-version: 2.0.7
+# rat-version: 2.0.8
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
@@ -123,17 +123,25 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$SIM" || "$SIM" == auto ]]; then
-  SIM=$("$RUNNER_PYTHON" "$RUNNER_HELPER" get --root "$PROJECT_ROOT" --key preferences.simulator)
-  # A local probe says nothing about an SSH/LSF host; keep the old default there.
-  if [[ -z "$SIM" && "${RAT_REMOTE_ACTIVE:-0}" != "1" ]]; then
-    case "$("$RUNNER_PYTHON" "$RUNNER_HELPER" backend --root "$PROJECT_ROOT" 2>/dev/null)" in
-      ssh|lsf) SIM=iverilog ;;
-    esac
-  fi
-  if [[ -z "$SIM" ]]; then
-    # Unconfigured project: use a simulator that actually runs here; iverilog stays the first choice.
+  if [[ -f "$RUNNER_HELPER" ]]; then
+    SIM=$("$RUNNER_PYTHON" "$RUNNER_HELPER" get --root "$PROJECT_ROOT" --key preferences.simulator)
+    # A local probe says nothing about an SSH/LSF host; keep the old default there.
+    if [[ -z "$SIM" && "${RAT_REMOTE_ACTIVE:-0}" != "1" ]]; then
+      case "$("$RUNNER_PYTHON" "$RUNNER_HELPER" backend --root "$PROJECT_ROOT" 2>/dev/null)" in
+        ssh|lsf) SIM=iverilog ;;
+      esac
+    fi
+    if [[ -z "$SIM" ]]; then
+      # Unconfigured project: use a simulator that actually runs here; iverilog stays the first choice.
+      for candidate in iverilog verilator vcs xrun vsim; do
+        if "$RUNNER_PYTHON" "$RUNNER_HELPER" available --root "$PROJECT_ROOT" --tool "$candidate" >/dev/null 2>&1; then
+          SIM="$candidate"; break
+        fi
+      done
+    fi
+  else
     for candidate in iverilog verilator vcs xrun vsim; do
-      if "$RUNNER_PYTHON" "$RUNNER_HELPER" available --root "$PROJECT_ROOT" --tool "$candidate" >/dev/null 2>&1; then
+      if command -v "$candidate" >/dev/null 2>&1; then
         SIM="$candidate"; break
       fi
     done
@@ -413,6 +421,10 @@ done
 
 # Inputs below are interpolated into eval'd command strings (run_cmd) and
 # generated replay scripts — validate against shell metacharacters first.
+if [[ "$TOP" == */* || "$TOP" == *..* || "$TOP" == . ]]; then
+  echo "ERROR: --top must name a module (no path separators or traversal): '$TOP'" >&2
+  exit 1
+fi
 validate_shell_safe "--top" "$TOP"
 validate_shell_safe "--seed" "$SEED"
 validate_shell_safe "--timeout" "$TIMEOUT"
@@ -606,7 +618,9 @@ compile_xrun() {
 run_xrun() {
   local cmd="xrun -R -xmlibdirname ${OUTDIR}/xlib"
   if [[ $TRACE -eq 1 ]]; then
-    cmd+=" -input \"database -open waves.shm -default; probe -create -all -depth all; run; exit\""
+    local trace_tcl="${OUTDIR}/rat_xrun_trace.tcl"
+    printf 'database -open waves.shm -default\nprobe -create -all -depth all\nrun\nexit\n' > "$trace_tcl"
+    cmd+=" -input ${trace_tcl}"
   fi
   cmd+=" ${PLUSARGS}"
 
@@ -617,14 +631,14 @@ run_xrun() {
 compile_questa() {
   run_cmd "compile" "vlib work"
   local cmd="vlog -sv -work work"
-  cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
+  cmd+=" ${DEFINE_FLAGS} ${FILELIST_FLAGS}"
   cmd+=" ${TOOL_ARGS} ${FILES}"
 
   log "Compile: $cmd"
   run_cmd "compile" "$cmd"
 
-  # Optimize
-  local opt_cmd="vopt +acc -work work ${TOP} -o ${TOP}_opt"
+  # Optimize (Questa accepts -g<param> overrides on vopt/vsim, not vlog)
+  local opt_cmd="vopt +acc -work work${PARAM_FLAGS} ${TOP} -o ${TOP}_opt"
   if [[ -n "$DPI_LIB" ]]; then
     opt_cmd+=" -sv_lib ${DPI_LIB}"
   fi

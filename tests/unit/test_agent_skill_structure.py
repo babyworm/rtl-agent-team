@@ -254,8 +254,6 @@ class TestAgentDefinitions:
         }
         sonnet = {
             "eda-runner",
-            "dc-report-parser",
-            "synthesis-reporter",
             "ipxact-generator",
         }
         wrong = []

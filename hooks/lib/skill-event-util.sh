@@ -14,7 +14,8 @@ skillu_name() {
         # Some clients report a short name. Require a qualified original prompt
         # so another plugin's identically named command cannot acquire RAT state.
         _SKU_PROMPT=$(jsonu_get_root_string "$1" "prompt")
-        _SKU_QUALIFIED=${_SKU_PROMPT%% *}
+        # Trim leading whitespace and take first whitespace-delimited token (space, tab, newline).
+        _SKU_QUALIFIED=$(printf '%s' "$_SKU_PROMPT" | awk 'NR==1 { gsub(/^[[:space:]]+/, ""); sub(/[[:space:]].*/, ""); print; exit }')
         [ "$_SKU_QUALIFIED" = "/rtl-agent-team:$_SKU_NAME" ] || return 1
         _SKU_NAME="rtl-agent-team:$_SKU_NAME"
         ;;

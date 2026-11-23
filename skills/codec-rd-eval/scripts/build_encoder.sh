@@ -43,16 +43,22 @@ if [[ ! -d "$SRC_DIR" ]]; then
     exit 1
 fi
 
-# Check for C source files (flat directory only — subdirectories require a Makefile)
+# Check build strategy: Makefile may manage sources in subdirectories
+HAS_MAKEFILE=0
+if [[ -f "$SRC_DIR/Makefile" || -f "$SRC_DIR/makefile" ]]; then
+    HAS_MAKEFILE=1
+fi
+
 C_FILES=("$SRC_DIR"/*.c)
-if [[ ! -e "${C_FILES[0]}" ]]; then
+if [[ "$HAS_MAKEFILE" -eq 0 && ! -e "${C_FILES[0]}" ]]; then
     echo "ERROR: No .c files found in $SRC_DIR"
     exit 1
 fi
 
-# Create output directory
+# Create output directory and resolve absolute output path for make -C
 OUTPUT_DIR="$(dirname "$OUTPUT_BINARY")"
 mkdir -p "$OUTPUT_DIR"
+OUTPUT_BINARY_ABS="$(cd "$OUTPUT_DIR" && pwd)/$(basename "$OUTPUT_BINARY")"
 
 # Compiler settings (C11 per CLAUDE.md conventions)
 CC="${CC:-gcc}"
@@ -74,12 +80,12 @@ echo "CC:      $CC"
 echo "CFLAGS:  $CFLAGS ${EXTRA_CFLAGS[*]:-} $INCLUDE_DIR"
 
 # Build strategy: Makefile if available, otherwise direct gcc
-if [[ -f "$SRC_DIR/Makefile" || -f "$SRC_DIR/makefile" ]]; then
+if [[ "$HAS_MAKEFILE" -eq 1 ]]; then
     echo "Strategy: make (Makefile found)"
     make -C "$SRC_DIR" \
         CC="$CC" \
         CFLAGS="$CFLAGS ${EXTRA_CFLAGS[*]:-} $INCLUDE_DIR" \
-        OUTPUT="$OUTPUT_BINARY" \
+        OUTPUT="$OUTPUT_BINARY_ABS" \
         -j"$(nproc 2>/dev/null || echo 4)"
 else
     echo "Strategy: direct gcc compilation"

@@ -53,7 +53,8 @@ Options:
   --rtl <filelist>    RTL source filelist (.f file, reference)
   --netlist <file>    Gate-level netlist (.v, implementation)
   --svf <file>        SVF guidance file from DC (optional)
-  --liberty <file>    Liberty (.lib) technology library
+  --db <file>         Compiled Synopsys technology library (.db) for read_db
+  --liberty <file>    Alias for --db (note: Formality read_db requires compiled .db)
   --outdir <dir>      Report output directory (default: syn/rpt)
   --script <file>     Custom Formality Tcl script
   -v, --verbose       Verbose output
@@ -198,7 +199,7 @@ while [[ $# -gt 0 ]]; do
     --rtl)     RTL_FILELIST="$2"; shift 2 ;;
     --netlist) NETLIST="$2"; shift 2 ;;
     --svf)     SVF="$2"; shift 2 ;;
-    --liberty) LIBERTY="$2"; shift 2 ;;
+    --db|--liberty) LIBERTY="$2"; shift 2 ;;
     --outdir)  OUTDIR="$2"; shift 2 ;;
     --script)  SCRIPT_PATH="$2"; shift 2 ;;
     -v|--verbose) VERBOSE=1; shift ;;
@@ -239,7 +240,10 @@ fi
 validate_shell_safe "--rtl path" "$RTL_FILELIST"
 validate_shell_safe "--netlist path" "$NETLIST"
 validate_shell_safe "--svf path" "$SVF"
-validate_shell_safe "--liberty path" "$LIBERTY"
+validate_shell_safe "--db/--liberty path" "$LIBERTY"
+if [[ -n "$LIBERTY" && "$LIBERTY" == *.lib ]]; then
+  echo "WARNING: Formality read_db expects a compiled Synopsys .db library, not raw .lib: $LIBERTY" >&2
+fi
 if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then OUTDIR=$(rat_experiment_output "$OUTDIR"); fi
 validate_shell_safe "--outdir path" "$OUTDIR"
 validate_shell_safe "--script path" "$SCRIPT_PATH"
@@ -337,8 +341,8 @@ cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_formality_${TOP}_latest.sh"
 # $FM_TCL components (--script / --outdir / --top) validated against shell
 # metacharacters above — execute via argv, no eval.
 cd "$RUN_CWD"
-run_tool fm_shell -64bit -f "$FM_TCL" 2>&1 | tee "$REPORT"
-EXIT_CODE=${PIPESTATUS[0]}
+EXIT_CODE=0
+run_tool fm_shell -64bit -f "$FM_TCL" 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
 
 # ─── Summary ─────────────────────────────────────────────────────────────
 echo ""
@@ -351,4 +355,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.3
+# rat-version: 2.0.4

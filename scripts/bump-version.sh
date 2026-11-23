@@ -68,16 +68,17 @@ echo ""
 
 CHANGED=0
 
+OLD_VER_RE="${OLD_VER//./\\.}"
+
 # Helper: apply sed replacement, print diff summary
 bump_file() {
   local file="$1"
   local label="$2"
   local pattern="$3"
-  local replacement="$4"
 
   local rel_path="${file#"$ROOT_DIR"/}"
 
-  if ! grep -q "$OLD_VER" "$file"; then
+  if ! grep -qF "$OLD_VER" "$file"; then
     echo "  SKIP  $rel_path ($label) — old version not found"
     return 0
   fi
@@ -88,9 +89,10 @@ bump_file() {
     return 0
   fi
 
-  # Portable in-place edit (BSD `sed -i` requires `-i ''`; avoid the split entirely)
+  # Portable in-place edit preserving original file permissions
   local tmp_file
   tmp_file=$(mktemp)
+  cp -p "$file" "$tmp_file"
   sed "$pattern" "$file" > "$tmp_file"
   mv "$tmp_file" "$file"
   echo "  OK    $rel_path ($label)"
@@ -100,23 +102,20 @@ bump_file() {
 # 1. package.json "version"
 bump_file "$ROOT_DIR/package.json" \
   "version field" \
-  "s/\"version\"[[:space:]]*:[[:space:]]*\"$OLD_VER\"/\"version\": \"$NEW_VER\"/" \
-  ""
+  "s/\"version\"[[:space:]]*:[[:space:]]*\"$OLD_VER_RE\"/\"version\": \"$NEW_VER\"/"
 
 # 2. .claude-plugin/plugin.json "version"
 bump_file "$ROOT_DIR/.claude-plugin/plugin.json" \
   "version field" \
-  "s/\"version\"[[:space:]]*:[[:space:]]*\"$OLD_VER\"/\"version\": \"$NEW_VER\"/" \
-  ""
+  "s/\"version\"[[:space:]]*:[[:space:]]*\"$OLD_VER_RE\"/\"version\": \"$NEW_VER\"/"
 
 # 3 & 4. .claude-plugin/marketplace.json — metadata.version + plugins[0].version
-# We replace only the FIRST occurrence of the old version (metadata.version),
-# then the SECOND occurrence (plugins[0].version = rtl-agent-team).
+# We replace only occurrences of OLD_VER (metadata.version + plugins[0].version).
 # The systemverilog-lsp version is different and untouched.
 MKT_FILE="$ROOT_DIR/.claude-plugin/marketplace.json"
 MKT_REL="${MKT_FILE#"$ROOT_DIR"/}"
 if [ "$DRY_RUN" -eq 1 ]; then
-  COUNT=$(grep -c "\"$OLD_VER\"" "$MKT_FILE" || true)
+  COUNT=$(grep -cF "\"$OLD_VER\"" "$MKT_FILE" || true)
   if [ "$COUNT" -ge 2 ]; then
     echo "  WOULD $MKT_REL (metadata.version)"
     echo "  WOULD $MKT_REL (plugins[0].version)"
@@ -129,36 +128,30 @@ if [ "$DRY_RUN" -eq 1 ]; then
   fi
 else
   # Replace all occurrences of the old version (metadata + first plugin).
-  # The systemverilog-lsp plugin has its own version, so only OLD_VER matches are ours.
-  # Portable in-place edit (see bump_file helper for rationale).
+  # Portable in-place edit preserving permissions.
   MKT_TMP=$(mktemp)
-  sed "s/\"$OLD_VER\"/\"$NEW_VER\"/g" "$MKT_FILE" > "$MKT_TMP"
+  cp -p "$MKT_FILE" "$MKT_TMP"
+  sed "s/\"$OLD_VER_RE\"/\"$NEW_VER\"/g" "$MKT_FILE" > "$MKT_TMP"
   mv "$MKT_TMP" "$MKT_FILE"
   echo "  OK    $MKT_REL (metadata.version + plugins[0].version)"
   CHANGED=$((CHANGED + 2))
 fi
 
-# 5. README.md — marketplace table row for rtl-agent-team
+# 5. README.md — published plugin version reference "(vX.Y.Z)"
 bump_file "$ROOT_DIR/README.md" \
-  "marketplace table" \
-  "s/| $OLD_VER |$/| $NEW_VER |/" \
-  ""
+  "published version" \
+  "s/(v$OLD_VER_RE)/(v$NEW_VER)/g"
 
-# 6. README_kr.md — marketplace table row for rtl-agent-team
+# 6. README_kr.md — published plugin version reference "(vX.Y.Z)"
 bump_file "$ROOT_DIR/README_kr.md" \
-  "marketplace table" \
-  "s/| $OLD_VER |$/| $NEW_VER |/" \
-  ""
+  "published version" \
+  "s/(v$OLD_VER_RE)/(v$NEW_VER)/g"
 
 echo ""
 
 # Validate no stale references of OLD version remain in the 5 files.
-# NOTE: We match both quoted (`"0.9.1"` for JSON/package.json) AND raw
-# token forms (the plain-text `0.9.1` used in README marketplace tables).
-# Raw-token regex uses word boundaries to avoid matching unrelated
-# substrings like 0.9.10, 10.9.1, etc.
 STALE_FILES=""
-STALE_VER_RE='(^|[^0-9.])'"$OLD_VER"'([^0-9]|$)'
+STALE_VER_RE='(^|[^0-9.])'"$OLD_VER_RE"'([^0-9]|$)'
 for f in \
   "$ROOT_DIR/package.json" \
   "$ROOT_DIR/.claude-plugin/plugin.json" \

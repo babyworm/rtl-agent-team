@@ -38,9 +38,31 @@ _sctx_mtime() {
   stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || printf ''
 }
 
-# Check if path (possibly glob) exists. Returns 0 if at least one match found.
-# For glob patterns (containing * ? [), extracts base dir and uses find(1).
+# Check if path (possibly glob in $2 relative to $1, or single arg $1) exists.
+# Inspecting only the relative pattern prevents glob characters in $CWD (e.g. `[`)
+# from triggering find(1) on non-glob paths.
 _sctx_path_exists() {
+  if [ $# -ge 2 ]; then
+    _PE_CWD="$1"
+    _PE_REL="$2"
+    _PE_FULL="$_PE_CWD/$_PE_REL"
+    case "$_PE_REL" in
+      *\**|*\?*|*\[*)
+        _PE_SUB=$(printf '%s' "$_PE_REL" | sed 's|[*?[].*||; s|/[^/]*$||')
+        if [ -n "$_PE_SUB" ] && [ "$_PE_SUB" != "$_PE_REL" ]; then
+          _PE_BASE="$_PE_CWD/$_PE_SUB"
+        else
+          _PE_BASE="$_PE_CWD"
+        fi
+        _PE_NAME=$(basename "$_PE_REL")
+        [ -d "$_PE_BASE" ] && [ -n "$(find "$_PE_BASE" -name "$_PE_NAME" -type f -print 2>/dev/null | head -n 1)" ]
+        ;;
+      *)
+        [ -e "$_PE_FULL" ]
+        ;;
+    esac
+    return $?
+  fi
   case "$1" in
     *\**|*\?*|*\[*)
       _PE_BASE=$(printf '%s' "$1" | sed 's|[*?[].*||; s|/[^/]*$||')
@@ -54,11 +76,21 @@ _sctx_path_exists() {
   esac
 }
 
-# Get mtime of first matching file for a glob path. Returns epoch seconds or empty.
+# Get mtime of first matching file for a glob pattern $2 under $1 (or single arg $1).
 _sctx_glob_first_mtime() {
-  _GFM_BASE=$(printf '%s' "$1" | sed 's|[*?[].*||; s|/[^/]*$||')
-  [ -z "$_GFM_BASE" ] && _GFM_BASE="."
-  _GFM_NAME=$(basename "$1")
+  if [ $# -ge 2 ]; then
+    _GFM_SUB=$(printf '%s' "$2" | sed 's|[*?[].*||; s|/[^/]*$||')
+    if [ -n "$_GFM_SUB" ] && [ "$_GFM_SUB" != "$2" ]; then
+      _GFM_BASE="$1/$_GFM_SUB"
+    else
+      _GFM_BASE="$1"
+    fi
+    _GFM_NAME=$(basename "$2")
+  else
+    _GFM_BASE=$(printf '%s' "$1" | sed 's|[*?[].*||; s|/[^/]*$||')
+    [ -z "$_GFM_BASE" ] && _GFM_BASE="."
+    _GFM_NAME=$(basename "$1")
+  fi
   _GFM_FIRST=$(find "$_GFM_BASE" -name "$_GFM_NAME" -type f -print 2>/dev/null | head -n 1)
   if [ -n "$_GFM_FIRST" ]; then
     _sctx_mtime "$_GFM_FIRST"
@@ -72,11 +104,11 @@ _sctx_artifact_entry() {
   _ART_CWD="$3"
   _ART_FULL="$_ART_CWD/$_ART_REL"
 
-  if _sctx_path_exists "$_ART_FULL"; then
+  if _sctx_path_exists "$_ART_CWD" "$_ART_REL"; then
     _ART_EXISTS="true"
-    case "$_ART_FULL" in
+    case "$_ART_REL" in
       *\**|*\?*|*\[*)
-        _ART_MTIME=$(_sctx_glob_first_mtime "$_ART_FULL")
+        _ART_MTIME=$(_sctx_glob_first_mtime "$_ART_CWD" "$_ART_REL")
         ;;
       *)
         _ART_MTIME=$(_sctx_mtime "$_ART_FULL")
@@ -89,7 +121,7 @@ _sctx_artifact_entry() {
   fi
 
   printf '{"path":"%s","exists":%s,"mtime_epoch":%s,"role":"%s"}' \
-    "$_ART_REL" "$_ART_EXISTS" "$_ART_MTIME" "$_ART_ROLE"
+    "$(jsonu_escape "$_ART_REL")" "$_ART_EXISTS" "$_ART_MTIME" "$(jsonu_escape "$_ART_ROLE")"
 }
 
 # Build JSON array of artifact entries from artmap output.
@@ -139,7 +171,7 @@ _sctx_all_required_present() {
   _ARP_RESULT="true"
   while IFS='|' read -r _arp_path _arp_role; do
     [ -z "$_arp_path" ] && continue
-    if ! _sctx_path_exists "$_ARP_CWD/$_arp_path"; then
+    if ! _sctx_path_exists "$_ARP_CWD" "$_arp_path"; then
       _ARP_RESULT="false"
       break
     fi
@@ -201,7 +233,7 @@ _sctx_team_json() {
   _TM_LEADER=$(jsonu_get_file_path_string "$_TM_CONFIG" "leader_session_id")
   [ -z "$_TM_LEADER" ] && _TM_LEADER=""
 
-  printf '{"active":%s,"leader_session_id":"%s"}' "$_TM_ACTIVE" "$_TM_LEADER"
+  printf '{"active":%s,"leader_session_id":"%s"}' "$_TM_ACTIVE" "$(jsonu_escape "$_TM_LEADER")"
 }
 
 # Collect quality gate status.
@@ -236,7 +268,7 @@ _sctx_quality_gates_json() {
       _QG_P5A_RAW=$(sed -n 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$_QG_P5A_STATE" | tail -n 1)
     fi
     if [ -n "$_QG_P5A_RAW" ]; then
-      _QG_P5A="\"$_QG_P5A_RAW\""
+      _QG_P5A="\"$(jsonu_escape "$_QG_P5A_RAW")\""
     fi
   fi
 
@@ -250,7 +282,12 @@ _sctx_quality_gates_json() {
 sctx_write_manifest() {
   SCTX_CWD="$1"
   SCTX_SKILL="$2"
-  SCTX_RAT=$(rat_project_dir "$SCTX_CWD") || SCTX_RAT="$SCTX_CWD/.rat"
+  SCTX_RAT=$(rat_project_dir "$SCTX_CWD")
+  _SCTX_RC=$?
+  if [ "$_SCTX_RC" -eq 2 ]; then
+    return 1
+  fi
+  [ -n "$SCTX_RAT" ] || SCTX_RAT="$SCTX_CWD/.rat"
   SCTX_MANIFEST="$SCTX_RAT/state/spawn-context.json"
 
   SCTX_PHASE=$(sctx_skill_to_phase "$SCTX_SKILL")
@@ -284,7 +321,7 @@ sctx_write_manifest() {
   # CLAUDE_PLUGIN_ROOT is set by Claude Code for hook execution; fallback:
   # parent of the hooks/ directory (SCRIPT_DIR is set by the parent hook).
   SCTX_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "${SCRIPT_DIR:-.}/.." 2>/dev/null && pwd)}"
-  SCTX_PLUGIN_ROOT_ESC=$(printf '%s' "$SCTX_PLUGIN_ROOT" | sed 's/\\/\\\\/g; s/"/\\"/g')
+  SCTX_PLUGIN_ROOT_ESC=$(jsonu_escape "$SCTX_PLUGIN_ROOT")
 
   # Project root — mirrors the plugin_root pattern. Honors the RAT_PROJECT_ROOT
   # env override so an external Workflow driver (whose subagent CWD is not the
@@ -294,7 +331,7 @@ sctx_write_manifest() {
   # pass the project root, re-based on the marker rat_project_dir found.
   SCTX_PROJECT_ROOT="$SCTX_CWD"
   [ -d "${RAT_PROJECT_ROOT:-}" ] && SCTX_PROJECT_ROOT="$RAT_PROJECT_ROOT"
-  SCTX_PROJECT_ROOT_ESC=$(printf '%s' "$SCTX_PROJECT_ROOT" | sed 's/\\/\\\\/g; s/"/\\"/g')
+  SCTX_PROJECT_ROOT_ESC=$(jsonu_escape "$SCTX_PROJECT_ROOT")
 
   # Artifact arrays
   SCTX_REQ=$(_sctx_build_artifact_array "$SCTX_CWD" "required" "$SCTX_PHASE")
@@ -319,16 +356,19 @@ sctx_write_manifest() {
   _sctx_open=""
   if [ -f "$_sctx_cs" ]; then
     _sctx_upstream=$(jsonu_get_file_path_string "$_sctx_cs" "upstream_iron_paths")
-    [ -z "$_sctx_upstream" ] && _sctx_upstream="[]"
+    case "$_sctx_upstream" in
+      '['*']') ;;
+      *) _sctx_upstream="[]" ;;
+    esac
     _sctx_open=$(jsonu_get_file_path_string "$_sctx_cs" "open_requirements_path")
   fi
+  _sctx_open_esc=$(jsonu_escape "$_sctx_open")
 
-  # Atomic write
+  # Atomic write via unique temp file (safe under parallel Agent spawns)
   mkdir -p "$(dirname "$SCTX_MANIFEST")"
-  cat > "$SCTX_MANIFEST.tmp" <<MANIFEST_EOF
-{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","plugin_root":"$SCTX_PLUGIN_ROOT_ESC","project_root":"$SCTX_PROJECT_ROOT_ESC","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open"}
+  ratu_state_write "$SCTX_MANIFEST" <<MANIFEST_EOF
+{"schema_version":"1.0","generated_at":"$SCTX_TS","generated_by":"rtl-phase-state-bootstrap.sh","plugin_root":"$SCTX_PLUGIN_ROOT_ESC","project_root":"$SCTX_PROJECT_ROOT_ESC","setup":{"completed":$SCTX_SETUP,"marker":"$SCTX_MARKER"},"pipeline":{"current_phase":$SCTX_PHASE,"skill_invoked":"$SCTX_SKILL"},"upstream_artifacts":{"required":$SCTX_REQ,"optional":$SCTX_OPT,"all_required_present":$SCTX_ALL_PRESENT},"staleness":$SCTX_STALE,"team":$SCTX_TEAM,"quality_gates":$SCTX_GATES,"upstream_iron":$_sctx_upstream,"open_requirements":"$_sctx_open_esc"}
 MANIFEST_EOF
-  mv "$SCTX_MANIFEST.tmp" "$SCTX_MANIFEST"
 }
 
 # Return a 1-line summary for additionalContext.

@@ -30,9 +30,23 @@ teamu_config_is_stale() {
   fi
   # Re-check the mtime to reduce TOCTOU window with concurrent fresh writes
   if [ "$(get_mtime_epoch "$TEAMU_STALE_CONFIG")" = "$TEAMU_MTIME" ]; then
-    rm -f "$TEAMU_STALE_CONFIG"
+    rm -f "$TEAMU_STALE_CONFIG" "$1/team-owner.json"
   fi
   return 0
+}
+
+# Print the verified team leader session_id only when team-owner.json exists
+# and its fingerprint matches the current team-config.json.
+teamu_verified_leader() {
+  _TVL_STATE="$1"
+  _TVL_CFG="$_TVL_STATE/team-config.json"
+  _TVL_OWN="$_TVL_STATE/team-owner.json"
+  [ -f "$_TVL_CFG" ] && [ -f "$_TVL_OWN" ] || return 1
+  _TVL_FP=$(cksum < "$_TVL_CFG" | awk '{print $1 ":" $2}')
+  [ "$(jsonu_get_file_path_string "$_TVL_OWN" fingerprint)" = "$_TVL_FP" ] || return 1
+  _TVL_LEADER=$(jsonu_get_file_path_string "$_TVL_OWN" session_id)
+  case "$_TVL_LEADER" in ''|*'<'*|*'$'*) return 1 ;; esac
+  printf '%s' "$_TVL_LEADER"
 }
 
 teamu_should_skip_gate() {
@@ -54,12 +68,7 @@ teamu_should_skip_gate() {
 
   # Fail-closed: an empty or placeholder leader, or an unknown session, enforces
   # the gate for every session.
-  TEAMU_OWNER="$TEAMU_STATE_DIR/team-owner.json"
-  [ -f "$TEAMU_OWNER" ] || return 1
-  TEAMU_FINGERPRINT=$(cksum < "$TEAMU_CONFIG" | awk '{print $1 ":" $2}')
-  [ "$(jsonu_get_file_path_string "$TEAMU_OWNER" fingerprint)" = "$TEAMU_FINGERPRINT" ] || return 1
-  TEAMU_LEADER=$(jsonu_get_file_path_string "$TEAMU_OWNER" session_id)
-  case "$TEAMU_LEADER" in ''|*'<'*|*'$'*) return 1 ;; esac
+  TEAMU_LEADER=$(teamu_verified_leader "$TEAMU_STATE_DIR") || return 1
   TEAMU_SESSION=$(jsonu_session_id "${2:-}")
   [ -n "$TEAMU_SESSION" ] || return 1
   # Known leader: skip the gate only for other sessions (coordinator, workers).

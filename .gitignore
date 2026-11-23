@@ -15,9 +15,6 @@ node_modules/
 
 # Pipeline execution artifacts (generated per-project, not part of plugin)
 /experiment/
-.venv/
-.omx/
-.venv/
 reviews/
 rtl/
 refc/

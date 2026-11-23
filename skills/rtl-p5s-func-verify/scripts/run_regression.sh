@@ -225,13 +225,25 @@ if ! [[ "$PARALLEL" =~ ^[0-9]+$ ]] || [[ "$PARALLEL" -lt 1 ]]; then
   exit 2
 fi
 
+SEED_ARRAY=()
+read -r -a SEED_ARRAY <<< "$SEEDS"
+if [[ ${#SEED_ARRAY[@]} -eq 0 || "$SEEDS" == *$'\n'* ]]; then
+  echo "ERROR: --seeds must contain at least one integer seed" >&2
+  exit 2
+fi
+for _seed in ${SEED_ARRAY[@]+"${SEED_ARRAY[@]}"}; do
+  if ! [[ "$_seed" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: --seeds entries must be non-negative integers: $_seed" >&2
+    exit 2
+  fi
+done
+
 if [[ "${RAT_EXPERIMENT_ACTIVE:-}" == 1 ]]; then
-  read -r -a experiment_seeds <<< "$SEEDS"
-  if [[ ! "$MODULE" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$ || ${#experiment_seeds[@]} -eq 0 || "$SEEDS" == *$'\n'* ]]; then
+  if [[ ! "$MODULE" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$ ]]; then
     echo "ERROR: an experiment requires a module label and numeric seeds" >&2
     exit 2
   fi
-  rat_check_experiment_seeds ${experiment_seeds[@]+"${experiment_seeds[@]}"}
+  rat_check_experiment_seeds ${SEED_ARRAY[@]+"${SEED_ARRAY[@]}"}
 fi
 if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
   RESULTS_DIR=$(rat_experiment_output "$RESULTS_DIR")
@@ -310,20 +322,34 @@ run_seed() {
   observed=$("$RAT_PYTHON" "$EVIDENCE_HELPER" classify --log "$log_file" --exit-code "$rc")
   if [[ "$observed" == PASS ]]; then
     echo "[seed=$seed] PASS"
-    cat > "$result_file.tmp" <<EOF
-{"seed": $seed, "module": "$MODULE", "status": "PASS", "runner": "local", "mode": "$MODE", "timestamp": "$TIMESTAMP"}
-EOF
+    "$RAT_PYTHON" - "$result_file.tmp" "$seed" "$MODULE" "$MODE" "$TIMESTAMP" <<'PY'
+import json, sys
+out, seed, module, mode, ts = sys.argv[1:]
+with open(out, "w", encoding="utf-8") as fh:
+    json.dump({"seed": int(seed), "module": module, "status": "PASS", "runner": "local", "mode": mode, "timestamp": ts}, fh)
+    fh.write("\n")
+PY
     mv "$result_file.tmp" "$result_file"
     return 0
   else
     echo "[seed=$seed] FAIL — see $log_file"
-    cat > "$result_file.tmp" <<EOF
-{"seed": $seed, "module": "$MODULE", "status": "FAIL", "runner": "local", "mode": "$MODE", "timestamp": "$TIMESTAMP", "log": "$log_file"}
-EOF
+    "$RAT_PYTHON" - "$result_file.tmp" "$seed" "$MODULE" "$MODE" "$TIMESTAMP" "$log_file" <<'PY'
+import json, sys
+out, seed, module, mode, ts, log_file = sys.argv[1:]
+with open(out, "w", encoding="utf-8") as fh:
+    json.dump({"seed": int(seed), "module": module, "status": "FAIL", "runner": "local", "mode": mode, "timestamp": ts, "log": log_file}, fh)
+    fh.write("\n")
+PY
     mv "$result_file.tmp" "$result_file"
-    # Capture waveform if available
-    if [[ "${RAT_EXPERIMENT_ACTIVE:-}" != 1 ]] && ls "$TB_DIR"/*.vcd >/dev/null 2>&1; then
-      cp "$TB_DIR"/*.vcd "$RESULTS_DIR/seed_${seed}_waveform.vcd" 2>/dev/null || true
+    # Capture waveform if available (sequential mode avoids parallel VCD races)
+    if [[ "${RAT_EXPERIMENT_ACTIVE:-}" != 1 && "$PARALLEL" -eq 1 ]]; then
+      local vcd_file=""
+      for vcd_file in "$TB_DIR"/*.vcd; do
+        if [[ -f "$vcd_file" ]]; then
+          cp "$vcd_file" "$RESULTS_DIR/seed_${seed}_waveform.vcd" 2>/dev/null || true
+          break
+        fi
+      done
     fi
     return 1
   fi
@@ -336,7 +362,7 @@ if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
 fi
 
 # Run seeds (sequential or parallel)
-for seed in $SEEDS; do
+for seed in ${SEED_ARRAY[@]+"${SEED_ARRAY[@]}"}; do
   TOTAL=$((TOTAL + 1))
 
   if [[ "$PARALLEL" -gt 1 ]]; then
@@ -392,20 +418,25 @@ PASS_RATE=$(calculate_pass_rate "$PASSED" "$TOTAL")
 
 # Summary report
 REPORT_FILE="$RESULTS_DIR/results_${TIMESTAMP}.json"
-cat > "$REPORT_FILE" <<EOF
-{
-  "timestamp": "$TIMESTAMP",
-  "mode": "$MODE",
-  "module": "$MODULE",
-  "simulator": "$SIM",
-  "seeds_total": $TOTAL,
-  "passed": $PASSED,
-  "failed": $FAILED,
-  "pass_rate": "${PASS_RATE}%",
-  "failed_seeds": [$(echo "$FAILED_SEEDS" | xargs | tr ' ' ',')],
-  "results_dir": "$RESULTS_DIR"
+"$RAT_PYTHON" - "$REPORT_FILE" "$TIMESTAMP" "$MODE" "$MODULE" "$SIM" "$TOTAL" "$PASSED" "$FAILED" "$PASS_RATE" "$FAILED_SEEDS" "$RESULTS_DIR" <<'PY'
+import json, sys
+out, ts, mode, module, sim, total, passed, failed, pass_rate, failed_seeds_str, results_dir = sys.argv[1:]
+payload = {
+    "timestamp": ts,
+    "mode": mode,
+    "module": module,
+    "simulator": sim,
+    "seeds_total": int(total),
+    "passed": int(passed),
+    "failed": int(failed),
+    "pass_rate": f"{pass_rate}%",
+    "failed_seeds": [int(s) for s in failed_seeds_str.split() if s.isdigit()],
+    "results_dir": results_dir,
 }
-EOF
+with open(out, "w", encoding="utf-8") as fh:
+    json.dump(payload, fh, indent=2)
+    fh.write("\n")
+PY
 
 echo ""
 echo "=== Regression Summary ==="

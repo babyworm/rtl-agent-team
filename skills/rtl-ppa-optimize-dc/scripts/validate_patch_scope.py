@@ -10,15 +10,74 @@ from __future__ import annotations
 
 import fnmatch
 import pathlib
+import posixpath
 import re
 import sys
 
 
-DIFF_FILE_RE = re.compile(r"^diff --git a/(\S+) b/\S+", re.MULTILINE)
+# Match git diff headers with either unquoted or C-quoted paths on either side.
+DIFF_GIT_RE = re.compile(
+    r'^diff --git (?:"a/((?:\\.|[^"\\])+)"|a/(\S+)) (?:"b/((?:\\.|[^"\\])+)"|b/(\S+))$',
+    re.MULTILINE,
+)
+UNIFIED_HEADER_RE = re.compile(
+    r'^(?:---|\+\+\+)\s+(?:"((?:\\.|[^"\\])+)"|(\S+))',
+    re.MULTILINE,
+)
+
+
+def _unescape_git_path(raw: str) -> str:
+    return re.sub(r'\\(.)', r'\1', raw)
+
+
+def _normalize_path(raw: str) -> str:
+    p = raw.replace("\\", "/")
+    if p.startswith(("a/", "b/")):
+        p = p[2:]
+    while p.startswith("./"):
+        p = p[2:]
+    if not p:
+        return ""
+    if p.startswith("/"):
+        return "/" + posixpath.normpath(p).lstrip("/")
+    return posixpath.normpath(p)
 
 
 def extract_changed_files(diff_text):
-    return DIFF_FILE_RE.findall(diff_text)
+    seen = []
+    seen_set = set()
+
+    def _add(raw_path: str, quoted: bool = False) -> None:
+        if not raw_path or raw_path == "/dev/null":
+            return
+        val = _unescape_git_path(raw_path) if quoted else raw_path
+        if val == "/dev/null":
+            return
+        norm = _normalize_path(val)
+        if norm and norm not in seen_set:
+            seen_set.add(norm)
+            seen.append(norm)
+
+    for m in DIFF_GIT_RE.finditer(diff_text):
+        a_q, a_u, b_q, b_u = m.groups()
+        if a_q is not None:
+            _add(a_q, quoted=True)
+        elif a_u is not None:
+            _add(a_u)
+        if b_q is not None:
+            _add(b_q, quoted=True)
+        elif b_u is not None:
+            _add(b_u)
+
+    if not seen:
+        for m in UNIFIED_HEADER_RE.finditer(diff_text):
+            q, u = m.groups()
+            if q is not None:
+                _add(q, quoted=True)
+            elif u is not None:
+                _add(u)
+
+    return seen
 
 
 def _match(path, glob_list):
@@ -44,7 +103,7 @@ def _match(path, glob_list):
                         translated.replace(r"\Z", "")
                                   .replace(r"\z", "")
                                   .replace(r"(?s:", "")
-                                  .rstrip(")")
+                                  .removesuffix(")")
                     )
                     regex_segments.append(translated)
             # Join segments with "/" and collapse __DOUBLESTAR__ properly
@@ -67,12 +126,16 @@ def _match(path, glob_list):
 
 def check_scope(files, allowed, frozen):
     violations = []
-    for f in files:
+    for raw_f in files:
+        f = _normalize_path(raw_f)
+        if not f or f == "." or f.startswith("/") or f == ".." or f.startswith("../"):
+            violations.append(raw_f)
+            continue
         if _match(f, frozen):
-            violations.append(f)
+            violations.append(raw_f)
             continue
         if not _match(f, allowed):
-            violations.append(f)
+            violations.append(raw_f)
     return (not violations, violations)
 
 
@@ -87,6 +150,9 @@ def main(argv):
     allowed = [s for s in argv[2].split(",") if s]
     frozen = [s for s in argv[3].split(",") if s]
     files = extract_changed_files(diff_text)
+    if diff_text.strip() and not files:
+        print("SCOPE_VIOLATION: non-empty diff produced no parseable file paths", file=sys.stderr)
+        return 1
     ok, violations = check_scope(files, allowed, frozen)
     if not ok:
         for v in violations:

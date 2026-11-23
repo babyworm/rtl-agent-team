@@ -27,8 +27,8 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-RAT_DIR=$(rat_project_dir "$CWD")
-[ -z "$RAT_DIR" ] && { emit_post_continue; }
+RAT_DIR=$(rat_project_dir "$CWD"); RAT_RC=$?
+[ -z "$RAT_DIR" ] && { [ "$RAT_RC" -ne 2 ] || stopu_refuse_symlink_state; emit_post_continue; }
 CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 STATE_DIR="$RAT_DIR/state"
@@ -105,6 +105,9 @@ fi
 save_receipt() {
   printf '%s %s\n' "$FINGERPRINT" "$1" | ratu_state_write "$VERIFY_RECEIPT"
 }
+# Re-arm for changed content before notify/no-sim/block branches without resetting
+# the cap shared by the Stop chain.
+stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$VG_PROGRESS" || true
 if [ "$VG_MODE" = notify ]; then
   # Its own receipt: returning to block must still request verification for this content.
   [ "$REPORTED" != "$FINGERPRINT notify" ] || emit_post_continue
@@ -122,8 +125,6 @@ if [ "$REPORTED" = "$FINGERPRINT requested" ]; then
   stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VG_PROGRESS" "$VG_MSG" "$VG_NOTICE" 0
 fi
 
-# Re-arm for changed content without resetting the cap shared by the Stop chain.
-stopu_renotify verify "$STATE_DIR" "$STOP_CHAIN" "$VG_PROGRESS" || true
 if [ "$(stopu_decision verify "$STATE_DIR" "$STOP_CHAIN" "$VG_PROGRESS" 1)" = block ] &&
    save_receipt requested; then
   stopu_gate verify "$STATE_DIR" "$STOP_CHAIN" "$VG_PROGRESS" "$VG_MSG" "$VG_NOTICE" 1

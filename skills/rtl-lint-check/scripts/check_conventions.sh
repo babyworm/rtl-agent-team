@@ -74,8 +74,11 @@ check_file() {
       [[ "$next" == "$flat" ]] && break
       flat="$next"
     done
+    # Disable pathname expansion while tokenizing flattened RTL line.
+    set -f
     # shellcheck disable=SC2086
     set -- $flat
+    set +f
     tok1="${1:-}"
     inst_name="${2:-}"
     [[ "$inst_name" == "#" ]] && inst_name="${3:-}"

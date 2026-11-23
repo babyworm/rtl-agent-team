@@ -8,7 +8,7 @@
 #   3. hooks/rtl-phase-state-bootstrap.sh case contains the skill (P2+ primary)
 #   4. hooks/rtl-spawn-context.sh agent mapping references this skill
 #   5. skills/rtl-orchestrate/SKILL.md routing table contains the skill
-#   6. hooks/rtl-orchestrator-inject.sh contains the skill
+#   6. skills/rtl-orchestrate/SKILL.md SESSIONSTART_HOOK_EXPORT block contains the skill
 #   7. skill-completion-criteria.json contains the skill
 #   8. tests/unit/test_hooks.py EXPECTED_SKILL_PHASES contains the skill
 
@@ -24,10 +24,10 @@ fi
 
 SKILL="$1"
 
-# Match skill name exactly in shell case statements (delimited by | or ))
+# Match skill name exactly in shell case statements (delimited by indent/| and |/))
 # Avoids false positives like "rtl-p5" matching "rtl-p5-verify"
 grep_case_exact() {
-  grep -qE "(^|[|])${SKILL}([|)])" "$1" 2>/dev/null
+  grep -qE "(^[[:space:]]*|[|])${SKILL}([|)])" "$1" 2>/dev/null
 }
 
 PASS=0
@@ -119,12 +119,16 @@ else
   report MISSING "rtl-orchestrate/SKILL.md routing table"
 fi
 
-# 6. Hook injection: hooks/rtl-orchestrator-inject.sh
-INJECT="$ROOT_DIR/hooks/rtl-orchestrator-inject.sh"
-if grep -qw "$SKILL" "$INJECT" 2>/dev/null; then
-  report FOUND "rtl-orchestrator-inject.sh hook injection"
+# 6. Hook injection: SESSIONSTART_HOOK_EXPORT block in skills/rtl-orchestrate/SKILL.md
+# (read dynamically at SessionStart by hooks/lib/session_inject.py)
+if awk '
+  /<!-- SESSIONSTART_HOOK_EXPORT_START -->/ { in_block=1; next }
+  /<!-- SESSIONSTART_HOOK_EXPORT_END -->/ { in_block=0 }
+  in_block { print }
+' "$ROUTING" 2>/dev/null | grep -qw "$SKILL"; then
+  report FOUND "SESSIONSTART_HOOK_EXPORT hook injection"
 else
-  report MISSING "rtl-orchestrator-inject.sh hook injection"
+  report MISSING "SESSIONSTART_HOOK_EXPORT hook injection"
 fi
 
 # 7. Completion criteria: skill-completion-criteria.json

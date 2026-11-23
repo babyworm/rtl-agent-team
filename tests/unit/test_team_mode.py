@@ -693,5 +693,5 @@ class TestWorkerSubagentPattern:
             "vcodec-transform-quant-expert", "vcodec-filter-recon-expert",
             "video-processing-expert", "ref-model-dev", "bfm-dev", "timing-advisor",
             "vproc-image-processing-expert", "vproc-denoise-expert", "vproc-color-format-expert",
-            "constraint-writer", "synthesis-reporter", "ref-model-reviewer", "uarch-designer",
+            "constraint-writer", "ref-model-reviewer", "uarch-designer",
         ]

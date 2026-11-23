@@ -53,7 +53,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | "Phase 1 team", "research team", "parallel research" | `/rtl-agent-team:p1-spec-research` team mode | Action Skill |
 | "Phase 2 team", "arch team", "parallel architecture" | `/rtl-agent-team:p2-arch-design` team mode | Action Skill |
 | "Phase 3 team", "uarch team", "parallel uarch" | `/rtl-agent-team:rtl-p3-uarch-design` team mode | Action Skill |
-| "refc to RTL", "C model to hardware", "refc to P5", "refc를 RTL로 구현" | `/rtl-agent-team:rat-refc-to-p5` | Action Skill |
+| "refc to RTL", "C model to hardware", "refc to P5", "implement refc in RTL" | `/rtl-agent-team:rat-refc-to-p5` | Action Skill |
 | "spec to uarch team", "Phase 1-3 team", "parallel design pipeline" | `/rtl-agent-team:rat-p1p3-spec-uarch` team mode | Action Skill |
 | "spec to uarch", "design only", "Phase 1-3", "design documents only" | `/rtl-agent-team:rat-p1p3-spec-uarch` | Action Skill |
 | "uarch to verify", "implement and verify", "Phase 4-5", "RTL from uarch" | `/rtl-agent-team:rat-p4p5-impl-verify` | Action Skill |
@@ -96,7 +96,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 | **--- Phase 7: Exploration (optional) ---** | | |
 | "free exploration", "exploration", "Phase 7", "improvement exploration" | `/rtl-agent-team:rtl-p7-exploration` | Action Skill |
 | **--- Autonomous Loops ---** | | |
-| "ultraloop", "autonomous loop", "unattended", "퇴근 모드" | `/rtl-agent-team:rat-ultraloop` | Action Skill |
+| "ultraloop", "autonomous loop", "unattended", "overnight mode" | `/rtl-agent-team:rat-ultraloop` | Action Skill |
 | **--- Other Verification ---** | | |
 | "LLM code review", "safe refactor", "review and refactor workflow" | `/rtl-agent-team:rtl-review-refactor` | Action Skill |
 | "integration test", "cross-module test", "end-to-end test", "Tier 4" | `/rtl-agent-team:rtl-p5s-integration-test` | Action Skill |
@@ -110,7 +110,7 @@ Orchestrator agents are internal execution units spawned only by Action Skills.
 
 ### Action Skill → Orchestrator Agent Mapping (internal)
 
-Action Skills are user-facing. Each action delegates to one orchestrator agent, which loads one policy skill. Team mode of a merged phase skill dispatches that phase's team orchestrator.
+Action Skills are user-facing. Each action delegates to one orchestrator agent, which embeds generated policy fragments. Team mode of a merged phase skill dispatches that phase's team orchestrator.
 
 | Action Skill | Orchestrator Agent | Embedded policy fragment |
 |--------------|--------------------|-------------|
@@ -142,6 +142,9 @@ Action Skills are user-facing. Each action delegates to one orchestrator agent, 
 | `rat-p1p3-spec-uarch` | `spec-to-uarch-orchestrator` (team mode sequences the phase skills; a failed TeamCreate stays in that phase's sequential section) | `rat-p1p3-spec-uarch-policy` |
 | `rat-p4p5-impl-verify` | `uarch-to-verify-orchestrator` | `rat-p4p5-impl-verify-policy` |
 | `rtl-p4-block-parallel` | `p4-block-parallel-coordinator` | `rtl-block-interface-policy`, `rtl-block-contract-test-policy` |
+| `rtl-ppa-optimize-dc` | `ppa-optimizer-dc-orchestrator` | `ppa-optimizer-dc-policy` |
+| `rat-ultraloop-ppa` | `ppa-optimizer-dc-orchestrator` (iterative PPA convergence loop) | `ppa-optimizer-dc-policy` |
+| `rat-refc-to-p5` | — (skill-driven pipeline over P4→P5 from existing `refc/`) | — |
 | `rat-ultraloop` | — (skill-driven, dispatches `ultraloop-reviewer` for review cycles) | — |
 
 **Cross-cutting policy fragments** (referenced by specialist agents, not tied to a single orchestrator):
@@ -165,14 +168,17 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 ### Design Agents
 | Task Type | Agent | Model |
 |----------|-------|-------|
-| Specification analysis | `spec-analyst` | Opus |
-| Architecture design | `arch-designer` | Opus |
-| Architecture review | `rtl-architect` | Opus |
-| μArch design | `uarch-designer` | Opus |
+| Specification analysis | `spec-analyst` | Fable |
+| Goal clarification | `goal-clarifier` | Fable |
+| Architecture design | `arch-designer` | Fable |
+| Architecture review | `rtl-architect` | Fable |
+| μArch design | `uarch-designer` | Fable |
 | RTL coding | `rtl-coder` | Opus |
 | RTL review | `rtl-critic` | Opus |
-| Design planning | `rtl-planner` | Opus |
+| Design planning | `rtl-planner` | Fable |
 | Codebase exploration | `rtl-explorer` | Opus |
+| Synthesizability check | `synthesizability-gate` | Opus |
+| DC PPA optimization | `ppa-optimizer-dc` | Opus |
 
 ### Verification Agents
 | Task Type | Agent | Model |
@@ -201,8 +207,9 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Equivalence checking | `equivalence-checker` | Opus |
 | Integration verification | `integration-verifier` | Opus |
 | Hardware security review | `security-reviewer` | Opus |
+| Phase compliance check | `compliance-checker` | Opus |
 | DFT/scan chain/BIST/JTAG | `dft-designer` | Opus |
-| Clock architecture/PLL review | `clock-architect` | Opus |
+| Clock architecture/PLL review | `clock-architect` | Fable |
 
 ### Phase 6 Agents
 | Task Type | Agent | Model |
@@ -226,6 +233,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 4: RTL Implementation (Team) | `p4-implement-orchestrator` | `rtl-p4-implement-policy` |
 | Phase 4: Rapid RTL + Sanity | `p4-rtl-sanity-orchestrator` | `rtl-p4-rapid-impl-policy` |
 | Phase 4: Bug Fix | `p4s-bugfix-orchestrator` | `rtl-p4s-bugfix-policy` |
+| Phase 4: Refactor | `p4s-refactor-orchestrator` | `rtl-p4s-refactor-policy` |
 | Phase 4: Unit Test | `p4s-unit-test-orchestrator` | `rtl-p4s-unit-test-policy` |
 | Phase 5: Verification | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
 | Phase 5: Verification (Team) | `p5-verify-orchestrator` | `rtl-p5-verify-policy` |
@@ -240,6 +248,8 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Phase 5: Coverage | `p5s-coverage-orchestrator` | `rtl-p5s-coverage-policy` |
 | Phase 5: UVM | `p5s-uvm-orchestrator` | `rtl-p5s-uvm-policy` |
 | Phase 6: Design Review | `p6-review-orchestrator` | `rtl-p6-design-review-policy` |
+| Phase 7: Exploration | `p7-exploration-orchestrator` | `rtl-p7-exploration-policy` |
+| Post-Verify PPA (DC) | `ppa-optimizer-dc-orchestrator` | `ppa-optimizer-dc-policy` |
 | LLM Review + Refactor | `review-refactor-orchestrator` | `code-review-policy` + `refactor-classification-policy` + `verification-recheck-policy` |
 | DSE | `dse-orchestrator` | `rat-dse-policy` |
 | Spec→μArch (P1-3) | `spec-to-uarch-orchestrator` | `rat-p1p3-spec-uarch-policy` |
@@ -252,21 +262,20 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 ### EDA/Infrastructure Agents
 | Task Type | Agent | Model |
 |----------|-------|-------|
-| EDA tool execution | `eda-runner` | Opus |
+| EDA tool execution | `eda-runner` | Sonnet |
 | Synthesis metrics | `scripts/parse_synthesis.py` | — (deterministic script) |
 | Lint checking | `lint-checker` | Opus |
 | SDC constraint generation | `constraint-writer` | Opus |
 | Timing analysis (STA) | `timing-advisor` | Opus |
 | CDC static analysis | `cdc-checker` | Opus |
-| Clock architecture review | `clock-architect` | Opus |
-| DFT design | `dft-designer` | Opus |
-| IP-XACT generation | `ipxact-generator` | Opus |
+| IP-XACT generation | `ipxact-generator` | Sonnet |
 | BFM development | `bfm-dev` | Opus |
 | Reference model development | `ref-model-dev` | Opus |
 
 ### Domain Expert Agents
 | Task Type | Agent | Model |
 |----------|-------|-------|
+| General domain expert | `domain-expert` | Opus |
 | Codec chief expert | `vcodec-chief-standard-expert` | Opus |
 | Syntax/entropy expert | `vcodec-syntax-entropy-expert` | Opus |
 | Intra prediction expert | `vcodec-intra-pred-expert` | Opus |
@@ -274,7 +283,7 @@ RTL tasks must be delegated to specialized agents. This applies to tasks handlin
 | Motion compensation expert | `vcodec-mc-expert` | Opus |
 | Transform/quantization expert | `vcodec-transform-quant-expert` | Opus |
 | Filter/reconstruction expert | `vcodec-filter-recon-expert` | Opus |
-| Codec architecture expert | `vcodec-architecture-expert` | Opus |
+| Codec architecture expert | `vcodec-architecture-expert` | Fable |
 | Codec performance expert | `video-processing-expert` | Opus |
 | Color format expert | `vproc-color-format-expert` | Opus |
 | Denoise expert | `vproc-denoise-expert` | Opus |
@@ -514,7 +523,7 @@ Each agent's prompt lists the specific files to read in its "Before analysis, re
 | `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval enforcement (non-standard bins require user confirmation) |
 
 Stop hook order (current): `rtl-verify-stop-gate` → `rtl-p6-cascade-gate` → `rtl-skill-completion-gate` → `rtl-coverage-exclusion-gate` → `stop-gate`.
-(Authoritative registration + order: `hooks/hooks.json`. Full 14-hook inventory: CLAUDE.md Hook-Based Enforcement table.)
+(Authoritative registration + order: `hooks/hooks.json`. Full 18-hook inventory: CLAUDE.md Hook-Based Enforcement table.)
 
 ## State Files
 
@@ -590,7 +599,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | Phase 1 team, research team, parallel research | `/rtl-agent-team:p1-spec-research` team mode |
 | Phase 2 team, arch team, parallel architecture | `/rtl-agent-team:p2-arch-design` team mode |
 | Phase 3 team, uarch team, parallel uarch | `/rtl-agent-team:rtl-p3-uarch-design` team mode |
-| refc to RTL, C model to hardware, refc to P5, refc를 RTL로 구현 | `/rtl-agent-team:rat-refc-to-p5` |
+| refc to RTL, C model to hardware, refc to P5, implement refc in RTL | `/rtl-agent-team:rat-refc-to-p5` |
 | spec to uarch team, Phase 1-3 team | `/rtl-agent-team:rat-p1p3-spec-uarch` team mode |
 | spec to uarch, Phase 1-3, design only | `/rtl-agent-team:rat-p1p3-spec-uarch` |
 | uarch to verify, Phase 4-5, RTL from uarch | `/rtl-agent-team:rat-p4p5-impl-verify` |
@@ -637,7 +646,7 @@ Always route user intent to Action Skills first. Orchestrators are internal and 
 | UVM testbench generation | `uvm` (agent-loaded) |
 | `.cpp/.h` SystemC/TLM work | `systemc` (agent-loaded) |
 Convention skills are loaded by writer agents via their `skills:` frontmatter (rtl-coder→systemverilog, bfm-dev→systemc, testbench-dev/sva-extractor/protocol-checker→systemverilog-assertion/uvm); naming basics also enforced by the deployed `.claude/rules` file on .sv access.
-Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and loaded by agents when needed.
+Internal routing reference skill (`rtl-orchestrate`) is non-user-invocable and serves as the maintainer SSOT for this SessionStart export (not loaded at runtime).
 
 ## Agent dispatch
 Resolve worker tiers using `{plugin_root}/runtime/model-selection.md` for the active host. Inherit the session model when no suitable ID is available.

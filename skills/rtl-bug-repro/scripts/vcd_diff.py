@@ -21,8 +21,8 @@ from collections import defaultdict
 
 def parse_vcd_signals(filepath, filter_signals=None):
     """Parse VCD file into {signal_name: [(time, value), ...]} dict."""
-    signals = {}       # id -> name
-    values = defaultdict(list)  # id -> [(time, value)]
+    signals = defaultdict(list)  # id -> [name, ...] (supports VCD signal aliases)
+    values = defaultdict(list)   # id -> [(time, value)]
     current_time = 0
 
     with open(filepath) as f:
@@ -50,7 +50,8 @@ def parse_vcd_signals(filepath, filter_signals=None):
                         var_name = parts[4]
                         full_name = ".".join(scope_stack + [var_name])
                         if filter_signals is None or var_name in filter_signals or full_name in filter_signals:
-                            signals[var_id] = full_name
+                            if full_name not in signals[var_id]:
+                                signals[var_id].append(full_name)
                 elif line.startswith("$enddefinitions"):
                     in_defs = False
             else:
@@ -77,8 +78,9 @@ def parse_vcd_signals(filepath, filter_signals=None):
 
     # Convert to name-keyed dict
     result = {}
-    for sig_id, name in signals.items():
-        result[name] = values[sig_id]
+    for sig_id, names in signals.items():
+        for name in names:
+            result[name] = values[sig_id]
 
     return result
 
@@ -139,6 +141,10 @@ def main():
         print(f"Only in expected: {', '.join(only_exp)}")
     if only_act:
         print(f"Only in actual:   {', '.join(only_act)}")
+
+    if not common:
+        print("\nRESULT: INCONCLUSIVE — no common signals found to compare")
+        return 2
 
     if not divs:
         print("\nRESULT: MATCH — no divergences found")

@@ -35,7 +35,14 @@ while [ $# -gt 0 ]; do
     --decisions|-d) MODE="timeline"; FILTER="decision" ;;
     --summary|-s)   MODE="summary" ;;
     --prompts|-p)   MODE="prompts" ;;
-    --session)      shift; SESSION_ID="$1" ;;
+    --session)
+      if [ $# -lt 2 ] || [ -z "$2" ]; then
+        echo "ERROR: --session requires a session ID" >&2
+        exit 1
+      fi
+      shift
+      SESSION_ID="$1"
+      ;;
     --help|-h)
       echo "Usage: sh scripts/show-audit.sh [OPTIONS]"
       echo ""
@@ -64,6 +71,14 @@ if [ -z "$SESSION_ID" ]; then
   fi
 fi
 
+# Validate session ID against strict allowlist to prevent path traversal
+case "$SESSION_ID" in
+  ''|.|..|.*|*.|*[!A-Za-z0-9._-]*)
+    echo "ERROR: Invalid session ID: $SESSION_ID" >&2
+    exit 1
+    ;;
+esac
+
 TRACE_FILE="$AUDIT_DIR/$SESSION_ID/trace.jsonl"
 PROMPTS_DIR="$AUDIT_DIR/$SESSION_ID/prompts"
 
@@ -89,14 +104,14 @@ format_line() {
   LINE="$1"
   # Parse with available JSON parser
   if command -v jq >/dev/null 2>&1; then
-    TS=$(printf '%s' "$LINE" | jq -r '.ts // ""' 2>/dev/null)
-    SEQ=$(printf '%s' "$LINE" | jq -r '.seq // ""' 2>/dev/null)
-    EVENT=$(printf '%s' "$LINE" | jq -r '.event // ""' 2>/dev/null)
-    AGENT=$(printf '%s' "$LINE" | jq -r '.agent // ""' 2>/dev/null)
-    DETAIL=$(printf '%s' "$LINE" | jq -r '.detail // ""' 2>/dev/null)
-    STATUS=$(printf '%s' "$LINE" | jq -r '.status // ""' 2>/dev/null)
-    PHASE=$(printf '%s' "$LINE" | jq -r '.phase // ""' 2>/dev/null)
-    TAG=$(printf '%s' "$LINE" | jq -r '.tag // ""' 2>/dev/null)
+    TS=$(printf '%s' "$LINE" | jq -r '.ts // ""' 2>/dev/null || true)
+    SEQ=$(printf '%s' "$LINE" | jq -r '.seq // ""' 2>/dev/null || true)
+    EVENT=$(printf '%s' "$LINE" | jq -r '.event // ""' 2>/dev/null || true)
+    AGENT=$(printf '%s' "$LINE" | jq -r '.agent // ""' 2>/dev/null || true)
+    DETAIL=$(printf '%s' "$LINE" | jq -r '.detail // ""' 2>/dev/null || true)
+    STATUS=$(printf '%s' "$LINE" | jq -r '.status // ""' 2>/dev/null || true)
+    PHASE=$(printf '%s' "$LINE" | jq -r '.phase // ""' 2>/dev/null || true)
+    TAG=$(printf '%s' "$LINE" | jq -r '.tag // ""' 2>/dev/null || true)
   else
     # Fallback: basic sed parsing
     TS=$(printf '%s' "$LINE" | sed -n 's/.*"ts"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
@@ -133,11 +148,12 @@ format_line() {
   TAG_STR=""
   [ -n "$TAG" ] && TAG_STR=" ${C_DIM}${TAG}${C_RESET}"
 
-  printf "%b%s%b %b%-3s%b %b%-15s%b %-25s %s %s%s\n" \
+  printf "%b%s%b %b%-3s%b %b%-15s%b %-25s%s %b %s%b\n" \
     "$C_DIM" "$SHORT_TS" "$C_RESET" \
     "$COLOR" "$SEQ" "$C_RESET" \
     "$COLOR" "$EVENT" "$C_RESET" \
     "$AGENT" \
+    "$PHASE_STR" \
     "$STATUS_ICON" \
     "$DETAIL" \
     "$TAG_STR"

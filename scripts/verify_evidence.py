@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.13
+# rat-version: 2.0.14
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -380,8 +380,17 @@ def process_identity(pid: int) -> str:
         return "proc:"+stat[19]
     except (OSError,IndexError):
         import subprocess
-        result=subprocess.run(["ps","-p",str(pid),"-o","lstart="],capture_output=True,text=True)
-        return result.stdout.strip() if result.returncode==0 else ""
+        try:
+            result=subprocess.run(["ps","-p",str(pid),"-o","lstart="],capture_output=True,text=True)
+            return result.stdout.strip() if result.returncode==0 else ""
+        except (OSError, subprocess.SubprocessError):
+            # Sandboxed macOS (Seatbelt) may block setuid /bin/ps with EPERM.
+            # Fall back to checking process liveness via signal 0.
+            try:
+                os.kill(pid, 0)
+                return f"pid:{pid}"
+            except OSError:
+                return ""
 
 
 def pre_init_state_root(root: Path) -> Path | None:

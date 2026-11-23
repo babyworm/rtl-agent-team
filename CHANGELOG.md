@@ -7,6 +7,43 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre18] - 2026-11-24
+
+Repository-wide hardening and bug-fix pass:
+
+- **Hooks & Stop gates:** Fixed `0null` JSON corruption and `sed` metacharacter escaping in
+  `compliance-gate-util.sh`; quoted `CLAUDE_PLUGIN_DATA` when writing `CLAUDE_ENV_FILE`; made
+  Stop gates fail-closed on symlinked `.rat`/`.rat/state` directories while preventing stray
+  file symlinks from disabling Stop gates or truncating external files; fixed `stopu_renotify`
+  ordering in `rtl-verify-stop-gate.sh` for `notify` mode; verified `team-owner.json`
+  fingerprints on leader checks and cleared stale owner records; added Python fast-path in
+  `rtl-coverage-exclusion-gate.sh`; fixed relative doc/review path matching and bumped
+  `rtl-edit-tracker.sh` hook timeouts to 10s; hardened `audit-util.sh`, `spawn-context-util.sh`,
+  `flock-util.sh`, `json-util.sh`, `skill-event-util.sh`, `verify_gate.py`,
+  `rtl-skill-activation.sh`, `rtl-skill-expansion.sh`, `rtl-audit-subagent.sh`, and
+  `rtl-parser-warning.sh`.
+- **Core scripts & runners:** Made `verify_evidence.py` resilient when `/bin/ps` is blocked in
+  sandboxed environments; fixed Docker capability probing, container `PATH` preservation, and
+  remote `runtime_log`/identity verification in `eda_runner.py`; hardened `rat_doctor.py`
+  against invalid `default_site`/backend configs and fixed its `workload_passed` check; aligned
+  `coverage_approval.py` with `runtime_state_root`; fixed `run_sim.sh` `--top` validation,
+  Xcelium `--trace` Tcl input, and Questa `vopt` parameter flags; hardened audit, version-bump,
+  CI, and installer helper scripts.
+- **Templates & skill scripts:** Guarded piped `run_tool ... | tee` exits under
+  `set -euo pipefail` across `run_lint.sh`, `run_cdc.sh`, `run_syn.sh`, `run_conformal.sh`,
+  `run_formality.sh`, and `Makefile` (ensuring `syn_result.json` is written on failure);
+  hardened `validate_patch_scope.py` (both `a/` and `b/` paths, path normalization, fail-closed
+  on unparseable diffs); added liberty-mapped cell and latch support in `parse_yosys_stat.py`;
+  fixed Tcl quoting, integer seed validation, JSON emission, Makefile-before-glob checks,
+  conformance all-skip verdicts, TLM-2.0 bounds checks, DPI-C header prototype alignment, VCD
+  aliases, 3-way empty/malformed checks, nested-paren port flattening, PPA null/zero target
+  guards, and optional Verible rate-limit handling in `docker/Dockerfile`.
+- **CI, docs & tests:** Extended `.github/workflows/ci.yml` shellcheck, JSON manifest, and
+  Step 0 checks; synced `skills/rtl-orchestrate/SKILL.md`, `CLAUDE.md`, `CONTRIBUTING*.md`, and
+  `tests/*` docs; moved `docs/adding_audit.md` to `plugin_docs/adding_audit.md` and removed
+  tracked `.codex` and unused `rat_logo.png`; added regression suite
+  `tests/unit/test_review_regressions.py`.
+
 ## [2.0.0-pre17] - 2026-11-23
 
 Findings from a project migration review:

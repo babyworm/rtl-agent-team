@@ -494,7 +494,7 @@ fi
 # rtl/common and not instantiated by this top) is handled correctly and never false-fails.
 # The behavioral 2-D array is kept under `synopsys translate_off`, so synthesis never
 # elaborates it into flip-flops.
-MEM_WRAP_NAMES=(sram_sp sram_tp sram_dp)
+MEM_WRAP_NAMES=(sram_sp sram_tp sram_dp spreg tpreg dpreg)
 [[ ${#MEM_MODULES[@]} -gt 0 ]] && MEM_WRAP_NAMES+=(${MEM_MODULES[@]+"${MEM_MODULES[@]}"})
 # Real (non-blackboxed) memory needs BOTH: --mem-process to activate the wrapper's `ifdef
 # macro branch AND --mem-lib to resolve the macro's timing. With only one (or neither), the
@@ -618,11 +618,11 @@ case "$TOOL" in
       if [[ -n "$LIBERTY" ]]; then
         echo "# Technology mapping"
         echo "techmap; opt"
-        echo "dfflibmap -liberty $LIBERTY"
-        echo "abc -liberty $LIBERTY"
+        echo "dfflibmap -liberty \"$LIBERTY\""
+        echo "abc -liberty \"$LIBERTY\""
         echo "clean"
         echo ""
-        echo "stat -liberty $LIBERTY"
+        echo "stat -liberty \"$LIBERTY\""
       else
         echo "# Generic synthesis (no technology mapping)"
         echo "techmap; opt"
@@ -631,16 +631,16 @@ case "$TOOL" in
       echo ""
       echo "# Post-synthesis checks"
       echo "scc -max_depth 10"
-      echo "write_json $NETLIST_JSON"
-      echo "write_verilog $NETLIST_V"
+      echo "write_json \"$NETLIST_JSON\""
+      echo "write_verilog \"$NETLIST_V\""
     } > "$SCRIPT"
 
     echo "=== Yosys Synthesis ==="
     echo "Script: $SCRIPT"
-    echo "CMD: yosys -s $SCRIPT"
+    echo "CMD: yosys -s \"$SCRIPT\""
     write_replay "yosys -s \"$SCRIPT\""
-    run_tool yosys -s "$SCRIPT" 2>&1 | tee "$LOG"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool yosys -s "$SCRIPT" 2>&1 | tee "$LOG" || EXIT_CODE=${PIPESTATUS[0]}
 
     # Extract stats to report
     if [[ -f "$LOG" ]]; then
@@ -680,9 +680,13 @@ case "$TOOL" in
       echo "# Auto-generated .synopsys_dc.setup"
       echo "# Generated: $(date)"
       echo ""
-      echo "set_app_var search_path [list . ${DIR_DB} ${DIR_WORK}/dc]"
+      echo "set_app_var search_path [list . \"${DIR_DB}\" \"${DIR_WORK}/dc\"]"
       if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
-        echo "set_app_var search_path [concat [get_app_var search_path] [list ${INCLUDE_DIRS[*]:-}]]"
+        printf 'set_app_var search_path [concat [get_app_var search_path] [list'
+        for _inc in "${INCLUDE_DIRS[@]+"${INCLUDE_DIRS[@]}"}"; do
+          printf ' %s' "$_inc"
+        done
+        printf ']]\n'
       fi
       echo "set_app_var sh_command_log_file \"${DIR_LOG}/command.log\""
       if [[ -n "$LIBERTY" ]]; then
@@ -787,8 +791,8 @@ case "$TOOL" in
     write_replay "$CMD"
     # $SCRIPT components (--script or SYN_ROOT-derived) validated against
     # Tcl/shell-unsafe characters above — execute via argv, no eval.
-    run_tool dc_shell -64bit -f "$SCRIPT" 2>&1 | tee "$LOG"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool dc_shell -64bit -f "$SCRIPT" 2>&1 | tee "$LOG" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   # =========================================================================
@@ -823,7 +827,11 @@ case "$TOOL" in
         echo ""
         echo "# Work directory"
         if [[ ${#INCLUDE_DIRS[@]} -gt 0 ]]; then
-          echo "set_db init_hdl_search_path [list ${INCLUDE_DIRS[*]:-}]"
+          printf 'set_db init_hdl_search_path [list'
+          for _inc in "${INCLUDE_DIRS[@]+"${INCLUDE_DIRS[@]}"}"; do
+            printf ' %s' "$_inc"
+          done
+          printf ']\n'
         fi
         echo "set_db hdl_work_directory \"${GENUS_WORK}\""
         echo "set_db log_directory \"${DIR_LOG}\""
@@ -907,8 +915,8 @@ case "$TOOL" in
     write_replay "$CMD"
     # $SCRIPT components (--script or SYN_ROOT-derived) validated against
     # Tcl/shell-unsafe characters above — execute via argv, no eval.
-    run_tool genus -batch -files "$SCRIPT" 2>&1 | tee "$LOG"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool genus -batch -files "$SCRIPT" 2>&1 | tee "$LOG" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   # =========================================================================
@@ -936,8 +944,8 @@ case "$TOOL" in
     write_replay "$CMD"
     # $SCRIPT is --script, validated against Tcl/shell-unsafe characters above —
     # execute via argv, no eval.
-    run_tool vivado -mode batch -source "$SCRIPT" -nojournal -nolog 2>&1 | tee "$LOG"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool vivado -mode batch -source "$SCRIPT" -nojournal -nolog 2>&1 | tee "$LOG" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   *)
@@ -980,4 +988,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.3
+# rat-version: 2.0.4

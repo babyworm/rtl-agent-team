@@ -3,6 +3,7 @@
 input=$(cat)
 script_dir=$(cd "$(dirname "$0")" && pwd)
 . "$script_dir/lib/json-util.sh"
+. "$script_dir/lib/posix-util.sh"
 jsonu_detect_parser
 event=$(jsonu_get_root_string "$input" hook_event_name)
 case "$event" in SessionStart|SubagentStart) ;; *) exit 0 ;; esac
@@ -11,7 +12,7 @@ case "$event" in SessionStart|SubagentStart) ;; *) exit 0 ;; esac
 # CLAUDE_PLUGIN_DATA, so hand them the same folder as RAT_DATA_DIR.
 data=${RAT_DATA_DIR:-${CLAUDE_PLUGIN_DATA:-}}
 if [ "$event" = SessionStart ] && [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -n "${CLAUDE_PLUGIN_DATA:-}" ]; then
-  printf "export RAT_DATA_DIR='%s'\n" "$CLAUDE_PLUGIN_DATA" >> "$CLAUDE_ENV_FILE"
+  printf 'export RAT_DATA_DIR=%s\n' "$(shq "$CLAUDE_PLUGIN_DATA")" >> "$CLAUDE_ENV_FILE"
 fi
 
 if [ -d "${RAT_PROJECT_ROOT:-}" ]; then

@@ -26,8 +26,8 @@ jsonu_detect_parser
 
 CWD=$(jsonu_get_root_string "$INPUT" "cwd")
 [ -z "$CWD" ] && CWD="$(pwd)"
-RAT_DIR=$(rat_project_dir "$CWD")
-[ -z "$RAT_DIR" ] && { emit_post_continue; }
+RAT_DIR=$(rat_project_dir "$CWD"); RAT_RC=$?
+[ -z "$RAT_DIR" ] && { [ "$RAT_RC" -ne 2 ] || stopu_refuse_symlink_state; emit_post_continue; }
 CWD=$(dirname "$RAT_DIR")  # the project root, even when the session has cd'd into a subdirectory
 
 STATE_FILE="$RAT_DIR/state/rat-auto-design-state.json"
@@ -135,20 +135,8 @@ if [ "$STATUS" = "completed" ]; then
   _allow_stop
 fi
 
-UPPER_SPEC_BLOCKING=$(jsonu_get_file_path_bool "$STATE_FILE" "upper_spec_blocking")
-if [ "$UPPER_SPEC_BLOCKING" = "true" ]; then
-  # The user reads this notice, so it tells the user what to decide.
-  MSG="[RAT Auto-Design STOP] Upper-spec violation is unresolved, so the pipeline is paused. Decide whether to approve the violation or send the pipeline back to fix it, then tell Claude."
-  # A user decision: notify once per chain (limit 0), then stay silent.
-  stopu_gate autopilot "$RAT_DIR/state" "$STOP_CHAIN" "upper-spec" "$MSG" "$MSG" 0
-fi
-
 ACTIVE_GATE_ID=$(jsonu_get_file_path_string "$STATE_FILE" "orchestration_control.active_gate_id")
 [ -z "$ACTIVE_GATE_ID" ] && ACTIVE_GATE_ID="phase-gate"
-
-RETRY_LIMIT=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_retry_limit")
-[ -z "$RETRY_LIMIT" ] && RETRY_LIMIT=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.default_retry_limit")
-[ -z "$RETRY_LIMIT" ] && RETRY_LIMIT=2
 
 PRIMARY_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_primary_attempts")
 [ -z "$PRIMARY_ATTEMPTS" ] && PRIMARY_ATTEMPTS=0
@@ -156,9 +144,6 @@ FALLBACK_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control
 [ -z "$FALLBACK_ATTEMPTS" ] && FALLBACK_ATTEMPTS=0
 LAST_CHANCE_ATTEMPTS=$(jsonu_get_file_path_num "$STATE_FILE" "orchestration_control.active_gate_last_chance_attempts")
 [ -z "$LAST_CHANCE_ATTEMPTS" ] && LAST_CHANCE_ATTEMPTS=0
-
-NEEDS_USER_DECISION=$(jsonu_get_file_path_bool "$STATE_FILE" "orchestration_control.needs_user_decision")
-[ -z "$NEEDS_USER_DECISION" ] && NEEDS_USER_DECISION=false
 
 MSG="[RAT Auto-Design Loop ${ACTIVE_GATE_ID}] repair work (primary=${PRIMARY_ATTEMPTS}, limit=2). Complete the missing artifact or repair the recorded measured failure, then rerun affected checks. Preserve successful reviews; do not iterate to raise confidence."
 # Progress means the orchestrator recorded another gate attempt.

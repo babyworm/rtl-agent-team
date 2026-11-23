@@ -31,19 +31,6 @@ module perf_monitor_{{MODULE_NAME}} (
   int latency_counter;
   logic in_flight;
 
-  initial begin
-    o_latency_min = 32'h7FFF_FFFF;
-    o_latency_max = 0;
-    o_latency_sum = 0;
-    o_txn_count   = 0;
-    o_throughput_cycles   = 0;
-    o_backpressure_cycles = 0;
-    o_stall_cycles        = 0;
-    o_total_cycles        = 0;
-    latency_counter = 0;
-    in_flight = 1'b0;
-  end
-
   always_ff @(posedge {{DOMAIN}}_clk or negedge {{DOMAIN}}_rst_n) begin
     if (!{{DOMAIN}}_rst_n) begin
       o_latency_min <= 32'h7FFF_FFFF;

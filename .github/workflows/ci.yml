@@ -38,9 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - run: sudo apt-get install -y shellcheck
+      - run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
       - run: shellcheck -s sh hooks/*.sh
       - run: shellcheck -s sh hooks/lib/*.sh
+      - run: shellcheck -S warning scripts/*.sh skills/*/scripts/*.sh skills/rat-init-project/templates/*.sh skills/rat-init-project/templates/lib/*.sh
 
   validate-plugin:
     runs-on: ubuntu-latest
@@ -56,9 +57,13 @@ jobs:
 
       - name: Validate JSON manifests parse cleanly
         run: |
-          for f in package.json .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json; do
+          for f in package.json .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json phase-registry.json skill-completion-criteria.json template-catalog.json .lsp.json domain-packages/*/manifest.json; do
             python3 -m json.tool "$f" > /dev/null
           done
+
+      - name: Verify Step 0 synchronization
+        run: |
+          bash scripts/sync_step0.sh --dry-run
 
       - name: Verify version sync across manifests
         run: |

@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import sys
 
-from verify_evidence import atomic_json
+from verify_evidence import atomic_json, runtime_state_root
 
 
 def exclusion_set(root):
@@ -16,7 +16,11 @@ def exclusion_set(root):
     records=[]
     if manifest.is_file():
         data=json.loads(manifest.read_text())
+        if not isinstance(data,dict) or not isinstance(data.get('exclusions'),list):
+            raise ValueError('coverage-exclusions.json must be an object with an exclusions list')
         for item in data['exclusions']:
+            if not isinstance(item,dict):
+                raise ValueError('each exclusion entry must be a JSON object')
             if item.get('requires_user_approval'):
                 records.append(item)
     else:
@@ -43,12 +47,14 @@ def main():
     p.add_argument('--root',type=Path,required=True)
     p.add_argument('--decision',help='User confirmation text, required to record an approval')
     a=p.parse_args();root=a.root.resolve();records,fingerprint=exclusion_set(root)
-    marker=root/'.rat/state/coverage-exclusion-approved.json'
+    marker=runtime_state_root(root)/'state/coverage-exclusion-approved.json'
     if a.command=='approve':
         if not a.decision:p.error('--decision must contain the user confirmation')
         atomic_json(marker,{'schema_version':1,'fingerprint':fingerprint,'exclusions':records,'user_decision':a.decision})
         return 0
-    try:approval=json.loads(marker.read_text())
+    try:
+        loaded=json.loads(marker.read_text())
+        approval=loaded if isinstance(loaded,dict) else {}
     except (OSError,ValueError):approval={}
     approved=bool(approval.get('user_decision')) and approval.get('fingerprint')==fingerprint
     print(json.dumps({'count':len(records),'fingerprint':fingerprint,'approved':approved,'records':records}))
@@ -56,5 +62,5 @@ def main():
 
 if __name__=='__main__':
     try:raise SystemExit(main())
-    except (ValueError,TypeError,KeyError,OSError) as exc:
+    except (ValueError,TypeError,KeyError,AttributeError,OSError) as exc:
         print(str(exc),file=sys.stderr);raise SystemExit(2)

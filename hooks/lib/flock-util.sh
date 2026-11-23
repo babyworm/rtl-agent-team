@@ -28,16 +28,23 @@ FLOCK_STALE_AGE=${FLOCK_STALE_AGE:-30}
 # instead of serializing at most one per second. POSIX sleep only guarantees
 # integer seconds, but GNU/BSD/busybox all accept fractions — probe once and
 # fall back to whole-second polling where fractions are unsupported.
-if sleep 0.001 2>/dev/null; then
-  _FLOCK_POLL_SLEEP=0.05
-  _FLOCK_POLLS_PER_SEC=20
-else
-  _FLOCK_POLL_SLEEP=1
-  _FLOCK_POLLS_PER_SEC=1
-fi
+_FLOCK_POLL_SLEEP=""
+_FLOCK_POLLS_PER_SEC=""
+
+_flock_init_poll() {
+  [ -n "$_FLOCK_POLL_SLEEP" ] && return 0
+  if sleep 0.001 2>/dev/null; then
+    _FLOCK_POLL_SLEEP=0.05
+    _FLOCK_POLLS_PER_SEC=20
+  else
+    _FLOCK_POLL_SLEEP=1
+    _FLOCK_POLLS_PER_SEC=1
+  fi
+}
 
 acquire_lock() {
   [ -z "$1" ] && return 1
+  _flock_init_poll
   _lock_path="$1.lock"
   _attempt=0
   _max_attempts=$((FLOCK_TIMEOUT * _FLOCK_POLLS_PER_SEC))
@@ -93,6 +100,9 @@ acquire_lock() {
 release_lock() {
   [ -z "$1" ] && return 0
   _lock_path="$1.lock"
+  if [ -f "$_lock_path/pid" ] && [ "$(cat "$_lock_path/pid" 2>/dev/null)" != "$$" ]; then
+    return 0
+  fi
   rm -f "$_lock_path/pid" 2>/dev/null
   rmdir "$_lock_path" 2>/dev/null || rm -rf "$_lock_path" 2>/dev/null
 }

@@ -318,16 +318,15 @@ def compare_results(results_path: str, config: dict) -> dict:
                     if not w or not h:
                         entry["conformance"] = "SKIP"
                         entry["error"] = "target.width/height required for psnr-threshold mode"
-                        stream_results.append(entry)
-                        continue
-                    psnr_val = compute_psnr_from_files(r["output_path"], golden_yuv, w, h, bd)
-                    if psnr_val is not None:
-                        passed = psnr_val >= psnr_threshold
-                        entry["conformance"] = "PASS" if passed else "FAIL"
-                        entry["comparison"] = {"psnr_y": psnr_val, "threshold": psnr_threshold}
                     else:
-                        entry["conformance"] = "SKIP"
-                        entry["error"] = "PSNR computation failed (numpy required)"
+                        psnr_val = compute_psnr_from_files(r["output_path"], golden_yuv, w, h, bd)
+                        if psnr_val is not None:
+                            passed = psnr_val >= psnr_threshold
+                            entry["conformance"] = "PASS" if passed else "FAIL"
+                            entry["comparison"] = {"psnr_y": psnr_val, "threshold": psnr_threshold}
+                        else:
+                            entry["conformance"] = "SKIP"
+                            entry["error"] = "PSNR computation failed (numpy required)"
                 else:
                     entry["conformance"] = "SKIP"
                     entry["error"] = "Golden YUV not found for PSNR comparison"
@@ -369,14 +368,23 @@ def compare_results(results_path: str, config: dict) -> dict:
     # Overall verdict logic:
     #   - mandatory streams exist and all pass → "PASS"
     #   - mandatory streams exist and any fail → "FAIL"
-    #   - no mandatory streams, all optional pass → "PASS (no mandatory streams)"
+    #   - mandatory streams exist and some were skipped (none failed) → "INCONCLUSIVE"
+    #   - no mandatory streams, all optional pass (at least one passed) → "PASS (no mandatory streams)"
     #   - no mandatory streams, any optional fail → "FAIL (optional only)"
+    #   - no streams verified at all → "INCONCLUSIVE"
     if mandatory_total > 0:
-        overall_verdict = "PASS" if mandatory_fail == 0 else "FAIL"
-    elif optional_fail == 0:
+        if mandatory_fail > 0:
+            overall_verdict = "FAIL"
+        elif mandatory_pass == mandatory_total:
+            overall_verdict = "PASS"
+        else:
+            overall_verdict = "INCONCLUSIVE"
+    elif optional_fail > 0:
+        overall_verdict = "FAIL (optional only)"
+    elif optional_pass > 0 and optional_pass == optional_total:
         overall_verdict = "PASS (no mandatory streams)"
     else:
-        overall_verdict = "FAIL (optional only)"
+        overall_verdict = "INCONCLUSIVE"
 
     # Compute derived rate fields (M1)
     total_pass = mandatory_pass + optional_pass

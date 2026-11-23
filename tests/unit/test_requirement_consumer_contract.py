@@ -10,13 +10,11 @@ CANONICAL_IRON = "docs/phase-1-research/iron-requirements.json"
 CANONICAL_OPEN = "docs/phase-1-research/open-requirements.json"
 LEGACY_REQUIREMENTS = re.compile(r"(?<!iron-)(?<!open-)requirements\.json")
 EXCLUDED_PATHS = {
-    "agents/dc-report-parser.md",
     "agents/ppa-optimizer-dc-orchestrator.md",
     "agents/ppa-optimizer-dc.md",
 }
 MIGRATION_EXPLANATION_PATHS = {
     "agents/spec-analyst.md",
-    "skills/p1-spec-research-policy/SKILL.md",
 }
 EXCLUDED_PREFIXES = (
     "skills/ppa-optimizer-dc-policy/",

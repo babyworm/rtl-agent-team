@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import shutil
 import subprocess
@@ -56,11 +57,18 @@ def tool_row(rows, label, config, name, category):
     if failed_probe(entry):
         add(rows, "project", label, FAIL, f"{name}: probe failed ({probe.get('failure') or 'error'})",
             f"{SETUP}: fix its environment and probe again")
-    elif available(argparse.Namespace(tool=name, category=category), config) != 0:
+        return
+    try:
+        is_avail = available(argparse.Namespace(tool=name, category=category), config) == 0
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        add(rows, "project", label, FAIL, f"{name}: availability check failed ({exc})",
+            f"{SETUP}: fix its configuration and probe again")
+        return
+    if not is_avail:
         add(rows, "project", label, FAIL, f"{name}: not found", f"{SETUP}: install it or select an available tool")
     elif probe.get("configuration_sha256") not in (None, tool_fingerprint(entry)):
         add(rows, "project", label, WARN, f"{name}: probed before its path or environment changed", f"{SETUP}: probe again")
-    elif probe.get("license_checked") or probe.get("evidence_level") == "workload_passed":
+    elif probe.get("license_checked") or entry.get("setup_status") == "workload_passed":
         add(rows, "project", label, OK, f"{name}: licensed workload passed")
     elif probe.get("status") == "completed" and name in LICENSE_FREE:
         add(rows, "project", label, OK, f"{name}: runs (no license needed)")
@@ -108,11 +116,18 @@ def plugin_checks(rows, live):
     if not site:
         add(rows, "plugin", "default site", NA, "none selected")
         return None
+    if not isinstance(site, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", site) or site in (".", ".."):
+        add(rows, "plugin", "default site", FAIL, f"invalid default_site name: {site!r}", f"fix default_site in {machine_path}")
+        return None
     profile_path = Path(data) / "sites" / f"{site}.json"
     if not profile_path.is_file():
         add(rows, "plugin", "default site", FAIL, f"{site}: profile {profile_path} is missing", f"{SETUP}: measure the site again")
         return None
-    profile = read_json(profile_path)
+    try:
+        profile = read_json(profile_path)
+    except (OSError, ValueError) as exc:
+        add(rows, "plugin", "default site", FAIL, f"{site}: profile {profile_path} is unreadable: {exc}", f"{SETUP}: measure the site again")
+        return None
     execution = profile.get("execution", {})
     days = (time.time() - float(profile.get("measured_at") or 0)) / 86400
     where = f"{site}: {execution.get('backend', 'local')} {execution.get('host', '')}".rstrip()
@@ -151,10 +166,11 @@ def project_checks(rows, root, profile, live):
         add(rows, "project", "rat_config.json", NA, "absent; machine defaults apply")
     try:
         config = configuration(root)
+        selected = backend(config)
     except (OSError, ValueError) as exc:
         add(rows, "project", "effective settings", FAIL, str(exc), SETUP)
         return
-    selected, execution = backend(config), config.get("execution", {})
+    execution = config.get("execution", {})
     if selected in ("ssh", "lsf"):
         complete = execution.get("host") and Path(execution.get("workspace", "")).is_absolute()
         add(rows, "project", "execution", OK if complete else FAIL,

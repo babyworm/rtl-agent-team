@@ -91,6 +91,23 @@ case "$_SCC_NUM" in
   *) STOPU_CHAIN_CAP=$((_SCC_NUM - 2)) ;;
 esac
 
+# Refuse to silently continue when a Stop gate finds a symlinked .rat / .rat/state directory.
+stopu_refuse_symlink_state() {
+  emit_stop_notice "[RAT] Refusing symlinked .rat state directory; remove the symlink so Stop gates can enforce."
+}
+
+# Atomically write stdin to $1, refusing symlinked targets so a repository-supplied
+# symlink inside .rat/state/ can never truncate an external file.
+_stopu_write_file() {
+  [ ! -L "$1" ] || return 1
+  _SWF_TMP=$(mktemp "${1}.XXXXXX" 2>/dev/null) || return 1
+  if cat > "$_SWF_TMP" 2>/dev/null && mv -f "$_SWF_TMP" "$1" 2>/dev/null; then
+    return 0
+  fi
+  rm -f "$_SWF_TMP" 2>/dev/null
+  return 1
+}
+
 # Print "true" when this Stop continues a chain started by an earlier block, and
 # count the chain's Stops for each named gate: line 3 of its budget file is 1 at the
 # chain start and grows by one on every later Stop of the chain, whoever blocked.
@@ -100,7 +117,7 @@ esac
 # too.
 # Usage: STOP_CHAIN=$(stopu_chain_active "$INPUT" [<state-dir> <gate-id>...])
 stopu_budget_file() {
-  _SBF_SESSION=$(jsonu_session_id "${INPUT:-}")
+  _SBF_SESSION=$(jsonu_session_id "${3:-${INPUT:-}}")
   _SBF_SUFFIX=""
   if [ -n "$_SBF_SESSION" ]; then
     _SBF_SUFFIX="-$(printf '%s' "$_SBF_SESSION" | cksum | awk '{print $1}')"
@@ -123,11 +140,16 @@ stopu_chain_active() {
     # no-progress count (lines 1 and 2) instead.
     _SCA_YIELD=
     stopu_background_agent_pending "$1" && _SCA_YIELD=yield
+    _SCA_INPUT="$1"
     _SCA_DIR=$2
     shift 2
     mkdir -p "$_SCA_DIR" 2>/dev/null
+    if [ "$_SCA_CHAIN" = "false" ]; then
+      # Prune stale per-session stop-budget files (>24h old) to prevent unbounded growth.
+      find "$_SCA_DIR" -maxdepth 1 -name 'stop-budget-*' -type f -mtime +0 -delete 2>/dev/null || true
+    fi
     for _SCA_ID in "$@"; do
-      _SCA_FILE=$(stopu_budget_file "$_SCA_ID" "$_SCA_DIR")
+      _SCA_FILE=$(stopu_budget_file "$_SCA_ID" "$_SCA_DIR" "$_SCA_INPUT")
       if [ "$_SCA_CHAIN" = "false" ]; then
         _SCA_L1=0
         _SCA_L2=
@@ -135,17 +157,17 @@ stopu_chain_active() {
           _SCA_L1=$(stopu_count_line "$_SCA_FILE" 1)
           _SCA_L2=$(sed -n '2p' "$_SCA_FILE")
         fi
-        { { printf '%s\n%s\n1\n0\n%s\n' "$_SCA_L1" "$_SCA_L2" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } > "$_SCA_FILE"; } 2>/dev/null
-      elif [ -f "$_SCA_FILE" ] && { [ -z "$_SCA_PROMPT" ] || [ "$(sed -n '5p' "$_SCA_FILE")" = "$_SCA_PROMPT" ]; }; then
+        { printf '%s\n%s\n1\n0\n%s\n' "$_SCA_L1" "$_SCA_L2" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } | _stopu_write_file "$_SCA_FILE"
+      elif [ -f "$_SCA_FILE" ] && [ ! -L "$_SCA_FILE" ] && { [ -z "$_SCA_PROMPT" ] || [ "$(sed -n '5p' "$_SCA_FILE")" = "$_SCA_PROMPT" ]; }; then
         _SCA_L1=$(sed -n '1p' "$_SCA_FILE")
         _SCA_L2=$(sed -n '2p' "$_SCA_FILE")
         _SCA_L4=$(sed -n '4p' "$_SCA_FILE")
         _SCA_STOPS=$(stopu_count_line "$_SCA_FILE" 3)
         [ "$_SCA_STOPS" -ge 1 ] || _SCA_STOPS=$STOPU_CHAIN_CAP
-        { { printf '%s\n%s\n%s\n%s\n%s\n' "$_SCA_L1" "$_SCA_L2" "$((_SCA_STOPS + 1))" "$_SCA_L4" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } > "$_SCA_FILE"; } 2>/dev/null
+        { printf '%s\n%s\n%s\n%s\n%s\n' "$_SCA_L1" "$_SCA_L2" "$((_SCA_STOPS + 1))" "$_SCA_L4" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } | _stopu_write_file "$_SCA_FILE"
       else
         # No file, or one written for another prompt: this gate missed the chain start.
-        { { printf '0\n\n%s\n0\n%s\n' "$((STOPU_CHAIN_CAP + 1))" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } > "$_SCA_FILE"; } 2>/dev/null
+        { printf '0\n\n%s\n0\n%s\n' "$((STOPU_CHAIN_CAP + 1))" "$_SCA_PROMPT"; [ -z "$_SCA_YIELD" ] || printf 'yield\n'; } | _stopu_write_file "$_SCA_FILE"
       fi
     done
   fi
@@ -221,12 +243,12 @@ stopu_gate() {
   [ "$_SG_DECISION" = "silent" ] && emit_post_continue
   mkdir -p "$2" 2>/dev/null
   if [ "$_SG_DECISION" = "notice" ]; then
-    { printf '%s\n%s\n%s\n1\n%s\n' "$_SG_COUNT" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" > "$_SG_FILE"; } 2>/dev/null
+    printf '%s\n%s\n%s\n1\n%s\n' "$_SG_COUNT" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" | _stopu_write_file "$_SG_FILE"
     emit_stop_notice "$6"
   fi
   # Record the block before making it. If it cannot be recorded the count never
   # advances, so hand over to the user instead of blocking without a bound.
-  if ! { printf '%s\n%s\n%s\n0\n%s\n' "$((_SG_COUNT + 1))" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" > "$_SG_FILE"; } 2>/dev/null; then
+  if ! printf '%s\n%s\n%s\n0\n%s\n' "$((_SG_COUNT + 1))" "$_SG_FP" "$_SG_STOPS" "$_SG_PROMPT" | _stopu_write_file "$_SG_FILE"; then
     emit_stop_notice "$6"
   fi
   emit_stop_block "$5"
@@ -242,9 +264,10 @@ stopu_gate() {
 stopu_renotify() {
   [ "$3" = "true" ] || return 1
   _SRN_FILE=$(stopu_budget_file "$1" "$2")
+  [ ! -L "$_SRN_FILE" ] || return 1
   [ "$(sed -n '4p' "$_SRN_FILE" 2>/dev/null)" = "1" ] || return 1
   [ "$(sed -n '2p' "$_SRN_FILE")" != "$(stopu_fingerprint "$4")" ] || return 1
-  { sed '4s/.*/0/' "$_SRN_FILE" > "$_SRN_FILE.tmp" && mv "$_SRN_FILE.tmp" "$_SRN_FILE"; } 2>/dev/null
+  sed '4s/.*/0/' "$_SRN_FILE" 2>/dev/null | _stopu_write_file "$_SRN_FILE"
 }
 
 # Print what stopu_gate would do now (block, notice or silent) without writing
@@ -316,10 +339,10 @@ stopu_count_line() {
 # Usage: stopu_clear <gate-id> <state-dir>
 stopu_clear() {
   _SC_FILE=$(stopu_budget_file "$1" "$2")
-  [ -f "$_SC_FILE" ] || return 0
+  [ -f "$_SC_FILE" ] && [ ! -L "$_SC_FILE" ] || return 0
   _SC_TOTAL=$(stopu_count_line "$_SC_FILE" 3)
   _SC_PROMPT=$(sed -n '5p' "$_SC_FILE")
-  { printf '0\n\n%s\n0\n%s\n' "$_SC_TOTAL" "$_SC_PROMPT" > "$_SC_FILE"; } 2>/dev/null
+  printf '0\n\n%s\n0\n%s\n' "$_SC_TOTAL" "$_SC_PROMPT" | _stopu_write_file "$_SC_FILE"
 }
 
 # Returns success when a live pipeline awaits a user decision or exhausted repairs.

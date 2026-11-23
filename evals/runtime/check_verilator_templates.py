@@ -18,7 +18,7 @@ def check(workspace, verilator):
         ('unit','skills/rtl-p4s-unit-test/templates/sv-testbench-template.sv','tb_dut','    // ─── Summary'),
         ('integration','skills/rtl-p5s-integration-test/templates/integration-tb-template.sv','integration_tb_dut','    // ── Summary'),
     ]:
-        root=workspace/kind;(root/'rtl').mkdir(parents=True);(root/'sim').mkdir()
+        root=workspace/kind;(root/'rtl').mkdir(parents=True,exist_ok=True);(root/'sim').mkdir(exist_ok=True)
         dut=root/'rtl/dut.sv';tb=root/'sim/tb.sv'
         dut.write_text('module dut(input logic sys_clk, input logic sys_rst_n); wire ready=sys_rst_n; endmodule\n')
         body=(PLUGIN/relative).read_text().replace('{{MODULE_NAME}}','dut').replace('{{TOP_NAME}}','dut').replace('{{DOMAIN}}','sys')

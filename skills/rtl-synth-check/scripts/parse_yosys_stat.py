@@ -42,12 +42,17 @@ def parse_stat_output(text: str) -> dict:
 
     in_stat = False
     in_modern_stat = False
+    in_modern_cells = False
+    _SUMMARY_WORDS = {
+        "wires", "cells", "ports", "memories", "processes", "submodules", "unknown",
+    }
     for line in text.splitlines():
         line = line.strip()
 
         if re.fullmatch(r"=== .+ ===", line):
             in_stat = False
             in_modern_stat = True
+            in_modern_cells = False
 
         if "Statistics" in line or "Number of cells:" in line:
             in_stat = True
@@ -55,11 +60,60 @@ def parse_stat_output(text: str) -> dict:
         if not in_stat and not in_modern_stat:
             continue
 
-        # Cell type counts: $_DFF_P_ 42
-        cell_match = re.match(r'(\$\w+|\$_\w+_?)\s+(\d+)', line) if in_stat else None
-        modern_cell_match = (
-            re.match(r'(\d+)\s+(\$\S+)$', line) if in_modern_stat else None
+        if not line or line.startswith("Chip area "):
+            in_modern_cells = False
+
+        if in_modern_stat:
+            modern_wire_match = re.match(r'(\d+)\s+wires$', line)
+            modern_wire_bits_match = re.match(r'(\d+)\s+wire bits$', line)
+            modern_mem_match = re.match(r'(\d+)\s+memories$', line)
+            modern_mem_bits_match = re.match(r'(\d+)\s+memory bits$', line)
+            modern_total_match = re.match(r'(\d+)\s+cells$', line)
+            modern_other_hdr = re.match(
+                r'(\d+)\s+(?:public wires|public wire bits|ports|port bits|processes|submodules)$',
+                line,
+            )
+            if modern_wire_match:
+                result["wires"] = int(modern_wire_match.group(1))
+                in_modern_cells = False
+                continue
+            if modern_wire_bits_match:
+                result["wire_bits"] = int(modern_wire_bits_match.group(1))
+                in_modern_cells = False
+                continue
+            if modern_mem_match:
+                result["memories"] = int(modern_mem_match.group(1))
+                in_modern_cells = False
+                continue
+            if modern_mem_bits_match:
+                result["memory_bits"] = int(modern_mem_bits_match.group(1))
+                in_modern_cells = False
+                continue
+            if modern_other_hdr:
+                in_modern_cells = False
+                continue
+            if modern_total_match:
+                result["cells"] = {}
+                result["total_cells"] = int(modern_total_match.group(1))
+                result["latches_found"] = 0
+                result["concerns"] = []
+                in_modern_cells = True
+                continue
+
+        # Cell type counts: legacy ($_DFF_P_ 42 or NAND2_X1 42) or modern (42 $_AND_ or 42 NAND2_X1)
+        cell_match = (
+            re.match(r'^(\$\w+|\$_\w+_?|[A-Za-z][A-Za-z0-9_]+)\s+(\d+)$', line)
+            if in_stat
+            else None
         )
+        if cell_match and cell_match.group(1).lower() in _SUMMARY_WORDS:
+            cell_match = None
+        modern_cell_match = None
+        if in_modern_stat:
+            if in_modern_cells:
+                modern_cell_match = re.match(r'^(\d+)\s+(\S+)$', line)
+            else:
+                modern_cell_match = re.match(r'^(\d+)\s+(\$\S+)$', line)
         if cell_match:
             cell_type = cell_match.group(1)
             count = int(cell_match.group(2))
@@ -74,8 +128,13 @@ def parse_stat_output(text: str) -> dict:
             count = 0
 
         if cell_type is not None:
-            # Check for latches
-            if "DLATCH" in cell_type.upper():
+            upper_cell = cell_type.upper()
+            # Check for latches (Yosys $_DLATCH_* and liberty-mapped DLH/DLL/TLAT/LATCH cells)
+            if (
+                "DLATCH" in upper_cell
+                or "LATCH" in upper_cell
+                or re.search(r'(?:^|_)(?:DL[LH]|DLXT|TLAT)(?:[_A-Z0-9]|$)', upper_cell)
+            ):
                 result["latches_found"] += count
                 result["concerns"].append(
                     f"CRITICAL: {count} latch(es) inferred ({cell_type})"
@@ -106,26 +165,6 @@ def parse_stat_output(text: str) -> dict:
         mem_match = re.match(r'Number of memories:\s+(\d+)', line) if in_stat else None
         if mem_match:
             result["memories"] = int(mem_match.group(1))
-
-        if in_modern_stat:
-            modern_wire_match = re.match(r'(\d+)\s+wires$', line)
-            modern_wire_bits_match = re.match(r'(\d+)\s+wire bits$', line)
-            modern_mem_match = re.match(r'(\d+)\s+memories$', line)
-            modern_mem_bits_match = re.match(r'(\d+)\s+memory bits$', line)
-            modern_total_match = re.match(r'(\d+)\s+cells$', line)
-            if modern_wire_match:
-                result["wires"] = int(modern_wire_match.group(1))
-            if modern_wire_bits_match:
-                result["wire_bits"] = int(modern_wire_bits_match.group(1))
-            if modern_mem_match:
-                result["memories"] = int(modern_mem_match.group(1))
-            if modern_mem_bits_match:
-                result["memory_bits"] = int(modern_mem_bits_match.group(1))
-            if modern_total_match:
-                result["cells"] = {}
-                result["total_cells"] = int(modern_total_match.group(1))
-                result["latches_found"] = 0
-                result["concerns"] = []
 
         # Area (from stat -liberty)
         area_match = re.match(r'Chip area for .*:\s+([\d.]+)', line)
@@ -160,6 +199,9 @@ def main():
 
     if "--output" in sys.argv:
         idx = sys.argv.index("--output")
+        if idx + 1 >= len(sys.argv):
+            print("ERROR: --output requires a file path", file=sys.stderr)
+            sys.exit(2)
         output_file = Path(sys.argv[idx + 1])
 
     text = input_file.read_text()

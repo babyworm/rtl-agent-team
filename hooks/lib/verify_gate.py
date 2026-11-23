@@ -59,11 +59,21 @@ def tracking(state: Path) -> list[str]:
         return lines_of(solo) + [line for path in sessions for line in lines_of(path)]
     lines = lines_of(solo)
     if fallback.is_file() and fallback.stat().st_size:
-        text = fallback.read_text(errors="replace")
-        with solo.open("a") as stream:
-            stream.write(text)
-        fallback.unlink()
-        lines += text.splitlines()
+        # Atomically claim the fallback file before reading so concurrent appends
+        # create a fresh fallback file instead of being lost at unlink().
+        claimed = state / f"rtl-modified-files-fallback.{os.getpid()}.tmp"
+        try:
+            os.replace(fallback, claimed)
+        except OSError:
+            claimed = None
+        if claimed is not None:
+            try:
+                text = claimed.read_text(errors="replace")
+                with solo.open("a") as stream:
+                    stream.write(text)
+                lines += text.splitlines()
+            finally:
+                claimed.unlink(missing_ok=True)
     return lines
 
 

@@ -58,7 +58,7 @@ Plugin CLAUDE.md is **NOT loaded** in user projects (Claude Code plugin architec
 Instead, this plugin uses **multi-layered dynamic prompt injection** to deliver rules and context:
 
 ```
-[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~106 lines / ~8.5KB auto-injected in RAT projects)
+[Always-on]  SessionStart hook  → Pipeline Rules + Routing Table (~113 lines / ~10.4KB auto-injected in RAT projects)
 [Path-scoped] .claude/rules/    → Coding conventions, verification gates (on .sv file access)
 [On-demand]  Subdirectory CLAUDE.md → Phase-specific guides (on directory entry)
 [Invoked]    Skill SKILL.md     → Full workflow instructions (on skill invocation)
@@ -79,9 +79,9 @@ window efficient. Three sources are always-on and are the ones to budget:
 
 | Always-on source | Size | Contract |
 |---|---:|---|
-| Agent frontmatter (`name` + `description` × 91) | ~21.7 KB | none yet — largest, least governed |
-| Skill frontmatter (`name` + `description` × 91) | ~13.3 KB | action skills ≤160 chars; internal/policy skills carry minimal one-liners |
-| SessionStart hook injection (Layer 1) | ~8.5 KB | RAT-marked projects only |
+| Agent frontmatter (`name` + `description` × 91) | ~19.5 KB | none yet — largest, least governed |
+| Skill frontmatter (`name` + `description` × 56) | ~9.8 KB | action skills ≤160 chars; internal/convention skills carry minimal one-liners |
+| SessionStart hook injection (Layer 1) | ~10.4 KB | RAT-marked projects only |
 
 Keep the description budget under control: the harness truncates skill descriptions
 when the total gets too large, which silently destroys routing. This is observable —
@@ -161,7 +161,7 @@ When modifying this plugin:
     - `package.json` (`version`)
     - `.claude-plugin/plugin.json` (`version`)
     - `.claude-plugin/marketplace.json` (`metadata.version` + `plugins[0].version`)
-    - `README.md` + `README_kr.md` (Marketplace table version)
+    - `README.md` + `README_kr.md` (version references)
     - `CHANGELOG.md` (move `[Unreleased]` items into new versioned section with date)
     - Verify no stale version references remain: `grep -r '0\.OLD\.VER' package.json .claude-plugin/ README.md README_kr.md`
     - **Sub-plugin sha pin (marketplace.json)**: when bumping a github-source sub-plugin (e.g., `systemverilog-lsp`), use the **commit sha**, not the annotated tag-object sha. `git rev-parse <tag>` returns the tag-object sha for annotated tags; `git rev-parse <tag>^{commit}` always returns the commit sha. They are equal only for lightweight tags. Verify with `git cat-file -t <sha>` — must print `commit`, never `tag`. v0.10.5 pinned a tag-object sha by mistake; v0.10.6 corrected it.
@@ -173,7 +173,7 @@ When modifying this plugin:
 ### Intentional Design Decisions (Do Not Flag in Reviews)
 
 1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
-2. **Step 0 Context Bootstrap duplicated across 30 of the 33 orchestrators** — These 30 orchestrator agents carry the canonical block synchronized from `plugin_docs/agent-lib/step0-template.md`. This is intentional: agent prompts must be self-contained (no `#include`), and indirection via `plugin_docs/agent-lib/` would add a Read() tool call per agent spawn. `p5a-functional-closure-orchestrator`, `p5b-silicon-validation-orchestrator`, and `ppa-optimizer-dc-orchestrator` use custom preconditions/state files instead of the canonical block; all three still use the shared project-root path convention in their headers.
+2. **Step 0 Context Bootstrap duplicated across 20 orchestrators** — These 20 orchestrator agents carry the canonical block synchronized from `plugin_docs/agent-lib/step0-template.md` (`bash scripts/sync_step0.sh --dry-run`). This is intentional: agent prompts must be self-contained (no `#include`), and indirection via `plugin_docs/agent-lib/` would add a Read() tool call per agent spawn. `p5a-functional-closure-orchestrator`, `p5b-silicon-validation-orchestrator`, and `ppa-optimizer-dc-orchestrator` use custom preconditions/state files instead of the canonical block; all three still use the shared project-root path convention in their headers.
 
 ### File Architecture
 
@@ -190,28 +190,32 @@ rtl-agent-team/                          # Plugin root
 │   │   ├── rules/ (2 files)             #     → .claude/rules/ in user project
 │   │   └── guides/ (6 files)            #     → {dir}/CLAUDE.md in user project
 │   └── {skill-name}/SKILL.md            #   Phase-specific workflow
-├── hooks/                               # Event-driven enforcement
+├── hooks/                               # Event-driven enforcement (18 hook scripts)
 │   ├── hooks.json                       #   Hook registration config
 │   ├── rtl-orchestrator-inject.sh       #   SessionStart: routing rules injection
-│   ├── rtl-edit-tracker.sh              #   PostToolUse:Edit/Write/Bash: RTL modification tracking + P6 stale detection
-│   ├── rtl-phase-state-bootstrap.sh     #   PreToolUse:Skill: phase state bootstrap
+│   ├── rtl-audit-init.sh                #   SessionStart: audit session initialization
+│   ├── rtl-parser-warning.sh            #   SessionStart: sed-fallback warning in RAT projects
+│   ├── rtl-eda-context.sh               #   SessionStart/SubagentStart: EDA settings lookup hint + env
+│   ├── rtl-skill-expansion.sh           #   UserPromptExpansion: slash-command skill expansion bootstrap + activation
+│   ├── rtl-edit-tracker.sh              #   PreToolUse/PostToolUse/PostToolUseFailure:Edit/Write/Bash: RTL tracking + P6 stale
+│   ├── rtl-phase-state-bootstrap.sh     #   PreToolUse+PostToolUse:Skill: phase state bootstrap
 │   ├── rtl-skill-activation.sh          #   PreToolUse+PostToolUse:Skill: skill completion loop
-│   ├── stop-gate.sh                     #   Stop: autopilot state gate
+│   ├── rtl-team-owner.sh                #   PostToolUse:Edit/Write: team-owner.json fingerprint recording
+│   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking + heartbeat
+│   ├── rtl-spawn-context.sh             #   PreToolUse:Agent: spawn context manifest
+│   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:Agent: audit spawn completion
+│   ├── rtl-audit-subagent.sh            #   SubagentStart/SubagentStop: per-subagent audit capture
 │   ├── rtl-verify-stop-gate.sh          #   Stop: RTL verification gate
 │   ├── rtl-p6-cascade-gate.sh           #   Stop: Phase 6 cascade enforcement
 │   ├── rtl-skill-completion-gate.sh     #   Stop: skill completion enforcement
-│   ├── rtl-coverage-exclusion-gate.sh  #   Stop: coverage exclusion approval enforcement
-│   ├── rtl-audit-init.sh                #   SessionStart: audit session initialization
-│   ├── rtl-audit-subagent.sh            #   SubagentStart/SubagentStop: per-subagent audit capture
-│   ├── rtl-audit-spawn-complete.sh      #   PostToolUse:Agent: audit spawn completion
-│   ├── rtl-spawn-context.sh             #   PreToolUse:Agent: spawn context manifest
-│   ├── rtl-team-progress.sh             #   PostToolUse:TaskUpdate: team progress tracking
+│   ├── rtl-coverage-exclusion-gate.sh   #   Stop: coverage exclusion approval enforcement
+│   ├── stop-gate.sh                     #   Stop: autopilot state gate
 │   └── lib/                             #   shared sh libs (json-util.sh, flock-util.sh, posix-util.sh,
 │                                        #     hook-output-util.sh, spawn-context-util.sh,
 │                                        #     team-gate-util.sh, audit-util.sh, artifact-map.sh,
 │                                        #     compliance-gate-util.sh, rat-dir-util.sh, stop-budget-util.sh,
-│                                        #     python-util.sh) + Python hook logic (verify_gate.py,
-│                                        #     session_inject.py)
+│                                        #     skill-event-util.sh, python-util.sh) + Python hook logic
+│                                        #     (verify_gate.py, session_inject.py)
 ├── plugin_docs/                         # Plugin development documents (tracked)
 │   ├── specs/                           #   Design specifications
 │   ├── plans/                           #   Implementation plans
@@ -335,24 +339,28 @@ Full rules: `.claude/rules/rtl-coding-conventions.md`. Verification gate: `.clau
 
 ## Hook-Based Enforcement
 
-All 14 hook scripts and their enforcement responsibilities are listed below.
+All 18 hook scripts and their enforcement responsibilities are listed below.
 
 | Hook Script | Event | Enforcement |
 |-------------|-------|-------------|
 | `rtl-orchestrator-inject.sh` | SessionStart | Inject routing rules + pipeline rules for user projects |
-| `rtl-edit-tracker.sh` | PostToolUse:Edit/Write/Bash | Track .sv file modifications for verification gate + Phase 6 stale detection |
-| `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill | Bootstrap phase state for skill invocation |
+| `rtl-audit-init.sh` | SessionStart | Initialize audit session directory and trace log |
+| `rtl-parser-warning.sh` | SessionStart | Warn in RAT projects when neither `jq` nor Python is available for JSON parsing |
+| `rtl-eda-context.sh` | SessionStart, SubagentStart | Inject short EDA settings lookup hint and export `CLAUDE_PLUGIN_DATA` when configured |
+| `rtl-skill-expansion.sh` | UserPromptExpansion | Run phase state bootstrap and skill activation for `/rtl-agent-team:*` slash commands |
+| `rtl-edit-tracker.sh` | PreToolUse, PostToolUse, PostToolUseFailure:Edit/Write/Bash | Track .sv file modifications for verification gate, Phase 6 stale detection, and background task tracking |
+| `rtl-phase-state-bootstrap.sh` | PreToolUse:Skill, PostToolUse:Skill | Bootstrap phase state and enforce phase-entry preconditions for skill invocation |
 | `rtl-skill-activation.sh` | PreToolUse:Skill, PostToolUse:Skill | Setup and phase advisory before the call; completion-loop state (criteria, same-skill counter reset) once the call ran |
-| `stop-gate.sh` | Stop | Autopilot pauses for a user decision after two failed measured repairs at the active gate |
+| `rtl-team-owner.sh` | PostToolUse:Edit/Write | Record owning session and `team-config.json` fingerprint in `team-owner.json` |
+| `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode; an in-process teammate's TaskUpdate refreshes team-config.json (team heartbeat) |
+| `rtl-spawn-context.sh` | PreToolUse:Agent | Spawn context manifest for agent spawns |
+| `rtl-audit-spawn-complete.sh` | PostToolUse:Agent | Log spawn completion events to audit trace |
+| `rtl-audit-subagent.sh` | SubagentStart, SubagentStop | Log subagent lifecycle events to audit trace |
 | `rtl-verify-stop-gate.sh` | Stop | RTL verification gate (lint alone insufficient) |
 | `rtl-p6-cascade-gate.sh` | Stop | Phase 6 cascade (RTL change after P6 → re-review) + document mtime verification |
 | `rtl-skill-completion-gate.sh` | Stop | Bounded completion reminder; no automatic review ladder |
 | `rtl-coverage-exclusion-gate.sh` | Stop | Coverage exclusion approval (non-standard bins require user confirmation) |
-| `rtl-spawn-context.sh` | PreToolUse:Agent | Spawn context manifest for agent spawns |
-| `rtl-team-progress.sh` | PostToolUse:TaskUpdate | Team progress tracking during native team mode; an in-process teammate's TaskUpdate refreshes team-config.json (team heartbeat) |
-| `rtl-audit-init.sh` | SessionStart | Initialize audit session directory and trace log |
-| `rtl-audit-subagent.sh` | SubagentStart/SubagentStop | Log subagent lifecycle events to audit trace |
-| `rtl-audit-spawn-complete.sh` | PostToolUse:Agent | Log spawn completion events to audit trace |
+| `stop-gate.sh` | Stop | Autopilot pauses for a user decision after two failed measured repairs at the active gate |
 
 **State files**: Stored under `.rat/state/`. Pipeline state, verification gates, skill completion tracking, and each Stop gate's no-progress budget (`stop-budget-<gate-id>.txt`).
 

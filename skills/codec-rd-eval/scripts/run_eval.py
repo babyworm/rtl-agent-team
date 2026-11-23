@@ -259,9 +259,10 @@ def run_single_encode(
 ) -> EncodingResult:
     """Run a single encoding job."""
     seq_name = sequence["name"]
+    safe_seq = sanitize_label(seq_name)
     safe_label = sanitize_label(config_label)
-    output_bitstream = os.path.join(output_dir, f"{seq_name}_qp{qp}_{safe_label}.bin")
-    output_recon = os.path.join(output_dir, f"{seq_name}_qp{qp}_{safe_label}_rec.yuv")
+    output_bitstream = os.path.join(output_dir, f"{safe_seq}_qp{qp}_{safe_label}.bin")
+    output_recon = os.path.join(output_dir, f"{safe_seq}_qp{qp}_{safe_label}_rec.yuv")
 
     bit_depth = sequence.get("bit_depth", 8)
     chroma_format = str(sequence.get("chroma_format", "420"))

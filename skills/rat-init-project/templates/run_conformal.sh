@@ -343,8 +343,8 @@ cp "$REPLAY_SCRIPT" "$REPLAY_DIR/run_conformal_${TOP}_latest.sh"
 # $LEC_DO components (--script / --outdir / --top) validated against shell
 # metacharacters above — execute via argv, no eval.
 cd "$RUN_CWD"
-run_tool lec -nogui -dofile "$LEC_DO" 2>&1 | tee "$REPORT"
-EXIT_CODE=${PIPESTATUS[0]}
+EXIT_CODE=0
+run_tool lec -nogui -dofile "$LEC_DO" 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
 
 if [[ "$EXIT_CODE" -eq 0 ]]; then
   if conformal_log_has_failure "$REPORT"; then
@@ -367,4 +367,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.3
+# rat-version: 2.0.4

@@ -7,8 +7,35 @@ set -euo pipefail
 
 FORMAT="${FORMAT:-verilator}"
 COVERAGE_DIR="${COVERAGE_DIR:-sim/coverage}"
-OUTPUT="${OUTPUT:-$COVERAGE_DIR/merged.info}"
+OUTPUT="${OUTPUT:-}"
 RESULTS_DIR="${RESULTS_DIR:-sim/regression}"
+
+usage() {
+  cat <<'EOF'
+Usage: merge_coverage.sh [OPTIONS]
+
+Options:
+  --format <verilator|lcov>  Coverage format (default: verilator)
+  --output <path>            Merged output info path (default: <coverage-dir>/merged.info)
+  --coverage-dir <dir>       Coverage report directory (default: sim/coverage)
+  --results-dir <dir>        Regression results directory (default: sim/regression)
+  -h, --help                 Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --format)       FORMAT="$2"; shift 2 ;;
+    --output)       OUTPUT="$2"; shift 2 ;;
+    --coverage-dir) COVERAGE_DIR="$2"; shift 2 ;;
+    --results-dir)  RESULTS_DIR="$2"; shift 2 ;;
+    -h|--help)      usage; exit 0 ;;
+    *)              echo "ERROR: Unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+
+: "${OUTPUT:=$COVERAGE_DIR/merged.info}"
+
 if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
   script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   source "$script_dir/../../rat-init-project/templates/lib/tool-runner.sh"
@@ -19,7 +46,7 @@ if [[ -n "${RAT_EXPERIMENT_ID:-}" ]]; then
 fi
 HTML_DIR="$COVERAGE_DIR/html"
 
-mkdir -p "$COVERAGE_DIR" "$HTML_DIR"
+mkdir -p "$COVERAGE_DIR" "$HTML_DIR" "$(dirname "$OUTPUT")"
 
 case "$FORMAT" in
   verilator)

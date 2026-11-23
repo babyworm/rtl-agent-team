@@ -37,8 +37,8 @@ P1_P3_AGENTS="spec-analyst vcodec-chief-standard-expert rtl-architect vcodec-arc
 # Video-processing domain experts (3)
 VPROC_AGENTS="vproc-image-processing-expert vproc-denoise-expert vproc-color-format-expert"
 
-# Cross-phase writers/reviewers that also run as workers (4)
-MISC_AGENTS="constraint-writer synthesis-reporter ref-model-reviewer uarch-designer"
+# Cross-phase writers/reviewers that also run as workers (3)
+MISC_AGENTS="constraint-writer ref-model-reviewer uarch-designer"
 
 DEFAULT_AGENTS="$P4_P5_AGENTS $P1_P3_AGENTS $VPROC_AGENTS $MISC_AGENTS"
 

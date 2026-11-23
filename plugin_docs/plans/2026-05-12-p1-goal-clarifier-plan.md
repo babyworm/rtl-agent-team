@@ -43,7 +43,7 @@ No `examples/` directory in v1.
 - [ ] **Step 1: Create asset directories**
 
 ```bash
-cd /home/babyworm/work/rtl-agent-team/.worktrees/p1-goal-clarifier
+cd <worktree-root>
 mkdir -p skills/p1-spec-research/{scripts,templates,references}
 touch skills/p1-spec-research/scripts/.gitkeep
 touch skills/p1-spec-research/templates/.gitkeep
@@ -792,7 +792,7 @@ git commit -m "test(p1-spec-research): template + reference doc structural lints
 - [ ] **Step 1: Run the full unit suite**
 
 ```bash
-cd /home/babyworm/work/rtl-agent-team/.worktrees/p1-goal-clarifier
+cd <worktree-root>
 python3 -m pytest tests/unit/ --ignore=tests/unit/test_bd_rate.py -x -q 2>&1 | tail -3
 ```
 

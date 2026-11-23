@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-INSTALL_DIR="${HOME}/.local/bin"
-BUILD_DIR="${HOME}/.local/src/slang-server"
+INSTALL_DIR="${INSTALL_DIR:-${HOME}/.local/bin}"
+BUILD_DIR="${BUILD_DIR:-${HOME}/.local/src/slang-server}"
 REPO_URL="https://github.com/hudson-trading/slang-server.git"
 MIN_CMAKE_VERSION="3.28"
 MIN_GCC_VERSION="11"
@@ -190,13 +190,16 @@ install_binary() {
     cd "$BUILD_DIR"
     mkdir -p "$INSTALL_DIR"
 
-    # Find the built binary
-    local binary
-    binary="$(find build -name 'slang-server' -type f -executable 2>/dev/null | sed -n '1p')"
-    if [[ -z "$binary" ]]; then
-        # Try alternate name
-        binary="$(find build -name 'slang_server' -type f -executable 2>/dev/null | sed -n '1p')"
-    fi
+    # Find the built binary (portable across GNU find and macOS BSD find)
+    local binary="" candidate
+    for name in slang-server slang_server; do
+        while IFS= read -r candidate; do
+            if [[ -n "$candidate" && -x "$candidate" ]]; then
+                binary="$candidate"
+                break 2
+            fi
+        done < <(find build -name "$name" -type f 2>/dev/null)
+    done
 
     if [[ -z "$binary" ]]; then
         log_error "Built binary not found in build/"

@@ -172,10 +172,19 @@ private:
     const uint64_t addr   = trans.get_address();
     uint8_t*       data   = trans.get_data_ptr();
     const unsigned int len = trans.get_data_length();
+
+    if (addr < m_config.base_addr) {
+      trans.set_response_status(tlm::TLM_ADDRESS_ERROR_RESPONSE);
+      return;
+    }
     const uint64_t local_addr = addr - m_config.base_addr;
 
-    if (local_addr + len > m_memory.size()) {
+    if (len > m_memory.size() || local_addr > m_memory.size() - len) {
       trans.set_response_status(tlm::TLM_ADDRESS_ERROR_RESPONSE);
+      return;
+    }
+    if (len > 0 && data == nullptr) {
+      trans.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
       return;
     }
 

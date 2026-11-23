@@ -238,7 +238,12 @@ run_tool() {
   fi
 
   _tool_runner_ensure_container || return $?
-  docker exec "$_TOOL_RUNNER_CONTAINER" "$tool" "$@"
+  local cur_dir container_workdir="/workspace"
+  cur_dir=$(pwd -P)
+  if [[ "$cur_dir" == "$_TOOL_RUNNER_PROJECT_ROOT"/* ]]; then
+    container_workdir="/workspace/${cur_dir#"$_TOOL_RUNNER_PROJECT_ROOT/"}"
+  fi
+  docker exec --workdir "$container_workdir" "$_TOOL_RUNNER_CONTAINER" "$tool" "$@"
 }
 
 # Stop and remove the persistent container
@@ -337,7 +342,7 @@ get_synthesis_tier() {
 # Determine formal verification tool tier
 # Returns: "commercial" | "oss" | "none" (printed to stdout)
 get_formal_tier() {
-  if check_tool_available vcformal || check_tool_available jg; then
+  if check_tool_available vcf || check_tool_available vcformal || check_tool_available jg; then
     echo "commercial"
   elif check_tool_available sby; then
     echo "oss"
@@ -346,7 +351,7 @@ get_formal_tier() {
   fi
 }
 
-# rat-version: 2.0.3
+# rat-version: 2.0.4
 
 
 rat_capture_path() {

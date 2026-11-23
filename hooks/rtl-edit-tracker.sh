@@ -59,7 +59,7 @@ _rat_in_ppa_scope() {
   _ppa_mode=$(jsonu_get_file_path_string "$_ppa_state" "mode")
   [ "$_ppa_mode" != "ppa-loop" ] && return 1
   _PPA_PY=$(rat_select_python 2>/dev/null) || return 1  # the plugin floor; never Python 2
-  "$_PPA_PY" - "$_ppa_file" "$_ppa_state" <<'PY'
+  "$_PPA_PY" - "$_ppa_file" "$_ppa_state" 2>/dev/null <<'PY'
 # Mirror the recursive ** matcher used by
 # skills/rtl-ppa-optimize-dc/scripts/validate_patch_scope.py so that
 # zero-depth matches (e.g. rtl/stub/top.sv against rtl/stub/**/*.sv)
@@ -81,14 +81,15 @@ def _match_one(path, g):
             else:
                 # fnmatch.translate wraps in (?s:...)\Z (Python <3.14) or
                 # (?s:...)\z (Python 3.14+). Strip outer wrapper + end anchor
-                # in either form.
-                regex_parts.append(
-                    fnmatch.translate(part)
-                    .replace(r"\Z", "")
-                    .replace(r"\z", "")
-                    .replace(r"(?s:", "")
-                    .rstrip(")")
-                )
+                # without over-stripping literal ')' inside the pattern.
+                translated = fnmatch.translate(part)
+                for suffix in (r"\Z", r"\z"):
+                    if translated.endswith(suffix):
+                        translated = translated[:-len(suffix)]
+                        break
+                if translated.startswith("(?s:") and translated.endswith(")"):
+                    translated = translated[4:-1]
+                regex_parts.append(translated)
         regex = "^" + "/".join(p for p in regex_parts if p) + "$"
         regex = regex.replace("/.*/", "(/.*)?/")
         return bool(re.match(regex, path))
@@ -158,7 +159,6 @@ TOOL_NAME=$(jsonu_get_root_string "$INPUT" tool_name)
 TOOL_USE_ID=$(jsonu_get_root_string "$INPUT" tool_use_id)
 
 measure_changes() {
-  . "$SCRIPT_DIR/lib/python-util.sh"
   _MEASURE_PY=$(rat_select_python 2>/dev/null) || return 1
   printf '%s' "$INPUT" | "$_MEASURE_PY" "$SCRIPT_DIR/../scripts/rtl_change_snapshot.py" "$CWD" "$RAT_DIR/state"
 }
@@ -187,11 +187,15 @@ fi
 [ "$TOOL_NAME" != Bash ] || emit_post_continue
 [ -n "$FILE_PATH" ] || emit_post_continue
 
+# Normalize file_path relative to project root for doc/review matching while
+# keeping the raw path for absolute testbench path matching.
+RAW_FILE_PATH="$FILE_PATH"
+FILE_PATH=$(ratu_normalize_path "$FILE_PATH" "$SESSION_CWD" "$CWD")
+
 # Check if the file is an RTL file
 case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     _setup_tracking
-    FILE_PATH=$(ratu_normalize_path "$FILE_PATH" "$SESSION_CWD" "$CWD")
     case "$FILE_PATH" in .claude/worktrees/*|experiment/*|"$CWD"/experiment/*) emit_post_continue ;; /*) ;; *) FILE_PATH="$CWD/$FILE_PATH" ;; esac
     if _rat_in_ppa_scope "$FILE_PATH"; then
       _check_p6_stale "$CWD" "$STATE_DIR" >/dev/null
@@ -205,28 +209,35 @@ case "$FILE_PATH" in
     _prepare_gate_output
     emit_post_context "[RTL Verify Gate] $(basename "$FILE_PATH") modified ($COUNT unverified RTL files). Run functional simulation for changed RTL; lint alone does not verify behavior. scripts/run_sim.sh records content-bound evidence after PASS. $P6_MSG"
     ;;
-  */sim/*.py)
-    # Testbench Python file modified — invalidate previous verification results
-    _setup_tracking
-    if acquire_lock "$TRACK_FILE"; then
-      rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
-      release_lock "$TRACK_FILE"
-    else
-      rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
-    fi
-    SAFE_TB=$(jsonu_escape "$(basename "$FILE_PATH")")
-    printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[TB Verify Gate] Testbench %s modified — previous verification results invalidated. Re-run functional verification to confirm RTL correctness with updated tests."}}\n' "$SAFE_TB"
-    exit 0
+  *)
+    case "$RAW_FILE_PATH" in
+      */sim/*.py)
+        # Testbench Python file modified — invalidate previous verification results
+        _setup_tracking
+        if acquire_lock "$TRACK_FILE"; then
+          rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
+          release_lock "$TRACK_FILE"
+        else
+          rm -f "$STATE_DIR/rtl-verify-done" "$STATE_DIR/rtl-verify-waiver"
+        fi
+        SAFE_TB=$(jsonu_escape "$(basename "$FILE_PATH")")
+        printf '{"continue":true,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"[TB Verify Gate] Testbench %s modified — previous verification results invalidated. Re-run functional verification to confirm RTL correctness with updated tests."}}\n' "$SAFE_TB"
+        exit 0
+        ;;
+    esac
     ;;
-  */docs/phase-1-research/*|*/docs/phase-2-architecture/*|*/docs/phase-3-uarch/*)
+esac
+
+case "$FILE_PATH" in
+  docs/phase-1-research/*|*/docs/phase-1-research/*|docs/phase-2-architecture/*|*/docs/phase-2-architecture/*|docs/phase-3-uarch/*|*/docs/phase-3-uarch/*)
     # Spec Change Cascade: upstream phase doc modified → check downstream staleness
     _CASCADE_WARN=""
     _CASCADE_PHASE=""
     _CASCADE_DOWNSTREAM=""
     case "$FILE_PATH" in
-      */docs/phase-1-research/*) _CASCADE_PHASE=1; _CASCADE_DOWNSTREAM="P2, P3, P4, P5" ;;
-      */docs/phase-2-architecture/*) _CASCADE_PHASE=2; _CASCADE_DOWNSTREAM="P3, P4, P5" ;;
-      */docs/phase-3-uarch/*) _CASCADE_PHASE=3; _CASCADE_DOWNSTREAM="P4, P5" ;;
+      docs/phase-1-research/*|*/docs/phase-1-research/*) _CASCADE_PHASE=1; _CASCADE_DOWNSTREAM="P2, P3, P4, P5" ;;
+      docs/phase-2-architecture/*|*/docs/phase-2-architecture/*) _CASCADE_PHASE=2; _CASCADE_DOWNSTREAM="P3, P4, P5" ;;
+      docs/phase-3-uarch/*|*/docs/phase-3-uarch/*) _CASCADE_PHASE=3; _CASCADE_DOWNSTREAM="P4, P5" ;;
     esac
     if [ -n "$_CASCADE_PHASE" ]; then
       _HAS_DOWNSTREAM=false
@@ -274,7 +285,7 @@ case "$FILE_PATH" in
     fi
     emit_post_continue
     ;;
-  */docs/*|*/reviews/*)
+  docs/*|*/docs/*|reviews/*|*/reviews/*)
     # Spec cascade auto-resolution: when the cross-phase-contract-validator
     # report is written with a PASS verdict, clear spec-cascade-stale-p*
     # markers (hook-side enforcement — not dependent on LLM compliance).
@@ -282,7 +293,7 @@ case "$FILE_PATH" in
     # anywhere never clears markers.
     _CPV_RESOLVED=false
     case "$FILE_PATH" in
-      */reviews/cross-phase-contract-validation.md)
+      reviews/cross-phase-contract-validation.md|*/reviews/cross-phase-contract-validation.md)
         _CPV_REPORT="$FILE_PATH"
         case "$_CPV_REPORT" in
           /*) : ;;

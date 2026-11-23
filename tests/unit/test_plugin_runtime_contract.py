@@ -162,7 +162,9 @@ class TestHookRuntimeContract:
         # In python parser mode the skill completion gate and stop-gate.sh each start python
         # about two dozen times on a blocking Stop, and a Stop hook that times out fails open.
         # Direct expansion runs both skill hooks sequentially, including parser work.
-        slow = {"rtl-skill-completion-gate.sh", "stop-gate.sh", "rtl-skill-expansion.sh"}
+        # Edit tracker walks and hashes project HDL on Bash tool calls; a PreToolUse timeout
+        # would fail open on PostToolUse.
+        slow = {"rtl-skill-completion-gate.sh", "stop-gate.sh", "rtl-skill-expansion.sh", "rtl-edit-tracker.sh"}
         timeouts = {}
         for event_entries in hooks["hooks"].values():
             for entry in event_entries:

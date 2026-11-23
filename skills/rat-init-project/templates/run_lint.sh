@@ -154,6 +154,8 @@ validate_shell_safe "--waiver path" "$WAIVER"
 validate_shell_safe "--outdir path" "$OUTDIR"
 validate_shell_safe "--script path" "$SCRIPT_PATH"
 validate_shell_safe "source file path" ${SRC_FILES[@]+"${SRC_FILES[@]}"}
+[[ ${#INPUT_INCLUDE_DIRS[@]} -eq 0 ]] || validate_shell_safe "filelist include directory" ${INPUT_INCLUDE_DIRS[@]+"${INPUT_INCLUDE_DIRS[@]}"}
+[[ ${#INPUT_DEFINES[@]} -eq 0 ]] || validate_shell_safe "filelist define" ${INPUT_DEFINES[@]+"${INPUT_DEFINES[@]}"}
 
 # cd to lint directory — all tool artifacts stay contained
 cd "$OUTDIR"
@@ -192,8 +194,8 @@ case "$TOOL" in
     echo "=== Verilator Lint ==="
     echo "CMD: ${CMD[*]:-}"
     write_replay "${CMD[*]:-}"
-    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   verible)
@@ -205,8 +207,8 @@ case "$TOOL" in
     echo "=== Verible Lint ==="
     echo "CMD: ${CMD[*]:-}"
     write_replay "${CMD[*]:-}"
-    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   slang)
@@ -237,8 +239,8 @@ case "$TOOL" in
     [[ "$IS_RTL" -eq 1 ]] && echo "Mode: RTL strict (-Weverything)" || echo "Mode: TB (--allow-dup-initial-drivers)"
     echo "CMD: ${CMD[*]:-}"
     write_replay "${CMD[*]:-}"
-    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT"
-    EXIT_CODE=${PIPESTATUS[0]}
+    EXIT_CODE=0
+    run_tool ${CMD[@]+"${CMD[@]}"} 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
     ;;
 
   spyglass)
@@ -297,9 +299,8 @@ case "$TOOL" in
     echo "CMD: $CMD_STR"
     write_replay "$CMD_STR"
     EXIT_CODE=0
-    run_tool sg_shell -tcl "$SPYGLASS_TCL" </dev/null 2>&1 | tee "$REPORT" || EXIT_CODE=$?
-    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" verdict --root "$PROJECT_ROOT" --purpose goals --tool spyglass --log "$REPORT" --exit-code "$EXIT_CODE"
-    EXIT_CODE=$?
+    run_tool sg_shell -tcl "$SPYGLASS_TCL" </dev/null 2>&1 | tee "$REPORT" || EXIT_CODE=${PIPESTATUS[0]}
+    "$_TOOL_RUNNER_PYTHON" "$_TOOL_RUNNER_RUNTIME" verdict --root "$PROJECT_ROOT" --purpose goals --tool spyglass --log "$REPORT" --exit-code "$EXIT_CODE" || EXIT_CODE=$?
     ;;
 
   *)
@@ -310,8 +311,10 @@ case "$TOOL" in
 esac
 
 # ─── Summary ───────────────────────────────────────────────────────────────
-ERRORS=$(grep -ci "error" "$REPORT" 2>/dev/null || echo 0)
-WARNINGS=$(grep -ci "warning" "$REPORT" 2>/dev/null || echo 0)
+ERRORS=$(grep -ci "error" "$REPORT" 2>/dev/null || true)
+ERRORS=${ERRORS:-0}
+WARNINGS=$(grep -ci "warning" "$REPORT" 2>/dev/null || true)
+WARNINGS=${WARNINGS:-0}
 
 echo ""
 echo "=== Lint Summary ==="
@@ -325,4 +328,4 @@ echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 2.0.3
+# rat-version: 2.0.4

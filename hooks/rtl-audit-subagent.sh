@@ -31,16 +31,21 @@ SESSION_ID=$(audit_session_id "$CWD")
 SESSION_DIR="$AUDIT_DIR/$SESSION_ID"
 [ ! -d "$SESSION_DIR" ] && exit 0
 
-# Append raw input to diagnostic log for schema analysis
+# Append single-line raw input to diagnostic log for schema analysis
 DIAG_FILE="$SESSION_DIR/subagent-debug.jsonl"
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S+00:00)
+RAW_LINE=$(printf '%s' "$INPUT" | tr '\r\n' '  ')
+case "$RAW_LINE" in
+  '{'*|'['*) ;;
+  *) RAW_LINE="null" ;;
+esac
 
 if acquire_lock "$DIAG_FILE"; then
-  printf '{"ts":"%s","raw_input":%s}\n' "$TS" "$INPUT" >> "$DIAG_FILE"
+  printf '{"ts":"%s","raw_input":%s}\n' "$TS" "$RAW_LINE" >> "$DIAG_FILE"
   release_lock "$DIAG_FILE"
 else
   # Fail-open: append without lock
-  printf '{"ts":"%s","raw_input":%s}\n' "$TS" "$INPUT" >> "$DIAG_FILE"
+  printf '{"ts":"%s","raw_input":%s}\n' "$TS" "$RAW_LINE" >> "$DIAG_FILE"
 fi
 
 # No output — diagnostic only

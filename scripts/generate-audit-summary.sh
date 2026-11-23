@@ -20,6 +20,14 @@ if [ -z "$SESSION_ID" ]; then
   fi
 fi
 
+# Validate session ID against strict allowlist to prevent path traversal
+case "$SESSION_ID" in
+  ''|.|..|.*|*.|*[!A-Za-z0-9._-]*)
+    echo "ERROR: Invalid session ID: $SESSION_ID" >&2
+    exit 1
+    ;;
+esac
+
 TRACE_FILE="$AUDIT_DIR/$SESSION_ID/trace.jsonl"
 SUMMARY_FILE="$AUDIT_DIR/$SESSION_ID/summary.md"
 PROMPTS_DIR="$AUDIT_DIR/$SESSION_ID/prompts"
@@ -46,13 +54,13 @@ while IFS= read -r line; do
   [ -z "$line" ] && continue
 
   if command -v jq >/dev/null 2>&1; then
-    TS=$(printf '%s' "$line" | jq -r '.ts // ""' 2>/dev/null)
-    EVENT=$(printf '%s' "$line" | jq -r '.event // ""' 2>/dev/null)
-    AGENT=$(printf '%s' "$line" | jq -r '.agent // ""' 2>/dev/null)
-    DETAIL=$(printf '%s' "$line" | jq -r '.detail // ""' 2>/dev/null)
-    STATUS=$(printf '%s' "$line" | jq -r '.status // ""' 2>/dev/null)
-    PHASE=$(printf '%s' "$line" | jq -r '.phase // ""' 2>/dev/null)
-    SOURCE=$(printf '%s' "$line" | jq -r '.source // ""' 2>/dev/null)
+    TS=$(printf '%s' "$line" | jq -r '.ts // ""' 2>/dev/null || true)
+    EVENT=$(printf '%s' "$line" | jq -r '.event // ""' 2>/dev/null || true)
+    AGENT=$(printf '%s' "$line" | jq -r '.agent // ""' 2>/dev/null || true)
+    DETAIL=$(printf '%s' "$line" | jq -r '.detail // ""' 2>/dev/null || true)
+    STATUS=$(printf '%s' "$line" | jq -r '.status // ""' 2>/dev/null || true)
+    PHASE=$(printf '%s' "$line" | jq -r '.phase // ""' 2>/dev/null || true)
+    SOURCE=$(printf '%s' "$line" | jq -r '.source // ""' 2>/dev/null || true)
   else
     TS=$(printf '%s' "$line" | sed -n 's/.*"ts"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
     EVENT=$(printf '%s' "$line" | sed -n 's/.*"event"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')

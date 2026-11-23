@@ -9,6 +9,8 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 . "$SCRIPT_DIR/lib/json-util.sh"
 . "$SCRIPT_DIR/lib/flock-util.sh"
 . "$SCRIPT_DIR/lib/hook-output-util.sh"
+. "$SCRIPT_DIR/lib/posix-util.sh"
+. "$SCRIPT_DIR/lib/team-gate-util.sh"
 . "$SCRIPT_DIR/lib/rat-dir-util.sh"
 jsonu_detect_parser
 
@@ -34,8 +36,9 @@ PROGRESS_FILE="$STATE_DIR/team-progress.json"
 # config removed meanwhile.
 if [ -f "$TEAM_CONFIG" ]; then
   _TP_SESSION=$(jsonu_session_id "$INPUT")  # a plain token, so never a placeholder leader
-  if [ -n "$_TP_SESSION" ] && [ -n "$(jsonu_get_root_string "$INPUT" "agent_id")" ] && \
-     [ "$_TP_SESSION" = "$(jsonu_get_file_path_string "$STATE_DIR/team-owner.json" "session_id")" ]; then
+  _TP_LEADER=$(teamu_verified_leader "$STATE_DIR") || _TP_LEADER=""
+  if [ -n "$_TP_SESSION" ] && [ -n "$_TP_LEADER" ] && [ -n "$(jsonu_get_root_string "$INPUT" "agent_id")" ] && \
+     [ "$_TP_SESSION" = "$_TP_LEADER" ]; then
     touch -c "$TEAM_CONFIG"
   fi
 fi
@@ -50,9 +53,6 @@ _TEAM_MODE=$(jsonu_get_file_path_bool "$TEAM_CONFIG" "team_mode")
 if [ "$_TEAM_MODE" != "true" ]; then
   emit_post_continue
 fi
-
-# Extract team name for display
-_TEAM_NAME=$(jsonu_get_file_path_string "$TEAM_CONFIG" "team_name")
 
 # Update timestamp in progress file (locked to prevent concurrent write races)
 if [ -f "$PROGRESS_FILE" ]; then

@@ -51,10 +51,10 @@ compliance_preprocess() {
         _CGU_NR_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-nr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.nr-sed")
         {
           printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n'
-          printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n'
-          printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n'
+          printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"max_primary": 0/\n'
+          printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"max_fallback": 0/\n'
           printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n'
-          printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n'
+          printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"compliance_authority": 0/\n'
         } > "$_CGU_NR_SED"
         if sed -f "$_CGU_NR_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
           mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
@@ -107,15 +107,16 @@ compliance_preprocess() {
     if acquire_lock "$_CGU_SKILL_STATE"; then
       _CGU_PASS_SED=$(mktemp "${TMPDIR:-/tmp}/cgu-pass-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.pass-sed")
       # Use # as sed delimiter — pending contains | which conflicts with | delimiter
+      _CGU_NEW_PENDING_ESC=$(printf '%s' "$_CGU_NEW_PENDING" | sed 's/[&#\\]/\\&/g')
       {
-        printf 's#"pending"[[:space:]]*:[[:space:]]*"[^"]*"#"pending": "%s"#\n' "$_CGU_NEW_PENDING"
+        printf 's#"pending"[[:space:]]*:[[:space:]]*"[^"]*"#"pending": "%s"#\n' "$_CGU_NEW_PENDING_ESC"
         # Reset upstream_challenge back to normal ladder strategy on compliance PASS
         printf 's/"strategy"[[:space:]]*:[[:space:]]*"upstream_challenge"/"strategy": "primary"/\n'
         # Clear all stale compliance overrides (budgets + authority + dynamic prompt)
-        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[0-9]*/"max_primary": 0/\n'
-        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[0-9]*/"max_fallback": 0/\n'
+        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"max_primary": 0/\n'
+        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"max_fallback": 0/\n'
         printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": ""/\n'
-        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[0-9]*/"compliance_authority": 0/\n'
+        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"compliance_authority": 0/\n'
       } > "$_CGU_PASS_SED"
       if sed -f "$_CGU_PASS_SED" "$_CGU_SKILL_STATE" > "$_CGU_SKILL_STATE.tmp" 2>/dev/null; then
         mv "$_CGU_SKILL_STATE.tmp" "$_CGU_SKILL_STATE"
@@ -143,15 +144,11 @@ compliance_preprocess() {
     if acquire_lock "$_CGU_SKILL_STATE"; then
       _CGU_CR_SED=$(mktemp "${TMPDIR:-/tmp}/cr-sed.XXXXXX" 2>/dev/null || echo "$_CGU_SKILL_STATE.cr-sed")
       {
-        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,]*/"compliance_authority": %s/\n' "$_CGU_CR_AUTH"
-        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,]*/"max_primary": %s/\n' "$_CGU_CR_MAX_P"
-        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,]*/"max_fallback": %s/\n' "$_CGU_CR_MAX_F"
+        printf 's/"compliance_authority"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"compliance_authority": %s/\n' "$_CGU_CR_AUTH"
+        printf 's/"max_primary"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"max_primary": %s/\n' "$_CGU_CR_MAX_P"
+        printf 's/"max_fallback"[[:space:]]*:[[:space:]]*[^,}[:space:]]*/"max_fallback": %s/\n' "$_CGU_CR_MAX_F"
         printf 's/"dynamic_prompt"[[:space:]]*:[[:space:]]*"[^"]*"/"dynamic_prompt": "%s"/\n' "$(echo "$_CGU_DYN_MSG" | sed 's/[&/\]/\\&/g')"
       } > "$_CGU_CR_SED"
-      # If infeasibility validated AND past primary stage, switch strategy
-      # Read current iteration to enforce "after Primary exhaustion" rule
-      _CGU_CR_ITER=$(jsonu_get_file_path_num "$_CGU_SKILL_STATE" "iteration")
-      _CGU_CR_ITER=${_CGU_CR_ITER:-1}
       if [ "$_CGU_CR_INFEASIBLE" = "true" ]; then
         printf 's/"strategy"[[:space:]]*:[[:space:]]*"[^"]*"/"strategy": "upstream_challenge"/\n' >> "$_CGU_CR_SED"
       elif [ "$_CGU_CR_INFEASIBLE" != "true" ]; then

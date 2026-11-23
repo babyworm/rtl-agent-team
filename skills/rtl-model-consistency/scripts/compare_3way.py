@@ -22,9 +22,10 @@ import argparse
 import sys
 
 
-def read_data(filepath, fmt):
+def read_data(filepath, fmt, *, raise_on_error=False):
     """Read output data from file in specified format."""
     data = []
+    errors = 0
     with open(filepath) as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
@@ -38,7 +39,10 @@ def read_data(filepath, fmt):
                 else:  # csv
                     data.extend(int(v.strip(), 0) for v in line.split(",") if v.strip())
             except ValueError as e:
+                errors += 1
                 print(f"WARNING: {filepath}:{line_num}: parse error: {e}", file=sys.stderr)
+    if raise_on_error and errors > 0:
+        raise ValueError(f"{filepath}: {errors} line(s) failed to parse as {fmt}")
     return data
 
 
@@ -80,13 +84,21 @@ def main():
     parser.add_argument("--tolerance", type=int, default=0, help="Allowed difference (0=bitexact)")
     args = parser.parse_args()
 
-    refc = read_data(args.refc, args.format)
-    bfm = read_data(args.bfm, args.format)
-    rtl = read_data(args.rtl, args.format)
+    try:
+        refc = read_data(args.refc, args.format, raise_on_error=True)
+        bfm = read_data(args.bfm, args.format, raise_on_error=True)
+        rtl = read_data(args.rtl, args.format, raise_on_error=True)
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 2
 
     print(f"Data lengths: refC={len(refc)}, BFM={len(bfm)}, RTL={len(rtl)}")
     print(f"Tolerance: {args.tolerance}")
     print()
+
+    if len(refc) == 0 or len(bfm) == 0 or len(rtl) == 0:
+        print("ERROR: One or more input files produced 0 parsed values; cannot declare consistency.", file=sys.stderr)
+        return 2
 
     pairs = [
         compare_pair("refC", refc, "BFM", bfm, args.tolerance),

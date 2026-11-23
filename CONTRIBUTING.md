@@ -132,7 +132,7 @@ color: blue
 **Checklist**:
 - [ ] Does the `name:` field match the filename?
 - [ ] Does `description:` convey the agent's expertise and when to reach for it?
-- [ ] Added the agent to the CLAUDE.md delegation table?
+- [ ] Added the agent to the `skills/rtl-orchestrate/SKILL.md` delegation table?
 - [ ] Updated the agent counts in README.md, README_kr.md and CLAUDE.md?
 - [ ] Updated the agent count in the `.claude-plugin/marketplace.json` description?
 - [ ] Ran `sh scripts/add-rat-protocol.sh` to insert the audit-output-protocol
@@ -207,7 +207,7 @@ checks that every skill-relative path names a file the skill actually bundles.
 - [ ] Does `description:` give Claude enough to route automatically? Keep it within
       160 characters — the harness silently truncates skill descriptions once the
       global budget is exceeded, and a description-less skill stops being routable
-- [ ] Added the pattern to the skill routing table in CLAUDE.md?
+- [ ] Added the pattern to the skill routing table in `skills/rtl-orchestrate/SKILL.md`?
 - [ ] Updated the skill counts in README.md, README_kr.md and CLAUDE.md?
 - [ ] If the skill produces a review artifact, added it to `review-checklist.md`?
 - [ ] If the skill changes phase inputs or outputs, updated the Context Preload
@@ -215,7 +215,7 @@ checks that every skill-relative path names a file the skill actually bundles.
 
 ### Adding a reference document
 
-Add detailed references under `references/{topic}.md`. References are the bottom
+Add detailed references under `skills/{skill-name}/references/{topic}.md`. References are the bottom
 layer of the three-tier documentation model — agents read them only when needed.
 
 ### Files that must be updated after a change
@@ -226,7 +226,7 @@ Adding or removing an agent or skill requires updating the counts and lists in:
 |------|----------------|
 | `skills/rtl-orchestrate/SKILL.md` | Skill routing table + Action Skill→Orchestrator→Policy mapping + SessionStart export block (single source of truth) |
 | `hooks/rtl-orchestrator-inject.sh` | SessionStart launcher; `hooks/lib/session_inject.py` reads the export block at session start, so there is nothing to regenerate |
-| `README.md`, `README_kr.md`, `CLAUDE.md` | Agent/skill counts, structure description, agent team table |
+| `README.md`, `README_kr.md`, `CLAUDE.md` | Agent/skill counts and structure description |
 | `.claude-plugin/marketplace.json` | Counts in the plugin description |
 | `skills/rat-auto-design/references/review-checklist.md` | Update when a review artifact is added or removed |
 | `agents/*-orchestrator.md` (Context Preload section) | Update the inline preload list when per-phase input/output artifacts change |
@@ -376,8 +376,8 @@ Reference: `agents/vcodec-chief-standard-expert.md`
 
 - [ ] Agent file created (`agents/{domain}-{role}-expert.md`)
 - [ ] Agent frontmatter `name:` matches the filename
-- [ ] Added to the CLAUDE.md delegation table
-- [ ] Domain category added to the README.md agent team table
+- [ ] Added to the `skills/rtl-orchestrate/SKILL.md` delegation table
+- [ ] Domain category documented in `README.md` / `skills/rtl-orchestrate/SKILL.md`
 - [ ] (3+ agents) Domain package `domain-packages/{domain}/manifest.json` created
 - [ ] (4+ agents) Chief agent recommended
 - [ ] New domain added to the routing tables of existing skills (p1-spec-research, domain-consult, …)
@@ -466,7 +466,7 @@ Codec performance analysis (`video-processing-expert`) and general image process
 - **`domain-packages/video-codec/`** — `video-processing-expert` stays here (codec throughput expert)
 - **`domain-packages/video-processing/`** — non-codec image processing experts (active, 3 agents: color-format, denoise, image-processing)
 
-Routing is already separated (see `domain-consult/SKILL.md`).
+Routing is already separated (see `skills/domain-consult/SKILL.md`).
 
 ### Skill compatibility matrix
 
@@ -575,7 +575,7 @@ while `git rev-parse <tag>^{commit}` always returns the commit. Verify with
 - [ ] Plugin source prepared (same repo: `plugins/`; external: separate repo)
 - [ ] Entry added to the `plugins` array in `.claude-plugin/marketplace.json`
 - [ ] JSON validated (`python3 -c "import json; json.load(open('.claude-plugin/marketplace.json'))"`)
-- [ ] New plugin added to the README.md Marketplace table
+- [ ] New plugin documented in `README.md` and `README_kr.md`
 - [ ] Install tested: `/plugin install {plugin-name}`
 
 ---

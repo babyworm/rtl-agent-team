@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.0-pre17
+# rat-version: 2.0.0-pre18
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -215,7 +215,10 @@ def available(args, config: dict) -> int:
         if container:
             image=config.get("execution",{}).get("docker_image", "rtl-eda-tools")
             argv=["docker","run","--rm","--user",f"{os.getuid()}:{os.getgid()}","--env","HOME=/tmp",image,*argv]
-        return subprocess.run(argv, capture_output=True, timeout=10).returncode
+        try:
+            return subprocess.run(argv, capture_output=True, timeout=10).returncode
+        except (OSError, subprocess.TimeoutExpired):
+            return 1
     return 0 if (Path(resolved).is_file() and os.access(resolved, os.X_OK) if "/" in resolved else shutil.which(resolved)) else 1
 
 
@@ -291,6 +294,17 @@ def capabilities(args, config: dict) -> int:
         missing.append(label)
         return None
 
+    def probe_in_runtime(cmd: list[str]) -> bool:
+        if backend(config) == "docker":
+            image = config.get("execution", {}).get("docker_image", os.environ.get("RTL_EDA_IMAGE", "rtl-eda-tools"))
+            argv = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}", "--env", "HOME=/tmp", image, *cmd]
+        else:
+            argv = cmd
+        try:
+            return subprocess.run(argv, capture_output=True, timeout=15).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
     if remote and backend(config) == "lsf":
         need("LSF scheduler", ["bsub"])
     if phase not in ("p1", "1", "research"):
@@ -298,8 +312,11 @@ def capabilities(args, config: dict) -> int:
     if phase in ("p2", "p3", "all"):
         need("C/C++ compiler", ["gcc", "clang", "cc", "g++"])
     if args.bfm:
-        check = subprocess.run(["pkg-config", "--exists", "systemc"], capture_output=True) if not measured and shutil.which("pkg-config") else None
-        if not (measured["systemc"] if measured else check is not None and check.returncode == 0):
+        has_systemc = measured["systemc"] if measured else (
+            probe_in_runtime(["pkg-config", "--exists", "systemc"])
+            if backend(config) == "docker" or shutil.which("pkg-config") else False
+        )
+        if not has_systemc:
             missing.append("SystemC for the requested TLM BFM")
     if phase in ("p4", "p5", "p5a", "all"):
         simulator = need("simulator", ["vcs", "xrun", "vsim", "verilator", "iverilog"], "simulators", "simulator")
@@ -308,8 +325,10 @@ def capabilities(args, config: dict) -> int:
             need("C++ compiler for Verilator", ["g++", "clang++"])
         framework = args.framework
         if framework == "cocotb" or (framework == "auto" and simulator in ("iverilog", "verilator")):
-            check = subprocess.run([sys.executable, "-c", "import cocotb"], capture_output=True) if not measured else None
-            if not (measured["cocotb"] if measured else check.returncode == 0):
+            has_cocotb = measured["cocotb"] if measured else probe_in_runtime(
+                ["python3" if backend(config) == "docker" else sys.executable, "-c", "import cocotb"]
+            )
+            if not has_cocotb:
                 missing.append("cocotb for functional verification")
     if phase in ("p5b", "all"):
         need("synthesis", ["dc_shell", "genus", "yosys", "vivado"], "synthesis", "synthesis")
@@ -388,9 +407,12 @@ def run(args, root: Path, config: dict) -> int:
         if not helpers.is_relative_to(root): mounts += ["--mount",f"type=bind,src={helpers},dst={helpers},readonly"]
         if shims and not Path(shims.name).is_relative_to(root):  # pre-init shims live in the plugin data folder
             mounts += ["--mount", f"type=bind,src={shims.name},dst={shims.name},readonly"]
+        # Preserve the container's own PATH (e.g. /opt/oss-cad-suite/bin); only prepend shims when needed.
+        container_argv = (["sh", "-c", 'export PATH="$1:$PATH"; shift; exec "$@"', "rat-docker", shims.name, *argv]
+                          if shims else argv)
         argv = ["docker", "run", "--rm", "--user", f"{os.getuid()}:{os.getgid()}", "--env", "HOME=/tmp",
-                "--env", f"RAT_PROJECT_ROOT={root}", "--env", "RAT_EXECUTION_LOCAL=1", "--env", "PATH=" + env["PATH"],
-                *mounts, "--workdir", str(cwd), image, *argv]
+                "--env", f"RAT_PROJECT_ROOT={root}", "--env", "RAT_EXECUTION_LOCAL=1",
+                *mounts, "--workdir", str(cwd), image, *container_argv]
     stamp = uuid.uuid4().hex
     log = Path(args.log) if args.log else runtime_state_root(root) / "tool-runs" / (stamp + ".log")
     timeout = args.timeout if args.timeout is not None else float(os.environ.get("RAT_TOOL_TIMEOUT_SECONDS", settings.get("timeout_seconds", 1800)))
@@ -616,6 +638,7 @@ def import_remote_evidence(path: Path, root: Path, workspace: str, since: float,
         output_root = remote_outputs or workspace
         record["log"] = local_path(record["log"], generated, output_root)
         if record.get("runtime_log"):
+            record["runtime_log"] = dict(record["runtime_log"])
             record["runtime_log"]["path"] = local_path(record["runtime_log"]["path"], generated, output_root)
         record["outdir"] = local_path(record["outdir"], generated, output_root)
         if experiment:
@@ -626,8 +649,16 @@ def import_remote_evidence(path: Path, root: Path, workspace: str, since: float,
         record["state_dir"] = str(state)
         record["remote_workspace"] = workspace
         log = Path(record["log"])
-        if record["verdict"] == "PASS" and (not unchanged(record["sources"]) or not log.is_file()
-                                               or digest(log) != record["log_sha256"]):
+        runtime_entry = record.get("runtime_log")
+        runtime_ok = (not runtime_entry or (
+            isinstance(runtime_entry, dict) and isinstance(runtime_entry.get("path"), str)
+            and Path(runtime_entry["path"]).is_file()
+            and digest(Path(runtime_entry["path"])) == runtime_entry.get("sha256")
+        ))
+        if record["verdict"] == "PASS" and (
+            not unchanged(record["sources"], record.get("source_identity"))
+            or not log.is_file() or digest(log) != record["log_sha256"] or not runtime_ok
+        ):
             record["verdict"] = "INCONCLUSIVE"
         records.append(record)
     index = state / "verify-evidence.json"
@@ -772,7 +803,7 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     ssh_options = settings.get("ssh_options", [])
     if not isinstance(ssh_options, list) or not all(isinstance(value, str) for value in ssh_options):
         raise ValueError("ssh_options must be an argument list")
-    ssh = ["ssh", *ssh_options, host]
+    ssh = ["ssh", *ssh_options, "--", host]
 
     def step(argv, name):
         remaining = limit - (time.monotonic() - started)
@@ -930,8 +961,11 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     status = remote(command, "execution")
     if selected == "lsf" and status in LSF_WAITER_LOST:
         cancel_lsf_job(ssh, job_name)
-    observed = subprocess.run([*ssh, "cat " + shlex.quote(status_file)], capture_output=True, text=True, timeout=15)
-    if observed.returncode == 0 and re.fullmatch(r"\d+\s*", observed.stdout) and 0 <= int(observed.stdout.strip()) <= 255:
+    try:
+        observed = subprocess.run([*ssh, "cat " + shlex.quote(status_file)], capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        observed = None
+    if observed is not None and observed.returncode == 0 and re.fullmatch(r"\d+\s*", observed.stdout) and 0 <= int(observed.stdout.strip()) <= 255:
         status = int(observed.stdout.strip())
         may_release = True
     elif status != 124:
@@ -973,8 +1007,11 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
             remove_if_empty(created)
         if result and status == 0:
             status = 3
-    present = subprocess.run([*ssh, "test -f " + shlex.quote(evidence_path)], capture_output=True, timeout=15)
-    if present.returncode == 0:
+    try:
+        present = subprocess.run([*ssh, "test -f " + shlex.quote(evidence_path)], capture_output=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        present = None
+    if present is not None and present.returncode == 0:
         downloaded = cache / "remote-evidence.json"
         result = step([*transport, remote_operand(host, evidence_path), str(downloaded)], "fetch-evidence")
         if result == 0:

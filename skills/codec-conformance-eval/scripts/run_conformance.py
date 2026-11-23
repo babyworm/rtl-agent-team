@@ -97,15 +97,18 @@ def discover_streams(source: dict, standard: str) -> list:
     """
     explicit_streams = source.get("streams", [])
     if explicit_streams:
-        return [
-            {
+        resolved = []
+        for s in explicit_streams:
+            entry = {
                 "name": s.get("name", Path(s["path"]).stem),
                 "path": s["path"],
                 "source_id": source["id"],
                 "priority": source.get("priority", "optional"),
             }
-            for s in explicit_streams
-        ]
+            if "s3_path" in s:
+                entry["s3_path"] = s["s3_path"]
+            resolved.append(entry)
+        return resolved
 
     # Auto-discover from directory
     base_path = source.get("path", "")

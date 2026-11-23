@@ -148,7 +148,8 @@ def main():
                 reference = args.baseline_ref if variant == "baseline" else None
                 if model in unavailable_models:
                     result={"case":case["id"],"model_requested":model,"reference":reference or "working-tree",
-                            "unavailable":unavailable_models[model],"failures":["provider unavailable; request skipped"]}
+                            "unavailable":unavailable_models[model],"failures":["provider unavailable; request skipped"],
+                            "elapsed_seconds":0.0}
                 else:
                     result = evaluate(case, model, reference, args.output / variant / model / case["id"], schema, args.claude_case_budget)
                     if result.get("unavailable"): unavailable_models[model]=result["unavailable"]

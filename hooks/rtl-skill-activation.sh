@@ -98,6 +98,14 @@ if [ "$HOOK_EVENT" != "PostToolUse" ]; then
   [ "$HOOK_EVENT" != "UserPromptExpansion" ] && emit_continue "$SETUP_EXTRA_CONTEXT"
 fi
 
+# Preserve advisory context collected during UserPromptExpansion even on early exits.
+_emit_activation_done() {
+  if [ "$HOOK_EVENT" = "UserPromptExpansion" ] && [ -n "${SETUP_EXTRA_CONTEXT:-}" ]; then
+    emit_post_context "$SETUP_EXTRA_CONTEXT"
+  fi
+  emit_post_continue
+}
+
 # ---- PostToolUse: the Skill call ran; start its completion loop ----
 if ! is_setup_exempt && ! has_setup_marker; then
   [ "$HOOK_EVENT" = "UserPromptExpansion" ] && emit_continue "$INIT_HINT"
@@ -117,17 +125,17 @@ if [ -f "$TEAM_CONFIG" ] && ! teamu_config_is_stale "$STATE_DIR"; then
     # whatever the leader value: autopilot's config has no leader at all.
     AGENT_ID=$(jsonu_get_root_string "$INPUT" "agent_id")
     if [ -n "$AGENT_ID" ]; then
-      emit_post_continue
+      _emit_activation_done
     fi
     SESSION_ID=$(jsonu_session_id "$INPUT")
-    LEADER_ID=$(jsonu_get_file_path_string "$STATE_DIR/team-owner.json" "session_id")
+    LEADER_ID=$(teamu_verified_leader "$STATE_DIR") || LEADER_ID=""
     case "$LEADER_ID" in
-      ''|*'<'*|*'$'*) ;;  # unknown leader: the session manages its own loop (fail-closed)
+      ''|*'<'*|*'$'*) ;;  # unknown/unverified leader: session manages its own loop (fail-closed)
       *)
         # A known other session is not the leader. An unknown session may be the leader,
         # so it starts the loop (fail-closed, as the Stop gates enforce the gate for it).
         if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "$LEADER_ID" ]; then
-          emit_post_continue
+          _emit_activation_done
         fi
         ;;
     esac
@@ -141,13 +149,13 @@ if [ -f "$SKILL_STATE" ]; then
     # Same skill re-invoked: user intentionally restarting — reset counter
     rm -f "$SKILL_STATE"
   else
-    emit_post_continue
+    _emit_activation_done
   fi
 fi
 
 # Read criteria for this skill from config
 if [ ! -f "$CRITERIA_FILE" ]; then
-  emit_post_continue
+  _emit_activation_done
 fi
 
 # Extract criteria for this skill using grep+sed (no jq dependency)
@@ -155,13 +163,13 @@ CRITERIA=$(sed -n "s/.*\"${SHORT_NAME}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".
 
 if [ -z "$CRITERIA" ]; then
   # No criteria defined for this skill, allow without loop
-  emit_post_continue
+  _emit_activation_done
 fi
 
-# Create state file
+# Create state file atomically (safe under concurrent writes)
 mkdir -p "$STATE_DIR"
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date +%Y-%m-%dT%H:%M:%S+00:00)
-cat > "$SKILL_STATE.tmp" << SKILLEOF
+ratu_state_write "$SKILL_STATE" << SKILLEOF
 {
   "skill": "${SHORT_NAME}",
   "active": true,
@@ -178,7 +186,6 @@ cat > "$SKILL_STATE.tmp" << SKILLEOF
   "started_at": "${TIMESTAMP}"
 }
 SKILLEOF
-mv "$SKILL_STATE.tmp" "$SKILL_STATE"
 
 # Audit: log skill_invoke event
 _AUDIT_LIB="$SCRIPT_DIR/lib/audit-util.sh"

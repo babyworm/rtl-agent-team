@@ -265,7 +265,10 @@ def main(argv=None):
                       file=sys.stderr)
                 return 2
         run_mode = "binary"
-        run_cmd = [binary.as_posix()] + shlex.split(args.args)
+        exe = binary.as_posix()
+        if "/" not in exe:
+            exe = f"./{exe}"
+        run_cmd = [exe] + shlex.split(args.args)
         run_cwd = "."
         proc = subprocess.run(run_cmd, capture_output=True, text=True,
                               check=False)

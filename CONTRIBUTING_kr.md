@@ -125,13 +125,17 @@ color: blue
 **체크리스트**:
 - [ ] `name:` 필드가 파일명과 일치하는가
 - [ ] `description:`이 에이전트의 전문성과 사용 시점을 설명하는가
-- [ ] CLAUDE.md 위임 테이블에 에이전트를 추가했는가
+- [ ] `skills/rtl-orchestrate/SKILL.md` 위임 테이블에 에이전트를 추가했는가
 - [ ] README.md, README_kr.md, CLAUDE.md의 에이전트 카운트를 업데이트했는가
 - [ ] `.claude-plugin/marketplace.json`의 에이전트 카운트 설명을 업데이트했는가
 - [ ] `sh scripts/add-rat-protocol.sh` 실행하여 audit-output-protocol 참조를
       frontmatter 바로 뒤에 삽입 (멱등적 — 이미 포함된 파일은 건너뜀).
       orchestrator-류 에이전트는 Step 0 Context Bootstrap도 필요하므로
       `bash scripts/sync_step0.sh --dry-run`으로 미리 확인 후 동기화하는 것을 권장
+
+> `agents/` 디렉토리는 **재귀적으로** 스캔되며 발견된 모든 `.md` 파일이 실행 가능한 에이전트로
+> 등록됩니다. 디렉토리는 평면 구조를 유지하세요. 공유 프롬프트 조각과 동기화 템플릿은
+> `plugin_docs/agent-lib/`에 둡니다. `test_agents_dir_has_no_nested_markdown`이 이를 검증합니다.
 
 ### 스킬 추가
 
@@ -184,16 +188,21 @@ skills/{skill-name}/
 └── examples/             # 예시 입출력
 ```
 
+스킬 자체에 번들된 자산은 **스킬 상대 경로**(`references/x.md`)로 참조하면 해당 스킬 디렉토리 기준으로 해석됩니다.
+*다른* 스킬이 소유한 자산은 `{plugin_root}` 절대 경로(`{plugin_root}/skills/<owner>/references/x.md`)로
+지정해야 하며, `test_skill_relative_assets_resolve`가 모든 스킬 상대 경로의 실제 존재 여부를 검증합니다.
+
 **체크리스트**:
-- [ ] `description:`이 Claude의 자동 라우팅에 충분한 정보를 제공하는가
-- [ ] CLAUDE.md 스킬 호출 규칙 테이블에 패턴을 추가했는가
+- [ ] `description:`이 Claude의 자동 라우팅에 충분한 정보를 제공하는가 — 160자 이내로 유지하세요
+      (전역 예산 초과 시 하네스가 스킬 설명을 조용히 절삭하여 라우팅이 끊어집니다)
+- [ ] `skills/rtl-orchestrate/SKILL.md` 스킬 라우팅 테이블에 패턴을 추가했는가
 - [ ] README.md, README_kr.md, CLAUDE.md의 스킬 카운트를 업데이트했는가
 - [ ] 스킬이 review artifact를 생성하면 `review-checklist.md`에 추가했는가
 - [ ] 스킬이 Phase 입출력을 변경하면 해당 orchestrator의 Context Preload 섹션을 업데이트했는가
 
 ### 레퍼런스 문서 추가
 
-`references/{topic}.md`에 상세 레퍼런스를 추가합니다. 레퍼런스는 에이전트가 필요할 때만 읽는 3계층 문서 중 최하위 계층입니다.
+`skills/{skill-name}/references/{topic}.md`에 상세 레퍼런스를 추가합니다. 레퍼런스는 에이전트가 필요할 때만 읽는 3계층 문서 중 최하위 계층입니다.
 
 ### 수정 후 필수 업데이트 파일
 
@@ -203,10 +212,14 @@ skills/{skill-name}/
 |------|-------------|
 | `skills/rtl-orchestrate/SKILL.md` | 스킬 라우팅 테이블 + Action Skill→Orchestrator→Policy 매핑 + SessionStart export block (single source of truth) |
 | `hooks/rtl-orchestrator-inject.sh` | SessionStart 런처. `hooks/lib/session_inject.py`가 세션 시작 시 export block을 읽으므로 재생성 단계가 없음 |
-| `README.md`, `README_kr.md`, `CLAUDE.md` | 에이전트/스킬 카운트, 구조 설명, 에이전트 팀 테이블 |
+| `README.md`, `README_kr.md`, `CLAUDE.md` | 에이전트/스킬 카운트 및 구조 설명 |
 | `.claude-plugin/marketplace.json` | 플러그인 description의 카운트 |
 | `skills/rat-auto-design/references/review-checklist.md` | review artifact 추가/삭제 시 체크리스트 업데이트 |
 | `agents/*-orchestrator.md` (Context Preload 섹션) | Phase별 입출력 artifact 변경 시 inline preload 목록 업데이트 |
+
+`rtl-orchestrate` 본문은 자체적으로 런타임에 도달하지 않습니다(`user-invocable: false`와
+`disable-model-invocation: true`가 모두 설정되어 있음). 런타임이 알아야 할 내용은 반드시
+`SESSIONSTART_HOOK_EXPORT` 블록을 통해 전달해야 합니다.
 
 라우팅/위임 변경 시 반드시 아래를 실행하세요:
 
@@ -345,8 +358,8 @@ Chief 에이전트의 역할:
 
 - [ ] 에이전트 파일 생성 (`agents/{domain}-{role}-expert.md`)
 - [ ] 에이전트 frontmatter `name:`이 파일명과 일치
-- [ ] CLAUDE.md 위임 테이블에 추가
-- [ ] README.md 에이전트 팀 테이블에 도메인 카테고리 추가
+- [ ] `skills/rtl-orchestrate/SKILL.md` 위임 테이블에 추가
+- [ ] `README.md` / `skills/rtl-orchestrate/SKILL.md`에 도메인 카테고리 문서화
 - [ ] (3+ 에이전트) 도메인 패키지 `domain-packages/{domain}/manifest.json` 생성
 - [ ] (4+ 에이전트) Chief 에이전트 추가 권장
 - [ ] 기존 스킬(p1-spec-research, domain-consult 등)의 라우팅 테이블에 새 도메인 추가
@@ -430,7 +443,7 @@ Codec 성능 분석(`video-processing-expert`)과 일반 영상 처리(color spa
 - **`domain-packages/video-codec/`** — `video-processing-expert`는 여기에 유지 (codec throughput 전문가)
 - **`domain-packages/video-processing/`** — non-codec 영상 처리 전문가 등록 (active, 3 agents: color-format, denoise, image-processing)
 
-라우팅은 이미 분리되어 있습니다 (`domain-consult/SKILL.md` 참조).
+라우팅은 이미 분리되어 있습니다 (`skills/domain-consult/SKILL.md` 참조).
 
 ### 스킬 호환성 매트릭스
 
@@ -528,12 +541,16 @@ LSP 서버나 MCP 서버처럼 단순한 플러그인은 `strict: false`로 `.cl
 
 참조: `.claude-plugin/marketplace.json`의 `systemverilog-lsp` 항목
 
+github-source 하위 플러그인의 버전을 고정할 때는 annotated tag 객체 SHA가 아니라 **커밋 SHA**를 사용하세요.
+annotated tag에 `git rev-parse <tag>`를 실행하면 tag 객체 SHA가 반환되며, `git rev-parse <tag>^{commit}`이
+항상 커밋 SHA를 반환합니다. `git cat-file -t <sha>`로 `commit`이 출력되는지 확인하세요.
+
 ### 체크리스트
 
 - [ ] 플러그인 소스 준비 (같은 repo: `plugins/`, 외부: 별도 repo)
 - [ ] `.claude-plugin/marketplace.json`의 `plugins` 배열에 항목 추가
 - [ ] JSON 유효성 검증 (`python3 -c "import json; json.load(open('.claude-plugin/marketplace.json'))"`)
-- [ ] README.md Marketplace 테이블에 새 플러그인 추가
+- [ ] `README.md` 및 `README_kr.md`에 새 플러그인 문서화
 - [ ] 설치 테스트: `/plugin install {plugin-name}`
 
 ---

@@ -28,7 +28,7 @@ TARGET  = build/{{MODULE_NAME}}_ref
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS) $(HEADERS)
+$(TARGET): $(SRCS) $(MAIN_SRC) $(HEADERS)
 	@mkdir -p build
 	$(CC) $(CFLAGS) $(LDFLAGS) -Iinclude -o $@ $(SRCS) $(MAIN_SRC)
 
