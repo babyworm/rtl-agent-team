@@ -8,6 +8,32 @@ import re
 
 ROOT=Path(__file__).resolve().parents[1]
 CATALOG=ROOT/'template-catalog.json'
+VERSION=re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-pre(\d+))?')
+# 2.0.P (P>0, no pre tag) is a template counter from before 2.0.0 existed.
+# A 2.0.0-preN marker replaces those counters. The bare release 2.0.0 does not:
+# 2.0.1 stays newer than 2.0.0, and 2.0.22 stays newer than bare 2.0.0.
+# Move a counter to 2.0.0-preN before stamping the release, or the update skips it.
+
+
+def parse_version(value):
+    match=VERSION.fullmatch(value)
+    if not match:raise ValueError('bad rat-version: '+value)
+    pre=int(match[4]) if match[4] is not None else None
+    return int(match[1]),int(match[2]),int(match[3]),pre
+
+
+def version_newer(candidate,installed):
+    """True when candidate should replace installed. Equal is not newer."""
+    cmaj,cmin,cpat,cpre=parse_version(candidate)
+    imaj,imin,ipat,ipre=parse_version(installed)
+    def counter(maj,minor,patch,pre):return (maj,minor)==(2,0) and patch>0 and pre is None
+    if cpre is not None and (cmaj,cmin,cpat)==(2,0,0) and counter(imaj,imin,ipat,ipre):return True
+    if ipre is not None and (imaj,imin,ipat)==(2,0,0) and counter(cmaj,cmin,cpat,cpre):return False
+    if (cmaj,cmin,cpat)!=(imaj,imin,ipat):return (cmaj,cmin,cpat)>(imaj,imin,ipat)
+    if cpre is None and ipre is None:return False
+    if cpre is None:return True
+    if ipre is None:return False
+    return cpre>ipre
 
 
 def current():
@@ -18,7 +44,7 @@ def current():
     files += list((folder/'rules').glob('*.md'))+list((folder/'guides').glob('*.md'))
     values={}
     for path in sorted(files):
-        text=path.read_text();match=re.search(r'rat-version:\s*(\d+\.\d+\.\d+)',text)
+        text=path.read_text();match=re.search(r'rat-version:\s*(\d+\.\d+\.\d+(?:-pre\d+)?)',text)
         if not match:raise ValueError('missing rat-version: '+str(path.relative_to(ROOT)))
         values[str(path.relative_to(ROOT))]={'version':match[1],'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
     return values
@@ -28,7 +54,7 @@ def validate(old,new):
     errors=[]
     for path,entry in new.items():
         prior=old.get(path)
-        if prior and prior['sha256']!=entry['sha256'] and tuple(map(int,entry['version'].split('.')))<=tuple(map(int,prior['version'].split('.'))):
+        if prior and prior['sha256']!=entry['sha256'] and not version_newer(entry['version'],prior['version']):
             errors.append(path+': content changed without a rat-version bump')
     return errors
 

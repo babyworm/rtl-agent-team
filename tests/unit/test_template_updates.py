@@ -82,6 +82,20 @@ def test_user_edit_survives_repeated_updates(installation):
     assert candidate.read_bytes() == source.read_bytes()
 
 
+def test_pre_release_replaces_a_legacy_template_counter(installation):
+    plugin, workspace, install = installation
+    source = plugin / "scripts/eda_runner.py"
+    original = source.read_text()
+    source.write_text(original.replace("rat-version: 2.0.0-pre17", "rat-version: 2.0.22", 1))
+    install()
+    source.write_text(original + "\n# pre17 body\n")
+    result = install("--update")
+    installed = workspace / "lib/eda_runner.py"
+    assert "UPDATE lib/eda_runner.py" in result.stdout
+    assert "rat-version: 2.0.0-pre17" in installed.read_text()
+    assert installed.read_text().endswith("# pre17 body\n")
+
+
 def test_unrecognized_legacy_copy_is_preserved(installation):
     _, workspace, install = installation
     target = workspace / "scripts/run_sim.sh"

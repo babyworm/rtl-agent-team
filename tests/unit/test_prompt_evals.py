@@ -38,6 +38,17 @@ def test_template_revision_is_required_when_managed_content_changes():
     assert catalog.validate(old,changed)
     changed['tool.sh']['version']='2.0.1'
     assert catalog.validate(old,changed)==[]
+    # The release is still 2.0.0, so the pre number is the revision.
+    changed['tool.sh']['version']='2.0.0-pre17'
+    assert catalog.validate({'tool.sh':{'version':'2.0.0-pre16','sha256':'before'}},changed)==[]
+    assert catalog.validate({'tool.sh':{'version':'2.0.0-pre17','sha256':'before'}},changed)
+    assert catalog.validate({'tool.sh':{'version':'2.0.22','sha256':'before'}},changed)==[]
+    release={'tool.sh':{'version':'2.0.0','sha256':'released'}}
+    assert catalog.validate(changed,release)==[]
+    assert catalog.validate(release,changed)
+    assert catalog.version_newer('2.0.1','2.0.0')
+    assert not catalog.version_newer('2.0.0','2.0.22')
+    assert catalog.version_newer('2.0.22','2.0.0')
 
 
 def test_checked_in_catalog_matches_shipped_template_content():

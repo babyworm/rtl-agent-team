@@ -60,28 +60,57 @@ _record_hash() {
 }
 
 # Extract rat-version marker from a file. Returns empty if not found.
+# A pre-release marker is 2.0.0-preN. The whole token is the version.
 _extract_rat_version() {
-  awk 'match($0, /rat-version: [0-9.]+/) {
-    value = substr($0, RSTART, RLENGTH)
-    sub(/^rat-version: /, "", value)
-    print value
-    exit
-  }' "$1" 2>/dev/null || true
+  awk '
+    match($0, /rat-version: [0-9]+\.[0-9]+\.[0-9]+-pre[0-9]+/) {
+      value = substr($0, RSTART, RLENGTH)
+      sub(/^rat-version: /, "", value)
+      print value
+      exit
+    }
+    match($0, /rat-version: [0-9]+\.[0-9]+\.[0-9]+/) {
+      value = substr($0, RSTART, RLENGTH)
+      sub(/^rat-version: /, "", value)
+      print value
+      exit
+    }
+  ' "$1" 2>/dev/null || true
 }
 
+# 2.0.P (P>0, no pre tag) is a template counter from before 2.0.0 existed.
+# 2.0.0-preN replaces those counters. Bare 2.0.0 does not, so 2.0.1 stays newer.
 _version_gt() {
-  awk -v candidate="$1" -v installed="$2" 'BEGIN {
-    candidate_count = split(candidate, candidate_parts, ".")
-    installed_count = split(installed, installed_parts, ".")
-    part_count = candidate_count > installed_count ? candidate_count : installed_count
-    for (part_index = 1; part_index <= part_count; part_index++) {
-      candidate_part = part_index <= candidate_count ? candidate_parts[part_index] + 0 : 0
-      installed_part = part_index <= installed_count ? installed_parts[part_index] + 0 : 0
-      if (candidate_part > installed_part) exit 0
-      if (candidate_part < installed_part) exit 1
+  awk -v candidate="$1" -v installed="$2" 'function parse(value, out,   base, count, parts, pre) {
+      pre = -1
+      base = value
+      if (match(value, /-pre[0-9]+$/)) {
+        pre = substr(value, RSTART + 4) + 0
+        base = substr(value, 1, RSTART - 1)
+      }
+      count = split(base, parts, ".")
+      out[1] = parts[1] + 0
+      out[2] = count >= 2 ? parts[2] + 0 : 0
+      out[3] = count >= 3 ? parts[3] + 0 : 0
+      out[4] = pre
     }
-    exit 1
-  }'
+    function legacy(v) { return v[1] == 2 && v[2] == 0 && v[3] > 0 && v[4] < 0 }
+    function newer(c, i) {
+      if (c[1] == 2 && c[2] == 0 && c[3] == 0 && c[4] >= 0 && legacy(i)) return 1
+      if (i[1] == 2 && i[2] == 0 && i[3] == 0 && i[4] >= 0 && legacy(c)) return 0
+      if (c[1] != i[1]) return c[1] > i[1]
+      if (c[2] != i[2]) return c[2] > i[2]
+      if (c[3] != i[3]) return c[3] > i[3]
+      if (c[4] < 0 && i[4] < 0) return 0
+      if (c[4] < 0) return 1
+      if (i[4] < 0) return 0
+      return c[4] > i[4]
+    }
+    BEGIN {
+      parse(candidate, left)
+      parse(installed, right)
+      exit newer(left, right) ? 0 : 1
+    }'
 }
 
 _validate_destination() {

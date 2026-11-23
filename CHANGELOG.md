@@ -30,6 +30,10 @@ Findings from a project migration review:
 - `clean` removes an experiment whose reservation is older than its latest run's exit
   status, unless a local dispatcher still holds that experiment's lock. The lock is
   held while results are fetched, so a finished job is not deleted out from under the fetch.
+- A template `rat-version` may be `2.0.0-preN`. A higher pre number is a newer revision,
+  and `2.0.0-preN` replaces a `2.0.P` counter from before 2.0.0 existed. Bare `2.0.0`
+  is still older than those counters, so a file moves to a pre marker before the release
+  stamp. `2.0.1` remains newer than `2.0.0`.
 - Test fixture: the macOS stub guard test no longer fails where the test's Python is
   `/usr/bin/python3` itself.
 

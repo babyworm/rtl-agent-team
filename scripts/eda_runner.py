@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.22
+# rat-version: 2.0.0-pre17
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
