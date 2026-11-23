@@ -13,7 +13,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ```bash
 # 1. Clone the repository
-git clone --branch try-2.0 https://github.com/babyworm/rtl-agent-team.git
+git clone --branch try-v1.0 https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
 # 2. Install test dependencies (Python >= 3.9; the hooks need it too)
@@ -27,7 +27,7 @@ python3 -m venv .venv
 claude --plugin-dir "$(pwd)"
 ```
 
-If you already have a `try-2.0` checkout, run `claude --plugin-dir .` from its root to load the current working tree. To try it against an RTL project, switch to that project directory and launch `claude --plugin-dir /path/to/rtl-agent-team`.
+If you already have a `try-v1.0` checkout, run `claude --plugin-dir .` from its root to load the current working tree. To try it against an RTL project, switch to that project directory and launch `claude --plugin-dir /path/to/rtl-agent-team`.
 
 ### Filing an issue
 

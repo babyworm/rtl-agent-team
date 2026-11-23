@@ -7,6 +7,10 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [1.0.0-pre19] - 2026-11-24
+
+- Renumbered pre-release series to `1.0.0-pre19` and renamed development branch from `try-2.0` to `try-v1.0`.
+
 ## [2.0.0-pre18] - 2026-11-24
 
 Repository-wide hardening and bug-fix pass:

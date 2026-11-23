@@ -13,7 +13,7 @@ RTL Agent Marketplace에 기여하는 방법을 설명합니다.
 
 ```bash
 # 1. 저장소 클론
-git clone --branch try-2.0 https://github.com/babyworm/rtl-agent-team.git
+git clone --branch try-v1.0 https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
 # 2. 테스트 의존성 설치 (Python >= 3.9, 훅도 같은 버전이 필요)
@@ -27,7 +27,7 @@ python3 -m venv .venv
 claude --plugin-dir "$(pwd)"
 ```
 
-이미 `try-2.0`을 받아 뒀다면 저장소 루트에서 `claude --plugin-dir .`을 실행해 현재 작업 트리를 읽습니다. RTL 프로젝트에서 시험하려면 해당 프로젝트 디렉토리로 이동한 뒤 `claude --plugin-dir /path/to/rtl-agent-team`을 실행하세요.
+이미 `try-v1.0`을 받아 뒀다면 저장소 루트에서 `claude --plugin-dir .`을 실행해 현재 작업 트리를 읽습니다. RTL 프로젝트에서 시험하려면 해당 프로젝트 디렉토리로 이동한 뒤 `claude --plugin-dir /path/to/rtl-agent-team`을 실행하세요.
 
 ### Issue 제출
 
