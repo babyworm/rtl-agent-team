@@ -47,8 +47,18 @@ ignored files the run still needs, such as test vectors or a prebuilt model.
 Build outputs stay local. A folder outside Git is mirrored whole, which also
 copies its build outputs. The runner prints the file count and size before sending.
 It installs the wrapper and runtime helpers in a private remote runtime directory,
-runs from the remote workspace, and retrieves only declared outputs. No rsync
-deletion is used, so files deleted locally remain in a reused remote workspace.
+runs from the remote workspace, and retrieves only declared outputs. A file an
+earlier dispatch sent and this one no longer sends, such as a header deleted
+locally, is deleted from the reused remote workspace; build outputs were never sent
+and stay. A folder outside Git is mirrored without deletion. When a bundled wrapper's
+named filelist cannot be resolved, dispatch stops with the parser's reason; for a
+project runner it warns which inputs were not sent and skips that deletion.
+When the SSH channel closes, the remote runner stops the tool it started and
+records `DISCONNECTED` (exit 129). The runner also cancels its LSF job when the
+`bsub -K` waiter does not come back: the time limit, a lost SSH connection, or
+SIGHUP, SIGINT, or SIGTERM delivered to the dispatcher (those are exits 129, 130,
+and 143, because the waiter is in its own session). A cancel that fails or times
+out is logged, and the job's status file is still read.
 
 Each wrapper uses its matching runtime shim and helpers. Bundled wrappers use
 bundled helpers; installed project wrappers use the managed project library;
@@ -69,7 +79,7 @@ container rather than dispatching Docker again.
 
 LSF writes a unique exit-status artifact from the job. Submission success is not
 job success. A missing status artifact is INCONCLUSIVE. The runner records the
-submission output and cancels its own uniquely named job on timeout.
+submission output and cancels its own uniquely named job when that waiter does not come back.
 
 ## Results
 
@@ -91,7 +101,11 @@ Experiment folders stay on the execution host until cleanup, so that results can
 still be pulled. When the user asks to clean up experiments or worktrees, remove
 the remote folders in the same step with
 `eda_runner.py clean --root <project> --all --local` (or `--experiment <id>`);
-experiments that are still running are kept.
+experiments that are still running are kept. A reservation older than the exit
+status of its experiment's latest run is removed only when no local dispatcher
+still holds that experiment's lock. The lock is held through the result fetch,
+so a finished job whose results are still coming back is kept. A crash after the
+job wrote its status drops the lock, and that experiment is removed.
 
 For parallel experiments, the coordinating agent assigns each independent
 experiment a distinct `RAT_EXPERIMENT_ID` and passes it to its workers. The

@@ -441,3 +441,17 @@ def test_bundled_wrapper_does_not_mix_in_older_project_helpers(simulation):
 ])
 def test_identity_keeps_escaped_identifiers_and_prefixed_directives(before, after):
     assert evidence.hdl_text(before) != evidence.hdl_text(after)
+
+
+def test_experiment_results_are_not_rtl_sources(tmp_path):
+    snapshot = importlib.util.spec_from_file_location("rtl_change_snapshot", REPO_ROOT / "scripts/rtl_change_snapshot.py")
+    module = importlib.util.module_from_spec(snapshot)
+    snapshot.loader.exec_module(module)
+    assert not module.is_source(Path("experiment/run-1/syn/netlist.v"))
+    assert module.is_source(Path("rtl/top.sv"))
+    for path in ("experiment/run-1/syn/netlist.v", "rtl/top.sv"):
+        (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / path).write_text("module m; endmodule\n")
+    # Tracking files written before this rule may still name fetched results.
+    assert evidence.tracked_paths(tmp_path, ["experiment/run-1/syn/netlist.v", "rtl/top.sv"]) == {
+        str((tmp_path / "rtl/top.sv").resolve())}

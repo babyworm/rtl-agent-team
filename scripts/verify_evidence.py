@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.12
+# rat-version: 2.0.13
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -515,7 +515,8 @@ def tracked_paths(root: Path, lines) -> set[str]:
     # A deleted or renamed file has no behavior left to verify; legacy entries that
     # were parsed from command text name no file at all.
     paths = {(root / line.strip()).resolve() for line in lines if line.strip()}
-    return {str(path) for path in paths if path.is_file()}
+    results = (root / "experiment").resolve()  # run results, also in tracking files written before this rule
+    return {str(path) for path in paths if path.is_file() and not path.is_relative_to(results)}
 
 
 def tracked_files(root: Path, track: Path) -> set[str]:

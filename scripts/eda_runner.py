@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.19
+# rat-version: 2.0.22
 """Execute configured EDA commands with bounded time and explicit transport results."""
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import select
 import selectors
 import shlex
 import shutil
@@ -79,8 +80,33 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
     class Interrupted(Exception):
         def __init__(self, number): self.number=number
     def interrupt(number, frame): raise Interrupted(number)
-    handlers={number:signal.signal(number,interrupt) for number in (signal.SIGINT,signal.SIGTERM)}
+    handlers={number:signal.signal(number,interrupt) for number in (signal.SIGINT,signal.SIGTERM,signal.SIGHUP)}
     interrupted=0
+    # On the execution host stdout is the SSH channel: once it closes, nobody waits for
+    # this run, so stop the tool instead of leaving it running without a limit.
+    remote = os.environ.get("RAT_REMOTE_ACTIVE") == "1"
+    console, watch = sys.stdout.buffer, None
+    if remote:
+        try:
+            watch = select.poll()
+            watch.register(console.fileno(), select.POLLOUT)
+        except (AttributeError, OSError, ValueError):
+            watch = None
+
+    def echo(data):
+        nonlocal console
+        if console is None:
+            return
+        try:
+            console.write(data)
+            console.flush()
+        except (BrokenPipeError, OSError):
+            console = None  # a local reader such as `| head` left; keep running and logging
+            quiet = os.open(os.devnull, os.O_WRONLY)  # so the exit flush of buffered output cannot fail
+            os.dup2(quiet, sys.stdout.fileno())
+            os.close(quiet)
+            if remote:
+                raise Interrupted(signal.SIGHUP)
     try:
         with log.open("wb") as stream:
             # Some license launchers close their output before they start waiting.
@@ -103,9 +129,10 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
                         pass
                     marker = f"\nRAT_{reason}: execution limit reached\n".encode()
                     stream.write(marker)
-                    sys.stdout.buffer.write(marker)
-                    sys.stdout.buffer.flush()
+                    echo(marker)
                     break
+                if watch and any(event & (select.POLLERR | select.POLLHUP) for _, event in watch.poll(0)):
+                    raise Interrupted(signal.SIGHUP)
                 if not selector.get_map():
                     time.sleep(0.05)
                     continue
@@ -115,12 +142,11 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
                         selector.unregister(key.fileobj)
                         continue
                     stream.write(data)
-                    sys.stdout.buffer.write(data)
-                    sys.stdout.buffer.flush()
+                    echo(data)
                     last_output = time.monotonic()
     except Interrupted as event:
         interrupted=event.number
-        termination="INTERRUPTED"
+        termination="DISCONNECTED" if event.number == signal.SIGHUP else "INTERRUPTED"
         try: os.killpg(process.pid,signal.SIGTERM)
         except (ProcessLookupError, PermissionError): pass
         try: process.wait(timeout=1)
@@ -146,6 +172,26 @@ def execute(argv: list[str], root: Path, log: Path, timeout: float, stall: float
         "elapsed_seconds": time.monotonic() - started, "log": str(log),
     })
     return status
+
+
+# 124: execute() hit its time limit. 255: ssh lost the connection. 129/130/143: this
+# process got SIGHUP/SIGINT/SIGTERM. bsub -K runs in its own session, so a hangup
+# of the terminal is 129 here and never ssh's 255. The batch job is still running.
+LSF_WAITER_LOST = (124, 255, 129, 130, 143)
+
+
+def cancel_lsf_job(ssh: list[str], job_name: str) -> None:
+    """Stop a job whose waiter did not come back. A failed cancel must not hide the status file."""
+    try:
+        cancelled = subprocess.run([*ssh, "bkill -J " + shlex.quote(job_name)],
+                                   timeout=15, capture_output=True, text=True)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"WARNING: could not cancel LSF job {job_name}: {exc}", file=sys.stderr)
+        return
+    if cancelled.returncode:
+        detail = (cancelled.stderr or cancelled.stdout or "").strip()
+        print(f"WARNING: bkill -J {job_name} exited {cancelled.returncode}"
+              + (f": {detail}" if detail else ""), file=sys.stderr)
 
 
 def available(args, config: dict) -> int:
@@ -372,6 +418,8 @@ def relative_output(value: str) -> str:
 HEAVY_RESULTS = ("*.fsdb", "*.vcd", "*.evcd", "*.vpd", "*.wlf", "*.trn", "*.dsn", "*.shm/", "xcelium.d/",
                  "INCA_libs/", "csrc/", "*.daidir/", "obj_dir/", "xlib/", "*.o", "*.so", "*.a")
 RESULT_MODES = ("experiment", "merge", "sync")
+BUNDLED_WRAPPERS = ("run_sim.sh", "run_syn.sh", "run_lint.sh", "run_cdc.sh", "run_formality.sh",
+                    "run_conformal.sh", "run_regression.sh", "run_regression_uvm.sh")
 NEVER_SENT = ("experiment/", ".rat/", ".rtl-agent-team/", ".git/", ".claude/")
 RESERVED_OUTPUTS = (".git", ".claude", ".rat", ".rtl-agent-team")  # never fetched over the project
 
@@ -407,6 +455,32 @@ def upload_manifest(root: Path, inputs, patterns) -> list[str] | None:
         if path.is_file() and path.resolve().is_relative_to(root) and path.absolute().is_relative_to(root):
             names.add(str(path.absolute().relative_to(root)))
     return sorted(name for name in names if not name.startswith(NEVER_SENT) and name != ".git")
+
+
+def prune_sent(workspace: Path, listing: Path) -> list[str]:
+    """On the host: delete files an earlier dispatch sent that this one no longer sends.
+
+    Only paths named in the previous send list are candidates, so build outputs stay.
+    """
+    record = workspace / ".rat/sent.list"
+
+    def names(path):
+        return {name for name in path.read_bytes().decode(errors="surrogateescape").split("\0") if name} if path.is_file() else set()
+
+    base, removed = workspace.resolve(), []
+    for name in sorted(names(record) - names(listing)):
+        relative = Path(name)
+        target = workspace / relative
+        if relative.is_absolute() or ".." in relative.parts or not target.parent.resolve().is_relative_to(base):
+            continue  # never follow a path or a linked folder out of the workspace
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+            removed.append(name)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    pending = record.with_name("sent.list.tmp")
+    shutil.copyfile(listing, pending)
+    os.replace(pending, record)  # the new list is written last
+    return removed
 
 
 def install_generated_ignore(directory: Path, patterns: str) -> None:
@@ -632,16 +706,24 @@ def _dispatch_tracked(args, root: Path, config: dict, experiment: Path | None, c
     snapshot=None
     filelist=""
     sources=[]
+    named=False
     for index,token in enumerate(args.argv):
-        if token in ("-f","--filelist") and index+1<len(args.argv): filelist=args.argv[index+1]
+        if token in ("-f","--filelist") and index+1<len(args.argv): filelist,named=args.argv[index+1],True
         elif token.endswith((".sv",".v",".svh",".vh")) and (root/token).is_file(): sources.append(token)
     if not filelist:
         candidate=config.get("project",{}).get("filelist", "rtl/filelist_top.f")
         if candidate and (root/candidate).is_file(): filelist=candidate
+    resolved=True
     try:
         inputs=source_paths(root,sources,filelist) if sources or filelist else []
-    except (OSError,ValueError):
-        inputs=[]
+    except (OSError,ValueError) as exc:
+        # A bundled wrapper parses the same filelist on the host; fail here with the reason.
+        # A project runner's -f may mean something else, so only warn for it.
+        if named and Path(args.wrapper).name in BUNDLED_WRAPPERS and (root/filelist).is_file():
+            raise ValueError(f"cannot resolve filelist {filelist}: {exc}") from exc
+        print(f"WARNING: inputs of {filelist or 'the named sources'} were not resolved ({exc}); ignored files they "
+              "name are not sent, and files left from earlier runs stay on the host", file=sys.stderr)
+        inputs,resolved=[],False
     if inputs:
         run_id=uuid.uuid4().hex
         marker = runtime_state_root(root) if experiment else pre_init_state_root(root) or root / ".rat"
@@ -652,14 +734,15 @@ def _dispatch_tracked(args, root: Path, config: dict, experiment: Path | None, c
                 "host":socket.gethostname(),"compile_only":"--compile-only" in args.argv}
         atomic_json(snapshot,record)
     try:
-        return _dispatch(args, root, config, experiment, cleanup, inputs)
+        return _dispatch(args, root, config, experiment, cleanup, inputs, resolved)
     finally:
         if snapshot:
             record.update(verdict="TRANSPORT_COMPLETE",completed_at=time.time())
             atomic_json(snapshot,record)
 
 
-def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: ExitStack, inputs=()) -> int:
+def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: ExitStack, inputs=(),
+              resolved=True) -> int:
     settings = config.get("execution", {})
     selected = backend(config)
     if selected not in ("ssh", "lsf"):
@@ -773,13 +856,20 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     if not shim.is_file():
         shim = helper_root.parent / "skills/rat-init-project/templates/lib/tool-runner.sh"
     shutil.copy2(shim, library / shim.name)
+    if manifest is not None:
+        shutil.copyfile(cache / "upload.list", package / "sent.list")
     remote_runtime = workspace + "/.rat/runner-runtime/" + run_id
     if remote("umask 077; mkdir -p " + shlex.quote(remote_runtime), "runtime-mkdir"):
         return 2
     if step([*transport, str(package) + "/", remote_operand(host, remote_runtime + "/")], "runtime-sync"):
         return 2
-    supported = wrapper.name in ("run_sim.sh", "run_syn.sh", "run_lint.sh", "run_cdc.sh", "run_formality.sh",
-                                 "run_conformal.sh", "run_regression.sh", "run_regression_uvm.sh")
+    if manifest is not None and resolved:
+        # Unresolved inputs shrink the list, so pruning would delete inputs the run needs.
+        prune = [settings.get("python", "python3"), remote_runtime + "/lib/eda_runner.py", "prune-sent",
+                 "--workspace", workspace, "--list", remote_runtime + "/sent.list"]
+        if remote(shlex.join(prune), "prune"):
+            print(f"WARNING: could not remove files deleted since the last run from {host}", file=sys.stderr)
+    supported = wrapper.name in BUNDLED_WRAPPERS
     remote_outputs = workspace + "/experiment/" + experiment.name if experiment and supported else workspace
     mapped = []
     explicit_outputs = []
@@ -838,8 +928,8 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
         command = "bash -c " + shlex.quote(job)
     may_release = False
     status = remote(command, "execution")
-    if status == 124 and selected == "lsf":
-        subprocess.run([*ssh, "bkill -J " + shlex.quote(job_name)], timeout=15, capture_output=True)
+    if selected == "lsf" and status in LSF_WAITER_LOST:
+        cancel_lsf_job(ssh, job_name)
     observed = subprocess.run([*ssh, "cat " + shlex.quote(status_file)], capture_output=True, text=True, timeout=15)
     if observed.returncode == 0 and re.fullmatch(r"\d+\s*", observed.stdout) and 0 <= int(observed.stdout.strip()) <= 255:
         status = int(observed.stdout.strip())
@@ -909,6 +999,30 @@ def _dispatch(args, root: Path, config: dict, experiment: Path | None, cleanup: 
     return status
 
 
+def locked_experiments(root: Path) -> list[str]:
+    """IDs a dispatcher still has locked. The lock is held until the result fetch returns."""
+    parent = root / "experiment"
+    if not parent.is_dir():
+        return []
+    locked = []
+    for path in parent.iterdir():
+        if not path.is_dir() or path.is_symlink() or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", path.name):
+            continue
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        except OSError:
+            continue
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            locked.append(path.name)
+        else:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+    return locked
+
+
 def clean(args, root: Path, config: dict) -> int:
     """Remove experiment folders on the execution host, and locally with --local, when the user asks."""
     names = args.experiment or []
@@ -928,10 +1042,17 @@ def clean(args, root: Path, config: dict) -> int:
         if not isinstance(ssh_options, list) or not all(isinstance(value, str) for value in ssh_options):
             raise ValueError("ssh_options must be an argument list")
         targets = " ".join(shlex.quote(name) for name in names) if names else "*"
-        # A running experiment holds its "active" reservation; leave it alone.
-        script = (f"cd {shlex.quote(workspace + '/.rat/experiments')} 2>/dev/null || exit 0\n"
+        # The job writes exit-status while the dispatcher is still fetching, so a newer
+        # status means "abandoned" only when this project no longer holds the lock.
+        # A reservation with no newer status is a job that may still be running.
+        held = " ".join(sorted(locked_experiments(root)))
+        script = (f"keep={shlex.quote(held)}\n"
+                  f"cd {shlex.quote(workspace + '/.rat/experiments')} 2>/dev/null || exit 0\n"
                   f"for id in {targets}; do\n  [ -d \"$id\" ] || continue\n"
-                  '  if [ -e "$id/active" ]; then echo "busy $id"; continue; fi\n'
+                  '  latest=$(ls -td "$id"/work/.rat/runner-runtime/*/ 2>/dev/null | head -n 1)\n'
+                  '  if [ -e "$id/active" ] && ! { [ -n "$latest" ] && [ "${latest}exit-status" -nt "$id/active" ]; }; then\n'
+                  '    echo "busy $id"; continue\n  fi\n'
+                  '  case " $keep " in *" $id "*) echo "busy $id"; continue ;; esac\n'
                   '  rm -rf -- "$id" && echo "removed $id"\ndone\n')
         result = subprocess.run(["ssh", *ssh_options, "--", host, remote_shell_command(script)],
                                 capture_output=True, text=True, timeout=600)
@@ -1208,6 +1329,9 @@ def main() -> int:
     command.add_argument("--stall", type=float)
     command.add_argument("--shell-command")
     command.add_argument("argv", nargs=argparse.REMAINDER)
+    trim = sub.add_parser("prune-sent", help=argparse.SUPPRESS)
+    trim.add_argument("--workspace", required=True)
+    trim.add_argument("--list", required=True)
     tidy = sub.add_parser("clean", help="remove experiment folders on the execution host (and locally with --local)")
     tidy.add_argument("--root", required=True)
     tidy.add_argument("--experiment", action="append")
@@ -1233,6 +1357,10 @@ def main() -> int:
     remote.add_argument("--wrapper", required=True)
     remote.add_argument("argv", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    if args.command == "prune-sent":
+        removed = prune_sent(Path(args.workspace), Path(args.list))
+        print(f"removed {len(removed)} file(s) deleted since the last run")
+        return 0
     if hasattr(args, "argv") and args.argv[:1] == ["--"]:
         args.argv = args.argv[1:]
     root = Path(args.root).resolve()

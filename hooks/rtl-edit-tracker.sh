@@ -192,7 +192,7 @@ case "$FILE_PATH" in
   *.sv|*.svh|*.v|*.vh)
     _setup_tracking
     FILE_PATH=$(ratu_normalize_path "$FILE_PATH" "$SESSION_CWD" "$CWD")
-    case "$FILE_PATH" in .claude/worktrees/*) emit_post_continue ;; /*) ;; *) FILE_PATH="$CWD/$FILE_PATH" ;; esac
+    case "$FILE_PATH" in .claude/worktrees/*|experiment/*|"$CWD"/experiment/*) emit_post_continue ;; /*) ;; *) FILE_PATH="$CWD/$FILE_PATH" ;; esac
     if _rat_in_ppa_scope "$FILE_PATH"; then
       _check_p6_stale "$CWD" "$STATE_DIR" >/dev/null
       # PostToolUse hook — emit a PostToolUse envelope (emit_continue hardcodes a

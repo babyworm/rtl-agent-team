@@ -7,6 +7,32 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [2.0.0-pre17] - 2026-11-23
+
+Findings from a project migration review:
+
+- A remote runner whose SSH channel closed died on the next output write (BrokenPipe) and left
+  its tool running with no time limit. It now watches the channel, stops the tool's process
+  group, and records `DISCONNECTED` (exit 129); a local runner whose reader left (`| head`)
+  keeps running and logging. SIGHUP stops the tool like SIGTERM. The LSF job is
+  cancelled when `bsub -K` does not come back: timeout, a lost SSH connection, or
+  SIGHUP, SIGINT, or SIGTERM of the dispatcher (exits 129, 130, 143). A cancel that
+  fails or times out is logged, and the job status file is still read.
+- Files an earlier dispatch sent and this one no longer sends are deleted from the reused
+  remote workspace, so a header deleted locally no longer compiles remotely. Only paths in the
+  previous send list are candidates; build outputs stay. Workspaces used before this release
+  have no send list, so their leftovers go only with a new ID or `clean`.
+- An unresolvable filelist no longer drops inputs silently: a bundled wrapper's named
+  filelist stops dispatch with the parser's reason; otherwise a warning names what was not
+  sent, and the remote deletion above is skipped for that run.
+- Results under `experiment/` are not RTL sources: the edit tracker ignores them, and so do
+  entries already in tracking files.
+- `clean` removes an experiment whose reservation is older than its latest run's exit
+  status, unless a local dispatcher still holds that experiment's lock. The lock is
+  held while results are fetched, so a finished job is not deleted out from under the fetch.
+- Test fixture: the macOS stub guard test no longer fails where the test's Python is
+  `/usr/bin/python3` itself.
+
 ## [2.0.0-pre16] - 2026-11-23
 
 - macOS stub guard, from a verification review of pre15: an `xcode-select -p` answer that is

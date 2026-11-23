@@ -1,10 +1,12 @@
 """Execution, configuration, and transport contracts using controlled processes."""
 
+import fcntl
 import json
 import re
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -232,6 +234,51 @@ while [ -n "${FIXTURE_RELEASE:-}" ] && [ ! -f "$FIXTURE_RELEASE" ]; do sleep .02
     assert not list(remote.glob(".rat/experiments/*/active"))
 
 
+def test_lsf_hangup_cancels_the_waiting_job(remote_project, tmp_path):
+    root, remote, wrapper, env = remote_project
+    started, killed = tmp_path / "bsub-started", tmp_path / "bkill-args"
+    executable(tmp_path / "bin/bsub", f'#!/bin/sh\necho "Job <123> is submitted"\ntouch "{started}"\nexec sleep 60\n')
+    executable(tmp_path / "bin/bkill", f'#!/bin/sh\nprintf "%s\\n" "$*" > "{killed}"\nexit 0\n')
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "lsf", "host": "fixture-host", "workspace": str(remote), "outputs": []}}))
+    proc = subprocess.Popen([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(wrapper),
+                             "--"], cwd=root, env={**os.environ, **env}, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True)
+    try:
+        deadline = time.monotonic() + 15
+        while not started.is_file() and proc.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert started.is_file(), "bsub -K never started"
+        proc.send_signal(signal.SIGHUP)
+        stdout, stderr = proc.communicate(timeout=20)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate(timeout=5)
+    assert killed.is_file(), stderr
+    assert killed.read_text().startswith("-J rat-"), killed.read_text()
+    assert proc.returncode == 3, stdout + stderr  # waiter died and the job wrote no status
+
+
+def test_lsf_cancel_failure_is_logged_and_does_not_raise(monkeypatch, capsys):
+    import eda_runner
+
+    def expire(*args, **kwargs):
+        raise subprocess.TimeoutExpired(args[0], kwargs.get("timeout", 15))
+
+    monkeypatch.setattr(eda_runner.subprocess, "run", expire)
+    eda_runner.cancel_lsf_job(["ssh", "fixture"], "rat-abc")
+    assert "could not cancel LSF job rat-abc" in capsys.readouterr().err
+
+    def fail(*args, **kwargs):
+        return subprocess.CompletedProcess(args[0], 255, "", "ssh: connect failed")
+
+    monkeypatch.setattr(eda_runner.subprocess, "run", fail)
+    eda_runner.cancel_lsf_job(["ssh", "fixture"], "rat-abc")
+    err = capsys.readouterr().err
+    assert "exited 255" in err and "connect failed" in err
+
+
 def test_missing_remote_job_status_keeps_experiment_reserved(remote_project):
     root, remote, wrapper, env = remote_project
     (root / "rat_config.json").write_text(json.dumps({"execution": {
@@ -427,6 +474,13 @@ def test_clean_removes_finished_experiments_on_both_sides(remote_project):
     for name in ("done", "running", "other"):
         (experiments / name / "work").mkdir(parents=True)
     (experiments / "running/active").mkdir()
+    # A dispatcher that went away leaves its reservation behind; the job's status is newer.
+    (experiments / "abandoned/active").mkdir(parents=True)
+    status = experiments / "abandoned/work/.rat/runner-runtime/run1/exit-status"
+    status.parent.mkdir(parents=True)
+    status.write_text("129\n")
+    later = time.time() + 5
+    os.utime(status, (later, later))
     for name in ("done", "running", "local-only"):
         (root / "experiment" / name).mkdir(parents=True)
 
@@ -436,7 +490,7 @@ def test_clean_removes_finished_experiments_on_both_sides(remote_project):
 
     named = clean("--experiment", "done")
     assert named.returncode == 0, named.stderr
-    assert sorted(p.name for p in experiments.iterdir()) == ["other", "running"]
+    assert sorted(p.name for p in experiments.iterdir()) == ["abandoned", "other", "running"]
     assert (root / "experiment/done").is_dir()  # local results stay without --local
     everything = clean("--all", "--local")
     assert everything.returncode == 0 and "kept running: running" in everything.stderr
@@ -444,6 +498,33 @@ def test_clean_removes_finished_experiments_on_both_sides(remote_project):
     assert [p.name for p in (root / "experiment").iterdir()] == ["running"]
     assert clean("--experiment", "../x").returncode == 2
     assert clean().returncode == 2  # nothing named, no --all
+
+
+def test_clean_keeps_a_live_fetch_and_still_removes_an_abandoned_one(remote_project):
+    root, remote, _, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote)}}))
+    experiments = remote / ".rat/experiments"
+    later = time.time() + 5
+    for name in ("fetching", "abandoned"):
+        (experiments / name / "active").mkdir(parents=True)
+        status = experiments / name / "work/.rat/runner-runtime/run1/exit-status"
+        status.parent.mkdir(parents=True)
+        status.write_text("0\n")
+        os.utime(status, (later, later))
+    local = root / "experiment/fetching"
+    local.mkdir(parents=True)
+    fd = os.open(local, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        result = subprocess.run([sys.executable, str(RUNNER), "clean", "--root", str(root), "--all"],
+                                env={**os.environ, **env}, capture_output=True, text=True, timeout=30)
+    finally:
+        os.close(fd)
+    assert result.returncode == 0, result.stderr
+    assert (experiments / "fetching").is_dir()
+    assert not (experiments / "abandoned").exists()
+    assert "kept running: fetching" in result.stderr
 
 
 @pytest.mark.skipif(not (shutil.which("rsync") and shutil.which("git")), reason="needs rsync and git")
@@ -871,3 +952,117 @@ def test_a_failed_fetch_through_openrsync_removes_the_folders_it_made(tmp_path):
     assert calls.read_text().rstrip().endswith("experiment/exp-3/deep/missing/")
     assert sorted(path.name for path in (root / "experiment/exp-3").iterdir()) == [".gitignore"]
 
+
+
+def test_named_filelist_that_a_bundled_wrapper_cannot_read_stops_dispatch(remote_project):
+    root, remote, wrapper, env = remote_project
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote), "outputs": []}}))
+    (root / "bad.f").write_text("-unknown_vendor_switch\n")
+    bundled = executable(root / "run_sim.sh", "#!/bin/sh\nexit 0\n")
+    def dispatch(runner):
+        return subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(runner),
+                               "--", "-f", "bad.f"], cwd=root, env={**os.environ, **env}, capture_output=True,
+                              text=True, timeout=30)
+    stopped = dispatch(bundled)
+    assert stopped.returncode == 2 and "cannot resolve filelist bad.f" in stopped.stderr
+    # A project runner's -f may not be a filelist: say what was skipped and run anyway.
+    project_runner = dispatch(wrapper)
+    assert "WARNING: inputs of bad.f were not resolved" in project_runner.stderr
+
+
+def test_prune_removes_only_files_sent_before_and_never_leaves_the_workspace(tmp_path):
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from eda_runner import prune_sent
+    workspace, outside = tmp_path / "ws", tmp_path / "outside"
+    for path in ("rtl/keep.sv", "rtl/gone.svh", "build/out.o", "linked-target/victim.sv"):
+        target = (outside if path.startswith("linked-target") else workspace) / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("x")
+    (workspace / "linked").symlink_to(outside / "linked-target")
+    def write(path, names):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"".join(name.encode() + b"\0" for name in names))
+    write(workspace / ".rat/sent.list", ["rtl/keep.sv", "rtl/gone.svh", "../escape", "/etc/passwd", "linked/victim.sv"])
+    write(tmp_path / "new.list", ["rtl/keep.sv"])
+    assert prune_sent(workspace, tmp_path / "new.list") == ["rtl/gone.svh"]
+    assert (workspace / "rtl/keep.sv").exists() and (workspace / "build/out.o").exists()
+    assert (outside / "linked-target/victim.sv").exists()
+    assert (workspace / ".rat/sent.list").read_bytes() == b"rtl/keep.sv\0"
+
+
+@pytest.mark.skipif(not (shutil.which("rsync") and shutil.which("git")), reason="needs rsync and git")
+def test_header_deleted_locally_is_gone_on_the_host_when_an_id_is_reused(tmp_path):
+    tools = tmp_path / "bin"
+    executable(tools / "ssh", '''#!/usr/bin/env python3
+import subprocess, sys
+args = sys.argv[1:]
+while args and args[0].startswith("-"):
+    if args.pop(0) == "--":
+        break
+args.pop(0)
+raise SystemExit(subprocess.call(args[0], shell=True) if len(args) == 1 else subprocess.call(args))
+''')
+    root, remote = tmp_path / "project", tmp_path / "remote"
+    (root / "rtl").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    for name in ("a.svh", "b.svh"):
+        (root / "rtl" / name).write_text("`define X\n")
+    (root / "rat_config.json").write_text(json.dumps({"execution": {
+        "backend": "ssh", "host": "fixture-host", "workspace": str(remote)}}))
+    wrapper = executable(root / "tool.sh", '#!/usr/bin/env bash\nmkdir -p "$2"\nls rtl > "$2/listing.txt"\n')
+    env = {**os.environ, "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}", "RAT_EXPERIMENT_ID": "reuse"}
+    def run():
+        result = subprocess.run([sys.executable, str(RUNNER), "dispatch", "--root", str(root), "--wrapper", str(wrapper),
+                                 "--", "--outdir", "out"], cwd=root, env=env, capture_output=True, text=True, timeout=60)
+        assert result.returncode == 0, result.stdout + result.stderr
+        return (root / "experiment/reuse/out/listing.txt").read_text().split()
+    assert run() == ["a.svh", "b.svh"]
+    (root / "rtl/b.svh").unlink()
+    assert run() == ["a.svh"]
+
+
+def _guard(tmp_path, remote, child):
+    env = {**os.environ, "RAT_REMOTE_ACTIVE": "1" if remote else "0"}
+    return subprocess.Popen([sys.executable, str(RUNNER), "run", "--root", str(tmp_path), "--timeout", "60",
+                             "--shell-command", child], cwd=tmp_path, env=env, stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL)
+
+
+def _alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def _child_pid(path):
+    deadline = time.monotonic() + 10
+    while not (path.is_file() and path.read_text().strip()) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return int(path.read_text())
+
+
+@pytest.mark.parametrize("trigger", ["closed-console", "hangup"])
+def test_remote_guard_stops_its_tool_when_the_controller_is_gone(tmp_path, trigger):
+    pid_file = tmp_path / "child.pid"
+    guard = _guard(tmp_path, True, f"sh -c 'echo $$ > {pid_file}; exec sleep 30'")
+    pid = _child_pid(pid_file)
+    if trigger == "closed-console":
+        guard.stdout.close()  # the SSH channel went away
+    else:
+        guard.send_signal(signal.SIGHUP)
+    guard.wait(timeout=10)
+    deadline = time.monotonic() + 5
+    while _alive(pid) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not _alive(pid)
+
+
+def test_local_guard_keeps_running_when_its_reader_leaves(tmp_path):
+    marker = tmp_path / "finished"
+    guard = _guard(tmp_path, False, f"sh -c 'echo start; sleep 1; echo more; touch {marker}'")
+    guard.stdout.readline()
+    guard.stdout.close()  # e.g. piped through `head -1`
+    assert guard.wait(timeout=20) == 0 and marker.exists()

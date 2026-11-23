@@ -153,7 +153,10 @@ def test_macos_install_stub_is_never_started(tmp_path, tools, spelling):
     fake.mkdir()
     developer = tmp_path / "Developer"
     (developer / "usr/bin").mkdir(parents=True)
-    (developer / "usr/bin/python3").symlink_to(sys.executable)
+    # A separate file: when the test's own Python is /usr/bin/python3, a symlink to it would
+    # be the shim itself, and the guard rightly refuses that.
+    (developer / "usr/bin/python3").write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+    (developer / "usr/bin/python3").chmod(0o755)
     answers = {"installed": f"echo {developer}", "missing": "exit 2", "empty answer": "exit 0",
                "root answer": "echo /"}
     (fake / "uname").write_text("#!/bin/sh\necho Darwin\n")

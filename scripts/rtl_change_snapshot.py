@@ -14,8 +14,9 @@ from verify_evidence import atomic_json, digest, source_digest
 
 EXTENSIONS = {".sv", ".svh", ".v", ".vh"}
 TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure"}
-# formal/ holds properties checked by the formal flow; pnr/ holds generated netlists.
-OUTPUT_ROOTS = {"syn", "lint", "reviews", "docs", "formal", "pnr"}
+# formal/ holds properties checked by the formal flow; pnr/ holds generated netlists;
+# experiment/ holds fetched or generated run results.
+OUTPUT_ROOTS = {"syn", "lint", "reviews", "docs", "formal", "pnr", "experiment"}
 IGNORED_DIRS = {".git", ".rat", ".rtl-agent-team", ".claude", ".worktrees",
                 ".venv", "node_modules", "obj_dir", "sim_build"}
 

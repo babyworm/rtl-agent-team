@@ -6,8 +6,8 @@
       "sha256": "a75e23cf0529d16f22f0c73245635ace6292d658dee766cf793a95e8e158cd2a"
     },
     "scripts/eda_runner.py": {
-      "version": "2.0.19",
-      "sha256": "687228914e6bedd0e7d3549157d2d11f0fb848aeda4ccfd2839592c003960512"
+      "version": "2.0.22",
+      "sha256": "8e4667110490a711ae96d3e773c38923ae3bdbaaf61a33d2d5c57fbea192b3f5"
     },
     "scripts/eda_setup.py": {
       "version": "2.0.11",
@@ -26,8 +26,8 @@
       "sha256": "e86634626b63da5ef9cb78e600bfecad8040e86dd05351449cf6455f8c581d10"
     },
     "scripts/verify_evidence.py": {
-      "version": "2.0.12",
-      "sha256": "6fffe680d1932030b3211fea94e4a3949c0f7b7a4f174ddf2b20322203e205c0"
+      "version": "2.0.13",
+      "sha256": "0c1928a3f5cbdf0aea1ac08434870ca85c71ae9fa8e9a4cbd04e2bd5755d1e54"
     },
     "skills/rat-init-project/templates/Makefile": {
       "version": "2.0.0",
