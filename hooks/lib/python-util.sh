@@ -1,5 +1,5 @@
 #!/bin/sh
-# rat-version: 2.0.3
+# rat-version: 1.0.0-pre19
 # Select an interpreter capable of running the shared execution/evidence helpers.
 # RAT_PYTHON_MIN is the plugin's Python floor; keep it equal to MIN_PYTHON in
 # scripts/rat_compat.py (tests/unit/test_python_compat.py checks both). Python 2 fails

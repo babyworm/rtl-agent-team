@@ -29,6 +29,8 @@ claude --plugin-dir "$(pwd)"
 
 이미 `try-v1.0`을 받아 뒀다면 저장소 루트에서 `claude --plugin-dir .`을 실행해 현재 작업 트리를 읽습니다. RTL 프로젝트에서 시험하려면 해당 프로젝트 디렉토리로 이동한 뒤 `claude --plugin-dir /path/to/rtl-agent-team`을 실행하세요.
 
+> **`try-v1.0` 버전 관리**: `try-v1.0`은 `v1.0.0` 정식 릴리스를 준비하는 프리릴리스 테스트 브랜치(릴리스 브랜치 성격)입니다. 이 브랜치의 변경 사항은 `1.0.0-preXX` 번호로 관리하며, `v1.0.0` 정식 릴리스 시점에 모두 `v1.0.0`으로 일괄 반영한 뒤 이후부터는 [의미적 버전 관리(SemVer)](https://semver.org/lang/ko/)를 따릅니다.
+
 ### Issue 제출
 
 - **버그 리포트**: [Bug Report 템플릿](.github/ISSUE_TEMPLATE/bug_report.md) 사용

@@ -70,4 +70,4 @@ Merge: Phase 4→5 Gate (Stream A PASS + Stream B artifacts ready)
 - `sim/conformance/` — Conformance test outputs (RTL vs golden)
 - `sim/consistency/` — 3-way model consistency check outputs
 
-<!-- rat-version: 2.0.0 -->
+<!-- rat-version: 1.0.0-pre19 -->

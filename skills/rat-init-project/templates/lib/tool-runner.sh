@@ -351,7 +351,7 @@ get_formal_tier() {
   fi
 }
 
-# rat-version: 2.0.4
+# rat-version: 1.0.0-pre19
 
 
 rat_capture_path() {

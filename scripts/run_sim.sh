@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rat-version: 2.0.8
+# rat-version: 1.0.0-pre19
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #

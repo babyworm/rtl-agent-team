@@ -86,17 +86,18 @@ def test_pre_release_replaces_a_legacy_template_counter(installation):
     plugin, workspace, install = installation
     source = plugin / "scripts/eda_runner.py"
     original = source.read_text()
-    match = re.search(r"rat-version: (2\.0\.0-pre\d+)", original)
+    match = re.search(r"rat-version: (1\.0\.0-pre\d+)", original)
     assert match is not None
     current_ver = match.group(1)
-    source.write_text(original.replace(f"rat-version: {current_ver}", "rat-version: 2.0.22", 1))
-    install()
-    source.write_text(original + "\n# pre17 body\n")
-    result = install("--update")
-    installed = workspace / "lib/eda_runner.py"
-    assert "UPDATE lib/eda_runner.py" in result.stdout
-    assert f"rat-version: {current_ver}" in installed.read_text()
-    assert installed.read_text().endswith("# pre17 body\n")
+    for legacy_ver in ("2.0.22", "2.0.0-pre18"):
+        source.write_text(original.replace(f"rat-version: {current_ver}", f"rat-version: {legacy_ver}", 1))
+        install("--update")
+        source.write_text(original + f"\n# {legacy_ver} upgraded\n")
+        result = install("--update")
+        installed = workspace / "lib/eda_runner.py"
+        assert "UPDATE lib/eda_runner.py" in result.stdout
+        assert f"rat-version: {current_ver}" in installed.read_text()
+        assert installed.read_text().endswith(f"# {legacy_ver} upgraded\n")
 
 
 def test_unrecognized_legacy_copy_is_preserved(installation):

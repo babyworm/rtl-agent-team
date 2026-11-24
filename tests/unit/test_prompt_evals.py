@@ -33,22 +33,24 @@ def test_diagnostic_confidence_cannot_clear_a_material_ambiguity():
 
 def test_template_revision_is_required_when_managed_content_changes():
     catalog=module('template_catalog')
-    old={'tool.sh':{'version':'2.0.0','sha256':'before'}}
-    changed={'tool.sh':{'version':'2.0.0','sha256':'after'}}
+    old={'tool.sh':{'version':'1.0.0','sha256':'before'}}
+    changed={'tool.sh':{'version':'1.0.0','sha256':'after'}}
     assert catalog.validate(old,changed)
-    changed['tool.sh']['version']='2.0.1'
+    changed['tool.sh']['version']='1.0.1'
     assert catalog.validate(old,changed)==[]
-    # The release is still 2.0.0, so the pre number is the revision.
-    changed['tool.sh']['version']='2.0.0-pre17'
-    assert catalog.validate({'tool.sh':{'version':'2.0.0-pre16','sha256':'before'}},changed)==[]
-    assert catalog.validate({'tool.sh':{'version':'2.0.0-pre17','sha256':'before'}},changed)
-    assert catalog.validate({'tool.sh':{'version':'2.0.22','sha256':'before'}},changed)==[]
-    release={'tool.sh':{'version':'2.0.0','sha256':'released'}}
+    # Pre-1.0.0 revisions use 1.0.0-preN and replace legacy 2.0.x markers.
+    changed['tool.sh']['version']='1.0.0-pre19'
+    assert catalog.validate({'tool.sh':{'version':'1.0.0-pre18','sha256':'before'}},changed)==[]
+    assert catalog.validate({'tool.sh':{'version':'1.0.0-pre19','sha256':'before'}},changed)
+    assert catalog.validate({'tool.sh':{'version':'2.0.0-pre18','sha256':'before'}},changed)==[]
+    assert catalog.validate({'tool.sh':{'version':'2.0.14','sha256':'before'}},changed)==[]
+    release={'tool.sh':{'version':'1.0.0','sha256':'released'}}
     assert catalog.validate(changed,release)==[]
     assert catalog.validate(release,changed)
-    assert catalog.version_newer('2.0.1','2.0.0')
-    assert not catalog.version_newer('2.0.0','2.0.22')
-    assert catalog.version_newer('2.0.22','2.0.0')
+    assert catalog.version_newer('1.0.1','1.0.0')
+    assert not catalog.version_newer('1.0.0-pre19','1.0.0')
+    assert catalog.version_newer('2.0.0','1.0.0')
+    assert catalog.version_newer('1.0.0','2.0.14')
 
 
 def test_checked_in_catalog_matches_shipped_template_content():

@@ -27,4 +27,4 @@ refc/
 gcc -std=c11 -shared -fPIC -o build/lib{module}_ref.so src/*.c -Iinclude
 ```
 
-<!-- rat-version: 2.0.0 -->
+<!-- rat-version: 1.0.0-pre19 -->

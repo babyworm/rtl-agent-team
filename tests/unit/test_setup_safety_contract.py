@@ -164,11 +164,11 @@ def test_project_template_update_uses_numeric_version_order() -> None:
     assert helper is not None
     result = subprocess.run(
         ["bash", "-c", helper.group(0) + "\n"
-         "_version_gt 0.11.3 0.8.19 && ! _version_gt 0.11.3 9.0.0 && ! _version_gt 2.0.0 2.0.0 && "
-         "_version_gt 2.0.0-pre17 2.0.0-pre16 && ! _version_gt 2.0.0-pre17 2.0.0 && "
-         "_version_gt 2.0.0 2.0.0-pre17 && _version_gt 2.0.0-pre17 2.0.22 && "
-         "! _version_gt 2.0.0 2.0.22 && ! _version_gt 2.0.22 2.0.0-pre17 && "
-         "_version_gt 2.0.1 2.0.0 && _version_gt 2.0.22 2.0.0"],
+         "_version_gt 0.11.3 0.8.19 && ! _version_gt 0.11.3 9.0.0 && ! _version_gt 1.0.0 1.0.0 && "
+         "_version_gt 1.0.0-pre19 1.0.0-pre18 && ! _version_gt 1.0.0-pre19 1.0.0 && "
+         "_version_gt 1.0.0 1.0.0-pre19 && _version_gt 1.0.0-pre19 2.0.0-pre18 && "
+         "_version_gt 1.0.0-pre19 2.0.14 && _version_gt 1.0.0 2.0.14 && "
+         "_version_gt 1.0.1 1.0.0 && _version_gt 2.0.0 1.0.0 && ! _version_gt 0.14.6 1.0.0"],
         capture_output=True, text=True, check=False,
     )
     assert result.returncode == 0, result.stderr

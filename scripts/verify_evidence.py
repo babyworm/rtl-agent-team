@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.14
+# rat-version: 1.0.0-pre19
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations

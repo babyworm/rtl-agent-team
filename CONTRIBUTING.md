@@ -29,6 +29,8 @@ claude --plugin-dir "$(pwd)"
 
 If you already have a `try-v1.0` checkout, run `claude --plugin-dir .` from its root to load the current working tree. To try it against an RTL project, switch to that project directory and launch `claude --plugin-dir /path/to/rtl-agent-team`.
 
+> **Versioning on `try-v1.0`**: `try-v1.0` is the pre-release test branch (release branch) for `v1.0.0`. Changes on this branch use `1.0.0-preXX` pre-release versions and will be consolidated to `v1.0.0` at release time; releases after `v1.0.0` follow [Semantic Versioning](https://semver.org/).
+
 ### Filing an issue
 
 - **Bug reports**: use the [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md)

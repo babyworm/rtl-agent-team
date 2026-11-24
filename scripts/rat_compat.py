@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.0
+# rat-version: 1.0.0-pre19
 """Python compatibility level of the plugin's hooks and helpers.
 
 This file parses under any Python, including Python 2, so that an old interpreter gets a clear

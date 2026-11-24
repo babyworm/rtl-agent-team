@@ -9,10 +9,9 @@ import re
 ROOT=Path(__file__).resolve().parents[1]
 CATALOG=ROOT/'template-catalog.json'
 VERSION=re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-pre(\d+))?')
-# 2.0.P (P>0, no pre tag) is a template counter from before 2.0.0 existed.
-# A 2.0.0-preN marker replaces those counters. The bare release 2.0.0 does not:
-# 2.0.1 stays newer than 2.0.0, and 2.0.22 stays newer than bare 2.0.0.
-# Move a counter to 2.0.0-preN before stamping the release, or the update skips it.
+# Legacy 2.0.x (2.0.P and 2.0.0-preN) markers come from the pre-1.0.0 try-2.0 branch.
+# 1.x.y (including 1.0.0-preN) replaces those legacy 2.0.x markers; future 2.x.y
+# against an installed 1.x.y still follows standard SemVer ordering.
 
 
 def parse_version(value):
@@ -26,9 +25,7 @@ def version_newer(candidate,installed):
     """True when candidate should replace installed. Equal is not newer."""
     cmaj,cmin,cpat,cpre=parse_version(candidate)
     imaj,imin,ipat,ipre=parse_version(installed)
-    def counter(maj,minor,patch,pre):return (maj,minor)==(2,0) and patch>0 and pre is None
-    if cpre is not None and (cmaj,cmin,cpat)==(2,0,0) and counter(imaj,imin,ipat,ipre):return True
-    if ipre is not None and (imaj,imin,ipat)==(2,0,0) and counter(cmaj,cmin,cpat,cpre):return False
+    if cmaj==1 and (imaj,imin)==(2,0):return True
     if (cmaj,cmin,cpat)!=(imaj,imin,ipat):return (cmaj,cmin,cpat)>(imaj,imin,ipat)
     if cpre is None and ipre is None:return False
     if cpre is None:return True

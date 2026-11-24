@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 2.0.3
+# rat-version: 1.0.0-pre19
 """Bind regression evidence to the sources expanded by the actual cocotb Makefile."""
 import argparse
 import json

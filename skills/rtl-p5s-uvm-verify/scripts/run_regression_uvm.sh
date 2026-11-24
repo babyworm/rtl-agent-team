@@ -835,4 +835,4 @@ echo "========================================"
 [[ "$VERDICT" != "INCONCLUSIVE" ]] || exit 3
 exit 1
 
-# rat-version: 2.0.9
+# rat-version: 1.0.0-pre19
