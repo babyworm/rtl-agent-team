@@ -10,7 +10,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from merge_coverpoint_logs import BIN, END
-from verify_evidence import (CHECK_POINT, POINT_PLAN, check_point_error, digest, point_fingerprint, runtime_state_root,
+from verify_evidence import (CHECK_POINT, HDL_SUFFIXES, POINT_PLAN, assess_records, check_point_error, digest,
+                             failed_case_labels, has_implicit_top, point_fingerprint, runtime_state_root,
                              seed_log_sizes, source_matches)
 
 
@@ -109,10 +110,13 @@ def runtime_evidence(root):
         return digest(path) if path.is_file() else None
 
     paths = set()
+    selected_hdl = set()
     for key in selected:
         record = records.get(key, {})
         if record.get("verdict") != "PASS" or record.get("compile_only"):
             raise ValueError(f"{key}: missing passing simulation")
+        if has_implicit_top(record):
+            raise ValueError(f"{key}: rerun simulation with an explicitly selected top")
         sources = record.get("sources")
         identity = record.get("source_identity") if isinstance(record.get("source_identity"), dict) else {}
         if not isinstance(sources, dict) or not sources or not all(
@@ -120,6 +124,7 @@ def runtime_evidence(root):
             for name, expected in sources.items()
         ):
             raise ValueError(f"{key}: missing or changed simulation sources")
+        selected_hdl.update(name for name in sources if Path(name).suffix in HDL_SUFFIXES)
         logs = [(record.get("log"), record.get("log_sha256"))]
         if "runtime_log" in record:
             runtime = record["runtime_log"]
@@ -139,6 +144,9 @@ def runtime_evidence(root):
         if not isinstance(fingerprints, dict):
             raise ValueError(f"{key}: invalid point_fingerprints")
         yield log, fingerprints, recorded_seed_sizes(log, expected, record)
+    _, _, failures = assess_records(selected_hdl, runs)
+    if failures:
+        raise ValueError(f"unresolved failing simulations: {failed_case_labels(failures)}")
 
 
 def recorded_seed_sizes(log, expected_digest, record):

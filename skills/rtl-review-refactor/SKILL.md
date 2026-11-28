@@ -3,7 +3,7 @@ name: rtl-review-refactor
 description: "LLM code review + controlled refactor with mandatory re-validation gates; cross-cutting support for P4-P6, not a phase step. Trigger: 'review and refactor'."
 user-invocable: true
 argument-hint: "[scope: module|block|top]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

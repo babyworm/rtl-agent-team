@@ -3,7 +3,7 @@ name: rtl-document
 description: "Generate Markdown docs for an RTL module (ports, registers, FSM, ARM figures) — 'document this module', 'port table', 'refresh RTL docs'."
 user-invocable: true
 argument-hint: "[module-name | --all]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

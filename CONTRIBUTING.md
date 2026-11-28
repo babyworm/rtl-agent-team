@@ -152,6 +152,10 @@ color: blue
 
 Create `skills/{skill-name}/SKILL.md`.
 
+In Claude Code, `allowed-tools` preapproves tools while a skill runs. Omit a
+shell grant to use the caller's permission settings. When a command needs
+preapproval, scope the rule to that command. [Claude skill permissions](https://code.claude.com/docs/en/skills#pre-approve-tools-for-a-skill)
+
 ```markdown
 ---
 name: {skill-name}

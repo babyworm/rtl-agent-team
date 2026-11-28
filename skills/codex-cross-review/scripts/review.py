@@ -76,7 +76,10 @@ def run(args):
         if args.model:
             resolver.extend(["--model", args.model])
         model = subprocess.check_output(resolver, cwd=args.root, text=True, timeout=30).strip()
-        command = ["codex", "exec", "--ephemeral", "-s", "read-only", "--output-schema", str(SKILL / "review-schema.json")]
+        command = [
+            "codex", "exec", "--ephemeral", "--skip-git-repo-check",
+            "-s", "read-only", "--output-schema", str(SKILL / "review-schema.json"),
+        ]
         if model:
             command.extend(["-m", model])
         with tempfile.TemporaryDirectory(dir=folder) as tmp:

@@ -3,7 +3,7 @@ name: rtl-p5s-uvm-verify
 description: "P5 UVM verification on commercial simulators (VCS/Questa/Xcelium). Use when UVM methodology or constrained-random sequences/scoreboards are mandated."
 user-invocable: true
 argument-hint: "[module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

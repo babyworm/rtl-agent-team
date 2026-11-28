@@ -3,14 +3,14 @@ name: rtl-p5s-cdc-verify
 description: "P5 CDC analysis: finds missing synchronizers and metastability risks, emits SDC constraints. Use for multi-clock designs or pre-synthesis CDC signoff."
 user-invocable: true
 argument-hint: "[top-module]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.
 
 <Purpose>
 Perform static CDC analysis on RTL to identify missing synchronizers, metastability risks,
-and CDC constraint gaps. Outputs: lint/cdc/cdc_report.md + syn/constraints/cdc_constraints.sdc.
+and CDC constraint gaps. Record the evidence for the requested module or the whole design.
 
 See `references/cdc-patterns.md` for synchronizer types, common violations, and SDC constraint templates.
 </Purpose>
@@ -53,5 +53,10 @@ SDC constraint generation, and optional commercial CDC tool integration.
 
 ## Output
 
-- `reviews/phase-5-verify/{module}-cdc-report.md` — CDC analysis with VIOLATION/CAUTION/PASS verdict
-- `syn/constraints/cdc_constraints.sdc` — generated SDC constraints for identified crossings
+| Scope | CDC report | Constraints |
+| --- | --- | --- |
+| Whole design | `reviews/phase-5-verify/cdc-report.md` | `syn/constraints/cdc_constraints.sdc` |
+| Named module | `reviews/phase-5-verify/{module}-cdc-report.md` | `syn/constraints/cdc_constraints_{module}.sdc` |
+
+The report records the selected engine, observed findings and effective timing exceptions.
+Open checks remain INCOMPLETE when the required tool or measurement is unavailable.

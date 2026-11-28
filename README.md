@@ -60,6 +60,27 @@ Codex cross-review is off by default. Ask for it in a run, including for a singl
 phase, or set `review.codex_cross_review` to `true` in the project's
 `rat_config.json`. [Cross-review behavior](runtime/phase-dispatch.md)
 
+## Other coding agents
+
+Claude Code is the reference host for the full pipeline, including phase teams
+and Stop hooks. In a local checkout, Codex and Grok can read the Claude
+marketplace. Give the host the RTL project as its working directory.
+
+For Gemini CLI or Antigravity, export the skills and bundled EDA runners to a
+new directory outside the checkout. The exporter uses Python and npm and works
+offline.
+
+```sh
+python3 scripts/package_portable_skills.py ../rtl-agent-team-skills
+```
+
+Install the export with `gemini extensions install ../rtl-agent-team-skills`
+or `agy plugin install ../rtl-agent-team-skills`, depending on the host.
+
+The export uses the same role instructions and simulator evidence as Claude
+Code. Its workflows check the measured result at handoff. Automatic edit
+tracking and Stop enforcement require the host hooks. [Host dispatch](runtime/model-selection.md)
+
 ## Resources
 
 - [Developer guide](CONTRIBUTING.md#development-environment-setup) · [Tests](tests/README.md)

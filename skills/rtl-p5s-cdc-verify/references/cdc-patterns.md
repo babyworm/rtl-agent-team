@@ -23,23 +23,17 @@ The `sram_dp` wrapper from `rtl/common/` provides a built-in CDC boundary for bu
 **When to use**: async FIFO memory backend, cross-domain shared buffers, line buffers between pipeline stages in different clock domains.
 
 **CDC verification checklist for `sram_dp`**:
-1. `wclk` and `rclk` assigned to different `set_clock_groups -asynchronous` in SDC
+1. Identify the relationship between `wclk` and `rclk` and inventory all crossings in both directions.
 2. Write-side logic (`i_waddr`, `i_wen`, `i_wdata`) generated entirely in `wclk` domain
 3. Read-side logic (`i_raddr`, `i_ren`) generated entirely in `rclk` domain
 4. If used as async FIFO: gray-coded read/write pointers cross via separate 2-FF synchronizers
 5. No combinational path from write-domain signals to read-domain signals outside the SRAM
 6. `sram_dp` blackboxed in equivalence checking (behavioral vs foundry macro)
 
-**SDC constraints**:
-```tcl
-# Async clock relationship for dual-port SRAM
-set_clock_groups -asynchronous \
-  -group [get_clocks wclk] \
-  -group [get_clocks rclk]
-
-# False path through SRAM data array (storage is async)
-set_false_path -from [get_pins u_mem_*/mem_reg*/Q] -to [get_pins u_mem_*/o_rdata_reg*/D]
-```
+Use the memory macro's timing model for its ports. Check every crossing outside
+the macro, especially the FIFO pointers. Each Gray bus needs the physical bounds
+specified for its crossing. A clock-wide exception would suppress a max delay
+between the same domains.
 
 ## Common CDC Violations
 
@@ -180,25 +174,28 @@ do not silently skip quasi-static crossings.
 
 ## CDC Constraint Patterns (SDC)
 
+For unrelated clocks, use `set_clock_groups -asynchronous` only if every crossing
+between the grouped clocks in both directions can be excluded from timing. If any
+crossing has a required max delay, scope the other exceptions to individual
+endpoints. The following Vivado example uses a design-specified 5 ns bound on a
+Gray pointer bus. Substitute the actual pins and requirement from the design.
+
 ```tcl
-# Define clock domains
-create_clock -name sys_clk -period 10.0 [get_ports sys_clk]
-create_clock -name axi_clk -period 8.0  [get_ports axi_clk]
-create_clock -name codec_clk -period 5.0 [get_ports codec_clk]
-
-# Set clock groups (asynchronous relationship)
-set_clock_groups -asynchronous \
-  -group {sys_clk} \
-  -group {axi_clk} \
-  -group {codec_clk}
-
-# False path for synchronized signals (2-FF sync)
-set_false_path -from [get_pins u_sync_*/D] -to [get_pins u_sync_*/Q]
-
-# Max delay for handshake crossings
+# sys_clk -> axi_clk: bound the Gray pointer launch to its first capture stage.
 set_max_delay -datapath_only 5.0 \
-  -from [get_clocks sys_clk] -to [get_clocks axi_clk]
+  -from [get_pins {u_fifo/wgray_reg*/C}] -to [get_pins {u_fifo/wgray_sync1_reg*/D}]
+
+# Same clocks, separate single-bit request synchronizer.
+set_false_path -from [get_pins u_req/req_reg/C] -to [get_pins u_req_sync/stage1_reg/D]
 ```
+
+The launch register clock pin (C) and first capture data pin (D) are valid Vivado
+timing endpoints. Keep the synchronous path between capture stages timed. Check the resolved
+endpoints of every bus bit in the linked design. In Vivado, inspect
+`report_exceptions -ignored`, `report_methodology`, and `report_timing` between
+the exact endpoints after loading all project constraints. Record the effective
+bound, slack and report path. Missing paths or overridden exceptions leave a
+required timing check open. [AMD clock-group and CDC constraints](https://docs.amd.com/r/en-US/ug1387-acap-hardware-ip-platform-dev-methodology/Defining-Clock-Groups-and-CDC-Constraints)
 
 ## Open-Source CDC Tools
 

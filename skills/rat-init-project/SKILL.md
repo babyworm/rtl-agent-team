@@ -14,9 +14,11 @@ initialization, explain the proposed changes before installing them.
 
 ## Inputs and boundaries
 
-Use the project root from the request or spawn-context. The plugin root comes from
-`${CLAUDE_PLUGIN_ROOT}` or spawn-context `plugin_root`. All destinations are in the
-user project, not the plugin repository. Do not install EDA tools here.
+Run commands from the user's project root. Claude Code substitutes the installed
+skill path for `${CLAUDE_SKILL_DIR}` in the commands below. On other hosts, set
+`RAT_INIT_SKILL_DIR` to the absolute directory of the discovered SKILL.md in
+each shell call. Quote the resolved path, including spaces.
+The scripts locate all other bundled resources relative to themselves.
 
 Non-destructive installation creates missing templates. `--update` replaces only
 an unchanged managed copy with an older version. User-modified or unrecognized
@@ -28,13 +30,13 @@ copies remain intact; proposed replacements go to `.rat/template-updates/`.
 First preview the requested operation:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/install_project_templates.sh" --dry-run "$PWD"
+bash "${RAT_INIT_SKILL_DIR:-${CLAUDE_SKILL_DIR}}/scripts/install_project_templates.sh" --dry-run "$PWD"
 ```
 
 For an authorized new setup, install:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/install_project_templates.sh" "$PWD"
+bash "${RAT_INIT_SKILL_DIR:-${CLAUDE_SKILL_DIR}}/scripts/install_project_templates.sh" "$PWD"
 ```
 
 For a template update, pass `--update` to both preview and install. When the user
@@ -53,8 +55,9 @@ partition merely to populate an empty directory.
 Create or refresh the managed project configuration:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/inject_claude_md.sh" .
-bash "${CLAUDE_PLUGIN_ROOT}/skills/rat-init-project/scripts/generate_config.sh" . "$(basename "$PWD")"
+skill_dir="${RAT_INIT_SKILL_DIR:-${CLAUDE_SKILL_DIR}}"
+bash "$skill_dir/scripts/inject_claude_md.sh" .
+bash "$skill_dir/scripts/generate_config.sh" . "$(basename "$PWD")"
 ```
 
 `inject_claude_md.sh` changes only the RAT block in root CLAUDE.md. The configuration
@@ -79,7 +82,7 @@ To enable Codex review at phase handoffs, set `review.codex_cross_review` to tru
 
 ## Tool readiness and completion
 
-`${CLAUDE_PLUGIN_DATA}/.setup-complete` records plugin
+On Claude Code, `${CLAUDE_PLUGIN_DATA}/.setup-complete` records plugin
 setup. A missing marker is advisory: recommend `/rtl-agent-team:rat-setup` when tools
 need installation, and continue project initialization with the available tools.
 

@@ -44,7 +44,7 @@ finish_campaign() {
         cat "$seed_log"
       fi
     done > "$combined"
-    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" ${seed_args[@]+"${seed_args[@]}"} || code=$?
+    "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" --exit-code "$code" --log "$combined" --failed-seeds "${FAILED_SEEDS:-}" ${seed_args[@]+"${seed_args[@]}"} || code=$?
   fi
   exit "$code"
 }
@@ -357,7 +357,7 @@ PY
 
 if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
   CAMPAIGN_OUTDIR="$(cd "$RESULTS_DIR" && pwd)"
-  CAMPAIGN_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" rat_capture_path "$RAT_PYTHON" "$REGRESSION_HELPER" --root "$PROJECT_ROOT" --tb-dir "$TB_DIR" --outdir "$CAMPAIGN_OUTDIR" --tool "$SIM" --top "$MODULE" --runner-pid "$$")
+  CAMPAIGN_SNAPSHOT=$(RAT_CONTEXT_TOOL="$SIM" rat_capture_path "$RAT_PYTHON" "$REGRESSION_HELPER" --root "$PROJECT_ROOT" --tb-dir "$TB_DIR" --outdir "$CAMPAIGN_OUTDIR" --tool "$SIM" --top "$MODULE" --seeds "$SEEDS" --runner-pid "$$")
   trap finish_campaign EXIT
 fi
 

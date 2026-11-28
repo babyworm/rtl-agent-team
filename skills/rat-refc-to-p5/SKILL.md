@@ -3,7 +3,7 @@ name: rat-refc-to-p5
 description: "Implement hardware from an existing behavioral C reference model and run Phase 5 verification. Use for 'refc to RTL', 'C model to hardware', or 'refc to P5'."
 user-invocable: true
 argument-hint: "<C source file or model directory> [hardware constraints] [--resume]"
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Skill, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Grep, Glob, Skill, Task, AskUserQuestion
 ---
 
 Use the supplied behavioral C model as the functional reference for RTL

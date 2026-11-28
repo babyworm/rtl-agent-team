@@ -3,7 +3,7 @@ name: rtl-p7-exploration
 description: "Phase 7: free exploration of algorithm alternatives and optimization experiments, exempt from pipeline rules. Triggers: 'explore', 'Phase 7'."
 user-invocable: true
 argument-hint: "[exploration topic]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

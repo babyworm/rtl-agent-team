@@ -3,7 +3,7 @@ name: rtl-p4-rapid-impl
 description: "Phase 4 rapid RTL implementation: fast module+block sanity (lint/CDC/functional minimum) before deep verification. Lighter alternative to rtl-p4-implement."
 user-invocable: true
 argument-hint: "[module-list or --all]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

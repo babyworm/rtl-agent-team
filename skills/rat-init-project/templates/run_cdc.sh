@@ -49,7 +49,7 @@ usage() {
 Usage: lint/scripts/run_cdc.sh [OPTIONS] [SV_FILES...]
 
 Options:
-  --tool <name>     structural|svlens|spyglass|vc_cdc|questa_cdc (default: structural)
+  --tool <name>     auto|structural|svlens|spyglass|vc_cdc|questa_cdc (default: preferences.cdc, otherwise structural)
   --top <module>    Top-level module name
   -f <filelist>     Source filelist (.f file)
   --outdir <dir>    Report output directory (default: lint/cdc)
@@ -96,6 +96,8 @@ if [[ -z "$TOOL" || "$TOOL" == auto ]]; then
   TOOL=$(rat_config_value preferences.cdc)
   TOOL="${TOOL:-structural}"
 fi
+# rat_config.json uses the executable key for the SpyGlass CDC engine.
+if [[ "$TOOL" == sg_shell ]]; then TOOL=spyglass; fi
 
 # --- Verbose: trace the wrapper itself -------------------------------------
 # Tool output already goes through `tee`; what --verbose adds is visibility
@@ -213,7 +215,7 @@ case "$TOOL" in
       echo "CMD: ${SVLENS_ARGS[*]:-}"
       write_replay "${SVLENS_ARGS[*]:-}"
       if run_tool ${SVLENS_ARGS[@]+"${SVLENS_ARGS[@]}"} 2>&1 | tee -a "$REPORT"; then
-        echo "[svlens] Crosscheck complete (0 violations). Reports in $SVLENS_OUTDIR/"
+        echo "[svlens] Crosscheck complete. Inspect the crossing counts in $SVLENS_OUTDIR/"
       else
         SVLENS_EXIT=$?
         echo "[svlens] Crosscheck failed (exit $SVLENS_EXIT). Reports in $SVLENS_OUTDIR/"
@@ -383,9 +385,9 @@ echo "Tool:     $TOOL"
 echo "Top:      ${TOP:-N/A}"
 echo "Files:    ${#SRC_FILES[@]}"
 echo "Report:   $REPORT"
-echo "Replay:   $REPLAY_SCRIPT"
+if [[ -f "$REPLAY_SCRIPT" ]]; then echo "Replay:   $REPLAY_SCRIPT"; fi
 echo "Exit:     $EXIT_CODE"
 
 exit "$EXIT_CODE"
 
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0-pre20

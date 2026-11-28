@@ -1,6 +1,6 @@
 """Integration tests for run_sim.sh with real simulators."""
 
-from pathlib import Path
+import json
 
 import pytest
 
@@ -46,6 +46,28 @@ class TestIverilogLive:
         assert "TEST PASSED" in result.stdout
         assert "Compile OK" in result.stdout
 
+    def test_only_the_requested_top_can_finish_the_simulation(self, tmp_project):
+        benches = tmp_project / "benches.sv"
+        benches.write_text("""\
+module early_smoke;
+  initial begin
+    #1;
+    $display("RAT_SIM_PASS");
+    $finish;
+  end
+endmodule
+module requested;
+  initial #2 $fatal(1, "requested bench mismatch");
+endmodule
+""")
+        result = run_script(
+            RUN_SIM, "--sim", "iverilog", "--top", "requested", str(benches),
+            cwd=tmp_project,
+        )
+        assert result.returncode != 0
+        assert "requested bench mismatch" in result.stdout
+        assert "verdict=FAIL" in result.stdout
+
     def test_compile_only(self, tmp_path):
         sv = tmp_path / "tb_pass.sv"
         sv.write_text(PASSING_TB)
@@ -58,6 +80,22 @@ class TestIverilogLive:
         assert "Compile OK" in result.stdout
         # Should not have run
         assert "TEST PASSED" not in result.stdout
+
+    def test_run_only_requires_recompile_for_legacy_implicit_roots(self, tmp_project):
+        sv = tmp_project / "tb_pass.sv"
+        sv.write_text(PASSING_TB)
+        args = ("--sim", "iverilog", "--top", "tb_pass")
+        compiled = run_script(RUN_SIM, *args, "--compile-only", str(sv), cwd=tmp_project)
+        assert compiled.returncode == 0, compiled.stderr
+
+        receipt = tmp_project / "sim/build/.rat-build.json"
+        build = json.loads(receipt.read_text())
+        build["context"] = "iverilog|tb_pass|||0||"  # pre20 compiled every root
+        receipt.write_text(json.dumps(build))
+
+        result = run_script(RUN_SIM, *args, "--run-only", cwd=tmp_project)
+        assert result.returncode != 0
+        assert "compile again" in result.stdout + result.stderr
 
     def test_compile_error_exits_nonzero(self, tmp_path):
         sv = tmp_path / "bad.sv"

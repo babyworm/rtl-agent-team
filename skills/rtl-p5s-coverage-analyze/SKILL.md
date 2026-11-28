@@ -3,7 +3,7 @@ name: rtl-p5s-coverage-analyze
 description: "P5 coverage closure: prioritizes coverage gaps and generates directed tests. Triggers 'coverage gaps', 'coverage below target', 'uncovered branches'."
 user-invocable: true
 argument-hint: "[module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

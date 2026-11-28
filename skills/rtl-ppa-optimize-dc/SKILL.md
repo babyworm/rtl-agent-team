@@ -3,7 +3,7 @@ name: rtl-ppa-optimize-dc
 description: "One-shot DC synthesis PPA optimization iteration with equivalence+smoke validation; needs Phase 5 PASS and dc_shell/genus. Triggers: 'PPA optimize', 'DC PPA'."
 user-invocable: true
 argument-hint: "[top-module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, Skill
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

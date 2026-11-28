@@ -116,6 +116,8 @@ def test_one_read_only_exchange_with_selected_model(project, options, model):
     assert exchanges[0]["cwd"] == str(project)
     assert exchanges[0]["prompt"] == (folder / "prompt-round-1.txt").read_text()
     args = exchanges[0]["args"]
+    # Project initialization also supports a fresh directory outside Git.
+    assert "--skip-git-repo-check" in args
     assert args[args.index("-s") + 1] == "read-only"
     assert Path(args[args.index("--output-schema") + 1]) == SKILL / "review-schema.json"
     assert args[args.index("-m") + 1] == model

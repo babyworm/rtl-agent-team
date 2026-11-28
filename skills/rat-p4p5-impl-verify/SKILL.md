@@ -3,7 +3,7 @@ name: rat-p4p5-impl-verify
 description: "Phase 4-to-5 pipeline: implement RTL then verify from existing P1-3 docs, with P5-to-P4 feedback; stops before Phase 6. Trigger: 'implement and verify'."
 user-invocable: true
 argument-hint: "[resume or module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

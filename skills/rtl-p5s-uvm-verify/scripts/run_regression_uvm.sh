@@ -50,7 +50,7 @@ finish_campaign() {
     evidence_code=$code
     [[ "$FUNCTIONAL_COMPLETE" != 1 ]] || evidence_code=0
     "$RAT_PYTHON" "$EVIDENCE_HELPER" finish --snapshot "$CAMPAIGN_SNAPSHOT" \
-      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" ${seed_args[@]+"${seed_args[@]}"} || evidence_result=$?
+      --exit-code "$evidence_code" --log "$combined" --runtime-log "$runtime" --failed-seeds "${FAILED_SEEDS:-}" ${seed_args[@]+"${seed_args[@]}"} || evidence_result=$?
     [[ "$code" -ne 0 ]] || code=$evidence_result
   fi
   exit "$code"
@@ -659,7 +659,7 @@ echo "========================================"
 
 if [[ "$RAT_EVIDENCE_REQUIRED" == 1 ]]; then
   CAMPAIGN_OUTDIR="$RUN_DIR"
-  args=(begin --root "$PROJECT_ROOT" --outdir "$RUN_DIR" --tool "$SIM" --top "$TB_TOP" --runner-pid "$$" --context "uvm:$TEST")
+  args=(begin --root "$PROJECT_ROOT" --outdir "$RUN_DIR" --tool "$SIM" --top "$TB_TOP" --runner-pid "$$" --context "uvm:$TEST" --seeds "$SEEDS")
   [[ ! -f "$PROJECT_ROOT/rat_config.json" ]] || args+=(--dependency "$PROJECT_ROOT/rat_config.json")
   for input in ${SV_ARGS[@]+"${SV_ARGS[@]}"}; do
     [[ "$input" == -f ]] && continue
@@ -835,4 +835,4 @@ echo "========================================"
 [[ "$VERDICT" != "INCONCLUSIVE" ]] || exit 3
 exit 1
 
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0-pre20

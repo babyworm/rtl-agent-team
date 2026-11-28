@@ -3,7 +3,7 @@ name: rat-auto-design
 description: "Full 6-phase RTL pipeline from spec to verified design (P1 research through P6 design note). Triggers: 'design a chip', 'full pipeline', 'autopilot'."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

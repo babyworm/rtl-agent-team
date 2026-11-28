@@ -3,7 +3,7 @@ name: rat-ultraloop
 description: "Autonomous implement-review-improve loop wrapping a target skill (e.g. rtl-p4-block-parallel) for unattended runs. Triggers: 'ultraloop', 'autonomous loop'."
 user-invocable: true
 argument-hint: "<target-skill-name>"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill, AskUserQuestion
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, Skill, AskUserQuestion
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

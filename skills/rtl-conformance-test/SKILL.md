@@ -3,7 +3,7 @@ name: rtl-conformance-test
 description: "Final codec standards compliance gate: bitexact RTL bitstream check against JM/HM reference. Triggers: 'conformance test', 'H.264/H.265 conformance'."
 user-invocable: true
 argument-hint: "[--standard H.264|H.265] [--vectors path/to/vectors/]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

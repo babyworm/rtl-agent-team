@@ -27,7 +27,7 @@ import rat_compat  # noqa: E402
 
 rat_compat.require()
 from eda_runner import backend, config_value, configuration  # noqa: E402
-from verify_evidence import clearing, running_cover, tracked_paths  # noqa: E402
+from verify_evidence import clearing, failed_case_labels, running_cover, tracked_paths  # noqa: E402
 
 SIMULATORS = ("iverilog", "verilator", "vcs", "xrun", "vsim")
 MODES = ("block", "notify", "off")
@@ -65,8 +65,8 @@ def tracking(state: Path) -> list[str]:
         try:
             os.replace(fallback, claimed)
         except OSError:
-            claimed = None
-        if claimed is not None:
+            return lines
+        else:
             try:
                 text = claimed.read_text(errors="replace")
                 with solo.open("a") as stream:
@@ -160,7 +160,8 @@ def decide(root: Path, state: Path, plugin: str) -> dict[str, str]:
     tracked = tracked_paths(resolved, lines)
     if running_cover(resolved, tracked, state / "verify-runs"):
         return {"VG_ACTION": "continue"}  # a live run covers every file; its completion decides
-    remaining, used = clearing(resolved, tracked, state / "verify-evidence.json")
+    failures: list[tuple[dict, str | None]] = []
+    remaining, used = clearing(resolved, tracked, state / "verify-evidence.json", failures)
     if not remaining or (state / "rtl-verify-waiver").exists():
         notice = "" if remaining else cleared_notice(resolved, used)  # before cleanup, so a failure keeps tracking
         cleanup(state)
@@ -170,8 +171,10 @@ def decide(root: Path, state: Path, plugin: str) -> dict[str, str]:
     files = ", ".join(shown[:10]) + (f", and {count - 10} more" if count > 10 else "")
     runner = shq(plugin + "/scripts/eda_runner.py")
     evidence = shq(str(state / "verify-evidence.json"))
+    retry = f"Rerun the unresolved failing case(s): {failed_case_labels(failures)}. " if failures else ""
     message = (
-        f"[RTL Verify Gate BLOCKED] {count} RTL files modified but functional verification not performed: {files}. "
+        f"[RTL Verify Gate BLOCKED] {count} RTL {'file needs' if count == 1 else 'files need'} "
+        f"passing functional verification: {files}. {retry}"
         "Run functional verification for the affected modules through scripts/run_sim.sh; --sim auto uses the "
         "configured or an installed simulator (for example /rtl-agent-team:rtl-p4s-unit-test, or the project's "
         "regression skill for its configured simulator). A passing testbench emits RAT_SIM_PASS or a recognized "

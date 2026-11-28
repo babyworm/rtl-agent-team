@@ -3,7 +3,7 @@ name: rtl-model-consistency
 description: "3-way bitexact comparison of C ref model vs SystemC BFM vs RTL on shared vectors; isolates which model drifted. Triggers: 'model consistency', 'model drift'."
 user-invocable: true
 argument-hint: "[--vectors path/to/test_vectors.bin | --generate N]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

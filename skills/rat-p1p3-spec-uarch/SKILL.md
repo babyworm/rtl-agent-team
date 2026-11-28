@@ -3,7 +3,7 @@ name: rat-p1p3-spec-uarch
 description: "Phase 1-3 to uArch, sequential or team; stops before RTL. Use for 'spec to uarch', 'design only', 'Phase 1-3 team'."
 user-invocable: true
 argument-hint: "[spec-file or project-description | --resume | team]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, Skill, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

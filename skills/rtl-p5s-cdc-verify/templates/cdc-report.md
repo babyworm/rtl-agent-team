@@ -1,7 +1,10 @@
 # CDC Analysis Report: {{MODULE_NAME}}
 
 - **Date**: {{DATE}}
-- **Reviewer**: cdc-checker
+- **Report owner**: p5s-cdc-orchestrator
+- **Crossing inventory**: cdc-checker
+- **EDA evidence**: {{ENGINE, EXECUTION_HOST_TYPE, EXIT_STATUS, REPORT_PATH, REPLAY_IF_GENERATED}}
+- **Scope of evidence**: {{STRUCTURAL_INVENTORY, CDC_CHECKS_COMPLETED, OR INCOMPLETE}}
 - **Target**: {{TARGET_FILES}}
 - **Verdict**: {{VERDICT}}
 
@@ -42,6 +45,14 @@
 |---|--------|------|--------|----------------------|
 | 1 | sys_clk | axi_clk | {{SIGNAL}} | 2-FF synchronizer (u_sync_*) |
 | 2 | sys_clk | axi_clk | {{BUS}} | Gray code FIFO (u_gray_*) |
+
+## Effective timing exceptions
+
+| Crossing and endpoints | Required bound and source | Applied constraint | Observed slack | STA report | Status |
+|---|---|---|---|---|---|
+| {{CROSSING}} | {{REQUIREMENT}} | {{EFFECTIVE_BOUND}} | {{SLACK}} | {{REPORT_PATH}} | {{MET / VIOLATED / INCOMPLETE}} |
+
+Record missing endpoints, overridden exceptions and unavailable STA evidence.
 
 ## Verdict
 

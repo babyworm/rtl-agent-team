@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0-pre20
 # run_sim.sh — Simulator-agnostic compile + run script for RTL Agent Team
 # Usage: scripts/run_sim.sh [OPTIONS] [SV_FILES...]
 #
@@ -480,7 +480,10 @@ if ! "$EVIDENCE_PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 9))'; th
   echo "ERROR: simulation evidence requires Python >= 3.9; set RAT_PYTHON." >&2
   exit 1
 fi
-EVIDENCE_ARGS=(begin --root "$PROJECT_ROOT" --outdir "$OUTDIR" --tool "$SIM" --top "$TOP" --runner-pid "$$" --context "$SIM|$TOP|${DEFINES[*]:-}|${PARAMS[*]:-}|$TRACE|$DPI_LIB|$TOOL_ARGS")
+BUILD_CONTEXT="$SIM|$TOP|${DEFINES[*]:-}|${PARAMS[*]:-}|$TRACE|$DPI_LIB|$TOOL_ARGS"
+[[ "$SIM" != iverilog ]] || BUILD_CONTEXT+="|-s $TOP"
+[[ "$SIM" != vcs ]] || BUILD_CONTEXT+="|-top $TOP"
+EVIDENCE_ARGS=(begin --root "$PROJECT_ROOT" --outdir "$OUTDIR" --tool "$SIM" --top "$TOP" --runner-pid "$$" --context "$BUILD_CONTEXT" --seeds="$SEED" --runtime-args="$SIM_ARGS")
 [[ -z "$ORIGINAL_FILELIST" ]] || EVIDENCE_ARGS+=(--filelist "$ORIGINAL_FILELIST")
 [[ -z "$DPI_LIB" ]] || EVIDENCE_ARGS+=(--dependency "$DPI_LIB")
 [[ ! -f "$PROJECT_ROOT/rat_config.json" ]] || EVIDENCE_ARGS+=(--dependency "$PROJECT_ROOT/rat_config.json")
@@ -519,12 +522,12 @@ echo "[run_sim] Working directory: $(pwd)"
 # ─── Per-Simulator Compile + Run ────────────────────────────────────────────
 
 compile_iverilog() {
-  local cmd="iverilog -g2012"
-  cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
+  local cmd="iverilog -g2012 -s ${TOP}"
+  cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS}"
   if [[ $TRACE -eq 1 ]]; then
     cmd+=" -DTRACE_EN"
   fi
-  cmd+=" ${TOOL_ARGS} -o ${OUTDIR}/${TOP} ${FILES}"
+  cmd+=" ${TOOL_ARGS} -o ${OUTDIR}/${TOP} ${FILELIST_FLAGS} ${FILES}"
 
   log "Compile: $cmd"
   run_cmd "compile" "$cmd"
@@ -568,7 +571,7 @@ run_verilator() {
 }
 
 compile_vcs() {
-  local cmd="vcs -full64 -sverilog +v2k"
+  local cmd="vcs -full64 -sverilog +v2k -top ${TOP}"
   cmd+=" ${DEFINE_FLAGS} ${PARAM_FLAGS} ${FILELIST_FLAGS}"
   if [[ $TRACE -eq 1 ]]; then
     cmd+=" +vcs+vcdpluson"

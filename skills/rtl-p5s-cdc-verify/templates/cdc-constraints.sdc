@@ -1,36 +1,14 @@
-# CDC SDC Constraints Template
-# Convention: {domain}_clk naming per CLAUDE.md
-# Generate from: cdc-checker analysis of rtl/*/*.sv
+# CDC constraint fragment. The project timing setup supplies clocks and units.
+# Replace the example pins with registers resolved in the linked design.
+# Cite the source for each physical bound and CDC exception.
 
-# ============================================================
-# Clock Definitions
-# ============================================================
-create_clock -name sys_clk  -period {{SYS_PERIOD_NS}}  [get_ports sys_clk]
-# create_clock -name axi_clk  -period {{AXI_PERIOD_NS}}  [get_ports axi_clk]
-# create_clock -name pixel_clk -period {{PIX_PERIOD_NS}} [get_ports pixel_clk]
+# Vivado mixed crossing example: a bounded Gray pointer bus and a single-bit request
+# share the same asynchronous clock pair. Keep the clock pair timed.
+# set_max_delay -datapath_only {{GRAY_MAX_DELAY_NS}} \
+#   -from [get_pins {u_fifo/wgray_reg*/C}] -to [get_pins {u_fifo/wgray_sync1_reg*/D}]
+# set_false_path -from [get_pins u_req/req_reg/C] -to [get_pins u_req_sync/stage1_reg/D]
 
-# ============================================================
-# Clock Groups (asynchronous domains)
-# ============================================================
-# set_clock_groups -asynchronous \
-#   -group [get_clocks sys_clk] \
-#   -group [get_clocks axi_clk]
-
-# ============================================================
-# False Paths (synchronized crossings)
-# ============================================================
-# 2-FF synchronizer paths — timing tool should not analyze these
-# set_false_path -from [get_clocks sys_clk] -to [get_pins u_sync_*/d_ff1/D]
-
-# ============================================================
-# Max Delay Constraints (for gray code / handshake crossings)
-# ============================================================
-# Gray code bus: constrain to less than 1 destination clock period
-# set_max_delay -from [get_pins u_gray_encoder/o_gray_*] \
-#               -to [get_pins u_gray_decoder/i_gray_*] \
-#               -datapath_only {{DEST_PERIOD_NS}}
-
-# ============================================================
-# Reset Synchronizer Constraints
-# ============================================================
-# set_false_path -from [get_ports sys_rst_n]
+# Use set_clock_groups -asynchronous only for independently inventoried pairs
+# where every crossing in both directions may be excluded. Keep the paths
+# between synchronizer stages timed. Verify effective exceptions and individual
+# bounded paths in the target STA tool with all project constraints loaded.

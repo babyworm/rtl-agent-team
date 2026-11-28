@@ -43,14 +43,14 @@ def plan(root, *points):
     path.write_text(json.dumps({"points": points}))
 
 
-def run_record(root, name, records, *, compile_output="", seed_logs=(), legacy=False, fails=False):
+def run_record(root, name, records, *, compile_output="", seed_logs=(), legacy=False, fails=False, seeds=""):
     source = root / "clip.sv"
     if not source.exists():
         source.write_text("module clip; endmodule\n")
     out = root / "sim" / name
     out.mkdir()
     begin = cli("verify_evidence.py", "begin", "--root", root, "--outdir", out, "--source", source,
-                "--tool", "iverilog", "--top", "clip", "--context", "uvm:clip" if seed_logs else "")
+                "--tool", "iverilog", "--top", "clip", "--context", "uvm:clip" if seed_logs else "", "--seeds", seeds)
     assert begin.returncode == 0, begin.stderr
     snapshot = Path(begin.stdout.strip())
     log = out / "runtime.log"
@@ -117,6 +117,33 @@ def test_failure_in_legacy_passing_snapshot_still_blocks_closure(tmp_path):
     index.write_text(json.dumps(evidence))
     result = close(tmp_path, seed)
     assert result.returncode != 0 and "clip.upper" in result.stdout
+
+
+def test_p5_cannot_close_with_an_unselected_failed_seed(tmp_path):
+    plan(tmp_path, point("clip.upper", "scoreboard"))
+    passing = "RAT_CHECK_POINT clip.upper 1 0"
+    seed1 = run_record(tmp_path, "first", passing, seeds="1")
+    run_record(tmp_path, "second", "RAT_CHECK_POINT clip.upper 1 1", seeds="2", fails=True)
+    result = close(tmp_path, seed1)
+    assert result.returncode != 0 and "clip seed 2" in result.stdout
+    repaired = run_record(tmp_path, "retry", passing, seeds="2")
+    assert close(tmp_path, repaired).returncode == 0
+
+
+@pytest.mark.parametrize("tool", ["iverilog", "vcs"])
+def test_legacy_implicit_top_never_clears_stop_or_p5(tmp_path, tool):
+    plan(tmp_path, point("clip.upper", "scoreboard"))
+    run = run_record(tmp_path, "old-build", "RAT_CHECK_POINT clip.upper 3 0")
+    index = tmp_path / ".rat/state/verify-evidence.json"
+    data = json.loads(index.read_text())
+    data["runs"][0].update(tool=tool, context=f"{tool}|clip|||0||")
+    index.write_text(json.dumps(data))
+    result = close(tmp_path, run)
+    assert result.returncode != 0 and "explicitly selected top" in result.stdout
+    track = index.with_name("rtl-modified-files.txt")
+    track.write_text("clip.sv\n")
+    unresolved = cli("verify_evidence.py", "unverified", "--root", tmp_path, "--track", track)
+    assert unresolved.returncode == 1 and unresolved.stdout.strip() == "clip.sv"
 
 
 def test_reachability_is_explicit_and_each_outcome_needs_its_own_check(tmp_path):

@@ -3,7 +3,7 @@ name: bfm-develop
 description: "Builds Phase 3 SystemC TLM-2.0 bus functional models with AMBA (AXI/AHB/APB) support. Use for 'develop BFM', 'SystemC TLM model', 'bus functional model'."
 user-invocable: true
 argument-hint: "[block-name | --all-blocks]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

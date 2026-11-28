@@ -145,10 +145,14 @@ jobs:
         run: |
           python -m pip install pytest
           RAT_EXTENDED_CONTRACTS=1 python -m pytest tests/unit/test_verdict_properties.py
-      - name: Run shipped testbench templates with Verilator
+      - name: Run Icarus integration tests and the host verification fixture
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y verilator
+          sudo apt-get install -y iverilog verilator
+          python -m pytest tests/integration/test_sim_live.py
+          python evals/runtime/check_host_verification.py
+      - name: Run shipped testbench templates with Verilator
+        run: |
           verilator --version
           ulimit -c 0
           python evals/runtime/check_verilator_templates.py --workdir "$RUNNER_TEMP/rat-template-contracts"

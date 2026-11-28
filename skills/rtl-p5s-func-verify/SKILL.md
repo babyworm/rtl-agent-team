@@ -3,7 +3,7 @@ name: rtl-p5s-func-verify
 description: "P5 Tier 3 module regression: cocotb multi-seed RTL vs reference model with traceability matrix. Triggers 'functional verification', 'regression', 'cocotb test'."
 user-invocable: true
 argument-hint: "[module-name --seeds=N]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

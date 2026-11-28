@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0-pre20
 """Content-bound simulation evidence; a zero exit alone is not a functional PASS."""
 
 from __future__ import annotations
@@ -54,7 +54,8 @@ PRAGMA = re.compile(r"(?i)(?<![a-z0-9])(?:synopsys|synthesis|pragma|translate_o(
 
 def hdl_text(text: str) -> str:
     """HDL without ordinary comments or indentation; string literals and line breaks stay."""
-    pieces, gap = [], ""
+    pieces: list[str] = []
+    gap = ""
     for index, part in enumerate(HDL_SPLIT.split(text)):
         if not part:
             continue
@@ -127,7 +128,7 @@ CITED_MODEL_REVISION = re.compile(
     re.I)
 
 
-def point_fingerprint(root: Path, point: dict, input_hashes: dict | None = None) -> str:
+def point_fingerprint(root: Path, point: dict, input_hashes: dict[Path, str] | None = None) -> str:
     """Bind a measurement to what was observed and the oracle used for that point."""
     contract = {key: point[key] for key in ("id", "kind", "requirement", "source", "trigger", "expected_result")}
     inputs = point.get("inputs", [])
@@ -186,7 +187,7 @@ def planned_fingerprints(root: Path) -> dict:
     if not isinstance(points, list):
         return {}
     fingerprints = {}
-    input_hashes = {}
+    input_hashes: dict[Path, str] = {}
     for point in points:
         try:
             fingerprints[point["id"]] = point_fingerprint(root, point, input_hashes)
@@ -323,7 +324,7 @@ def source_paths(root: Path, sources: list[str], filelist: str = "", details: di
 
 def inputs(args) -> int:
     root = Path(args.root).resolve()
-    details = {}
+    details: dict = {}
     source_paths(root, args.source, args.filelist, details)
     if args.relocate_filelist:
         # Keep library search (-y), library file (-v) and macro ordering intact.
@@ -452,6 +453,9 @@ def begin_record(args) -> Path:
               "runner_pid": args.runner_pid or os.getppid(),
               "runner_identity": process_identity(args.runner_pid or os.getppid()), "host": socket.gethostname(),
               "compile_only": args.compile_only, "artifact_paths": args.artifact}
+    if getattr(args, "seeds", None) is not None:
+        record["seeds"] = args.seeds.split()
+        record["runtime_args"] = getattr(args, "runtime_args", "")
     if os.environ.get("RAT_EXPERIMENT_ID"):
         record["experiment_id"] = os.environ["RAT_EXPERIMENT_ID"]
     if not args.compile_only and (root / POINT_PLAN).is_file():
@@ -493,6 +497,9 @@ def finish(args) -> int:
     record.update(getattr(args, "extra", None) or {})
     record.update(verdict=verdict, completed_at=time.time(), exit_code=args.exit_code,
                   log=str(log.resolve()), log_sha256=digest(log) if log.is_file() else None)
+    failed_seeds = getattr(args, "failed_seeds", "").split()
+    if failed_seeds and set(failed_seeds) <= set(record.get("seeds", [])):
+        record["failed_seeds"] = failed_seeds
     if runtime_log:
         record["runtime_log"]={"path":str(runtime_log.resolve()),"sha256":digest(runtime_log) if runtime_log.is_file() else None}
     record["check_points_classified"] = True
@@ -513,7 +520,7 @@ def finish(args) -> int:
     descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
     with os.fdopen(descriptor, "w") as stream:
         fcntl.flock(stream, fcntl.LOCK_EX)
-        data = json.loads(index.read_text()) if index.is_file() else {"schema_version": 1, "runs": []}
+        data: dict = json.loads(index.read_text()) if index.is_file() else {"schema_version": 1, "runs": []}
         data["runs"].append(record)
         atomic_json(index, data)
     print(f"[{getattr(args, 'label', 'run_sim')}] verdict={verdict}; evidence={target}")
@@ -532,35 +539,102 @@ def tracked_files(root: Path, track: Path) -> set[str]:
     return tracked_paths(root, track.read_text().splitlines())
 
 
-def clearing(root: Path, tracked: set[str], index: Path) -> tuple[set[str], list[tuple[dict, set[str]]]]:
-    """Tracked files that no valid PASS record covers, and each record that cleared some."""
+def logged_verdict(record: dict) -> str:
+    """A PASS needs intact logs; a recorded failure survives log rotation."""
+    if record["verdict"] != "PASS":
+        return record["verdict"]
+    log = Path(record["log"])
+    if not log.is_file() or digest(log) != record["log_sha256"]:
+        return "INVALID"
+    runtime = record.get("runtime_log")
+    if runtime:
+        log = Path(runtime["path"])
+        if not log.is_file() or digest(log) != runtime["sha256"]:
+            return "INVALID"
+    if record.get("check_points_classified") is not True:
+        with log.open(encoding="utf-8", errors="replace") as stream:
+            if log_has_failed_point(stream):
+                return "FAIL"
+    return "PASS"
+
+
+def has_implicit_top(record: dict) -> bool:
+    """Identify old run_sim records that compiled without selecting the stated top."""
+    tool, top, context = (record.get(field, "") for field in ("tool", "top", "context"))
+    flag = {"iverilog": "-s", "vcs": "-top"}.get(tool)
+    return bool(flag and context.startswith(tool + "|") and not context.endswith(f"|{flag} {top}"))
+
+
+def assess_records(tracked: set[str], records: list) -> tuple[set[str], list, list]:
+    """Clear current files with an intact PASS and no unresolved failed case."""
     remaining = set(tracked)
     used = []
+    passed_at: dict[tuple, float] = {}
+    failed = []
+    unresolved = []
+    for record in records if isinstance(records, list) else ():
+        try:
+            sources = record["sources"]
+            hit = tracked.intersection(sources)
+            if not hit or record.get("compile_only") or has_implicit_top(record):
+                continue
+            if not unchanged(sources, record.get("source_identity")):
+                continue
+            verdict = logged_verdict(record)
+            if verdict not in ("PASS", "FAIL", "TIMEOUT", "STALL", "HANG", "INCONCLUSIVE"):
+                continue
+            case = (record.get("tool"), record.get("top"), record.get("context"),
+                    record.get("runtime_args", ""), tuple(sorted(sources)),
+                    tuple(record.get("argv", [])), record.get("remote_host"), record.get("remote_root"))
+            seeds = record.get("seeds") or [None]
+            if verdict == "PASS":
+                for seed in seeds:
+                    key = (case, seed)
+                    passed_at[key] = max(passed_at.get(key, 0), record.get("started_at", 0))
+                if remaining & hit:
+                    used.append((record, remaining & hit))
+                    remaining -= hit
+            else:
+                for seed in record.get("failed_seeds") or seeds:
+                    # Older bundled records omitted seed identity, so a new passing seed
+                    # cannot certify the old failing seed. verify-run already stored argv.
+                    known = "seeds" in record or record.get("origin") == "verify-run"
+                    failed.append(((case, seed), record, hit, known))
+        except (AttributeError, OSError, ValueError, KeyError, TypeError):
+            continue
+    for key, record, hit, known in failed:
+        # An overlapping PASS that started before the failure finished is not a rerun.
+        finished = record.get("completed_at")
+        if known and isinstance(finished, (int, float)) and passed_at.get(key, -1) >= finished:
+            continue
+        remaining.update(hit)
+        unresolved.append((record, key[1]))
+    return remaining, used, unresolved
+
+
+def clearing(root: Path, tracked: set[str], index: Path, failures=None) -> tuple[set[str], list]:
     try:
         records = json.loads(index.read_text())["runs"]
     except (OSError, ValueError, KeyError, TypeError):
         records = []
-    for record in records if isinstance(records, list) else ():
-        try:
-            log = Path(record["log"])
-            if (record["verdict"] == "PASS" and log.is_file()
-                    and digest(log) == record["log_sha256"]
-                    and unchanged(record["sources"], record.get("source_identity"))
-                    and (not record.get("runtime_log") or
-                         (Path(record["runtime_log"]["path"]).is_file() and
-                          digest(Path(record["runtime_log"]["path"]))==record["runtime_log"]["sha256"]))):
-                if record.get("check_points_classified") is not True:
-                    runtime = (record.get("runtime_log") or {}).get("path", log)
-                    with Path(runtime).open(encoding="utf-8", errors="replace") as stream:
-                        if log_has_failed_point(stream):
-                            continue
-                hit = remaining & set(record["sources"])
-                if hit:
-                    used.append((record, hit))
-                    remaining -= hit
-        except (OSError, ValueError, KeyError, TypeError):
-            continue
+    remaining, used, unresolved = assess_records(tracked, records)
+    if failures is not None:
+        failures.extend(unresolved)
     return remaining, used
+
+
+def failed_case_labels(failures) -> str:
+    labels = []
+    for record, seed in failures:
+        case = record.get("top") or " ".join(record.get("argv", [])) or record.get("tool", "simulation")
+        if seed is not None:
+            case += f" seed {seed}"
+        elif "seeds" not in record and record.get("origin") != "verify-run":
+            case += " (legacy run with unknown seed)"
+        if record.get("runtime_args"):
+            case += " " + record["runtime_args"]
+        labels.append(case)
+    return ", ".join(dict.fromkeys(labels))[:400]
 
 
 def unverified(args) -> int:
@@ -604,6 +678,8 @@ def main() -> int:
     for name in ("root", "outdir", "tool", "top"):
         start.add_argument("--" + name, required=True)
     start.add_argument("--context", default="")
+    start.add_argument("--seeds", default="")
+    start.add_argument("--runtime-args", default="")
     start.add_argument("--source", action="append", default=[])
     start.add_argument("--artifact", action="append", default=[])
     start.add_argument("--include-dir", action="append", default=[])
@@ -618,6 +694,7 @@ def main() -> int:
     end.add_argument("--exit-code", type=int, required=True)
     end.add_argument("--runtime-log", default="")
     end.add_argument("--seed-log", action="append", default=[])
+    end.add_argument("--failed-seeds", default="")
     end.add_argument("--compile-only", action="store_true")
     check = sub.add_parser("unverified")
     check.add_argument("--root", required=True)

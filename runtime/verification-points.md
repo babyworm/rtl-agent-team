@@ -53,3 +53,11 @@ For split P5A, run `python3 {plugin_root}/scripts/gates/simulation_points.py --r
 Both read the recorded runtime logs. On older projects, update installed helpers
 with `rat-init-project --update`. Reuse counts when their oracle and seed
 boundaries can be verified. Rerun only the points missing that evidence.
+
+The Stop and P5 checks also look for unresolved failed runs on the same RTL
+revision, including seeds outside the selected run list. Reproduce a reported
+case with the same top, seed, runtime arguments and source inputs. A matching
+pass started after the failure resolves that case. A Stop waiver only releases
+the session; it does not supply passing measurements for P5. If a legacy run
+omitted the failing seed, preserve that uncertainty in the handoff. Rebuild
+older Icarus and VCS runs that did not explicitly select the testbench top.

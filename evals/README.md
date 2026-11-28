@@ -1,5 +1,56 @@
 # v1.0.0 evaluation
 
+## RTL edit and verification
+
+The `unit-mismatch` fixture changes a four-bit incrementer from adding one to
+adding two. Its unit bench expects five for input four. The same file list
+includes an unrelated smoke bench that would end the simulation before that
+check if the simulator selected both tops.
+
+Run the deterministic check with Python 3.9+, Icarus Verilog and `vvp`:
+
+```sh
+python3 evals/runtime/check_host_verification.py
+```
+
+This replays Claude `Edit` and Codex `apply_patch` events in separate temporary
+projects. It checks the actual simulator log, evidence record, pending RTL file
+and Stop hook decision. It uses the project's installed runner in both cases.
+
+To exercise skill selection and the tools used by a real Claude Code session,
+run the native case from the plugin root:
+
+```sh
+claude plugin eval . --case unit-mismatch --ablation none --scaffold \
+  --allow-tools Bash Edit Write --trust-plugin --no-publish \
+  --output-dir "$(mktemp -d)"
+```
+
+The graders check the unit-test skill call, the selected top, the measured
+mismatch, the failed verdict and the pending verification state. The native
+case needs an authenticated Claude Code session and an available shell sandbox.
+The installed marketplace copy can be selected by passing
+`rtl-agent-team@rtl-agent-marketplace` as the target. [Claude Code plugin evals](https://code.claude.com/docs/en/plugin-evals)
+
+To replay the same case in another host, create a disposable project from the
+checkout and start the host with RAT enabled in that project:
+
+```sh
+rat_checkout="$(pwd -P)"
+rat_fixture="$(mktemp -d)"
+(cd "$rat_fixture" && bash "$rat_checkout/evals/unit-mismatch/scaffold.sh")
+cd "$rat_fixture"
+```
+
+Give the host the `execution.prompt` from `evals/unit-mismatch/case.yaml`.
+Check the invoked skill or role, the requested top in the evidence record, and
+`REQ-U-001 expected=5 actual=6` in the runtime log. The handoff must report
+failed verification. In a host with RAT edit and Stop hooks also check that
+`rtl/incrementer.sv` remains pending. Skills-only exports report the failed
+handoff through the runner and do not install lifecycle hooks.
+
+## Prompt judgments and template checks
+
 Run one assessment per fixed fixture and model, with no response retries:
 
 ```sh

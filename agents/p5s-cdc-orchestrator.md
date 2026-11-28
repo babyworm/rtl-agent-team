@@ -54,113 +54,64 @@ Glob("docs/phase-3-uarch/*.md")                    # Clock domain architecture
 For each missing artifact: output `WARNING: {artifact} not found — proceeding with reduced scope`.
 Adjust execution plan based on available artifacts.
 
-## Step 1: Preparation
+## Scope and artifacts
 
-```
-Bash("mkdir -p lint/cdc lint/cdc syn/constraints reviews/phase-5-verify")
-Glob("rtl/*/")       # Enumerate modules
-```
+Resolve the requested module or whole-design elaboration top and its complete filelist from
+the project configuration and RTL. Include dependencies outside the module directory.
+Use these project-relative paths throughout this run:
 
-## Module Scope Resolution
+| Scope | Report | Constraints | Raw tool output |
+| --- | --- | --- | --- |
+| Whole design | `reviews/phase-5-verify/cdc-report.md` | `syn/constraints/cdc_constraints.sdc` | `lint/cdc/` |
+| Named module | `reviews/phase-5-verify/{module}-cdc-report.md` | `syn/constraints/cdc_constraints_{module}.sdc` | `lint/cdc/{module}/` |
 
-Parse the task/prompt description to determine analysis scope:
+Create the parent directories. Resolve the report and constraints templates under
+`{plugin_root}/skills/rtl-p5s-cdc-verify/templates/`.
 
-- **If a specific module name is present** (e.g., "for module {module}" or "pipeline for module {module}"):
-  - Set `RTL_GLOB = "rtl/{module}/*.sv"`
-  - Set `MODULE_NAME = "{module}"`
-  - This is the normal case when spawned by p5-verify-orchestrator per-module
-- **If NO specific module is given** (standalone invocation via skill, or prompt says "all modules"):
-  - Set `RTL_GLOB = "rtl/*/*.sv"`
-  - Set `MODULE_NAME = "top"` (used for report naming only; all modules are analyzed)
-  - This is the fallback for direct skill invocation
+## Crossing inventory and constraints
 
-All subsequent steps use `RTL_GLOB` for file targeting and `MODULE_NAME` for output naming.
+1. Delegate the resolved scope to `rtl-agent-team:cdc-checker`. Ask for the clock and reset
+   domains, source and destination registers of each crossing, its synchronization mechanism,
+   severity and RTL locations. The checker returns its findings to you.
+2. Write the inventory to the report path above using `cdc-report.md`. You own this report.
+   Mark the tool result and timing checks pending until the corresponding measurements return.
+3. Give `rtl-agent-team:constraint-writer` the saved report path, RTL, applicable clock and
+   interface requirements, existing project constraints, `cdc-constraints.sdc` template and
+   resolved constraints output path. Ask for each crossing's endpoints, timing treatment and
+   source of its bound. Keep related clocks timed. For unrelated clocks with a bounded path
+   in either direction, use endpoint-specific exceptions for independent crossings and keep
+   the bound active. A clock-wide asynchronous group or false path would override it.
 
-## Step 2: Clock Domain Identification and Cross-Domain Path Analysis
+## Execute CDC and check timing exceptions
 
-```
-Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Analyze {RTL_GLOB} files for CDC violations.
-Step 1: Identify all clock domains. Expect {domain}_clk naming convention per CLAUDE.md
-(e.g., sys_clk, axi_clk, pixel_clk). Flag any non-conformant clock names (clk_i, clk_sys)
-as CONVENTION violations.
-Step 2: Analyze all cross-domain signal paths:
-  - Missing synchronizers (FF-to-FF across different clocks)
-  - Multi-bit bus crossings without gray code or handshake
-  - Fanout from a synchronized signal that may cause coherency issues
-  - Reset domain crossings (e.g., sys_rst_n used in axi_clk domain)
-Also flag non-conformant reset names (rst_ni is non-conformant; expect {domain}_rst_n).
-Write lint/cdc/cdc_report_{MODULE_NAME}.md using templates/cdc-report.md as format template.
-Categorize findings:
-  VIOLATION: unsynced crossing (file:line, source clock, dest clock)
-  CAUTION: complex multi-bit crossing needing review
-  CONVENTION: non-conformant clock/reset naming (file:line, found name, expected format)
-  INFO: safe crossings (gray code, handshake, quasi-static)
-Do NOT auto-insert synchronizers. Report only.")
+Delegate to `rtl-agent-team:eda-runner` in the configured EDA environment. Supply the
+elaboration top, project filelist and scope-specific output directory:
+
+```sh
+lint/scripts/run_cdc.sh --tool auto --top "$top" -f "$filelist" --outdir "$outdir"
 ```
 
-## Step 3: SDC Constraint Generation
+Pass the site's approved `--script` when required by the selected engine (VC CDC or Questa
+CDC), or use its configured script environment variable. Use the selected engine on its
+configured host. If the required executable, script, license or report is unavailable,
+record the reason and mark the requested check INCOMPLETE. A structural inventory can
+supply preliminary findings. Keep its evidence level explicit.
 
-```
-Task(subagent_type="rtl-agent-team:constraint-writer",
-     prompt="Read lint/cdc/cdc_report_{MODULE_NAME}.md and {RTL_GLOB}.
-Write syn/constraints/cdc_constraints_{MODULE_NAME}.sdc defining clock groups for all identified clock domains.
-Use templates/cdc-constraints.sdc as the SDC template.
-Use {domain}_clk names consistent with RTL (e.g., sys_clk, axi_clk, codec_clk).
-Define set_clock_groups -asynchronous for all identified async domain pairs.
-Define set_false_path or set_max_delay for quasi-static crossings.")
-```
+When a timing bound is required, have the runner load the project constraints, including
+the generated file, on the linked design in the target STA tool. Inspect the effective
+exceptions and a timing report for the intended launch and capture pins. For Vivado,
+use `report_exceptions -ignored`, `report_methodology`, and `report_timing` for the
+specific crossing. Verify every intended bit resolves to a timed path with the required
+bound; record observed slack and report paths. An overridden, unmatched or violated bound
+is a finding. Missing STA data leaves the timing check INCOMPLETE.
 
-## Step 4: Commercial CDC Tool Run (when available)
+## Finalize the report
 
-Attempt commercial tool first; fall back to structural analysis if unavailable:
-
-```
-Task(subagent_type="rtl-agent-team:eda-runner",
-     prompt="Check commercial CDC tool availability via Bash CLI:
-which sg_shell || which vc_cdc || which questa_cdc
-If available, run replayable CDC script (note: sg_shell detected → pass --tool spyglass to script):
-  lint/scripts/run_cdc.sh --tool spyglass --top {top} -f rtl/filelist_top.f --outdir lint/cdc
-Replay artifact must be saved to: lint/cdc/replay/run_cdc_spyglass_latest.sh
-If SpyGlass is unavailable, fall back to structural analysis:
-  lint/scripts/run_cdc.sh --tool structural --top {top} -f rtl/filelist_top.f --outdir lint/cdc
-Report tool used, violation count, and output directory.")
-```
-
-## Step 5: Finalize Report and Surface Violations
-
-After all analysis completes, verify the cdc_report_{MODULE_NAME}.md is complete and surface results:
-
-- Count violations by category (VIOLATION, CAUTION, CONVENTION, INFO)
-- Report total VIOLATION count to user
-- If any VIOLATION found: surface immediately, do NOT attempt auto-fix
-- If CONVENTION violation found: report alongside CDC violations, recommend fix before sign-off
-- Verify CDC replay script exists at `lint/cdc/replay/run_cdc_*_latest.sh`
-
-# Parallel Execution Patterns
-
-- **cdc-checker** and directory setup: parallel at start
-- **constraint-writer**: runs after cdc-checker completes (needs cdc_report_{MODULE_NAME}.md)
-- **commercial CDC tool**: runs in parallel with constraint-writer
-- **Report finalization**: after all steps complete
-
-# Escalation Conditions
-
-- VIOLATION found → surface immediately, do NOT auto-insert synchronizers
-- CONVENTION violation found → report alongside CDC violations, recommend fix before sign-off
-- Clock domains cannot be determined from RTL alone → ask user for clocking architecture doc
-- No commercial tool available → proceed with structural RTL analysis only (acceptable)
-
-# Examples
-
-**Good**: cdc-checker finds 3 clock domains (`sys_clk`, `axi_clk`, `codec_clk`); identifies 2
-unsynced crossings (VIOLATION) and 1 multi-bit bus without gray code (CAUTION); all clock names
-follow `{domain}_clk` convention; synchronizers use `u_sync_` prefix; constraint-writer generates
-correct `set_clock_groups` SDC; report written.
-
-**Bad**: Relying on simulation with UVM to catch CDC bugs — simulation may never trigger the
-specific timing that causes metastability. Not flagging `clk_i` or `rst_ni` in RTL — allows
-convention violations to persist into production.
+Update the same report with the engine, top, analyzed scope, exit status, tool logs, any
+generated replay, constraint file, and effective-exception evidence. Take crossing counts
+and unwaived violations from the actual reports. A successful process exit or a structural
+clock list alone cannot establish signoff. Report unsafe crossings immediately with their
+RTL locations. Leave RTL edits to the implementation phase.
 
 <!-- RAT_POLICIES_BEGIN: generated by scripts/sync_agent_policies.py -->
 # CDC Verification Policy
@@ -184,16 +135,17 @@ in addition to any CDC violations.
 - VIOLATION found → surface immediately, do NOT auto-insert synchronizers
 - CONVENTION violation found → report alongside CDC violations, recommend fix before sign-off
 - Clock domains cannot be determined from RTL alone → ask user for clocking architecture doc
-- Tool (vc_cdc, Meridian, or spyglass) not available → use structural RTL analysis only
+- A missing configured CDC tool or site script leaves its check INCOMPLETE. Record any structural findings separately.
 
 ## Final Checklist
 
 - [ ] All clock domains identified in RTL (expect `{domain}_clk` format)
 - [ ] All cross-domain paths analyzed
 - [ ] Non-conformant clock/reset names flagged as CONVENTION violations
-- [ ] lint/cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
-- [ ] syn/constraints/cdc_constraints.sdc written with correct clock domain names
-- [ ] CDC replay script exists (lint/cdc/replay/run_cdc_*_latest.sh)
+- [ ] Coordinator saved the checker inventory and measured results in the report for this scope
+- [ ] Constraint writer saved the matching scoped SDC and cited the requirement for each bound
+- [ ] Timing report shows each required bound is effective, or that check is explicitly open
+- [ ] Report links the actual engine output and any replay generated for this run
 - [ ] RTL not modified
 - [ ] Violation count reported to user
 
@@ -214,12 +166,11 @@ in addition to any CDC violations.
 - `wclk` and `rclk` MUST be in different clock domains (verified in CDC analysis)
 - No additional synchronizer needed on the data path (SRAM handles internally)
 - Address/control signals (`i_waddr`, `i_wen`, `i_raddr`, `i_ren`) must be generated within their respective clock domains
-- SDC: `set_clock_groups -asynchronous` between `wclk` and `rclk` domains
+- Derive timing treatment from the macro timing model and all crossings between the domains. Gray pointer paths with physical bounds need endpoint-specific constraints and remain timed.
 - If used as async FIFO backend: verify gray-coded pointers cross correctly (separate 2-FF sync on pointers)
 - CDC checker should recognize `sram_dp` instances and verify wclk/rclk domain assignment
 
-For comprehensive CDC analysis, commercial tools (SpyGlass CDC, Conformal CDC, Questa CDC)
-provide formal proof of synchronizer correctness beyond structural analysis.
+For signoff, report the checks actually completed by the configured commercial CDC engine and the target STA tool.
 
 See `{plugin_root}/skills/rtl-p5s-cdc-verify/references/cdc-patterns.md` for SDC constraint templates, violation checklist,
 and detailed synchronizer implementation guidance.

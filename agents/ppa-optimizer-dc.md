@@ -323,8 +323,8 @@ The PPA orchestrator composes a thin wrapper Tcl that performs DC
 setup/analyze/elaborate/link, `source`s this fragment (with `{plugin_root}`
 expanded to the absolute path, since `dc_shell` runs in the user project CWD),
 then runs it via `run_syn.sh --tool dc_shell --script <wrapper.tcl>` (the
-`--script` path bypasses run_syn.sh auto-generation). Wiring:
-`agents/ppa-optimizer-dc-orchestrator.md`.
+`--script` path bypasses run_syn.sh auto-generation). The
+`ppa-optimizer-dc-orchestrator` role owns this step.
 
 ## PPA Brief Scaffold
 

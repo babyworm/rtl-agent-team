@@ -19,16 +19,17 @@ in addition to any CDC violations.
 - VIOLATION found → surface immediately, do NOT auto-insert synchronizers
 - CONVENTION violation found → report alongside CDC violations, recommend fix before sign-off
 - Clock domains cannot be determined from RTL alone → ask user for clocking architecture doc
-- Tool (vc_cdc, Meridian, or spyglass) not available → use structural RTL analysis only
+- A missing configured CDC tool or site script leaves its check INCOMPLETE. Record any structural findings separately.
 
 ## Final Checklist
 
 - [ ] All clock domains identified in RTL (expect `{domain}_clk` format)
 - [ ] All cross-domain paths analyzed
 - [ ] Non-conformant clock/reset names flagged as CONVENTION violations
-- [ ] lint/cdc/cdc_report.md written with VIOLATION/CAUTION/CONVENTION/INFO classification
-- [ ] syn/constraints/cdc_constraints.sdc written with correct clock domain names
-- [ ] CDC replay script exists (lint/cdc/replay/run_cdc_*_latest.sh)
+- [ ] Coordinator saved the checker inventory and measured results in the report for this scope
+- [ ] Constraint writer saved the matching scoped SDC and cited the requirement for each bound
+- [ ] Timing report shows each required bound is effective, or that check is explicitly open
+- [ ] Report links the actual engine output and any replay generated for this run
 - [ ] RTL not modified
 - [ ] Violation count reported to user
 
@@ -49,12 +50,11 @@ in addition to any CDC violations.
 - `wclk` and `rclk` MUST be in different clock domains (verified in CDC analysis)
 - No additional synchronizer needed on the data path (SRAM handles internally)
 - Address/control signals (`i_waddr`, `i_wen`, `i_raddr`, `i_ren`) must be generated within their respective clock domains
-- SDC: `set_clock_groups -asynchronous` between `wclk` and `rclk` domains
+- Derive timing treatment from the macro timing model and all crossings between the domains. Gray pointer paths with physical bounds need endpoint-specific constraints and remain timed.
 - If used as async FIFO backend: verify gray-coded pointers cross correctly (separate 2-FF sync on pointers)
 - CDC checker should recognize `sram_dp` instances and verify wclk/rclk domain assignment
 
-For comprehensive CDC analysis, commercial tools (SpyGlass CDC, Conformal CDC, Questa CDC)
-provide formal proof of synchronizer correctness beyond structural analysis.
+For signoff, report the checks actually completed by the configured commercial CDC engine and the target STA tool.
 
 See `{plugin_root}/skills/rtl-p5s-cdc-verify/references/cdc-patterns.md` for SDC constraint templates, violation checklist,
 and detailed synchronizer implementation guidance.

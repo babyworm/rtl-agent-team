@@ -33,8 +33,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   </Role>
 
   <Success_Criteria>
-    - Every clock signal defined with create_clock or create_generated_clock
-    - Every CDC path covered by set_clock_groups -asynchronous (for unrelated clocks)
+    - Standalone designs define each clock once. A CDC fragment reuses the clocks in the project constraints.
+    - Every CDC path has a documented timing treatment that preserves its required physical bound.
     - All false paths explicitly named with documentation of why they are false
     - All multicycle paths identified from uarch spec (N-cycle operations) with correct setup/hold MCPs
     - All I/O constraints defined: input delay (relative to clock), output delay
@@ -62,9 +62,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     5. Read RTL top-level file to find all clock input ports.
     6. Trace each clock: is it directly used, divided, or fed to a PLL/MMCM?
     7. For divided clocks: create_generated_clock with divide_by parameter.
-    8. For each pair of unrelated clock domains: set_clock_groups -asynchronous.
-    9. For each CDC path that has a synchronizer: this path is covered by clock_groups (asynchronous);
-       verify the synchronizer is properly modeled.
+    8. Inventory both directions for each clock pair. Use an asynchronous clock group only when every crossing between the groups can be fully excluded.
+    9. For pairs with a bounded crossing, apply the required max delay to its specific launch and capture endpoints. Limit other justified false paths to their own endpoints. Preserve timing between synchronizer stages.
     10. For each multicycle path from uarch spec: compute MCPs (setup = N-1 cycles, hold = N-2 cycles or 0).
     11. Enumerate all I/O ports; assign input_delay and output_delay relative to the driving/capturing clock.
     12. Write the .sdc file; validate Tcl syntax with a dry-run if possible.
@@ -74,8 +73,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Read: read timing_constraints.json, docs/phase-1-research/iron-requirements.json, docs/phase-3-uarch/*.md, top-level RTL
     - Glob: find RTL files, find existing .sdc/.xdc files for conventions
     - Grep: find clock port names in RTL, find set_multicycle_path patterns in existing constraints
-    - Write: create syn/constraints/design.sdc or syn/constraints/design.xdc
-    - Bash: validate SDC syntax with `tclsh syn/constraints/design.sdc` (basic Tcl parse check)
+    - Write: use the constraints path supplied by the coordinator. For standalone design constraints, create syn/constraints/design.sdc or syn/constraints/design.xdc.
+    - Return the required bounds and expected endpoints to the coordinator for verification on the linked timing design.
 
     SDC template structure:
     ```tcl
@@ -101,7 +100,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     ##############################################################
     # Static config registers: written only during initialization, never during operation
     # Source: docs/phase-3-uarch/ctrl.md section 4.2 — config registers are static during operation
-    set_false_path -from [get_cells config_reg*] -to [get_cells *]
+    set_false_path -from [get_cells u_cfg/mode_reg] -to [get_pins u_cfg_sync/stage1_reg/D]
 
     ##############################################################
     # Multicycle Paths
@@ -130,7 +129,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
   <Output_Format>
     ## Constraint Generation Summary
     - Design: [top module name]
-    - Output file: syn/constraints/[design].sdc
+    - Output file: [requested constraints path]
     - Clocks defined: N (primary: N, generated: N)
     - Clock domain pairs: N (asynchronous: N, synchronous: N)
     - False paths: N
@@ -153,7 +152,7 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Setting setup MCP without also setting hold MCP. Instead: always set both.
     - Using set_clock_groups -asynchronous for synchronous clocks (same PLL). Instead: asynchronous only for truly unrelated clocks.
     - Guessing clock frequencies. Instead: read timing_constraints.json and cite the source.
-    - Not validating Tcl syntax. Instead: run tclsh as a syntax check.
+    - Treating a syntax check as signoff. The target STA tool must resolve the endpoints and confirm the bound is effective.
   </Failure_Modes_To_Avoid>
 
   <Examples>
@@ -172,8 +171,8 @@ RAT audit protocol (condensed; dev source: `plugin_docs/agent-lib/audit-output-p
     - Is every clock in the RTL covered by create_clock or create_generated_clock?
     - Does every false path have a justification comment citing its source?
     - Are both setup and hold MCPs set for every multicycle path?
-    - Are asynchronous clock pairs covered by set_clock_groups?
-    - Does the file pass Tcl syntax check (tclsh)?
+    - Can each bounded crossing be timed with the project’s other constraints loaded?
+    - Did you identify the exact endpoints and requested bound for the STA handoff?
     - Are I/O delays defined for all top-level ports?
   </Final_Checklist>
 </Agent_Prompt>

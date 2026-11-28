@@ -3,7 +3,7 @@ name: rtl-ip-instantiate
 description: "Generate convention-compliant SV wrapper for third-party IP (memory, PLL, PHY, DSP) — 'instantiate IP', 'IP wrapper', 'integrate third-party IP'."
 user-invocable: true
 argument-hint: "[ip-name | path/to/ip-descriptor.xml]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

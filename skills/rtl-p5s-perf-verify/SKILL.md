@@ -3,7 +3,7 @@ name: rtl-p5s-perf-verify
 description: "P5 performance verification: RTL throughput/latency/stalls vs BFM baseline. Triggers 'measure throughput', 'performance regression', 'latency vs BFM'."
 user-invocable: true
 argument-hint: "[module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

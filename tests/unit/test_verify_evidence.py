@@ -73,6 +73,45 @@ def test_passing_runner_evidence_satisfies_gate_and_new_edit_invalidates_it(simu
     assert "touched marker is insufficient" in blocked["reason"]
 
 
+@pytest.mark.parametrize("output", ["FAIL", "simulation ended without a verdict"])
+def test_failed_seed_requires_that_test_and_seed_to_pass(simulation, output):
+    root, source, run = simulation
+    state = root / ".rat/state"
+    (state / "rtl-modified-files.txt").write_text(str(source) + "\n")
+    assert run("--seed", "1").returncode == 0
+    assert run("--seed", "2", "--sim-args", "+case=overflow", SIM_OUTPUT=output).returncode != 0
+    assert run("--seed", "1", "--sim-args", "+case=overflow").returncode == 0
+    assert run("--seed", "2", "--sim-args", "+case=smoke").returncode == 0
+    hook = HOOKS_DIR / "rtl-verify-stop-gate.sh"
+    blocked = run_hook(hook, {"cwd": str(root)})
+    assert blocked.get("decision") == "block"
+    assert "tb seed 2 +case=overflow" in blocked["reason"]
+    assert run("--seed", "2", "--sim-args", "+case=overflow").returncode == 0
+    assert run_hook(hook, {"cwd": str(root)}) == {"continue": True}
+
+
+def test_overlapping_pass_or_legacy_unknown_seed_cannot_resolve_a_failure(simulation):
+    root, source, run = simulation
+    assert run("--seed", "7", SIM_OUTPUT="FAIL").returncode != 0
+    assert run("--seed", "7").returncode == 0
+    records = json.loads((root / ".rat/state/verify-evidence.json").read_text())["runs"]
+    bad, good = records
+    bad.update(seeds=["6", "7"], failed_seeds=["7"])
+    # Exercise older records from a backend that already selected the top.
+    for record in records:
+        record.update(tool="verilator", context="verilator|tb|||0||")
+    tracked = {str(source)}
+    assert not evidence.assess_records(tracked, records)[0]
+    good["started_at"] = bad["started_at"]
+    assert evidence.assess_records(tracked, records)[0] == tracked
+    good["started_at"] = bad["completed_at"] + 1
+    bad.pop("seeds")
+    bad.pop("failed_seeds")
+    assert evidence.assess_records(tracked, records)[0] == tracked
+    good.pop("seeds")
+    assert not evidence.assess_records(tracked, [good])[0]
+
+
 @pytest.mark.parametrize("marker", [None, ".rtl-agent-team"])
 def test_experiment_in_fresh_git_project_hides_outputs_and_preserves_evidence(simulation, marker):
     root, source, run = simulation
@@ -443,7 +482,8 @@ def test_identity_keeps_escaped_identifiers_and_prefixed_directives(before, afte
     assert evidence.hdl_text(before) != evidence.hdl_text(after)
 
 
-def test_experiment_results_are_not_rtl_sources(tmp_path):
+def test_experiment_results_are_not_rtl_sources(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO_ROOT / "scripts"))
     snapshot = importlib.util.spec_from_file_location("rtl_change_snapshot", REPO_ROOT / "scripts/rtl_change_snapshot.py")
     module = importlib.util.module_from_spec(snapshot)
     snapshot.loader.exec_module(module)

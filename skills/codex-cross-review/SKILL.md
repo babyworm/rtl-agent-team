@@ -3,7 +3,7 @@ name: codex-cross-review
 description: "One independent Codex review of completed phase artifacts when requested or enabled for the project."
 user-invocable: true
 argument-hint: "[phase number or auto]"
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, AskUserQuestion
+allowed-tools: Read, Glob, Grep, Task, AskUserQuestion
 ---
 
 Review the named phase. Use the current deliverables to identify the phase if

@@ -3,7 +3,7 @@ name: rat-doctor
 description: "Check plugin and project settings in a ✓/?/✗ table and fix what is wrong. Triggers: 'rat doctor', 'diagnostics', 'plugin status', 'settings check'."
 user-invocable: true
 argument-hint: "[--offline]"
-allowed-tools: Bash, Read, Edit, Glob, Grep, AskUserQuestion, Skill
+allowed-tools: Read, Edit, Glob, Grep, AskUserQuestion, Skill
 ---
 
 <Purpose>

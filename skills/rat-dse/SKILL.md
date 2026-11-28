@@ -3,7 +3,7 @@ name: rat-dse
 description: "Explore algorithms and architecture through Phase 3 (μArch + BFM). Use for DSE, architecture trade-offs, or comparing design trials."
 user-invocable: true
 argument-hint: "[spec-file or project-description]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

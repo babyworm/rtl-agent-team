@@ -581,7 +581,7 @@ class TestRtlVerifyStopGate:
         result = run_hook(self.HOOK, {"cwd": str(tmp_project)})
         _assert_stop_blocked(result)
         ctx = result.get("reason", "")
-        assert "1 RTL files" in ctx
+        assert "1 RTL file needs" in ctx
 
     def test_fallback_merged_with_main_track(self, tmp_project):
         """Fallback and main track entries are both counted."""

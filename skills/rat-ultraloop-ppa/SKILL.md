@@ -3,7 +3,7 @@ name: rat-ultraloop-ppa
 description: "Auto-loop wrapper repeating rtl-ppa-optimize-dc until PPA convergence or plateau. Triggers: 'ultraloop PPA', 'PPA auto-loop', 'optimize PPA until converge'."
 user-invocable: true
 argument-hint: "[top-module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, Skill, AskUserQuestion
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, Skill, AskUserQuestion
 ---
 
 <Purpose>

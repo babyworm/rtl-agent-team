@@ -61,6 +61,26 @@ Codex 교차검증은 기본적으로 꺼져 있습니다. 실행할 때 전체 
 교차검증을 요청하거나, 프로젝트의 `rat_config.json`에서
 `review.codex_cross_review`를 `true`로 설정합니다. [교차검증 동작](runtime/phase-dispatch.md)
 
+## 다른 코딩 에이전트에서 사용하기
+
+단계별 팀 실행과 Stop 훅을 포함한 전체 파이프라인의 기준 호스트는 Claude Code입니다.
+Codex와 Grok은 로컬 체크아웃의 Claude 마켓플레이스를 읽을 수 있습니다.
+작업 디렉토리는 RTL 프로젝트로 지정하세요.
+
+Gemini CLI나 Antigravity에서는 체크아웃 바깥의 새 디렉토리로 스킬과 EDA 실행
+도구를 내보냅니다. 내보내기에는 Python과 npm이 필요하며 오프라인에서도 동작합니다.
+
+```sh
+python3 scripts/package_portable_skills.py ../rtl-agent-team-skills
+```
+
+Gemini CLI에서는 `gemini extensions install ../rtl-agent-team-skills`,
+Antigravity에서는 `agy plugin install ../rtl-agent-team-skills`로 설치하세요.
+
+내보낸 패키지는 Claude Code와 같은 역할 지침과 시뮬레이션 증거를 사용하며,
+단계를 넘길 때 측정 결과를 확인합니다. 편집 자동 추적과 Stop 차단에는
+호스트 훅이 필요합니다. [호스트별 실행 방식](runtime/model-selection.md)
+
 ## 참고 문서
 
 - [개발자 가이드](CONTRIBUTING_kr.md#개발-환경-셋업) · [테스트](tests/README_kr.md)

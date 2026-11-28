@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 from tests.conftest import SCRIPTS_DIR, SKILLS_DIR, run_script
 
 RUN_SIM = SCRIPTS_DIR / "run_sim.sh"
@@ -19,7 +21,8 @@ def _make_fake_tool(bin_dir: Path, name: str, body: str) -> Path:
 
 
 class TestRunSimReplay:
-    def test_compile_generates_replay_scripts(self, tmp_path):
+    @pytest.mark.parametrize("simulator,top_flag", [("iverilog", "-s"), ("vcs", "-top")])
+    def test_compile_generates_replay_scripts(self, tmp_path, simulator, top_flag):
         sv = tmp_path / "dummy.sv"
         sv.write_text("module dummy; endmodule\n")
         outdir = tmp_path / "sim_out"
@@ -28,14 +31,15 @@ class TestRunSimReplay:
 
         _make_fake_tool(
             fake_bin,
-            "iverilog",
+            simulator,
+            'printf "%s\\n" "$@" > compiler.argv\n'
             "out=''; while [ $# -gt 0 ]; do if [ \"$1\" = '-o' ]; then out=\"$2\"; shift 2; continue; fi; shift; done; [ -n \"$out\" ] && : > \"$out\"",
         )
 
         result = run_script(
             RUN_SIM,
             "--sim",
-            "iverilog",
+            simulator,
             "--top",
             "dummy",
             "--compile-only",
@@ -47,9 +51,11 @@ class TestRunSimReplay:
         )
         assert result.returncode == 0
         replay_dir = outdir / "replay"
-        assert (replay_dir / "run_iverilog_compile_latest.sh").exists()
-        assert (replay_dir / "run_iverilog_replay_latest.sh").exists()
-        assert "iverilog -g2012" in (replay_dir / "run_iverilog_compile_latest.sh").read_text()
+        argv = (outdir / "compiler.argv").read_text().splitlines()
+        assert argv[argv.index(top_flag) + 1] == "dummy"
+        assert (replay_dir / f"run_{simulator}_replay_latest.sh").exists()
+        compile_replay = (replay_dir / f"run_{simulator}_compile_latest.sh").read_text()
+        assert f"{top_flag} dummy" in compile_replay
 
     def test_xcelium_alias_routes_to_xrun_and_replay(self, tmp_path):
         sv = tmp_path / "dummy.sv"

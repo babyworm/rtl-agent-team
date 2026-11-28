@@ -3,7 +3,7 @@ name: p2-arch-design
 description: "Phase 2 architecture, sequential or team. Use for 'architecture design', 'Phase 2', 'block design', 'arch team', 'parallel architecture'."
 user-invocable: true
 argument-hint: "[--resume | architecture-focus | team]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Design the block architecture and a runnable C reference model from P1 requirements.

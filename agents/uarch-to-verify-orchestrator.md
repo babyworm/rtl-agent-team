@@ -162,7 +162,7 @@ Save to docs/phase-4-rtl/stream-b-sva-skeletons.md and formal/.",
 Task(subagent_type="rtl-agent-team:cdc-checker",
      prompt="Analyze clock domain topology from docs/phase-3-uarch/*.md.
 Each CDC path must reference architecture clock domain definition.
-Save preliminary CDC report to docs/phase-4-rtl/stream-b-cdc-preliminary.md.",
+Return the preliminary inventory and clock-domain references to the coordinator.",
      run_in_background=true)
 
 Task(subagent_type="rtl-agent-team:testbench-dev",
@@ -178,7 +178,8 @@ Include a comment '# Covers: REQ-NNN' (or '# Covers: REQ-U-NNN.AC-M' if acceptan
      run_in_background=true)
 ```
 
-Wait for BOTH Stream A and Stream B to complete at merge point.
+Wait for BOTH Stream A and Stream B to complete at merge point. Write the returned CDC
+inventory to `docs/phase-4-rtl/stream-b-cdc-preliminary.md` before the phase gate.
 
 ### Phase 4→5 Quality Gate
 ```
@@ -246,12 +247,9 @@ verdict: PASS or FAIL + counterexamples[]",
      run_in_background=true)
 
 # 5b: CDC Verification
-Task(subagent_type="rtl-agent-team:cdc-checker",
-     prompt="Update preliminary CDC report with final RTL.
-Compare Stream B predictions vs actual implementation.
-Verify synchronizers exist where Stream B identified crossing points.
-Output: reviews/phase-5-verify/cdc-report.md.
-verdict: PASS or FAIL + findings[]",
+Task(subagent_type="rtl-agent-team:p5s-cdc-orchestrator",
+     prompt="Run whole-design CDC on the final RTL. Compare Stream B predictions with measured results.
+Return the findings, evidence level and open checks in reviews/phase-5-verify/cdc-report.md.",
      run_in_background=true)
 
 # 5c: Integration TB + Ref Model Comparison

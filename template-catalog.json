@@ -18,16 +18,16 @@
       "sha256": "7aa2e0f8a004580366c42d4cc15a7349085ca5e6e5c954ae7eafe13334a9df8d"
     },
     "scripts/regression_evidence.py": {
-      "version": "1.0.0-pre19",
-      "sha256": "bc51b76a235a50ab8f80141f26d908ec1807d84933b6c684e810c08bc26fa9a8"
+      "version": "1.0.0-pre20",
+      "sha256": "7d6546260e0391ccad49891fbcefa68d89bdcf3292faab036680c7f49fabee98"
     },
     "scripts/run_sim.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "68a4960a5b45876a3ffd40a4e1f0ef44344f8ba207f1c6b12a302e2b36cf2409"
+      "version": "1.0.0-pre20",
+      "sha256": "5d418d8051b6a6162d9d9405b55b6c7e6360cc2c9c540e95e541325b8ee627d1"
     },
     "scripts/verify_evidence.py": {
-      "version": "1.0.0-pre19",
-      "sha256": "46e8595dfd4e14a5b8380bad7e81ba6cff338df59f9523d5f298fd55a85ff9e6"
+      "version": "1.0.0-pre20",
+      "sha256": "723480700bcf3c775faaf13a4d3b879b22a8da4d4556cc85cad09769168b5d9d"
     },
     "skills/rat-init-project/templates/Makefile": {
       "version": "1.0.0-pre19",
@@ -74,8 +74,8 @@
       "sha256": "e94dae29eeacdf9a55ed3c33314c1326ea4559f925ee6198858d61a97a9aeafe"
     },
     "skills/rat-init-project/templates/run_cdc.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "3f47a3f479a0d27ef610b093c26c9caa4c2af579d90ee227ed82912fb5938e65"
+      "version": "1.0.0-pre20",
+      "sha256": "6e1dced749daa2b79a2f38d07e45cec3c33dd3e917c6d920368e48b6ba24a0ac"
     },
     "skills/rat-init-project/templates/run_conformal.sh": {
       "version": "1.0.0-pre19",
@@ -94,8 +94,8 @@
       "sha256": "4ca49ad15570293df729f9cdb7e08e6379996c8e31fd5ad0092d5c680f1fc0ca"
     },
     "skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "246af7abdb1cb5238e127d0d0650483811ada212927b292ec126e69370e2ed4b"
+      "version": "1.0.0-pre20",
+      "sha256": "317ba434d0093510b1b0c372e7fb616554bc38bbb531193ada81bf8cbffc7cd1"
     }
   }
 }

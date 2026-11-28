@@ -3,7 +3,7 @@ name: rtl-p5s-integration-test
 description: "P5 Tier 4 integration tests: cross-module data flow, reset propagation, boundary handshakes. Triggers 'integration test', 'end-to-end system verification'."
 user-invocable: true
 argument-hint: "[top-module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

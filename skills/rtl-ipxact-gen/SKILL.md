@@ -3,7 +3,7 @@ name: rtl-ipxact-gen
 description: "Generate IEEE 1685-2014 IP-XACT XML descriptor from RTL source — 'generate IP-XACT', IP handoff, or SoC/EDA integration needing component XML."
 user-invocable: true
 argument-hint: "[module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

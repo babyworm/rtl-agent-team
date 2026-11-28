@@ -20,6 +20,7 @@ v0.14.3 corrected five of them:
     between.
 """
 
+import json
 import os
 import re
 from pathlib import Path
@@ -88,6 +89,58 @@ def test_questa_cdc_directs_output_to_the_reported_directory() -> None:
     match = re.search(r"run_tool qverify[^\n]*", text)
     assert match, "qverify invocation not found"
     assert "-od" in match.group(0), f"missing -od: {match.group(0)}"
+
+
+@pytest.mark.parametrize(("preference", "engine", "binary"), [
+    ("sg_shell", "spyglass", "sg_shell"),
+    ("vc_cdc", "vc_cdc", "vc_static_shell"),
+    ("questa_cdc", "questa_cdc", "qverify"),
+])
+def test_cdc_auto_runs_configured_commercial_executable(tmp_path, preference, engine, binary):
+    # The configured executable is deliberately outside PATH.
+    executable = tmp_path / binary
+    executable.write_text("#!/bin/sh\necho RAT_TOOL_COMPLETE\necho 'Violations: 0'\n")
+    executable.chmod(0o755)
+    config = {"preferences": {"cdc": preference}, "execution": {"backend": "local"},
+              "tools": {"cdc": {preference: {"path": str(executable)}}}}
+    (tmp_path / "rat_config.json").write_text(json.dumps(config))
+    (tmp_path / "site.tcl").write_text("# supplied site script\n")
+    (tmp_path / "m.sv").write_text("module m; endmodule\n")
+
+    result = run_script(RUN_CDC, "--tool", "auto", "--top", "m", "--script", "site.tcl",
+                        "m.sv", cwd=tmp_path)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"Tool:     {engine}" in result.stdout
+    assert "RAT_TOOL_COMPLETE" in result.stdout
+    assert (tmp_path / "lint/cdc/replay" / f"run_cdc_{engine}_latest.sh").is_file()
+
+
+def test_mixed_clock_cdc_example_preserves_bounded_crossings():
+    reference = REPO_ROOT / "skills/rtl-p5s-cdc-verify/references/cdc-patterns.md"
+    section = reference.read_text().split("## CDC Constraint Patterns (SDC)", 1)[1]
+    example = section.split("```tcl", 1)[1].split("```", 1)[0]
+    lines = example.replace("\\\n", " ").splitlines()
+    commands = [line.strip() for line in lines if line.strip().startswith("set_")]
+    assert all(not command.startswith("set_clock_groups") for command in commands)
+    bound, = (c for c in commands if c.startswith("set_max_delay"))
+    cut, = (c for c in commands if c.startswith("set_false_path"))
+    assert "-datapath_only" in bound
+    assert "get_clocks" not in bound + cut
+    assert "u_fifo/wgray_reg*/C" in bound
+    assert "u_fifo/wgray_sync1_reg*/D" in bound
+    assert "u_req_sync/stage1_reg/D" in cut and "wgray" not in cut
+
+
+def test_cdc_coordinator_and_skill_agree_on_artifact_handoff():
+    skill = (REPO_ROOT / "skills/rtl-p5s-cdc-verify/SKILL.md").read_text()
+    coordinator = (REPO_ROOT / "agents/p5s-cdc-orchestrator.md").read_text()
+    for path in ("reviews/phase-5-verify/cdc-report.md", "syn/constraints/cdc_constraints.sdc",
+                 "reviews/phase-5-verify/{module}-cdc-report.md",
+                 "syn/constraints/cdc_constraints_{module}.sdc"):
+        assert path in skill and path in coordinator
+    assert "lint/scripts/run_cdc.sh --tool auto" in coordinator
+    assert "report_exceptions -ignored" in coordinator
 
 
 def test_xcelium_elaborates_before_running() -> None:

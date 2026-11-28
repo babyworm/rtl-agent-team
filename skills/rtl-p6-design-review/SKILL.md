@@ -3,7 +3,7 @@ name: rtl-p6-design-review
 description: "Phase 6: design review and design-note documentation with consistency checks after P5 PASS. Triggers: 'design review', 'design note', 'Phase 6'."
 user-invocable: true
 argument-hint: "[options]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

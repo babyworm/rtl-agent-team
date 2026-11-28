@@ -3,7 +3,7 @@ name: rtl-p5b-silicon-validation
 description: "Phase 5B silicon validation: synthesis, constraints, timing/CDC signoff posture, top integration checks. Run after P5A functional closure passes."
 user-invocable: true
 argument-hint: "[--top <name>]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

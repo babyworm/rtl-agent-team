@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure changes to project HDL across a paired Claude Code tool event."""
+"""Measure changes to project HDL across paired edit or shell tool events."""
 
 import hashlib
 import json
@@ -14,6 +14,7 @@ from verify_evidence import atomic_json, digest, source_digest
 
 EXTENSIONS = {".sv", ".svh", ".v", ".vh"}
 TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure"}
+PATCH_PATH = re.compile(r"^\*\*\* (?:Add File|Update File|Delete File|Move to): (.+)$")
 # formal/ holds properties checked by the formal flow; pnr/ holds generated netlists;
 # experiment/ holds fetched or generated run results.
 OUTPUT_ROOTS = {"syn", "lint", "reviews", "docs", "formal", "pnr", "experiment"}
@@ -46,17 +47,22 @@ def source_tree(root):
 def candidates(root, tool, payload):
     if tool == "Bash":
         return source_tree(root)
-    raw = payload.get("tool_input", {}).get("file_path", "")
-    if not raw:
-        return None
-    path = (Path(payload.get("cwd") or root) / raw).resolve()
-    if path.is_relative_to(root) and is_source(path.relative_to(root)):
-        return [path]
-    return None
+    tool_input = payload.get("tool_input", {})
+    if tool == "apply_patch":
+        # Codex matches the Edit/Write hook aliases but sends its native patch.
+        # Only operation headers select candidates; snapshots establish what changed.
+        raw_paths = [match[1] for line in tool_input.get("command", "").splitlines()
+                     if (match := PATCH_PATH.fullmatch(line.strip()))]
+    else:
+        raw_paths = [tool_input.get("file_path")]
+    base = Path(payload.get("cwd") or root)
+    paths = {(base / raw).resolve() for raw in raw_paths if raw}
+    return [path for path in paths
+            if path.is_relative_to(root) and is_source(path.relative_to(root))] or None
 
 
 def snapshot(paths, root, identity=False):
-    """Raw hash per file; the slower behavioral identity only when asked (single-file tools)."""
+    """Raw hash per file; also compute behavioral identity for explicitly named edit targets."""
     values = {}
     for path in paths:
         if not path.is_file() or path.is_symlink():
@@ -74,7 +80,7 @@ def main(root, state):
     event = payload.get("hook_event_name")
     tool = payload.get("tool_name")
     tool_id = payload.get("tool_use_id", "")
-    if event not in TOOL_EVENTS or tool not in {"Bash", "Edit", "Write"}:
+    if event not in TOOL_EVENTS or tool not in {"Bash", "Edit", "Write", "apply_patch"}:
         return 0
     if not isinstance(tool_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,160}", tool_id):
         return 1

@@ -3,7 +3,7 @@ name: rtl-p5s-sva-check
 description: "P5 formal verification: SVA proof via SymbiYosys BMC/induction on lint-clean RTL. Triggers 'formal verification', 'prove property', 'SVA'."
 user-invocable: true
 argument-hint: "[module-name]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

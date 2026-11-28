@@ -63,7 +63,7 @@ Every `set_false_path` must have a comment explaining **why** it's false:
 | Async reset to all | Reset is async assert, sync deassert by design |
 | Static config registers | Written only during init, quasi-static during operation |
 | Test/scan paths | Not active during functional operation |
-| CDC with synchronizer | Handled by `set_clock_groups -asynchronous` |
+| Single-bit CDC entering a synchronizer | Scope the justified exception to the asynchronous launch and first capture stage; keep stages after that timed |
 
 **Never false-path for convenience.** A false path on a real timing path = silicon failure.
 
@@ -105,7 +105,7 @@ set_multicycle_path 4 -from [get_cells u_mac/*] -to [get_cells u_mac/o_result_re
 
 - [ ] Every clock in RTL has a `create_clock` or `create_generated_clock`
 - [ ] Clock uncertainty set for all clocks (setup and hold)
-- [ ] Asynchronous clock pairs have `set_clock_groups -asynchronous`
+- [ ] Clock groups exclude only fully untimed pairs. For pairs with bounded crossings, check each endpoint-specific bound in the target STA timing report.
 - [ ] All top-level I/O ports have `set_input_delay` / `set_output_delay`
 - [ ] Every `set_false_path` has a justification comment
 - [ ] Every `set_multicycle_path` has both `-setup` and `-hold`

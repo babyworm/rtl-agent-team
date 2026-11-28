@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0-pre20
 """Bind regression evidence to the sources expanded by the actual cocotb Makefile."""
 import argparse
 import json
@@ -19,6 +19,7 @@ def main():
     p.add_argument('--outdir',type=Path,required=True)
     p.add_argument('--tool',required=True)
     p.add_argument('--top',required=True)
+    p.add_argument('--seeds',default='')
     p.add_argument('--runner-pid',type=int,required=True)
     args=p.parse_args();root=args.root.resolve();tb=args.tb_dir.resolve()
     helper=Path(__file__).with_name('eda_runner.py')
@@ -45,7 +46,10 @@ def main():
         if config.is_file():dependencies.append(str(config))
         scope=argparse.Namespace(root=str(root),outdir=str(args.outdir.resolve()),tool=args.tool,top=args.top,
             runner_pid=args.runner_pid,source=sources,filelist='',dependency=dependencies,run_only=False,
-            compile_only=False,artifact=[],context='cocotb Makefile; SIM='+args.tool,include_dir=[])
+            compile_only=False,artifact=[],context='cocotb Makefile; SIM='+args.tool,include_dir=[],seeds=args.seeds,
+            runtime_args=json.dumps({key: os.environ[key] for key in
+                ('TESTCASE', 'COCOTB_TESTCASE', 'COCOTB_TEST_FILTER', 'COCOTB_TEST_MODULES', 'MODULE')
+                if key in os.environ}, sort_keys=True))
         return begin(scope)
 
 if __name__=='__main__':

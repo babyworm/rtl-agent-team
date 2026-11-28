@@ -3,7 +3,7 @@ name: rtl-p4-implement
 description: "Phase 4 RTL from uarch with lint, review, and unit tests. Sequential or team. Use for 'implement RTL', 'write RTL', 'Phase 4 team'."
 user-invocable: true
 argument-hint: "[module-list or --all | team]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Implement the requested modules from the P3 microarchitecture. Use

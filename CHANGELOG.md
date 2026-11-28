@@ -7,6 +7,19 @@ Versions `0.6.1` and `0.6.2` do not appear in the recorded release history, so t
 
 ## [Unreleased]
 
+## [1.0.0-pre20] - 2026-11-28
+
+- Icarus and VCS elaborate the requested testbench. Icarus also accepts expanded
+  file lists with compiler options in the correct position.
+- Codex multi-file RTL patches trigger verification. Current failing test cases
+  and seeds stay open across runs. A subsequent pass must cover the failed case.
+- CDC workflows use the configured execution site's tool and record the analysis
+  performed. The coordinator writes the report and checks effective timing
+  exceptions before closing a bounded crossing.
+- Added portable skills packaging and a Claude plugin evaluation for a known
+  RTL mismatch. Shell commands follow the caller's permission settings. Optional
+  Codex cross-review also works in RTL projects initialized outside Git.
+
 ## [1.0.0-pre19] - 2026-11-24
 
 - Renumbered pre-release series to `1.0.0-pre19` and renamed development branch from `try-2.0` to `try-v1.0`.

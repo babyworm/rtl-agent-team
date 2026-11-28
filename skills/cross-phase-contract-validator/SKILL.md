@@ -3,7 +3,7 @@ name: cross-phase-contract-validator
 description: "Validate spec contracts across phase boundaries (P3 uarch to P4 RTL to P5 verify): port widths, memory class, REQ traceability. Use at P4/P5 entry."
 user-invocable: true
 argument-hint: "[phase-boundary: p3-p4 | p4-p5]"
-allowed-tools: Bash, Read, Write, Grep, Glob
+allowed-tools: Read, Write, Grep, Glob
 ---
 
 <Purpose>

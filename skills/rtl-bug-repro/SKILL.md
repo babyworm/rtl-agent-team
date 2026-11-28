@@ -3,7 +3,7 @@ name: rtl-bug-repro
 description: "Reproduce an RTL bug with a minimal TB and isolate root cause via waveform diff — 'reproduce this bug', 'minimal repro TB', regression failure isolation."
 user-invocable: true
 argument-hint: "[bug-id | --failing-test <path>]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

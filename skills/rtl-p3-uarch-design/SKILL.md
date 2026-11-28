@@ -3,7 +3,7 @@ name: rtl-p3-uarch-design
 description: "Phase 3 uArch, sequential or team: clock domains, FSM/SRAM, BFM. Use for 'uarch', 'microarchitecture', 'Phase 3', 'uarch team'."
 user-invocable: true
 argument-hint: "[--resume | uarch-focus | team]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Translate the accepted P2 architecture into implementable module specifications

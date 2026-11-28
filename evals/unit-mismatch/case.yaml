@@ -1,0 +1,49 @@
+schema_version: "1.1"
+name: unit-mismatch
+description: Keep a failed Tier 2 simulation pending after a behavioral RTL edit.
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  max_turns: 30
+  timeout_seconds: 240
+  allowed_tools: [Read, Glob, Grep, Skill, Agent, Bash, Edit, Write]
+  prompt: |
+    Exercise the P4 Tier 2 unit-test workflow on this initialized incrementer
+    project. Make one experimental change in rtl/incrementer.sv, replacing
+    the addend 1 with 2. Leave that change in place. The accepted requirement
+    and our existing bench must stay unchanged.
+
+    Run the bundled project simulator wrapper on Icarus with top tb_incrementer
+    and the complete sources.f file list. Keep the unrelated smoke bench in
+    that list. Save the simulator console output in sim/unit.log.
+    Report what the requested bench measured for REQ-U-001 and
+    whether verification can close. Leave a failing result pending for me.
+graders:
+  - name: used-unit-test-skill
+    type: tool_used
+    tool: Skill
+    input_match: 'rtl-p4s-unit-test"'
+  - name: requested-top
+    type: regex
+    target: {source: file, path: .rat/state/verify-evidence.json}
+    pattern: '"top"\s*:\s*"tb_incrementer"'
+  - name: recorded-failure
+    type: regex
+    target: {source: file, path: .rat/state/verify-evidence.json}
+    pattern: '"verdict"\s*:\s*"FAIL"'
+  - name: measured-mismatch
+    type: regex
+    target: {source: file, path: sim/unit.log}
+    pattern: 'REQ-U-001 expected=5 actual=6'
+  - name: verification-pending
+    type: regex
+    target: {source: file, path: .rat/state/rtl-modified-files.txt}
+    pattern: 'rtl/incrementer\.sv'
+  - name: no-waiver
+    type: file_exists
+    path: .rat/state/rtl-verify-waiver
+    exists: false
+  - name: stop-gate-ran
+    type: file_exists
+    path: .rat/state/stop-budget-verify*.txt.reported

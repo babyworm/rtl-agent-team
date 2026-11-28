@@ -3,7 +3,7 @@ name: p1-spec-research
 description: "Phase 1 spec research, sequential or team. Triggers: 'research', 'spec analysis', 'Phase 1', 'research team', 'parallel research'."
 user-invocable: true
 argument-hint: "[spec-file or project-description | team]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Turn the supplied specification or idea into requirements and I/O definitions for P2.

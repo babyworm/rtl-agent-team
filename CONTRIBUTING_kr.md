@@ -143,6 +143,10 @@ color: blue
 
 `skills/{skill-name}/SKILL.md` 파일을 생성합니다.
 
+Claude Code의 `allowed-tools`는 스킬 실행 중 해당 도구의 사용을 사전 승인합니다.
+셸 명령은 기본적으로 사용자의 권한 설정을 따르도록 두고, 사전 승인이 필요하면
+해당 명령으로 범위를 한정하세요. [Claude 스킬 권한](https://code.claude.com/docs/en/skills#pre-approve-tools-for-a-skill)
+
 ```markdown
 ---
 name: {skill-name}

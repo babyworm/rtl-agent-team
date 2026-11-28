@@ -3,7 +3,7 @@ name: rtl-p5-verify
 description: "Phase 5 legacy bundled verification, sequential or team. Triggers 'verify', 'Phase 5', 'verify team'. New flows: prefer split P5A/P5B."
 user-invocable: true
 argument-hint: "[--module=name | --stage=N | --resume | team]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
+allowed-tools: Read, Write, Edit, Task, Grep, Glob, AskUserQuestion, TeamCreate, TeamDelete, Agent, SendMessage, TaskCreate, TaskList, TaskUpdate
 ---
 
 Run bundled P5 module, integration and final compliance checks. For a new split flow,

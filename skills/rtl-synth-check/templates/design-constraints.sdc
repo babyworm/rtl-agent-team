@@ -40,12 +40,13 @@ set_clock_transition 0.08 [get_clocks sys_clk]
 ##############################################################
 # 3. Clock Domain Relationships
 ##############################################################
-# Asynchronous domains — no timing analysis between these
+# Only group a clock pair when all paths in both directions can be excluded.
+# A bounded Gray bus or handshake between the pair requires endpoint exceptions instead.
 # set_clock_groups -asynchronous \
 #   -group [get_clocks sys_clk] \
 #   -group [get_clocks axi_clk]
 
-# Synchronous but with phase shift
+# Clocks that are physically mutually exclusive in every relevant operating mode
 # set_clock_groups -physically_exclusive \
 #   -group [get_clocks clk_0] \
 #   -group [get_clocks clk_180]

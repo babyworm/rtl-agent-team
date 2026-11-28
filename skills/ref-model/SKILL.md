@@ -3,7 +3,7 @@ name: ref-model
 description: "Builds Phase 2 golden C reference model with bitexact conformance and bandwidth estimation. Use for 'build reference model', 'C ref model', 'golden model'."
 user-invocable: true
 argument-hint: "[algorithm-name | --update]"
-allowed-tools: Bash, Read, Write, Edit, Task, Grep, Glob
+allowed-tools: Read, Write, Edit, Task, Grep, Glob
 ---
 
 Delegate using the current host as described in `{plugin_root}/runtime/model-selection.md`.

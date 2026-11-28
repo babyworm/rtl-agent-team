@@ -7,7 +7,8 @@ import re
 import subprocess
 
 
-AGENTS = Path(__file__).resolve().parents[1] / "agents"
+PLUGIN = Path(__file__).resolve().parents[1]
+AGENTS = PLUGIN / "agents" if (PLUGIN / "agents").is_dir() else PLUGIN / "runtime/roles"
 TIERS = {
     "complex": ("fable", "astra"),
     "design": ("opus", "sol"),
