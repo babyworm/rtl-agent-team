@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0
 """Check plugin and project settings and print what is right (✓), unverified (?) or wrong (✗)."""
 
 from __future__ import annotations

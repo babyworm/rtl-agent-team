@@ -1,8 +1,8 @@
 # v2 execution and prompt audit
 
 Status: Historical snapshot, 2026-11-17. This record covers the implementation
-and validation performed from `0db2ba5` through the initial `try-2.0` v2
-work. See the [README](../../README.md) and [changelog](../../CHANGELOG.md)
+and validation performed from `0db2ba5` through the first prerelease
+development cycle. See the [README](../../README.md) and [changelog](../../CHANGELOG.md)
 for current behavior and later changes.
 
 
@@ -256,7 +256,7 @@ packaging excludes private state/profile/report directories.
 
 Validation before the privacy cleanup: the complete unit suite passed **2292 tests**, with **16 skips**, in 170.55 seconds. Site-specific qualification records
 are kept privately and are not published as repository evaluation artifacts.
-All changes remain uncommitted on `try-2.0`; installed plugin code was not updated.
+At the time of this check, the changes were local and the installed plugin still used the previous version. The implementation subsequently shipped in v1.0.0 on `main`.
 
 Privacy follow-up: real site records were moved to private user storage, outside
 the repository. Setup destination guards and package exclusion checks pass;

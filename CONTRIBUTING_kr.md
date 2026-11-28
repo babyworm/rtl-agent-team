@@ -13,7 +13,7 @@ RTL Agent Marketplace에 기여하는 방법을 설명합니다.
 
 ```bash
 # 1. 저장소 클론
-git clone --branch try-v1.0 https://github.com/babyworm/rtl-agent-team.git
+git clone --branch main https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
 # 2. 테스트 의존성 설치 (Python >= 3.9, 훅도 같은 버전이 필요)
@@ -27,9 +27,11 @@ python3 -m venv .venv
 claude --plugin-dir "$(pwd)"
 ```
 
-이미 `try-v1.0`을 받아 뒀다면 저장소 루트에서 `claude --plugin-dir .`을 실행해 현재 작업 트리를 읽습니다. RTL 프로젝트에서 시험하려면 해당 프로젝트 디렉토리로 이동한 뒤 `claude --plugin-dir /path/to/rtl-agent-team`을 실행하세요.
+기존 체크아웃은 `git switch main`과 `git pull --ff-only origin main`으로 릴리스 브랜치를
+받습니다. 플러그인을 개발할 때는 저장소 루트에서 `claude --plugin-dir .`을 실행하세요.
+RTL 프로젝트에서 사용하려면 프로젝트 디렉토리에서 `claude --plugin-dir /path/to/rtl-agent-team`을 실행하세요.
 
-> **`try-v1.0` 버전 관리**: `try-v1.0`은 `v1.0.0` 정식 릴리스를 준비하는 프리릴리스 테스트 브랜치(릴리스 브랜치 성격)입니다. 이 브랜치의 변경 사항은 `1.0.0-preXX` 번호로 관리하며, `v1.0.0` 정식 릴리스 시점에 모두 `v1.0.0`으로 일괄 반영한 뒤 이후부터는 [의미적 버전 관리(SemVer)](https://semver.org/lang/ko/)를 따릅니다.
+`v1.0.0` 태그로 1.0 정식 릴리스를 받을 수 있습니다. 이후 `main`에서 배포하는 버전은 [의미적 버전 관리(SemVer)](https://semver.org/lang/ko/)를 따릅니다.
 
 ### Issue 제출
 

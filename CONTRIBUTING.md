@@ -13,7 +13,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ```bash
 # 1. Clone the repository
-git clone --branch try-v1.0 https://github.com/babyworm/rtl-agent-team.git
+git clone --branch main https://github.com/babyworm/rtl-agent-team.git
 cd rtl-agent-team
 
 # 2. Install test dependencies (Python >= 3.9; the hooks need it too)
@@ -27,9 +27,12 @@ python3 -m venv .venv
 claude --plugin-dir "$(pwd)"
 ```
 
-If you already have a `try-v1.0` checkout, run `claude --plugin-dir .` from its root to load the current working tree. To try it against an RTL project, switch to that project directory and launch `claude --plugin-dir /path/to/rtl-agent-team`.
+To update an existing checkout to the release branch, run `git switch main` and
+`git pull --ff-only origin main`. Launch `claude --plugin-dir .` from the checkout
+to work on the plugin. To use it in an RTL project, launch
+`claude --plugin-dir /path/to/rtl-agent-team` from the project directory.
 
-> **Versioning on `try-v1.0`**: `try-v1.0` is the pre-release test branch (release branch) for `v1.0.0`. Changes on this branch use `1.0.0-preXX` pre-release versions and will be consolidated to `v1.0.0` at release time; releases after `v1.0.0` follow [Semantic Versioning](https://semver.org/).
+The `v1.0.0` tag identifies the 1.0 release. Subsequent releases on `main` follow [Semantic Versioning](https://semver.org/).
 
 ### Filing an issue
 

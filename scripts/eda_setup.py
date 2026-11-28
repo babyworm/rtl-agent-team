@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0
 """Discover an EDA site, probe selected tools, and apply a reusable site profile."""
 from __future__ import annotations
 

@@ -30,4 +30,4 @@ paths:
 
 Hook enforcement: `PostToolUse:Edit/Write` tracks .sv modifications; `Stop` hook keeps Claude working until verification is done, then hands the decision to the user.
 
-<!-- rat-version: 1.0.0-pre19 -->
+<!-- rat-version: 1.0.0 -->

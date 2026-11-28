@@ -45,4 +45,4 @@ before the release commit (CLAUDE.md rule 12).
   ("Project runners"); `plugin_docs/hook-development-guide.md`; CLAUDE.md Rule 5 row; CHANGELOG.
 - [x] **6. Release prep**: `python3 scripts/template_catalog.py --write`; `scripts/bump-version.sh 2.0.0-pre13`
   (keep README tables at the published version, as pre08–pre12 did); CHANGELOG `[2.0.0-pre13]`.
-- [x] **7. Verify and ship**: `pytest tests/unit/ -x -q`; independent review pass; fix; commit; push `try-2.0`.
+- [x] **7. Verify and ship** — Ran `pytest tests/unit/ -x -q`, addressed the independent review findings, and pushed the fixes to the prerelease branch.

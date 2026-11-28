@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0
 """Merge complete, matching testbench bin-count records across seed logs."""
 
 import argparse

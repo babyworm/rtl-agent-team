@@ -157,7 +157,7 @@ When modifying this plugin:
 11. **Model policy**. Match the actual task complexity to a tier on the running host using `runtime/model-selection.md`. Keep explicit model choices and session effort. When a native delegate has no applicable model override, inherit its host session.
 12. **CI before push (CRITICAL)** — Always run `pytest tests/unit/ -x -q` locally before pushing to `main`. Shell scripts under `set -eo pipefail` are especially fragile — a single unguarded `grep` no-match can silently crash a script. CI failures on `main` block all contributors
 13. **Plugin docs location** — Plugin development documents (specs, plans, design docs) go in `plugin_docs/`, never in `docs/`. `docs/` is gitignored — it is reserved for user project artifacts deployed by `rat-init-project`. If `git add -f` is needed, the file is in the wrong location
-14. **Version bump checklist & release branch policy** — `try-v1.0` is the pre-release test branch (release branch) for `v1.0.0`. While stabilizing on `try-v1.0`, track each pre-release iteration with `1.0.0-preXX` in the manifests and `CHANGELOG.md`. During the official `v1.0.0` release, consolidate all pre-release versions and branch references to `v1.0.0`; after `v1.0.0` ships, follow Semantic Versioning (`MAJOR.MINOR.PATCH`). When bumping the plugin version, update ALL of the following in a single release-prep batch:
+14. **Release versions** — Release from `main` using Semantic Versioning (`MAJOR.MINOR.PATCH`). Keep these files in sync in the release commit and tag that commit `vMAJOR.MINOR.PATCH`.
     - `package.json` (`version`)
     - `.claude-plugin/plugin.json` (`version`)
     - `.claude-plugin/marketplace.json` (`metadata.version` + `plugins[0].version`)
@@ -174,7 +174,6 @@ When modifying this plugin:
 
 1. **P1/P2 skill naming without `rtl-` prefix** — `p1-spec-research` and `p2-arch-design` intentionally omit the `rtl-` prefix because Phase 1 (Research) and Phase 2 (Architecture) are pre-RTL stages. The `rtl-` prefix is reserved for phases that involve RTL artifacts (P3+).
 2. **Step 0 Context Bootstrap duplicated across 20 orchestrators** — These 20 orchestrator agents carry the canonical block synchronized from `plugin_docs/agent-lib/step0-template.md` (`bash scripts/sync_step0.sh --dry-run`). This is intentional: agent prompts must be self-contained (no `#include`), and indirection via `plugin_docs/agent-lib/` would add a Read() tool call per agent spawn. `p5a-functional-closure-orchestrator`, `p5b-silicon-validation-orchestrator`, and `ppa-optimizer-dc-orchestrator` use custom preconditions/state files instead of the canonical block; all three still use the shared project-root path convention in their headers.
-3. **`try-v1.0` pre-release versioning (`1.0.0-preXX` vs `v1.0.0` docs)** — `try-v1.0` acts as the release branch for `v1.0.0`. Manifests and `CHANGELOG.md` use `1.0.0-preXX` during pre-release testing while user-facing docs target `v1.0.0`. All references will be finalized to `v1.0.0` at release time, and subsequent releases will follow Semantic Versioning (`MAJOR.MINOR.PATCH`).
 
 ### File Architecture
 

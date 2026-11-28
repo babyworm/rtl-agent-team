@@ -1,7 +1,7 @@
 # Shared runner functions require Bash.
 SHELL := /bin/bash
 .SHELLFLAGS := -e -o pipefail -c
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0
 # =============================================================================
 # RTL Build System
 # =============================================================================

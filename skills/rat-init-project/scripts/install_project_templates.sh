@@ -78,7 +78,7 @@ _extract_rat_version() {
   ' "$1" 2>/dev/null || true
 }
 
-# Legacy 2.0.x (2.0.P and 2.0.0-preN) markers come from the pre-1.0.0 try-2.0 branch.
+# Legacy 2.0.x (2.0.P and 2.0.0-preN) markers identify development builds before 1.0.0.
 # 1.x.y (including 1.0.0-preN) replaces those legacy 2.0.x markers; future 2.x.y
 # against an installed 1.x.y still follows standard SemVer ordering.
 _version_gt() {

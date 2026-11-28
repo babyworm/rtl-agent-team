@@ -2,100 +2,100 @@
   "schema_version": 1,
   "templates": {
     "hooks/lib/python-util.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "6d7bd0fdff336aa863ef9d8bebd02146974ee9b00e36513914cdc79021802395"
+      "version": "1.0.0",
+      "sha256": "462aa2738cad007802b9fd4049d1bd6f6fbfbba1a993d6cf05267faeb0ac93d4"
     },
     "scripts/eda_runner.py": {
-      "version": "1.0.0-pre19",
-      "sha256": "3119e73bbbb697588e28de47fac9c87f3ad1f33364bee9a86371c0c6f2b595f6"
+      "version": "1.0.0",
+      "sha256": "7e6883758f241bb5de1b0658481f95380a8a90b3b134fbdb7a2db1d23e4a1430"
     },
     "scripts/eda_setup.py": {
-      "version": "1.0.0-pre19",
-      "sha256": "616cef67d4445d04a2c518e96055b0f7fc63f908910a01c0bea1a53939bc065f"
+      "version": "1.0.0",
+      "sha256": "25ffcdf66bbc32ddf0ff510f04abc47cffcb558bd200de0abad647d09a6b50d8"
     },
     "scripts/merge_coverpoint_logs.py": {
-      "version": "1.0.0-pre19",
-      "sha256": "7aa2e0f8a004580366c42d4cc15a7349085ca5e6e5c954ae7eafe13334a9df8d"
+      "version": "1.0.0",
+      "sha256": "eca35e804062d65e0a8026dfc659d5786caf1e18320b760fdea9f744714e5ea9"
     },
     "scripts/regression_evidence.py": {
-      "version": "1.0.0-pre20",
-      "sha256": "7d6546260e0391ccad49891fbcefa68d89bdcf3292faab036680c7f49fabee98"
+      "version": "1.0.0",
+      "sha256": "a15f6664fc1b96f9f42b0e1bb11b1a7161e2e0b7ea2a39702f0ed7680e04a3b3"
     },
     "scripts/run_sim.sh": {
-      "version": "1.0.0-pre20",
-      "sha256": "5d418d8051b6a6162d9d9405b55b6c7e6360cc2c9c540e95e541325b8ee627d1"
+      "version": "1.0.0",
+      "sha256": "79d0852a092d6c8e53056c6d78064e7b905fde41f211ffbff7ae82da9cd262aa"
     },
     "scripts/verify_evidence.py": {
-      "version": "1.0.0-pre20",
-      "sha256": "723480700bcf3c775faaf13a4d3b879b22a8da4d4556cc85cad09769168b5d9d"
+      "version": "1.0.0",
+      "sha256": "5eaa0886acac4422505bed84285735676dcd25f31e05c2c064a9db6284d93f48"
     },
     "skills/rat-init-project/templates/Makefile": {
-      "version": "1.0.0-pre19",
-      "sha256": "afcade727d8a5bb307b3ded41522d57ea3da6da68e51f0b05a44ef659eb2ca16"
+      "version": "1.0.0",
+      "sha256": "5a12d7d41943605ca722e9dbc26245e60b369d6b762985b929f1ee98f9ee2c1d"
     },
     "skills/rat-init-project/templates/experiment.gitignore": {
-      "version": "1.0.0-pre19",
-      "sha256": "10187cb43ae6ab8be932d4f5bb35d4bc6bec338521bfdbcf96d33b9bde982044"
+      "version": "1.0.0",
+      "sha256": "7941d027715520ecdd0280d782db493a440a9cd72a779d0e15830ba4126ad7cb"
     },
     "skills/rat-init-project/templates/guides/docs-guide.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "f95a7d30312e2e03c44497720b622674efb06e65c7fead3a891f9c12bcc9c2e2"
+      "version": "1.0.0",
+      "sha256": "a1a968fe6272199e2e89ee8eabbdeb01c5bd96a20110e196481cd05ab13dd915"
     },
     "skills/rat-init-project/templates/guides/refc-guide.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "e7e543e956788d85e6c95e04ee14a75dd36ca53c7a930dd6ccc87d83c23aed63"
+      "version": "1.0.0",
+      "sha256": "d83366db3ed1c5faffd9e78d022cca69dab63a7f30cfe0a8eff4395188f154de"
     },
     "skills/rat-init-project/templates/guides/reviews-guide.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "dad9ef3f128a8c918f64d07b9887443108899c64049cafe066094614c5e230db"
+      "version": "1.0.0",
+      "sha256": "784088c0197c22dfc6527c12d6e44f89f49221c1c0fe3fdf33516a371ad7a7cc"
     },
     "skills/rat-init-project/templates/guides/rtl-guide.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "fe21d7bb315bef9658b2d81c0dede35b6c50a3950c525a333f3464dfdf862caa"
+      "version": "1.0.0",
+      "sha256": "51497d074b36a07a11d4e42933c4d09491f590dc08c5d54e3e8b6f6c55e245d4"
     },
     "skills/rat-init-project/templates/guides/sim-guide.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "9755c86f117a1a5eadae9a913e2b3f5c47079b79866c7296b8b5bc60f488bb63"
+      "version": "1.0.0",
+      "sha256": "5cfb28deb07e5fc9f87d4e163d66329610444549fa32018393f76a0cc6d0d202"
     },
     "skills/rat-init-project/templates/guides/syn-guide.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "5c6680399a70fad561e6479f5c6a11fb937a3f181dc717477e593fb1b711b254"
+      "version": "1.0.0",
+      "sha256": "6c688ad0f89699d9db422ccbe67cff22c186a6d3be495bd5290c8d0ccd262fdc"
     },
     "skills/rat-init-project/templates/lib/tool-runner.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "78d52f1606de0c475ed830506fa9a991073d06e0b2f960f5da8652ef8a16077e"
+      "version": "1.0.0",
+      "sha256": "c6e484923bc778356ebb1b0d78869ea984d7e831a5f067daade31af82b22947d"
     },
     "skills/rat-init-project/templates/rules/rtl-coding-conventions.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "42da477ef33c3b9d7882dbd6664c65e331eae31d1a148f1a4092b3327d803a15"
+      "version": "1.0.0",
+      "sha256": "2714c8f5e74e7d6b2d92ca658a7fd79cd07e7257aa8bb3dc2e7bddc6a986a205"
     },
     "skills/rat-init-project/templates/rules/rtl-verification-gate.md": {
-      "version": "1.0.0-pre19",
-      "sha256": "e94dae29eeacdf9a55ed3c33314c1326ea4559f925ee6198858d61a97a9aeafe"
+      "version": "1.0.0",
+      "sha256": "67da490dbf26b98e9d2f1130f214ec8b64803d6c1c8a4e0326995ffe0a776330"
     },
     "skills/rat-init-project/templates/run_cdc.sh": {
-      "version": "1.0.0-pre20",
-      "sha256": "6e1dced749daa2b79a2f38d07e45cec3c33dd3e917c6d920368e48b6ba24a0ac"
+      "version": "1.0.0",
+      "sha256": "9e4833c72ce740482e6a274b029995fd4c113685476f176c0f3e10a587ad3a2a"
     },
     "skills/rat-init-project/templates/run_conformal.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "eb7987f0fc946a52e46803a0ba4842029644ad28d1467ebb723a0238aee660a5"
+      "version": "1.0.0",
+      "sha256": "24973e42a49db66faad08294097679e5bc109d4ee89ec801d4c8c4726f99e58f"
     },
     "skills/rat-init-project/templates/run_formality.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "9c1bbf68d70af549f599dcb9405a9fd940164981718e2013f90a64a565629c5d"
+      "version": "1.0.0",
+      "sha256": "8c5f75d31f190fc2a982e3129c12143d8ccc3be542699135f454dc516e000568"
     },
     "skills/rat-init-project/templates/run_lint.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "a9a1b182f5f7f2bf35c2d20174966b5b7a2413a71a1416db374791998caa0315"
+      "version": "1.0.0",
+      "sha256": "fd5897a6b69c6d822f15eeeb75dc525c0f5c847c9f5185fe9b3e25c19843b66a"
     },
     "skills/rat-init-project/templates/run_syn.sh": {
-      "version": "1.0.0-pre19",
-      "sha256": "4ca49ad15570293df729f9cdb7e08e6379996c8e31fd5ad0092d5c680f1fc0ca"
+      "version": "1.0.0",
+      "sha256": "ebdf1ebe60085f56d23aa5fa32820f7c64ea7f33638b450eaffe2509ea1fc82f"
     },
     "skills/rtl-p5s-uvm-verify/scripts/run_regression_uvm.sh": {
-      "version": "1.0.0-pre20",
-      "sha256": "317ba434d0093510b1b0c372e7fb616554bc38bbb531193ada81bf8cbffc7cd1"
+      "version": "1.0.0",
+      "sha256": "77a60a7f1b74eb97d340a70ff41307edd6ddf430beee23ba51e95fc1dc0724d9"
     }
   }
 }

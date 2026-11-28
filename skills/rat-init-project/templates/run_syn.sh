@@ -988,4 +988,4 @@ echo ""
 echo "Exit:     $EXIT_CODE"
 exit "$EXIT_CODE"
 
-# rat-version: 1.0.0-pre19
+# rat-version: 1.0.0

@@ -149,4 +149,4 @@ Prose: the heading states the point. The first sentence is the conclusion. At mo
 
 Architecture and μArch working notes still use D2 for a block diagram and Mermaid for an FSM or a flow.
 
-<!-- rat-version: 1.0.0-pre19 -->
+<!-- rat-version: 1.0.0 -->

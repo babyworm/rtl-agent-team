@@ -42,7 +42,7 @@ RTL 프로젝트 디렉토리에서 도구를 준비하고 프로젝트를 초�
 | [`rat-init-project`](skills/rat-init-project/SKILL.md) | 프로젝트 구조와 도구 설정, 실행 스크립트를 준비합니다. |
 | [`rat-doctor`](skills/rat-doctor/SKILL.md) | 설정 후 동작이 이상할 때 플러그인과 프로젝트 설정을 점검하고 잘못된 항목을 고칩니다. |
 | [`rat-auto-design`](skills/rat-auto-design/SKILL.md) | 명세를 바탕으로 P1~P6 전체를 실행합니다. |
-| [`rat-refc-to-p5`](skills/rat-refc-to-p5/SKILL.md) | 기존 동작 모델(C)을 RTL로 구현하고 P5까지 검증합니다. [`try-v1.0` 브랜치](CONTRIBUTING_kr.md#개발-환경-셋업) 전용 명령입니다. |
+| [`rat-refc-to-p5`](skills/rat-refc-to-p5/SKILL.md) | 기존 동작 모델(C)을 RTL로 구현하고 P5까지 검증합니다. |
 | [`rat-dse`](skills/rat-dse/SKILL.md) | 마이크로아키텍처와 BFM까지 설계 대안을 탐색합니다. |
 | [`rat-p1p3-spec-uarch`](skills/rat-p1p3-spec-uarch/SKILL.md) | RTL 구현 전에 검토할 설계 문서를 작성합니다. |
 | [`rat-p4p5-impl-verify`](skills/rat-p4p5-impl-verify/SKILL.md) | 승인된 마이크로아키텍처를 바탕으로 RTL을 구현하고 검증합니다. |
